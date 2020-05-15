@@ -18,6 +18,8 @@
 
 namespace TextureAtlasNamespace
 {
+    const static char* s_CoordinatePairsName = "Coordinate Pairs";
+
     TextureAtlasImpl::TextureAtlasImpl()
     {
         m_image = nullptr;
@@ -34,13 +36,34 @@ namespace TextureAtlasNamespace
         m_image = nullptr;
     }
 
+    bool TextureAtlasImpl::TextureAtlasVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootElement)
+    {
+        if (rootElement.GetVersion() < 2)
+        {
+            AZStd::unordered_map<AZStd::string, AtlasCoordinates> oldData;
+            if (!rootElement.GetChildData(AZ_CRC(s_CoordinatePairsName), oldData))
+            {
+                AZ_Error("TextureAtlas", false, "Failed to find old %s unordered_map element on version %u", s_CoordinatePairsName, rootElement.GetVersion());
+                return false;
+            }
+
+            AZStd::unordered_map<AZStd::string, AtlasCoordinates, hash_case_insensitive, equal_to_case_insensitive> newData{ oldData.begin(), oldData.end() };
+            rootElement.RemoveElementByName(AZ_CRC(s_CoordinatePairsName));
+            rootElement.AddElementWithData(context, s_CoordinatePairsName, newData);
+        }
+
+        return true;
+    }
+
     // Reflect The coordinates and the coordinate format
     void TextureAtlasImpl::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<TextureAtlasImpl>()->Version(1)
-                ->Field("Coordinate Pairs", &TextureAtlasImpl::m_data)
+            // Need to serialize the old AZStd::unordered_map<AZStd::string, AtlasCoordinates> type
+            serialize->RegisterGenericType<AZStd::unordered_map<AZStd::string, AtlasCoordinates>>();
+            serialize->Class<TextureAtlasImpl>()->Version(2, &TextureAtlasVersionConverter)
+                ->Field(s_CoordinatePairsName, &TextureAtlasImpl::m_data)
                 ->Field("Width", &TextureAtlasImpl::m_width)
                 ->Field("Height", &TextureAtlasImpl::m_height);
             AzFramework::SimpleAssetReference<TextureAtlasAsset>::Register(*serialize);

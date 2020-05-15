@@ -139,7 +139,7 @@ namespace EMotionFX
         AnimGraph* GetParameterAnimGraph() const override;
         void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
         void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
-        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterAdded(const AZStd::string& newParameterName) override;
         void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
         void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
         void ParameterRemoved(const AZStd::string& oldParameterName) override;

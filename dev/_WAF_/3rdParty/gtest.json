@@ -7,7 +7,7 @@
     ],
     "source": "@3P:GoogleTest@",
     "description": "Google Test",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [

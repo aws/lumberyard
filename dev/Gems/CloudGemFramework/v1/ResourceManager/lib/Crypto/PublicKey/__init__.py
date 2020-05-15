@@ -18,24 +18,78 @@
 # SOFTWARE.
 # ===================================================================
 
-"""Public-key encryption and signature algorithms.
+from Crypto.Util.asn1 import (DerSequence, DerInteger, DerBitString,
+                             DerObjectId, DerNull)
 
-Public-key encryption uses two different keys, one for encryption and
-one for decryption.  The encryption key can be made public, and the
-decryption key is kept private.  Many public-key algorithms can also
-be used to sign messages, and some can *only* be used for signatures.
 
-========================  =============================================
-Module                    Description
-========================  =============================================
-Crypto.PublicKey.DSA      Digital Signature Algorithm (Signature only)
-Crypto.PublicKey.ElGamal  (Signing and encryption)
-Crypto.PublicKey.RSA      (Signing, encryption, and blinding)
-========================  =============================================
+def _expand_subject_public_key_info(encoded):
+    """Parse a SubjectPublicKeyInfo structure.
 
-:undocumented: _DSA, _RSA, _fastmath, _slowmath, pubkey
-"""
+    It returns a triple with:
+        * OID (string)
+        * encoded public key (bytes)
+        * Algorithm parameters (bytes or None)
+    """
 
-__all__ = ['RSA', 'DSA', 'ElGamal']
-__revision__ = "$Id$"
+    #
+    # SubjectPublicKeyInfo  ::=  SEQUENCE  {
+    #   algorithm         AlgorithmIdentifier,
+    #   subjectPublicKey  BIT STRING
+    # }
+    #
+    # AlgorithmIdentifier  ::=  SEQUENCE  {
+    #   algorithm   OBJECT IDENTIFIER,
+    #   parameters  ANY DEFINED BY algorithm OPTIONAL
+    # }
+    #
 
+    spki = DerSequence().decode(encoded, nr_elements=2)
+    algo = DerSequence().decode(spki[0], nr_elements=(1,2))
+    algo_oid = DerObjectId().decode(algo[0])
+    spk = DerBitString().decode(spki[1]).value
+
+    if len(algo) == 1:
+        algo_params = None
+    else:
+        try:
+            DerNull().decode(algo[1])
+            algo_params = None
+        except:
+            algo_params = algo[1]
+
+    return algo_oid.value, spk, algo_params
+
+
+def _create_subject_public_key_info(algo_oid, secret_key, params=None):
+
+    if params is None:
+        params = DerNull()
+
+    spki = DerSequence([
+                DerSequence([
+                    DerObjectId(algo_oid),
+                    params]),
+                DerBitString(secret_key)
+                ])
+    return spki.encode()
+
+
+def _extract_subject_public_key_info(x509_certificate):
+    """Extract subjectPublicKeyInfo from a DER X.509 certificate."""
+
+    certificate = DerSequence().decode(x509_certificate, nr_elements=3)
+    tbs_certificate = DerSequence().decode(certificate[0],
+                                           nr_elements=range(6, 11))
+
+    index = 5
+    try:
+        tbs_certificate[0] + 1
+        # Version not present
+        version = 1
+    except TypeError:
+        version = DerInteger(explicit=0).decode(tbs_certificate[0]).value
+        if version not in (2, 3):
+            raise ValueError("Incorrect X.509 certificate version")
+        index = 6
+
+    return tbs_certificate[index]

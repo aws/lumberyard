@@ -24,6 +24,7 @@
 
 #include <LmbrCentral/Animation/AttachmentComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h>
 
 #include <Integration/Components/ActorComponent.h>
 #include <Integration/Rendering/RenderBackendManager.h>
@@ -126,11 +127,14 @@ namespace EMotionFX
             {
                 m_configuration = *configuration;
             }
+
+            //m_materialBusHandler = aznew LmbrCentral::MaterialOwnerRequestBusHandlerImpl;
         }
 
         //////////////////////////////////////////////////////////////////////////
         ActorComponent::~ActorComponent()
         {
+            //delete m_materialBusHandler;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -248,7 +252,6 @@ namespace EMotionFX
             OnAssetReady(asset);
         }
 
-        //////////////////////////////////////////////////////////////////////////
         void ActorComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
             m_configuration.m_actorAsset = asset;
@@ -256,7 +259,11 @@ namespace EMotionFX
             CheckActorCreation();
         }
 
-        //////////////////////////////////////////////////////////////////////////
+        bool ActorComponent::IsWorldNotificationBusConnected(AZ::Crc32 worldId) const
+        {
+            return Physics::WorldNotificationBus::Handler::BusIsConnectedId(worldId);
+        }
+
         void ActorComponent::CheckActorCreation()
         {
             if (m_configuration.m_actorAsset.IsReady())
@@ -303,10 +310,16 @@ namespace EMotionFX
                         m_configuration.m_materialPerLOD,
                         m_configuration.m_skinningMethod,
                         transform));
+
                 if (m_renderActorInstance)
                 {
                     m_renderActorInstance->SetIsVisible(m_configuration.m_renderCharacter);
                 }
+
+                /*
+                const bool registerBus = true;
+                m_materialBusHandler->Activate(m_renderNode.get(), m_entity->GetId(), registerBus);
+                */
 
                 // Reattach all attachments
                 for (AZ::EntityId& attachment : m_attachments)
@@ -314,20 +327,15 @@ namespace EMotionFX
                     LmbrCentral::AttachmentComponentRequestBus::Event(attachment, &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
                 }
 
-                LmbrCentral::AttachmentComponentRequestBus::Event(GetEntityId(), &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
+                const AZ::EntityId entityId = GetEntityId();
+                LmbrCentral::AttachmentComponentRequestBus::Event(entityId, &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
 
                 CheckAttachToEntity();
 
                 // Send general mesh creation notification to interested parties.
-                LmbrCentral::MeshComponentNotificationBus::Event(GetEntityId(), &LmbrCentral::MeshComponentNotifications::OnMeshCreated, actorAsset);
+                LmbrCentral::MeshComponentNotificationBus::Event(entityId, &LmbrCentral::MeshComponentNotifications::OnMeshCreated, actorAsset);
 
-                AzFramework::CharacterPhysicsDataNotificationBus::Event(GetEntityId(), &AzFramework::CharacterPhysicsDataNotifications::OnRagdollConfigurationReady);
-
-                // Start listening to PostWorldUpdate events for the ragdoll.
-                if (m_actorInstance->GetRagdollInstance())
-                {
-                    Physics::WorldNotificationBus::Handler::BusConnect(m_actorInstance->GetRagdollInstance()->GetRagdollWorldId());
-                }
+                AzFramework::CharacterPhysicsDataNotificationBus::Event(entityId, &AzFramework::CharacterPhysicsDataNotifications::OnRagdollConfigurationReady);
             }
         }
 
@@ -364,7 +372,11 @@ namespace EMotionFX
 
             if (m_actorInstance)
             {
+                //m_materialBusHandler->Deactivate();
+
                 DetachFromEntity();
+
+                m_attachmentTargetActor = nullptr;
 
                 // Send general mesh destruction notification to interested parties.
                 LmbrCentral::MeshComponentNotificationBus::Event(
@@ -469,6 +481,7 @@ namespace EMotionFX
             m_attachmentTargetActor = nullptr;
         }
 
+        //////////////////////////////////////////////////////////////////////////
         bool ActorComponent::GetRagdollConfiguration(Physics::RagdollConfiguration& ragdollConfiguration) const
         {
             if (!m_actorInstance)
@@ -542,6 +555,10 @@ namespace EMotionFX
             if (ragdoll && m_actorInstance)
             {
                 m_actorInstance->SetRagdoll(ragdoll);
+
+                RagdollInstance* ragdollInstance = m_actorInstance->GetRagdollInstance();
+                AZ_Assert(ragdollInstance, "As the ragdoll passed in ActorInstance::SetRagdoll() is valid, a valid ragdoll instance is expected to exist.");
+                Physics::WorldNotificationBus::Handler::BusConnect(ragdollInstance->GetRagdollWorldId());
             }
         }
 
@@ -549,6 +566,7 @@ namespace EMotionFX
         {
             if (m_actorInstance)
             {
+                Physics::WorldNotificationBus::Handler::BusDisconnect();
                 m_actorInstance->SetRagdoll(nullptr);
             }
         }

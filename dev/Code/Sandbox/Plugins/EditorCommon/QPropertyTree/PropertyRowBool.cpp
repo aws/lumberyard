@@ -111,5 +111,5 @@ void PropertyRowBool::serializeValue(Serialization::IArchive& ar)
 
 int PropertyRowBool::widgetSizeMin(const QPropertyTree* tree) const
 {
-    return tree->_defaultRowHeight() * 0.9f;
+    return aznumeric_cast<int>(tree->_defaultRowHeight() * 0.9f);
 }

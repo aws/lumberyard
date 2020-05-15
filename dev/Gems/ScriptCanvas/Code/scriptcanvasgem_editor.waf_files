@@ -69,6 +69,8 @@
             "Editor/GraphCanvas/PropertySlotIds.h"
         ],
         "Editor/GraphCanvas/Components": [
+            "Editor/GraphCanvas/Components/DynamicOrderingDynamicSlotComponent.cpp",
+            "Editor/GraphCanvas/Components/DynamicOrderingDynamicSlotComponent.h",
             "Editor/GraphCanvas/Components/DynamicSlotComponent.cpp",
             "Editor/GraphCanvas/Components/DynamicSlotComponent.h",
             "Editor/GraphCanvas/Components/MappingComponent.cpp",
@@ -103,10 +105,11 @@
             "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventSenderNodeDescriptorComponent.h"
         ],
         "Editor/GraphCanvas/DataInterfaces": [
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",            
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasAssetIdDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEntityIdDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEnumDataInterface.h",
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",            
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasColorDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasCRCDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasNumericDataInterface.h",
@@ -115,6 +118,10 @@
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasVectorDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasVariableDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasQuaternionDataInterface.h"
+        ],
+        "Editor/GraphCanvas/PropertyInterfaces": [
+            "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasPropertyDataInterface.h",
+            "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasStringPropertyDataInterface.h"
         ],
         "Editor/Model/MimeHandlers": [
             "Editor/Model/EntityMimeDataHandler.h",
@@ -158,8 +165,6 @@
             "Editor/Utilities/RecentAssetPath.cpp"
         ],
         "Editor/View/Dialogs": [
-            "Editor/View/Dialogs/PreviewMessage.h",
-            "Editor/View/Dialogs/PreviewMessage.cpp",
             "Editor/View/Dialogs/NewGraphDialog.h",
             "Editor/View/Dialogs/NewGraphDialog.cpp",
             "Editor/View/Dialogs/NewGraphDialog.ui",
@@ -226,6 +231,7 @@
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h",
+            "Editor/View/Widgets/NodePalette/NodePaletteModelBus.h",
             "Editor/View/Widgets/NodePalette/NodePaletteModel.cpp",
             "Editor/View/Widgets/NodePalette/NodePaletteModel.h",
             "Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.cpp",

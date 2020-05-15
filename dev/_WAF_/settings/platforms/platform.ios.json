@@ -27,7 +27,11 @@
         "lib_prefix"             : "lib",
         "default_launcher_name"  : "IOSLauncher",
         "platform_folder"        : "iOS",
-        "platform_keyword"       : "ios"
+        "platform_keyword"       : "ios",
+        "sa_capability": {
+            "key"               : "compileios",
+            "description"       : "iOS"
+        }
     },
 
     "settings": {

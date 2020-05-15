@@ -56,7 +56,10 @@ namespace TerrainFuncsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("import_heightmap") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("export_heightmap") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("get_elevation") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_heightmap_elevation") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("set_elevation") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("flatten") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("reduce_range") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("smooth") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("slope_smooth") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("erase") != behaviorContext->m_methods.end());

@@ -82,6 +82,10 @@ namespace AzFramework
         ~InputDeviceTouch() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDevice::GetAssignedLocalUserId
+        LocalUserId GetAssignedLocalUserId() const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDevice::GetInputChannelsById
         const InputChannelByIdMap& GetInputChannelsById() const override;
 
@@ -134,6 +138,11 @@ namespace AzFramework
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Destructor
             virtual ~Implementation();
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Access to the input device's currently assigned local user id
+            //! \return Id of the local user currently assigned to the input device
+            virtual LocalUserId GetAssignedLocalUserId() const;
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Query the connected state of the input device

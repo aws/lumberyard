@@ -10,6 +10,9 @@
 #
 # $Revision: #3 $
 
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
 import boto3
 import json
 
@@ -20,7 +23,10 @@ from resource_manager_common import stack_info
 
 s3_client = aws_utils.ClientWrapper(boto3.client('s3'))
 
+
 def handler(event, context):
+    """Entry point for the Custom::ExternalResourceInstance resource handler."""
+
     stack_arn = event['StackId']
     stack = stack_info.StackInfoManager().get_stack_info(stack_arn)
 
@@ -40,12 +46,14 @@ def handler(event, context):
 
     return custom_resource_response.success_response({}, physical_resource_id)
 
+
 def _delete_reference_metadata(resource_name, stack):
     reference_metadata_key = reference_type_utils.get_reference_metadata_key(stack.project_stack.project_name, resource_name)
     s3_client.delete_object(
-        Bucket = stack.project_stack.configuration_bucket,
-        Key = reference_metadata_key
+        Bucket=stack.project_stack.configuration_bucket,
+        Key=reference_metadata_key
     )
+
 
 def _create_reference_metadata(event, stack):
     _validate_reference_metadata(event)
@@ -55,6 +63,7 @@ def _create_reference_metadata(event, stack):
 
     reference_metadata_key = reference_type_utils.get_reference_metadata_key(stack.project_stack.project_name, resource_name)
     s3_client.put_object(Bucket=stack.project_stack.configuration_bucket, Key=reference_metadata_key, Body=json.dumps(reference_metadata, indent=2))
+
 
 def _validate_reference_metadata(event):
     reference_type_utils.load_reference_metadata_properties(event)

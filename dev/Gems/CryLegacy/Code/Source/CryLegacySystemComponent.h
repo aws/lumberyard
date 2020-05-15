@@ -12,7 +12,6 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Module/DynamicModuleHandle.h>
 #include <CryLegacy/CryLegacyBus.h>
 #include <AzCore/Memory/AllocatorScope.h>
 
@@ -99,8 +98,5 @@ namespace CryLegacy
         ////////////////////////////////////////////////////////////////////////
 
         IGameFramework* m_Framework = nullptr;
-#if !defined(AZ_MONOLITHIC_BUILD)
-        AZStd::unique_ptr<AZ::DynamicModuleHandle> m_cryActionHandle;
-#endif // !defined(AZ_MONOLITHIC_BUILD)
     };
 }

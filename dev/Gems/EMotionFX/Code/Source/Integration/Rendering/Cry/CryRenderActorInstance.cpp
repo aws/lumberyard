@@ -58,7 +58,7 @@ namespace EMotionFX
             const AZ::Data::Asset<ActorAsset>& asset,
             const AZ::Transform& worldTransform)
             : IRenderNode()
-            , RenderActorInstance(asset, actorInstance.get(), entityId)
+            , RenderActorInstance(asset, actorInstance.get(), entityId)            
             , m_renderTransform(AZTransformToLYTransform(worldTransform))
             , m_worldBoundingBox(AABB::RESET)
             , m_isRegisteredWithRenderer(false)
@@ -66,6 +66,7 @@ namespace EMotionFX
             , m_materialReadyEventSent(false)
         {
             LmbrCentral::RenderNodeRequestBus::Handler::BusConnect(entityId);
+
             m_materialOwner.reset(aznew MaterialOwner(this, entityId));
 
             memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
@@ -945,17 +946,13 @@ namespace EMotionFX
         CryRenderActorInstance::MaterialOwner::MaterialOwner(CryRenderActorInstance* renderActorInstance, AZ::EntityId entityId)
             : m_renderActorInstance(renderActorInstance)
         {
-            LmbrCentral::MaterialOwnerRequestBus::Handler::BusConnect(entityId);
+            const bool registerBus = true;
+            Activate(renderActorInstance, entityId, registerBus);
         }
 
         CryRenderActorInstance::MaterialOwner::~MaterialOwner()
         {
-            LmbrCentral::MaterialOwnerRequestBus::Handler::BusDisconnect();
-        }
-
-        bool CryRenderActorInstance::MaterialOwner::IsMaterialOwnerReady()
-        {
-            return m_renderActorInstance->IsReady();
+            Deactivate();
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1003,7 +1000,7 @@ namespace EMotionFX
             }
         }
 #endif
-
+        
         _smart_ptr<IMaterial> CryRenderActorInstance::MaterialOwner::GetMaterial()
         {
             _smart_ptr<IMaterial> material = m_renderActorInstance->GetMaterial();

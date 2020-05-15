@@ -38,6 +38,8 @@ class UiElementComponent
     , public AZ::EntityBus::Handler
     , public AZStd::intrusive_slist_node<UiElementComponent>
 {
+    friend class UiCanvasComponent;
+
 public: // types
 
     // used to map old EntityId's to new EntityId's when generating new ids for a paste or prefab
@@ -75,6 +77,7 @@ public: // member functions
 
     AZ::Entity* CreateChildElement(const LyShine::NameType& name) override;
     void DestroyElement() override;
+    void DestroyElementOnFrameEnd() override;
     void Reparent(AZ::Entity* newParent, AZ::Entity* insertBefore = nullptr) override;
     void ReparentByEntityId(AZ::EntityId newParent, AZ::EntityId insertBefore) override;
     void AddToParentAtIndex(AZ::Entity* newParent, int index = -1) override;
@@ -263,10 +266,16 @@ private: // member functions
     //! Recalculate the sort indices in m_childEntityIdOrder to match the order in the vector
     void ResetChildEntityIdSortOrders();
 
+    //! Destroys children of UiElement, removes UiElement from parent, and sends OnUiElementBeingDestroyed
+    void PrepareElementForDestroy();
+
 private: // static member functions
 
     static bool VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement);
+
+    //! Destroy UI element entity
+    static void DestroyElementEntity(AZ::EntityId entityId);
 
 private: // data
 

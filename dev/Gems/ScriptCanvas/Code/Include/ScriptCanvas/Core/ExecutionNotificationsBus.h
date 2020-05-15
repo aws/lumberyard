@@ -15,7 +15,7 @@
 #include "Core.h"
 #include "Core/Datum.h"
 #include "Core/Endpoint.h"
-#include "Variable/VariableDatumBase.h"
+#include "Variable/GraphVariable.h"
 #include "Core/NamedId.h"
 
 #include <AzCore/Component/NamedEntityId.h>
@@ -26,11 +26,11 @@
 #define SC_EXECUTION_TRACE_THREAD_ENDED(arg) ;
 #define SC_EXECUTION_TRACE_GRAPH_ACTIVATED(arg) ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::GraphActivated, arg);
 #define SC_EXECUTION_TRACE_GRAPH_DEACTIVATED(arg) ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::GraphDeactivated, arg);
-#define SC_EXECUTION_TRACE_SIGNAL_DATA_OUTPUT(node, arg) if (IsNodeObserved(node)) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledDataOuput, arg); }
-#define SC_EXECUTION_TRACE_SIGNAL_INPUT(node, arg) if (IsNodeObserved(node)) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledInput, arg); }
-#define SC_EXECUTION_TRACE_SIGNAL_OUTPUT(node, arg) if (IsNodeObserved(node)) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledOutput, arg); }
-#define SC_EXECUTION_TRACE_VARIABLE_CHANGE(node, id, arg) if (IsVariableObserved(node, id)) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::VariableChanged, arg); } 
-#define SC_EXECUTION_TRACE_ANNOTATE_NODE(node, arg) if (IsNodeObserved(node)) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::AnnotateNode, arg); }
+#define SC_EXECUTION_TRACE_SIGNAL_DATA_OUTPUT(node, arg) if (node.GetRuntimeBus()->IsGraphObserved()) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledDataOuput, arg); }
+#define SC_EXECUTION_TRACE_SIGNAL_INPUT(node, arg) if (node.GetRuntimeBus()->IsGraphObserved()) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledInput, arg); }
+#define SC_EXECUTION_TRACE_SIGNAL_OUTPUT(node, arg) if (node.GetRuntimeBus()->IsGraphObserved()) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::NodeSignaledOutput, arg); }
+#define SC_EXECUTION_TRACE_VARIABLE_CHANGE(id, arg) if (GetRuntimeBus()->IsGraphObserved()) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::VariableChanged, arg); } 
+#define SC_EXECUTION_TRACE_ANNOTATE_NODE(node, arg) if (node.GetRuntimeBus()->IsGraphObserved()) { ScriptCanvas::ExecutionNotificationsBus::Broadcast(&ScriptCanvas::ExecutionNotifications::AnnotateNode, arg); }
 #else
 #define SC_EXECUTION_TRACE_THREAD_BEGUN(arg) ;
 #define SC_EXECUTION_TRACE_THREAD_ENDED(arg) ;
@@ -39,7 +39,7 @@
 #define SC_EXECUTION_TRACE_SIGNAL_DATA_OUTPUT(node, arg) ;
 #define SC_EXECUTION_TRACE_SIGNAL_INPUT(node, arg) ;
 #define SC_EXECUTION_TRACE_SIGNAL_OUTPUT(node, arg) ;
-#define SC_EXECUTION_TRACE_VARIABLE_CHANGE(node, id, arg) ;
+#define SC_EXECUTION_TRACE_VARIABLE_CHANGE(id, arg) ;
 #define SC_EXECUTION_TRACE_ANNOTATE_NODE(node, arg) ;
 #endif
 
@@ -336,12 +336,11 @@ namespace ScriptCanvas
         AZ_CLASS_ALLOCATOR(DatumValue, AZ::SystemAllocator, 0);
         AZ_RTTI(DatumValue, "{5B4C8EA8-747E-4557-A10A-0EA0ADB387CA}");
         
-        static DatumValue Create(const VariableDatumBase& value);
+        static DatumValue Create(const GraphVariable& value);
 
         // if valid, the datum will contain a string result of BCO->ToString()
         AZ::TypeId m_behaviorContextObjectType;
-        // else this value will contain the actual type
-        VariableDatumBase m_value;
+        Datum m_datum;
         
         DatumValue() = default;
         virtual ~DatumValue() = default;
@@ -350,12 +349,12 @@ namespace ScriptCanvas
 
         DatumValue(AZ::TypeId behaviorContextObjectType, const AZStd::string& toStringResult)
             : m_behaviorContextObjectType(behaviorContextObjectType)
-            , m_value(VariableDatumBase(Datum(toStringResult)))
+            , m_datum(Datum(toStringResult))
         {}
 
-        DatumValue(const VariableDatumBase& value)
+        DatumValue(const Datum& datum)
             : m_behaviorContextObjectType{}
-            , m_value(value)
+            , m_datum(datum)
         {}
 
         AZStd::string ToString() const;
@@ -621,7 +620,7 @@ namespace ScriptCanvas
         virtual void GraphActivated(const GraphActivation&) = 0;
         virtual void GraphDeactivated(const GraphActivation&) = 0;
         virtual bool IsNodeObserved(const Node&) = 0;
-        virtual bool IsVariableObserved(const Node&, VariableId) = 0;
+        virtual bool IsVariableObserved(const VariableId&) = 0;
         virtual void NodeSignaledOutput(const OutputSignal&) = 0;
         virtual void NodeSignaledInput(const InputSignal&) = 0;
         virtual void NodeSignaledDataOuput(const OutputDataSignal&) = 0;

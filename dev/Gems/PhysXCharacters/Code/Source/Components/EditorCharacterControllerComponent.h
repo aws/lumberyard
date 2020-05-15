@@ -72,6 +72,9 @@ namespace PhysXCharacters
 
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
+            // 'PhysXColliderService' is not actually used here, it is set as dependency to not have 
+            // StaticRigidBodyComponent (PhysX gem) created when this component is attached to editor entity
+            dependent.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         }
 
         EditorCharacterControllerComponent() = default;
@@ -102,7 +105,7 @@ namespace PhysXCharacters
             AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // PhysX::ConfigurationNotificationBus
-        virtual void OnConfigurationRefreshed(const PhysX::Configuration& configuration) override;
+        virtual void OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration) override;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;

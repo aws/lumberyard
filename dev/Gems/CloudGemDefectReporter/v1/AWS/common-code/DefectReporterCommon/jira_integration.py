@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 from boto3.dynamodb.conditions import Key
 from errors import ClientError
 from cgf_utils import custom_resource_utils
@@ -18,7 +19,8 @@ from botocore.client import Config
 import CloudCanvas
 import boto3
 import json
-import StringIO
+from six import StringIO
+from six import iteritems
 import defect_reporter_constants as constants
 import additonal_report_Info
 import re
@@ -114,7 +116,7 @@ def update_field_mappings(mappings):
         if item.get('name', None) == "Project" and item.get('id', None) and isinstance(item.get('mapping', None), dict):
             project_issue_types =  __get_existing_mapping( item.get('id') ) or {}
             item_mappings = item.get('mapping')  
-            for key,value in item_mappings.iteritems():
+            for key,value in iteritems(item_mappings):
                 project_issue_types[key] = value
             item['mapping'] = project_issue_types            
             
@@ -135,7 +137,7 @@ def map_embedded_to_actual(map, report):
                 map[attr1] = report[attr1]
             else:
                 keys_to_delete.append(attr1)
-            continue;               
+            continue
 
         if isinstance(map_value, list):            
             replace_array_embedded_entries(map_value, report)        
@@ -292,7 +294,7 @@ def __get_jira_fields(project_key, issue_type):
         raise ClientError("Invalid issue type {} ".format(issue_type))
 
     fields = []
-    for field_id, field_property in issue_type_description.get('fields', {}).iteritems():
+    for field_id, field_property in iteritems(issue_type_description.get('fields', {})):
         if field_id != 'project' and field_id != 'issuetype':
             fields.append({
                 'id': field_id,
@@ -335,7 +337,7 @@ def __get_allowed_value_schema(allow_value, allowed_value_schema):
     if allowed_value_schema.get('properties') == None:
         allowed_value_schema['properties'] = {}
 
-    for key, value in allow_value.iteritems():
+    for key, value in iteritems(allow_value):
         allowed_value_schema['properties'][key] = {'type': __get_standard_data_type(value)}
 
     return allowed_value_schema
@@ -343,7 +345,7 @@ def __get_allowed_value_schema(allow_value, allowed_value_schema):
 def __get_standard_data_type(value):
     value_type = type(value)
 
-    for key, types in STANDARD_FIELD_TYPES.iteritems():
+    for key, types in iteritems(STANDARD_FIELD_TYPES):
         if value_type in types:
             return key
 
@@ -356,7 +358,8 @@ def __find_embedded_identifiers(mappings):
 
     EMBEDDED_LOOKUP_KEYS_REGEX_PATTERN = "\"\[(\S)*\]\""
        
-    return re.findall(EMBEDDED_LOOKUP_KEYS_REGEX_PATTERN, mappings, re.MULTILINE);    
+    return re.findall(EMBEDDED_LOOKUP_KEYS_REGEX_PATTERN, mappings, re.MULTILINE)
+
 
 def __replace_embedded(value, report):
     embedded_mappings = __find_embedded_identifiers(value)    
@@ -372,7 +375,7 @@ def __create_jira_ticket(cw, issue, attachments):
 
 
 def __send_jira_ticket(cw, issue):        
-    print "Sending ticket", issue
+    print("Sending ticket", issue)
     # Create a new Jira ticket
     new_issue = {}
 
@@ -383,13 +386,13 @@ def __send_jira_ticket(cw, issue):
         __write_cloud_watch_metric(cw,"Failure")
         raise ClientError(e.text)
 
-    print "Jira ticket number {}".format(new_issue) 
+    print("Jira ticket number {}".format(new_issue))
     return new_issue.key
 
 def __send_jira_attachments(jira_issue_key, attachments):
     # Upload the attachments
-    print "Sending attachments for issue key '{}'".format(jira_issue_key), attachments
-    for attachment in attachments:        
+    print("Sending attachments for issue key '{}'".format(jira_issue_key), attachments)
+    for attachment in attachments:
         __upload_attachment(attachment, jira_issue_key)    
 
 def __upload_attachment(attachment, jira_issue):
@@ -398,8 +401,8 @@ def __upload_attachment(attachment, jira_issue):
     try:
         response = s3_client.get_object(Bucket = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting(constants.SANITIZED_BUCKET)), Key = key)
     except Exception as e:
-        print "Unable to GET the sanitized attachment. Key==>", key
-        return 
+        print("Unable to GET the sanitized attachment. Key==>", key)
+        return
 
     new_attachment = StringIO.StringIO()
     new_attachment.write(response['Body'].read())
@@ -419,7 +422,8 @@ def __write_cloud_watch_metric(cw, status):
                 "Value": 1,                                
                 "Unit": 'Count'                             
             }]    
-    cw.put_metric_data(namespace,metric);
+    cw.put_metric_data(namespace,metric)
+
 
 jira_mappings = {}
 def __get_existing_mapping(id):

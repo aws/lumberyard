@@ -31,6 +31,59 @@ namespace ScriptEvents
         using SupportedTypes = AZStd::vector< AZStd::pair< AZ::Uuid, AZStd::string> >;
         using VersionedTypes = AZStd::vector<AZStd::pair< ScriptEventData::VersionedProperty, AZStd::string>>;
 
+        namespace
+        {
+            void ParseForVersionedTypes(AZ::BehaviorClass* behaviorClass, AZ::Crc32 attributeId, VersionedTypes& typeTarget, AZ::BehaviorContext& behaviorContext)
+            {
+                if (auto attributeAttribute = behaviorClass->FindAttribute(attributeId))
+                {
+                    AZ::AttributeReader reader(behaviorClass, attributeAttribute);
+
+                    bool isEnabled = false;
+
+                    if (reader.Read<bool>(isEnabled))
+                    {
+                        if (isEnabled)
+                        {
+                            AZStd::string displayName = behaviorClass->m_name;
+
+                            auto prettyNameAttribute = behaviorClass->FindAttribute(AZ::ScriptCanvasAttributes::PrettyName);
+
+                            if (prettyNameAttribute != nullptr)
+                            {
+                                AZ::AttributeReader prettyNameReader(behaviorClass, prettyNameAttribute);
+
+                                if (!prettyNameReader.Read<AZStd::string>(displayName, behaviorContext))
+                                {
+                                    displayName = behaviorClass->m_name;
+                                }
+                            }
+
+                            typeTarget.push_back(AZStd::make_pair(ScriptEventData::VersionedProperty::Make<AZ::Uuid>(behaviorClass->m_typeId, displayName.c_str()), displayName));
+                        }
+                    }
+                }
+            }
+
+            void ParseForTypeId(AZ::BehaviorClass* behaviorClass, AZ::Crc32 attributeId, AZStd::vector<AZ::Uuid>& uuidList)
+            {
+                if (auto paramAttribute = behaviorClass->FindAttribute(attributeId))
+                {
+                    AZ::AttributeReader reader(behaviorClass, paramAttribute);
+
+                    bool isEnabled = false;
+
+                    if (reader.Read<bool>(isEnabled))
+                    {
+                        if (isEnabled)
+                        {
+                            uuidList.push_back(behaviorClass->m_typeId);
+                        }
+                    }
+                }
+            }
+        }
+
         static VersionedTypes GetValidAddressTypes()
         {
             using namespace ScriptEventData;
@@ -46,7 +99,7 @@ namespace ScriptEvents
             }
 
             return validAddressTypes;
-        }
+        }        
 
         // Returns the list of the valid Script Event method parameter type Ids, this is used 
         static AZStd::vector<AZ::Uuid> GetSupportedParameterTypes()
@@ -66,6 +119,17 @@ namespace ScriptEvents
                 supportedTypes.push_back(azrtti_typeid<AZ::Transform>());
                 supportedTypes.push_back(azrtti_typeid<AZ::Quaternion>());
                 supportedTypes.push_back(azrtti_typeid<AZ::Crc32>());
+
+                AZ::BehaviorContext* behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                if (behaviorContext)
+                {
+                    for (auto behaviorClassPair : behaviorContext->m_classes)
+                    {
+                        ParseForTypeId(behaviorClassPair.second, AZ::Script::Attributes::EnableAsScriptEventParamType, supportedTypes);
+                    }
+                }
             }
 
             return supportedTypes;
@@ -92,6 +156,17 @@ namespace ScriptEvents
                 validParamTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Transform>(), "Transform"), "Transform"));
                 validParamTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Quaternion>(), "Quaternion"), "Quaternion"));
                 validParamTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Crc32>(), "Tag"), "Tag"));
+
+                AZ::BehaviorContext* behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                if (behaviorContext)
+                {
+                    for (auto behaviorClassPair : behaviorContext->m_classes)
+                    {
+                        ParseForVersionedTypes(behaviorClassPair.second, AZ::Script::Attributes::EnableAsScriptEventParamType, validParamTypes, (*behaviorContext));
+                    }
+                }
             }
 
             return validParamTypes;
@@ -130,6 +205,17 @@ namespace ScriptEvents
                 supportedTypes.push_back(azrtti_typeid<AZ::Transform>());
                 supportedTypes.push_back(azrtti_typeid<AZ::Quaternion>());
                 supportedTypes.push_back(azrtti_typeid<AZ::Crc32>());
+
+                AZ::BehaviorContext* behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                if (behaviorContext)
+                {
+                    for (auto behaviorClassPair : behaviorContext->m_classes)
+                    {
+                        ParseForTypeId(behaviorClassPair.second, AZ::Script::Attributes::EnableAsScriptEventReturnType, supportedTypes);
+                    }
+                }
             }
 
             return supportedTypes;
@@ -156,6 +242,17 @@ namespace ScriptEvents
                 validReturnTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Transform>(), "Transform"), "Transform"));
                 validReturnTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Quaternion>(), "Quaternion"), "Quaternion"));
                 validReturnTypes.push_back(AZStd::make_pair(VersionedProperty::Make<AZ::Uuid>(azrtti_typeid<AZ::Crc32>(), "Tag"), "Tag"));
+
+                AZ::BehaviorContext* behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                if (behaviorContext)
+                {
+                    for (auto behaviorClassPair : behaviorContext->m_classes)
+                    {
+                        ParseForVersionedTypes(behaviorClassPair.second, AZ::Script::Attributes::EnableAsScriptEventReturnType, validReturnTypes, (*behaviorContext));
+                    }
+                }
             }
 
             return validReturnTypes;

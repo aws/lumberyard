@@ -25,10 +25,6 @@
 #include "ViewManager.h"
 #include "Material/Material.h"
 #include "LinkTool.h"
-#include "HyperGraph/FlowGraphHelpers.h"
-#include "HyperGraph/FlowGraphManager.h"
-#include "HyperGraph/FlowGraph.h"
-#include "HyperGraph/FlowGraphNode.h"
 #include "Objects/ObjectLayerManager.h"
 #include "TrackView/TrackViewSequence.h"
 #include "UserMessageDefines.h"
@@ -152,7 +148,6 @@ CSelectObjectDlg::CSelectObjectDlg(QWidget* parent)
     UpdateObjectMask();
     UpdateDisplayMode();
     UpdateCountLabel();
-    GetIEditor()->GetFlowGraphManager()->AddListener(this);
     GetIEditor()->GetObjectManager()->GetLayersManager()->AddUpdateListener(functor(*this, &CSelectObjectDlg::OnLayerUpdate));
     GetIEditor()->RegisterNotifyListener(this);
     GetIEditor()->GetObjectManager()->AddObjectEventListener(functor(*this, &CSelectObjectDlg::OnObjectEvent));
@@ -163,7 +158,6 @@ CSelectObjectDlg::CSelectObjectDlg(QWidget* parent)
 CSelectObjectDlg::~CSelectObjectDlg()
 {
     GetIEditor()->UnregisterNotifyListener(this);
-    GetIEditor()->GetFlowGraphManager()->RemoveListener(this);
     GetIEditor()->GetObjectManager()->RemoveObjectEventListener(functor(*this, &CSelectObjectDlg::OnObjectEvent));
     m_instance = nullptr;
 }
@@ -767,7 +761,6 @@ void CSelectObjectDlg::OnEditorNotifyEvent(EEditorNotifyEvent ev)
             m_bLayerModified = false;
         }
 
-        m_model->UpdateFlowGraphs();
         break;
     case eNotify_OnEditToolChange:
     {
@@ -811,14 +804,6 @@ void CSelectObjectDlg::OnEditorNotifyEvent(EEditorNotifyEvent ev)
     case eNotify_OnReloadTrackView:
         setTrackViewModified(true);
         break;
-    }
-}
-
-void CSelectObjectDlg::OnHyperGraphManagerEvent(EHyperGraphEvent event, IHyperGraph* pGraph, IHyperNode* pINode)
-{
-    if (!m_bIgnoreCallbacks)
-    {
-        m_model->OnHyperGraphManagerEvent(event, pGraph, pINode);
     }
 }
 

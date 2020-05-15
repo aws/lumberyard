@@ -13,7 +13,6 @@
 
 #include "StdAfx.h"
 #include "GameEngine.h"
-#include "HyperGraph/FlowGraphManager.h"
 #include "ObjectLayerManager.h"
 
 #include <AzCore/Math/Uuid.h>
@@ -254,7 +253,7 @@ int CObjectLayer::GetObjectCount() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CObjectLayer::SetName(const QString& name, bool IsUpdateDepends)
+void CObjectLayer::SetName(const QString& name, bool /*IsUpdateDepends*/)
 {
     if (m_name == name)
     {
@@ -268,11 +267,6 @@ void CObjectLayer::SetName(const QString& name, bool IsUpdateDepends)
 
     QString oldName = m_name;
     m_name = name;
-
-    if (IsUpdateDepends)
-    {
-        GetIEditor()->GetFlowGraphManager()->UpdateLayerName(oldName, name);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -398,7 +392,6 @@ void CObjectLayer::SetFrozen(bool b, bool bRecursive)
             GetChild(i)->SetFrozen(b, bRecursive);
         }
     }
-    GetIEditor()->GetFlowGraphManager()->SendNotifyEvent(EHG_GRAPH_UPDATE_FROZEN);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -17,6 +17,8 @@
 #include "Viewport.h"
 #include "Core/BrushHelper.h"
 
+#include <AzCore/Casting/numeric_cast.h>
+
 using namespace CD;
 
 SElement SElement::GetMirroredElement(const BrushPlane& mirrorPlane) const
@@ -276,7 +278,7 @@ bool ElementManager::Pick(CBaseObject* pObject, CD::Model* pModel, CViewport* vi
 
 void ElementManager::Display(CBaseObject* pObject, DisplayContext& dc) const
 {
-    int nOldLineWidth = dc.GetLineWidth();
+    float nOldLineWidth = dc.GetLineWidth();
     dc.SetColor(CD::kSelectedColor);
     dc.SetLineWidth(CD::kChosenLineThickness);
 
@@ -331,7 +333,7 @@ void ElementManager::DisplayHighlightElements(CBaseObject* pObject, CD::Model* p
     }
     if (nPickFlag & CD::ePF_Edge)
     {
-        pModel->Display(dc, CD::kElementEdgeThickness, CD::kElementBoxColor);
+        pModel->Display(dc, aznumeric_cast<int>(CD::kElementEdgeThickness), CD::kElementBoxColor);
     }
     if (nPickFlag & CD::ePF_Face)
     {
@@ -883,7 +885,7 @@ CD::PolygonPtr ElementManager::PickPolygonFromRepresentativeBox(CBaseObject* pOb
                 if (t > 0 && t < fLeastDist)
                 {
                     fLeastDist = t;
-                    outPickedPos = matInvWorld.TransformPoint(raySrc + rayDir * t);
+                    outPickedPos = matInvWorld.TransformPoint(raySrc + rayDir * aznumeric_cast<float>(t));
                     pPickedPolygon = pPolygon;
                 }
             }

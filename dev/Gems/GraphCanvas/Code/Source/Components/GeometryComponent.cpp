@@ -144,7 +144,7 @@ namespace GraphCanvas
         case QGraphicsItem::ItemPositionChange:
         {
             QPointF qt = value.toPointF();
-            SetPosition(::AZ::Vector2(qt.x(), qt.y()));
+            SetPosition(::AZ::Vector2(aznumeric_cast<float>(qt.x()), aznumeric_cast<float>(qt.y())));
             break;
         }
         default:

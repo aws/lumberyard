@@ -124,9 +124,9 @@ namespace AZ
         const auto& rTraceFmtCompileTimeCheckExpressionHelper = (expression); /* This is needed for edge cases for expressions containing lambdas, that were unsupported before C++20 */   \
         constexpr ExpressionValidResult isValidTraceFmtResult = ExpressionIsValid<decltype(rTraceFmtCompileTimeCheckExpressionHelper)>::value;                                        \
         /* Assert different message depending whether it's const char array or if we have extra arguments */                                                                          \
-        static_assert(!isVaArgs ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharArray : true, baseMsg " " msg);                                                    \
+        static_assert(!(isVaArgs) ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharArray : true, baseMsg " " msg);                                                    \
         static_assert(isVaArgs  ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharArray : true, baseMsg " " msgVargs);                                               \
-        static_assert(!isVaArgs ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharPtr   : true, baseMsg " " msg " or "#expression" != nullptr");                     \
+        static_assert(!(isVaArgs) ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharPtr   : true, baseMsg " " msg " or "#expression" != nullptr");                     \
         static_assert(isVaArgs  ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharPtr   : true, baseMsg " " msgVargs " or "#expression" != nullptr");                \
     }
     #define AZ_Assert(expression, ...)                                                                                  \

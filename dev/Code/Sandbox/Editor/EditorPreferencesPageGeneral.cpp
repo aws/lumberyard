@@ -30,7 +30,7 @@
 void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
 {
     serialize.Class<GeneralSettings>()
-        ->Version(2)
+        ->Version(3)
         ->Field("PreviewPanel", &GeneralSettings::m_previewPanel)
         ->Field("TreeBrowserPanel", &GeneralSettings::m_treeBrowserPanel)
         ->Field("ApplyConfigSpec", &GeneralSettings::m_applyConfigSpec)
@@ -45,7 +45,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("StylusMode", &GeneralSettings::m_stylusMode)
         ->Field("LayerDoubleClicking", &GeneralSettings::m_bLayerDoubleClicking)
         ->Field("ShowNews", &GeneralSettings::m_bShowNews)
-        ->Field("ShowFlowgraphNotification", &GeneralSettings::m_showFlowGraphNotification)
         ->Field("EnableUI20", &GeneralSettings::m_enableUI2)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector)
         ->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
@@ -127,8 +126,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_stylusMode, "Stylus Mode", "Stylus Mode for tablets and other pointing devices")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_restoreViewportCamera, EditorPreferencesGeneralRestoreViewportCameraSettingName, "Keep the original editor viewport transform when exiting game mode.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bLayerDoubleClicking, "Enable Double Clicking in Layer Editor", "Enable Double Clicking in Layer Editor")
-                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_showFlowGraphNotification, "Show FlowGraph Notification", "Display the FlowGraph notification regarding scripting")
                 ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI2, "Enable UI 2.0 (EXPERIMENTAL)", "Enable this to switch the UI to the UI 2.0 styling")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.")
@@ -220,7 +217,6 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.bAutoloadLastLevelAtStartup = m_generalSettings.m_autoLoadLastLevel;
     gSettings.stylusMode = m_generalSettings.m_stylusMode;
     gSettings.restoreViewportCamera = m_generalSettings.m_restoreViewportCamera;
-    gSettings.showFlowgraphNotification = m_generalSettings.m_showFlowGraphNotification;
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
     gSettings.enableLegacyUI = m_generalSettings.m_enableLegacyUI;
     gSettings.newViewportInteractionModel = m_generalSettings.m_enableNewViewportInteractionModel;
@@ -283,7 +279,13 @@ void CEditorPreferencesPage_General::OnApply()
     {
         QMessageBox::warning(
             AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
-            QObject::tr("You must restart the Editor in order for the Viewport Interaction Model changes to take effect."));
+            gSettings.newViewportInteractionModel
+                ? QObject::tr(
+                    "Restart the Editor in order for the Viewport Interaction Model (VIM) changes to take effect. "
+                    "Some features are not currently supported in the latest version of the VIM. <a href=\""
+                    "https://docs.aws.amazon.com/lumberyard/latest/userguide/working-with-viewport-interaction-model.html"
+                    "\"> Learn More.<a/>")
+                : QObject::tr("Restart the Editor in order for the Viewport Interaction Model changes to take effect."));
 
         AzToolsFramework::EditorMetricsEventsBus::Broadcast(gSettings.newViewportInteractionModel
             ? &AzToolsFramework::EditorMetricsEventsBusTraits::EnabledNewViewportInteractionModel
@@ -307,7 +309,6 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_autoLoadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
     m_generalSettings.m_restoreViewportCamera = gSettings.restoreViewportCamera;
-    m_generalSettings.m_showFlowGraphNotification = gSettings.showFlowgraphNotification;
     m_generalSettings.m_enableUI2 = gSettings.bEnableUI2;
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;
     m_generalSettings.m_enableLegacyUI = gSettings.enableLegacyUI;

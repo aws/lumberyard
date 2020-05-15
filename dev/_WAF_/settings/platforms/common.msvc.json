@@ -17,10 +17,9 @@
             # "/FC",        # debug
             "/Zc:inline",   # Remove unreferenced COMDAT
             "/bigobj",      # Increases the number of sections that an object file can contain
-            "/wd4530",		# Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
+            "/wd4530",      # Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
             "/wd4577"       # Known issue, disabling "C4577: 'noexcept' used with no exception handling mode specified; termination on exception is not guaranteed. Specify /EHsc"
-            # "/wd4351"		# Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
-
+            # "/wd4351"     # Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
 
         ],
         "LINKFLAGS": [
@@ -112,6 +111,35 @@
         # Enable link time optimization flags based on the 'enable_link_time_optimization' user settings
         "?enable_link_time_optimization?:LINKFLAGS": [
             "/LTCG"     # Link time code generation
+        ]
+    },
+    "settings" : {
+        "MSVC Compiler Options" :
+        [
+            {
+                "long_form"         : "--report-compile-timing",
+                "attribute"         : "report_compile_timing",
+                "default_value"     : "False",
+                "description"       : "Adds the undocumented /Bt+ switch to compilation of all C++ source files to output the time the compiler took in both the frontend(c1xx.dll) and code generation(c2.dll)"
+            },
+            {
+                "long_form"         : "--report-cxx-frontend-timing",
+                "attribute"         : "report_cxx_frontend_timing",
+                "default_value"     : "False",
+                "description"       : "Adds the undocumented /d1reportTime switch to the compilation step to report a detailed summary of operations performed by the frontend compiler and the time taken"
+            },
+            {
+                "long_form"         : "--output-msvc-code-generation-summary",
+                "attribute"         : "output_msvc_code_generation_summary",
+                "default_value"     : "False",
+                "description"       : "Adds the undocumented /d2reportTime switch to the compilation step to output summary information from the MSVC Code Generation step(c2.dll)"
+            },
+            {
+                "long_form"         : "--report-link-timing",
+                "attribute"         : "report_link_timing",
+                "default_value"     : "False",
+                "description"       : "Adds the undocumented /time+ switch to the linker step to output the amount of time the linker spent in link time code generation"
+            }
         ]
     }
 }

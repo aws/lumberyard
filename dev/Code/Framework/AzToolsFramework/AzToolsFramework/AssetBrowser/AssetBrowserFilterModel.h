@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 
@@ -30,6 +31,7 @@ namespace AzToolsFramework
     {
         class AssetBrowserFilterModel
             : public QSortFilterProxyModel
+            , public AssetBrowserComponentNotificationBus::Handler
         {
             Q_OBJECT
 
@@ -41,6 +43,11 @@ namespace AzToolsFramework
             //asset type filtering
             void SetFilter(FilterConstType filter);
             void FilterUpdatedSlotImmediate();
+
+            //////////////////////////////////////////////////////////////////////////
+            // AssetBrowserComponentNotificationBus
+            //////////////////////////////////////////////////////////////////////////
+            void OnAssetBrowserComponentReady() override;
 
         Q_SIGNALS:
             void filterChanged();
@@ -68,6 +75,7 @@ namespace AzToolsFramework
             QWeakPointer<const CompositeFilter> m_assetTypeFilter;
             QCollator m_collator;  // cache the collator as its somewhat expensive to constantly create and destroy one.
             AZ_POP_DISABLE_WARNING
+            bool m_invalidateFilter = false;
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

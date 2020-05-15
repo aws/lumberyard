@@ -59,6 +59,9 @@ namespace AZ
             //! Provide an alternate name for script elements such as helpful PEP8 Python methods and property aliases
             const static AZ::Crc32 Alias = AZ_CRC("Alias", 0xe16c6b94);
 
+            const static AZ::Crc32 EnableAsScriptEventParamType = AZ_CRC("ScriptEventParam", 0xa41e4cb0);
+            const static AZ::Crc32 EnableAsScriptEventReturnType = AZ_CRC("ScriptEventReturn", 0xf89b5337);
+
             const static AZ::Crc32 Storage = AZ_CRC("ScriptStorage", 0xcd95b44d);
             enum class StorageType
             {

@@ -13,6 +13,7 @@
 
 #include <functional>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QEvent>
 #include <QGraphicsItem>
 #include <QGraphicsGridLayout>
@@ -21,6 +22,7 @@
 #include <qgraphicssceneevent.h>
 #include <QGraphicsWidget>
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 
 #include <Components/Nodes/Comment/CommentTextGraphicsWidget.h>
 
@@ -330,8 +332,8 @@ namespace GraphCanvas
 
                 if (displaySize.width() == 0)
                 {
-                    m_textEdit->setMinimumHeight(preferredSize.height());
-                    m_textEdit->setMaximumHeight(preferredSize.height());
+                    m_textEdit->setMinimumHeight(aznumeric_cast<int>(preferredSize.height()));
+                    m_textEdit->setMaximumHeight(aznumeric_cast<int>(preferredSize.height()));
                 }
                 else
                 {

@@ -35,6 +35,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
+#include <AzToolsFramework/Entity/EditorEntityRuntimeActivationBus.h>
 
 #pragma once
 
@@ -52,6 +53,7 @@ class OutlinerListModel
     , private AzToolsFramework::EditorEntityInfoNotificationBus::Handler
     , private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
     , private AzToolsFramework::EntityCompositionNotificationBus::Handler
+    , private AzToolsFramework::EditorEntityRuntimeActivationChangeNotificationBus::Handler
     , private AZ::EntitySystemBus::Handler
 {
     Q_OBJECT;
@@ -68,6 +70,10 @@ public:
         ColumnSortIndex,            //!< Index of sort order
         ColumnCount                 //!< Total number of columns
     };
+
+    // Note: the ColumnSortIndex column isn't shown, hence the -1 and the need for a separate counter.
+    // A wrong column count number causes refresh issues and hover mismatch on model update.
+    static const int VisibleColumnCount = ColumnCount - 1;
 
     enum EntryType
     {
@@ -188,7 +194,6 @@ Q_SIGNALS:
 protected:
 
     //! Editor entity context notification bus
-    void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
     void OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity) override;
     void OnContextReset() override;
     void OnStartPlayInEditorBegin() override;
@@ -237,6 +242,9 @@ protected:
     void OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& name) override;
     void OnEntityInfoUpdateSliceOwnership(AZ::EntityId entityId) override;
     void OnEntityInfoUpdatedUnsavedChanges(AZ::EntityId entityId) override;
+
+    // AzToolsFramework::EditorEntityRuntimeActivationChangeNotificationBus::Handler
+    void OnEntityRuntimeActivationChanged(AZ::EntityId entityId, bool activeOnStart) override;
 
     // Drag/Drop of components from Component Palette.
     bool dropMimeDataComponentPalette(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);

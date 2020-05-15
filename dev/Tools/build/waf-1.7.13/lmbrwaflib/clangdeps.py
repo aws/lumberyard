@@ -8,15 +8,22 @@
 # this module scrapes the dependencies from stderr using -H
 
 
-import os, sys, tempfile, threading, re
-
-from waflib import Context, Errors, Logs, Task, Utils
-from waflib.Tools import c_preproc, c, cxx
-from waflib.TaskGen import feature, after, after_method, before_method
-import waflib.Node
+# System Imports
+import os
+import re
+import sys
+import tempfile
+import threading
 import subprocess
 
-from cry_utils import get_command_line_limit
+# waflib imports
+from waflib import Context, Errors, Logs, Task, Utils
+import waflib.Node
+from waflib.Tools import c_preproc, c, cxx
+from waflib.TaskGen import feature, after, after_method, before_method
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import get_command_line_limit
 
 # clang dependencies are a set of dots indicating include depth, followed by the absolute path
 #   ex:  ... /dev/Code/Framework/AzCore/AzCore/base.h
@@ -144,7 +151,7 @@ for k in 'c cxx pch_clang cprogram cxxprogram cshlib cxxshlib cstlib cxxstlib'.s
 #############################################################################
 ## Task to create pch files
 class pch_clang(waflib.Task.Task):
-    run_str = '${CXX} -x c++-header ${ARCH_ST:ARCH} ${CXXFLAGS} ${CPPFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} -o ${TGT}'
+    run_str = '${CXX} -x c++-header ${ARCH_ST:ARCH} ${CXXFLAGS} ${CPPFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${SYSTEM_CPPPATH_ST:SYSTEM_INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} -o ${TGT}'
     scan = c_preproc.scan
     color = 'BLUE'
     nocache = True
@@ -232,7 +239,7 @@ def add_pch_clang(self):
             # if rtti is enabled for this source file then we need to make sure
             # rtti is enabled in the pch otherwise clang will fail to compile
             if ('-fno-rtti' not in t.env['CXXFLAGS']):
-                pch_task.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), pch_task.env['CXXFLAGS']))
+                pch_task.env['CXXFLAGS'] = list([r for r in pch_task.env['CXXFLAGS'] if not r.startswith('-fno-rtti')])
 
             # Append PCH to task input to ensure correct ordering.  The task won't proceed until this is generated
             t.dep_nodes.append(pch_file)
@@ -308,10 +315,22 @@ def wrap_compiled_task_clang(classname, eligible_compilers):
         except AttributeError:
             cached_nodes = bld.cached_nodes = {}
 
+        def check_std_paths(node):
+            return (node.is_child_of(bld.srcnode) or node.is_child_of(bld.bldnode))
+
+        def check_all_paths(node):
+            return (check_std_paths(node) or node.is_child_of(bld.engine_node))
+
+        is_node_trackable = check_std_paths if bld.is_engine_local() else check_all_paths
+
         # convert paths to nodes
         for path in self.clangdeps_paths:
             node = None
             assert os.path.isabs(path)
+
+            # Skip potential self-dependency
+            if '<built-in>' in path:
+                continue
 
             try:
                 drive_hack = self.env['APPLY_CLANG_DRIVE_HACK'] or False
@@ -324,7 +343,7 @@ def wrap_compiled_task_clang(classname, eligible_compilers):
                 raise ValueError('could not find %r for %r' % (path, self))
             else:
                 if not c_preproc.go_absolute:
-                    if not (node.is_child_of(bld.srcnode) or node.is_child_of(bld.bldnode)):
+                    if not is_node_trackable(node):
                         # System library
                         Logs.debug('clangdeps: Ignoring system include %r' % node)
                         continue
@@ -474,7 +493,7 @@ def wrap_shlib_task_linux_clang(classname):
                 # Run an 'ldd -r' command on the output shared library. The '-r' flag will process data and function
                 # relocation for the shared library and will uncover any undefined symbols that we may not catch
                 # during the linker process
-                output = subprocess.check_output(['ldd', '-r', output_path_abs])
+                output = subprocess.check_output(['ldd', '-r', output_path_abs]).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
                 output_lines = output.split('\n')
                 for output_line in output_lines:
                     if output_line.startswith('undefined symbol:'):

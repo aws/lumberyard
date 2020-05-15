@@ -58,24 +58,6 @@ namespace ScriptCanvas
                     return Datum(*lhs.GetAs<Data::NumberType>() + *rhs.GetAs<Data::NumberType>());
                 }
             };
-
-#if defined(EXPRESSION_TEMPLATES_ENABLED)
-            class SumGeneric
-                : public BinaryOperatorGeneric<SumGeneric, ArithmeticOperator<OperatorType::Add>>
-            {
-            public:
-                using BaseType = BinaryOperatorGeneric<SumGeneric, ArithmeticOperator<OperatorType::Add>>;
-                AZ_COMPONENT(SumGeneric, "{04798FF9-50EE-487E-9433-B2C4F0FE4D37}", BaseType);
-
-                static const char* GetOperatorName() { return "Sum"; }
-                static const char* GetOperatorDesc() { return "Performs the sum between two numbers"; }
-                static const char* GetIconPath() { return "Editor/Icons/ScriptCanvas/Sum.png"; }
-
-                
-
-            };
-#endif // #if defined(EXPRESSION_TEMPLATES_ENABLED)
-
         }
     }
 }

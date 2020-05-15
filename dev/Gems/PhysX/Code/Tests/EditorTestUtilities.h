@@ -17,6 +17,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
 #include <Physics/PhysicsTests.h>
+#include <PhysX/ConfigurationBus.h>
 
 namespace PhysXEditorTests
 {
@@ -75,8 +76,10 @@ namespace PhysXEditorTests
 
         static AzToolsFramework::ToolsApplication* s_app;
         static PhysXEditorSystemComponentEntity* s_systemComponentEntity;
-        static ToolsApplicationMessageHandler s_messageHandler;
+        static ToolsApplicationMessageHandler* s_messageHandler;
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
+
+        PhysX::Configuration m_oldConfiguration;
     };
 
 } // namespace PhysXEditorTests

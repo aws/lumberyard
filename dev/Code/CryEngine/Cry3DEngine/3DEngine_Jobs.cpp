@@ -18,12 +18,11 @@
 #include <ICryAnimation.h>
 #include <IFaceGen.h>
 #include <IGameFramework.h>
+#include <MathConversion.h>
 
 #include "3dEngine.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#endif
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "VisAreas.h"
 #include "ObjMan.h"
@@ -308,7 +307,7 @@ void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const 
         rParams.fDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, objBox)) * passInfo.GetZoomFactor();
         rParams.lodValue = pRenderNode->ComputeLod(wantedLod, passInfo);
         rParams.rendItemSorter = rendItemSorter.GetValue();
-
+        rParams.pRenderNode = pRenderNode;
         pRenderNode->Render(rParams, passInfo);
     }
     break;
@@ -338,11 +337,11 @@ void C3DEngine::TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolum
 ///////////////////////////////////////////////////////////////////////////////
 int C3DEngine::GetTerrainSize()
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return CTerrain::GetTerrainSize();
-#else
-    return 0;
-#endif
+    AZ_Warning("LegacyTerrain", false, "%s has been deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainAabb instead", __FUNCTION__);
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
+    return terrainSize;
 }
 #include "ParticleEmitter.h"
 
@@ -648,13 +647,13 @@ void CVegetation::UpdateRndFlags()
 ///////////////////////////////////////////////////////////////////////////////
 void CVegetation::UpdateSunDotTerrain()
 {
-    float fRadius = CVegetation::GetBBox().GetRadius();
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    Vec3 vTerrainNormal = GetTerrain()->GetTerrainSurfaceNormal(m_vPos, fRadius);
-#else
-    Vec3 vTerrainNormal(0.0f, 0.0f, 1.0f);
-#endif
-    m_ucSunDotTerrain    = (uint8)(CLAMP((vTerrainNormal.Dot(Get3DEngine()->GetSunDirNormalized())) * 255.f, 0, 255));
+    AZ::Vector3 terrainNormal = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainNormal();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainNormal
+        , &AzFramework::Terrain::TerrainDataRequests::GetNormalFromFloats
+        , m_vPos.x, m_vPos.y
+        , AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+    Vec3 vTerrainNormal = AZVec3ToLYVec3(terrainNormal);
+    m_ucSunDotTerrain = (uint8)(CLAMP((vTerrainNormal.Dot(Get3DEngine()->GetSunDirNormalized())) * 255.f, 0, 255));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -665,16 +664,3 @@ const AABB CVegetation::GetBBox() const
     return aabb;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-Vec3 CTerrain::GetTerrainSurfaceNormal(Vec3 vPos, float fRange)
-{
-    fRange += 0.05f;
-    Vec3 v1 = Vec3(vPos.x - fRange, vPos.y - fRange,  GetBilinearZ(vPos.x - fRange, vPos.y - fRange));
-    Vec3 v2 = Vec3(vPos.x - fRange,   vPos.y + fRange,  GetBilinearZ(vPos.x - fRange, vPos.y + fRange));
-    Vec3 v3 = Vec3(vPos.x + fRange, vPos.y - fRange,    GetBilinearZ(vPos.x + fRange, vPos.y - fRange));
-    Vec3 v4 = Vec3(vPos.x + fRange, vPos.y + fRange,  GetBilinearZ(vPos.x + fRange, vPos.y + fRange));
-    return (v3 - v2).Cross(v4 - v1).GetNormalized();
-}
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-///////////////////////////////////////////////////////////////////////////////

@@ -11,6 +11,7 @@
 */
 #include "rcjob.h"
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/IO/FileIO.h>
@@ -377,7 +378,7 @@ namespace AssetProcessor
         qint64 milliSecsDiff = QDateTime::currentMSecsSinceEpoch() - builderParams.m_rcJob->GetJobEntry().m_computedFingerprintTimeStamp;
         if (milliSecsDiff < g_graceTimeBeforeLockingAndFingerprintChecking)
         {
-            QThread::msleep(g_graceTimeBeforeLockingAndFingerprintChecking - milliSecsDiff);
+            QThread::msleep(aznumeric_cast<unsigned long>(g_graceTimeBeforeLockingAndFingerprintChecking - milliSecsDiff));
         }
         // Lock and unlock the source file to ensure it is not still open by another process.
         // This prevents premature processing of some source files that are opened for writing, but are zero bytes for longer than the modification threshhold
@@ -678,7 +679,7 @@ namespace AssetProcessor
         AssetProcessor::SetThreadLocalJobId(0);
         listener.BusDisconnect();
 
-        JobDiagnosticRequestBus::Broadcast(&JobDiagnosticRequestBus::Events::RecordDiagnosticInfo, builderParams.m_rcJob->GetJobEntry().m_jobRunKey, JobDiagnosticInfo(jobLogTraceListener.GetWarningCount(), jobLogTraceListener.GetErrorCount()));
+        JobDiagnosticRequestBus::Broadcast(&JobDiagnosticRequestBus::Events::RecordDiagnosticInfo, builderParams.m_rcJob->GetJobEntry().m_jobRunKey, JobDiagnosticInfo(aznumeric_cast<AZ::u32>(jobLogTraceListener.GetWarningCount()), aznumeric_cast<AZ::u32>(jobLogTraceListener.GetErrorCount())));
     }
 
     bool RCJob::CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response)

@@ -86,8 +86,8 @@ namespace GraphCanvas
 
         QPainterPath GetOutline() const override;
 
-        void SetZValue(int zValue) override;
-        int GetZValue() const override;
+        void SetZValue(qreal zValue) override;
+        qreal GetZValue() const override;
         ////
 
         // GridNotificationBus

@@ -9,30 +9,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #2 $
-
-import fnmatch
 import os
 import json
+import time
+import re
+import six
 
-import mappings
-import deployment
-import resource_group
-import util
-import cognito_pools
-
-from botocore.exceptions import ClientError
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
+from . import deployment
+from . import resource_group
+from . import util
+from . import cognito_pools
 from cgf_utils import aws_utils
 from cgf_utils import custom_resource_utils
 from cgf_utils import lambda_utils
-from errors import HandledError
-from util import Args, load_template
-from uploader import ProjectUploader
+from .errors import HandledError
+from .uploader import ProjectUploader
 from resource_manager_common import constant
 from resource_manager_common import resource_type_info
-import time
-import re
+from . import security
+
+CREATE_ADMIN_ROLE_PARAM_NAME = 'CreateAdminRoles'
 
 
 def create_stack(context, args):
@@ -45,7 +44,7 @@ def create_stack(context, args):
 
     # Initialize AWS directory if needed.
     context.config.initialize_aws_directory()
-    if (args.files_only):
+    if args.files_only:
         return
 
     # Already initialized?
@@ -54,6 +53,9 @@ def create_stack(context, args):
 
     # Project settings writable?
     context.config.validate_writable(context.config.local_project_settings.path)
+
+    # Check if optional admin roles are being created
+    context.config.set_project_admin_roles(args.create_admin_roles if not None else False)
 
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)
@@ -84,6 +86,9 @@ def create_stack(context, args):
         # Is the stack name valid?
         util.validate_stack_name(args.stack_name)
 
+        # Ensure new stacks always has this set
+        parameters = {CREATE_ADMIN_ROLE_PARAM_NAME: "true" if args.create_admin_roles else "false"}
+
         # Create stack using the bootstrapping template.
         context.stack.create_using_template(
             args.stack_name,
@@ -91,7 +96,11 @@ def create_stack(context, args):
             args.region,
             created_callback=lambda id: context.config.set_pending_project_stack_id(id),
             capabilities=capabilities,
-            timeoutinminutes=30
+            timeout_in_minutes=30,
+            tags=[
+                {'Key': constant.PROJECT_NAME_TAG, 'Value': args.stack_name}
+            ],
+            parameters=parameters
         )
 
     # Create initial project settings.
@@ -113,7 +122,7 @@ def update_framework_version(context, args):
 
     # Project settings writable?
 
-    writable_file_paths = set([context.config.local_project_settings.path])
+    writable_file_paths = {context.config.local_project_settings.path}
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'add_framework_version_update_writable_files',
                                        kwargs={
                                            'from_version': current_framework_version,
@@ -151,8 +160,7 @@ def update_framework_version(context, args):
                                        kwargs={
                                            'from_version': current_framework_version,
                                            'to_version': context.gem.framework_gem.version
-                                       }
-                                       )
+                                       })
 
     context.config.save_pending_framework_version()
 
@@ -168,15 +176,15 @@ def update_stack(context, args):
         # id so the project uploader can find it later.
         pending_project_stack_id = context.config.get_pending_project_stack_id()
         if pending_project_stack_id:
-            context.config.validate_writable(context.config.local_project_settings_path)
-            context.config.project_stack_id = pending_project_stack_id
+            context.config.validate_writable(context.config.local_project_settings.path)
+            context.config.set_pending_project_stack_id(pending_project_stack_id)
         else:
             raise HandledError('The project has not been initialized.')
 
     # Assume role explicitly because we don't read any project config, and
     # that is what usually triggers it (project config must be read before
     # assuming the role).
-    context.config.assume_role()
+    context.config.assume_role(region=context.config.project_region)
 
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)
@@ -193,7 +201,6 @@ def update_stack(context, args):
 
 def __update_project_stack(context, pending_resource_status, capabilities, args):
     # Upload the project template and code directory.
-
     project_uploader = ProjectUploader(context)
 
     context.view.processing_template('project')
@@ -207,8 +214,8 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     __zip_individual_lambda_code_folders(context, project_uploader)
 
     if os.path.exists(context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME)):
-        project_uploader.upload_file(constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(
-            constant.COGNITO_POOLS_FILENAME))
+        project_uploader.upload_file(constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME))
+
     # Deprecated in 1.9. TODO: remove
     # Execute all the uploader pre hooks before the resources are updated
     project_uploader.execute_uploader_pre_hooks()
@@ -223,14 +230,22 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     time.sleep(constant.STACK_UPDATE_DELAY_TIME)
 
     # Update the stack
-    parameters = __get_parameters(context, project_uploader)
+    parameters = __get_project_stack_parameters(context=context, uploader=project_uploader,
+                                                admin_roles=context.config.create_admin_roles)
+
+    project_stack_id = context.config.project_stack_id
+    project_name = util.get_stack_name_from_arn(project_stack_id)
 
     context.stack.update(
         context.config.project_stack_id,
         project_template_url,
         parameters=parameters,
         pending_resource_status=pending_resource_status,
-        capabilities=capabilities
+        capabilities=capabilities,
+        tags=[
+            {'Key': constant.PROJECT_NAME_TAG, 'Value': project_name},
+            {'Key': constant.STACK_ID_TAG, 'Value': project_stack_id}
+        ]
     )
 
     # wait a bit for S3 to help insure that templates can be read by cloud formation
@@ -242,29 +257,38 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     # So we save the pending stack id which is used during Project stack creation
     # Then we reinitialize the config.__project_resources to make the project_resources available to hooks even during a project stack creation
     context.config.save_pending_project_stack_id()
+
     if args.record_cognito_pools:
         __record_cognito_pools(context)
+
+    __post_update_security_hooks(context)
+
     # Deprecated in 1.9. TODO: remove
     # Now all the stack resources should be available to the hooks
     project_uploader.execute_uploader_post_hooks()
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_project_updated',
-                                       kwargs=kwargs
-                                       )
+                                       kwargs=kwargs)
 
 
-def __record_cognito_pools(context):
+def __find_cognito_pools(context):
     pools = {
         "Project": {}
     }
 
-    for resource_name, definition in context.config.project_resources.iteritems():
+    for resource_name, definition in six.iteritems(context.config.project_resources):
         if definition["ResourceType"] in ["Custom::CognitoIdentityPool", "Custom::CognitoUserPool"]:
             pools["Project"][resource_name] = {
                 "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
                 "Type": definition["ResourceType"]
             }
+    return pools
+
+
+def __record_cognito_pools(context):
+    pools = __find_cognito_pools(context)
     cognito_pools.write_to_project_file(context, pools)
+    return pools
 
 
 def __zip_individual_lambda_code_folders(context, uploader):
@@ -273,24 +297,23 @@ def __zip_individual_lambda_code_folders(context, uploader):
 
     # Iterating over LambdaConfiguration resources first, as the lambdas without them are special cases.
     # Just future proofing against further specialization on ProjectResourceHandler code
-    for name, description in resources.iteritems():
+    for name, description in six.iteritems(resources):
         if not description["Type"] == "Custom::LambdaConfiguration":
             continue
         function_name = description["Properties"]["FunctionName"]
         uploaded_folders.append(function_name)
-        aggregated_directories = None
         source_gem_name = description.get("Metadata", {}).get("CloudGemFramework", {}).get("Source", None)
         uploader.upload_lambda_function_code(function_name, function_runtime=description["Properties"]["Runtime"], source_gem=context.gem.get_by_name(
             source_gem_name))
 
     # There's some untangling needed to allow uploading ProjectResourceHandler without a LambdaConfiguration
     # We should generally avoid adding any more functions like this to the project stack and eventually do away with it.
-    for name, description in resources.iteritems():
+    for name, description in six.iteritems(resources):
         aggregated_directories = None
         if not description["Type"] == "AWS::Lambda::Function":
             continue
         if name in uploaded_folders:
-            print "We already uploaded this with the Corresponding LambdaConfiguration resource"
+            print("[CloudCanvas] Already uploaded {} with the Corresponding LambdaConfiguration resource".format(name))
             continue
 
         if name == "ProjectResourceHandler":
@@ -316,10 +339,25 @@ def __get_plugin_project_code_paths(context):
     return plugin_project_code_paths
 
 
-def __get_parameters(context, uploader):
-    return {
-        'ConfigurationKey': uploader.key if uploader else None
+def __get_common_stack_parameters(context, uploader=None):
+    """Generate common CloudFormation stack parameters"""
+    project_stack_id = context.config.project_stack_id
+    params = {
+        'ConfigurationKey': uploader.key if uploader else None,
+        'ProjectName': util.get_stack_name_from_arn(project_stack_id)
     }
+    return params
+
+
+def __get_project_stack_parameters(context, uploader=None, admin_roles=None):
+    """Generate project stack CloudFormation stack parameters"""
+    params = __get_common_stack_parameters(context=context, uploader=uploader)
+    # Pass in optional parameter to turn off admin role creation
+    if admin_roles is not None:
+        params[CREATE_ADMIN_ROLE_PARAM_NAME] = "true" if admin_roles else "false"
+    else:
+        params[CREATE_ADMIN_ROLE_PARAM_NAME] = None   # None, default to previous value
+    return params
 
 
 def __get_pending_resource_status(context, deleting=False):
@@ -332,12 +370,12 @@ def __get_pending_resource_status(context, deleting=False):
         parameters = {}
     else:
         template = context.config.project_template_aggregator.effective_template
-        parameters = __get_parameters(context, uploader=None)
+        parameters = __get_common_stack_parameters(context=context)
 
     lambda_function_content_paths = []
 
     resources = context.config.project_template_aggregator.effective_template.get("Resources", {})
-    for name, description in resources.iteritems():
+    for name, description in six.iteritems(resources):
         if not description["Type"] == "AWS::Lambda::Function":
             continue
 
@@ -406,7 +444,7 @@ def delete_stack(context, args):
                 try:
                     s3.head_bucket(Bucket=retained_bucket_id)
                     bucket_still_exists = True
-                except:
+                except ClientError as ex:
                     bucket_still_exists = False
 
                 if bucket_still_exists:
@@ -446,6 +484,7 @@ def __delete_custom_resource_lambdas(context, args):
     for function_name, role_name in zip(delete_functions, delete_roles):
         lambda_client.delete_function(FunctionName=function_name)
         iam_client.delete_role_policy(RoleName=role_name, PolicyName="Default")
+        iam_client.delete_role_policy(RoleName=role_name, PolicyName="LambdaLoggingEventsPolicy")
         iam_client.delete_role(RoleName=role_name)
 
     context.view.deleting_lambdas_completed(len(delete_functions))
@@ -482,7 +521,7 @@ def clean_custom_resource_handlers(context, args):
             add_resource_versions(resource_group_info)
 
     # Iterate over the custom resource types
-    for resource_type_name, resource_type_info in project_info.resource_definitions.iteritems():
+    for resource_type_name, resource_type_info in six.iteritems(project_info.resource_definitions):
         if resource_type_info.handler_function:
             # Obtain a list of all versions of the function
             lambda_function_name = resource_type_info.get_custom_resource_lambda_function_name()
@@ -509,7 +548,7 @@ def clean_custom_resource_handlers(context, args):
 
 def deprecated_list_resources(context, args):
     if args.stack_id:
-        resource_descriptions = context.stack.describe_resources(stack_id)
+        resource_descriptions = context.stack.describe_resources(args.stack_id)
         context.view.deprecated_resource_list(args.stack_id, resource_descriptions)
     elif args.deployment and args.resource_group:
         resource_group.list_resource_group_resources(context, args)
@@ -523,7 +562,7 @@ def list_project_resources(context, args):
     # Assume role explicitly because we don't read any project config, and
     # that is what usually triggers it (project config must be read before
     # assuming the role).
-    context.config.assume_role()
+    context.config.assume_role(region=context.config.project_region)
 
     context.view.project_resource_list(
         context.config.project_stack_id or context.config.get_pending_project_stack_id(),
@@ -616,6 +655,12 @@ def __filter_writeable_files(input_list):
     return filtered_list
 
 
+def __post_update_security_hooks(context):
+    # Run any post-deployment clean-up here
+    security.run_project_patcher_internal(context, identifier=security.DEFAULT_PATCH_IDENTIFIER,
+                                          dry_run=False, should_log=True, deployment_name=None)
+
+
 def create_extension_template(context, args):
     if args.project:
         context.config.project_template_aggregator.save_extension_template()
@@ -631,13 +676,16 @@ bootstrap_template = '''{
     "AWSTemplateFormatVersion": "2010-09-09",
 
     "Parameters": {
-
         "CloudCanvasStack": {
             "Type": "String",
             "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
             "Default": "Project"
+        },
+        "CreateAdminRoles": {
+            "Default": "false",
+            "Description": "If stack was created with the project admin and owner roles",
+            "Type": "String"
         }
-
     },
 
     "Resources": {
@@ -665,7 +713,6 @@ bootstrap_template = '''{
                 }
             }
         }
-
     }
 
 }'''

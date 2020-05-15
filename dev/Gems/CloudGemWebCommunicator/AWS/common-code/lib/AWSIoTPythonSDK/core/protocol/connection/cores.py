@@ -18,8 +18,10 @@
 # when to increase it and when to reset it.
 
 
+import re
 import sys
 import ssl
+import errno
 import struct
 import socket
 import base64
@@ -30,6 +32,7 @@ import os
 from datetime import datetime
 import hashlib
 import hmac
+from AWSIoTPythonSDK.exception.AWSIoTExceptions import ClientError
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import wssNoKeyInEnvironmentError
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import wssHandShakeError
 from AWSIoTPythonSDK.core.protocol.internal.defaults import DEFAULT_CONNECT_DISCONNECT_TIMEOUT_SEC
@@ -240,12 +243,13 @@ class SigV4Core:
         amazonDateSimple = amazonDate[0]  # Unicode in 3.x
         amazonDateComplex = amazonDate[1]  # Unicode in 3.x
         allKeys = self._checkIAMCredentials()  # Unicode in 3.x
-        hasCredentialsNecessaryForWebsocket = "aws_access_key_id" in allKeys.keys() and "aws_secret_access_key" in allKeys.keys()
-        if not hasCredentialsNecessaryForWebsocket:
-            return ""
+        if not self._hasCredentialsNecessaryForWebsocket(allKeys):
+            raise wssNoKeyInEnvironmentError()
         else:
+            # Because of self._hasCredentialsNecessaryForWebsocket(...), keyID and secretKey should not be None from here
             keyID = allKeys["aws_access_key_id"]
             secretKey = allKeys["aws_secret_access_key"]
+            # amazonDateSimple and amazonDateComplex are guaranteed not to be None
             queryParameters = "X-Amz-Algorithm=AWS4-HMAC-SHA256" + \
                 "&X-Amz-Credential=" + keyID + "%2F" + amazonDateSimple + "%2F" + region + "%2F" + awsServiceName + "%2Faws4_request" + \
                 "&X-Amz-Date=" + amazonDateComplex + \
@@ -264,11 +268,22 @@ class SigV4Core:
             # generate url
             url = "wss://" + host + ":" + str(port) + path + '?' + queryParameters + "&X-Amz-Signature=" + signature
             # See if we have STS token, if we do, add it
-            if "aws_session_token" in allKeys.keys():
+            awsSessionTokenCandidate = allKeys.get("aws_session_token")
+            if awsSessionTokenCandidate is not None and len(awsSessionTokenCandidate) != 0:
                 aws_session_token = allKeys["aws_session_token"]
                 url += "&X-Amz-Security-Token=" + quote(aws_session_token.encode("utf-8"))  # Unicode in 3.x
             self._logger.debug("createWebsocketEndpoint: Websocket URL: " + url)
             return url
+
+    def _hasCredentialsNecessaryForWebsocket(self, allKeys):
+        awsAccessKeyIdCandidate = allKeys.get("aws_access_key_id")
+        awsSecretAccessKeyCandidate = allKeys.get("aws_secret_access_key")
+        # None value is NOT considered as valid entries
+        validEntries = awsAccessKeyIdCandidate is not None and awsAccessKeyIdCandidate is not None
+        if validEntries:
+            # Empty value is NOT considered as valid entries
+            validEntries &= (len(awsAccessKeyIdCandidate) != 0 and len(awsSecretAccessKeyCandidate) != 0)
+        return validEntries
 
 
 # This is an internal class that buffers the incoming bytes into an
@@ -305,6 +320,10 @@ class _BufferedReader:
         while self._remainedLength > 0:  # Read in a loop, always try to read in the remained length
             # If the data is temporarily not available, socket.error will be raised and catched by paho
             dataChunk = self._sslSocket.read(self._remainedLength)
+            # There is a chance where the server terminates the connection without closing the socket.
+            # If that happens, let's raise an exception and enter the reconnect flow.
+            if not dataChunk:
+                raise socket.error(errno.ECONNABORTED, 0)
             self._internalBuffer.extend(dataChunk)  # Buffer the data
             self._remainedLength -= len(dataChunk)  # Update the remained length
 
@@ -411,6 +430,8 @@ class SecuredWebSocketCore:
             raise ValueError("No Access Key/KeyID Error")
         except wssHandShakeError:
             raise ValueError("Websocket Handshake Error")
+        except ClientError as e:
+            raise ValueError(e.message)
         # Now we have a socket with secured websocket...
         self._bufferedReader = _BufferedReader(self._sslSocket)
         self._bufferedWriter = _BufferedWriter(self._sslSocket)
@@ -461,11 +482,12 @@ class SecuredWebSocketCore:
 
     def _handShake(self, hostAddress, portNumber):
         CRLF = "\r\n"
-        hostAddressChunks = hostAddress.split('.')  # <randomString>.iot.<region>.amazonaws.com
-        region = hostAddressChunks[2]  # XXXX.<region>.beta
+        IOT_ENDPOINT_PATTERN = r"^[0-9a-zA-Z]+(\.ats|-ats)?\.iot\.(.*)\.amazonaws\..*"
+        matched = re.compile(IOT_ENDPOINT_PATTERN, re.IGNORECASE).match(hostAddress)
+        if not matched:
+            raise ClientError("Invalid endpoint pattern for wss: %s" % hostAddress)
+        region = matched.group(2)
         signedURL = self._sigV4Handler.createWebsocketEndpoint(hostAddress, portNumber, region, "GET", "iotdata", "/mqtt")
-        if signedURL == "":
-            raise wssNoKeyInEnvironmentError()
         # Now we got a signedURL
         path = signedURL[signedURL.index("/mqtt"):]
         # Assemble HTTP request headers
@@ -666,6 +688,9 @@ class SecuredWebSocketCore:
         if self._sslSocket is not None:
             self._sslSocket.close()
             self._sslSocket = None
+
+    def getpeercert(self):
+        return self._sslSocket.getpeercert()
 
     def getSSLSocket(self):
         if self._connectStatus != self._WebsocketDisconnected:

@@ -24,6 +24,8 @@
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
 
 namespace EMotionFX
 {
@@ -36,50 +38,39 @@ namespace EMotionFX
         // triggers when the first is complete, and takes 0.5 seconds to
         // transition, and an identical one going the other way. During the
         // transition, the weights of the motion states should add up to 1.
-        mActor = Actor::Create("testActor");
-        Node* rootNode = Node::Create("rootNode", mActor->GetSkeleton());
-        mActor->AddNode(rootNode);
-        mActor->ResizeTransformData();
-        mActor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
+        m_actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(1);
 
-        mAnimGraph = aznew AnimGraph();
-
-        mMotionNode0 = aznew AnimGraphMotionNode();
-        mMotionNode1 = aznew AnimGraphMotionNode();
+        m_animGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+        m_motionNodeA = m_animGraph->GetMotionNodeA();
+        m_motionNodeB = m_animGraph->GetMotionNodeB();
 
         AnimGraphMotionCondition* condition0 = aznew AnimGraphMotionCondition();
-        condition0->SetMotionNodeId(mMotionNode0->GetId());
+        condition0->SetMotionNodeId(m_motionNodeA->GetId());
         condition0->SetTestFunction(AnimGraphMotionCondition::FUNCTION_HASENDED);
 
         AnimGraphStateTransition* transition0 = aznew AnimGraphStateTransition();
-        transition0->SetSourceNode(mMotionNode0);
-        transition0->SetTargetNode(mMotionNode1);
+        transition0->SetSourceNode(m_motionNodeA);
+        transition0->SetTargetNode(m_motionNodeB);
         transition0->SetBlendTime(0.5f);
         transition0->AddCondition(condition0);
 
         AnimGraphMotionCondition* condition1 = aznew AnimGraphMotionCondition();
-        condition1->SetMotionNodeId(mMotionNode1->GetId());
+        condition1->SetMotionNodeId(m_motionNodeB->GetId());
         condition1->SetTestFunction(AnimGraphMotionCondition::FUNCTION_HASENDED);
 
         AnimGraphStateTransition* transition1 = aznew AnimGraphStateTransition();
-        transition1->SetSourceNode(mMotionNode1);
-        transition1->SetTargetNode(mMotionNode0);
+        transition1->SetSourceNode(m_motionNodeB);
+        transition1->SetTargetNode(m_motionNodeA);
         transition1->SetBlendTime(0.5f);
         transition1->AddCondition(condition1);
 
-        mStateMachine = aznew AnimGraphStateMachine();
-        mStateMachine->SetName("rootStateMachine");
-        mAnimGraph->SetRootStateMachine(mStateMachine);
-        mStateMachine->AddChildNode(mMotionNode0);
-        mStateMachine->AddChildNode(mMotionNode1);
-        mStateMachine->SetEntryState(mMotionNode0);
-        mStateMachine->AddTransition(transition0);
-        mStateMachine->AddTransition(transition1);
+        m_stateMachine = m_animGraph->GetRootStateMachine();
+        m_stateMachine->AddTransition(transition0);
+        m_stateMachine->AddTransition(transition1);
+        m_stateMachine->InitAfterLoading(m_animGraph.get());
 
-        mStateMachine->InitAfterLoading(mAnimGraph);
-
-        mMotionSet = aznew MotionSet();
-        mMotionSet->SetName("testMotionSet");
+        m_motionSet = aznew MotionSet();
+        m_motionSet->SetName("testMotionSet");
         for (int i = 0; i < 2; ++i)
         {
             // The motion set keeps track of motions by their name. Each motion
@@ -88,33 +79,28 @@ namespace EMotionFX
             SkeletalMotion* motion = SkeletalMotion::Create(motionId.c_str());
             motion->SetMaxTime(1.0f);
             MotionSet::MotionEntry* motionEntry = aznew MotionSet::MotionEntry(motion->GetName(), motion->GetName(), motion);
-            mMotionSet->AddMotionEntry(motionEntry);
+            m_motionSet->AddMotionEntry(motionEntry);
 
-            AnimGraphMotionNode* motionNode = i == 0 ? mMotionNode0 : mMotionNode1;
+            AnimGraphMotionNode* motionNode = (i == 0) ? m_motionNodeA : m_motionNodeB;
             motionNode->SetName(motionId.c_str());
             motionNode->AddMotionId(motionId.c_str());
         }
 
-        mActorInstance = ActorInstance::Create(mActor);
+        m_actorInstance = ActorInstance::Create(m_actor.get());
 
-        mAnimGraphInstance = AnimGraphInstance::Create(mAnimGraph, mActorInstance, mMotionSet);
+        m_animGraphInstance = AnimGraphInstance::Create(m_animGraph.get(), m_actorInstance, m_motionSet);
 
-        mActorInstance->SetAnimGraphInstance(mAnimGraphInstance);
+        m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
     }
 
     void AnimGraphTransitionFixture::TearDown()
     {
-        delete mAnimGraph;
-        delete mMotionSet;
-        if (mActorInstance)
+        delete m_motionSet;
+        m_motionSet = nullptr;
+        if (m_actorInstance)
         {
-            mActorInstance->Destroy();
+            m_actorInstance->Destroy();
         }
-        if (mActor)
-        {
-            mActor->Destroy();
-        }
-
         SystemComponentFixture::TearDown();
     }
-}
+} // namespace EMotionFX

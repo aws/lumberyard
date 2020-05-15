@@ -37,7 +37,6 @@ def build(bld):
                                        'ZLIB'],
         includes                    = [ '.',
                                         './PCH',
-                                        bld.ThirdPartyPath('boost'),
                                         bld.Path('Code/CryEngine/CryCommon'),
                                         bld.ThirdPartyPath('mikkt'),
                                         bld.Path('Code/Tools'),

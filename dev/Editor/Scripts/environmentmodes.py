@@ -11,6 +11,7 @@
 import sys
 import itertools
 from tools_shelf_actions import *
+import azlmbr.legacy.general as general
 
 if len(sys.argv) > 1:
 	mode = sys.argv[1]

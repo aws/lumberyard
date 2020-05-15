@@ -28,7 +28,6 @@ public:
     float mfx_SoundImpactThresh;       //"Impact threshold for sound effects. Default: 1.5" );
     float mfx_RaisedSoundImpactThresh; // "Impact threshold for sound effects if we're rolling. Default: 3.5" );
     int   mfx_Debug;                   // "Turns on MaterialEffects debug messages." );
-    int   mfx_DebugFlowGraphFX;             // "Turns on MaterialEffects FlowGraph FX debbug messages." );
     int     mfx_DebugVisual;
     ICVar* mfx_DebugVisualFilter;
     int   mfx_Enable;

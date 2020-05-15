@@ -20,20 +20,26 @@
             "Tests/AnimGraphHubNodeTests.cpp",
             "Tests/AnimGraphMotionConditionTests.cpp",
             "Tests/AnimGraphMotionNodeTests.cpp",
+            "Tests/AnimGraphNodeGroupTests.cpp",
             "Tests/AnimGraphParameterActionTests.cpp",
+            "Tests/AnimGraphParameterConditionTests.cpp",
+            "Tests/AnimGraphParameterConditionCommandTests.cpp",
             "Tests/AnimGraphRefCountTests.cpp",
             "Tests/AnimGraphReferenceNodeTests.cpp",
             "Tests/AnimGraphStateMachineTests.cpp",
             "Tests/AnimGraphStateMachineInterruptionTests.cpp",
             "Tests/AnimGraphStateMachineSyncTests.cpp",
             "Tests/AnimGraphSyncTrackTests.cpp",
+            "Tests/AnimGraphTagConditionTests.cpp",
             "Tests/AnimGraphTransitionCommandTests.cpp",
+            "Tests/AnimGraphTransitionConditionCommandTests.cpp",
             "Tests/AnimGraphTransitionConditionFixture.cpp",
             "Tests/AnimGraphTransitionConditionFixture.h",
             "Tests/AnimGraphTransitionConditionTests.cpp",
             "Tests/AnimGraphTransitionFixture.cpp",
             "Tests/AnimGraphTransitionFixture.h",
             "Tests/AnimGraphTransitionTests.cpp",
+            "Tests/AnimGraphVector2ConditionTests.cpp",
             "Tests/AutoSkeletonLODTests.cpp",
             "Tests/BlendTreeBlendNNodeTests.cpp",
             "Tests/BlendTreeFloatConstantNodeTests.cpp",
@@ -42,7 +48,6 @@
             "Tests/BlendTreeFootIKNodeTests.cpp",
             "Tests/BlendTreeMaskNodeTests.cpp",
             "Tests/BlendTreeMirrorPoseNodeTests.cpp",
-            "Tests/BlendTreeParameterNodeTests.cpp",
             "Tests/BlendTreeMotionFrameNodeTests.cpp",
             "Tests/BlendTreeRagdollNodeTests.cpp",
             "Tests/BlendTreeRangeRemapperNodeTests.cpp",
@@ -63,6 +68,7 @@
             "Tests/MCoreSystemFixture.cpp",
             "Tests/MorphTargetRuntimeTests.cpp",
             "Tests/MorphSkinAttachmentTests.cpp",
+            "Tests/MotionEventCommandTests.cpp",
             "Tests/MotionEventTrackTests.cpp",
             "Tests/MotionExtractionTests.cpp",
             "Tests/PoseTests.cpp",
@@ -89,10 +95,14 @@
         [
             "Tests/Prefabs/LeftArmSkeleton.h"
         ],
-        "Tests/AssetCode":
+        "Tests/AssetCode": 
         [
             "Tests/TestAssetCode/MotionEvent.h",
-            "Tests/TestAssetCode/MotionEvent.cpp"
+            "Tests/TestAssetCode/MotionEvent.cpp",
+            "Tests/TestAssetCode/TestActorAssets.h",
+            "Tests/TestAssetCode/TestActorAssets.cpp",
+            "Tests/TestAssetCode/TestMotionAssets.h",
+            "Tests/TestAssetCode/TestMotionAssets.cpp"
         ],
         "Tests/Mocks":
         [
@@ -124,12 +134,20 @@
         "Tests/Integration":
         [
             "Tests/Integration/PoseComparisonFixture.h",
-            "Tests/Integration/PoseComparisonTests.cpp"
+            "Tests/Integration/PoseComparisonTests.cpp",
+            "Tests/Integration/EntityComponentFixture.h",
+            "Tests/Integration/EntityComponentFixture.cpp",
+            "Tests/Integration/ActorComponentRagdollTests.cpp",
+            "Tests/Integration/ActorComponentAttachmentTest.cpp"
         ],
         "Tests/Game":
         [
             "Tests/Game/SampleGameFixture.h",
             "Tests/Game/SamplePerformanceTests.cpp"
+        ],
+        "Tests/Bugs":
+        [
+            "Tests/Bugs/CanDeleteExitNodeAfterItHasBeenActive.cpp"
         ]
     },
     "AnimGraphParameterCommandsTests.cpp":

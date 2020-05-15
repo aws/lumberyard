@@ -20,7 +20,7 @@ def post(request, msg):
     if message is None:
         raise errors.ClientError('Value message cannot be None')
 
-    if len(message.decode('utf8')) > message_utils.message_size_limit:
+    if len(message) > message_utils.message_size_limit:
         raise errors.ClientError('Maximum message size is {} UTF8 encoded characters'.format(message_utils.message_size_limit))
 
     priority = msg.get('priority', 0)
@@ -66,7 +66,7 @@ def put(request, msg_id, msg):
     unique_msg_id = msg_id
     message = msg.get('message')
 
-    if len(message.decode('utf8')) > message_utils.message_size_limit:
+    if len(message) > message_utils.message_size_limit:
         raise errors.ClientError('Maximum message size is {} UTF8 encoded characters'.format(message_utils.message_size_limit))
 
     priority = msg.get('priority', 0)
@@ -159,7 +159,7 @@ def get(request, index = None, count = None, filter = None):
 
     end_index = start_index + page_size
 
-    print 'Start index : %d Page size : %d end index : %d' %(start_index, page_size, end_index)
+    print('Start index : {} Page size : {} end index : {}'.format(start_index, page_size, end_index))
 
     table = message_utils.get_message_table()
 
@@ -193,12 +193,12 @@ def get(request, index = None, count = None, filter = None):
     data = []
     current_index = 0
     respLength = len(response['Items'])
-    print "Response length : %d" %respLength
+    print("Response length : {}".format(respLength))
     #First test if there is something for us in this scan
     if start_index < respLength:
         for i in response['Items']:
             if current_index >= start_index:
-                print "Appending index: %d" %current_index
+                print("Appending index: {}".format(current_index))
                 conv = convert_table_entry(i)
                 data.append(conv)
             current_index += 1
@@ -211,7 +211,7 @@ def get(request, index = None, count = None, filter = None):
         current_index += len(response['Items'])
 
     while 'LastEvaluatedKey' in response:
-        print "Looping"
+        print("Looping")
         if do_filter == True:
             response = table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
@@ -224,7 +224,7 @@ def get(request, index = None, count = None, filter = None):
         if start_index < current_index + len(response['Items']):
             for i in response['Items']:
                 if current_index >= start_index:
-                    print "Appending index: %d" %current_index
+                    print("Appending index: {}".format(current_index))
                     conv = convert_table_entry(i)
                     data.append(conv)
                 current_index += 1
@@ -242,9 +242,11 @@ def get(request, index = None, count = None, filter = None):
 
 def convert_table_entry(entry):
     message_object = {}
-    message_object['UniqueMsgID'] =  entry.get('UniqueMsgID', "Undefined")
-    message_object['message'] = entry.get('message', "Undefined")
-    message_object['priority'] =  entry.get('priority', "Undefined")
+    message_object['UniqueMsgID'] =  entry.get('UniqueMsgID', 'Undefined')
+    message_object['message'] = entry.get('message', 'Undefined')
+
+    if entry.get('priority') != None:
+        message_object['priority'] =  int(entry['priority'])
 
     start_time = entry.get('startTime', message_utils.custom_datetime_min_as_number)
     if start_time != message_utils.custom_datetime_min_as_number:

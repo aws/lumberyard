@@ -1,7 +1,0 @@
-{
-    "auto": {
-        "Source": [
-            "Source/Platform/None/AchievementsSystemComponent_none.cpp"
-        ]
-    }
-}

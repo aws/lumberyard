@@ -4,6 +4,7 @@
             "Tests/PhysXTestCommon.h",
             "Tests/PhysXTestCommon.inl",
             "Tests/PhysXTestCommon.cpp",
+            "Tests/PhysXGenericTest.h",
             "Tests/PhysXGenericTest.cpp",
             "Tests/PhysXSpecificTest.cpp",
             "Tests/PhysXForceRegionTest.cpp",
@@ -13,7 +14,9 @@
             "Tests/PhysXTestFixtures.h",
             "Tests/PhysXTestFixtures.cpp",
             "Tests/PhysXTestUtil.h",
-            "Tests/PhysXTestUtil.cpp"
+            "Tests/PhysXTestUtil.cpp",
+            "Tests/PhysXMultithreadingTest.cpp",
+            "Tests/PhysXBenchmarks.cpp"
         ]
     }
 }

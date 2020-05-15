@@ -66,7 +66,7 @@ namespace AssetValidation
 
         void ListKnownAssets() override;
 
-        void TogglePrintBlacklisted() override;
+        void TogglePrintExcluded() override;
 
         virtual AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> LoadSeedList(const char* fileName, AZStd::string& seedFilepath);
         ////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ namespace AssetValidation
         static void ConsoleCommandAddSeedPath(IConsoleCmdArgs* pCmdArgs);
         static void ConsoleCommandRemoveSeedPath(IConsoleCmdArgs* pCmdArgs);
         static void ConsoleCommandKnownAssets(IConsoleCmdArgs* pCmdArgs);
-        static void ConsoleCommandTogglePrintBlacklisted(IConsoleCmdArgs* pCmdArgs);
+        static void ConsoleCommandTogglePrintExcluded(IConsoleCmdArgs* pCmdArgs);
 
         void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
 
@@ -109,12 +109,12 @@ namespace AssetValidation
     private:
         
         bool m_seedMode{ false };
-        bool m_printBlacklisted{ false };
+        bool m_printExcluded{ false };
 
         AZStd::unordered_map<AZ::Data::AssetId, AZStd::set<AZ::u32>> m_seedAssetIds;
         AZStd::set<AZ::Data::AssetId> m_knownAssetIds;
         AZStd::set<AZStd::string> m_knownAssetPaths;
-        AZStd::vector<AZStd::string> m_blacklistFileTags;
+        AZStd::vector<AZStd::string> m_excludedFileTags;
         AZStd::set<AZStd::string> m_seedLists;
         AZStd::set<AZStd::string> m_assetSet;
 

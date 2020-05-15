@@ -24,8 +24,8 @@
 #include "LightningGameEffectCommon.h"
 
 // Reasonable limits on the segment/point counts, above which we may experience crashes
-#define MAX_STRIKE_SEGMENT_COUNT 100
-#define MAX_STRIKE_POINT_COUNT 100
+#define MAX_STRIKE_SEGMENT_COUNT 70
+#define MAX_STRIKE_POINT_COUNT 70
 
 class CLightningRenderNode;
 

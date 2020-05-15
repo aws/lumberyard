@@ -137,6 +137,9 @@ namespace GraphCanvas
         bool HasModelRemapping() const override;
 
         AZStd::vector< Endpoint > GetRemappedModelEndpoints() const override;
+
+        int GetLayoutPriority() const override;
+        void SetLayoutPriority(int priority) override;
         ////
 
     protected:
@@ -160,7 +163,11 @@ namespace GraphCanvas
         SlotType          m_slotType;
         SlotConfiguration m_slotConfiguration;
 
+        // The actual display ordering this slot is in
         int               m_displayOrdering;
+
+        // The priority with which to layout this slot
+        int               m_layoutPriority;
 
         //! Keeps track of connections to this slot
         AZStd::vector<AZ::EntityId> m_connections;

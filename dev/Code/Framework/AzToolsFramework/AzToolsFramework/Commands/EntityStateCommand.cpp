@@ -63,7 +63,8 @@ namespace AzToolsFramework
         EBUS_EVENT_ID_RESULT(m_entityContextId, m_entityID, AzFramework::EntityIdContextQueryBus, GetOwningContextId);
         EBUS_EVENT_RESULT(m_isSelected, AzToolsFramework::ToolsApplicationRequests::Bus, IsSelected, m_entityID);
 
-        m_sliceRestoreInfo = AZ::SliceComponent::EntityRestoreInfo();
+        AZ::SliceComponent::EntityRestoreInfo& sliceRestoreInfo = captureUndo ? m_undoSliceRestoreInfo : m_redoSliceRestoreInfo;
+        sliceRestoreInfo = AZ::SliceComponent::EntityRestoreInfo();
 
         AZ_Assert(pSourceEntity, "Null entity for undo");
         AZ_Assert(PreemptiveUndoCache::Get(), "You need a pre-emptive undo cache instance to exist for this to work.");
@@ -108,11 +109,11 @@ namespace AzToolsFramework
             AZ::SliceComponent* rootSlice = nullptr;
             EBUS_EVENT_RESULT(rootSlice, EditorEntityContextRequestBus, GetEditorRootSlice);
             AZ_Assert(rootSlice, "Failed to retrieve editor root slice.");
-            rootSlice->GetEntityRestoreInfo(m_entityID, m_sliceRestoreInfo);
+            rootSlice->GetEntityRestoreInfo(m_entityID, sliceRestoreInfo);
         }
     }
 
-    void EntityStateCommand::RestoreEntity(const AZ::u8* buffer, AZStd::size_t bufferSizeBytes) const
+    void EntityStateCommand::RestoreEntity(const AZ::u8* buffer, AZStd::size_t bufferSizeBytes, const AZ::SliceComponent::EntityRestoreInfo& sliceRestoreInfo) const
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -127,9 +128,9 @@ namespace AzToolsFramework
         // If restoring to a slice, keep a reference to the slice asset so it isn't released when the entity
         // is deleted, only to immediately reload upon restoring.
         AZ::Data::Asset<AZ::SliceAsset> asset;
-        if (m_sliceRestoreInfo)
+        if (sliceRestoreInfo)
         {
-            asset = AZ::Data::AssetManager::Instance().FindAsset(m_sliceRestoreInfo.m_assetId);
+            asset = AZ::Data::AssetManager::Instance().FindAsset(sliceRestoreInfo.m_assetId);
         }
 
         // We have to delete the entity. If it's currently selected, make sure we re-select after re-creating.
@@ -175,9 +176,9 @@ namespace AzToolsFramework
 
         if (entity)
         {
-            if (m_sliceRestoreInfo)
+            if (sliceRestoreInfo)
             {
-                EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, RestoreSliceEntity, entity, m_sliceRestoreInfo, SliceEntityRestoreType::Deleted);
+                EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, RestoreSliceEntity, entity, sliceRestoreInfo, SliceEntityRestoreType::Deleted);
             }
             else
             {
@@ -220,12 +221,12 @@ namespace AzToolsFramework
 
     void EntityStateCommand::Undo()
     {
-        RestoreEntity(m_undoState.data(), m_undoState.size());
+        RestoreEntity(m_undoState.data(), m_undoState.size(), m_undoSliceRestoreInfo);
     }
 
     void EntityStateCommand::Redo()
     {
-        RestoreEntity(m_redoState.data(), m_redoState.size());
+        RestoreEntity(m_redoState.data(), m_redoState.size(), m_redoSliceRestoreInfo);
     }
 
     EntityDeleteCommand::EntityDeleteCommand(UndoSystem::URCommandID ID)
@@ -241,7 +242,7 @@ namespace AzToolsFramework
 
     void EntityDeleteCommand::Undo()
     {
-        RestoreEntity(m_undoState.data(), m_undoState.size());
+        RestoreEntity(m_undoState.data(), m_undoState.size(), m_undoSliceRestoreInfo);
     }
 
     void EntityDeleteCommand::Redo()
@@ -271,6 +272,6 @@ namespace AzToolsFramework
 
     void EntityCreateCommand::Redo()
     {
-        RestoreEntity(m_redoState.data(), m_redoState.size());
+        RestoreEntity(m_redoState.data(), m_redoState.size(), m_redoSliceRestoreInfo);
     }
 } // namespace AzToolsFramework

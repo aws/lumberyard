@@ -23,7 +23,10 @@
 
 namespace Multiplayer
 {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
+
+    static const char* GameLiftSessionAlreadyConnectedErrorMessage = "Already connected to a session. Use 'mpdisconnect' to leave current session";
+
     MultiplayerGameLiftClient::MultiplayerGameLiftClient()
         : m_mode(Mode::None)
         , m_serviceStatus(ServiceStatus::Stopped)
@@ -47,7 +50,7 @@ namespace Multiplayer
         MultiplayerRequestBus::BroadcastResult(session, &MultiplayerRequestBus::Events::GetSession);
         if (session)
         {
-            AZ_TracePrintf("MultiplayerModule", "You're already part of a session. User 'mpdiscconect' first.");
+            AZ_TracePrintf("MultiplayerModule", GameLiftSessionAlreadyConnectedErrorMessage);
             return;
         }
 
@@ -78,7 +81,7 @@ namespace Multiplayer
         MultiplayerRequestBus::BroadcastResult(session, &MultiplayerRequestBus::Events::GetSession);
         if (session)
         {
-            AZ_TracePrintf("MultiplayerModule", "You're already part of a session. User 'mpdiscconect' first.");
+            AZ_TracePrintf("MultiplayerModule", GameLiftSessionAlreadyConnectedErrorMessage);
             return;
         }
 
@@ -89,6 +92,35 @@ namespace Multiplayer
         }
 
         m_mode = Mode::Join;
+
+        if (m_serviceStatus == ServiceStatus::Stopped)
+        {
+            StartGameLiftClientService();
+        }
+        else
+        {
+            HandleGameLiftRequestByMode();
+        }
+    }
+
+    void MultiplayerGameLiftClient::StartGameLiftMatchmaking(const char* matchmakingConfigName)
+    {
+        GridMate::GridSession* session = nullptr;
+        MultiplayerRequestBus::BroadcastResult(session, &MultiplayerRequestBus::Events::GetSession);
+        if (session)
+        {
+            AZ_TracePrintf("MultiplayerModule", GameLiftSessionAlreadyConnectedErrorMessage);
+            return;
+        }
+
+        if (m_serviceStatus == ServiceStatus::Starting)
+        {
+            AZ_TracePrintf("MultiplayerModule", "GameLift client service startup is already in-progress");
+            return;
+        }
+
+        m_mode = Mode::FlexMatch;
+        m_matchmakingConfigName = matchmakingConfigName;
 
         if (m_serviceStatus == ServiceStatus::Stopped)
         {
@@ -216,10 +248,8 @@ namespace Multiplayer
         GridMate::GameLiftClientServiceDesc serviceDesc;
         serviceDesc.m_accessKey = GetConsoleParam("gamelift_aws_access_key");
         serviceDesc.m_secretKey = GetConsoleParam("gamelift_aws_secret_key");
-        serviceDesc.m_fleetId = GetConsoleParam("gamelift_fleet_id");
         serviceDesc.m_endpoint = GetConsoleParam("gamelift_endpoint");
         serviceDesc.m_region = GetConsoleParam("gamelift_aws_region");
-        serviceDesc.m_aliasId = GetConsoleParam("gamelift_alias_id");
         serviceDesc.m_playerId = GetConsoleParam("gamelift_player_id");
         serviceDesc.m_useGameLiftLocalServer = GetConsoleBoolParam("gamelift_uselocalserver");
 
@@ -238,8 +268,19 @@ namespace Multiplayer
         AddRequestParameter(params, "sv_name", m_serverName.c_str());
         AddRequestParameter(params, "sv_map", m_mapName.c_str());
 
+        params.m_fleetId = GetConsoleParam("gamelift_fleet_id");
+        params.m_aliasId = GetConsoleParam("gamelift_alias_id");
+        params.m_queueName = GetConsoleParam("gamelift_queue_name");
+        params.m_useFleetId = !params.m_fleetId.empty();
+
         GridMate::GameLiftClientServiceBus::BroadcastResult(m_search,
             &GridMate::GameLiftClientServiceBus::Events::RequestSession, params);
+    }
+
+    void MultiplayerGameLiftClient::StartGameLiftMatchmakingInternal()
+    {
+        GridMate::GameLiftClientServiceBus::BroadcastResult(m_search,
+            &GridMate::GameLiftClientServiceBus::Events::StartMatchmaking, m_matchmakingConfigName);
     }
 
     void MultiplayerGameLiftClient::JoinGameLiftSessionInternal(const GridMate::GameLiftSearchInfo& searchInfo)
@@ -248,7 +289,7 @@ namespace Multiplayer
         MultiplayerRequestBus::BroadcastResult(session, &MultiplayerRequestBus::Events::GetSession);
         if (session)
         {
-            AZ_TracePrintf("MultiplayerModule", "You're already part of a session. User 'mpdiscconect' first.");
+            AZ_TracePrintf("MultiplayerModule", GameLiftSessionAlreadyConnectedErrorMessage);
         }
 
         GridMate::CarrierDesc carrierDesc;
@@ -272,9 +313,13 @@ namespace Multiplayer
     void MultiplayerGameLiftClient::QueryGameLiftServers()
     {
         m_search = nullptr;
-
+        GridMate::GameLiftSearchParams searchParams;
+        searchParams.m_fleetId = GetConsoleParam("gamelift_fleet_id");
+        searchParams.m_aliasId = GetConsoleParam("gamelift_alias_id");
+        searchParams.m_queueName = GetConsoleParam("gamelift_queue_name");
+        searchParams.m_useFleetId = !searchParams.m_fleetId.empty();
         GridMate::GameLiftClientServiceBus::BroadcastResult(m_search,
-            &GridMate::GameLiftClientServiceBus::Events::StartSearch, GridMate::GameLiftSearchParams());
+            &GridMate::GameLiftClientServiceBus::Events::StartSearch, searchParams);
 
         if (m_search == nullptr)
         {
@@ -293,6 +338,9 @@ namespace Multiplayer
             break;
         case Mode::Host:
             HostGameLiftSessionInternal();
+            break;
+        case Mode::FlexMatch:
+            StartGameLiftMatchmakingInternal();
             break;
         default:
             break;

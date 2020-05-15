@@ -13,6 +13,12 @@
 
 def build(bld):
 
+    enable_statistical_profiling = bld.is_option_true('enable_statistical_profiling')
+
+    defines = []
+    if enable_statistical_profiling:
+        defines.append('AZ_STATISTICAL_PROFILING_ENABLED')
+
     bld.CryEngineStaticLibrary(
 
         # Settings
@@ -23,6 +29,8 @@ def build(bld):
         configurations      = ['all'],
         disable_pch         = True,
         includes            = ['..'],
+        defines             = list(defines),
+        export_defines      = list(defines),
         export_includes     = ['..'],
         use                 = ['AzCore', 'GridMate', 'GridMateForTools'],
         uselib              = ['LUA'],

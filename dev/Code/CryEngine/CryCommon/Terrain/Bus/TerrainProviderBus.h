@@ -46,10 +46,6 @@ namespace Terrain
         // utility
         virtual void GetRegionIndex(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, int& regionIndexX, int& regionIndexY) = 0;
 
-        // quadtree min/max height map data request
-        // heightmapDataReadyCallback is guaranteed to be called from a separate thread
-        virtual void RequestMinMaxHeightmapData(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, float stride, float* dstBuffer, AZStd::function<void()> heightmapDataReadyCallback) = 0;
-
         virtual float GetHeightAtIndexedPosition(int ix, int iy) { return 64.0f; }
         virtual float GetHeightAtWorldPosition(float fx, float fy) { return 64.0f; }
         virtual unsigned char GetSurfaceTypeAtIndexedPosition(int ix, int iy) { return 0; }
@@ -59,27 +55,8 @@ namespace Terrain
     // This class exists for the terrain system to inject data into the renderer for generating the GPU-side terrain height map
     struct CRETerrainContext
     {
-        // constants for the game to use
-        enum class ConstantNames
-        {
-            Space,
-            NoiseSampleSize,
-            PixelWorldSize,
-            MountainParams,
-            Transform,
-            PerimeterFlatten,
-            ValleyIntensity,
-            TractMapTransform,
-        };
-
-        // Shader param updates from terrain
-        virtual void SetPSConstant(ConstantNames name, float x, float y, float z, float w) = 0;
-
         // Tract map
         virtual void OnTractVersionUpdate() = 0;
-
-        // Height map version tracking
-        virtual void OnHeightMapVersionUpdate() = 0;
 
         CShader* m_currentShader = nullptr;
     };
@@ -100,13 +77,6 @@ namespace Terrain
 
         // pull settings from the world cache, so the next accessors are accurate
         virtual void SynchronizeSettings(CRETerrainContext* context) = 0;
-
-        // height map data requests
-        virtual void QueueHeightmapDataRequest(const HeightmapDataRequestInfo& heightmapDataRequest) = 0;
-
-        // height map texture update
-        typedef AZStd::function<void(AZ::u32* heightAndNormalData, int topLeftX, int topLeftY, int width, int height)> HeightmapDataFillCallback;
-        virtual void ProcessHeightmapDataRequests(int numRequestsToHandle, HeightmapDataFillCallback textureUpdateFunc) = 0;
     };
     using TerrainProviderNotificationBus = AZ::EBus<TerrainProviderNotifications>;
 }

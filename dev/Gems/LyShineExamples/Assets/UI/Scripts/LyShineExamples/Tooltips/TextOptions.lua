@@ -25,6 +25,11 @@ local TextOptions =
 		FontSizeSlider = {default = EntityId()},
 		FontSizeText = {default = EntityId()},
 		TooltipText = {default = EntityId()},
+		TooltipEntity = {default = EntityId()},
+		TriggerModeDropdown = {default = EntityId()},
+		DropdownOnClickOption = {default = EntityId()},
+		DropdownOnPressOption = {default = EntityId()},
+		DropdownOnHoverOption = {default = EntityId()}
 	},
 }
 
@@ -36,6 +41,8 @@ function TextOptions:OnActivate()
 	self.greenSliderHandler = UiSliderNotificationBus.Connect(self, self.Properties.GreenSlider)
 	self.blueSliderHandler = UiSliderNotificationBus.Connect(self, self.Properties.BlueSlider)
 	self.fontSizeSliderHandler = UiSliderNotificationBus.Connect(self, self.Properties.FontSizeSlider)
+	
+	self.dropdownHandler = UiDropdownNotificationBus.Connect(self, self.Properties.TriggerModeDropdown)
 	
 	self.tickBusHandler = TickBus.Connect(self);
 end
@@ -54,6 +61,9 @@ function TextOptions:OnTick(deltaTime, timePoint)
 	local fontSize = UiTextBus.Event.GetFontSize(self.Properties.TooltipText)
 	UiSliderBus.Event.SetValue(self.Properties.FontSizeSlider, fontSize)
 	UiTextBus.Event.SetText(self.Properties.FontSizeText, fontSize)
+	
+	-- Select OnHover as default trigger mode
+	UiDropdownBus.Event.SetValue(self.Properties.TriggerModeDropdown, self.Properties.DropdownOnHoverOption)
 end
 
 function TextOptions:OnDeactivate()
@@ -63,6 +73,7 @@ function TextOptions:OnDeactivate()
 	self.greenSliderHandler:Disconnect()
 	self.blueSliderHandler:Disconnect()
 	self.fontSizeSliderHandler:Disconnect()
+	self.dropdownHandler:Disconnect()
 end
 
 function TextOptions:OnSliderValueChanging(value)
@@ -117,6 +128,18 @@ function TextOptions:OnCheckboxStateChange(isChecked)
 			UiTextBus.Event.SetHorizontalTextAlignment(self.Properties.TooltipText, eUiHAlign_Center)
 		else
 			UiTextBus.Event.SetHorizontalTextAlignment(self.Properties.TooltipText, eUiHAlign_Left)
+		end
+	end
+end
+
+function TextOptions:OnDropdownValueChanged(value)
+	if (UiDropdownNotificationBus.GetCurrentBusId() == self.Properties.TriggerModeDropdown) then
+		if (value == self.Properties.DropdownOnHoverOption) then
+			UiTooltipDisplayBus.Event.SetTriggerMode(self.Properties.TooltipEntity, 0);
+		elseif (value == self.Properties.DropdownOnPressOption) then
+			UiTooltipDisplayBus.Event.SetTriggerMode(self.Properties.TooltipEntity, 1)
+		elseif (value == self.Properties.DropdownOnClickOption) then
+			UiTooltipDisplayBus.Event.SetTriggerMode(self.Properties.TooltipEntity, 2)
 		end
 	end
 end

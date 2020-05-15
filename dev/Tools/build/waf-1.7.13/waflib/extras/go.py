@@ -194,7 +194,7 @@ def go_local_libs(self):
 			if isinstance(lnk_task, (go, gopackage)):
 				# handle hierarchical packages
 				path = lnk_task.generator.path.get_bld().abspath()
-			elif isinstance(lnk_task, (cgopackage,)):
+			elif isinstance(lnk_task, cgopackage):
 				# handle hierarchical cgopackages
 				cgo_obj_dir = lnk_task.outputs[1].find_or_declare('_obj')
 				path = cgo_obj_dir.abspath()

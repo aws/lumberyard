@@ -46,10 +46,10 @@ public:
 
     bool DeviceIsConnected(const char* deviceId);
 
-    static AZStd::string GetPlatformSpecficDefaultSettingsFilename(PlatformOptions platformOption, const char* devRoot = ".");
-    static StringOutcome GetPlatformSpecficDefaultAttributeValue(const char* name, PlatformOptions platformOption, const char* devRoot = ".");
-    static StringOutcome GetPlatformSpecficDefaultSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption, const char* devRoot = ".");
-    static StringOutcome GetCommonBuildConfigurationsDefaultSettingsValue(const char* buildConfiguration, const char* name, const char* devRoot = ".");
+    static AZStd::string GetPlatformSpecficDefaultSettingsFilename(PlatformOptions platformOption);
+    static StringOutcome GetPlatformSpecficDefaultAttributeValue(const char* name, PlatformOptions platformOption);
+    static StringOutcome GetPlatformSpecficDefaultSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption);
+    static StringOutcome GetCommonBuildConfigurationsDefaultSettingsValue(const char* buildConfiguration, const char* name);
 
 protected:
     virtual AZStd::string GetWafBuildArgs() const = 0;

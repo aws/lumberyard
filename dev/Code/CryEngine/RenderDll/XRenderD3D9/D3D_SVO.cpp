@@ -24,6 +24,8 @@
 #include "../Common/TypedConstantBuffer.h"
 #include "../Common/Textures/TextureManager.h"
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 
 CSvoRenderer* CSvoRenderer::s_pInstance = 0;
 
@@ -1142,8 +1144,12 @@ void CSvoRenderer::UpdatePassConstantBuffer()
 
     if (svoRenderer)
     {
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        const float terrainSizeX = terrainAabb.GetWidth();
+
         cb->PerPass_SvoTreeSettings0 = Vec4(
-            (float)gEnv->p3DEngine->GetTerrainSize(),
+            (float)terrainSizeX,
             gEnv->pConsole->GetCVar("e_svoMinNodeSize")->GetFVal(),
             (float)svoRenderer->m_texInfo.nBrickSize,
             128.f);

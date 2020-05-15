@@ -351,19 +351,19 @@ namespace EMStudio
     {
         if (outMinutes)
         {
-            *outMinutes     = timeValue / 60.0;
+            *outMinutes     = aznumeric_cast<uint32>(timeValue / 60.0);
         }
         if (outSeconds)
         {
-            *outSeconds     = fmod(timeValue, 60.0);
+            *outSeconds     = aznumeric_cast<uint32>(fmod(timeValue, 60.0));
         }
         if (outMilSecs)
         {
-            *outMilSecs     = fmod(RoundDouble(timeValue * 1000.0), 1000.0) / 10.0;              //fmod(pixelTime, 1.0) * 100.0;
+            *outMilSecs     = aznumeric_cast<uint32>(fmod(RoundDouble(timeValue * 1000.0), 1000.0) / 10.0);              //fmod(pixelTime, 1.0) * 100.0;
         }
         if (outFrameNr)
         {
-            *outFrameNr     = timeValue / (double)mFPS;
+            *outFrameNr     = aznumeric_cast<uint32>(timeValue / (double)mFPS);
         }
     }
 
@@ -384,19 +384,19 @@ namespace EMStudio
         }
         if (outMinutes)
         {
-            *outMinutes     = pixelTime / 60.0;
+            *outMinutes     = aznumeric_cast<uint32>(pixelTime / 60.0);
         }
         if (outSeconds)
         {
-            *outSeconds     = fmod(pixelTime, 60.0);
+            *outSeconds     = aznumeric_cast<uint32>(fmod(pixelTime, 60.0));
         }
         if (outMilSecs)
         {
-            *outMilSecs     = fmod(RoundDouble(pixelTime * 1000.0), 1000.0) / 10.0;             //fmod(pixelTime, 1.0) * 100.0;
+            *outMilSecs     = aznumeric_cast<uint32>(fmod(RoundDouble(pixelTime * 1000.0), 1000.0) / 10.0);             //fmod(pixelTime, 1.0) * 100.0;
         }
         if (outFrameNr)
         {
-            *outFrameNr     = pixelTime / (double)mFPS;
+            *outFrameNr     = aznumeric_cast<uint32>(pixelTime / (double)mFPS);
         }
     }
 
@@ -475,7 +475,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numTracks; ++i)
         {
             // check if the absolute pixel is inside
-            TimeTrackElement* result = mTracks[i]->GetElementAt(x + mScrollX, y);
+            TimeTrackElement* result = mTracks[i]->GetElementAt(aznumeric_cast<int32>(x + mScrollX), y);
             if (result)
             {
                 return result;
@@ -598,7 +598,7 @@ namespace EMStudio
 
         // snap to the current time marker
         double curTimeMarker = GetCurrentTime();
-        if (MCore::Math::Abs(inTime - curTimeMarker) < snapThreshold)
+        if (MCore::Math::Abs(aznumeric_cast<float>(inTime - curTimeMarker)) < snapThreshold)
         {
             inTime = curTimeMarker;
         }
@@ -630,7 +630,7 @@ namespace EMStudio
         }
 
         // if snapping occurred
-        if (MCore::Math::Abs(inTime - *inOutTime) > 0.0001)
+        if (MCore::Math::Abs(aznumeric_cast<float>(inTime - *inOutTime)) > 0.0001)
         {
             *inOutTime = inTime;
             return true;
@@ -765,7 +765,7 @@ namespace EMStudio
         mIsAnimating = false;
         if (mTargetTimeScale > mTimeScale)
         {
-            if (MCore::Math::Abs(mTargetScrollX - mScrollX) <= 1)
+            if (MCore::Math::Abs(aznumeric_cast<float>(mTargetScrollX - mScrollX)) <= 1)
             {
                 mTimeScale += (mTargetTimeScale - mTimeScale) * 0.1;
             }
@@ -775,7 +775,7 @@ namespace EMStudio
             mTimeScale += (mTargetTimeScale - mTimeScale) * 0.1;
         }
 
-        if (MCore::Math::Abs(mTargetScrollX - mScrollX) <= 1)
+        if (MCore::Math::Abs(aznumeric_cast<float>(mTargetScrollX - mScrollX)) <= 1)
         {
             mScrollX = mTargetScrollX;
         }
@@ -784,7 +784,7 @@ namespace EMStudio
             mIsAnimating = true;
         }
 
-        if (MCore::Math::Abs(mTargetTimeScale - mTimeScale) <= 0.001)
+        if (MCore::Math::Abs(aznumeric_cast<float>(mTargetTimeScale - mTimeScale)) <= 0.001)
         {
             mTimeScale = mTargetTimeScale;
         }
@@ -798,7 +798,7 @@ namespace EMStudio
         UpdateMaxHeight();
         mTrackDataWidget->UpdateRects();
 
-        if (MCore::Math::Abs(mMaxHeight - mLastMaxHeight) > 0.0001)
+        if (MCore::Math::Abs(aznumeric_cast<float>(mMaxHeight - mLastMaxHeight)) > 0.0001)
         {
             mLastMaxHeight = mMaxHeight;
         }
@@ -813,8 +813,8 @@ namespace EMStudio
         mActorInstanceData  = mTrackDataWidget->FindActorInstanceData();
         if (EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon)
         {
-            mEventHistoryItem   = mTrackDataWidget->FindEventHistoryItem(mActorInstanceData, mCurMouseX, mCurMouseY);
-            mNodeHistoryItem    = mTrackDataWidget->FindNodeHistoryItem(mActorInstanceData, mCurMouseX, mCurMouseY);
+            mEventHistoryItem   = mTrackDataWidget->FindEventHistoryItem(mActorInstanceData, aznumeric_cast<int32>(mCurMouseX), aznumeric_cast<int32>(mCurMouseY));
+            mNodeHistoryItem    = mTrackDataWidget->FindNodeHistoryItem(mActorInstanceData, aznumeric_cast<int32>(mCurMouseX), aznumeric_cast<int32>(mCurMouseY));
 
             if (mEventHistoryItem)
             {
@@ -855,7 +855,7 @@ namespace EMStudio
             if (motionInstances.size() == 1)
             {
                 EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                if (MCore::Compare<float>::CheckIfIsClose(mCurTime, motionInstance->GetCurrentTime(), MCore::Math::epsilon) == false)
+                if (MCore::Compare<float>::CheckIfIsClose(aznumeric_cast<float>(mCurTime), motionInstance->GetCurrentTime(), MCore::Math::epsilon) == false)
                 {
                     SetCurrentTime(motionInstance->GetCurrentTime());
                     mDirty = true;
@@ -1424,7 +1424,7 @@ namespace EMStudio
             // if we already selected before, set the remembered settings
             if (motionInfo->mInitialized)
             {
-                const int32 tempScroll = motionInfo->mScrollX;
+                const int32 tempScroll = aznumeric_cast<int32>(motionInfo->mScrollX);
                 SetScale(motionInfo->mScale);
                 SetScrollX(tempScroll);
             }
@@ -1547,7 +1547,7 @@ namespace EMStudio
             return;
         }
 
-        CommandSystem::CommandHelperAddMotionEvent(timeTrack->GetName(), dropTimeInSeconds, dropTimeInSeconds);
+        CommandSystem::CommandHelperAddMotionEvent(timeTrack->GetName(), aznumeric_cast<float>(dropTimeInSeconds), aznumeric_cast<float>(dropTimeInSeconds));
     }
 
 

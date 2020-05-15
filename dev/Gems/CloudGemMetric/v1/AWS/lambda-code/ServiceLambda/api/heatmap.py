@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
 import os
 import util
@@ -34,7 +35,7 @@ def get(request, id):
 @service.api
 def list(request):
     db = DynamoDb()
-    print "Calling list heatmaps.  This should list out the existing heatmaps"
+    print("Calling list heatmaps.  This should list out the existing heatmaps")
     result = db.get_key("heatmaps")
     heatmaps = []
     if result and len(result['Items']) > 0:
@@ -80,12 +81,12 @@ def delete(request, id):
 
     existingHeatmaps = db.get_key("heatmaps")
     heatmapArr = existingHeatmaps['Items'][0]['value']
-    print heatmapArr
+    print(heatmapArr)
 
     for heatmap in heatmapArr:
         if heatmap['id'] == id:
             heatmapArr.remove(heatmap)
-    print heatmapArr
+    print(heatmapArr)
     return db.set("heatmaps", heatmapArr)
 
 def cli(context, args):

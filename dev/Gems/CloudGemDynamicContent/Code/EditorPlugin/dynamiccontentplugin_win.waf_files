@@ -3,7 +3,6 @@
         "EditorPlugin": [
             "main.cpp",
             "DynamicContentEditorPlugin.cpp",
-            "DynamicContentEditorPlugin.h",
             "CloudGemDynamicContent_precompiled.cpp",
             "CloudGemDynamicContent_precompiled.h",
             "QDynamicContentEditorMainWindow.h",

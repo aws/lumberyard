@@ -22,6 +22,13 @@
 
 namespace AzToolsFramework
 {
+    PropertyTreeEditor::PropertyTreeEditorNode::PropertyTreeEditorNode(const AZ::TypeId& typeId, AzToolsFramework::InstanceDataNode* nodePtr, AZStd::optional<AZStd::string> newName)
+        : m_typeId(typeId)
+        , m_nodePtr(nodePtr)
+        , m_newName(newName)
+    {
+    }
+
     PropertyTreeEditor::PropertyTreeEditorNode::PropertyTreeEditorNode(AzToolsFramework::InstanceDataNode* nodePtr, AZStd::optional<AZStd::string> newName)
         : m_nodePtr(nodePtr)
         , m_newName(newName)
@@ -66,32 +73,48 @@ namespace AzToolsFramework
         return pathsList;
     }
 
-    PropertyTreeEditor::PropertyAccessOutcome PropertyTreeEditor::GetProperty(const AZStd::string_view propertyPath)
+    AZStd::string PropertyTreeEditor::GetPropertyType(const AZStd::string_view propertyPath)
     {
         if (m_nodeMap.find(propertyPath) == m_nodeMap.end())
         {
             AZ_Warning("PropertyTreeEditor", false, "GetProperty - path provided was not found in tree.");
+            return AZStd::string("");
+        }
+
+        const PropertyTreeEditorNode& pteNode = m_nodeMap[propertyPath];
+
+        // Notify the user that they should not use the deprecated name any more, and what it has been replaced with.
+        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "GetProperty - This path is deprecated; property name has been changed to %s.", pteNode.m_newName.value().c_str());
+
+        return AZStd::string(pteNode.m_nodePtr->GetClassMetadata()->m_name);
+    }
+
+    PropertyTreeEditor::PropertyAccessOutcome PropertyTreeEditor::GetProperty(const AZStd::string_view propertyPath)
+    {
+        if (m_nodeMap.find(propertyPath) == m_nodeMap.end())
+        {
+            AZ_Warning("PropertyTreeEditor", false, "GetProperty - path provided [ %.*s ] was not found in tree.", static_cast<int>(propertyPath.size()), propertyPath.data());
             return {PropertyAccessOutcome::ErrorType("GetProperty - path provided was not found in tree.")};
         }
 
         PropertyTreeEditorNode pteNode = m_nodeMap[propertyPath];
 
         // Notify the user that they should not use the deprecated name any more, and what it has been replaced with.
-        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "GetProperty - This path is deprecated; property name has been changed to %s.", pteNode.m_newName.value().c_str());
+        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "GetProperty - This path [ %.*s ] is deprecated; property name has been changed to %s.", static_cast<int>(propertyPath.size()), propertyPath.data(), pteNode.m_newName.value().c_str());
 
-        void* ptr = nullptr;
+        void* nodeData = nullptr;
         AZ::TypeId type = pteNode.m_nodePtr->GetClassMetadata()->m_typeId;
 
-        if (!pteNode.m_nodePtr->ReadRaw(ptr, type))
+        if (!pteNode.m_nodePtr->ReadRaw(nodeData, type))
         {
-            AZ_Warning("PropertyTreeEditor", false, "GetProperty - path provided was found, but read operation failed.");
+            AZ_Warning("PropertyTreeEditor", false, "GetProperty - path provided [ %.*s ] was found, but read operation failed.", static_cast<int>(propertyPath.size()), propertyPath.data());
             return {PropertyAccessOutcome::ErrorType("GetProperty - path provided was found, but read operation failed.")};
         }
 
         if (pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
         {
             // Handle SimpleAssetReference (it should return an AssetId)
-            AzFramework::SimpleAssetReferenceBase* instancePtr = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(ptr);
+            AzFramework::SimpleAssetReferenceBase* instancePtr = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(nodeData);
 
             AZ::Data::AssetId result = AZ::Data::AssetId();
             AZStd::string assetPath = instancePtr->GetAssetPath();
@@ -106,14 +129,14 @@ namespace AzToolsFramework
         else if (pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->GetGenericTypeId() == azrtti_typeid<AZ::Data::Asset>())
         {
             // Handle Asset<> (it should return an AssetId)
-            AZ::Data::Asset<AZ::Data::AssetData>* instancePtr = reinterpret_cast<AZ::Data::Asset<AZ::Data::AssetData>*>(ptr);
+            AZ::Data::Asset<AZ::Data::AssetData>* instancePtr = reinterpret_cast<AZ::Data::Asset<AZ::Data::AssetData>*>(nodeData);
             return {PropertyAccessOutcome::ValueType(instancePtr->GetId())};
         }
         else
         {
             // Default case - just return the value wrapped into an any
             AZStd::any typeInfoHelper = m_serializeContext->CreateAny(type);
-            return {PropertyAccessOutcome::ValueType(ptr, typeInfoHelper.get_type_info())};
+            return {PropertyAccessOutcome::ValueType(nodeData, typeInfoHelper.get_type_info())};
         }
     }
 
@@ -121,14 +144,14 @@ namespace AzToolsFramework
     {
         if (m_nodeMap.find(propertyPath) == m_nodeMap.end())
         {
-            AZ_Warning("PropertyTreeEditor", false, "SetProperty - path provided was not found in tree.");
+            AZ_Warning("PropertyTreeEditor", false, "SetProperty - path provided [ %.*s ] was not found in tree.", static_cast<int>(propertyPath.size()), propertyPath.data());
             return {PropertyAccessOutcome::ErrorType("SetProperty - path provided was not found in tree.")};
         }
 
         PropertyTreeEditorNode pteNode = m_nodeMap[propertyPath];
 
         // Notify the user that they should not use the deprecated name any more, and what it has been replaced with.
-        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "SetProperty - This path is deprecated; property name has been changed to %s.", pteNode.m_newName.value().c_str());
+        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "SetProperty - This path [ %.*s ] is deprecated; property name has been changed to %s.", static_cast<int>(propertyPath.size()), propertyPath.data(), pteNode.m_newName.value().c_str());
 
         // Handle Asset cases differently
         if (value.type() == azrtti_typeid<AZ::Data::AssetId>() && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
@@ -195,11 +218,13 @@ namespace AzToolsFramework
         }
 
         // Default handler
-        const AZStd::any* anyPtr = &value;
-        const void* valuePtr = AZStd::any_cast<void>(anyPtr);
+
+        //A temporary conversion buffer in case the src and dst data types are different.
+        AZStd::any convertedValue;
 
         // Check if types match, or convert the value if its type supports it.
-        if (!HandleTypeConversion(value.type(), pteNode.m_nodePtr->GetClassMetadata()->m_typeId, valuePtr))
+        const void* valuePtr = HandleTypeConversion(value.type(), pteNode.m_nodePtr->GetClassMetadata()->m_typeId, AZStd::any_cast<void>(&value), convertedValue);
+        if (!valuePtr)
         {
             // If types are different and cannot be converted, bail
             AZ_Warning("PropertyTreeEditor", false, "SetProperty - value type cannot be converted to the property's type.");
@@ -213,52 +238,139 @@ namespace AzToolsFramework
         return {PropertyAccessOutcome::ValueType(value)};
     }
 
-    bool PropertyTreeEditor::HandleTypeConversion(AZ::TypeId fromType, AZ::TypeId toType, const void*& valuePtr)
+    bool PropertyTreeEditor::CompareProperty(const AZStd::string_view propertyPath, const AZStd::any& value)
+    {
+        if (m_nodeMap.find(propertyPath) == m_nodeMap.end())
+        {
+            AZ_Error("PropertyTreeEditor", false, "CompareProperty - path provided [ %.*s ] was not found in tree.", static_cast<int>(propertyPath.size()), propertyPath.data());
+            return false;
+        }
+
+        PropertyTreeEditorNode pteNode = m_nodeMap[propertyPath];
+
+        // Notify the user that they should not use the deprecated name any more, and what it has been replaced with.
+        AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "CompareProperty - This path [ %.*s ] is deprecated; property name has been changed to %s.", static_cast<int>(propertyPath.size()), propertyPath.data(), pteNode.m_newName.value().c_str());
+
+        void* nodeData = nullptr;
+        AZ::TypeId type = pteNode.m_nodePtr->GetClassMetadata()->m_typeId;
+
+        if (!pteNode.m_nodePtr->ReadRaw(nodeData, type))
+        {
+            AZ_Warning("PropertyTreeEditor", false, "CompareProperty - path provided [ %.*s ] was found, but read operation failed.", static_cast<int>(propertyPath.size()), propertyPath.data());
+            return false;
+        }
+
+        if (pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
+        {
+            // Handle SimpleAssetReference (it should return an AssetId)
+            AzFramework::SimpleAssetReferenceBase* instancePtr = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(nodeData);
+
+            AZ::Data::AssetId result = AZ::Data::AssetId();
+            AZStd::string assetPath = instancePtr->GetAssetPath();
+
+            if (!assetPath.empty())
+            {
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(result, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, assetPath.c_str(), AZ::Uuid(), false);
+            }
+
+            return result == AZStd::any_cast<AZ::Data::AssetId>(value);
+        }
+        else if (pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->GetGenericTypeId() == azrtti_typeid<AZ::Data::Asset>())
+        {
+            // Handle Asset<> (it should return an AssetId)
+            AZ::Data::Asset<AZ::Data::AssetData>* instancePtr = reinterpret_cast<AZ::Data::Asset<AZ::Data::AssetData>*>(nodeData);
+
+            return instancePtr->GetId() == AZStd::any_cast<AZ::Data::AssetId>(value);
+        }
+        else
+        {
+            //A temporary conversion buffer in case the src and dst data types are different.
+            AZStd::any convertedValue;
+
+            // Check if types match, or convert the value if its type supports it.
+            const void* valuePtr = HandleTypeConversion(value.type(), pteNode.m_nodePtr->GetClassMetadata()->m_typeId, AZStd::any_cast<void>(&value), convertedValue);
+            if (!valuePtr)
+            {
+                // If types are different and cannot be converted, bail
+                AZ_Warning("PropertyTreeEditor", false, "CompareProperty - value type cannot be converted to the property's type.");
+                return false;
+            }
+
+            auto& serializerPtr = pteNode.m_nodePtr->GetClassMetadata()->m_serializer;
+            return serializerPtr && serializerPtr->CompareValueData(nodeData, valuePtr);
+        }
+    }
+
+    const void* PropertyTreeEditor::HandleTypeConversion(AZ::TypeId fromType, AZ::TypeId toType, const void* sourceValuePtr, AZStd::any& convertedValue)
     {
         // If types match we don't need to convert.
         if (fromType == toType)
         {
-            return true;
+            return sourceValuePtr;
         }
 
-        // Support some handpicked conversions before a more generic solution is found
-        if (fromType == AZ::AzTypeInfo<double>::Uuid() && toType == AZ::AzTypeInfo<float>::Uuid())
+        AZ_Assert(sourceValuePtr, "Invalid pointer to the source value");
+
+        if (fromType == AZ::AzTypeInfo<double>::Uuid())
         {
-            double d = *static_cast<const double*>(valuePtr);
-            m_convertFloat = d;
-            valuePtr = &m_convertFloat;
-
-            return true;
+            double value = *static_cast<const double*>(sourceValuePtr);
+            return HandleTypeConversion(value, toType, convertedValue);
         }
 
-        if (fromType == AZ::AzTypeInfo<double>::Uuid() && toType == AZ::AzTypeInfo<AZ::u32>::Uuid())
+        if (fromType == AZ::AzTypeInfo<AZ::s64>::Uuid())
         {
-            double d = *static_cast<const double*>(valuePtr);
-            m_convertUnsigned = d;
-            valuePtr = &m_convertUnsigned;
-
-            return true;
+            AZ::s64 value = *static_cast<const AZ::s64*>(sourceValuePtr);
+            return HandleTypeConversion(value, toType, convertedValue);
         }
 
-        if (fromType == AZ::AzTypeInfo<AZ::s64>::Uuid() && toType == AZ::AzTypeInfo<float>::Uuid())
+        return nullptr;
+    }
+
+    template <typename V>
+    const void* PropertyTreeEditor::HandleTypeConversion(V fromValue, AZ::TypeId toType, AZStd::any& convertedValue)
+    {
+        if (toType == AZ::AzTypeInfo<float>::Uuid())
         {
-            AZ::s64 s64 = *static_cast<const AZ::s64*>(valuePtr);
-            m_convertFloat = s64;
-            valuePtr = &m_convertFloat;
-
-            return true;
+            convertedValue = aznumeric_cast<float>(fromValue);
+            return &convertedValue;
         }
 
-        if (fromType == AZ::AzTypeInfo<AZ::s64>::Uuid() && toType == AZ::AzTypeInfo<AZ::u32>::Uuid())
+        if (toType == AZ::AzTypeInfo<AZ::u32>::Uuid())
         {
-            AZ::s64 s64 = *static_cast<const AZ::s64*>(valuePtr);
-            m_convertUnsigned = s64;
-            valuePtr = &m_convertUnsigned;
-
-            return true;
+            convertedValue = aznumeric_cast<AZ::u32>(fromValue);
+            return &convertedValue;
         }
 
-        return false;
+        if (toType == AZ::AzTypeInfo<AZ::s32>::Uuid())
+        {
+            convertedValue = aznumeric_cast<AZ::s32>(fromValue);
+            return &convertedValue;
+        }
+
+        if (toType == AZ::AzTypeInfo<AZ::u16>::Uuid())
+        {
+            convertedValue = aznumeric_cast<AZ::u16>(fromValue);
+            return &convertedValue;
+        }
+
+        if (toType == AZ::AzTypeInfo<AZ::s16>::Uuid())
+        {
+            convertedValue = aznumeric_cast<AZ::s16>(fromValue);
+            return &convertedValue;
+        }
+
+        if (toType == AZ::AzTypeInfo<AZ::u8>::Uuid())
+        {
+            convertedValue = aznumeric_cast<AZ::u8>(fromValue);
+            return &convertedValue;
+        }
+
+        if (toType == AZ::AzTypeInfo<AZ::s8>::Uuid())
+        {
+            convertedValue = aznumeric_cast<AZ::s8>(fromValue);
+            return &convertedValue;
+        }
+        return nullptr;
     }
 
     void PropertyTreeEditor::HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node, AZStd::vector<ChangeNotification>& notifiers)
@@ -324,6 +436,15 @@ namespace AzToolsFramework
             {
                 if (!path.empty())
                 {
+                    path += '|';
+                }
+
+                // If this element is nested under a group, we need to include the group name (which is stored in the description)
+                // in the path as well in order for the path to be unique
+                auto groupMetaData = node.GetGroupElementMetadata();
+                if (groupMetaData && groupMetaData->m_description)
+                {
+                    path += groupMetaData->m_description;
                     path += '|';
                 }
 

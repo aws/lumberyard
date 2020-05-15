@@ -30,14 +30,14 @@
 #include "Terrain/TerrainManager.h"
 #include "Terrain/SurfaceType.h"
 #include "Terrain/Heightmap.h"
-
-#include "Util/BoostPythonHelpers.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #ifdef AZ_PLATFORM_WINDOWS
 #include <InitGuid.h>
 #endif
 
 #include <AzToolsFramework/Commands/LegacyCommand.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 // {C3EE67BE-F167-4E48-93B6-47D184DC06F8}
 DEFINE_GUID(TERRAIN_PAINTER_TOOL_GUID, 0xc3ee67be, 0xf167, 0x4e48, 0x93, 0xb6, 0x47, 0xd1, 0x84, 0xdc, 0x6, 0xf8);
@@ -610,16 +610,24 @@ bool CTerrainTexturePainter::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRe
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_PickLayerId()
 {
-    int iTerrainSize = m_3DEngine->GetTerrainSize();                                                                            // in m
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int terrainSizeX = static_cast<int>(terrainAabb.GetWidth()); // in m
+    const int terrainSizeY = static_cast<int>(terrainAabb.GetHeight()); // in m
+    if ((terrainSizeX == 0) || (terrainSizeY == 0))
+    {
+        return;
+    }
+
     int hmapWidth = m_heightmap->GetWidth();
     int hmapHeight = m_heightmap->GetHeight();
 
-    int iX = (int)((m_pointerPos.y * hmapWidth) / iTerrainSize);            // maybe +0.5f is needed
-    int iY = (int)((m_pointerPos.x * hmapHeight) / iTerrainSize);           // maybe +0.5f is needed
+    int iX = (int)((m_pointerPos.y * hmapWidth) / terrainSizeX);            // maybe +0.5f is needed
+    int iY = (int)((m_pointerPos.x * hmapHeight) / terrainSizeY);           // maybe +0.5f is needed
 
-    if (iX >= 0 && iX < iTerrainSize)
+    if (iX >= 0 && iX < terrainSizeX)
     {
-        if (iY >= 0 && iY < iTerrainSize)
+        if (iY >= 0 && iY < terrainSizeY)
         {
             LayerWeight weight = m_heightmap->GetLayerWeightAt(iX, iY);
 
@@ -664,7 +672,10 @@ void CTerrainTexturePainter::Action_Paint()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_Flood()
 {
-    if (m_3DEngine->GetTerrainSize() <= 0)
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+
+    if (terrainAabb.GetWidth() <= 0.0f)
     {
         return;
     }
@@ -698,18 +709,25 @@ void CTerrainTexturePainter::Action_Flood()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood)
 {
-    float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const float fTerrainSizeX = terrainAabb.GetWidth(); // in m
+    const float fTerrainSizeY = terrainAabb.GetHeight(); // in m
+    if ((fTerrainSizeX <= 0.0f) || (fTerrainSizeY <= 0.0f))
+    {
+        return;
+    }                                                                         // in m
 
     // If we're doing a flood fill, set our paint brush to the center of the terrain with a radius that covers the entire terrain
     // regardless of what's been passed in.
-    float radius = bFlood ? m_3DEngine->GetTerrainSize() * 0.5f : m_brush.radius;
+    float radius = bFlood ? AZ::GetMax(fTerrainSizeX, fTerrainSizeY) * 0.5f : m_brush.radius;
     Vec3 brushCenter = bFlood ? Vec3(radius, radius, 0.0f) : center;
 
     SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.maskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
     br.m_cFilterColor = m_brush.filterColor * m_brush.brightness;
     br.m_cFilterColor.rgb2srgb();
-    br.fRadius = radius / fTerrainSize;
+    br.fRadius = radius / fTerrainSizeX;
     br.color = m_brush.value;
     if (m_brush.erase)
     {
@@ -718,8 +736,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 
     // Paint spot on layer mask.
     {
-        float fX = brushCenter.y / fTerrainSize;                         // 0..1
-        float fY = brushCenter.x / fTerrainSize;                         // 0..1
+        float fX = brushCenter.y / fTerrainSizeY;                         // 0..1
+        float fY = brushCenter.x / fTerrainSizeX;                         // 0..1
 
         // change terrain texture
         if (m_brush.colorHardness > 0.0f)
@@ -765,8 +783,9 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         Vec3 vMin = brushCenter - Vec3(radius, radius, 0.0f) - bilinearOffset;
         Vec3 vMax = brushCenter + Vec3(radius, radius, 0.0f);
 
-        int iTerrainSize = m_3DEngine->GetTerrainSize();                                                // in meters
-        int iTexSectorSize = m_3DEngine->GetTerrainTextureNodeSizeMeters();         // in meters
+        int iTerrainSize = (int)fTerrainSizeX; // in meters
+        int iTexSectorSize = 0;                // in meters
+        LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(iTexSectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
 
         if (!iTexSectorSize)
         {
@@ -786,7 +805,7 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         iMaxSecX = min(iMaxSecX, iTerrainSize / iTexSectorSize);
         iMaxSecY = min(iMaxSecY, iTerrainSize / iTexSectorSize);
 
-        float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
+        float fTerrainSize = fTerrainSizeX;                                                                           // in m
 
         // update rectangle in 0..1 range
         float fGlobalMinX = max(vMin.x / fTerrainSize, 0.0f), fGlobalMinY = max(vMin.y / fTerrainSize, 0.0f);
@@ -807,7 +826,7 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
     //////////////////////////////////////////////////////////////////////////
     // Build rectangle in heightmap coordinates.
     {
-        float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
+        float fTerrainSize = fTerrainSizeX;                                                                           // in m
         int hmapWidth = m_heightmap->GetWidth();
         int hmapHeight = m_heightmap->GetHeight();
 
@@ -992,7 +1011,7 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    static QString PyGetBrushMaskLayer()
+    static QString PyLegacyGetBrushMaskLayer()
     {
         IEditor* editor = GetIEditor();
         AZ_Assert(editor, "Editor instance doesn't exist!");
@@ -1013,6 +1032,12 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
+    static const char* PyGetBrushMaskLayer()
+    {
+        return PyLegacyGetBrushMaskLayer().toLocal8Bit().data();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
     static void PySetBrushMaskLayer(const char* layerName)
     {
         CLayer* layer = FindLayer(layerName);
@@ -1021,17 +1046,17 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    static boost::python::tuple PyGetLayerBrushColor(const char* layerName)
+    static AZ::Color PyGetLayerBrushColor(const char* layerName)
     {
         CLayer* layer = FindLayer(layerName);
 
         if (layer)
         {
-            ColorF color = layer->GetLayerFilterColor();
-            return boost::python::make_tuple(color.r, color.g, color.b);
+            ColorF col = layer->GetLayerFilterColor();
+            return AZ::Color{col.r, col.g, col.b, col.a};
         }
 
-        return boost::python::make_tuple(0.0f, 0.0f, 0.0f);
+        return AZ::Color{0.0f, 0.0f, 0.0f, 1.0f};
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1314,55 +1339,45 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushRadius, terrain, get_layer_painter_brush_radius, 
-    "Get the terrain layer painter brush radius.", "terrain.get_layer_painter_brush_radius()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushRadius, terrain, set_layer_painter_brush_radius,
-    "Set the terrain layer painter brush radius.", "terrain.set_layer_painter_brush_radius(float radius)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushColorHardness, terrain, get_layer_painter_brush_color_opacity,
-    "Get the terrain layer painter brush color opacity.", "terrain.get_layer_painter_brush_color_opacity()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushColorHardness, terrain, set_layer_painter_brush_color_opacity,
-    "Set the terrain layer painter brush color opacity.", "terrain.set_layer_painter_brush_color_opacity(float opacity)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushDetailHardness, terrain, get_layer_painter_brush_detail_intensity,
-    "Get the terrain layer painter brush detail intensity.", "terrain.get_layer_painter_brush_detail_intensity()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushDetailHardness, terrain, set_layer_painter_brush_detail_intensity,
-    "Set the terrain layer painter brush detail intensity.", "terrain.set_layer_painter_brush_detail_intensity(float intensity)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushMaskByLayerSettings, terrain, get_layer_painter_brush_mask_by_layer_settings,
-    "Get the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.get_layer_painter_brush_mask_by_layer_settings()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushMaskByLayerSettings, terrain, set_layer_painter_brush_mask_by_layer_settings,
-    "Set the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.set_layer_painter_brush_mask_by_layer_settings(bool enable)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushMaskLayer, terrain, get_layer_painter_brush_mask_layer_name,
-    "Get the terrain layer painter brush 'mask by layer' layer name.", "terrain.get_layer_painter_brush_mask_layer_name()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushMaskLayer, terrain, set_layer_painter_brush_mask_layer_name,
-    "Set the terrain layer painter brush 'mask by layer' layer name.", "terrain.set_layer_painter_brush_mask_layer_name(string layer)");
+void AzToolsFramework::TerrainPainterPythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+{
+    if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+    {
+        auto addLegacyTerrain = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+        {
+            methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "legacy.terrain_painter"); // this will put these methods into the 'azlmbr.legacy.terrain_painter' module
+        };
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetLayerBrushColor, terrain, get_layer_brush_color,
-    "Get the specific terrain layer's brush color.", "terrain.get_layer_brush_color(string layer)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetLayerBrushColor, terrain, set_layer_brush_color,
-    "Set the specific terrain layer's brush color.", "terrain.set_layer_brush_color(string layer, float red, float green, float blue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetLayerBrushColorBrightness, terrain, get_layer_brush_color_brightness,
-    "Get the specific terrain layer's brush color brightness setting.", "terrain.get_layer_brush_color_brightness(string layer)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetLayerBrushColorBrightness, terrain, set_layer_brush_color_brightness,
-    "Set the specific terrain layer's brush color brightness setting.", "terrain.set_layer_brush_color_brightness(string layer, float brightness)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyPaintLayer, terrain, paint_layer,
-    "Paint the terrain using the brush settings from the given layer and the terrain layer painter.", 
-    "terrain.paint_layer(string layer, float center_x, float center_y, float center_z, bool flood_fill)");
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMinAltitude, terrain, get_layer_min_altitude,
-    "Returns the min altitude.", "terrain.get_layer_min_altitude(string layer_name)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMaxAltitude, terrain, get_layer_max_altitude,
-    "Returns the max altitude.", "terrain.get_layer_max_altitude(string layer_name)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMinAltitude, terrain, set_layer_min_altitude,
-    "Sets the min altitude.", "terrain.set_layer_min_altitude(string layer_name, float min_altitude)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMaxAltitude, terrain, set_layer_max_altitude,
-    "Sets the max altitude.", "terrain.set_layer_max_altitude(string layer_name, float max_altitude)");
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMinSlope, terrain, get_layer_min_slope,
-    "Returns the min slope.", "terrain.get_layer_min_slope(string layer_name)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMaxSlope, terrain, get_layer_max_slope,
-    "Returns the max slope.", "terrain.get_layer_max_slope(string layer_name)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMinSlope, terrain, set_layer_min_slope,
-    "Sets the min slope.", "terrain.set_layer_min_slope(string layer_name, float min_slope)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMaxSlope, terrain, set_layer_max_slope,
-    "Sets the max slope.", "terrain.set_layer_max_slope(string layer_name, float max_slope)");
+        addLegacyTerrain(behaviorContext->Method("get_layer_painter_brush_radius", CTerrainTexturePainterBindings::PyGetBrushRadius, nullptr, "Get the terrain layer painter brush radius."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_painter_brush_radius", CTerrainTexturePainterBindings::PySetBrushRadius, nullptr, "Set the terrain layer painter brush radius."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_painter_brush_color_opacity", CTerrainTexturePainterBindings::PyGetBrushColorHardness, nullptr, "Get the terrain layer painter brush color opacity."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_painter_brush_color_opacity", CTerrainTexturePainterBindings::PySetBrushColorHardness, nullptr, "Set the terrain layer painter brush color opacity."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_painter_brush_detail_intensity", CTerrainTexturePainterBindings::PyGetBrushDetailHardness, nullptr, "Get the terrain layer painter brush detail intensity."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_painter_brush_detail_intensity", CTerrainTexturePainterBindings::PySetBrushDetailHardness, nullptr, "Set the terrain layer painter brush detail intensity."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_painter_brush_mask_by_layer_settings", CTerrainTexturePainterBindings::PyGetBrushMaskByLayerSettings, nullptr, "Get the terrain layer painter brush setting for masking by layer settings (altitude, slope)."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_painter_brush_mask_by_layer_settings", CTerrainTexturePainterBindings::PySetBrushMaskByLayerSettings, nullptr, "Set the terrain layer painter brush setting for masking by layer settings (altitude, slope)."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_painter_brush_mask_layer_name", CTerrainTexturePainterBindings::PyGetBrushMaskLayer, nullptr, "Get the terrain layer painter brush 'mask by layer' layer name."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_painter_brush_mask_layer_name", CTerrainTexturePainterBindings::PySetBrushMaskLayer, nullptr, "Set the terrain layer painter brush 'mask by layer' layer name."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_brush_color", CTerrainTexturePainterBindings::PyGetLayerBrushColor, nullptr, "Get the specific terrain layer's brush color."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_brush_color", CTerrainTexturePainterBindings::PySetLayerBrushColor, nullptr, "Set the specific terrain layer's brush color."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_brush_color_brightness", CTerrainTexturePainterBindings::PyGetLayerBrushColorBrightness, nullptr, "Get the specific terrain layer's brush color brightness setting."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_brush_color_brightness", CTerrainTexturePainterBindings::PySetLayerBrushColorBrightness, nullptr, "Set the specific terrain layer's brush color brightness setting."));
+        addLegacyTerrain(behaviorContext->Method("paint_layer", CTerrainTexturePainterBindings::PyPaintLayer, nullptr, "Paint the terrain using the brush settings from the given layer and the terrain layer painter."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_min_altitude", CTerrainTexturePainterBindings::PyGetMinAltitude, nullptr, "Returns the min altitude."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_max_altitude", CTerrainTexturePainterBindings::PyGetMaxAltitude, nullptr, "Returns the max altitude."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_min_altitude", CTerrainTexturePainterBindings::PySetMinAltitude, nullptr, "Sets the min altitude."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_max_altitude", CTerrainTexturePainterBindings::PySetMaxAltitude, nullptr, "Sets the max altitude."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_min_slope", CTerrainTexturePainterBindings::PyGetMinSlope, nullptr, "Returns the min slope."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_max_slope", CTerrainTexturePainterBindings::PyGetMaxSlope, nullptr, "Returns the max slope."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_min_slope", CTerrainTexturePainterBindings::PySetMinSlope, nullptr, "Sets the min slope."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_max_slope", CTerrainTexturePainterBindings::PySetMaxSlope, nullptr, "Sets the max slope."));
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 
 #include <TerrainTexturePainter.moc>

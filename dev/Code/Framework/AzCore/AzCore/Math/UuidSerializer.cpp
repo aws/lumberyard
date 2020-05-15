@@ -21,6 +21,12 @@ namespace AZ
 {
     AZ_CLASS_ALLOCATOR_IMPL(JsonUuidSerializer, SystemAllocator, 0);
 
+    JsonUuidSerializer::MessageResult::MessageResult(AZStd::string_view message, JsonSerializationResult::ResultCode result)
+        : m_message(message)
+        , m_result(result)
+    {
+    }
+
     JsonUuidSerializer::JsonUuidSerializer()
     {
         m_uuidFormat = AZStd::regex(R"(\{[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\})",
@@ -30,7 +36,13 @@ namespace AZ
     JsonSerializationResult::Result JsonUuidSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
         const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
     {
-        using namespace JsonSerializationResult;
+        MessageResult result = UnreportedLoad(outputValue, outputValueTypeId, inputValue);
+        return JsonSerializationResult::Result(settings, result.m_message, result.m_result, path);
+    }
+
+    JsonUuidSerializer::MessageResult JsonUuidSerializer::UnreportedLoad(void* outputValue, const Uuid& outputValueTypeId,
+        const rapidjson::Value& inputValue)
+    {
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Uuid>() == outputValueTypeId,
@@ -49,8 +61,8 @@ namespace AZ
         case rapidjson::kTrueType:  // fallthrough
         case rapidjson::kNumberType:// fallthrough
         case rapidjson::kNullType:
-            return JSR::Result(settings, "Unsupported type. Uuids can only be read from strings.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return MessageResult("Unsupported type. Uuids can only be read from strings.",
+                JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported));
 
         case rapidjson::kStringType:
         {
@@ -62,28 +74,36 @@ namespace AZ
                 AZ::Uuid temp = Uuid::CreateString(uuidMatch[0].first, stringLength);
                 if (temp.IsNull())
                 {
-                    return JSR::Result(settings, "Failed to create uuid from string.",
-                        Tasks::ReadField, Outcomes::Unsupported, path);
+                    return MessageResult("Failed to create uuid from string.",
+                        JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported));
                 }
                 *valAsUuid = temp;
-                return JSR::Result(settings, "Successfully read uuid.", ResultCode::Success(Tasks::ReadField), path);
+                return MessageResult("Successfully read uuid.", JSR::ResultCode::Success(JSR::Tasks::ReadField));
             }
             else
             {
-                return JSR::Result(settings, "No part of the string could be interpreted as a uuid.", Tasks::ReadField, Outcomes::Unsupported, path);
+                return MessageResult("No part of the string could be interpreted as a uuid.",
+                    JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported));
             }
         }
 
         default:
-            return JSR::Result(settings, "Unknown json type encountered in Uuid.", Tasks::ReadField, Outcomes::Unknown, path);
+            return MessageResult("Unknown json type encountered in Uuid.", JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unknown));
         }
     }
 
     JsonSerializationResult::Result JsonUuidSerializer::Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-        const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
+        const void* inputValue, const void* defaultValue, const Uuid& valueTypeId,
         StackedString& path, const JsonSerializerSettings& settings)
     {
-        using namespace JsonSerializationResult;
+        MessageResult result = UnreportedStore(outputValue, allocator, inputValue, defaultValue, valueTypeId, settings);
+        return JsonSerializationResult::Result(settings, result.m_message, result.m_result, path);
+    }
+
+    JsonUuidSerializer::MessageResult JsonUuidSerializer::UnreportedStore(rapidjson::Value& outputValue,
+        rapidjson::Document::AllocatorType& allocator, const void* inputValue, const void* defaultValue,
+        const Uuid& valueTypeId, const JsonSerializerSettings& settings)
+    {
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Uuid>() == valueTypeId, "Unable to serialize Uuid to json because the provided type is %s",
@@ -95,9 +115,9 @@ namespace AZ
         {
             AZStd::string valAsString = valAsUuid.ToString<AZStd::string>();
             outputValue.SetString(valAsString.c_str(), aznumeric_caster(valAsString.length()), allocator);
-            return JSR::Result(settings, "Uuid successfully stored", ResultCode::Success(Tasks::WriteValue), path);
+            return MessageResult("Uuid successfully stored.", JSR::ResultCode::Success(JSR::Tasks::WriteValue));
         }
         
-        return JSR::Result(settings, "Default Uuid used.", ResultCode::Default(Tasks::WriteValue), path);
+        return MessageResult("Default Uuid used.", JSR::ResultCode::Default(JSR::Tasks::WriteValue));
     }
 } // namespace AZ

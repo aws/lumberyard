@@ -353,7 +353,7 @@ namespace MaterialBuilder
         builderDescriptor.m_name = "MaterialBuilderWorker";
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.mtl", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = MaterialBuilderWorker::GetUUID();
-        builderDescriptor.m_version = 3;
+        builderDescriptor.m_version = 4;
         builderDescriptor.m_createJobFunction = AZStd::bind(&MaterialBuilderWorker::CreateJobs, &m_materialBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&MaterialBuilderWorker::ProcessJob, &m_materialBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
 

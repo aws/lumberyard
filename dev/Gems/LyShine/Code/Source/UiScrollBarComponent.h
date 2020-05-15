@@ -36,6 +36,10 @@ public: // member functions
     UiScrollBarComponent();
     ~UiScrollBarComponent() override;
 
+    //UiInteractableComponent
+    void Update(float deltaTime) override;
+    //~UiInteractableComponent
+
     // UiScrollBarInterface
     float GetHandleSize() override;
     void SetHandleSize(float size) override;
@@ -43,6 +47,12 @@ public: // member functions
     void SetMinHandlePixelSize(float size) override;
     AZ::EntityId GetHandleEntity() override;
     void SetHandleEntity(AZ::EntityId entityId) override;
+    bool IsAutoFadeEnabled() override;
+    void SetAutoFadeEnabled(bool isAutoFadeEnabled) override;
+    float GetAutoFadeDelay() override;
+    void SetAutoFadeDelay(float delay) override;
+    float GetAutoFadeSpeed() override;
+    void SetAutoFadeSpeed(float speed) override;
     // ~UiScrollBarInterface
 
     // UiScrollerInterface
@@ -159,8 +169,10 @@ private: // member functions
 
     void ResetDragInfo();
 
-private: // data
+    void SetImageComponentsAlpha(float fade);
+    void ResetFade();
 
+private: // data
     float m_value;
     float m_handleSize;
     float m_minHandlePixelSize;
@@ -176,6 +188,16 @@ private: // data
     bool m_pressedOnHandle;
     float m_lastMoveTime;
     float m_moveDelayTime;
+
+    bool m_isAutoFadeEnabled = false;
+    bool m_isFading = false;
+    float m_fadeSpeed = 1.0f;
+    float m_inactiveSecondsBeforeFade = 1.0f;
+    float m_secondsRemainingBeforeFade = 1.0f;
+    float m_initialScrollBarAlpha = 1.0f;
+    float m_initialHandleAlpha = 1.0f;
+    float m_currFade = 1.0f;
+
 
     AZ::Vector2 m_lastDragPoint; // the point of the last drag
 

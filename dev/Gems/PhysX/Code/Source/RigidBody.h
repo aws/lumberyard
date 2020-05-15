@@ -34,6 +34,7 @@ namespace PhysX
 
         RigidBody() = default;
         RigidBody(const Physics::RigidBodyConfiguration& configuration);
+        ~RigidBody();
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -250,7 +250,7 @@ def check_python_headers(conf):
 	vals = ['%s = %r' % (x, y) for (x, y) in zip(v, lst)]
 	conf.to_log("Configuration returned from %r:\n%r\n" % (pybin, '\n'.join(vals)))
 
-	dct = dict(zip(v, lst))
+	dct = dict(list(zip(v, lst)))
 	x = 'MACOSX_DEPLOYMENT_TARGET'
 	if dct[x]:
 		conf.env[x] = conf.environ[x] = dct[x]

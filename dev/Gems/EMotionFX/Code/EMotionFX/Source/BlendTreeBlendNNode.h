@@ -126,6 +126,7 @@ namespace EMotionFX
 
         void UpdateParamWeights();
         void SetParamWeightsEquallyDistributed(float min, float max);
+        const AZStd::vector<BlendNParamWeight>& GetParamWeights();
 
         static const char* GetPoseInputPortName(AZ::u32 portId);
 

@@ -28,7 +28,7 @@
 
 #include "Util/GeometryUtil.h"
 #include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
-
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 static const int maxForbiddenNameLen = 1024;
 
@@ -414,7 +414,11 @@ bool CNavigation::ValidateBigObstacles()
 
     float   trhSize(m_cvBigBrushLimitSize->GetFVal());
     Vec3 min, max;
-    float fTSize = (float) m_pSystem->GetI3DEngine()->GetTerrainSize();
+
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const float fTSize = terrainAabb.GetWidth();
+
     AILogProgress(" Checking for big obstacles out of forbidden areas. Terrain size = %.0f", fTSize);
 
     min.Set(0, 0, -5000);
@@ -2046,12 +2050,13 @@ void CNavigation::ParseIntoFile(CGraph* pGraph, bool bForbidden)
     }
 
     // Get the vertex/obstacle radius from vegetation data for soft cover objects.
-    I3DEngine* p3DEngine = m_pSystem->GetI3DEngine();
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
     for (int i = 0; i < GetVertexList().GetSize(); ++i)
     {
         ObstacleData&   vert = GetVertexList().ModifyVertex(i);
         Vec3 vPos = vert.vPos;
-        vPos.z = p3DEngine->GetTerrainElevation(vPos.x, vPos.y);
+        vPos.z = terrain ? terrain->GetHeightFromFloats(vPos.x, vPos.y) : defaultTerrainHeight;
 
         Vec3 bboxsize(1.f, 1.f, 1.f);
         IPhysicalEntity* pPhys = 0;
@@ -2148,16 +2153,21 @@ void CNavigation::AddBeachPointsToTriangulator(const AABB& worldAABB)
     static float criticalDepth = 0.1f;
     static float criticalDeepDepth = 5.0f;
     static unsigned delta = 4;
-    I3DEngine* pEngine = m_pSystem->GetI3DEngine();
 
-    int terrainArraySize = pEngine->GetTerrainSize();
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
+    const AZ::Aabb terrainAabb = terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    const int terrainArraySizeX = static_cast<int>(terrainAabb.GetWidth());
+    const int terrainArraySizeY = static_cast<int>(terrainAabb.GetHeight());
     unsigned edge = 16;
 
-    Limit(terrainMinX, 0, terrainArraySize);
-    Limit(terrainMinY, 0, terrainArraySize);
-    Limit(terrainMaxX, 0, terrainArraySize);
-    Limit(terrainMaxY, 0, terrainArraySize);
+    Limit(terrainMinX, 0, terrainArraySizeX);
+    Limit(terrainMinY, 0, terrainArraySizeY);
+    Limit(terrainMaxX, 0, terrainArraySizeX);
+    Limit(terrainMaxY, 0, terrainArraySizeY);
 
+    I3DEngine* pEngine = m_pSystem->GetI3DEngine();
     for (int ix = terrainMinX; ix + delta < terrainMaxX; ix += delta)
     {
         for (int iy = terrainMinY; iy + delta < terrainMaxY; iy += delta)
@@ -2165,9 +2175,18 @@ void CNavigation::AddBeachPointsToTriangulator(const AABB& worldAABB)
             Vec3 v00(ix, iy, 0.0f);
             Vec3 v10(ix + delta, iy, 0.0f);
             Vec3 v01(ix, iy + delta, 0.0f);
-            v00.z = pEngine->GetTerrainElevation(v00.x, v00.y);
-            v10.z = pEngine->GetTerrainElevation(v10.x, v00.y);
-            v01.z = pEngine->GetTerrainElevation(v01.x, v00.y);
+            if (terrain)
+            {
+                v00.z = terrain->GetHeightFromFloats(v00.x, v00.y);
+                v10.z = terrain->GetHeightFromFloats(v10.x, v00.y);
+                v01.z = terrain->GetHeightFromFloats(v01.x, v00.y);
+            }
+            else
+            {
+                v00.z = defaultTerrainHeight;
+                v10.z = defaultTerrainHeight;
+                v01.z = defaultTerrainHeight;
+            }
             float water00Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v00) : pEngine->GetWaterLevel(&v00);
             float water10Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v10) : pEngine->GetWaterLevel(&v10);
             float water01Z = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v01) : pEngine->GetWaterLevel(&v01);
@@ -2200,7 +2219,7 @@ void CNavigation::AddBeachPointsToTriangulator(const AABB& worldAABB)
         for (unsigned iy = terrainMinY; iy + waterDelta < terrainMaxY; iy += waterDelta)
         {
             Vec3 v(ix, iy, 0.0f);
-            v.z = pEngine->GetTerrainElevation(v.x, v.y);
+            v.z = terrain ? terrain->GetHeightFromFloats(v.x, v.y) : defaultTerrainHeight;
             float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(v) : pEngine->GetWaterLevel(&v);
             float depth = waterZ - v.z;
             if (depth > criticalDeepDepth)
@@ -2279,8 +2298,11 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
 
     GetVertexList().Clear();
 
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     Vec3 min, max;
-    float fTSize = (float) m_pSystem->GetI3DEngine()->GetTerrainSize();
+    const AZ::Aabb terrainAabb = terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    const float fTSize = terrainAabb.GetWidth();
     AILogProgress(" Triangulation started. Terrain size = %.0f", fTSize);
 
     min.Set(0, 0, -5000);
@@ -2317,7 +2339,6 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         return;
     }
 
-    I3DEngine* pEngine = m_pSystem->GetI3DEngine();
     int vertexCounter(0);
 
     for (int i = 0; i < count; ++i)
@@ -2360,7 +2381,8 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         }
 
         // if too flat and too close to the terrain
-        float zpos = pEngine->GetTerrainElevation(obstaclePos.x, obstaclePos.y);
+        const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        float zpos = terrain ? terrain->GetHeightFromFloats(obstaclePos.x, obstaclePos.y) : defaultTerrainHeight;
         float ftop = status.pos.z + status.BBox[1].z;
 
         if (zpos > ftop)  // skip underground stuff
@@ -2411,6 +2433,7 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         }
 
         // don't triangulate objects that your feet wouldn't touch when walking in water
+        I3DEngine* pEngine = m_pSystem->GetI3DEngine();
         float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(obstaclePos) : pEngine->GetWaterLevel(&obstaclePos, 0);
         if (ftop < (waterZ - 1.5f))
         {
@@ -2704,15 +2727,18 @@ bool CNavigation::CalculateForbiddenAreas()
     // get all the objects that need code-generated forbidden areas
     std::vector<Sphere> extraObjects;
 
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     Vec3 min, max;
-    float fTSize = (float) m_pSystem->GetI3DEngine()->GetTerrainSize();
+    const AZ::Aabb terrainAabb = terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    const float fTSize = terrainAabb.GetWidth();
     min.Set(0, 0, -5000);
     max.Set(fTSize, fTSize, 5000.0f);
 
     IPhysicalEntity** pObstacles;
     int count = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(min, max, pObstacles, ent_static | ent_ignore_noncolliding);
 
-    I3DEngine* pEngine = m_pSystem->GetI3DEngine();
 
     CAIShapeContainer extraAreas;
 
@@ -2823,7 +2849,8 @@ bool CNavigation::CalculateForbiddenAreas()
                                 // use the terrain z at the edge mid-point. This means that duplicate edges (from the adjacent triangle)
                                 // will be eliminated at the end
                                 Vec3 midPt = 0.5f * (v0 + v1);
-                                float terrainZ = pEngine->GetTerrainElevation(midPt.x, midPt.y);
+
+                                float terrainZ = terrain ? terrain->GetHeightFromFloats(midPt.x, midPt.y) : defaultTerrainHeight;
                                 // if within range add v0 and up to 2 clip points. v1 might get added on the next edge
                                 if (v0.z > terrainZ + criticalMinAlt && v0.z < terrainZ + criticalMaxAlt)
                                 {
@@ -2872,7 +2899,7 @@ bool CNavigation::CalculateForbiddenAreas()
                                     // use the terrain z at the edge mid-point. This means that duplicate edges (from the adjacent triangle)
                                     // will be eliminated at the end
                                     Vec3 midPt = 0.5f * (v0 + v1);
-                                    float terrainZ = pEngine->GetTerrainElevation(midPt.x, midPt.y);
+                                    float terrainZ = terrain ? terrain->GetHeightFromFloats(midPt.x, midPt.y) : 0.0f;
                                     // if within range add v0 and up to 2 clip points. v1 might get added on the next edge
                                     if (v0.z > terrainZ + criticalMinAlt && v0.z < terrainZ + criticalMaxAlt)
                                     {
@@ -2899,7 +2926,7 @@ bool CNavigation::CalculateForbiddenAreas()
                         {
                             const primitives::sphere* sphere = static_cast<const primitives::sphere*>(prim);
                             Vec3 center = partPos + sphere->center;
-                            float terrainZ = pEngine->GetTerrainElevation(center.x, center.y);
+                            float terrainZ = terrain ? terrain->GetHeightFromFloats(center.x, center.y) : defaultTerrainHeight;
                             float top = center.z + sphere->r;
                             float bot = center.z - sphere->r;
                             if (top > terrainZ && bot < terrainZ + criticalMaxAlt)
@@ -2929,7 +2956,7 @@ bool CNavigation::CalculateForbiddenAreas()
                             vertices.reserve(nPts * 2);
                             for (unsigned iC = 0; iC != 2; ++iC)
                             {
-                                float terrainZ = pEngine->GetTerrainElevation(pts[iC].x, pts[iC].y);
+                                float terrainZ = terrain ? terrain->GetHeightFromFloats(pts[iC].x, pts[iC].y) : defaultTerrainHeight;
                                 float top = pts[iC].z + capsule->r;
                                 float bot = pts[iC].z - capsule->r;
                                 if (top > terrainZ && bot < terrainZ + criticalMaxAlt)
@@ -3336,7 +3363,7 @@ bool CNavigation::CombineForbiddenAreas(CAIShapeContainer& areasContainer)
     }
 
     unsigned unionCounter = 0;
-    I3DEngine* pEngine = m_pSystem->GetI3DEngine();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
 
     while (!areas.empty())
     {
@@ -3470,7 +3497,7 @@ bool CNavigation::CombineForbiddenAreas(CAIShapeContainer& areasContainer)
                     }
 
                     Vec3 pt(pPts[iPt].x + offset.x, pPts[iPt].y + offset.y, 0.0f);
-                    pt.z = pEngine->GetTerrainElevation(pt.x, pt.y);
+                    pt.z = terrain ? terrain->GetHeightFromFloats(pt.x, pt.y) : 0.0f;
                     newPts[iPt] = pt;
                     combinedTotalAABB.Add(pt);
                 }
@@ -4225,7 +4252,7 @@ static void GetIntermediatePosition(Vec3& ptOut,
 void CNavigation::CalculateLinkProperties()
 {
     CGraph* pGraph = GetGraph();
-    I3DEngine* p3DEngine = m_pSystem->GetI3DEngine();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
 
     /// keep track of all tri-tri links that we've calculated so we can avoid doing
     /// reciprocal calculations
@@ -4243,7 +4270,7 @@ void CNavigation::CalculateLinkProperties()
             for (unsigned iVert = 0; iVert < pCurrent->GetTriangularNavData()->vertices.size(); ++iVert)
             {
                 ObstacleData& od = GetVertexList().ModifyVertex(pCurrent->GetTriangularNavData()->vertices[iVert]);
-                od.vPos.z = p3DEngine->GetTerrainElevation(od.vPos.x, od.vPos.y);
+                od.vPos.z = terrain ? terrain->GetHeightFromFloats(od.vPos.x, od.vPos.y) : 0.0f;
             }
 
             // find max passing radius between this node and all neighboors
@@ -4289,7 +4316,7 @@ void CNavigation::CalculateLinkProperties()
                                         if (IsPathForbidden(pNextNode->GetPos(), pCurrent->GetPos()))
                                         {
                                             pGraph->GetLinkManager().SetRadius(incomingLink, -1.0f);
-                                            pGraph->GetLinkManager().GetEdgeCenter(incomingLink).z = p3DEngine->GetTerrainElevation(pGraph->GetLinkManager().GetEdgeCenter(incomingLink).x, pGraph->GetLinkManager().GetEdgeCenter(incomingLink).y);
+                                            pGraph->GetLinkManager().GetEdgeCenter(incomingLink).z = terrain ? terrain->GetHeightFromFloats(pGraph->GetLinkManager().GetEdgeCenter(incomingLink).x, pGraph->GetLinkManager().GetEdgeCenter(incomingLink).y) : 0.0f;
                                         }
                                         else
                                         {
@@ -4399,6 +4426,8 @@ void CNavigation::CalculateLinkWater(CGraphNodeManager& nodeManager, CGraphLinkM
     }
 
     I3DEngine* p3DEngine = m_pSystem->GetI3DEngine();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     static const float interval = 2.0f;
     float dist = (otherPos - nodePos).GetLength();
     int numPts = 1 + (int) (dist / interval);
@@ -4412,7 +4441,7 @@ void CNavigation::CalculateLinkWater(CGraphNodeManager& nodeManager, CGraphLinkM
         float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : p3DEngine->GetWaterLevel(&pt);
         if (waterLevel != WATER_LEVEL_UNKNOWN)
         {
-            float terrainZ = p3DEngine->GetTerrainElevation(pt.x, pt.y);
+            float terrainZ = terrain ? terrain->GetHeightFromFloats(pt.x, pt.y) : 0.0f;
             float depth = waterLevel - terrainZ;
             if (depth > linkManager.GetMaxWaterDepth(link))
             {
@@ -4490,7 +4519,8 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
         return;
     }
 
-    I3DEngine* p3DEngine = m_pSystem->GetI3DEngine();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     unsigned nextNodeIndex = linkManager.GetNextNode(link);
     GraphNode* pNextNode = nodeManager.GetNode(nextNodeIndex);
     if (IsPathForbidden(pNode->GetPos(), pNextNode->GetPos()))
@@ -4503,8 +4533,8 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
         ObstacleData& obEnd   = GetVertexList().ModifyVertex(pNode->GetTriangularNavData()->vertices[linkManager.GetEndIndex(link)]);
         Vec3 vStart = obStart.vPos;
         Vec3 vEnd = obEnd.vPos;
-        vStart.z = p3DEngine->GetTerrainElevation(vStart.x, vStart.y);
-        vEnd.z = p3DEngine->GetTerrainElevation(vEnd.x, vEnd.y);
+        vStart.z = terrain ? terrain->GetHeightFromFloats(vStart.x, vStart.y) : 0.0f;
+        vEnd.z = terrain ? terrain->GetHeightFromFloats(vEnd.x, vEnd.y) : 0.0f;
 
         Vec3 bboxsize(1.f, 1.f, 1.f);
         IPhysicalEntity* pEndPhys = 0;
@@ -4684,7 +4714,7 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
         }
     }
     Vec3 vEdgeCenter = linkManager.GetEdgeCenter(link);
-    vEdgeCenter.z = p3DEngine->GetTerrainElevation(linkManager.GetEdgeCenter(link).x, linkManager.GetEdgeCenter(link).y);
+    vEdgeCenter.z = terrain ? terrain->GetHeightFromFloats(linkManager.GetEdgeCenter(link).x, linkManager.GetEdgeCenter(link).y) : 0.0f;
     linkManager.SetEdgeCenter(link, vEdgeCenter);
 }
 
@@ -4694,7 +4724,7 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
 void CNavigation::CalculateNoncollidableLinks()
 {
     CGraph* pGraph = GetGraph();
-    I3DEngine* p3DEngine = m_pSystem->GetI3DEngine();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
     CAllNodesContainer& allNodes = pGraph->GetAllNodes();
     CAllNodesContainer::Iterator it(allNodes, IAISystem::NAV_TRIANGULAR);
     while (unsigned currentNodeIndex = it.Increment())
@@ -4741,7 +4771,7 @@ void CNavigation::CalculateNoncollidableLinks()
                 }
                 Vec3 newStart = origEnd - dir * newDist;
                 pGraph->GetLinkManager().GetEdgeCenter(link) = 0.5f * (origEnd + newStart); // TODO: Don't set shared member twice
-                pGraph->GetLinkManager().GetEdgeCenter(link).z = p3DEngine->GetTerrainElevation(pGraph->GetLinkManager().GetEdgeCenter(link).x, pGraph->GetLinkManager().GetEdgeCenter(link).y);
+                pGraph->GetLinkManager().GetEdgeCenter(link).z = terrain ? terrain->GetHeightFromFloats(pGraph->GetLinkManager().GetEdgeCenter(link).x, pGraph->GetLinkManager().GetEdgeCenter(link).y) : 0.0f;
                 pGraph->GetLinkManager().SetRadius(link, newDist * 0.5f);
             }
             else if (!obEnd.IsCollidable())
@@ -4761,7 +4791,7 @@ void CNavigation::CalculateNoncollidableLinks()
                 }
                 Vec3 newEnd = origStart + dir * newDist;
                 pGraph->GetLinkManager().GetEdgeCenter(link) = 0.5f * (origStart + newEnd);
-                pGraph->GetLinkManager().GetEdgeCenter(link).z = p3DEngine->GetTerrainElevation(pGraph->GetLinkManager().GetEdgeCenter(link).x, pGraph->GetLinkManager().GetEdgeCenter(link).y);
+                pGraph->GetLinkManager().GetEdgeCenter(link).z = terrain ? terrain->GetHeightFromFloats(pGraph->GetLinkManager().GetEdgeCenter(link).x, pGraph->GetLinkManager().GetEdgeCenter(link).y) : 0.0f;
                 pGraph->GetLinkManager().SetRadius(link, newDist * 0.5f);
             }
         }
@@ -5090,7 +5120,10 @@ void CNavigation::GenerateFlightNavigation(const char* szLevel, const char* szMi
         Vec3 min, max;
         IPhysicalEntity**   pObstacles = 0;
         int obstacleCount = 0;
-        float fTSize = (float) m_pSystem->GetI3DEngine()->GetTerrainSize();
+
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        const float fTSize = terrainAabb.GetWidth();
 
         min.Set(0, 0, -100000);
         max.Set(fTSize, fTSize, 100000);

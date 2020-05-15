@@ -261,7 +261,7 @@ namespace UnitTest
 #define AZ_TEST_ASSERT_CLOSE(_exp, _value, _eps) EXPECT_NEAR((double)_exp, (double)_value, (double)_eps)
 #define AZ_TEST_ASSERT_FLOAT_CLOSE(_exp, _value) EXPECT_NEAR(_exp, _value, 0.002f)
 
-#define AZ_TEST_STATIC_ASSERT(_Exp)                         AZ_STATIC_ASSERT(_Exp, "Test Static Assert")
+#define AZ_TEST_STATIC_ASSERT(_Exp)                         static_assert(_Exp, "Test Static Assert")
 #ifdef AZ_ENABLE_TRACING
 /*
  * The AZ_TEST_START_ASSERTTEST and AZ_TEST_STOP_ASSERTTEST macros have been deprecated and will be removed in a future Lumberyard release.

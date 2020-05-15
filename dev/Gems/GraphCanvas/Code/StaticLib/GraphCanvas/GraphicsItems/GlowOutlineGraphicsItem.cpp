@@ -95,7 +95,7 @@ namespace GraphCanvas
         {
             // Matching with my previous magic formula. I want half of the current steps as
             // the zoom level. So instead of dividing 1 by the value, I want to divide 0.5f by the zoom value.
-            scaledZoomLevel = 0.5f / zoomLevel;
+            scaledZoomLevel = aznumeric_cast<float>(0.5f / zoomLevel);
         }
 
         // We never want to scale down. So always set ourselves to 1 if we would be otherwise
@@ -103,7 +103,7 @@ namespace GraphCanvas
 
         QPen currentPen = pen();
 
-        currentPen.setWidth(m_defaultPenWidth * scaleFactor);
+        currentPen.setWidth(aznumeric_cast<int>(m_defaultPenWidth * scaleFactor));
 
         setPen(currentPen);
     }

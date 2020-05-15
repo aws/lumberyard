@@ -2,7 +2,7 @@
     "name": "benchmark",
     "source": "@3P:benchmark@",
     "description": "Google benchmark library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [

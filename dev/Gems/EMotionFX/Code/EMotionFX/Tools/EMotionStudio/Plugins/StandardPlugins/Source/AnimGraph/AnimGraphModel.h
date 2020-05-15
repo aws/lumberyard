@@ -135,7 +135,7 @@ namespace EMStudio
         // The focused element is an element that multiple UIs use to locate an element. For example, the BlendGraphViewWidget
         // will show the parent node in the view and center the view on that element. The NavigationWidget will scroll to such
         // element. Note that this does not affect selection, however the element in question could be selected.
-        void Focus(const QModelIndex& focusIndex = QModelIndex());
+        void Focus(const QModelIndex& focusIndex = QModelIndex(), bool forceEmitFocusChangeEvent = false);
 
         // Finds all the model indexes that are linked to this animGraphObject. Multiple reference nodes could be referencing
         // the same anim graph. Therefore, there could be multiple model indices.
@@ -158,6 +158,8 @@ namespace EMStudio
         QModelIndex GetFocus() const { return m_focus; }
         QModelIndex GetParentFocus() const { return m_parentFocus; }
         EMotionFX::AnimGraph* GetFocusedAnimGraph() const;
+        // This function will search up to the top level, thus make sure it's not a reference graph but the parent graph. 
+        EMotionFX::AnimGraph* FindRootAnimGraph(const QModelIndex& modelIndex) const;
 
         bool CheckAnySelectedNodeBelongsToReferenceGraph() const;
 
@@ -165,6 +167,11 @@ namespace EMStudio
         void SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
 
     signals:
+        // Emitted when model index about to be removed. We aren't using the QT rowsAboutToBeRemoved signal because our anim graph model doesn't behave the same way
+        // QT expected. By the time BeginRemoveRow happen in our system, the underlying model item is already been deleted. We create our custom signal in order to
+        // properly inform our widget.
+        void AboutToBeRemovedSignal(const QModelIndex& parent, int first, int last);
+
         // Emitted when focus has changed. Index is the element we are focusing on. IndexContainer is the index of a potential
         // parent. UIs use the indexContainer to dive into that node/graph. Is possible that index is the same as indexContainer
         // for the cases where index is a container at the same time. If they are not the same, indexContainer will be the first
@@ -333,8 +340,9 @@ namespace EMStudio
         ANIMGRAPHMODEL_CALLBACK(CommandDidRemoveConnectionCallback);
         ANIMGRAPHMODEL_CALLBACK(CommandDidAdjustConnectionCallback);
 
-        ANIMGRAPHMODEL_CALLBACK(CommandDidAddConditionCallback);
-        ANIMGRAPHMODEL_CALLBACK(CommandDidRemoveConditionCallback);
+        static bool CommandDidConditionChangeCallbackHelper(AnimGraphModel& animGraphModel, MCore::Command* command);
+        ANIMGRAPHMODEL_CALLBACK(CommandDidAddRemoveConditionCallback);
+        ANIMGRAPHMODEL_CALLBACK(CommandDidAdjustConditionCallback);
 
         ANIMGRAPHMODEL_CALLBACK(CommandDidEditActionCallback);
 

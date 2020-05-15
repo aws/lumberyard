@@ -35,7 +35,6 @@ def build(bld):
                                    'AWS_CPP_SDK_CORE'],
         includes                = ['.',
                                    './PCH',
-                                   bld.ThirdPartyPath('boost'),
                                    bld.Path('Code/CryEngine/CryCommon'),
                                    bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                    bld.ThirdPartyPath('mikkt'),
@@ -58,7 +57,7 @@ def build(bld):
         darwin_defines                  = [ 'LY_IGNORE_METRICS' ],
         darwin_test_defines             = [ 'CGF_PHYSX_COMPILER' ],
         linux_defines                   = ['LY_IGNORE_METRICS'],
-
+	
         enable_rtti             = True,
 
         win_x64_clang_cxxflags  = ['-fexceptions', '-Wno-nonportable-include-path', '-Wno-format'],

@@ -12,7 +12,8 @@
             "Include/GradientSignal/ImageAsset.h",
             "Include/GradientSignal/ImageSettings.h",
             "Include/GradientSignal/PerlinImprovedNoise.h",
-            "Include/GradientSignal/Util.h"
+            "Include/GradientSignal/Util.h",
+            "Include/GradientSignal/GradientImageConversion.h"
         ],
         "Include/Ebuses": [
             "Include/GradientSignal/Ebuses/GradientTransformRequestBus.h",
@@ -88,7 +89,8 @@
             "Source/ImageAsset.cpp",
             "Source/ImageSettings.cpp",
             "Source/PerlinImprovedNoise.cpp",
-            "Source/Util.cpp"
+            "Source/Util.cpp",
+            "Source/GradientImageConversion.cpp"
         ]
     }
 }

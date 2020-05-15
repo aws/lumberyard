@@ -137,8 +137,6 @@ struct IViewSystem;
 struct IVehicle;
 struct IVehicleSystem;
 struct IGameRulesSystem;
-struct IFlowSystem;
-struct IGameTokenSystem;
 struct IEffectSystem;
 struct IGameObject;
 struct IGameObjectExtension;
@@ -193,7 +191,7 @@ enum EGameStartFlags
 enum ESaveGameReason
 {
     eSGR_LevelStart,
-    eSGR_FlowGraph,
+    eSGR_Deprecated, // formerly SGR_FlowGraph
     eSGR_Command,
     eSGR_QuickSave
 };
@@ -657,16 +655,6 @@ struct IGameFramework
     //      Pointer to IGameRulesSystem interface.
     virtual IGameRulesSystem* GetIGameRulesSystem() = 0;
     // Description:
-    //      Returns a pointer to the IFlowSystem interface.
-    // Return Value:
-    //      Pointer to IFlowSystem interface.
-    virtual IFlowSystem* GetIFlowSystem() = 0;
-    // Description:
-    //      Returns a pointer to the IGameTokenSystem interface
-    // Return Value:
-    //      Pointer to IGameTokenSystem interface.
-    virtual IGameTokenSystem* GetIGameTokenSystem() = 0;
-    // Description:
     //      Returns a pointer to the IEffectSystem interface
     // Return Value:
     //      Pointer to IEffectSystem interface.
@@ -723,10 +711,6 @@ struct IGameFramework
     // Description:
     //      Pointer to IForceFeedbackSystem interface.
     virtual IForceFeedbackSystem* GetIForceFeedbackSystem() const = 0;
-
-    // Description:
-    //      Pointer to ICustomActionManager interface.
-    virtual ICustomActionManager* GetICustomActionManager() const = 0;
 
     // Description:
     //      Pointer to ICustomEventManager interface.

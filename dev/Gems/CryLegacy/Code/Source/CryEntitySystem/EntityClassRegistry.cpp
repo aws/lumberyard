@@ -195,12 +195,6 @@ void CEntityClassRegistry::InitializeDefaultClasses()
     stdRopeClass.sScriptFile = "Scripts/Entities/Default/RopeEntity.lua";
     RegisterStdClass(stdRopeClass);
 
-    SEntityClassDesc stdFlowgraphClass;
-    stdFlowgraphClass.flags |= ECLF_DEFAULT;
-    stdFlowgraphClass.sName = "FlowgraphEntity";
-    stdFlowgraphClass.editorClassInfo.sIcon = "FlowgraphEntity.bmp";
-    RegisterStdClass(stdFlowgraphClass);
-
     SEntityClassDesc stdAudioListenerClass;
     stdAudioListenerClass.flags |= ECLF_INVISIBLE | ECLF_DEFAULT;
     stdAudioListenerClass.sName = "AudioListener";

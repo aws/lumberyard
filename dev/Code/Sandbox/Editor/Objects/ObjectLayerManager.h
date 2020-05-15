@@ -22,6 +22,7 @@
 #define LAYER_FILE_EXTENSION ".lyr"
 #define LAYER_PATH "Layers/"
 
+#include <AzCore/PlatformDef.h>
 #include "ObjectLayer.h"
 
 class CObjectManager;
@@ -29,12 +30,14 @@ class CObjectArchive;
 class CLayerNodeAnimator;
 struct IAnimSequence;
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Manager of objects layers.
         Instance of these hosted by CObjectManager class.
 */
 class SANDBOX_API CObjectLayerManager
     : public IEditorNotifyListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     enum EUpdateType
     {

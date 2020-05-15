@@ -21,9 +21,6 @@
 #include "EditorPreferencesPageViewportDebug.h"
 #include "EditorPreferencesPageMannequinGeneral.h"
 #include "EditorPreferencesPageExperimentalLighting.h"
-#include "EditorPreferencesPageFlowGraphGeneral.h"
-#include "EditorPreferencesPageFlowGraphColors.h"
-
 
 //////////////////////////////////////////////////////////////////////////
 // Implementation of ClassDesc for standard Editor preferences.
@@ -40,12 +37,6 @@ CStdPreferencesClassDesc::CStdPreferencesClassDesc()
         [](){ return new CEditorPreferencesPage_ViewportGizmo(); },
         [](){ return new CEditorPreferencesPage_ViewportDebug(); }
     };
-
-    if (GetIEditor()->IsLegacyUIEnabled())
-    {
-        m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FlowGraphGeneral(); });
-        m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FlowGraphColors(); });
-    }
 
 #ifdef ENABLE_LEGACY_ANIMATION
     m_pageCreators.push_back([]() { return new CEditorPreferencesPage_MannequinGeneral(); });

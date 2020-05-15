@@ -51,7 +51,6 @@ public:
     {
         pSizer->Add(*this);
         pSizer->AddContainer(m_queuedAttachments);
-        pSizer->AddContainer(m_queuedFlowgraphs);
     }
 
     bool    ExtractEntityLoadParams(XmlNodeRef& entityNode, SEntitySpawnParams& outLoadParams) const;
@@ -67,7 +66,6 @@ private:
 
     // Batch creation helpers
     void AddQueuedAttachment(EntityId nParent, EntityGUID nParentGuid, EntityId nChild, const Vec3& pos, const Quat& rot, const Vec3& scale, bool guid, const int flags, const char* target);
-    void AddQueuedFlowgraph(IEntity* pEntity, XmlNodeRef& pNode);
     void AddQueuedEntityLink(IEntity* pEntity, XmlNodeRef& pNode);
 
     void ResolveLinks();
@@ -90,7 +88,6 @@ private:
             , pNode() {}
     };
     typedef std::vector<SQueuedFlowGraph> TQueuedFlowgraphs;
-    TQueuedFlowgraphs m_queuedFlowgraphs;
 
     TQueuedFlowgraphs m_queuedEntityLinks;
     typedef std::map<uint32, EntityId>  TGuidToId;

@@ -55,6 +55,8 @@ namespace AssetProcessor
             m_dirtyNeedsResort = false;
         }
         RCJob* anyPendingJob = nullptr;
+        bool waitingOnCatalog = false; // If we find an asset thats waiting on the catalog, don't assume there's a cyclic dependency.  We'll wait until the catalog is updated and then check again.
+
         for (int idx = 0; idx < rowCount(); ++idx)
         {
             QModelIndex parentIndex = mapToSource(index(idx, 0));
@@ -64,7 +66,7 @@ namespace AssetProcessor
                 bool canProcessJob = true;
                 for (const JobDependencyInternal& jobDepedencyInternal : actualJob->GetJobDependencies())
                 {
-                    if (jobDepedencyInternal.m_jobDependency.m_type == AssetBuilderSDK::JobDependencyType::Order)
+                    if (jobDepedencyInternal.m_jobDependency.m_type == AssetBuilderSDK::JobDependencyType::Order || jobDepedencyInternal.m_jobDependency.m_type == AssetBuilderSDK::JobDependencyType::OrderOnce)
                     {
                         const AssetBuilderSDK::JobDependency& jobDependency = jobDepedencyInternal.m_jobDependency;
                         QueueElementID elementId(jobDependency.m_sourceFile.m_sourceFileDependencyPath.c_str(), jobDependency.m_platformIdentifier.c_str(), jobDependency.m_jobKey.c_str());
@@ -80,6 +82,7 @@ namespace AssetProcessor
                         else if(m_sourceModel->isWaitingOnCatalog(elementId))
                         {
                             canProcessJob = false;
+                            waitingOnCatalog = true;
                         }
                     }
                 }
@@ -92,7 +95,7 @@ namespace AssetProcessor
         }
 
         // Either there are no jobs to do or there is a cyclic order job dependency.
-        if (anyPendingJob && m_sourceModel->jobsInFlight() == 0)
+        if (anyPendingJob && m_sourceModel->jobsInFlight() == 0 && !waitingOnCatalog)
         {
             AZ_Warning(AssetProcessor::DebugChannel, false, " Cyclic job order dependency detected. Processing job (%s, %s, %s, %s) to unblock.",
                 anyPendingJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), anyPendingJob->GetJobKey().toUtf8().data(),

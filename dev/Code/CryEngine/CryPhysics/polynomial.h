@@ -488,14 +488,14 @@ int polynomial_tpl<ftype, maxdegree>::findroots(ftype start, ftype end, ftype* p
         a = data[2];
         b = data[1];
         c = data[0];
-        d = sgnnz(a);
+        d = aznumeric_cast<ftype>(sgnnz(a));
         a *= d;
         b *= d;
         c *= d;
         d = b * b - a * c * 4;
         bound[0] = start * a * 2 + b;
         bound[1] = end * a * 2 + b;
-        sg = (sgnnz(bound[0] * bound[1]) + 1) >> 1;
+        sg = aznumeric_cast<ftype>((sgnnz(bound[0] * bound[1]) + 1) >> 1);
         bound[0] *= bound[0];
         bound[1] *= bound[1];
         bound[isneg(fabs_tpl(bound[1]) - fabs_tpl(bound[0]))] *= sg;
@@ -536,8 +536,8 @@ int polynomial_tpl<ftype, maxdegree>::findroots(ftype start, ftype end, ftype* p
             Ar = t * cos_tpl(phi);
             Ai = t * sin_tpl(phi);
             proots[0] = 2 * Ar - a3;
-            proots[1] = -Ar + Ai * sqrt3 - a3;
-            proots[2] = -Ar - Ai * sqrt3 - a3;
+            proots[1] = aznumeric_cast<ftype>(-Ar + Ai * sqrt3 - a3);
+            proots[2] = aznumeric_cast<ftype>(-Ar - Ai * sqrt3 - a3);
             i = idxmax3(proots);
             swap(proots, i, 2);
             i = isneg(proots[0] - proots[1]);

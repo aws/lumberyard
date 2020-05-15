@@ -20,6 +20,7 @@
 #include <AzCore/JSON/error/en.h>
 #include <AzCore/JSON/error/error.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QFile>
 #include <QByteArray>
 #include <QColor>
@@ -30,6 +31,7 @@
 #include <QScopedPointer>
 #include <QResource>
 #include <QDebug>
+AZ_POP_DISABLE_WARNING
 
 
 

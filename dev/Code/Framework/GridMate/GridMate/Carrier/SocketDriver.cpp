@@ -745,6 +745,7 @@ namespace GridMate
     {
         m_port = 0;
         m_isStoppedWaitForData = false;
+        m_socket = Platform::GetInvalidSocket();
 
 #ifdef AZ_SOCKET_RIO_SUPPORT
         if (isHighPerformance && RIOPlatformSocketDriver::isSupported())

@@ -9,39 +9,49 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import json
 import os
-import plistlib
 import re
 import shutil
 import socket
 import subprocess
+import sys
 import time
-
-from gems import Gem
-from lmbr_install_context import LmbrInstallContext
-from lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
-from qt5 import QT5_LIBS
-from utils import *
-from build_configurations import PLATFORM_MAP
 from contextlib import closing
 
+# waflib imports
 from waflib import Build, Errors, Logs, Utils
 from waflib.Scripting import run_command
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
+
+# lmbrwaflib imports
+from lmbrwaflib.gems import Gem, GemManager
+from lmbrwaflib.lmbr_install_context import LmbrInstallContext
+from lmbrwaflib.lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
+from lmbrwaflib.qt5 import QT5_LIBS
+from lmbrwaflib.utils import *
+from lmbrwaflib.build_configurations import PLATFORM_MAP
+
 
 
 ################################################################
 #                            Globals                           #
 DEFAULT_RC_JOB = os.path.join('Code', 'Tools', 'RC', 'Config', 'rc', 'RCJob_Generic_MakePaks.xml')
+ASSET_BUNDLER_RC_JOB = os.path.join('Code', 'Tools', 'RC', 'Config', 'rc', 'RCJob_Generic_MakeAuxiliaryContent.xml')
+
+ASSET_PROCESSOR_BATCH = 'AssetProcessorBatch'
+ASSET_BUNDLER_BATCH = 'AssetBundlerBatch'
+ASSET_BUNDLER_CONFIG = 'AssetBundlerConfig.json'
 #                                                              #
 ################################################################
 
 
 def get_python_path(ctx):
-    python_cmd = 'python'
-
     if Utils.unversioned_sys_platform() == "win32":
-        python_cmd = '"{}"'.format(ctx.path.find_resource('Tools/Python/python.cmd').abspath())
+        python_cmd = '"{}"'.format(ctx.path.find_resource('Tools/Python/python3.cmd').abspath())
+    else:
+        python_cmd = '"{}"'.format(ctx.path.find_resource('Tools/Python/python3.sh').abspath())
 
     return python_cmd
 
@@ -52,7 +62,7 @@ def run_subprocess(command_args, working_dir = None, as_shell = False, fail_on_e
 
     try:
         cmd = command if as_shell else command_args
-        output = subprocess.check_output(cmd, stderr = subprocess.STDOUT, cwd = working_dir, shell = as_shell)
+        output = subprocess.check_output(cmd, stderr = subprocess.STDOUT, cwd = working_dir, shell = as_shell).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
         Logs.debug('package: Output = {}'.format(output.rstrip()))
         return True
 
@@ -115,10 +125,10 @@ def get_resource_compiler_path(ctx):
         ctx.fatal('[ERROR] Failed to find the Resource Compiler in paths: {}'.format(rc_search_paths))
 
 
-def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb = False, num_threads = 0, zip_split = False, zip_maxsize = 0, verbose = 0):
+def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb = False, num_threads = 0, zip_split = False, zip_maxsize = 0, verbose = 0, rc_job = DEFAULT_RC_JOB):
     rc_path = get_resource_compiler_path(ctx)
 
-    default_rc_job = os.path.join(ctx.get_engine_node().abspath(), DEFAULT_RC_JOB)
+    default_rc_job = os.path.join(ctx.get_engine_node().abspath(), rc_job)
 
     job_file = (job or default_rc_job)
 
@@ -175,6 +185,117 @@ def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb
     # Invoking RC as non-shell exposes how rigid it's command line parsing is...
     return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
+
+def run_asset_bundler_job(ctx, game, platform, target_path):
+    # Process all the assets to build to the dependency graph
+    if not process_assets(ctx):
+        Logs.error('Failed to process all the assets (game name: {}, platform: {}, target path: {})'.format(game, platform, target_path))
+        return False
+
+    # Create the default folder to store all the asset bundling related files
+    asset_bundling_default_folder = os.path.join(ctx.launch_node().abspath(), game, 'AssetBundling')
+    if not os.path.isdir(asset_bundling_default_folder):
+        os.makedirs(asset_bundling_default_folder)
+    
+    # Read the asset bundler config file for the current project
+    asset_bundler_config_path = os.path.join(ctx.launch_node().abspath(), game, ASSET_BUNDLER_CONFIG)
+    if not os.path.isfile(asset_bundler_config_path):
+        Logs.error("Asset bundler config {} doesn't exist (game name: {}, platform: {}, target path: {})".format(asset_bundler_config_path, game, platform, target_path))
+        return False
+
+    with open(asset_bundler_config_path) as asset_bundler_config_file:
+        asset_bundler_config = json.load(asset_bundler_config_file)
+    
+    # Generate the asset list file using AssetBundlerBatch
+    asset_list_file = os.path.join(asset_bundling_default_folder, 'AssetLists', game + '_' + platform + '.assetlist')
+    if not generate_asset_list_file(ctx, asset_list_file, asset_bundler_config, platform):
+        Logs.error('Failed to generate asset list file (game name: {}, platform: {}, target path: {})'.format(game, platform, target_path))
+        return False
+
+    # Generate the bundle using AssetBundlerBatch
+    bundle_file = os.path.join(asset_bundling_default_folder, 'Bundles', game + '_' + platform + '.pak')
+    if not generate_bundle(ctx, asset_list_file, bundle_file, asset_bundler_config, platform):
+        Logs.error('Failed to generate bundle file (game name: {}, platform: {}, target path: {})'.format(game, platform, target_path))
+        return False
+
+    # Copy the bundle file to the target path
+    target = os.path.join(target_path, game.lower())
+    if not os.path.isdir(target):
+        os.makedirs(target)
+    shutil.copy2(bundle_file, target)
+
+    return True
+
+
+def get_asset_bundling_executable_path(ctx, executable_name):
+    output_folders = ctx.get_standard_host_output_folders()
+    if not output_folders:
+        ctx.fatal('[ERROR] Unable to determine possible binary directories for host {}'.format(Utils.unversioned_sys_platform()))
+
+    executable_search_paths = [output_node.abspath() for output_node in output_folders ]
+    try:
+        executable_path = ctx.find_program(executable_name, path_list = executable_search_paths, silent_output = True)
+        return executable_path
+    except Exception as err:
+        ctx.fatal('[ERROR] Failed to find the {} in paths: {}'.format(executable_name, ','.join(asset_processor_search_paths), err))
+
+
+def process_assets(ctx):
+    # Process all the assets to build to dependency graph
+    asset_processor_batch_path = get_asset_bundling_executable_path(ctx, ASSET_PROCESSOR_BATCH)
+    asset_processor_batch_cmd = [
+        '{}'.format(asset_processor_batch_path)
+    ]
+
+    Logs.info('[INFO] Processing assets...')
+    return run_subprocess(asset_processor_batch_cmd, working_dir = ctx.launch_dir, as_shell = True)
+
+
+def generate_asset_list_file(ctx, asset_list_file, asset_bundler_config, platform):
+    asset_bundler_path = get_asset_bundling_executable_path(ctx, ASSET_BUNDLER_BATCH)
+    asset_bundler_cmd = [
+        '"{}"'.format(asset_bundler_path),
+        'assetlists',
+        '/assetListFile={}'.format(asset_list_file),
+        '/platform={}'.format(platform)
+    ]
+
+    for seed in asset_bundler_config.get('Seeds', []):
+        asset_bundler_cmd.extend([
+               '/addSeed={}'.format(seed)])
+
+    for seed_list_file in asset_bundler_config.get('SeedListFiles', []):
+        asset_bundler_cmd.extend([
+               '/seedListFile={}'.format(seed_list_file)])
+
+    if asset_bundler_config.get('AddDefaultSeedListFiles', False):
+        asset_bundler_cmd.extend([
+            '/addDefaultSeedListFiles'])
+
+    if asset_bundler_config.get('AllowOverwrites', False):
+        asset_bundler_cmd.extend([
+            '/allowOverwrites'])
+
+    Logs.info('[INFO] Generating asset list file {}...'.format(asset_list_file))
+    return run_subprocess(asset_bundler_cmd, working_dir = ctx.launch_dir, as_shell = True)
+
+
+def generate_bundle(ctx, asset_list_file, bundle_file, asset_bundler_config, platform):
+    asset_bundler_path = get_asset_bundling_executable_path(ctx, ASSET_BUNDLER_BATCH)
+    asset_bundler_cmd = [
+        '"{}"'.format(asset_bundler_path),
+        'bundles',
+        '/assetListFile={}'.format(asset_list_file),
+        '/outputBundlePath={}'.format(bundle_file),
+        '/platform={}'.format(platform)
+    ]
+
+    if asset_bundler_config.get('AllowOverwrites', False):
+        asset_bundler_cmd.extend([
+            '/allowOverwrites'])
+    
+    Logs.info('[INFO] Generating bundle file {}...'.format(bundle_file))
+    return run_subprocess(asset_bundler_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
 def get_shader_compiler_ip_and_port(ctx, config_filename):
     config_file = ctx.engine_node.find_node(config_filename)
@@ -248,7 +369,7 @@ def is_shader_compiler_valid(ctx, shader_ip_config_file='shadercachegen.cfg'):
 
                 #send the xml packed as a s i.e. string of xml_len
                 format = str(xml_len) + 's'
-                request = struct.pack(format, xml)
+                request = struct.pack(format, xml.encode('utf-8'))
                 sock.sendall(request)
 
                 # make socket non blocking
@@ -294,11 +415,15 @@ def get_shader_cache_gen_path(ctx):
     except:
         ctx.fatal('[ERROR] Failed to find the ShaderCacheGen in paths: {}'.format(output_folders))
 
-def generate_game_paks(ctx, game, job, assets_platform, source_path, target_path, is_obb=False, num_threads=0, zip_split=False, zip_maxsize=0, verbose=0):
+def generate_game_paks(ctx, game, job, assets_platform, source_path, target_path, is_obb=False, num_threads=0, zip_split=False, zip_maxsize=0, verbose=0, use_asset_bundler=False):
     Logs.info('[INFO] Generate game paks...')
     timer = Utils.Timer()
     try:
-        ret = run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb, num_threads, zip_split, zip_maxsize, verbose)
+        if use_asset_bundler:
+            ret = run_rc_job(ctx, game, None, assets_platform, source_path, target_path, is_obb, num_threads, zip_split, zip_maxsize, verbose, ASSET_BUNDLER_RC_JOB)
+            ret = run_asset_bundler_job(ctx, game, assets_platform, target_path)
+        else:
+            ret = run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb, num_threads, zip_split, zip_maxsize, verbose)
         if ret:
             Logs.info('[INFO] Finished generating game paks... ({})'.format(timer))
         else:
@@ -306,7 +431,7 @@ def generate_game_paks(ctx, game, job, assets_platform, source_path, target_path
     except:
         Logs.error('[ERROR] Generating game paks exception.')
 
-def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=None):
+def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=None, shader_platform=None):
     Logs.info('[INFO] Get the shader list from the shader compiler server...')
     timer = Utils.Timer()
 
@@ -325,12 +450,11 @@ def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=No
         '{}'.format(game),
         '{}'.format(assets_platform),
         '{}'.format(shader_type),
-        '{}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
-        '-g "{}"'.format(ctx.launch_dir)
+        '-s "{}"'.format(os.path.dirname(shader_cache_gen_path)),
     ]
 
-    if shader_list_file:
-        command_args += ['-s {}'.format(shader_list_file)]
+    if shader_platform:
+        command_args.append('-p {}'.format(shader_platform))
 
     command = ' '.join(command_args)
     Logs.info('[INFO] Running command - {}'.format(command))
@@ -342,7 +466,7 @@ def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=No
 
     return
 
-def generate_shaders(ctx, game, assets_platform, shader_type):
+def generate_shaders(ctx, game, assets_platform, shader_type, shader_platform=None):
     Logs.info('[INFO] Generate Shaders...')
     timer = Utils.Timer()
 
@@ -361,18 +485,21 @@ def generate_shaders(ctx, game, assets_platform, shader_type):
         '{}'.format(game),
         '{}'.format(assets_platform),
         '{}'.format(shader_type),
-        '{}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
+        '-b {}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
+        '-e "{}"'.format(ctx.engine_node.abspath()),
         '-g "{}"'.format(ctx.launch_dir),
-        '-e "{}"'.format(ctx.engine_node.abspath())
     ]
+
+    if shader_platform:
+        command_args.append('-p {}'.format(shader_platform))
 
     if not run_subprocess(command_args, as_shell=True):
         ctx.fatal('[ERROR] Failed to generate {} shaders'.format(shader_type))
 
     Logs.info('[INFO] Finished Generate Shaders...({})'.format(timer))
 
-def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_file=None, shaders_pak_dir=None):
-    generate_shaders(ctx, game, assets_platform,shader_type)
+def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_file=None, shaders_pak_dir=None, shader_platform=None):
+    generate_shaders(ctx, game, assets_platform, shader_type, shader_platform)
 
     pak_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/pak_shaders.py')
 
@@ -536,8 +663,15 @@ class package_task(Task):
         if self.include_all_libs:
             for gem in GemManager.GetInstance(ctx).gems:
                 for module in gem.modules:
-                    gem_module_task_gen = ctx.get_tgen_by_name(module.target_name)
-                    self.dependencies.update(get_dependencies_recursively_for_task_gen(ctx, gem_module_task_gen))
+                    # Modules that should be excluded by the build config are getting added here.
+                    # The modules list of supported build configs and platforms are not 
+                    # available here. Using a try/except as a workaround.
+                    try:
+                        gem_module_task_gen = ctx.get_tgen_by_name(module.target_name)
+                    except:
+                        Logs.warn('[WARN] Unable to locate task generator for Gem module {}'.format(module.target_name))
+                    else:
+                        self.dependencies.update(get_dependencies_recursively_for_task_gen(ctx, gem_module_task_gen))
 
     def codesign_executable_file(self,path_to_executable):
         run_subprocess(['codesign', '-s', '-', path_to_executable], fail_on_error=True)
@@ -631,7 +765,7 @@ class package_task(Task):
                     # grep @rpath will make sure we only have QtLibraries and not system libraries
                     # cut -d '/' -f 2 slices the line by '/' and selects the second field resulting in: QtWebKit.framework
                     otool_command = "otool -L '%s' | cut -d ' ' -f 1 | grep @rpath.*Qt | cut -d '/' -f 2" % (os.path.join(src, darwin_adjusted_name)) 
-                    output = subprocess.check_output(otool_command, shell=True)
+                    output = subprocess.check_output(otool_command, shell=True).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
                     qt_dependent_libs = re.split("\s+", output.strip())
 
                     for lib in qt_dependent_libs:
@@ -787,6 +921,7 @@ class PackageContext(LmbrInstallContext):
         """
         Creates a package task using the old feature method
         """
+        kw['use_platform_root'] = True
         self.process_restricted_settings(kw)
 
         if self.is_platform_and_config_valid(**kw):
@@ -1022,7 +1157,7 @@ class PackageContext(LmbrInstallContext):
             Logs.debug('package:: -> got an exception {}'.format(err))
 
 
-for platform_name, platform in PLATFORM_MAP.items():
+for platform_name, platform in list(PLATFORM_MAP.items()):
     for configuration in platform.get_configuration_names():
         platform_config_key = '{}_{}'.format(platform_name, configuration)
 
@@ -1035,3 +1170,4 @@ for platform_name, platform in PLATFORM_MAP.items():
         }
 
         subclass = type('{}{}PackageContext'.format(platform_name.title(), configuration.title()), (PackageContext,), class_attributes)
+        subclass.doc = "Package contents for platform '{}' and configuration '{}'".format(platform_name, configuration)

@@ -21,11 +21,13 @@
 class IOpticsElementBase;
 class CLensFlareEditor;
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class CRYEDIT_API CLensFlareManager
     : public CBaseLibraryManager
     , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
 
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CLensFlareManager();
     virtual ~CLensFlareManager();

@@ -64,7 +64,7 @@ namespace AZStd
             // T must be a complete type, further if T is a template then
             // it must be instantiated in order for us to get the right answer:
             //
-            AZ_STATIC_ASSERT(sizeof(T) != 0, "T must be a complete type, size can't be 0");
+            static_assert(sizeof(T) != 0, "T must be a complete type, size can't be 0");
 
 #if defined(_MSC_FULL_VER) && (_MSC_FULL_VER >= 140050000)
 #   pragma warning(push)

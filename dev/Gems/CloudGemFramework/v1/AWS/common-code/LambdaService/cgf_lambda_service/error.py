@@ -19,7 +19,7 @@ forbidden error, or an internal service error. The exception types below simply 
 the provided message.
 
 The API Gateway configuration will return an HTTP 400 response for client errors,
-an HTTP 403 response for forbidden errors, and an HTTP 500 respose for
+an HTTP 403 response for forbidden errors, and an HTTP 500 response for
 internal service errors. In all cases the response body will be:
 
     {
@@ -61,3 +61,18 @@ class NotFoundError(RuntimeError):
 
     def __init__(self, message = 'The resource you requested was not found.'):
         super(NotFoundError, self).__init__('Not Found: ' + message)
+
+
+def message(e):
+    # type: (Exception) -> str
+    """
+    Gets the 'message' from an exception
+    """
+    # If we want the message, check if it exists
+    # Supports Python2
+    #
+    # For python 3 call str will grab the message
+    if hasattr(e, 'message'):
+        return e.message
+    else:
+        return str(e)

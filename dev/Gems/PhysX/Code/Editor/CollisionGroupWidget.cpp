@@ -13,10 +13,11 @@
 #include <PhysX_precompiled.h>
 #include <Editor/CollisionGroupWidget.h>
 #include <Editor/ConfigurationWindowBus.h>
-#include <PhysX/ConfigurationBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Physics/PropertyTypes.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LyViewPaneNames.h>
+#include <AzFramework/Physics/CollisionBus.h>
 
 namespace PhysX
 {
@@ -96,24 +97,25 @@ namespace PhysX
 
         Physics::CollisionGroups::Id CollisionGroupWidget::GetGroupFromName(const AZStd::string& groupName)
         {
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
             return configuration.m_collisionGroups.FindGroupIdByName(groupName);
         }
 
         AZStd::string CollisionGroupWidget::GetNameFromGroup(const Physics::CollisionGroups::Id& collisionGroup)
         {
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
             return configuration.m_collisionGroups.FindGroupNameById(collisionGroup);
         }
 
         AZStd::vector<AZStd::string> CollisionGroupWidget::GetGroupNames()
         {
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
+            const AZStd::vector<Physics::CollisionGroups::Preset>& collisionGroupPresets = configuration.m_collisionGroups.GetPresets();
+
             AZStd::vector<AZStd::string> groupNames;
-            for (auto& preset : configuration.m_collisionGroups.GetPresets())
+            groupNames.reserve(collisionGroupPresets.size());
+
+            for (const auto& preset : collisionGroupPresets)
             {
                 groupNames.push_back(preset.m_name);
             }

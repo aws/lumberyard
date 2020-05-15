@@ -45,9 +45,7 @@ def build(bld):
                                'profile_test_dedicated'],
 
         pch                 = '../StdAfx.cpp',
-        includes            = [bld.ThirdPartyPath('boost'),
-                               bld.Path('Code/CryEngine/CryCommon'),
-                               '..',
+        includes            = ['..',
                                bld.ThirdPartyPath('squish'),
                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
                                bld.Path('Code/CryEngine/CryCommon'),

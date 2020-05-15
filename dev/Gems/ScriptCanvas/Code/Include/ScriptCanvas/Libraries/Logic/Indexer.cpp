@@ -22,14 +22,14 @@ namespace ScriptCanvas
         {
             void Indexer::OnInputSignal(const SlotId& slotId)
             {
-                auto findSlotOutcome = FindSlotIndex(slotId);
-                if (!findSlotOutcome)
+                auto slotIndex = FindSlotIndex(slotId);
+                if (slotIndex < 0)
                 {
-                    AZ_Warning("Script Canvas", false, "%s", findSlotOutcome.GetError().data());
+                    AZ_Warning("Script Canvas", false, "Could not find slot with id %s", slotId.ToString().c_str());
                     return;
                 }
 
-                const Datum output(findSlotOutcome.GetValue());
+                const Datum output(slotIndex);
 
                 const SlotId outSlotId = IndexerProperty::GetOutSlotId(this);
                 if (auto outSlot = GetSlot(outSlotId))

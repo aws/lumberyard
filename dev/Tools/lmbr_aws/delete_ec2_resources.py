@@ -14,7 +14,7 @@ import argparse
 import time
 import sys
 
-import cleanup_utils
+from cleanup_utils import cleanup_utils
 
 
 def wrapped_delete(wrapped_function):
@@ -163,7 +163,8 @@ class Cleaner:
     def _delete_vpcs(self):
         return self.__delete_items(self.ec2.describe_vpcs, self.ec2.delete_vpc, 'VpcId', 'Vpcs')
 
-    def __log_item(self, item_name):
+    @staticmethod
+    def __log_item(item_name):
         print("    {}".format(item_name))
 
     def __delete_items(self, list_fn, delete_fn, item_key, group_key, params=None, condition=lambda x: True,

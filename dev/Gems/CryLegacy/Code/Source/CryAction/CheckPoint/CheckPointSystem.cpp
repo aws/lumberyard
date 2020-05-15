@@ -19,10 +19,8 @@
 
 //engine interfaces
 #include "I3DEngine.h"
-#include "IFlowSystem.h"
 #include "IAISystem.h"
 #include "IGame.h"
-#include "IGameTokens.h"
 #include "IGameFramework.h"
 #include "IEntitySystem.h"
 #include "IEntityPoolManager.h"
@@ -45,7 +43,6 @@ const static int CHECKPOINT_DATA_SIZE           = 1024000;
 const static char* ACTOR_FLAGS_SECTION          = "ActorFlags";
 const static char* ACTIVATED_ACTORS_SECTION     = "ActivatedActors";
 const static char* META_DATA_SECTION            = "MetaData";
-const static char* GAMETOKEN_SECTION            = "Gametokens";
 const static char* EXTERNAL_ENTITIES_SECTION    = "ExternalEntities";
 
 //checkpoint data sanity check, usually triggered by changed entity Id's
@@ -218,9 +215,6 @@ bool CCheckpointSystem::SaveGame(EntityId checkpointId, const char* fileName)
     //vehicle data
     WriteVehicleData(CHECKPOINT_SAVE_XML_NODE);
 
-    //write game tokens
-    WriteGameTokens(CHECKPOINT_SAVE_XML_NODE);
-
     //let game write
     if (m_pGameHandler)
     {
@@ -313,25 +307,6 @@ void CCheckpointSystem::WriteMetaData(EntityId checkpointId, XmlNodeRef parentNo
     outMetaData.m_checkPointId = checkpointId;
     outMetaData.m_levelName = levelName;
     outMetaData.m_saveTime = timeString.c_str();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCheckpointSystem::WriteGameTokens(XmlNodeRef parentNode)
-{
-    //create serialization writer
-    XmlNodeRef node = GetISystem()->CreateXmlNode(GAMETOKEN_SECTION);
-    IXmlSerializer* pSerializer = GetISystem()->GetXmlUtils()->CreateXmlSerializer();
-    ISerialize* pWriter = pSerializer->GetWriter(node);
-
-    //get serialization data
-    TSerialize ser = TSerialize(pWriter);
-    IGameTokenSystem* pTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-    pTokenSystem->Serialize(ser);
-
-    //add to parent node
-    parentNode->addChild(node);
-
-    pSerializer->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -440,9 +415,6 @@ bool CCheckpointSystem::LoadGame(const char* fileName)
     //read actor data and respawn AI
     // TODO For now, not restoring actor info (AI) - If this happens later, support needs to be added for entity pools
     //RespawnAI(CHECKPOINT_LOAD_XML_NODE);
-
-    //load gametokens again
-    ReadGameTokens(CHECKPOINT_LOAD_XML_NODE);
 
     //let game read
     if (m_pGameHandler)
@@ -585,8 +557,6 @@ void CCheckpointSystem::ResetEngine()
         gEnv->pAISystem->Reset(IAISystem::RESET_EXIT_GAME);
         gEnv->pAISystem->Reset(IAISystem::RESET_ENTER_GAME);
     }
-
-    //flow system
 
     //reset trackview
     gEnv->pMovieSystem->Reset(true, true);
@@ -766,29 +736,6 @@ void CCheckpointSystem::RespawnAI(XmlNodeRef data)
             pActor->ResetToSpawnLocation();
         }
     }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCheckpointSystem::ReadGameTokens(XmlNodeRef parentNode)
-{
-    //get source node
-    XmlNodeRef node = parentNode->findChild(GAMETOKEN_SECTION);
-    if (!node)
-    {
-        CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_ERROR, "Couldn't find Gametoken section while reading checkpoint.");
-        return;
-    }
-
-    //create serialization reader
-    IXmlSerializer* pSerializer = GetISystem()->GetXmlUtils()->CreateXmlSerializer();
-    ISerialize* pReader = pSerializer->GetReader(node);
-
-    //read serialization data
-    TSerialize ser = TSerialize(pReader);
-    IGameTokenSystem* pTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-    pTokenSystem->Serialize(ser);
-
-    pSerializer->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////

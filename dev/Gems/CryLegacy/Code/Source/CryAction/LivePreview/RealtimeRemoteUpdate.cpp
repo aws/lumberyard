@@ -28,7 +28,7 @@
 #include "IGameFramework.h"
 #include "IGameRulesSystem.h"
 #include "ITimeOfDay.h"
-#include "ITerrain.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 // Should CERTAINLY be moved to CryCommon.
 template <typename TObjectType, bool bArray = false>
@@ -302,7 +302,8 @@ void  CRealtimeRemoteUpdateListener::LoadTerrainLayer(XmlNodeRef& root, unsigned
     {
         texId = gEnv->pRenderer->DownLoadToVideoMemory(uchData, w, h, eTFSrc, eTFSrc, 0, false, FILTER_NONE, 0, NULL, FT_USAGE_ALLOWREADSRGB);
         // Swapped x & y for historical reasons.
-        gEnv->p3DEngine->SetTerrainSectorTexture(posy, posx, texId, w, h);
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
+            , posy, posx, texId, w, h, true);
     }
 }
 
@@ -590,7 +591,7 @@ void CRealtimeRemoteUpdateListener::Update()
             XmlNodeRef oChildRootNode = oXmlNode->findChild("SurfaceTypes");
             if (oChildRootNode)
             {
-                gEnv->p3DEngine->LoadTerrainSurfacesFromXML(oChildRootNode, true);
+                LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML, oChildRootNode);
             }
         }
         else if (oSyncType.compare("Environment") == 0)

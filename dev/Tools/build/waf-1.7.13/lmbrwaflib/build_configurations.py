@@ -9,32 +9,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+
 """
 This module manages the build platforms and configurations. It uses the settings_manager module to read the
 platform and build configurations under _WAF_/settings and derives all of the supported target platforms and
 configurations.
 """
 
-import shutil
+# System Imports
 import glob
 import os
-import json
 import re
+import shutil
 
+# waflib imports
 from waflib import Configure, ConfigSet, Context, Options, Utils, Logs, Errors
 from waflib.Build import BuildContext, CleanContext, Context, CACHE_DIR
 from waflib.Configure import conf, ConfigurationContext, REGISTERED_CONF_FUNCTIONS
 
+# lmbrwaflib imports
+from lmbrwaflib import settings_manager, lumberyard
+from lmbrwaflib.utils import is_value_true, parse_json_file
+from lmbrwaflib.compile_settings_test import load_test_settings
+from lmbrwaflib.compile_settings_dedicated import load_dedicated_settings
+from lmbrwaflib.cry_utils import append_kw_entry
+from lmbrwaflib.lmbr_install_context import LmbrInstallContext
+
+# mist imports
 from waf_branch_spec import LUMBERYARD_ENGINE_PATH, LMBR_WAF_VERSION_TAG, BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY, BINTEMP_CACHE_TOOLS, BINTEMP_MODULE_DEF
 
-import settings_manager
-import lumberyard
-from utils import is_value_true, parse_json_file
-from compile_settings_test import load_test_settings
-from compile_settings_dedicated import load_dedicated_settings
 
-from cry_utils import append_kw_entry
-from lmbr_install_context import LmbrInstallContext
 from runpy import run_path
 
 WAF_TOOL_ROOT_DIR = os.path.join(LUMBERYARD_ENGINE_PATH, "Tools", "build","waf-1.7.13")
@@ -56,6 +60,7 @@ ENABLE_SERVER = is_value_true(settings_manager.LUMBERYARD_SETTINGS.get_settings_
 REGEX_ENV_VALUE_ALIAS = re.compile('@([!\w]+)@')
 REGEX_CONDITIONAL_ALIAS = re.compile('\\?([!\w]+)\\?')
 
+PLATFORM_AVAILABILITY_ENV_KEY = 'PLATFORM_AVAILABLE'
 
 class PlatformConfiguration(object):
     """
@@ -248,14 +253,14 @@ class PlatformDetail(object):
         """
         Return the list of all the platform configuration instances that this platform manages
         """
-        return self.platform_configs.values()
+        return list(self.platform_configs.values())
 
     def get_configuration_names(self):
         """
         Return the list of all the configuration names that this platform manages
         :return:
         """
-        return self.platform_configs.keys()
+        return list(self.platform_configs.keys())
 
     def get_configuration(self, configuration_name):
         """
@@ -430,7 +435,7 @@ class PlatformDetail(object):
             return
     
         # Process the environment list into the context's environment table
-        for env_key_string, env_values in env_dict.items():
+        for env_key_string, env_values in list(env_dict.items()):
             
             processed_key = _process_key(env_key_string)
             if not processed_key:
@@ -464,13 +469,6 @@ def _read_platforms_for_host():
     validated_platforms_for_host = {}
     alias_to_platforms_map = {}
 
-    # Attempt to read the environment json file that is set by setup assistant
-    try:
-        environment_json_path = os.path.join(os.getcwd(), '_WAF_', 'environment.json')
-        environment_json = parse_json_file(environment_json_path)
-    except:
-        environment_json = None
-
     for platform_setting in settings_manager.LUMBERYARD_SETTINGS.get_all_platform_settings():
 
         # Apply the default aliases if any
@@ -503,12 +501,7 @@ def _read_platforms_for_host():
 
         # Determine if the platform is enabled and available
         is_enabled = platform_setting.enabled
-        
-        # Special case. Android also relies on a special environment file
-        if 'android' in platform_setting.aliases:
-            if environment_json:
-                is_enabled = is_value_true(environment_json.get('ENABLE_ANDROID', 'False'))
-    
+      
         # Create the base platform detail object from the platform settings
         base_platform = PlatformDetail(platform=platform_setting.platform,
                                        enabled=is_enabled,
@@ -522,9 +515,9 @@ def _read_platforms_for_host():
                                        platform_env_dict=platform_setting.env_dict)
         validated_platforms_for_host[base_platform.name()] = base_platform
 
-    for platform_key in validated_platforms_for_host.keys():
+    for platform_key in list(validated_platforms_for_host.keys()):
         Logs.debug('settings: Initialized Target Platform: {}'.format(platform_key))
-    for alias_name, alias_values in alias_to_platforms_map.items():
+    for alias_name, alias_values in list(alias_to_platforms_map.items()):
         Logs.debug('settings: Platform Alias {}: {}'.format(alias_name, ','.join(alias_values)))
 
     return validated_platforms_for_host, alias_to_platforms_map
@@ -626,6 +619,13 @@ def is_linux_platform(ctx, platform):
 
 
 @conf
+def get_env_for_platform(ctx, platform):
+    if not ctx.all_envs:
+        ctx.load_envs()
+    return ctx.all_envs.get(platform)
+
+
+@conf
 def get_target_platform_detail(ctx, platform_name):
     """
     Get a PlatformDetail object based on a platform name
@@ -639,87 +639,24 @@ def get_target_platform_detail(ctx, platform_name):
         raise Exception("Invalid platform name '{}'. Make sure it is defined in the platform configuration file.".format(platform_name))
 
 
-VALIDATED_CONFIGURATIONS_FILENAME = "valid_configuration_platforms.json"
-
-
 @conf
-def get_validated_platforms_node(conf):
-    """
-    Get the validated platforms file node, which tracks which target platforms are enabled during a build
-    :param conf: Context
-    :return: Node3 object of the validated platforms file
-    """
-    return conf.get_bintemp_folder_node().make_node(VALIDATED_CONFIGURATIONS_FILENAME)
-
-
-@conf
-def update_valid_configurations_file(ctx):
-    """
-    Update the validated platforms file that is used for the build commands to see which platforms are valid and enabled
-    :param ctx:     Context
-    """
-    current_available_platforms = ctx.get_enabled_target_platforms(reset_cache=True,
-                                                                   apply_validated_platforms=False)
-    validated_platforms_node = ctx.get_validated_platforms_node()
-
-    # write out the list of platforms that were successfully configured
-    platform_names = [platform.name() for platform in current_available_platforms]
-    json_data = json.dumps(platform_names)
-    try:
-        validated_platforms_node.write(json_data)
-    except Exception as e:
-        # If the file cannot be written to, warn, but dont fail.
-        Logs.warn("[WARN] Unable to update validated configurations file '{}' ({})".format(validated_platforms_node.abspath(),e.message))
-
-
-@conf
-def enable_target_platform(ctx, platform_name):
-    """
-    Enable a target platform
-    :param ctx:             Context
-    :param platform_name:   Name of the platform to enable
-    """
-    get_target_platform_detail(ctx, platform_name).set_enabled(True)
-    ctx.get_enabled_target_platforms(True)
-
-
-@conf
-def disable_target_platform(ctx, platform):
-    """
-    Disable a target platform
-    :param ctx:             Context
-    :param platform_name:   Name of the platform to disable
-    """
-    get_target_platform_detail(ctx, platform).set_enabled(False)
-    ctx.get_enabled_target_platforms(True)
-
-
-@conf
-def get_all_target_platforms(ctx, apply_valid_platform_filter):
+def get_all_target_platforms(ctx, enabled_only=True):
     """
     Get all platforms that are configured for this host
-    :param ctx:                             Context
-    :param apply_valid_platform_filter:     Flag to apply the 'validated_platforms' file as a filter
-    :return: List of target platforms
+
+    :param ctx:              Context
+    :param enabled_only:     Flag to only return enabled platforms (vs all available platforms)
+    :return: List of target platforms (PlatformDetail)
     """
     def _platform_sort_key(item):
         return item.name()
 
     enabled_platforms = []
-
-    # Optionally load the platform filter list if possible
-    cached_valid_platforms = None
-    if apply_valid_platform_filter:
-        validated_platforms_node = ctx.get_validated_platforms_node()
-        if os.path.exists(validated_platforms_node.abspath()):
-            cached_valid_platforms = ctx.parse_json_file(validated_platforms_node)
-
-    for platform_name, platform_details in PLATFORM_MAP.items():
-        if cached_valid_platforms and platform_name not in cached_valid_platforms:
-            continue
-        if not platform_details.is_enabled():
-            Logs.debug("Skipping disabled platform '{}'".format(platform_name))
-            continue
+    for platform_name, platform_details in list(PLATFORM_MAP.items()):
+        if enabled_only:
+            if not ctx.is_target_platform_enabled(platform_name):
+                Logs.debug("Skipping disabled platform '{}'".format(platform_name))
+                continue
         enabled_platforms.append(platform_details)
 
     enabled_platforms.sort(key=_platform_sort_key)
@@ -728,60 +665,80 @@ def get_all_target_platforms(ctx, apply_valid_platform_filter):
 
 
 @conf
-def get_enabled_target_platforms(ctx, reset_cache=False, apply_validated_platforms=True):
+def get_all_target_platform_names(ctx, enabled_only=True):
     """
-    Get the enabled target platforms that were successfully configured
-    :param ctx:             Context
-    :param reset_cache:     Option to reset the cached enabled platforms that this function manages
-    :param apply_validated_platforms:   Option to apply the validated platform cache or not
-    :return:    List of enabled target platforms
-    """
-    try:
-        if reset_cache:
-            ctx.enabled_platforms = ctx.get_all_target_platforms(apply_validated_platforms)
-        return ctx.enabled_platforms
-    except AttributeError:
-        ctx.enabled_platforms = ctx.get_all_target_platforms(apply_validated_platforms)
-        return ctx.enabled_platforms
+    Get a list of target platform names configured for this host
 
-
-@conf
-def get_enabled_target_platform_names(ctx):
+    :param ctx:              Context
+    :param enabled_only:     Flag to only return enabled platforms (vs all available platforms)
+    :return: List of target platform names
     """
-    Get a list of enabled target platform names
-    :param ctx: Context
-    """
-    enabled_platform_names = [platform.name() for platform in ctx.get_enabled_target_platforms()]
+    enabled_platform_names = [platform.name() for platform in ctx.get_all_target_platforms(enabled_only)]
     return enabled_platform_names
 
 
 @conf
 def is_target_platform_enabled(ctx, platform_name):
     """
-    Check if a platform is enabled
+    Check if a platform is enabled based on the following logic:
+
+    1. If the platform_name is an alias, then the platform alias is 'enabled' if at least one of the platforms under that alias is enabled
+    2. If the platform is not enabled ("enabled": False) at the platform setting definition level (_WAF_/settings/platforms), then it is not enabled
+       regardless of any other override value.
+    3. If the platform is enabled at the platform settings definition level, but is disabled at the user_settings.options override (enable_<platform> = False), then
+       the platform is considered disabled
+    4. There may may some special overrides as well, such as 'environment.json' under _WAF_ where "ENABLE_ANDROID" controls the state of all of android platforms
+
     :param ctx:             Context
     :param platform_name:   The platform to check
     :return:                True if this is a valid/enabled platform, False if not
     """
+
+    def _is_platform_enabled(full_platform_name):
+
+        if not settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled(full_platform_name):
+            # High priority check is the enable flag in the platform json file. If this is False, then the platform
+            # is not enabled regardless of any other secondary override
+            return False
+        if not ctx.get_target_platform_detail(full_platform_name).enabled:
+            # The next priority is the Build Platform Detail that is generated from the platform settings file.
+            # The 'enabled' flag is set from the settings file by default, but is overridden by the 'enable_XXXX'
+            # option where XXXX is the platform name in user_settings.options. There are special cases, such as android,
+            # where an environment value 'ENABLE_ANDROID' is used to determine availability as well.
+            return False
+        return True
+
     if platform_name in ALIAS_TO_PLATFORMS_MAP:
         # If the platform name represents an alias, then check the enabled flag across all of the platforms that alias
         # represents
         aliased_platforms = ALIAS_TO_PLATFORMS_MAP[platform_name]
+        enabled = False
         for aliased_platform in aliased_platforms:
-            if PLATFORM_MAP[aliased_platform].enabled:
-                return True
-        return False
-    elif platform_name not in PLATFORM_MAP:
-        # The platform name is not recognized
-        return False
+            if not _is_platform_enabled(aliased_platform):
+                continue
+            enabled = True
+            break
+        return enabled
     else:
-        # Check against the concrete platform name
-        return ctx.get_target_platform_detail(platform_name).enabled
+        try:
+            return _is_platform_enabled(platform_name)
+        except:
+            raise Errors.WafError("Invalid platform name '{}'".format(platform_name))
 
 
 @conf
 def get_platforms_for_alias(ctx, alias_name):
     return list(ALIAS_TO_PLATFORMS_MAP.get(alias_name,set()))
+
+
+@conf
+def is_android_enabled(ctx):
+    """
+    Check if any android platform is enabled
+    :param ctx:     Context
+    :return:        True if any android is enabled and available, False if not
+    """
+    return ctx.is_target_platform_enabled('android')
 
 
 @conf
@@ -861,7 +818,7 @@ def get_current_platform_list(ctx, platform=None, include_alias=True):
         if hasattr(ctx, 'get_target_platforms'):
             check_platforms = ctx.get_target_platforms()
         else:
-            check_platforms = [platform.name() for platform in ctx.get_enabled_target_platforms()]
+            check_platforms = [platform.name() for platform in ctx.get_all_target_platforms()]
     else:
         check_platforms = [platform]
 
@@ -870,7 +827,7 @@ def get_current_platform_list(ctx, platform=None, include_alias=True):
         for check_platform in check_platforms:
             current_platforms.append(check_platform)
             if include_alias:
-                for alias, aliased_platforms in ALIAS_TO_PLATFORMS_MAP.items():
+                for alias, aliased_platforms in list(ALIAS_TO_PLATFORMS_MAP.items()):
                     if check_platform in aliased_platforms and alias not in current_platforms:
                         current_platforms.append(alias)
         return current_platforms
@@ -933,7 +890,7 @@ def preprocess_target_platforms(ctx, platforms, auto_populate_empty=False):
     """
     processed_platforms = set()
     if (auto_populate_empty and len(platforms) == 0) or 'all' in platforms:
-        for platform in PLATFORM_MAP.keys():
+        for platform in list(PLATFORM_MAP.keys()):
             processed_platforms.add(platform)
     else:
         for platform in platforms:
@@ -960,7 +917,7 @@ def preprocess_target_configuration_list(ctx, target, target_platform, configura
     if target_platform:
         # Collect the valid configuration names for the platform
         platform_detail = ctx.get_target_platform_detail(target_platform)
-        valid_configuration_names = [config_detail.config_name() for config_detail in platform_detail.platform_configs.values()]
+        valid_configuration_names = [config_detail.config_name() for config_detail in list(platform_detail.platform_configs.values())]
     else:
         # If no platform was specified,
         valid_configuration_names = settings_manager.LUMBERYARD_SETTINGS.get_configurations_for_alias('all')
@@ -1095,6 +1052,8 @@ def process_restricted_settings(ctx, kw):
     is_install_ctx = isinstance(ctx, LmbrInstallContext)
     target = kw['target']
 
+    use_platform_root = kw.get('use_platform_root', False)
+
     for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
 
         # the install context has no used for the file list so don't search for it specifically
@@ -1112,15 +1071,25 @@ def process_restricted_settings(ctx, kw):
         if 'restricted_script' in kw:
             script_dir, script_base = os.path.split(ctx.cur_script.abspath())
             script_root, script_ext = os.path.splitext(script_base)
+
             restricted_script_filename = ''
             if len(script_ext) > 0:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
+                restricted_script_filename = '{0}_{1}.{2}'.format(script_root, p1, script_ext)
             else:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
-            if os.path.exists(restricted_script_filename):
+                restricted_script_filename = '{0}_{1}'.format(script_root, p1)
+
+            path_components = [ script_dir ]
+
+            if use_platform_root:
+                path_components.append('Platform')
+
+            path_components.extend([ p0, restricted_script_filename ])
+
+            restricted_script_filepath = os.path.join(*path_components)
+            if os.path.exists(restricted_script_filepath):
 
                 # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
-                restricted_script = run_path(restricted_script_filename)
+                restricted_script = run_path(restricted_script_filepath)
                 if kw['restricted_script'] in restricted_script:
                     restricted_script[kw['restricted_script']](ctx, kw)
 
@@ -1195,7 +1164,7 @@ def load_compile_rules_for_enabled_platforms(ctx):
     Logs.info("[WAF] 'Initialize Build Variants' starting...")
     configure_timer = Utils.Timer()
     
-    all_target_platforms = ctx.get_all_target_platforms(False)
+    all_target_platforms = ctx.get_all_target_platforms(enabled_only=False)
 
     # Keep track of uselib's that we found in the 3rd party config files
     third_party_uselib_map = ctx.read_and_mark_3rd_party_libs()
@@ -1213,8 +1182,14 @@ def load_compile_rules_for_enabled_platforms(ctx):
     ctx.update_platform_availability_from_options()
 
     for enabled_target_platform in all_target_platforms:
-        
-        if not enabled_target_platform.enabled:
+
+        if not ctx.is_target_platform_enabled(enabled_target_platform.platform):
+            # Log a warning if the target platform is not enabled due to the dependent platform being disabled
+            platform_name = enabled_target_platform.platform
+            settings = settings_manager.LUMBERYARD_SETTINGS
+            if settings.is_platform_enable_key_set(platform_name) and not settings.is_dependent_platform_enabled(platform_name):
+                dependent_platform_name = settings.platform_settings_map[platform_name].attributes.get('dependent_platform')
+                Logs.warn("[WARN] Disabling platform '{}' due to its dependent platform '{}' being disabled".format(platform_name, dependent_platform_name))
             continue
 
         platform_spec_vanilla_conf = vanilla_conf.derive()
@@ -1289,7 +1264,7 @@ def load_compile_rules_for_enabled_platforms(ctx):
                     
                 # Apply the uselib keys from the third party to the platform/config
                 uselib_platform_key = enabled_target_platform.third_party_platform_key
-                for cached_uselib, cached_uselib_reader in cached_uselib_readers.items():
+                for cached_uselib, cached_uselib_reader in list(cached_uselib_readers.items()):
                     try:
                         cached_uselib_reader.apply(ctx, uselib_platform_key, enabled_configuration)
                     except Exception as err:
@@ -1301,16 +1276,44 @@ def load_compile_rules_for_enabled_platforms(ctx):
                 ctx.get_env().detach()
                 
         except Errors.WafError as err:
-            Logs.warn('[WARN] Unable to initialize platform ({}). Disabling platform.'.format(err))
+            Logs.warn('[WARN] Unable to initialize platform \'{}\' ({}). Disabling platform.'.format(enabled_target_platform.name(), err))
             ctx.get_env().detach()
             ctx.disable_target_platform(enabled_target_platform.name())
             continue
 
-    # Update the validated platforms so it will be carried over to project_generator commands
-    ctx.update_valid_configurations_file()
+    ctx.update_host_restricted_platforms_settings()
+    # Update the legacy bootstrap_tool_param setting
+    ctx.update_bootstrap_tool_param()
+
     Logs.info("[WAF] 'Initialize Build Variants' successful ({})".format(str(configure_timer)))
 
     ctx.generate_ib_profile_xml()
+
+
+@conf
+def update_host_restricted_platforms_settings(ctx):
+    """
+    Update restricted platform parameters for current host by invoking the
+    @multi_conf update_host_tool_env_for_restricted_platforms method()
+    :param ctx:     The configure context
+    """
+    restricted_tool_list_macro_header = 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS='
+    # skip over non-enabled platform that isn't enabled due to a dependent platform being disabled
+    enabled_target_platforms = ctx.get_all_target_platforms(enabled_only=True)
+    host_platform = ctx.get_waf_host_platform()
+    for env_name in ctx.all_envs:
+        # Skip over env entries that do not represent the host platform
+        if host_platform not in env_name:
+            continue
+
+        host_env = ctx.all_envs[env_name]
+        restricted_tool_list_macro = restricted_tool_list_macro_header
+        tool_list_macro_parts = ctx.update_host_tool_env_for_restricted_platforms(host_platform, host_env, enabled_target_platforms)
+        if tool_list_macro_parts:
+            restricted_tool_list_macro += ''.join(tool_list_macro_parts)
+
+        if len(restricted_tool_list_macro) > len(restricted_tool_list_macro_header):
+            host_env['DEFINES'] += [restricted_tool_list_macro]
 
 
 def wrap_execute(execute_method):
@@ -1327,7 +1330,7 @@ def wrap_execute(execute_method):
             :return:    List of output folder names
             """
             output_folders = []
-            for platform_detail in PLATFORM_MAP.values():
+            for platform_detail in list(PLATFORM_MAP.values()):
                 for platform_config in platform_detail.get_configuration_details():
                     output_folders.append(platform_config.output_folder())
             return output_folders
@@ -1343,7 +1346,7 @@ def wrap_execute(execute_method):
             lmbrwaf_version_path = os.path.join(bin_temp_node.abspath(), 'lmbrwaf.version')
             if os.path.exists(lmbrwaf_version_path) and not overwrite:
                 return
-            from ConfigParser import ConfigParser
+            from configparser import ConfigParser
             config = ConfigParser()
             with open(lmbrwaf_version_path, 'w') as lmbrwaf_version_file:
                 config.add_section('General')
@@ -1388,7 +1391,7 @@ def wrap_execute(execute_method):
                 clean_subfolders += [os.path.join(root_path, binary_folder) for binary_folder in _get_output_binary_folders()]
                 
                 # Add all the possible platform+confif variant folders
-                for platform_detail in PLATFORM_MAP.values():
+                for platform_detail in list(PLATFORM_MAP.values()):
                     for platform_config in platform_detail.get_configuration_details():
                         bintemp_subfolder = os.path.join(bintemp_path, '{}_{}'.format(platform_detail.name(), platform_config.config_name()))
                         clean_subfolders.append(bintemp_subfolder)
@@ -1433,7 +1436,7 @@ def wrap_execute(execute_method):
                 return None
 
             try:
-                from ConfigParser import ConfigParser
+                from configparser import ConfigParser
                 parser = ConfigParser()
                 parser.read(lmbrwaf_version_file_path)
                 current_version_tag = str(parser.get('General', 'version_tag'))
@@ -1509,8 +1512,16 @@ BuildContext.execute = wrap_execute(BuildContext.execute)
 ConfigurationContext.execute = wrap_execute(ConfigurationContext.execute)
 
 
+class DefaultBuild(BuildContext):
+    """
+    Declare a handler for the default build command that will simply say that the default 'build' is not supported
+    """
+    cmd = 'build'
+    def execute(self):
+        raise Errors.WafError("The default build waf command specified. You must supply a valid WAF command. Run waf with the '--help' argument for help")
+
 # Create Build Context Commands for multiple platforms/configurations
-for platform_detail in PLATFORM_MAP.values():
+for platform_detail in list(PLATFORM_MAP.values()):
     for config_detail in platform_detail.get_configuration_details():
         platform_config_key = '{}_{}'.format(platform_detail.name(), config_detail.config_name())
         # Create new class to execute clean with variant
@@ -1521,6 +1532,7 @@ for platform_detail in PLATFORM_MAP.values():
             target_platform = platform_detail.name()
             target_configuration = config_detail.config_name()
             is_build_cmd = True
+            doc = "Cleans platform '{}' in the '{}' configuration".format(target_platform, target_configuration)
 
             def __init__(self, **kw):
                 super(CleanContext, self).__init__(**kw)
@@ -1543,7 +1555,7 @@ for platform_detail in PLATFORM_MAP.values():
                             h = 0
                             for f in env['files']:
                                 try:
-                                    h = hash((h, Utils.readf(f, 'rb')))
+                                    h = Utils.h_list((h, Utils.readf(f, 'rb')))
                                 except (IOError, EOFError):
                                     pass # ignore missing files (will cause a rerun cause of the changed hash)
                             do_config = h != env.hash
@@ -1578,6 +1590,7 @@ for platform_detail in PLATFORM_MAP.values():
             target_platform = platform_detail.name()
             target_configuration = config_detail.config_name()
             is_build_cmd = True
+            doc = "Builds platform '{}' in the '{}' configuration".format(target_platform, target_configuration)
 
             def compare_timestamp_file_modified(self, path):
                 modified = False
@@ -1611,7 +1624,14 @@ for platform_detail in PLATFORM_MAP.values():
             def do_auto_configure(self):
                 timestamp_check_files = TIMESTAMP_CHECK_FILES
                 if 'android' in platform_config_key:
-                    timestamp_check_files += ANDROID_TIMESTAMP_CHECK_FILES
+                    if LUMBERYARD_ENGINE_PATH=='.':
+                        timestamp_check_files += ANDROID_TIMESTAMP_CHECK_FILES
+                    else:
+                        for android_file in ANDROID_TIMESTAMP_CHECK_FILES:
+                            if os.path.exists(android_file):
+                                timestamp_check_files.append(android_file)
+                            else:
+                                timestamp_check_files.append(os.path.join(LUMBERYARD_ENGINE_PATH, android_file))
 
                 for timestamp_check_file in timestamp_check_files:
                     if self.compare_timestamp_file_modified(timestamp_check_file):
@@ -1705,47 +1725,61 @@ def register_output_folder_settings_reporter(ctx, platform_name):
 
 @conf
 def update_platform_availability_from_options(ctx):
-    
     enabled_capabilities = ctx.get_enabled_capabilities()
-    
+
     # Check if  the java module was loaded (for checks against platforms that require it)
     check_java = hasattr(ctx, 'javaw_loaded')
     java_loaded = getattr(ctx, 'javaw_loaded', False)
-    
-    # Load the platform filter list if any as an additional filter
-    is_configure_context = isinstance(ctx, ConfigurationContext)
-    validated_platforms_node = ctx.get_validated_platforms_node()
-    validated_platforms_json = ctx.parse_json_file(validated_platforms_node) if os.path.exists(validated_platforms_node.abspath()) else None
 
-    for enabled_target_platform in PLATFORM_MAP.values():
-        if enabled_target_platform.needs_java and not java_loaded and check_java:
-            Logs.info('[INFO] Target platform {} disabled due to not java not properly initialized through Setup Assistant.'.format(enabled_target_platform.name()))
-            enabled_target_platform.set_enabled(False)
+    enabled_platform_list = ctx.get_all_target_platforms()
+    for enabled_platform in enabled_platform_list:
+
+        if enabled_platform.needs_java and not java_loaded and check_java:
+            Logs.info('[INFO] Target platform {} disabled due to java not being properly initialized through Setup Assistant.'.format(enabled_platform.name()))
+            enabled_platform.set_enabled(False)
             continue
 
-        # Check if the platform is enabled in setup assistant (if the platform is filtered by a setup assistant capability of not)
-        sa_capabilities = enabled_target_platform.attributes.get('sa_capability', None)
-        if sa_capabilities and enabled_capabilities:
 
-            if not isinstance(sa_capabilities, list):
-                sa_capabilities = [sa_capabilities]
+@conf
+def is_platform_available(ctx, platform_name):
+    """
+    Determine if a platform is available or not
+    :param ctx:             The current context
+    :param platform_name:   The name of the platform to determine its availability
+    :return:    True if the platform is valid and available.
+    """
 
-            for sa_capability in sa_capabilities:
-                capability_key = sa_capability['key']
-                capability_desc = sa_capability['description']
-                if capability_key in enabled_capabilities:
-                    break
+    # Always search based on a list of platforms in case the platform name is an alias to multiple platforms, in which
+    # case we want to return true if at least one of them is available
+    if platform_name in ALIAS_TO_PLATFORMS_MAP:
+        platforms = ALIAS_TO_PLATFORMS_MAP[platform_name]
+    else:
+        platforms = [platform_name]
 
-            else:
-                descriptions = ', '.join([capability['description'] for capability in sa_capabilities])
-                Logs.debug('lumberyard: Removing target platform {} due to none of the following being checked in Setup Assistant: {}.'.format(enabled_target_platform.name(), descriptions))
-                enabled_target_platform.set_enabled(False)
-                continue
+    # Check if at least one of the concrete platform names is available
+    for platform_name in platforms:
+        platform_details = PLATFORM_MAP.get(platform_name)
+        if not platform_details:
+            # Invalid platform
+            continue
 
-        if not is_configure_context and validated_platforms_json:
-            if enabled_target_platform.platform not in validated_platforms_json:
-                enabled_target_platform.set_enabled(False)
-                continue
+        if not platform_details.enabled:
+            # Platform is disabled manually
+            continue
+
+        if platform_name not in ctx.all_envs:
+            # The platform name wasnt registered in the env
+            continue
+
+        platform_env = ctx.all_envs[platform_name]
+        if PLATFORM_AVAILABILITY_ENV_KEY not in platform_env:
+            # The platform env was not tagged as available
+            continue
+
+        if platform_env[PLATFORM_AVAILABILITY_ENV_KEY]:
+            return True
+
+    return False
 
 
 ##
@@ -1794,13 +1828,14 @@ def add_restricted_3rd_party_subpaths(ctx, third_party_subpaths_map):
 
 
 @lumberyard.multi_conf
-def update_host_tool_env_for_restricted_platforms(ctx, host_platform, env):
+def update_host_tool_env_for_restricted_platforms(ctx, host_platform, env, enabled_target_platforms):
     """
     Update the incoming host tool environment for specifics (like defines) for a restricted platform.
     
     :param ctx:             Context
     :param host_platform:   The host platform who's env we are updating
     :param env:             The env to update for the restricted platform for the tools host environment
+    :param enabled_target_platforms The current list of enabled_target_platforms
     :return: Additional string to ultimately add to 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS' (the caller function must handle this logic)
     """
     return None

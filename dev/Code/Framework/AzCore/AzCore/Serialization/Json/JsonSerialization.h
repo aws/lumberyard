@@ -19,6 +19,9 @@
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/string_view.h>
 
+#include <AzCore/std/any.h>
+#include <AzCore/std/containers/unordered_map.h>
+
 namespace AZ
 {
     class BaseJsonSerializer;
@@ -28,6 +31,55 @@ namespace AZ
     using JsonIssueCallback = AZStd::function<JsonSerializationResult::ResultCode(AZStd::string_view message, 
         JsonSerializationResult::ResultCode result, AZStd::string_view path)>;
 
+    //! Holds a collection of generic settings objects to be used by custom serializers.
+    class JsonSerializationMetadata
+    {
+    public:
+        //! Adds a new settings object to the metadata collection.
+        //! Only one object of the same type can be added.
+        //! Returns false if an object of this type was already added.
+        template<typename MetadataT>
+        bool Add(MetadataT&& data)
+        {
+            auto typeId = azrtti_typeid<MetadataT>();
+            auto iter = m_data.find(typeId);
+            if (iter != m_data.end())
+            {
+                AZ_Warning("JsonSerializationMetadata", false, "Metadata object of type %s already added", typeId.template ToString<OSString>().c_str());
+                return false;
+            }
+
+            m_data[typeId] = AZStd::any{AZStd::forward<MetadataT>(data)};
+            return true;
+        }
+
+        //! Returns settings of the type MetadataT, or null if no settings of that type exists.
+        template<typename MetadataT>
+        MetadataT* Find()
+        {
+            const auto& typeId = azrtti_typeid<MetadataT>();
+            auto iter = m_data.find(typeId);
+            if (iter != m_data.end())
+            {
+                return AZStd::any_cast<MetadataT>(&iter->second);
+            }
+            else
+            {
+                return nullptr;
+            }
+        }
+        template<typename MetadataT>
+        const MetadataT* Find() const
+        {
+            return const_cast<JsonSerializationMetadata*>(this)->Find<MetadataT>();
+        }
+
+
+    private:
+
+        AZStd::unordered_map<AZ::TypeId, AZStd::any> m_data;
+    };
+    
     //! Optional settings used while loading a json document to an object.
     struct JsonDeserializerSettings final
     {
@@ -38,14 +90,18 @@ namespace AZ
         //! Optional callback when issues are encountered. If not provided reporting will be forwarded to the default issue reporting.
         //! This can also be used to change the returned result code to alter the behavior of the deserializer.
         JsonIssueCallback m_reporting;
+
+        //! If true this will clear all containers in the object before applying the data from the json document. If set to false
+        //! any values in the container will be kept and not overwritten.
+        //! Note that this does not apply to containers where elements have a fixed location such as smart pointers or AZStd::tuple.
+        bool m_clearContainers = false;
+
+        JsonSerializationMetadata m_metadata;
     };
     
     //! Optional settings used while storing an object to a json document.
     struct JsonSerializerSettings final
     {
-        //! If true default value will be stored, otherwise only changed values will be stored.
-        bool m_keepDefaults = false;
-
         //! Optional serialize context. If not provided the default instance will be retrieved through an EBus call.
         SerializeContext* m_serializeContext = nullptr;
         //! Optional json registration context. If not provided the default instance will be retrieved through an EBus call.
@@ -53,6 +109,12 @@ namespace AZ
         //! Optional callback when issues are encountered. If not provided reporting will be forwarded to the default issue reporting.
         //! This can also be used to change the returned result code to alter the behavior of the serializer.
         JsonIssueCallback m_reporting;
+
+        //! If true default value will be stored, otherwise only changed values will be stored. This will automatically be set to false
+        //! if the Store function is given a default object.
+        bool m_keepDefaults = false;
+
+        JsonSerializationMetadata m_metadata;
     };
 
     enum class JsonSerializerCompareResult

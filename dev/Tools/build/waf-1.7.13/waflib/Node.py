@@ -512,7 +512,7 @@ class Node(object):
 					if maxdepth:
 						for k in node.ant_iter(accept=accept, maxdepth=maxdepth - 1, pats=npats, dir=dir, src=src, remove=remove):
 							yield k
-		raise StopIteration
+		return
 
 	def ant_glob(self, *k, **kw):
 		"""
@@ -716,7 +716,7 @@ class Node(object):
 		expanded_path = '/'.join(lst)
 
 		hasher = hashlib.md5()
-		hasher.update(expanded_path)
+		hasher.update(expanded_path.encode('utf-8'))
 		hashed_and_encoded = hasher.hexdigest()
 
 		if len(expanded_path) > 32:
@@ -859,8 +859,20 @@ class Node(object):
 		except AttributeError:
 			pass
 
-		self.cache_sig = ret = Utils.h_file(self.abspath())
-		return ret
+		def should_use_parent_task_sig():
+			if not self.is_bld() and hasattr(self, 'sig'):
+				# If node is outside of bld folder and is gerenerated, use parent task sig
+				return True
+			if os.path.splitext(self.name)[1] in ['.o', '.obj']:
+				# If node is object file, use parent task sig if exists
+				return hasattr(self, 'sig')
+
+		if should_use_parent_task_sig():
+			self.cache_sig = self.sig
+		else:
+			self.cache_sig = Utils.h_file(self.abspath())
+
+		return self.cache_sig
 
 
 	# TODO Waf 1.8

@@ -47,12 +47,13 @@
 #include <AzCore/Debug/ProfilerDriller.h>
 #include <AzCore/Debug/EventTraceDriller.h>
 #include <AzCore/Debug/Profiler.h>
-
 #include <AzCore/Script/ScriptSystemBus.h>
 
 #include <AzCore/Math/PolygonPrism.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/VertexContainer.h>
+
+#include <AzCore/Name/NameDictionary.h>
 
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 
@@ -155,16 +156,6 @@ namespace AZ
 
         return true;
     };
-
-    //=========================================================================
-    // ReflectSerialize
-    // [5/30/2012]
-    //=========================================================================
-    void ComponentApplication::Descriptor::ReflectSerialize(SerializeContext* serializeContext, ComponentApplication* app)
-    {
-        AZ_Warning("Application", false, "ComponentApplication::Descriptor::ReflectSerialize() is deprecated, use Reflect() instead.");
-        ComponentApplication::Descriptor::Reflect(serializeContext, app);
-    }
 
     void ComponentApplication::Descriptor::AllocatorRemapping::Reflect(ReflectContext* context, ComponentApplication* app)
     {
@@ -433,6 +424,15 @@ namespace AZ
             m_osAllocator = startupParameters.m_allocator;
         }
 
+        // Az Console initialization..
+        // Our unit tests are special, and don't always construct an AzFramework application prior to loading modules.. most do, but some don't
+        // So we have to duplicate subsystem initialization here in order to guarantee module loading functions correctly for all unit tests
+        if (AZ::Interface<AZ::IConsole>::Get() == nullptr)
+        {
+            new AZ::Console;
+            AZ::Interface<AZ::IConsole>::Get()->LinkDeferredFunctors(AZ::ConsoleFunctorBase::GetDeferredHead());
+        }
+
         m_descriptor = descriptor;
         m_startupParameters = startupParameters;
         CreateCommon();
@@ -457,6 +457,8 @@ namespace AZ
         CreateSystemAllocator();
 
         CreateReflectionManager();
+
+        NameDictionary::Create();
 
         // Call this and child class's reflects
         ReflectionEnvironment::GetReflectionManager()->Reflect(azrtti_typeid(this), AZStd::bind(&ComponentApplication::Reflect, this, AZStd::placeholders::_1));
@@ -560,6 +562,8 @@ namespace AZ
 
         // Uninit and unload any dynamic modules.
         m_moduleManager.reset();
+        
+        NameDictionary::Destroy();
 
         if (systemEntity)
         {
@@ -1222,6 +1226,8 @@ namespace AZ
         SplineReflect(context);
         // reflect polygon prism
         PolygonPrismReflect(context);
+        // reflect name dictionary.
+        Name::Reflect(context);
     }
 
 } // namespace AZ

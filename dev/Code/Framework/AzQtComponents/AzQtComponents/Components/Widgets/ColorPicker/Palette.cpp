@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
 #include <AzQtComponents/Utilities/Conversions.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <QtXml/QDomDocument>
 #include <QDataStream>
 #include <QFile>
@@ -246,7 +247,7 @@ const QVector<AZ::Color>& Palette::colors() const
 
 void Palette::insertColorsIgnoringDuplicates(int index, QVector<AZ::Color>::const_iterator first, QVector<AZ::Color>::const_iterator last)
 {
-    m_colors.insert(index, std::distance(first, last), {});
+    m_colors.insert(index, aznumeric_cast<int>(std::distance(first, last)), {});
     auto target = m_colors.begin() + index;
     while (first != last) {
         *target = *first;

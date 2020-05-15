@@ -12,8 +12,6 @@
 #include "StdAfx.h"
 #include <platform_impl.h>
 
-#include <FlowSystem/Nodes/FlowBaseNode.h>
-
 #include <CertificateManagerGem.h>
 #include <CertificateManager/DataSource/IDataSource.h>
 

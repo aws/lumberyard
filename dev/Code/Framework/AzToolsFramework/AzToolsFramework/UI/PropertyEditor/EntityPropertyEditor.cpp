@@ -476,7 +476,21 @@ namespace AzToolsFramework
             {
                 AZ::Entity* entity = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
-                if (entity)
+                bool addEntity = (entity != nullptr);
+
+                // If this is a Level Inspector, the level entity is only considered valid if we've
+                // finished creating or loading a level.  It should *not* be considered valid when
+                // you open the Editor without creating or loading a level, even though it exists.
+                // It also should not be considered valid during the creation / loading process,
+                // only when the process is finished.
+                if (m_isLevelEntityEditor)
+                {
+                    bool levelOpen = false;
+                    AzToolsFramework::EditorRequestBus::BroadcastResult(levelOpen, &AzToolsFramework::EditorRequests::IsLevelDocumentOpen);
+                    addEntity = addEntity && levelOpen;
+                }
+
+                if (addEntity)
                 {
                     selectedEntityIds.emplace_back(entityId);
                 }
@@ -497,7 +511,7 @@ namespace AzToolsFramework
             ConnectToEntityBuses(entityId);
         }
 
-        m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.size() == 0);
+        m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.empty() && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
 
         UpdateContents();
     }
@@ -698,6 +712,8 @@ namespace AzToolsFramework
             m_gui->m_entityDetailsLabel->setText(tr("Common components shown"));
             m_gui->m_entityNameEditor->setText(tr("%n entities selected", "", static_cast<int>(m_selectedEntityIds.size())));
             m_gui->m_entityNameEditor->setReadOnly(true);
+
+            m_gui->m_entityIdText->setText(tr("multiple selected"));
         }
         else if (!m_selectedEntityIds.empty())
         {
@@ -712,6 +728,8 @@ namespace AzToolsFramework
             // get the name of the entity.
             auto entity = GetSelectedEntityById(entityId);
             m_gui->m_entityNameEditor->setText(entity ? entity->GetName().data() : "Entity Not Found");
+
+            m_gui->m_entityIdText->setText(QString::number(static_cast<AZ::u64>(entityId)));
         }
     }
 
@@ -722,7 +740,9 @@ namespace AzToolsFramework
 
         if (m_isLevelEntityEditor)
         {
-            return SelectionEntityTypeInfo::LevelEntity;
+            // The Level Inspector should only have a list of selectable components after the
+            // level entity itself is valid (i.e. "selected").
+            return selection.empty() ? SelectionEntityTypeInfo::None : SelectionEntityTypeInfo::LevelEntity;
         }
 
         for (AZ::EntityId selectedEntityId : selection)
@@ -817,8 +837,15 @@ namespace AzToolsFramework
             entityDetailsVisible = true;
             if (IsLockedToSpecificEntities())
             {
-                entityDetailsLabelText = tr("The entity this inspector was pinned to has been deleted.");
-            }
+                if (m_isLevelEntityEditor)
+                {
+                    entityDetailsLabelText = tr("Create or load a level to enable the Level Inspector.");
+                }
+                else
+                {
+                    entityDetailsLabelText = tr("The entity this inspector was pinned to has been deleted.");
+                }
+           }
             else
             {
                 entityDetailsLabelText = tr("Select an entity to show its properties in the inspector.");
@@ -858,6 +885,8 @@ namespace AzToolsFramework
         m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.empty() && hasEntitiesDisplayed && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
         m_gui->m_statusLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
         m_gui->m_statusComboBox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
+        m_gui->m_entityIdLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
+        m_gui->m_entityIdText->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
 
         bool displayComponentSearchBox = hasEntitiesDisplayed;
         if (hasEntitiesDisplayed)
@@ -1418,7 +1447,12 @@ namespace AzToolsFramework
     {
         if (m_isBuildingProperties)
         {
-            AZ_Error("PropertyEditor", !m_isBuildingProperties, "A property is being modified while we're building properties - make sure you do not call RequestWrite except in response to user action!");
+            AZ_Error(
+                "PropertyEditor", !m_isBuildingProperties,
+                "A property is being modified while we're building properties - make sure you "
+                "do not call RequestWrite except in response to user action. An undo will not "
+                "be recorded for this change.");
+
             return;
         }
 
@@ -1461,6 +1495,17 @@ namespace AzToolsFramework
 
     void EntityPropertyEditor::AfterPropertyModified(InstanceDataNode* pNode)
     {
+        if (m_isBuildingProperties)
+        {
+            AZ_Error(
+                "PropertyEditor", !m_isBuildingProperties,
+                "A property was modified while building properties - make sure you do not "
+                "call RequestWrite except in response to user action. An undo will not be "
+                "recorded for this change.");
+
+            return;
+        }
+
         AZ_Assert(m_currentUndoOperation, "Invalid undo operation in AfterPropertyModified");
         AZ_Assert(m_currentUndoNode == pNode, "Invalid undo operation in AfterPropertyModified - node doesn't match!");
 
@@ -2301,7 +2346,7 @@ namespace AzToolsFramework
             if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(entityId))
             {
                 AZ::DataPatch::Flags flags = rootSlice->GetEntityDataFlagsAtAddress(entityId, m_dataPatchAddressBuffer);
-                if (flags & AZ::DataPatch::Flag::ForceOverrideEffect)
+                if (flags & AZ::DataPatch::Flag::ForceOverrideSet)
                 {
                     return false;
                 }
@@ -3613,6 +3658,7 @@ namespace AzToolsFramework
                                 entityId, entityIsStartingActive);
 
                             entity->SetRuntimeActiveByDefault(entityIsStartingActive);
+                            undo.MarkEntityDirty(entityId);
                         }
                     }
                     break;
@@ -4610,39 +4656,6 @@ namespace AzToolsFramework
         UpdateContents();
     }
 
-    void EntityPropertyEditor::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
-    {
-        if (IsLockedToSpecificEntities())
-        {
-            bool entityIdChanged = false;
-            EntityIdList newOverrideSelectedEntityIds;
-            newOverrideSelectedEntityIds.reserve(m_overrideSelectedEntityIds.size());
-
-            for (AZ::EntityId& entityId : m_overrideSelectedEntityIds)
-            {
-                auto found = replacedEntitiesMap.find(entityId);
-                if (found != replacedEntitiesMap.end())
-                {
-                    entityIdChanged = true;
-                    newOverrideSelectedEntityIds.push_back(found->second);
-
-                    DisconnectFromEntityBuses(entityId);
-                    ConnectToEntityBuses(found->second);
-                }
-                else
-                {
-                    newOverrideSelectedEntityIds.push_back(entityId);
-                }
-            }
-
-            if (entityIdChanged)
-            {
-                m_overrideSelectedEntityIds = newOverrideSelectedEntityIds;
-                UpdateContents();
-            }
-        }
-    }
-
     void EntityPropertyEditor::OnEntityComponentPropertyChanged(AZ::ComponentId componentId)
     {
         // When m_initiatingPropertyChangeNotification is true, it means this EntityPropertyEditor was
@@ -4693,6 +4706,9 @@ namespace AzToolsFramework
 
         AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_statusLabel, on);
         AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_statusComboBox, on);
+
+        AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_entityIdLabel, on);
+        AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_entityIdText, on);
 
         AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_addComponentButton, on);
 
@@ -4821,5 +4837,16 @@ void StatusComboBox::showPopup()
 {
     QComboBox::showPopup();
 }
+
+// We need to prevent the comboBox reacting to the mouse wheel
+void StatusComboBox::wheelEvent(QWheelEvent* e)
+{
+    if (hasFocus())
+    {
+        QComboBox::wheelEvent(e);
+    }
+}
+
+
 
 #include <UI/PropertyEditor/EntityPropertyEditor.moc>

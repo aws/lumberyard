@@ -1,18 +1,18 @@
 /*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
+ * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+ * its licensors.
+ *
+ * For complete copyright and license terms please see the LICENSE at the root of this
+ * distribution (the "License"). All use of this software is governed by the License,
+ * or, if provided, by the license below or the license accompanying this file. Do not
+ * remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *
+ */
 #pragma once
 
-#include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityId.h>
 #include <AzCore/std/parallel/atomic.h>
 
 #include <CrySystemBus.h>
@@ -27,13 +27,13 @@ class LoadScreenComponent
     : public AZ::Component
     , public CrySystemEventBus::Handler
     , public LoadScreenBus::Handler
+    , public ILoadtimeCallback
 {
 public:
-
     AZ_COMPONENT(LoadScreenComponent, "{97CDBD6C-C621-4427-87C8-10E1B8F947FF}");
 
-    LoadScreenComponent();
-    ~LoadScreenComponent() override;
+    LoadScreenComponent() = default;
+    ~LoadScreenComponent() = default;
 
     //////////////////////////////////////////////////////////////////////////
     // AZ::Component interface implementation
@@ -55,38 +55,50 @@ public:
     void LevelStart() override;
     void Pause() override;
     void Resume() override;
-    void Stop() override;  
+    void Stop() override;
     bool IsPlaying() override;
     //////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////
+    // ILoadtimeCallback interface implementation
+    void LoadtimeUpdate(float deltaTime) override;
+    void LoadtimeRender() override;
+    //////////////////////////////////////////////////////////////////////////
+
+    inline bool IsLoadingThreadEnabled() const
+    {
+        return m_loadingThreadEnabled != 0;
+    }
+
 protected:
-
     static void Reflect(AZ::ReflectContext* context);
-
-    static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-    {
-        provided.push_back(AZ_CRC("LoadScreenService", 0x901b031c));
-    }
-
-    static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-    {
-        incompatible.push_back(AZ_CRC("LoadScreenService", 0x901b031c));
-    }
+    static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+    static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
 private:
-
     void Reset();
-    void ClearCVars(const std::list<const char*>& varNames);
-    AZ::EntityId loadFromCfg(const char* pathVarName, const char* autoPlayVarName, const char* fixedFpsVarName, const char* maxFpsVarName);
+    void LoadConfigSettings(const char* fixedFpsVarName, const char* maxFpsVarName, const char* minimumLoadTimeVarName);
 
     //////////////////////////////////////////////////////////////////////////
-    float m_fixedDeltaTimeInSeconds;
-    float m_maxDeltaTimeInSeconds;
+    enum class LoadScreenState
+    {
+        None,
+        Showing,
+        ShowingMultiThreaded,
+        Paused,
+        PausedMultithreaded,
+    };
+    LoadScreenState m_loadScreenState{ LoadScreenState::None };
+
+    float m_fixedDeltaTimeInSeconds{ -1.0f };
+    float m_maxDeltaTimeInSeconds{ -1.0f };
+    float m_minimumLoadTimeInSeconds{ 0.0f };
+
+    CTimeValue m_lastStartTime;
     CTimeValue m_previousCallTimeForUpdateAndRender;
-    bool m_isPlaying;
-    AZ::EntityId m_gameCanvasEntityId;
-    AZ::EntityId m_levelCanvasEntityId;
-    AZStd::atomic_bool m_processingLoadScreen;
+    AZStd::atomic_bool m_processingLoadScreen{ false };
+
+    int32_t m_loadingThreadEnabled{ 0 };
     //////////////////////////////////////////////////////////////////////////
 };
 

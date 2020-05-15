@@ -1,56 +1,94 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "minProperties": 1,
-    "properties": {
-        "implicit": { "$ref": "#/definitions/implicit" },
-        "authorization_code": { "$ref": "#/definitions/authorizationCode" }
-    },
     "definitions": {
-        "implicit": {
-            "type": "object",
-            "required": [ "loginEndpoint" ],
-            "properties": {
-                "loginEndpoint": { "$ref": "#/definitions/loginEndpoint" },
-                "tokenName": { "type": "string" }
-            },
-            "additionalProperties": false
-        },
         "authorizationCode": {
-            "type": "object",
-            "required": [ "tokenEndpoint", "tokenRequestEndpoint" ],
+            "additionalProperties": false,
             "properties": {
-                "tokenEndpoint": { "$ref": "#/definitions/tokenEndpoint" },
-                "tokenRequestEndpoint": { "$ref": "#/definitions/tokenRequestEndpoint" }
+                "tokenEndpoint": {
+                    "$ref": "#/definitions/tokenEndpoint"
+                },
+                "tokenRequestEndpoint": {
+                    "$ref": "#/definitions/tokenRequestEndpoint"
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "tokenEndpoint",
+                "tokenRequestEndpoint"
+            ],
+            "type": "object"
+        },
+        "implicit": {
+            "additionalProperties": false,
+            "properties": {
+                "loginEndpoint": {
+                    "$ref": "#/definitions/loginEndpoint"
+                },
+                "tokenName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "loginEndpoint"
+            ],
+            "type": "object"
         },
         "loginEndpoint": {
-            "type": "object",
-            "required": [ "url" ],
+            "additionalProperties": false,
             "properties": {
-                "url": { "type": "string", "format": "uri" }
+                "url": {
+                    "format": "uri",
+                    "type": "string"
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "url"
+            ],
+            "type": "object"
         },
         "tokenEndpoint": {
-            "type": "object",
-            "required": [ "url" ],
+            "additionalProperties": false,
             "properties": {
-                "url": { "type": "string", "format": "uri" },
-                "tokenName": { "type": "string" }
+                "tokenName": {
+                    "type": "string"
+                },
+                "url": {
+                    "format": "uri",
+                    "type": "string"
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "url"
+            ],
+            "type": "object"
         },
         "tokenRequestEndpoint": {
-            "type": "object",
-            "required": [ "url" ],
+            "additionalProperties": false,
             "properties": {
-                "url": { "type": "string", "format": "uri" },
-                "clientIdName": { "type": "string" },
-                "clientSecretName": { "type": "string" }
+                "clientIdName": {
+                    "type": "string"
+                },
+                "clientSecretName": {
+                    "type": "string"
+                },
+                "url": {
+                    "format": "uri",
+                    "type": "string"
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "url"
+            ],
+            "type": "object"
         }
-    }
+    },
+    "minProperties": 1,
+    "properties": {
+        "authorization_code": {
+            "$ref": "#/definitions/authorizationCode"
+        },
+        "implicit": {
+            "$ref": "#/definitions/implicit"
+        }
+    },
+    "type": "object"
 }

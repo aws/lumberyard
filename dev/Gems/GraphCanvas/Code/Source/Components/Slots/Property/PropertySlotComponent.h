@@ -36,6 +36,11 @@ namespace GraphCanvas
         void Deactivate();
         ////
 
+        // Slot RequestBus
+        int GetLayoutPriority() const override;
+        void SetLayoutPriority(int priority) override;
+        ////
+
         // PropertySlotBus
         const AZ::Crc32& GetPropertyId() const;
         ////

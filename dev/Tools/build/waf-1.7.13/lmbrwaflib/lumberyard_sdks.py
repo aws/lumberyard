@@ -9,15 +9,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import os
+import stat
+
+# waflib imports
 from waflib.TaskGen import feature, before_method, after_method
 from waflib.Configure import conf, Logs
 from waflib.Tools.ccroot import lib_patterns, SYSTEM_LIB_PATHS
 from waflib import Node, Utils, Errors
 from waflib.Build import BuildContext
-from utils import fast_copy2, should_overwrite_file
-import stat
-import os
 
+# lmbrwaflib imports
+from lmbrwaflib.utils import fast_copy2, should_overwrite_file
 
 
 def use_windows_dll_semantics(ctx):
@@ -78,9 +82,10 @@ def aws_native_sdk_platforms(bld):
         'ios',
         'appletv',
         'linux',
-        'android_armv7_clang',
         'android_armv8_clang',
-        'provo_vs2017',
+        'provo',
+        'salem',
+        'xenia_vs2019',
         'xenia_vs2017',
         'project_generator']
 
@@ -137,11 +142,6 @@ def make_aws_library_task_list(self, libraryList):
         extra_lib.append('AWSNativeSDKInit')
     if 'LyMetricsShared' in libraryList and 'LyIdentity' not in libraryList:
         libraryList.append('LyIdentity')
-
-    if self.cmd == 'generate_module_def_files':
-        # Special case, if this command is being run, we always want to consider both
-        # shared and static when generated the module_def file
-        return self.make_static_library_task_list(libraryList) + self.make_shared_library_task_list(libraryList) + extra_lib
 
     shouldLinkStatically = isinstance(self, BuildContext) and should_link_aws_native_sdk_statically(self)
     if shouldLinkStatically:
@@ -346,11 +346,14 @@ def get_python_home_lib_and_dll(ctx, env):
     """
 
     if not env['EMBEDDED_PYTHON_HOME'] or not env['EMBEDDED_PYTHON_INCLUDE_PATH']\
-        or not env['EMBEDDED_PYTHON_LIBPATH'] or not env['EMBEDDED_PYTHON_SHARED_OBJECT']:
+        or not env['EMBEDDED_PYTHON_LIBPATH'] or not env['EMBEDDED_PYTHON_SHARED_OBJECT']\
+        or not env['EMBEDDED_PYTHON_HOME_RELATIVE_PATH']:
         raise Errors.WafError('Python dll not supported for platform {}'.format(ctx.get_waf_host_platform()))
 
     return env['EMBEDDED_PYTHON_HOME'], env['EMBEDDED_PYTHON_INCLUDE_PATH'],\
-           env['EMBEDDED_PYTHON_LIBPATH'], env['EMBEDDED_PYTHON_SHARED_OBJECT']
+           env['EMBEDDED_PYTHON_LIBPATH'], env['EMBEDDED_PYTHON_SHARED_OBJECT'],\
+           env['EMBEDDED_PYTHON_HOME_RELATIVE_PATH']
+
 
 def copy_local_python_to_target(task, source_python_dll_path):
     """
@@ -393,7 +396,7 @@ def copy_local_python_to_target(task, source_python_dll_path):
 
 
 @feature('EmbeddedPython')
-@before_method('apply_incpaths')
+@before_method('apply_system_incpaths')
 def enable_embedded_python(self):
     # Only win_x64 builds support embedding Python.
     #
@@ -404,7 +407,7 @@ def enable_embedded_python(self):
     platform = self.env['PLATFORM'].lower()
     config = self.env['CONFIGURATION'].lower()
 
-    if self.bld.is_windows_platform(platform) or self.bld.is_linux_platform(platform) or platform == 'project_generator':
+    if self.bld.is_windows_platform(platform) or self.bld.is_linux_platform(platform) or self.bld.is_mac_platform(platform) or platform == 'project_generator':
 
         env = self.bld.env
         # If the platform is project generator, the default environment will not have the EMBEDDED_PYTHON_*
@@ -430,29 +433,23 @@ def enable_embedded_python(self):
         if 'debug' in config and 'USE_DEBUG_PYTHON' in os.environ:
 
             python_home = os.environ['USE_DEBUG_PYTHON']
-            python_dll = '{}/python27_d.dll'.format(python_home)
+            python_dll = '{}/python37_d.dll'.format(python_home)
 
             self.env['DEFINES'] += ['USE_DEBUG_PYTHON']
 
         else:
-            python_home, python_include_dir, python_libs_dir, python_dll = get_python_home_lib_and_dll(self.bld, env)
+            python_home, python_include_dir, python_libs_dir, python_dll, python_home_relative = get_python_home_lib_and_dll(self.bld, env)
 
-        self.includes += [python_include_dir]
+        self.env['SYSTEM_INCLUDES'] += [python_include_dir]
         self.env['LIBPATH'] += [python_libs_dir]
 
-        # Save off the python home for use from within code (BoostPythonHelpers.cpp).  This allows us to control exactly which version of
-        # python the editor uses.
-        # Also, standardize on forward-slash through the entire path.  We specifically don't use backslashes to avoid an interaction with compiler
+        # Standardize on forward-slash through the entire path.  We specifically don't use backslashes to avoid an interaction with compiler
         # response-file generation in msvcdeps.py and msvc_helper.py that "fixes up" all the compiler flags, in part by replacing backslashes
         # with double-backslashes.  If we tried to replace backslashes with double-backslashes here to make it a valid C++ string, it would
         # get double-fixed-up in the case that a response file gets used (long directory path names).
-        # Side note - BoostPythonHelpers.cpp, which uses this define, apparently goes through and replaces forward-slashes with backslashes anyways.
-        if python_home.startswith(self.bld.engine_path):
-            python_home_define = '@root@{}'.format(python_home[len(self.bld.engine_path):])
-        else:
-            python_home_define = python_home
+        self.env['DEFINES'] += ['DEFAULT_LY_PYTHONHOME="{}"'.format(python_home.replace('\\', '/'))]
+        self.env['DEFINES'] += ['DEFAULT_LY_PYTHONHOME_RELATIVE="{}"'.format(python_home_relative.replace('\\', '/'))]
 
-        self.env['DEFINES'] += ['DEFAULT_LY_PYTHONHOME="{}"'.format(python_home_define.replace('\\', '/'))]
         if 'LIBPATH_BOOSTPYTHON' in self.env:
             self.env['LIBPATH'] += self.env['LIBPATH_BOOSTPYTHON']
         elif 'STLIBPATH_BOOSTPYTHON' in self.env:
@@ -461,32 +458,6 @@ def enable_embedded_python(self):
             Logs.warn(
                 '[WARN] Required 3rd party boostpython not detected.  This may cause a link error in project {}.'.format(
                     self.name))
-
-    if platform in ['darwin_x64']:
-        _, python_include_dir, python_libs_dir, _ = get_python_home_lib_and_dll(self.bld, self.bld.env)
-
-        # TODO: figure out what needs to be set for OSX builds.
-        self.includes += [python_include_dir]
-        self.env['LIBPATH'] += [python_libs_dir]
-
-
-@feature('ApplyEmbeddedPythonDependency', 'EmbeddedPython')
-@before_method('apply_incpaths')
-def apply_embedded_python_dependency(self):
-    """
-    Ideally we would load python27.dll from the python home directory. The best way
-    to do that may be to delay load python27.dll and use SetDllDirectory to insert
-    the python home directory into the DLL search path. However that doesn't work
-    because the boost python helpers import a data symbol.
-    :param self:    The current task
-    """
-    current_platform = self.bld.env['PLATFORM']
-
-    if self.bld.is_windows_platform(current_platform) or self.bld.is_linux_platform(current_platform):
-        # Only supported for win_x64 and linux
-        _, _, _, python_dll = get_python_home_lib_and_dll(self.bld, self.bld.env)
-        copy_local_python_to_target(self, python_dll)
-
 
 @feature('internal_telemetry')
 @before_method('apply_incpaths')

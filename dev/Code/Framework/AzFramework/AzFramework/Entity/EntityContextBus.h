@@ -102,6 +102,11 @@ namespace AzFramework
             return m_requestId != 0;
         }
 
+        AZStd::string ToString() const
+        {
+            return AZStd::string::format("{%s::%llu}", m_contextId.ToString<AZStd::string>().c_str(), m_requestId);
+        }
+
         /**
          * The ID of the entity context to create the slice in.
          */

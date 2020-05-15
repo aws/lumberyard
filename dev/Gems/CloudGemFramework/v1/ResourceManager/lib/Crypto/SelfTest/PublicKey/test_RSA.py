@@ -26,10 +26,9 @@
 
 __revision__ = "$Id$"
 
-import sys
 import os
-if sys.version_info[0] == 2 and sys.version_info[1] == 1:
-    from Crypto.Util.py21compat import *
+import pickle
+from pickle import PicklingError
 from Crypto.Util.py3compat import *
 
 import unittest
@@ -78,7 +77,7 @@ class RSATest(unittest.TestCase):
         e2 53 72 98 ca 2a 8f 59 46 f8 e5 fd 09 1d bd cb
     """
 
-    e = 0x11L    # public exponent
+    e = 0x11    # public exponent
 
     prime_factor = """
         c9 7f b1 f0 27 f4 53 f6 34 12 33 ea aa d1 d9 35
@@ -96,7 +95,7 @@ class RSATest(unittest.TestCase):
         self.p = bytes_to_long(a2b_hex(self.prime_factor))
 
         # Compute q, d, and u from n, e, and p
-        self.q = divmod(self.n, self.p)[0]
+        self.q = self.n // self.p
         self.d = inverse(self.e, (self.p-1)*(self.q-1))
         self.u = inverse(self.p, self.q)    # u = e**-1 (mod q)
 
@@ -134,23 +133,18 @@ class RSATest(unittest.TestCase):
         pub = self.rsa.construct((self.n, self.e))
         self._check_public_key(pub)
         self._check_encryption(pub)
-        self._check_verification(pub)
 
     def test_construct_3tuple(self):
         """RSA (default implementation) constructed key (3-tuple)"""
         rsaObj = self.rsa.construct((self.n, self.e, self.d))
         self._check_encryption(rsaObj)
         self._check_decryption(rsaObj)
-        self._check_signing(rsaObj)
-        self._check_verification(rsaObj)
 
     def test_construct_4tuple(self):
         """RSA (default implementation) constructed key (4-tuple)"""
         rsaObj = self.rsa.construct((self.n, self.e, self.d, self.p))
         self._check_encryption(rsaObj)
         self._check_decryption(rsaObj)
-        self._check_signing(rsaObj)
-        self._check_verification(rsaObj)
 
     def test_construct_5tuple(self):
         """RSA (default implementation) constructed key (5-tuple)"""
@@ -158,8 +152,6 @@ class RSATest(unittest.TestCase):
         self._check_private_key(rsaObj)
         self._check_encryption(rsaObj)
         self._check_decryption(rsaObj)
-        self._check_signing(rsaObj)
-        self._check_verification(rsaObj)
 
     def test_construct_6tuple(self):
         """RSA (default implementation) constructed key (6-tuple)"""
@@ -167,8 +159,36 @@ class RSATest(unittest.TestCase):
         self._check_private_key(rsaObj)
         self._check_encryption(rsaObj)
         self._check_decryption(rsaObj)
-        self._check_signing(rsaObj)
-        self._check_verification(rsaObj)
+
+    def test_construct_bad_key2(self):
+        tup = (self.n, 1)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+        # An even modulus is wrong
+        tup = (self.n+1, self.e)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+    def test_construct_bad_key3(self):
+        tup = (self.n, self.e, self.d+1)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+    def test_construct_bad_key5(self):
+        tup = (self.n, self.e, self.d, self.p, self.p)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+        tup = (self.p*self.p, self.e, self.p, self.p)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+        tup = (self.p*self.p, 3, self.p, self.q)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+    def test_construct_bad_key6(self):
+        tup = (self.n, self.e, self.d, self.p, self.q, 10)
+        self.assertRaises(ValueError, self.rsa.construct, tup)
+
+        from Crypto.Util.number import inverse
+        tup = (self.n, self.e, self.d, self.p, self.q, inverse(self.q, self.p))
+        self.assertRaises(ValueError, self.rsa.construct, tup)
 
     def test_factoring(self):
         rsaObj = self.rsa.construct([self.n, self.e, self.d])
@@ -178,24 +198,42 @@ class RSATest(unittest.TestCase):
 
         self.assertRaises(ValueError, self.rsa.construct, [self.n, self.e, self.n-1])
 
+    def test_repr(self):
+        rsaObj = self.rsa.construct((self.n, self.e, self.d, self.p, self.q))
+        repr(rsaObj)
+
+    def test_serialization(self):
+        """RSA keys are unpickable"""
+
+        rsa_key = self.rsa.generate(1024)
+        self.assertRaises(PicklingError, pickle.dumps, rsa_key)
+
+    def test_raw_rsa_boundary(self):
+        # The argument of every RSA raw operation (encrypt/decrypt) must be
+        # non-negative and no larger than the modulus
+        rsa_obj = self.rsa.generate(1024)
+
+        self.assertRaises(ValueError, rsa_obj._decrypt, rsa_obj.n)
+        self.assertRaises(ValueError, rsa_obj._encrypt, rsa_obj.n)
+
+        self.assertRaises(ValueError, rsa_obj._decrypt, -1)
+        self.assertRaises(ValueError, rsa_obj._encrypt, -1)
+
+    def test_size(self):
+        pub = self.rsa.construct((self.n, self.e))
+        self.assertEquals(pub.size_in_bits(), 1024)
+        self.assertEquals(pub.size_in_bytes(), 128)
+
     def _check_private_key(self, rsaObj):
+        from Crypto.Math.Numbers import Integer
+
         # Check capabilities
         self.assertEqual(1, rsaObj.has_private())
-        self.assertEqual(1, rsaObj.can_sign())
-        self.assertEqual(1, rsaObj.can_encrypt())
-        self.assertEqual(1, rsaObj.can_blind())
-
-        # Check rsaObj.[nedpqu] -> rsaObj.key.[nedpqu] mapping
-        self.assertEqual(rsaObj.n, rsaObj.key.n)
-        self.assertEqual(rsaObj.e, rsaObj.key.e)
-        self.assertEqual(rsaObj.d, rsaObj.key.d)
-        self.assertEqual(rsaObj.p, rsaObj.key.p)
-        self.assertEqual(rsaObj.q, rsaObj.key.q)
-        self.assertEqual(rsaObj.u, rsaObj.key.u)
 
         # Sanity check key data
         self.assertEqual(rsaObj.n, rsaObj.p * rsaObj.q)     # n = pq
-        self.assertEqual(1, rsaObj.d * rsaObj.e % ((rsaObj.p-1) * (rsaObj.q-1))) # ed = 1 (mod (p-1)(q-1))
+        lcm = int(Integer(rsaObj.p-1).lcm(rsaObj.q-1))
+        self.assertEqual(1, rsaObj.d * rsaObj.e % lcm) # ed = 1 (mod LCM(p-1, q-1))
         self.assertEqual(1, rsaObj.p * rsaObj.u % rsaObj.q) # pu = 1 (mod q)
         self.assertEqual(1, rsaObj.p > 1)   # p > 1
         self.assertEqual(1, rsaObj.q > 1)   # q > 1
@@ -207,30 +245,23 @@ class RSATest(unittest.TestCase):
 
         # Check capabilities
         self.assertEqual(0, rsaObj.has_private())
-        self.assertEqual(1, rsaObj.can_sign())
-        self.assertEqual(1, rsaObj.can_encrypt())
-        self.assertEqual(1, rsaObj.can_blind())
 
-        # Check rsaObj.[ne] -> rsaObj.key.[ne] mapping
-        self.assertEqual(rsaObj.n, rsaObj.key.n)
-        self.assertEqual(rsaObj.e, rsaObj.key.e)
+        # Check rsaObj.[ne] -> rsaObj.[ne] mapping
+        self.assertEqual(rsaObj.n, rsaObj.n)
+        self.assertEqual(rsaObj.e, rsaObj.e)
 
         # Check that private parameters are all missing
         self.assertEqual(0, hasattr(rsaObj, 'd'))
         self.assertEqual(0, hasattr(rsaObj, 'p'))
         self.assertEqual(0, hasattr(rsaObj, 'q'))
         self.assertEqual(0, hasattr(rsaObj, 'u'))
-        self.assertEqual(0, hasattr(rsaObj.key, 'd'))
-        self.assertEqual(0, hasattr(rsaObj.key, 'p'))
-        self.assertEqual(0, hasattr(rsaObj.key, 'q'))
-        self.assertEqual(0, hasattr(rsaObj.key, 'u'))
 
         # Sanity check key data
         self.assertEqual(1, rsaObj.e > 1)   # e > 1
 
         # Public keys should not be able to sign or decrypt
-        self.assertRaises(TypeError, rsaObj.sign, ciphertext, b(""))
-        self.assertRaises(TypeError, rsaObj.decrypt, ciphertext)
+        self.assertRaises(TypeError, rsaObj._decrypt,
+                bytes_to_long(ciphertext))
 
         # Check __eq__ and __ne__
         self.assertEqual(rsaObj.publickey() == rsaObj.publickey(),True) # assert_
@@ -240,172 +271,41 @@ class RSATest(unittest.TestCase):
         # Since we're using a randomly-generated key, we can't check the test
         # vector, but we can make sure encryption and decryption are inverse
         # operations.
-        ciphertext = a2b_hex(self.ciphertext)
+        ciphertext = bytes_to_long(a2b_hex(self.ciphertext))
 
         # Test decryption
-        plaintext = rsaObj.decrypt((ciphertext,))
+        plaintext = rsaObj._decrypt(ciphertext)
 
         # Test encryption (2 arguments)
-        (new_ciphertext2,) = rsaObj.encrypt(plaintext, b(""))
-        self.assertEqual(b2a_hex(ciphertext), b2a_hex(new_ciphertext2))
-
-        # Test blinded decryption
-        blinding_factor = Random.new().read(len(ciphertext)-1)
-        blinded_ctext = rsaObj.blind(ciphertext, blinding_factor)
-        blinded_ptext = rsaObj.decrypt((blinded_ctext,))
-        unblinded_plaintext = rsaObj.unblind(blinded_ptext, blinding_factor)
-        self.assertEqual(b2a_hex(plaintext), b2a_hex(unblinded_plaintext))
-
-        # Test signing (2 arguments)
-        signature2 = rsaObj.sign(ciphertext, b(""))
-        self.assertEqual((bytes_to_long(plaintext),), signature2)
-
-        # Test verification
-        self.assertEqual(1, rsaObj.verify(ciphertext, (bytes_to_long(plaintext),)))
+        new_ciphertext2 = rsaObj._encrypt(plaintext)
+        self.assertEqual(ciphertext, new_ciphertext2)
 
     def _exercise_public_primitive(self, rsaObj):
         plaintext = a2b_hex(self.plaintext)
 
         # Test encryption (2 arguments)
-        (new_ciphertext2,) = rsaObj.encrypt(plaintext, b(""))
-
-        # Exercise verification
-        rsaObj.verify(new_ciphertext2, (bytes_to_long(plaintext),))
+        new_ciphertext2 = rsaObj._encrypt(bytes_to_long(plaintext))
 
     def _check_encryption(self, rsaObj):
         plaintext = a2b_hex(self.plaintext)
         ciphertext = a2b_hex(self.ciphertext)
 
-        # Test encryption (2 arguments)
-        (new_ciphertext2,) = rsaObj.encrypt(plaintext, b(""))
-        self.assertEqual(b2a_hex(ciphertext), b2a_hex(new_ciphertext2))
+        # Test encryption
+        new_ciphertext2 = rsaObj._encrypt(bytes_to_long(plaintext))
+        self.assertEqual(bytes_to_long(ciphertext), new_ciphertext2)
 
     def _check_decryption(self, rsaObj):
-        plaintext = a2b_hex(self.plaintext)
-        ciphertext = a2b_hex(self.ciphertext)
+        plaintext = bytes_to_long(a2b_hex(self.plaintext))
+        ciphertext = bytes_to_long(a2b_hex(self.ciphertext))
 
         # Test plain decryption
-        new_plaintext = rsaObj.decrypt((ciphertext,))
-        self.assertEqual(b2a_hex(plaintext), b2a_hex(new_plaintext))
+        new_plaintext = rsaObj._decrypt(ciphertext)
+        self.assertEqual(plaintext, new_plaintext)
 
-        # Test blinded decryption
-        blinding_factor = Random.new().read(len(ciphertext)-1)
-        blinded_ctext = rsaObj.blind(ciphertext, blinding_factor)
-        blinded_ptext = rsaObj.decrypt((blinded_ctext,))
-        unblinded_plaintext = rsaObj.unblind(blinded_ptext, blinding_factor)
-        self.assertEqual(b2a_hex(plaintext), b2a_hex(unblinded_plaintext))
-
-    def _check_verification(self, rsaObj):
-        signature = bytes_to_long(a2b_hex(self.plaintext))
-        message = a2b_hex(self.ciphertext)
-
-        # Test verification
-        t = (signature,)     # rsaObj.verify expects a tuple
-        self.assertEqual(1, rsaObj.verify(message, t))
-
-        # Test verification with overlong tuple (this is a
-        # backward-compatibility hack to support some harmless misuse of the
-        # API)
-        t2 = (signature, '')
-        self.assertEqual(1, rsaObj.verify(message, t2)) # extra garbage at end of tuple
-
-    def _check_signing(self, rsaObj):
-        signature = bytes_to_long(a2b_hex(self.plaintext))
-        message = a2b_hex(self.ciphertext)
-
-        # Test signing (2 argument)
-        self.assertEqual((signature,), rsaObj.sign(message, b("")))
-
-class RSAFastMathTest(RSATest):
-    def setUp(self):
-        RSATest.setUp(self)
-        self.rsa = RSA.RSAImplementation(use_fast_math=True)
-
-    def test_generate_1arg(self):
-        """RSA (_fastmath implementation) generated key (1 argument)"""
-        RSATest.test_generate_1arg(self)
-
-    def test_generate_2arg(self):
-        """RSA (_fastmath implementation) generated key (2 arguments)"""
-        RSATest.test_generate_2arg(self)
-
-    def test_construct_2tuple(self):
-        """RSA (_fastmath implementation) constructed key (2-tuple)"""
-        RSATest.test_construct_2tuple(self)
-
-    def test_construct_3tuple(self):
-        """RSA (_fastmath implementation) constructed key (3-tuple)"""
-        RSATest.test_construct_3tuple(self)
-
-    def test_construct_4tuple(self):
-        """RSA (_fastmath implementation) constructed key (4-tuple)"""
-        RSATest.test_construct_4tuple(self)
-
-    def test_construct_5tuple(self):
-        """RSA (_fastmath implementation) constructed key (5-tuple)"""
-        RSATest.test_construct_5tuple(self)
-
-    def test_construct_6tuple(self):
-        """RSA (_fastmath implementation) constructed key (6-tuple)"""
-        RSATest.test_construct_6tuple(self)
-
-    def test_factoring(self):
-        RSATest.test_factoring(self)
-
-class RSASlowMathTest(RSATest):
-    def setUp(self):
-        RSATest.setUp(self)
-        self.rsa = RSA.RSAImplementation(use_fast_math=False)
-
-    def test_generate_1arg(self):
-        """RSA (_slowmath implementation) generated key (1 argument)"""
-        RSATest.test_generate_1arg(self)
-
-    def test_generate_2arg(self):
-        """RSA (_slowmath implementation) generated key (2 arguments)"""
-        RSATest.test_generate_2arg(self)
-
-    def test_construct_2tuple(self):
-        """RSA (_slowmath implementation) constructed key (2-tuple)"""
-        RSATest.test_construct_2tuple(self)
-
-    def test_construct_3tuple(self):
-        """RSA (_slowmath implementation) constructed key (3-tuple)"""
-        RSATest.test_construct_3tuple(self)
-
-    def test_construct_4tuple(self):
-        """RSA (_slowmath implementation) constructed key (4-tuple)"""
-        RSATest.test_construct_4tuple(self)
-
-    def test_construct_5tuple(self):
-        """RSA (_slowmath implementation) constructed key (5-tuple)"""
-        RSATest.test_construct_5tuple(self)
-
-    def test_construct_6tuple(self):
-        """RSA (_slowmath implementation) constructed key (6-tuple)"""
-        RSATest.test_construct_6tuple(self)
-
-    def test_factoring(self):
-        RSATest.test_factoring(self)
 
 def get_tests(config={}):
     tests = []
     tests += list_test_cases(RSATest)
-    try:
-        from Crypto.PublicKey import _fastmath
-        tests += list_test_cases(RSAFastMathTest)
-    except ImportError:
-        from distutils.sysconfig import get_config_var
-        import inspect
-        _fm_path = os.path.normpath(os.path.dirname(os.path.abspath(
-            inspect.getfile(inspect.currentframe())))
-            +"/../../PublicKey/_fastmath"+get_config_var("SO"))
-        if os.path.exists(_fm_path):
-            raise ImportError("While the _fastmath module exists, importing "+
-                "it failed. This may point to the gmp or mpir shared library "+
-                "not being in the path. _fastmath was found at "+_fm_path)
-    if config.get('slow_tests',1):
-        tests += list_test_cases(RSASlowMathTest)
     return tests
 
 if __name__ == '__main__':

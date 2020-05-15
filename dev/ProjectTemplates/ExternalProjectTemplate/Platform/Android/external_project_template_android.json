@@ -1,0 +1,12 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "system_android_es3.cfg",
+            "outFile": "system_android_es3.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

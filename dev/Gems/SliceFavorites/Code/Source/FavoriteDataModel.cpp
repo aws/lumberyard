@@ -736,6 +736,23 @@ namespace SliceFavorites
         endInsertRows();
     }
 
+    void FavoriteDataModel::ProcessRemovedAssets()
+    {
+        if (m_removedAssets.empty())
+        {
+            return;
+        }
+
+        for (AZ::Data::AssetId assetId : m_removedAssets)
+        {
+            RemoveFavorite(assetId);
+        }
+
+        m_removedAssets.clear();
+
+        UpdateFavorites();
+    }
+
     void FavoriteDataModel::RemoveFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
     {
         if (!product)
@@ -1453,7 +1470,10 @@ namespace SliceFavorites
     {
         if (assetId.IsValid())
         {
-            RemoveFavorite(assetId);
+            // Add the asset to the removed list so that the removal is processed in the main thread.
+            m_removedAssets.push_back(assetId);
+            
+            QMetaObject::invokeMethod(this, "ProcessRemovedAssets", Qt::QueuedConnection);
         }
     }
 

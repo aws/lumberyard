@@ -19,6 +19,7 @@
 #include <QDebug>
 
 #include <AzCore/EBus/Results.h>
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
 #include <PythonWorker.moc>
 
@@ -37,12 +38,12 @@ PythonWorker::PythonWorker(
     qRegisterMetaType<PythonWorkerRequestId>("PythonWorkerRequestId");
     moveToThread(&m_thread);
     connect(&m_thread, &QThread::started, this, &PythonWorker::Reset);
-    PythonWorkerRequests::Bus::Handler::BusConnect();
+    AZ::Interface<PythonWorkerRequestsInterface>::Register(this);
 }
 
 PythonWorker::~PythonWorker()
 {
-    PythonWorkerRequests::Bus::Handler::BusDisconnect();
+    AZ::Interface<PythonWorkerRequestsInterface>::Unregister(this);
     if (m_thread.isRunning())
     {
         m_thread.quit();
@@ -92,21 +93,53 @@ void PythonWorker::ResetAsync()
 void PythonWorker::Reset()
 {
     DestroyInterpreter();
-    if (CreateInterpreter())
+
+    bool ok = true;
+#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
+    QString pythonPath = MakeRootPath(QString(DEFAULT_LY_PYTHONHOME_RELATIVE).toUtf8().data(), ok);
+#else
+#error Unsupported Platform for the Editor
+#endif
+    if (!ok)
     {
-        if (!InitializeInterpreter())
+        AZ_Warning("MaglevControlPanel", false, "Could not detect Python path.");
+        return;
+    }
+
+    if (CreateInterpreter(pythonPath))
+    {
+        if (!InitializeInterpreter(pythonPath))
         {
             DestroyInterpreter();
         }
     }
 }
 
-bool PythonWorker::CreateInterpreter()
+bool PythonWorker::CreateInterpreter(const QString& pythonPath)
 {
+    auto&& editorPythonEventsInterface = AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Get();
+    if (editorPythonEventsInterface)
+    {
+        editorPythonEventsInterface->WaitForInitialization();
+    }
+
     if (!Py_IsInitialized())
     {
-        m_logger->LogError("Disabled because Python is not initialized.");
-        return false;
+        Py_SetProgramName(QString("%1/Lib").arg(pythonPath).toStdWString().c_str());
+        Py_SetPythonHome(pythonPath.toStdWString().c_str());
+
+        // Init without importing site.py, this will be lazyly added when paths are appended
+        Py_NoSiteFlag = 1;
+         
+        Py_Initialize();
+        PyEval_InitThreads();
+        PyEval_ReleaseLock();
+
+        if (!Py_IsInitialized())
+        {
+            m_logger->LogError("Disabled because Python is not initialized.");
+            return false;
+        }
     }
 
     if (!PyEval_ThreadsInitialized())
@@ -118,6 +151,7 @@ bool PythonWorker::CreateInterpreter()
     PyEval_AcquireLock();
 
     m_threadState = Py_NewInterpreter();
+
     if (!m_threadState)
     {
         m_logger->LogError("Disabled because a new Python interpreter could not be created.");
@@ -144,15 +178,7 @@ void PythonWorker::DestroyInterpreter()
     }
 }
 
-void PythonWorker::IoRedirect::Write(std::string const& str)
-{
-    if (str != "\n")
-    {
-        qDebug() << "PythonWorker:" << str.c_str();
-    }
-}
-
-bool PythonWorker::InitializeInterpreter()
+bool PythonWorker::InitializeInterpreter(const QString& pythonPath)
 {
     // Locate needed Python libraries
 
@@ -173,47 +199,41 @@ bool PythonWorker::InitializeInterpreter()
     {
         // Load main.
 
-        py::object main = py::import("__main__");
+        py::object main = py::module::import("__main__");
         py::object globals = main.attr("__dict__");
 
         // Setup sys.path
-        PyRun_SimpleString("import sys");
-        PyRun_SimpleString(QString("sys.path.append('%1')").arg(lmbr_aws_path).toStdString().c_str());
-
-        // Redirect output
-
-        if (!m_ioRedirectDef)
-        {
-            // Only do this once even if Reset is called. Otherwise an error
-            // will occur because the type converter is already registered.
-            m_ioRedirectDef.reset(new py::class_<IoRedirect>("IoRedirect", py::init<>()));
-            m_ioRedirectDef->def("write", &IoRedirect::Write);
-        }
-
-        globals["IoRedirect"] = *m_ioRedirectDef;
-        py::import("sys").attr("stderr") = m_ioRedirect;
-        py::import("sys").attr("stdout") = m_ioRedirect;
+        int result = PyRun_SimpleString("import sys");
+        AZ_Warning("MaglevControlPanel", result != -1, "import sys failed");
+        result = PyRun_SimpleString(QString("sys.path.append('%1')").arg(lmbr_aws_path).toUtf8().data());
+        AZ_Warning("MaglevControlPanel", result != -1, "path append lmbr_aws failed");
+        result = PyRun_SimpleString(QString("sys.path.append('%1/Lib')").arg(pythonPath).toUtf8().data());
+        AZ_Warning("MaglevControlPanel", result != -1, "path append lib failed");
+        result = PyRun_SimpleString(QString("sys.path.append('%1/Lib/site-packages')").arg(pythonPath).toUtf8().data());
+        AZ_Warning("MaglevControlPanel", result != -1, "path append site-packages");
+        result = PyRun_SimpleString(QString("sys.path.append('%1/DLLs')").arg(pythonPath).toUtf8().data());
+        AZ_Warning("MaglevControlPanel", result != -1, "path append DLLs");
 
         // Import the gui interface module
-
-        py::object gui = py::import("gui");
+        py::object gui = py::module::import("gui");
         m_execute = gui.attr("execute");
 
         // Create a Python wrapper function for OnViewOutput
-
         auto func = std::function<void(PythonWorkerRequestId, const char*, py::object)>(
             [this](PythonWorkerRequestId requestId, const char* key, py::object value) {
                 OnViewOutput(requestId, key, value); 
             }
         );
-        auto call_policies = py::default_call_policies();
-        typedef boost::mpl::vector<void, int, const char*, py::object> func_sig;
-        m_viewOutputFunction = py::make_function(func, call_policies, func_sig());
+
+        auto call_policies = py::return_value_policy::automatic;
+        UnlockPython();
+        m_viewOutputFunction = py::cpp_function(func, call_policies);
+        LockPython();
     }
     catch (py::error_already_set)
     {
         successful = false;
-        m_logger->LogError("An error occured when initializing the Python interpreter.");
+        m_logger->LogError("An error occurred when initializing the Python interpreter.");
         LogPythonException();
     }
 
@@ -240,12 +260,13 @@ void PythonWorker::ExecuteAsync(PythonWorkerRequestId requestId, const char* com
 
     AZ_Assert(requestId != DEFAULT_REQUEST_ID, "Request id not initialized using AllocateRequestId.");
 
-    QMetaObject::invokeMethod(this, 
+    bool invokeResult = QMetaObject::invokeMethod(this, 
         "Execute", 
         Qt::QueuedConnection,
         Q_ARG(PythonWorkerRequestId, requestId),
         Q_ARG(QString, QString {command}), 
         Q_ARG(QVariantMap, args));
+    AZ_Warning("MaglevControlPanel", invokeResult, "Invoke request for command %s failed", command);
 }
 
 void PythonWorker::Execute(PythonWorkerRequestId requestId, QString command, QVariantMap args)
@@ -272,7 +293,7 @@ void PythonWorker::Execute(PythonWorkerRequestId requestId, QString command, QVa
     }
     catch (py::error_already_set)
     {
-        m_logger->LogError("An error occured when executing command %s.", command.toStdString().c_str());
+        m_logger->LogError("An error occurred when executing command %s.", command.toUtf8().data());
         LogPythonException();
     }
 
@@ -286,7 +307,11 @@ void PythonWorker::OnViewOutput(PythonWorkerRequestId requestId, const char* key
     QVariant valueParam{ PyObjectToQVariant(value) };
 
     bool wasHandled = false;
-    EBUS_EVENT_RESULT(wasHandled, PythonWorkerEvents::Bus, OnPythonWorkerOutput, requestId, keyParam, valueParam);
+    auto pythonWorkerEventsInterface = AZ::Interface<PythonWorkerEventsInterface>::Get();
+    if (pythonWorkerEventsInterface)
+    {
+        wasHandled = pythonWorkerEventsInterface->OnPythonWorkerOutput(requestId, keyParam, valueParam);
+    }
 
     if (!wasHandled)
     {
@@ -330,19 +355,13 @@ py::object PythonWorker::QVariantToPyObject(const QVariant& variant, const QStri
         return QVariantListToPyList(variant.toList());
 
     case QVariant::Type::String:
-        return py::object {
-                   variant.toString().toStdString().c_str()
-        };
+        return py::cast(variant.toString().toStdString().c_str());
 
     case QVariant::Type::Bool:
-        return py::object {
-                   variant.toBool()
-        };
+        return py::cast(variant.toBool());
 
     case QVariant::Type::Int:
-        return py::object {
-                   variant.toInt()
-        };
+        return py::cast(variant.toInt());
 
     default:
         m_logger->LogError("Unsupported type %s on property %s in QVariantToPyObject", variant.typeName(), name.toStdString().c_str());
@@ -354,13 +373,13 @@ QVariant PythonWorker::PyObjectToQVariant(const py::object& object, const QStrin
 {
     QString className = ExtractQString(object.attr("__class__").attr("__name__"));
 
-    if (className == "dict")
+    if (className == "dict" || className == "OrderedDict")
     {
-        return PyDictToQVariantMap(py::extract<py::dict>(object));
+        return PyDictToQVariantMap(object.cast<py::dict>());
     }
     else if (className == "list")
     {
-        return PyListToQVariantList(py::extract<py::list>(object));
+        return PyListToQVariantList(object.cast<py::list>());
     }
     else if (className == "str")
     {
@@ -377,13 +396,13 @@ QVariant PythonWorker::PyObjectToQVariant(const py::object& object, const QStrin
     else if (className == "bool")
     {
         return QVariant {
-                   ((bool)py::extract<bool>(object))
+                   (object.cast<bool>())
         };
     }
     else if (className == "int")
     {
         return QVariant {
-                   ((int)py::extract<int>(object))
+                   (object.cast<int>())
         };
     }
     else if (className == "datetime")
@@ -422,13 +441,10 @@ QVariantList PythonWorker::PyListToQVariantList(const py::list& pyList)
 QVariantMap PythonWorker::PyDictToQVariantMap(const py::dict& pyDict)
 {
     QVariantMap qMap;
-
-    auto keys = pyDict.keys();
-    auto count = py::len(keys);
-    for (auto i = 0; i < count; ++i)
+    for (auto itr = pyDict.begin(); itr != pyDict.end(); ++itr)
     {
-        QString key = ExtractQString(keys[i]);
-        qMap[key] = PyObjectToQVariant(pyDict[keys[i]], key);
+        QString key = ExtractQString(py::cast<py::object>(itr->first));
+        qMap[key] = PyObjectToQVariant(py::cast<py::object>(itr->second), key);
     }
 
     return qMap;
@@ -436,7 +452,7 @@ QVariantMap PythonWorker::PyDictToQVariantMap(const py::dict& pyDict)
 
 QString PythonWorker::ExtractQString(const py::object& object)
 {
-    std::string s = py::extract<std::string>(py::str(object).encode("utf-8"));
+    std::string s = py::str(object).cast<std::string>();
     return QString {
                s.c_str()
     };
@@ -450,20 +466,20 @@ void PythonWorker::LogPythonException()
         PyErr_Fetch(&exc, &val, &tb);
         PyErr_NormalizeException(&exc, &val, &tb);
 
-        py::handle<> hexc(exc), hval(py::allow_null(val)), htb(py::allow_null(tb));
+        py::handle hexc(exc), hval(val), htb(tb);
         if (!hval)
         {
-            std::string msg = py::extract<std::string>(py::str(hexc));
+            std::string msg = py::str(hexc).cast<std::string>();
             m_logger->LogError(msg.c_str());
         }
         else
         {
-            py::object traceback(py::import("traceback"));
+            py::object traceback(py::module::import("traceback"));
             py::object format_exception(traceback.attr("format_exception"));
             py::list formatted_list(format_exception(hexc, hval, htb));
             for (int count = 0; count < len(formatted_list); ++count)
             {
-                std::string msg  = py::extract<std::string>(formatted_list[count].slice(0, -1));
+                std::string msg  = formatted_list[count].cast<std::string>();
                 m_logger->LogError(msg.c_str());
             }
         }

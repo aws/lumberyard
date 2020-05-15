@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QCollapsePanel.h"
 #include <VariableWidgets/ui_QCollapsePanel.h>
 #include <QtWidgets/QLabel>

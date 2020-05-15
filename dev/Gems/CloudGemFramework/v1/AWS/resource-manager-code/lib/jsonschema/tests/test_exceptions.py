@@ -1,49 +1,47 @@
+from unittest import TestCase
 import textwrap
 
 from jsonschema import Draft4Validator, exceptions
 from jsonschema.compat import PY3
-from jsonschema.tests.compat import mock, unittest
 
 
-class TestBestMatch(unittest.TestCase):
+class TestBestMatch(TestCase):
     def best_match(self, errors):
         errors = list(errors)
         best = exceptions.best_match(errors)
         reversed_best = exceptions.best_match(reversed(errors))
+        msg = "Didn't return a consistent best match!\nGot: {0}\n\nThen: {1}"
         self.assertEqual(
-            best,
-            reversed_best,
-            msg="Didn't return a consistent best match!\n"
-                "Got: {0}\n\nThen: {1}".format(best, reversed_best),
+            best._contents(), reversed_best._contents(),
+            msg=msg.format(best, reversed_best),
         )
         return best
 
     def test_shallower_errors_are_better_matches(self):
         validator = Draft4Validator(
             {
-                "properties" : {
-                    "foo" : {
-                        "minProperties" : 2,
-                        "properties" : {"bar" : {"type" : "object"}},
-                    }
-                }
-            }
+                "properties": {
+                    "foo": {
+                        "minProperties": 2,
+                        "properties": {"bar": {"type": "object"}},
+                    },
+                },
+            },
         )
-        best = self.best_match(validator.iter_errors({"foo" : {"bar" : []}}))
+        best = self.best_match(validator.iter_errors({"foo": {"bar": []}}))
         self.assertEqual(best.validator, "minProperties")
 
     def test_oneOf_and_anyOf_are_weak_matches(self):
         """
         A property you *must* match is probably better than one you have to
         match a part of.
-
         """
 
         validator = Draft4Validator(
             {
-                "minProperties" : 2,
-                "anyOf" : [{"type" : "string"}, {"type" : "number"}],
-                "oneOf" : [{"type" : "string"}, {"type" : "number"}],
+                "minProperties": 2,
+                "anyOf": [{"type": "string"}, {"type": "number"}],
+                "oneOf": [{"type": "string"}, {"type": "number"}],
             }
         )
         best = self.best_match(validator.iter_errors({}))
@@ -57,22 +55,21 @@ class TestBestMatch(unittest.TestCase):
 
         I.e. since only one of the schemas must match, we look for the most
         relevant one.
-
         """
 
         validator = Draft4Validator(
             {
-                "properties" : {
-                    "foo" : {
-                        "anyOf" : [
-                            {"type" : "string"},
-                            {"properties" : {"bar" : {"type" : "array"}}},
+                "properties": {
+                    "foo": {
+                        "anyOf": [
+                            {"type": "string"},
+                            {"properties": {"bar": {"type": "array"}}},
                         ],
                     },
                 },
             },
         )
-        best = self.best_match(validator.iter_errors({"foo" : {"bar" : 12}}))
+        best = self.best_match(validator.iter_errors({"foo": {"bar": 12}}))
         self.assertEqual(best.validator_value, "array")
 
     def test_if_the_most_relevant_error_is_oneOf_it_is_traversed(self):
@@ -83,59 +80,57 @@ class TestBestMatch(unittest.TestCase):
 
         I.e. since only one of the schemas must match, we look for the most
         relevant one.
-
         """
 
         validator = Draft4Validator(
             {
-                "properties" : {
-                    "foo" : {
-                        "oneOf" : [
-                            {"type" : "string"},
-                            {"properties" : {"bar" : {"type" : "array"}}},
+                "properties": {
+                    "foo": {
+                        "oneOf": [
+                            {"type": "string"},
+                            {"properties": {"bar": {"type": "array"}}},
                         ],
                     },
                 },
             },
         )
-        best = self.best_match(validator.iter_errors({"foo" : {"bar" : 12}}))
+        best = self.best_match(validator.iter_errors({"foo": {"bar": 12}}))
         self.assertEqual(best.validator_value, "array")
 
     def test_if_the_most_relevant_error_is_allOf_it_is_traversed(self):
         """
         Now, if the error is allOf, we traverse but select the *most* relevant
         error from the context, because all schemas here must match anyways.
-
         """
 
         validator = Draft4Validator(
             {
-                "properties" : {
-                    "foo" : {
-                        "allOf" : [
-                            {"type" : "string"},
-                            {"properties" : {"bar" : {"type" : "array"}}},
+                "properties": {
+                    "foo": {
+                        "allOf": [
+                            {"type": "string"},
+                            {"properties": {"bar": {"type": "array"}}},
                         ],
                     },
                 },
             },
         )
-        best = self.best_match(validator.iter_errors({"foo" : {"bar" : 12}}))
+        best = self.best_match(validator.iter_errors({"foo": {"bar": 12}}))
         self.assertEqual(best.validator_value, "string")
 
     def test_nested_context_for_oneOf(self):
         validator = Draft4Validator(
             {
-                "properties" : {
-                    "foo" : {
-                        "oneOf" : [
-                            {"type" : "string"},
+                "properties": {
+                    "foo": {
+                        "oneOf": [
+                            {"type": "string"},
                             {
-                                "oneOf" : [
-                                    {"type" : "string"},
+                                "oneOf": [
+                                    {"type": "string"},
                                     {
-                                        "properties" : {
-                                            "bar" : {"type" : "array"}
+                                        "properties": {
+                                            "bar": {"type": "array"},
                                         },
                                     },
                                 ],
@@ -145,11 +140,11 @@ class TestBestMatch(unittest.TestCase):
                 },
             },
         )
-        best = self.best_match(validator.iter_errors({"foo" : {"bar" : 12}}))
+        best = self.best_match(validator.iter_errors({"foo": {"bar": 12}}))
         self.assertEqual(best.validator_value, "array")
 
     def test_one_error(self):
-        validator = Draft4Validator({"minProperties" : 2})
+        validator = Draft4Validator({"minProperties": 2})
         error, = validator.iter_errors({})
         self.assertEqual(
             exceptions.best_match(validator.iter_errors({})).validator,
@@ -161,7 +156,7 @@ class TestBestMatch(unittest.TestCase):
         self.assertIsNone(exceptions.best_match(validator.iter_errors({})))
 
 
-class TestByRelevance(unittest.TestCase):
+class TestByRelevance(TestCase):
     def test_short_paths_are_better_matches(self):
         shallow = exceptions.ValidationError("Oh no!", path=["baz"])
         deep = exceptions.ValidationError("Oh yes!", path=["foo", "bar"])
@@ -213,9 +208,13 @@ class TestByRelevance(unittest.TestCase):
         self.assertIs(match, strong)
 
 
-class TestErrorTree(unittest.TestCase):
+class TestErrorTree(TestCase):
     def test_it_knows_how_many_total_errors_it_contains(self):
-        errors = [mock.MagicMock() for _ in range(8)]
+        # FIXME: https://github.com/Julian/jsonschema/issues/442
+        errors = [
+            exceptions.ValidationError("Something", validator=i)
+            for i in range(8)
+        ]
         tree = exceptions.ErrorTree(errors)
         self.assertEqual(tree.total_errors, 8)
 
@@ -232,7 +231,7 @@ class TestErrorTree(unittest.TestCase):
     def test_validators_that_failed_appear_in_errors_dict(self):
         error = exceptions.ValidationError("a message", validator="foo")
         tree = exceptions.ErrorTree([error])
-        self.assertEqual(tree.errors, {"foo" : error})
+        self.assertEqual(tree.errors, {"foo": error})
 
     def test_it_creates_a_child_tree_for_each_nested_path(self):
         errors = [
@@ -249,7 +248,22 @@ class TestErrorTree(unittest.TestCase):
             exceptions.ValidationError("2", validator="quux", path=["bar", 0]),
         )
         tree = exceptions.ErrorTree([e1, e2])
-        self.assertEqual(tree["bar"][0].errors, {"foo" : e1, "quux" : e2})
+        self.assertEqual(tree["bar"][0].errors, {"foo": e1, "quux": e2})
+
+    def test_multiple_errors_with_instance(self):
+        e1, e2 = (
+            exceptions.ValidationError(
+                "1",
+                validator="foo",
+                path=["bar", "bar2"],
+                instance="i1"),
+            exceptions.ValidationError(
+                "2",
+                validator="quux",
+                path=["foobar", 2],
+                instance="i2"),
+        )
+        exceptions.ErrorTree([e1, e2])
 
     def test_it_does_not_contain_subtrees_that_are_not_in_the_instance(self):
         error = exceptions.ValidationError("123", validator="foo", instance=[])
@@ -263,7 +277,6 @@ class TestErrorTree(unittest.TestCase):
         If a validator is dumb (like :validator:`required` in draft 3) and
         refers to a path that isn't in the instance, the tree still properly
         returns a subtree for that path.
-
         """
 
         error = exceptions.ValidationError(
@@ -273,7 +286,7 @@ class TestErrorTree(unittest.TestCase):
         self.assertIsInstance(tree["foo"], exceptions.ErrorTree)
 
 
-class TestErrorInitReprStr(unittest.TestCase):
+class TestErrorInitReprStr(TestCase):
     def make_error(self, **kwargs):
         defaults = dict(
             message=u"hello",
@@ -286,7 +299,7 @@ class TestErrorInitReprStr(unittest.TestCase):
         return exceptions.ValidationError(**defaults)
 
     def assertShows(self, expected, **kwargs):
-        if PY3:
+        if PY3:  # pragma: no cover
             expected = expected.replace("u'", "'")
         expected = textwrap.dedent(expected).rstrip("\n")
 
@@ -313,7 +326,7 @@ class TestErrorInitReprStr(unittest.TestCase):
             "validator": "type",
             "validator_value": "string",
             "instance": 5,
-            "schema": {"type": "string"}
+            "schema": {"type": "string"},
         }
         # Just the message should show if any of the attributes are unset
         for attr in kwargs:
@@ -362,19 +375,77 @@ class TestErrorInitReprStr(unittest.TestCase):
         )
 
     def test_uses_pprint(self):
-        with mock.patch("pprint.pformat") as pformat:
-            str(self.make_error())
-            self.assertEqual(pformat.call_count, 2)  # schema + instance
+        self.assertShows(
+            """
+            Failed validating u'maxLength' in schema:
+                {0: 0,
+                 1: 1,
+                 2: 2,
+                 3: 3,
+                 4: 4,
+                 5: 5,
+                 6: 6,
+                 7: 7,
+                 8: 8,
+                 9: 9,
+                 10: 10,
+                 11: 11,
+                 12: 12,
+                 13: 13,
+                 14: 14,
+                 15: 15,
+                 16: 16,
+                 17: 17,
+                 18: 18,
+                 19: 19}
+
+            On instance:
+                [0,
+                 1,
+                 2,
+                 3,
+                 4,
+                 5,
+                 6,
+                 7,
+                 8,
+                 9,
+                 10,
+                 11,
+                 12,
+                 13,
+                 14,
+                 15,
+                 16,
+                 17,
+                 18,
+                 19,
+                 20,
+                 21,
+                 22,
+                 23,
+                 24]
+            """,
+            instance=list(range(25)),
+            schema=dict(zip(range(20), range(20))),
+            validator=u"maxLength",
+        )
 
     def test_str_works_with_instances_having_overriden_eq_operator(self):
         """
         Check for https://github.com/Julian/jsonschema/issues/164 which
         rendered exceptions unusable when a `ValidationError` involved
         instances with an `__eq__` method that returned truthy values.
-
         """
 
-        instance = mock.MagicMock()
+        class DontEQMeBro(object):
+            def __eq__(this, other):  # pragma: no cover
+                self.fail("Don't!")
+
+            def __ne__(this, other):  # pragma: no cover
+                self.fail("Don't!")
+
+        instance = DontEQMeBro()
         error = exceptions.ValidationError(
             "a message",
             validator="foo",
@@ -382,5 +453,10 @@ class TestErrorInitReprStr(unittest.TestCase):
             validator_value="some",
             schema="schema",
         )
-        str(error)
-        self.assertFalse(instance.__eq__.called)
+        self.assertIn(repr(instance), str(error))
+
+
+class TestHashable(TestCase):
+    def test_hashable(self):
+        set([exceptions.ValidationError("")])
+        set([exceptions.SchemaError("")])

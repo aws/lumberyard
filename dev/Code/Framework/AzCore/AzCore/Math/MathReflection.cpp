@@ -3218,6 +3218,8 @@ namespace AZ
 
         // Crc
         context.Class<Crc32>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::ConstructorOverride, &Internal::ScriptCrc32Constructor)->
@@ -3229,11 +3231,12 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Clone", [](const Crc32& rhs) -> Crc32 { return rhs; })->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method<void(Crc32::*)(const char*)>("Add", &Crc32::Add)->
+            Method<void(Crc32::*)(AZStd::string_view)>("Add", &Crc32::Add)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Crc32AddGeneric)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Property("stringValue", nullptr, [](Crc32* thisPtr, AZStd::string_view value) { *thisPtr  = Crc32(value.data()); })->
-            Method("CreateCrc32", [](AZStd::string_view value) -> Crc32 { return Crc32(value.data()); }, { { { "value", "String to compute to Crc32" } } })
+            Property("stringValue", nullptr, [](Crc32* thisPtr, AZStd::string_view value) { *thisPtr  = Crc32(value); })->
+            Method("CreateCrc32", [](AZStd::string_view value) -> Crc32 { return Crc32(value); }, { { { "value", "String to compute to Crc32" } } })->
+            Constructor<AZStd::string_view>()
             ;
 
         // Aabb
@@ -3363,6 +3366,7 @@ namespace AZ
 
         // Interpolation
         context.Class<InterpolationMode>()->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Enum<(int)AZ::InterpolationMode::NoInterpolation>("NoInterpolation")->
             Enum<(int)AZ::InterpolationMode::LinearInterpolation>("LinearInterpolation");
 

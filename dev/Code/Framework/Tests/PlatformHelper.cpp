@@ -37,6 +37,22 @@ TEST_F(PlatformHelperTest, MultiplePlatformFlags_PlatformId_Valid)
     EXPECT_EQ(platforms[1], "es3");
 }
 
+TEST_F(PlatformHelperTest, SpecialAllFlag_PlatformId_Valid)
+{
+    AzFramework::PlatformFlags platformFlags = AzFramework::PlatformFlags::Platform_ALL;
+    AZStd::vector<AZStd::string> platforms = AzFramework::PlatformHelper::GetPlatformsInterpreted(platformFlags);
+    EXPECT_EQ(platforms.size(), AzFramework::NumPlatforms);
+    EXPECT_THAT(platforms, testing::UnorderedElementsAre("pc", "es3", "ios", "osx_gl", "xenia", "provo", "salem", "server"));
+}
+
+TEST_F(PlatformHelperTest, SpecialAllClientFlag_PlatformId_Valid)
+{
+    AzFramework::PlatformFlags platformFlags = AzFramework::PlatformFlags::Platform_ALL_CLIENT;
+    AZStd::vector<AZStd::string> platforms = AzFramework::PlatformHelper::GetPlatformsInterpreted(platformFlags);
+    EXPECT_EQ(platforms.size(), AzFramework::NumClientPlatforms);
+    EXPECT_THAT(platforms, testing::UnorderedElementsAre("pc", "es3", "ios", "osx_gl", "xenia", "provo", "salem"));
+}
+
 TEST_F(PlatformHelperTest, InvalidPlatformFlags_PlatformId_Empty)
 {
     AZ::u32 platformFlags = 1 << 10; // Currently we do not have this bit set indicating a valid platform.

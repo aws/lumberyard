@@ -73,8 +73,6 @@ struct IAIActorProxy
     virtual bool IsActionAnimationStarted(const char* value) = 0;
     virtual bool IsAnimationBlockingMovement() const = 0;
     virtual EActorTargetPhase GetActorTargetPhase() const = 0;
-    virtual void PlayAnimationAction(const struct IAIAction* pAction, int goalPipeId) = 0;
-    virtual void AnimationActionDone(bool succeeded) = 0;
     virtual bool IsPlayingSmartObjectAction() const = 0;
 
     // Description:

@@ -8,13 +8,14 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
-from mock import MagicMock
-
-import mock
+from imp import reload
 import functools
 
 import boto3
+
+from unittest import mock
+from unittest.mock import MagicMock
+
 
 def s3_get_object_response(body_content):
     mock_body = MagicMock()
@@ -74,7 +75,7 @@ def patch_client(service, method, **kwargs):
 
     '''
 
-    #return mock.patch('boto3.client', new = MockClientFactory(service, method, kwargs))
+    # return mock.patch('boto3.client', new = MockClientFactory(service, method, kwargs))
 
     return __ClientPatchContextDecorator(service, method, kwargs)
 
@@ -147,7 +148,7 @@ class __ClientPatchContextDecorator(object):
         # the function's arguments in the right location relative to any other 
         # patch decorators that are on this function. Without this, mock_method 
         # ends up before or after all the other patch generated parameters, not 
-        # interspesed between them as would be expected.
+        # intersped between them as would be expected.
 
         mock_client = mock_client_factory.get_mock_client(self.__service)
         patcher = mock.patch.object(mock_client, self.__method, client_factory=mock_client_factory, **self.__kwargs)

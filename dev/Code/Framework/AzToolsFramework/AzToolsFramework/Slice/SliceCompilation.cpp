@@ -339,7 +339,7 @@ namespace AzToolsFramework
 
                 // Call validation callback on source component.  
                 // (Later, we'll call the validation callback on the final exported component as well.)
-                AZ::ComponentValidationResult result = component->ValidateComponentRequirements(immutableSourceEntities);
+                AZ::ComponentValidationResult result = component->ValidateComponentRequirements(immutableSourceEntities, platformTags);
                 if (!result.IsSuccess())
                 {
                     // Try to cast to GenericComponentWrapper, and if we can, get the internal template.
@@ -540,7 +540,7 @@ namespace AzToolsFramework
             const AZ::Entity::ComponentArrayType& gameComponents = exportEntity->GetComponents();
             for (AZ::Component* component : gameComponents)
             {
-                AZ::ComponentValidationResult result = component->ValidateComponentRequirements(immutableExportEntities);
+                AZ::ComponentValidationResult result = component->ValidateComponentRequirements(immutableExportEntities, platformTags);
                 if (!result.IsSuccess())
                 {
                     // Try to cast to GenericComponentWrapper, and if we can, get the internal template.

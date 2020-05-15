@@ -45,7 +45,6 @@ SET WAF_SCRIPT="%BASE_PATH%\Tools\build\waf-1.7.13\lmbr_waf"
 
 REM Locate Python. We will force the use of our version of Python by setting 
 REM PYTHONHOME (done by win\python.cmd) and clearing any PYTHONPATH
-REM (https://docs.python.org/2/using/cmdline.html#envvar-PYTHON_DIRECTORY)
 
 SET AZ_TEST_DIR=%BASE_PATH%Code\Tools\AzTestScanner
 SET PYTHONPATH=%AZ_TEST_DIR%
@@ -56,7 +55,7 @@ IF EXIST "%PYTHON_DIRECTORY%" GOTO pythonPathAvailable
 GOTO pythonNotFound
 
 :pythonPathAvailable
-SET PYTHON_EXECUTABLE=%PYTHON_DIRECTORY%\python.cmd
+SET PYTHON_EXECUTABLE=%PYTHON_DIRECTORY%\python3.cmd
 IF NOT EXIST "%PYTHON_EXECUTABLE%" GOTO pythonNotFound
 
 REM Execute the WAF script

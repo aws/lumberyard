@@ -45,7 +45,7 @@ namespace AZ
         {
             using ValueType = ValueT;
 
-            AZ_STATIC_ASSERT(AZStd::is_object<ValueType>::value,
+            static_assert(AZStd::is_object<ValueType>::value,
                 "Cannot instantiate Outcome using non-object type (except for void).");
 
             OutcomeStorage() = delete;

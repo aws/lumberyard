@@ -18,11 +18,12 @@
 #include <ISerialize.h>
 #include <ITerrain.h>
 
-#include <Terrain/Texture/MacroTexture.h>
-#include <Terrain/Texture/TexturePool.h>
+#include "Terrain/LegacyTerrainBase.h"
+#include "Terrain/Texture/MacroTexture.h"
+#include "Terrain/Texture/TexturePool.h"
 #include <Terrain/Bus/LegacyTerrainBus.h>
 #include <AzCore/std/function/function_fwd.h> // for callbacks
-#include "Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include "TerrainProfiler.h"
 #include <HeightmapUpdateNotificationBus.h>
 
@@ -37,8 +38,6 @@
 #define OBJ_MAX_SHADOW_VIEW_DISTANCE_RATIO 4
 
 #define TERRAIN_NODE_TREE_DEPTH 16
-
-#define OCEAN_IS_VERY_FAR_AWAY 1000000.f
 
 #define ARR_TEX_OFFSETS_SIZE_DET_MAT 16
 
@@ -98,7 +97,7 @@ struct SSurfaceType
     }
 
     char szName[128];
-    _smart_ptr<CMatInfo> pLayerMat;
+    _smart_ptr<IMaterial> pLayerMat;
     float fScale;
     PodArray<int> lstnVegetationGroups;
     float fMaxMatDistanceXY;
@@ -107,12 +106,15 @@ struct SSurfaceType
     uint8 ucDefProjAxis;
     uint8 ucThisSurfaceTypeId;
     float fCustomMaxDistance;
+    AZ::Crc32 nameTag; //CRC32 of szName.
 };
 
 class CTerrain
     : public ITerrain
-    , public Cry3DEngineBase
+    , public LegacyTerrainBase
     , public LegacyTerrain::CryTerrainRequestBus::Handler
+    , public AzFramework::Terrain::TerrainDataRequestBus::Handler
+    , public LegacyTerrain::LegacyTerrainDataRequestBus::Handler
 {
     friend class CTerrainNode;
 public:
@@ -120,48 +122,91 @@ public:
     using MeterF = float;
     using Unit = int;
 
-    CTerrain(const STerrainInfo& terrainInfo);
     ~CTerrain();
 
-    virtual float GetZ(Meter x, Meter y) const;
-    virtual float GetBilinearZ(MeterF x1, MeterF y1) const;
-    virtual float GetSlope(Meter x, Meter y) const;
+    static bool CreateTerrain(const STerrainInfo& terrainInfo);
+    static void DestroyTerrain();
+    static CTerrain* GetTerrain() { return m_pTerrain; }
 
-    virtual SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const;
+    ///////////////////////////////////////////////////////////////////////////
+    // AzFramework::Terrain::TerrainSystemRequestBus START
+    AZ::Vector2 GetTerrainGridResolution() const override;
+    AZ::Aabb GetTerrainAabb() const override;
 
-    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange);
-    virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33);
+    float GetHeight(AZ::Vector3 position, Sampler sampler = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;
+    float GetHeightFromFloats(float x
+        , float y
+        , AzFramework::Terrain::TerrainDataRequests::Sampler sampler = AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+        , bool* terrainExistsPtr = nullptr) const override;
 
+    AzFramework::SurfaceData::SurfaceTagWeight GetMaxSurfaceWeight(AZ::Vector3 position
+        , Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;
+    AzFramework::SurfaceData::SurfaceTagWeight GetMaxSurfaceWeightFromFloats(float x
+        , float y
+        , AzFramework::Terrain::TerrainDataRequests::Sampler sampleFilter = AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+        , bool* terrainExistsPtr = nullptr) const override;
+
+    bool GetIsHoleFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR) const override;
+    AZ::Vector3 GetNormal(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;
+    AZ::Vector3 GetNormalFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;
+    // AzFramework::Terrain::TerrainSystemRequestBus END
+    ///////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Legacy::Terrain LegacyTerrainDataRequestBus START
+    void SetTerrainElevationAndSurfaceWeights(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet) override
+    {
+        SetTerrainElevation(left, bottom, areaSize, heightmap, weightmapSize, surfaceWeightSet);
+    }
+    void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc) override;
+    int GetTerrainSectorSize() const override { return GetSectorSize(); }
+    int GetTerrainSectorsTableSize() const override { return GetSectorsTableSize(); }
+    int GetTerrainSurfaceId(int x, int y) const override { return GetSurfaceWeight(x, y).PrimaryId(); }
+    bool IsTerrainMeshQuadFlipped(int x, int y, int nUnitSize) const override { return IsMeshQuadFlipped(x, y, nUnitSize); }
+    void GetTerrainMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) override { return GetMaterials(materials); };
+    int GetNodesData(byte*& pData, int& nDataSize, EEndian eEndian, SHotUpdateInfo* pExportInfo) override;
+    ITerrainNode* FindMinNodeContainingBox(const AABB& someBox) override;
+    void IntersectWithBox(const AABB& aabbBox, PodArray<ITerrainNode*>* plstResult) override;
+    void IntersectWithShadowFrustum(PodArray<ITerrainNode*>* plstResult, ShadowMapFrustum* pFrustum, const SRenderingPassInfo& passInfo) override;
+    void AddVisSector(ITerrainNode* newsec) override;
+    void MarkAllSectorsAsUncompiled() override;
+    void ResetTerrainVertBuffers() override;
+    int GetActiveProcObjNodesCount() const override { return m_lstActiveProcObjNodes.Count(); }
+    float GetDistanceToSectorWithWater() const override { return m_fDistanceToSectorWithWater; }
+    void ClearVisSectors() override;
+    void UpdateNodesIncrementally(const SRenderingPassInfo& passInfo) override;
+    void CheckVis(const SRenderingPassInfo& passInfo) override;
+    void ClearTextureSetsAndDrawVisibleSectors(bool clearTextureSets, const SRenderingPassInfo& passInfo) override;
+    void UpdateSectorMeshes(const SRenderingPassInfo& passInfo) override;
+    void CheckNodesGeomUnload(const SRenderingPassInfo& passInfo) override;
+    bool IsOceanVisible() const override { return m_bOceanIsVisible != 0; }
+    bool TryGetTextureStatistics(LegacyTerrain::MacroTexture::TileStatistics& statistics) const override;
+    bool RayTrace(Vec3 const& vStart, Vec3 const& vEnd, LegacyTerrain::SRayTrace* prt) override;
+    bool RenderArea(Vec3 vPos, float fRadius, _smart_ptr<IRenderMesh>& arrLightRenderMeshs, CRenderObject* pObj, _smart_ptr<IMaterial> pMaterial, const char* szComment, float* pCustomData, Plane* planes, const SRenderingPassInfo& passInfo) override;
+    bool IsTextureStreamingInProgress() const override;
+    float GetSlope(int x, int y) const override;
+    void SetTerrainSectorTexture(int nTexSectorX, int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY, bool bMergeNotAllowed) override;
+    void CloseTerrainTextureFile() override;
+    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const override;
+    void GetMemoryUsage(class ICrySizer* pSizer) const override;
+    void GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& crstAABB) override;
+    // Legacy::Terrain LegacyTerrainDataRequestBus END
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // ITerrain START
+    void SetTerrainElevation(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet) override;
     void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) override;
 
-    virtual bool IsHole(Meter x, Meter y) const;
-    virtual bool IsMeshQuadFlipped(const Meter x, const Meter y, const Meter nUnitSize) const;
+    ITerrain::SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const override;
+    Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) const override;
+    void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) const override;
 
-    struct SRayTrace
-    {
-        float t;
-        Vec3  hitPoint;
-        Vec3  hitNormal;
-        _smart_ptr<IMaterial> material;
-
-        SRayTrace()
-            : t(0)
-            , hitPoint(0, 0, 0)
-            , hitNormal(0, 0, 1)
-            , material(nullptr)
-        {}
-
-        SRayTrace(float t_, Vec3 const& hitPoint_, Vec3 const& hitNormal_, _smart_ptr<IMaterial> material_)
-            : t(t_)
-            , hitPoint(hitPoint_)
-            , hitNormal(hitNormal_)
-            , material(material_)
-        {}
-    };
-
-    bool RayTrace(Vec3 const& vStart, Vec3 const& vEnd, SRayTrace* prt);
-
-    void InitHeightfieldPhysics();
+    bool IsHole(int x, int y) const override;
+    bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const override;
+    // ITerrain END
+    ///////////////////////////////////////////////////////////////////////////
 
     inline static const int GetTerrainSize();
     inline static const int GetSectorSize();
@@ -174,45 +219,20 @@ public:
     CTerrainNode* GetLeafNodeAt(Meter x, Meter y);
     inline CTerrainNode* GetLeafNodeAt(const Vec3& pos);
 
-    //Returns the number of nodes (CTerrainNode) that wrote data into pData.
-    int GetNodesData(byte*& pData, int& nDataSize, EEndian eEndian, SHotUpdateInfo* pExportInfo);
-
-    void GetMemoryUsage(class ICrySizer* pSizer) const;
-
-    int GetActiveProcObjNodesCount() { return m_lstActiveProcObjNodes.Count(); }
-
-    bool TryGetTextureStatistics(MacroTexture::TileStatistics& statistics) const;
-    bool IsTextureStreamingInProgress() const;
-    void CloseTerrainTextureFile();
-    void SetTerrainSectorTexture(int nTexSectorX, int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY, bool bMergeNotAllowed);
+    bool HasMacroTexture() { return m_MacroTexture.get() != nullptr; }
 
     _smart_ptr<IRenderMesh> MakeAreaRenderMesh(const Vec3& vPos, float fRadius, _smart_ptr<IMaterial> pMat, const char* szLSourceName, Plane* planes);
-    bool RenderArea(Vec3 vPos, float fRadius, _smart_ptr<IRenderMesh>& arrLightRenderMeshs, CRenderObject* pObj, _smart_ptr<IMaterial> pMaterial, const char* szComment, float* pCustomData, Plane* planes, const SRenderingPassInfo& passInfo);
 
     void DrawVisibleSectors(const SRenderingPassInfo& passInfo);
-    void UpdateNodesIncrementaly(const SRenderingPassInfo& passInfo);
-    void CheckNodesGeomUnload(const SRenderingPassInfo& passInfo);
-    void ResetTerrainVertBuffers();
-    void UpdateSectorMeshes(const SRenderingPassInfo& passInfo);
-    void CheckVis(const SRenderingPassInfo& passInfo);
-    void AddVisSector(CTerrainNode* newsec);
-    void ClearVisSectors();
     void ClearTextureSets();
 
-    void SetTerrainElevation(int x1, int y1, int areaSize, const float* heightmap, int weightmapSize, const SurfaceWeight* weightmap) override;
     void SendLegacyTerrainUpdateNotifications(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY);
 
     void SetDetailLayerProperties(int nId, float fScaleX, float fScaleY, uint8 ucProjAxis, const char* szSurfName, const PodArray<int>& lstnVegetationGroups, _smart_ptr<IMaterial> pMat);
     void LoadSurfaceTypesFromXML(XmlNodeRef pDoc);
     void UpdateSurfaceTypes();
 
-    CTerrainNode* FindMinNodeContainingBox(const AABB& someBox);
     int FindMinNodesContainingBox(const AABB& someBox, PodArray<CTerrainNode*>& arrNodes);
-    void IntersectWithShadowFrustum(PodArray<CTerrainNode*>* plstResult, ShadowMapFrustum* pFrustum, const SRenderingPassInfo& passInfo);
-    void IntersectWithBox(const AABB& aabbBox, PodArray<CTerrainNode*>* plstResult);
-    void MarkAllSectorsAsUncompiled();
-
-    void GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& crstAABB);
 
     inline SSurfaceType* GetSurfaceTypes();
 
@@ -226,9 +246,6 @@ public:
     void ActivateNodeTexture(CTerrainNode* pNode, const SRenderingPassInfo& passInfo);
     void ActivateNodeProcObj(CTerrainNode* pNode);
 
-    inline bool IsOceanVisible() const;
-    inline float GetDistanceToSectorWithWater() const;
-
     // LegacyTerrain::CryTerrainRequestBus
     void RequestTerrainUpdate() override;
 
@@ -236,11 +253,7 @@ public:
     template <class T>
     int Load_T(XmlNodeRef pDoc, T& f, int& nDataSize, const STerrainInfo& terrainInfo, bool bHotUpdate, bool bHMap, bool bSectorPalettes, EEndian eEndian, SHotUpdateInfo* pExportInfo, bool loadMacroTexture = false)
     {
-#if !defined(_RELEASE)
-        //Make sure in non-release mode, the terrain profiler is active so we don't lose the LoadTimeFromDisk performance number.
-        AZ::Debug::TerrainProfiler::GetInstance();
-        AZ_PROFILE_TIMER("TerrainProfiler", TERRAIN_STATISTIC_LOAD_TIME_FROM_DISK);
-#endif //!defined(_RELEASE)
+        TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::LegacyTerrain, LegacyTerrain::Debug::StatisicLoadTimeFromDisk);
 
         LoadSurfaceTypesFromXML(pDoc);
 
@@ -255,14 +268,11 @@ public:
 
             // build nodes tree in fast way
             BuildSectorsTree(false);
-
-            // pass heightmap to the physics
-            InitHeightfieldPhysics();
         }
 
         if (!bHotUpdate)
         {
-            PrintMessage("===== Initializing terrain nodes ===== ");
+            AZ_Printf("LegacyTerrain", "===== Initializing terrain nodes ===== ");
         }
         int nNodesLoaded = 1;
 
@@ -271,6 +281,12 @@ public:
             if (bHMap)
             {
                 nNodesLoaded = m_RootNode->Load_T(f, nDataSize, eEndian, bSectorPalettes, pExportInfo);
+
+                if (nNodesLoaded > 0)
+                {
+                    // pass heightmap to the physics
+                    InitHeightfieldPhysics();
+                }
             }
             // reopen texture file if needed, texture pack may be randomly closed by editor so automatic reopening used
             if (loadMacroTexture && !m_MacroTexture)
@@ -293,12 +309,19 @@ public:
     }
 
 private:
+    CTerrain(const STerrainInfo& terrainInfo);
+    CTerrain() = delete;
+
     inline void Clamp_Unit(Unit& x, Unit& y) const;
     float GetZ_Unit(Unit nX_units, Unit nY_units) const;
-    SurfaceWeight GetSurfaceWeight_Units(Unit nX_units, Unit nY_units) const;
+    ITerrain::SurfaceWeight GetSurfaceWeight_Units(Unit nX_units, Unit nY_units) const;
     float GetSlope_Unit(Unit nX_units, Unit nY_units) const;
-
     inline Unit SectorSize_Units() const;
+
+    float GetZ(Meter x, Meter y) const;
+    virtual float GetBilinearZ(MeterF x1, MeterF y1) const;
+
+    Vec3 GetTerrainNormal(int x, int y) const;
 
     inline CTerrainNode* GetLeafNodeAt_Units(Unit xu, Unit yu);
     inline const CTerrainNode* GetLeafNodeAt_Units(Unit xu, Unit yu) const;
@@ -324,12 +347,15 @@ private:
 
     PodArray<SSurfaceType> m_SurfaceTypes;
 
+    static CTerrain* m_pTerrain; //Pointer to the singleton.
     static int      m_nUnitSize;    // in meters
     static float    m_fInvUnitSize; // in 1/meters
     static int      m_nTerrainSize; // in meters
     int             m_nTerrainSizeDiv;
     static int      m_nSectorSize;  // in meters
     static int      m_nSectorsTableSize;    // sector width/height of the finest LOD level (sector count is the square of this value)
+
+    AZ::Aabb        m_aabb;
 
     PodArray<CTerrainNode*> m_lstActiveTextureNodes;
     PodArray<CTerrainNode*> m_lstActiveProcObjNodes;
@@ -340,12 +366,16 @@ private:
 
     PodArray<CTerrainNode*> m_lstSectors;
 
+#if !defined(_RELEASE) && defined(AZ_STATISTICAL_PROFILING_ENABLED)
+    LegacyTerrain::Debug::TerrainProfiler m_terrainProfiler;
+#endif
+
     static void BuildErrorsTableForArea(
         float* pLodErrors, int nMaxLods,
         int X1, int Y1, int X2, int Y2,
         const float* heightmap,
-        int weightmapSize,
-        const SurfaceWeight* weightmap);
+        bool sectorHasHoles,
+        bool sectorHasMeshData);
 
     void BuildSectorsTree(bool bBuildErrorsTable);
     bool OpenTerrainTextureFile(const char* szFileName);
@@ -386,6 +416,9 @@ private:
         memset(m_arrCacheHeight, 0xFF, sizeof(m_arrCacheHeight));
         memset(m_arrCacheSurfType, 0xFF, sizeof(m_arrCacheSurfType));
     }
+
+    void InitHeightfieldPhysics();
+    void ClearHeightfieldPhysics();
 };
 
 
@@ -443,16 +476,6 @@ inline CTerrainNode* CTerrain::GetLeafNodeAt(Meter x, Meter y)
 inline CTerrainNode* CTerrain::GetLeafNodeAt(const Vec3& pos)
 {
     return GetLeafNodeAt((Meter)pos.x, (Meter)pos.y);
-}
-
-inline bool CTerrain::IsOceanVisible() const
-{
-    return m_bOceanIsVisible != 0;
-}
-
-inline float CTerrain::GetDistanceToSectorWithWater() const
-{
-    return m_fDistanceToSectorWithWater;
 }
 
 inline SSurfaceType* CTerrain::GetSurfaceTypes()

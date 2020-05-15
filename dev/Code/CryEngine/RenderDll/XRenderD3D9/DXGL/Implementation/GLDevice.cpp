@@ -280,10 +280,13 @@ namespace NCryOpenGL
             return false;
         }
 
-        // TODO Linux - Get these from somewhere
-        int width = 1280;
-        int height = 720;
+        // TODO Linux - Get these from somewhere else besides the cvars
+        ICVar* widthCVar = gEnv->pConsole->GetCVar("r_width");
+        ICVar* heightCVar = gEnv->pConsole->GetCVar("r_height");
+        int width = static_cast<int>(widthCVar->GetIVal());
+        int height = static_cast<int>(heightCVar->GetIVal());
         const char* title = "Placeholder Title";
+
 
         // Get the XVisualInfo config that matches the EGL config.
         int numberXVisuals = 0;

@@ -31,7 +31,7 @@ namespace GraphCanvas
         {
         }
         
-        bool CanConnectWith(const Endpoint& endpoint) const override
+        bool CanConnectWith(const Endpoint& endpoint, const ConnectionMoveType& moveType) const override
         {
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);            
@@ -72,52 +72,64 @@ namespace GraphCanvas
 
             bool acceptConnection = false;
 
-            if (sourceType == DataSlotType::Variable)
-            {
-                if (targetType == DataSlotType::Value)
-                {
-                    DataSlotRequestBus::EventResult(acceptConnection, targetEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToReference);
-                }
-                else
-                {
-                    acceptConnection = true;
-                }
-
-                if (acceptConnection)
-                {
-                    AZ::EntityId variableId;
-                    DataSlotRequestBus::EventResult(variableId, sourceEndpoint.GetSlotId(), &DataSlotRequests::GetVariableId);
-
-                    GraphModelRequestBus::EventResult(acceptConnection, sceneId, &GraphModelRequests::IsValidVariableAssignment, variableId, targetEndpoint);
-                }
-            }
-            else if (sourceType == DataSlotType::Value)
+            // We don't want to allow any connections to a reference pin.
+            // But we do want to allow connections from a reference pin.
+            if (sourceType == DataSlotType::Reference)
             {
                 if (targetType == DataSlotType::Reference)
                 {
-                    DataSlotRequestBus::EventResult(acceptConnection, targetEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToValue);
-                }
-                else if (targetType == DataSlotType::Value)
-                {
                     acceptConnection = true;
-                }
+                }                
             }
-            else if (sourceType == DataSlotType::Container)
+            else if (sourceType == DataSlotType::Value)
             {
-                if (targetType == DataSlotType::Container)
-                {
-                    acceptConnection = true;
-                }
-
-                // A target type of value may represent a context sensitive slot that will mutate according to the container
                 if (targetType == DataSlotType::Value)
                 {
                     acceptConnection = true;
                 }
-
             }
 
-            return acceptConnection; // HACK, not to submit
+            if (!acceptConnection)
+            {
+                if (moveType == ConnectionMoveType::Source)
+                {
+                    if (targetType == DataSlotType::Reference)
+                    {
+                        bool hasConnections = false;
+                        SlotRequestBus::EventResult(hasConnections, sourceEndpoint.GetSlotId(), &SlotRequests::HasConnections);
+
+                        // Only want to try to convert to references when we have no connections
+                        if (!hasConnections)
+                        {
+                            DataSlotRequestBus::EventResult(acceptConnection, sourceEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToReference);
+                        }
+                    }
+                    else if (targetType == DataSlotType::Value)
+                    {
+                        DataSlotRequestBus::EventResult(acceptConnection, sourceEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToValue);
+                    }
+                }
+                else if (moveType == ConnectionMoveType::Target)
+                {
+                    if (sourceType == DataSlotType::Reference)
+                    {
+                        bool hasConnections = false;
+                        SlotRequestBus::EventResult(hasConnections, targetEndpoint.GetSlotId(), &SlotRequests::HasConnections);
+
+                        // Only want to try to convert to references when we have no connections
+                        if (!hasConnections)
+                        {
+                            DataSlotRequestBus::EventResult(acceptConnection, targetEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToReference);
+                        }
+                    }
+                    else if (sourceType == DataSlotType::Value)
+                    {
+                        DataSlotRequestBus::EventResult(acceptConnection, targetEndpoint.GetSlotId(), &DataSlotRequests::CanConvertToValue);
+                    }
+                }
+            }
+
+            return acceptConnection;
         }
     };
 }

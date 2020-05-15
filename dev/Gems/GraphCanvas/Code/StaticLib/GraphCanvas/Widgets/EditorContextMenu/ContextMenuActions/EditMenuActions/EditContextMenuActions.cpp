@@ -28,8 +28,10 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction CutGraphSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction CutGraphSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::CutSelection);
         return SceneReaction::PostUndo;
     }
@@ -43,8 +45,10 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction CopyGraphSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction CopyGraphSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::CopySelection);
         return SceneReaction::PostUndo;
     }
@@ -58,8 +62,10 @@ namespace GraphCanvas
     {
     }
 
-    void PasteGraphSelectionMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
+    void PasteGraphSelectionMenuAction::RefreshAction()
     {
+        const GraphId& graphId = GetGraphId();
+
         AZStd::string mimeType;
         SceneRequestBus::EventResult(mimeType, graphId, &SceneRequests::GetCopyMimeType);
 
@@ -67,9 +73,11 @@ namespace GraphCanvas
         setEnabled(isPasteable);
     }
 
-    ContextMenuAction::SceneReaction PasteGraphSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction PasteGraphSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        SceneRequestBus::Event(graphId, &SceneRequests::PasteAt, QPoint(scenePos.GetX(), scenePos.GetY()));
+        const GraphId& graphId = GetGraphId();
+
+        SceneRequestBus::Event(graphId, &SceneRequests::PasteAt, QPoint(aznumeric_cast<int>(scenePos.GetX()), aznumeric_cast<int>(scenePos.GetY())));
         return SceneReaction::PostUndo;
     }
     
@@ -82,8 +90,10 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction DeleteGraphSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction DeleteGraphSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::DeleteSelection);
         return SceneReaction::PostUndo;
     }
@@ -97,9 +107,11 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction DuplicateGraphSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction DuplicateGraphSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        SceneRequestBus::Event(graphId, &SceneRequests::DuplicateSelectionAt, QPoint(scenePos.GetX(), scenePos.GetY()));
+        const GraphId& graphId = GetGraphId();
+
+        SceneRequestBus::Event(graphId, &SceneRequests::DuplicateSelectionAt, QPoint(aznumeric_cast<int>(scenePos.GetX()), aznumeric_cast<int>(scenePos.GetY())));
         return SceneReaction::PostUndo;
     }
 }

@@ -40,14 +40,11 @@ namespace ScriptCanvas
 
                 OrderedSequencer();
 
-                void OnInit();
-                void OnConfigured();
+                void OnInit() override;
+                void OnConfigured() override;
+                void ConfigureVisualExtensions() override;
                 
                 bool CanDeleteSlot(const SlotId& slotId) const;
-
-                bool IsNodeExtendable() const;
-                int GetNumberOfExtensions() const;
-                ExtendableSlotConfiguration GetExtensionConfiguration(int extensionCount) const;
 
                 SlotId HandleExtension(AZ::Crc32 extensionId);        
 

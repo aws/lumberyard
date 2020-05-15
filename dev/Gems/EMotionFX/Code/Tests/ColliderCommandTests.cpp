@@ -20,19 +20,7 @@
 
 namespace EMotionFX
 {
-    class ColliderCommandTests
-        : public ActorFixture
-    {
-        void SetUp()
-        {
-            ActorFixture::SetUp();
-        }
-
-        void TearDown()
-        {
-            ActorFixture::TearDown();
-        }
-    };
+    using ColliderCommandTests = ActorFixture;
 
     size_t CountColliders(const Actor* actor, PhysicsSetup::ColliderConfigType colliderConfigType, bool ignoreShapeType = true, Physics::ShapeType shapeTypeToCount = Physics::ShapeType::Box)
     {
@@ -79,7 +67,7 @@ namespace EMotionFX
 
 
         // 1. Add colliders
-        const AZStd::string serializedBeforeAdd = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedBeforeAdd = SerializePhysicsSetup(m_actor.get());
         for (const AZStd::string& jointName : jointNames)
         {
             CommandColliderHelpers::AddCollider(actorId, jointName, PhysicsSetup::HitDetection, azrtti_typeid<Physics::BoxShapeConfiguration>(), &commandGroup);
@@ -88,23 +76,23 @@ namespace EMotionFX
         }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
-            const AZStd::string serializedAfterAdd = SerializePhysicsSetup(m_actor);
-            EXPECT_EQ(jointCount * 3, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(jointCount, CountColliders(m_actor, PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Box));
+            const AZStd::string serializedAfterAdd = SerializePhysicsSetup(m_actor.get());
+            EXPECT_EQ(jointCount * 3, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(jointCount, CountColliders(m_actor.get(), PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Box));
 
         EXPECT_TRUE(commandManager.Undo(result));
-            EXPECT_EQ(0, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(serializedBeforeAdd, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(0, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(serializedBeforeAdd, SerializePhysicsSetup(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Redo(result));
-            EXPECT_EQ(jointCount * 3, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(jointCount, CountColliders(m_actor, PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Box));
-            EXPECT_EQ(serializedAfterAdd, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(jointCount * 3, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(jointCount, CountColliders(m_actor.get(), PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Box));
+            EXPECT_EQ(serializedAfterAdd, SerializePhysicsSetup(m_actor.get()));
 
 
         // 2. Remove colliders
         commandGroup.RemoveAllCommands();
-        const AZStd::string serializedBeforeRemove = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedBeforeRemove = SerializePhysicsSetup(m_actor.get());
 
         size_t colliderIndexToRemove = 1;
         for (const AZStd::string& jointName : jointNames)
@@ -113,18 +101,44 @@ namespace EMotionFX
         }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
-            const AZStd::string serializedAfterRemove = SerializePhysicsSetup(m_actor);
-            EXPECT_EQ(jointCount * 2, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(0, CountColliders(m_actor, PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Capsule));
+            const AZStd::string serializedAfterRemove = SerializePhysicsSetup(m_actor.get());
+            EXPECT_EQ(jointCount * 2, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(0, CountColliders(m_actor.get(), PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Capsule));
 
         EXPECT_TRUE(commandManager.Undo(result));
-            EXPECT_EQ(jointCount * 3, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(serializedBeforeRemove, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(jointCount * 3, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(serializedBeforeRemove, SerializePhysicsSetup(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Redo(result));
-            EXPECT_EQ(jointCount * 2, CountColliders(m_actor, PhysicsSetup::HitDetection));
-            EXPECT_EQ(0, CountColliders(m_actor, PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Capsule));
-            EXPECT_EQ(serializedAfterRemove, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(jointCount * 2, CountColliders(m_actor.get(), PhysicsSetup::HitDetection));
+            EXPECT_EQ(0, CountColliders(m_actor.get(), PhysicsSetup::HitDetection, /*ignoreShapeType*/false, Physics::ShapeType::Capsule));
+            EXPECT_EQ(serializedAfterRemove, SerializePhysicsSetup(m_actor.get()));
+    }
+
+    TEST_F(ColliderCommandTests, AutoSizingColliders)
+    {
+        CommandSystem::CommandManager commandManager;
+
+        const AZ::u32 actorId = m_actor->GetID();
+        const AZStd::vector<AZStd::string> jointNames = GetTestJointNames();
+        ASSERT_TRUE(jointNames.size() > 0) << "The joint names test data needs at least one joint for this test.";
+        const AZStd::string& jointName = jointNames[0];
+
+        CommandColliderHelpers::AddCollider(actorId, jointName, PhysicsSetup::HitDetection, azrtti_typeid<Physics::BoxShapeConfiguration>());
+
+        const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = m_actor->GetPhysicsSetup();
+        Physics::CharacterColliderConfiguration* colliderConfig = physicsSetup->GetColliderConfigByType(PhysicsSetup::HitDetection);
+        EXPECT_NE(colliderConfig, nullptr) << "Collider config should be valid after we added a collider to it.";
+
+        Physics::CharacterColliderNodeConfiguration* jointConfig = colliderConfig->FindNodeConfigByName(jointName);
+        EXPECT_NE(jointConfig, nullptr) << "Joint config should be valid after we added a collider to it.";
+        EXPECT_EQ(jointConfig->m_shapes.size(), 1) << "Joint config should contain one collider.";
+
+        Physics::BoxShapeConfiguration* box = azdynamic_cast<Physics::BoxShapeConfiguration*>(jointConfig->m_shapes[0].second.get());
+        EXPECT_NE(box, nullptr) << "The containing collider should be a box collider.";
+
+        EXPECT_TRUE(box->m_dimensions.GetLength() > AZ::g_fltEps)
+            << "A collider with size zero won't be visible in the viewport. Make sure the auto sizing uses defaults in case of missing data.";
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -160,7 +174,7 @@ namespace EMotionFX
         EXPECT_TRUE(CommandColliderHelpers::AddCollider(m_actor->GetID(), m_jointName, m_configType, param.m_shapeType));
         Physics::CharacterColliderConfiguration* characterColliderConfig = physicsSetup->GetColliderConfigByType(m_configType);
         ASSERT_TRUE(characterColliderConfig != nullptr);
-        Physics::CharacterColliderNodeConfiguration* nodeConfig = CommandColliderHelpers::GetCreateNodeConfig(m_actor, m_jointName, *characterColliderConfig, result);
+        Physics::CharacterColliderNodeConfiguration* nodeConfig = CommandColliderHelpers::GetCreateNodeConfig(m_actor.get(), m_jointName, *characterColliderConfig, result);
         ASSERT_TRUE(nodeConfig != nullptr);
         EXPECT_EQ(nodeConfig->m_shapes.size(), 1);
 
@@ -195,9 +209,9 @@ namespace EMotionFX
         }
 
         // Check execute.
-        const AZStd::string serializedBeforeExecute = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedBeforeExecute = SerializePhysicsSetup(m_actor.get());
         EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommand(command, result));
-        const AZStd::string serializedAfterExecute = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedAfterExecute = SerializePhysicsSetup(m_actor.get());
 
         EXPECT_EQ(colliderConfig->m_isTrigger, param.m_isTrigger);
         EXPECT_EQ(colliderConfig->m_position, param.m_position);
@@ -215,12 +229,12 @@ namespace EMotionFX
 
         // Check undo.
         EXPECT_TRUE(CommandSystem::GetCommandManager()->Undo(result));
-        const AZStd::string serializedAfterUndo = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedAfterUndo = SerializePhysicsSetup(m_actor.get());
         EXPECT_EQ(serializedAfterUndo, serializedBeforeExecute);
 
         // Check redo.
         EXPECT_TRUE(CommandSystem::GetCommandManager()->Redo(result));
-        const AZStd::string serializedAfterRedo = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedAfterRedo = SerializePhysicsSetup(m_actor.get());
         EXPECT_EQ(serializedAfterRedo, serializedAfterExecute);
     }
 

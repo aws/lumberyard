@@ -23,7 +23,7 @@
 
 bool GetPositionFromString(QString er, float* x, float* y, float* z)
 {
-    er.toLower();
+    er = er.toLower();
     int ind = er.indexOf("pos:");
     int shift = 4;
     if (ind < 0)
@@ -192,8 +192,6 @@ QVariant CErrorReportTableModel::data(const CErrorRecord& record, int column, in
                 return tr("Network");
             case VALIDATOR_MODULE_PHYSICS:
                 return tr("Physics");
-            case VALIDATOR_MODULE_FLOWGRAPH:
-                return tr("FlowGraph");
             case VALIDATOR_MODULE_FEATURETESTS:
                 return tr("FeatureTests");
             default:

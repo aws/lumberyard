@@ -254,9 +254,9 @@ void BoxTool::UpdateBox(const BrushVec3& v0, const BrushVec3& v1, BrushFloat fHe
 
     if (bUpdateUI)
     {
-        m_BoxParameter.m_Width = std::abs(p0.x - p1.x);
+        m_BoxParameter.m_Width = aznumeric_cast<float>(std::abs(p0.x - p1.x));
         m_BoxParameter.m_Height = (float)fHeight;
-        m_BoxParameter.m_Depth = std::abs(p0.y - p1.y);
+        m_BoxParameter.m_Depth = aznumeric_cast<float>(std::abs(p0.y - p1.y));
         GetPanel()->Update();
     }
 

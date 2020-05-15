@@ -9,9 +9,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
 import os
+
+# waflib imports
 from waflib.Configure import conf
-from lumberyard import deprecated
 
 
 @conf

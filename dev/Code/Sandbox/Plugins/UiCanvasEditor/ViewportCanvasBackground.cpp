@@ -26,8 +26,8 @@ ViewportCanvasBackground::~ViewportCanvasBackground()
 void ViewportCanvasBackground::Draw(Draw2dHelper& draw2d, const AZ::Vector2& canvasSize, float canvasToViewportScale, const AZ::Vector3& canvasToViewportTranslation)
 {
     // Determine size of canvas on-screen by applying the current canvas-to-viewport scale
-    const int scaledCanvasWidth = canvasSize.GetX() * canvasToViewportScale;
-    const int scaledCanvasHeight = canvasSize.GetY() * canvasToViewportScale;
+    const int scaledCanvasWidth = aznumeric_cast<int>(canvasSize.GetX() * canvasToViewportScale);
+    const int scaledCanvasHeight = aznumeric_cast<int>(canvasSize.GetY() * canvasToViewportScale);
 
     // Take on-screen canvas panning/translation into account
     const float xCanvasPanOffset = canvasToViewportTranslation.GetX();
@@ -50,7 +50,7 @@ void ViewportCanvasBackground::Draw(Draw2dHelper& draw2d, const AZ::Vector2& can
 
     // scale UV's so that one texel is one pixel on screen
     AZ::Vector2 textureSize(m_canvasBackground->GetTextureSize());
-    AZ::Vector2 rectSize(scaledCanvasWidth, scaledCanvasHeight);
+    AZ::Vector2 rectSize(aznumeric_cast<float>(scaledCanvasWidth), aznumeric_cast<float>(scaledCanvasHeight));
     AZ::Vector2 uvScale(rectSize.GetX() / textureSize.GetX(), rectSize.GetY() / textureSize.GetY());
 
     // now draw the same as Stretched but with UV's adjusted

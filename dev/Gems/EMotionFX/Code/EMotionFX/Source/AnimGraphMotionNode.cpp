@@ -142,7 +142,7 @@ namespace EMotionFX
 
         // trigger the motion update
         MotionInstance* motionInstance = uniqueData->mMotionInstance;
-        if (motionInstance)
+        if (motionInstance && !animGraphInstance->GetIsResynced(mObjectIndex))
         {
             // update the time values and extract events into the event buffer
             motionInstance->SetWeight(uniqueData->GetLocalWeight());
@@ -152,11 +152,6 @@ namespace EMotionFX
             data->GetEventBuffer().UpdateEmitters(this);
         }
         else
-        {
-            return;
-        }
-
-        if (animGraphInstance->GetIsResynced(mObjectIndex))
         {
             return;
         }

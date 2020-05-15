@@ -422,6 +422,25 @@ AZ::Intersect::IntersectRayAABB2(const Vector3& rayStart, const Vector3& dirRCP,
     return ISECT_RAY_AABB_ISECT;
 }
 
+int AZ::Intersect::IntersectRayDisk(
+    const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& diskCenter, const VectorFloat& diskRadius, const Vector3& diskNormal, VectorFloat& t)
+{
+    // First intersect with the plane of the disk
+    float planeIntersectionDistance;
+    int intersectionCount = IntersectRayPlane(rayOrigin, rayDir, diskCenter, diskNormal, planeIntersectionDistance);
+    if (intersectionCount == 1)
+    {
+        // If the plane intersection point is inside the disk radius, then it intersected the disk.
+        Vector3 pointOnPlane = rayOrigin + rayDir * planeIntersectionDistance;
+        if (pointOnPlane.GetDistance(diskCenter) < diskRadius)
+        {
+            t = planeIntersectionDistance;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // Reference: Real-Time Collision Detection - 5.3.7 Intersecting Ray or Segment Against Cylinder, and the book's errata.
 int AZ::Intersect::IntersectRayCappedCylinder(
     const Vector3& rayOrigin, const Vector3& rayDir,

@@ -8,10 +8,9 @@ Runner.py: Task scheduling and execution
 """
 import os.path
 import atexit, os
-try:
-	from queue import Queue
-except ImportError:
-	from Queue import Queue
+
+from queue import Queue
+
 from waflib import Utils, Task, Errors, Logs
 
 GAP = 1

@@ -41,7 +41,6 @@
 #include "MultiplayerMocks.h"
 #include <gmock/gmock.h>
 
-#include <INetwork.h>
 #include <ISystem.h>
 
 #include <Multiplayer_Traits_Platform.h>
@@ -49,44 +48,6 @@
 // see also: dev/Code/Framework/AzCore/Tests/TestTypes.h
 namespace UnitTest
 {
-    struct TestNetwork : public INetwork
-    {
-        TestNetwork() : m_gridMate(nullptr)
-        {
-        }
-        GridMate::IGridMate* m_gridMate;
-
-        void Release() override {}
-        void GetMemoryStatistics(ICrySizer* pSizer) override {}
-        void GetBandwidthStatistics(SBandwidthStats* const pStats) override {}
-        void GetPerformanceStatistics(SNetworkPerformance* pSizer) override {}
-        void GetProfilingStatistics(SNetworkProfilingStats* const pStats) override {}
-        void SyncWithGame(ENetworkGameSync syncType) override {}
-        const char* GetHostName() override { return "testhostname"; }
-        GridMate::IGridMate* GetGridMate() override
-        {
-            return m_gridMate;
-        }
-        ChannelId GetChannelIdForSessionMember(GridMate::GridMember* member) const override { return ChannelId(); }
-        ChannelId GetServerChannelId() const override { return ChannelId(); }
-        ChannelId GetLocalChannelId() const override { return ChannelId(); }
-        CTimeValue GetSessionTime() override { return CTimeValue(); }
-        void SetGameContext(IGameContext* gameContext) override {}
-        void ChangedAspects(EntityId id, NetworkAspectType aspectBits) override {}
-        void SetDelegatableAspectMask(NetworkAspectType aspectBits) override {}
-        void SetObjectDelegatedAspectMask(EntityId entityId, NetworkAspectType aspects, bool set) override {}
-        void DelegateAuthorityToClient(EntityId entityId, ChannelId clientChannelId) override {}
-        void InvokeRMI(IGameObject* gameObject, IRMIRep& rep, void* params, ChannelId targetChannelFilter, uint32 where) override {}
-        void InvokeActorRMI(EntityId entityId, uint8 actorExtensionId, ChannelId targetChannelFilter, IActorRMIRep& rep) override {}
-        void InvokeScriptRMI(ISerializable* serializable, bool isServerRMI, ChannelId toChannelId = kInvalidChannelId, ChannelId avoidChannelId = kInvalidChannelId) override {}
-        void RegisterActorRMI(IActorRMIRep* rep) override {}
-        void UnregisterActorRMI(IActorRMIRep* rep) override {}
-        EntityId LocalEntityIdToServerEntityId(EntityId localId) const override { return EntityId(); }
-        EntityId ServerEntityIdToLocalEntityId(EntityId serverId, bool allowForcedEstablishment = false) const override { return EntityId(); }
-    };
-
-    SSystemGlobalEnvironment g_testSystemGlobalEnvironment;
-
     class TestingNetworkProcessor
         : public GridMate::SessionEventBus::Handler
     {
@@ -153,89 +114,13 @@ namespace UnitTest
             SetSession(nullptr);
         }
     };
-
-    class MultiplayerAllocatorsFixture
-        : public AllocatorsTestFixture
-    {
-        GridMate::IGridMate* m_gridMate;
-        TestNetwork m_testNetwork;
-        SSystemGlobalEnvironment* m_oldEnv;
-
-    public:
-        MultiplayerAllocatorsFixture()
-            : AllocatorsTestFixture()
-            , m_gridMate(nullptr)
-            , m_oldEnv(gEnv)
-        {
-        }
-
-        virtual ~MultiplayerAllocatorsFixture()
-        {
-            gEnv = m_oldEnv;
-        }
-
-        void SetUp() override
-        {
-            AllocatorsTestFixture::SetUp();
-
-            // faking the global environment
-            g_testSystemGlobalEnvironment.pNetwork = &m_testNetwork;
-            gEnv = &g_testSystemGlobalEnvironment;
-        }
-
-        void TearDown() override
-        {
-            if (m_gridMate)
-            {
-                GridMate::GridMateDestroy(m_gridMate);
-                AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Destroy();
-                m_gridMate = nullptr;
-                g_testSystemGlobalEnvironment.pNetwork = nullptr;
-            }
-
-            AllocatorsTestFixture::TearDown();
-        }
-
-        GridMate::IGridMate* GetGridMate()
-        {
-            if (m_gridMate == nullptr)
-            {
-                m_gridMate = GridMate::GridMateCreate(GridMate::GridMateDesc());
-                m_testNetwork.m_gridMate = m_gridMate;
-
-                GridMate::GridMateAllocatorMP::Descriptor allocDesc;
-                allocDesc.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-                AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Create(allocDesc);
-            }
-            return m_gridMate;
-        }
-    };
-}
-
-/**
-* MultiplayerTest
-*/
-
-class MultiplayerTest
-    : public UnitTest::MultiplayerAllocatorsFixture
-{
-public:
-    void run()
-    {
-    }
-
-};
-
-TEST_F(MultiplayerTest, SanityTest)
-{
-    ASSERT_TRUE(true);
 }
 
 /**
   * GridMateServiceWrapper
   */
 class GridMateServiceWrapperTest
-    : public UnitTest::MultiplayerAllocatorsFixture
+    : public UnitTest::MultiplayerGameSessionAllocatorsFixture
 {
 public:
     void run()
@@ -306,74 +191,20 @@ TEST_F(GridMateServiceWrapperTest, Test)
     run();
 }
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 class MultiplayerGameLiftClientTest
-    : public UnitTest::MultiplayerAllocatorsFixture
+    : public UnitTest::MultiplayerClientSessionAllocatorFixture
 {
 public:
-    MultiplayerGameLiftClientTest()
-    {
-        m_gameLiftParams.m_useGameLiftLocalServer = false;
-    }
-
     void SetUp() override
     {
-        MultiplayerAllocatorsFixture::SetUp();
-        m_console = AZStd::make_unique<testing::NiceMock<UnitTest::MockConsole>>();
-        gEnv->pConsole = m_console.get();
-
-        ON_CALL(m_system, GetIConsole()).WillByDefault(testing::Return(gEnv->pConsole));
-        ON_CALL(m_system, GetINetwork()).WillByDefault(testing::Return(gEnv->pNetwork));
-
-        m_gameLiftClientServiceBus.Start(MultiplayerAllocatorsFixture::GetGridMate());
+        UnitTest::MultiplayerClientSessionAllocatorFixture::SetUp();
     }
 
     void TearDown() override
     {
-        m_gameLiftClientServiceBus.Stop();
-
-        m_console.reset();
-        gEnv->pConsole = nullptr;
-        MultiplayerAllocatorsFixture::TearDown();
+        UnitTest::MultiplayerClientSessionAllocatorFixture::TearDown();
     }
-
-protected:
-    void ApplyCVars()
-    {
-        // Setting params used in Multiplayer::Utils
-        m_console->RegisterCVar("cl_clientport", m_clientPort);
-        m_console->RegisterCVar("gm_securityData", m_securityData.c_str());
-        m_console->RegisterCVar("gm_ipversion", m_ipVersion.c_str());
-        m_console->RegisterCVar("gm_version", m_version.c_str());
-        m_console->RegisterCVar("gm_disconnectDetection", m_disconnectDetection);
-
-        // Gamelift specific CVars
-        m_console->RegisterCVar("gamelift_aws_access_key", m_gameLiftParams.m_accessKey.c_str());
-        m_console->RegisterCVar("gamelift_aws_secret_key", m_gameLiftParams.m_secretKey.c_str());
-        m_console->RegisterCVar("gamelift_fleet_id", m_gameLiftParams.m_fleetId.c_str());
-        m_console->RegisterCVar("gamelift_endpoint", m_gameLiftParams.m_endpoint.c_str());
-        m_console->RegisterCVar("gamelift_aws_region", m_gameLiftParams.m_region.c_str());
-        m_console->RegisterCVar("gamelift_alias_id", m_gameLiftParams.m_aliasId.c_str());
-        m_console->RegisterCVar("gamelift_player_id", m_gameLiftParams.m_playerId.c_str());
-        m_console->RegisterCVar("gamelift_uselocalserver", m_gameLiftParams.m_useGameLiftLocalServer);
-    }
-
-    testing::StrictMock<UnitTest::MockGameLiftRequestBus> m_gameLiftRequestBus;
-    testing::StrictMock<UnitTest::MockGameLiftClientServiceBus> m_gameLiftClientServiceBus;
-    testing::StrictMock<UnitTest::MockMultiplayerRequestBus> m_multiplayerRequestBus;
-
-    // System and console are "nice mocks" because testing their calls explicity is not
-    // the aim of this test fixture. Rather, they provide the minimum level of functionality
-    // needed to ensure proper functioning of the MultiplayerGameLiftClient and its dependencies.
-    testing::NiceMock<UnitTest::MockSystem> m_system;
-    AZStd::unique_ptr<testing::NiceMock<UnitTest::MockConsole>> m_console;
-
-    GridMate::GameLiftClientServiceDesc m_gameLiftParams;
-    int m_clientPort = 0;
-    AZStd::string m_securityData = "";
-    AZStd::string m_ipVersion = "IPV4";
-    AZStd::string m_version = "";
-    int m_disconnectDetection = 0;
 };
 
 MATCHER_P3(GameLiftRequestMatch, serverName, mapName, numPlayers, "")
@@ -589,7 +420,10 @@ namespace UnitTest
     //////////////////////////////////////////////////////////////////////////
     // GridMateLuaTesting
 
-    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_Testing)
+#if defined(BUILD_GAMELIFT_CLIENT)
+
+
+    TEST_F(MultiplayerClientSessionAllocatorFixture, GridMateLua_Testing)
     {
         const char* k_LuaScript = R"(
 local testlua =
@@ -670,7 +504,7 @@ return testlua;
     //////////////////////////////////////////////////////////////////////////
     // very basic Lua test that starts and shuts down a GridSearch
 
-    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_SearchTesting)
+    TEST_F(MultiplayerClientSessionAllocatorFixture, GridMateLua_SearchTesting)
     {
         auto setup = [&](AZ::BehaviorContext*)
         {
@@ -721,7 +555,7 @@ return testlua;
     // finds one Grid SearchInfo after a few tries
 
 
-    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_ListSesionsTesting)
+    TEST_F(MultiplayerClientSessionAllocatorFixture, GridMateLua_ListSesionsTesting)
     {
         static AZStd::atomic_int s_count;
         const char* k_LuaScript = R"(
@@ -797,7 +631,7 @@ return testlua;
     //////////////////////////////////////////////////////////////////////////
     //
 
-    TEST_F(MultiplayerAllocatorsFixture, GridMateLua_HostListFindAndJoinTesting)
+    TEST_F(MultiplayerClientSessionAllocatorFixture, GridMateLua_HostListFindAndJoinTesting)
     {
         struct TestGridMateSessionEventBusHandler
             : public GridMate::SessionEventBus::Handler
@@ -808,16 +642,15 @@ return testlua;
             Multiplayer::GridMateLANServiceWrapper gmLANService;
             UnitTest::TestingNetworkProcessor m_processor;
 
-            TestGridMateSessionEventBusHandler(int& joined, int& left)
+            TestGridMateSessionEventBusHandler(int& joined, int& left, GridMate::IGridMate* gridMate)
                 : m_Joined(joined)
                 , m_Left(left)
-                , m_gridMate(nullptr)
+                , m_gridMate(gridMate)
             {
             }
 
             void Start()
             {
-                m_gridMate = GridMate::GridMateCreate(GridMate::GridMateDesc());
                 m_processor.SetGridMate(m_gridMate);
 
                 BusConnect(m_gridMate);
@@ -839,7 +672,6 @@ return testlua;
                 m_processor.Reset();
                 BusDisconnect();
                 gmLANService.StopSessionService(m_gridMate);
-                GridMate::GridMateDestroy(m_gridMate);
                 m_gridMate = nullptr;
             }
             void OnMemberJoined(GridMate::GridSession* session, GridMate::GridMember* member) override
@@ -899,7 +731,7 @@ return testlua;
 )";
         int numMembersAdded = 0;
         int numMembersLeft = 0;
-        TestGridMateSessionEventBusHandler testGridMateSessionEventBusHandler(numMembersAdded, numMembersLeft);
+        TestGridMateSessionEventBusHandler testGridMateSessionEventBusHandler(numMembersAdded, numMembersLeft, GetGridMate());
         UnitTest::TestingNetworkProcessor clientProcessor;
 
         auto setup = [&](AZ::BehaviorContext* bc)
@@ -937,6 +769,7 @@ return testlua;
         AZ_TEST_ASSERT(numMembersAdded > 0);
         AZ_TEST_ASSERT(numMembersLeft > 0);
     }
+    #endif
 }
 
 AZ_UNIT_TEST_HOOK();

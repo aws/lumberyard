@@ -56,6 +56,8 @@ class IHeightmap
 public:
     virtual void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits) = 0;
     virtual void RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 width, AZ::u32 height) = 0;
+    virtual bool GetUseTerrain() = 0;
+    virtual float GetOceanLevel() const = 0;
 };
 
 // Editor data structure to keep the heights, detail layer information/holes, terrain texture
@@ -111,14 +113,19 @@ public:
     //! @param iDestWidth The width of the destination
     //! @param bSmooth Apply smoothing function before returning the data
     //! @param bNoise Apply noise function before returning the data
-    bool GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth = true, bool bNoise = true) const;
+    //! @param treatHolesAsMinHeight Set the height value to the min float value anywhere a hole exists
+    bool GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth = true, bool bNoise = true, bool treatHolesAsMinHeight = false) const;
 
     // Fill image data
     // Arguments:
     //   resolution Resolution of needed heightmap.
     //   vTexOffset offset within hmap
     //   trgRect Target rectangle in scaled heightmap.
-    bool GetData(const QRect& trgRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth = true, bool bNoise = true);
+    //   hmap Pointer to float image that will hold the output heights
+    //   bSmooth Apply smoothing function before returning the data
+    //   bNoise Apply noise function before returning the data
+    //   treatHolesAsMinHeight Set the height value to the min float value anywhere a hole exists
+    bool GetData(const QRect& trgRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth = true, bool bNoise = true, bool treatHolesAsMinHeight = false);
 
     //! resets the height map data, ocean, and mods
     void Reset(int resolution, int unitSize);
@@ -169,6 +176,7 @@ public:
 
     void SetLayerWeightAt(const int x, const int y, const LayerWeight& weight);
 
+    void GetLayerWeights(uint8 layerId, CImageEx* splatMap);
     void SetLayerWeights(const AZStd::vector<uint8>& layerIds, const CImageEx* splatMaps, size_t splatMapCount);
 
     void EraseLayerID(uint8 id, uint8 replacementId);
@@ -222,7 +230,7 @@ public:
         bool bAddNoise = false);
 
     void DrawSpot2(int iX, int iY, int radius, float insideRadius, float fHeigh, float fHardness = 1.0f, bool bAddNoise = false, float noiseFreq = 1, float noiseScale = 1);
-    void SmoothSpot(int iX, int iY, int radius, float fHeigh, float fHardness);
+    void SmoothSpot(int iX, int iY, int radius, float fHeigh, float fHardness, bool refreshTerrain = true);
     void RiseLowerSpot(int iX, int iY, int radius, float insideRadius, float fHeigh, float fHardness = 1.0f, bool bAddNoise = false, float noiseFreq = 1, float noiseScale = 1);
 
     //! Make hole in the terrain.
@@ -249,7 +257,7 @@ public:
     void UpdateEngineHole(int x1, int y1, int width, int height);
 
     void SetOceanLevel(float oceanLevel);
-    float GetOceanLevel() const;
+    float GetOceanLevel() const override;
 
     void CopyData(t_hmap* pDataOut) const
     {
@@ -278,7 +286,7 @@ public:
 
     void AddModSector(int x, int y);
     void ClearModSectors();
-    void UpdateModSectors();
+    void UpdateModSectors(bool forceUpdate=false);
     void UnlockSectorsTexture(const QRect& rc);
 
     int GetNoiseSize() const;
@@ -288,7 +296,14 @@ public:
 
 
     void SetUseTerrain(bool useTerrain);
-    bool GetUseTerrain();
+    bool GetUseTerrain() override;
+
+    void GetTerrainInfo(STerrainInfo& terrainInfoOut);
+
+    // Expose the ability to tell the Heightmap class that it's running in "standalone mode".  This disables some of the integration
+    // with the Editor UI and the renderer so that a subset of class functionality can still be used for exporters, unit tests, etc.
+    bool GetStandaloneMode() { return m_standaloneMode; }
+    void SetStandaloneMode(bool standaloneMode) { m_standaloneMode = standaloneMode; }
 
 private:
     void CopyFrom(t_hmap* prevHeightmap, LayerWeight* prevWeightmap, int prevSize);

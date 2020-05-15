@@ -25,6 +25,8 @@ AZ_POP_DISABLE_WARNING
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <ScriptCanvas/Core/Core.h>
+
 namespace Ui
 {
     class ContainerWizard;
@@ -47,7 +49,7 @@ namespace ScriptCanvasEditor
         ContainerWizard(QWidget* parent = nullptr);
         ~ContainerWizard() override;
 
-        void SetActiveGraph(const AZ::EntityId& scriptCanvasGraphId);
+        void SetActiveScriptCanvasId(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         
         void RegisterType(const AZ::TypeId& dataType);
         void ShowWizard(const AZ::TypeId& genericContainerType);
@@ -93,7 +95,7 @@ namespace ScriptCanvasEditor
 
         AZ::SerializeContext* m_serializeContext;
 
-        AZ::EntityId m_activeGraph;
+        ScriptCanvas::ScriptCanvasId m_activeScriptCanvasId;
 
         QAction* m_validationAction;
 

@@ -22,6 +22,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
@@ -37,16 +38,17 @@ namespace PhysX
 
     namespace TerrainUtils
     {
-        static int GetMaterialIndexForSurfaceId(int surfaceId, AZStd::vector<int>& mapping)
+        static int GetMaterialIndexForSurfaceTag(const AZ::Crc32 surfaceTag, AZStd::vector<int>& mapping)
         {
+            const int surfaceTagAsInt = aznumeric_cast<int>((unsigned int)surfaceTag);
             for (int materialIndex = 0; materialIndex < mapping.size(); ++materialIndex)
             {
-                if (mapping[materialIndex] == surfaceId)
+                if (mapping[materialIndex] == surfaceTagAsInt)
                 {
                     return materialIndex;
                 }
             }
-            mapping.push_back(surfaceId);
+            mapping.push_back(surfaceTagAsInt);
             return static_cast<int>(mapping.size()) - 1;
         }
 
@@ -118,13 +120,13 @@ namespace PhysX
 
         AZ::Vector3 GetScale()
         {
-            IEditor* editor = nullptr;
-            AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
-
             // Scale back up the height when instancing the heightfield into the world
+            AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+
             const float heightScale = s_maxCryTerrainHeight / s_maxPhysxTerrainHeight;
-            const float rowScale = editor->Get3DEngine()->GetHeightMapUnitSize();
-            const float colScale = editor->Get3DEngine()->GetHeightMapUnitSize();
+            const float rowScale = gridResolution.GetX();
+            const float colScale = gridResolution.GetY();
             return AZ::Vector3(rowScale, colScale, heightScale);
         }
     }
@@ -362,39 +364,52 @@ namespace PhysX
     {
         AZ_Printf("EditorTerrainComponent", "Updating heightfield...");
 
-        IEditor* editor = nullptr;
-        AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
+        const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+        if (!terrain)
+        {
+            return;
+        }
 
         // Size of each tile in meters.
-        int32_t tileSize = editor->Get3DEngine()->GetHeightMapUnitSize();
+        const AZ::Vector2 terrainGridResolution = terrain->GetTerrainGridResolution();
+        int32_t tileSizeX = static_cast<int>(terrainGridResolution.GetX());
+        int32_t tileSizeY = static_cast<int>(terrainGridResolution.GetY());
 
         // The number of tiles (terrain is always square).
-        int32_t numTiles = (editor->Get3DEngine()->GetTerrainSize() / tileSize );
+        const AZ::Aabb terrainAabb = terrain->GetTerrainAabb();
+        int32_t numTilesX = (static_cast<int>(terrainAabb.GetWidth()) / tileSizeX);
+        int32_t numTilesY = (static_cast<int>(terrainAabb.GetHeight()) / tileSizeY);
 
         // Cry adds on an extra col and row at the edge of the terrain.
         // So for a terrain size of 1024, we actually need 1025 samples.
-        numTiles += 1;
+        numTilesX += 1;
+        numTilesY += 1;
         
-        AZStd::vector<physx::PxHeightFieldSample> pxSamples(numTiles * numTiles);
+        AZStd::vector<physx::PxHeightFieldSample> pxSamples(numTilesX * numTilesY);
 
         m_configuration.m_terrainSurfaceIdIndexMapping.clear();
         m_configuration.m_terrainSurfaceIdIndexMapping.reserve(50);
 
-        for (int32_t y = 0; y < numTiles; ++y)
+        for (int32_t y = 0; y < numTilesY; ++y)
         {
-            for (int32_t x = 0; x < numTiles; ++x)
+            for (int32_t x = 0; x < numTilesX; ++x)
             {
                 // At the edge of the terrain, we need to query the adjacent
                 // row/col. As Cry will return 0 if it's outside the terrain size bounds.
-                int cryIndexX = AZStd::clamp(x, 0, numTiles - 2) * tileSize;
-                int cryIndexY = AZStd::clamp(y, 0, numTiles - 2) * tileSize;
+                int cryIndexX = AZStd::clamp(x, 0, numTilesX - 2) * tileSizeX;
+                int cryIndexY = AZStd::clamp(y, 0, numTilesY - 2) * tileSizeY;
+                const float locX = aznumeric_cast<float>(cryIndexX);
+                const float locY = aznumeric_cast<float>(cryIndexY);
 
-                float terrainHeight = editor->Get3DEngine()->GetTerrainZ(cryIndexX, cryIndexY);
-                int surfaceId = editor->Get3DEngine()->GetTerrainSurfaceId(cryIndexX, cryIndexY);
+                bool terrainExists = false;
+                const float terrainHeight = terrain->GetHeightFromFloats(locX, locY, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP, &terrainExists);
 
-                int materialIndex = TerrainUtils::GetMaterialIndexForSurfaceId(surfaceId, m_configuration.m_terrainSurfaceIdIndexMapping);
+                const AzFramework::SurfaceData::SurfaceTagWeight surfaceWeight = terrain->GetMaxSurfaceWeightFromFloats(locX, locY, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
+                const AZ::Crc32 surfaceTag = surfaceWeight.m_surfaceType;
+                int materialIndex = TerrainUtils::GetMaterialIndexForSurfaceTag(surfaceTag, m_configuration.m_terrainSurfaceIdIndexMapping);
 
-                int32_t samplesIndex = y * numTiles + x;
+                int32_t samplesIndex = y * numTilesX + x;
                 physx::PxHeightFieldSample& pxSample = pxSamples[samplesIndex];
 
                 AZ_Warning("EditorTerrainComponent", terrainHeight <= s_maxCryTerrainHeight, "Terrain height exceeds max values, there will be physics artifacts");
@@ -402,7 +417,7 @@ namespace PhysX
                 // Scale down the height into a 16bit value
                 pxSample.height = (physx::PxI16)(s_maxPhysxTerrainHeight / s_maxCryTerrainHeight * terrainHeight);
 
-                bool isHole = editor->Get3DEngine()->GetTerrainHole(cryIndexX, cryIndexY);
+                const bool isHole = !terrainExists;
                 if (isHole)
                 {
                     pxSample.materialIndex0 = physx::PxHeightFieldMaterial::eHOLE;
@@ -418,8 +433,8 @@ namespace PhysX
         
         physx::PxHeightFieldDesc pxHeightFieldDesc;
         pxHeightFieldDesc.format = physx::PxHeightFieldFormat::eS16_TM;
-        pxHeightFieldDesc.nbColumns = numTiles;
-        pxHeightFieldDesc.nbRows = numTiles;
+        pxHeightFieldDesc.nbColumns = numTilesX;
+        pxHeightFieldDesc.nbRows = numTilesY;
         pxHeightFieldDesc.samples.data = pxSamples.data();
         pxHeightFieldDesc.samples.stride = sizeof(physx::PxHeightFieldSample);
         
@@ -514,10 +529,10 @@ namespace PhysX
                 {
                     for (int32_t x = 0; x < heightfield->getNbColumns() - 1; ++x)
                     {
-                        float terrainHeight00 = heightfield->getHeight(x, y);
-                        float terrainHeight10 = heightfield->getHeight(x + 1, y);
-                        float terrainHeight01 = heightfield->getHeight(x, y + 1);
-                        float terrainHeight11 = heightfield->getHeight(x + 1, y + 1);
+                        float terrainHeight00 = heightfield->getHeight(aznumeric_cast<float>(x), aznumeric_cast<float>(y));
+                        float terrainHeight10 = heightfield->getHeight(aznumeric_cast<float>(x + 1), aznumeric_cast<float>(y));
+                        float terrainHeight01 = heightfield->getHeight(aznumeric_cast<float>(x), aznumeric_cast<float>(y + 1));
+                        float terrainHeight11 = heightfield->getHeight(aznumeric_cast<float>(x + 1), aznumeric_cast<float>(y + 1));
 
                         // TODO: Need to be able to properly map back from the physX index to our MaterialId
                         // Physics::MaterialId materialIndex0(heightfield->getTriangleMaterialIndex(triCount++));
@@ -564,7 +579,7 @@ namespace PhysX
     }
 
     // PhysX::ConfigurationNotificationBus
-    void EditorTerrainComponent::OnConfigurationRefreshed(const PhysX::Configuration& configuration)
+    void EditorTerrainComponent::OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration)
     {
         AZ_UNUSED(configuration);
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,

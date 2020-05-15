@@ -145,8 +145,8 @@ void RectangleTool::UpdateRectangle(const BrushVec3& v0, const BrushVec3& v1, bo
 
     if (bUpdateUIs)
     {
-        m_RectangleParameter.m_Width = std::abs(p0.x - p1.x);
-        m_RectangleParameter.m_Depth = std::abs(p0.y - p1.y);
+        m_RectangleParameter.m_Width = aznumeric_cast<float>(std::abs(p0.x - p1.x));
+        m_RectangleParameter.m_Depth = aznumeric_cast<float>(std::abs(p0.y - p1.y));
         GetPanel()->Update();
     }
 

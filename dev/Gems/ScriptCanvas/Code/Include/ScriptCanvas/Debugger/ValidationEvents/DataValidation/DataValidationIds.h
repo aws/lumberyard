@@ -17,6 +17,10 @@ namespace ScriptCanvas
 {
     namespace DataValidationIds
     {
+        // Used to self signal from the graph that an element has pushed its own internal error onto the stack
+        constexpr const char* InternalValidationErrorId = "DV-0000";
+        static const AZ::Crc32 InternalValidationErrorCrc = AZ_CRC(InternalValidationErrorId);
+
         constexpr const char* ScopedDataConnectionId = "DV-0001";
         static const AZ::Crc32 ScopedDataConnectionCrc = AZ_CRC(ScopedDataConnectionId);
 
@@ -31,6 +35,9 @@ namespace ScriptCanvas
 
         constexpr const char* ScriptEventVersionMismatchId = "DV-0005";
         static const AZ::Crc32 ScriptEventVersionMismatchCrc = AZ_CRC(ScriptEventVersionMismatchId);
+
+        constexpr const char* InvalidExpressionId = "DV-0006";
+        static const AZ::Crc32 InvalidExpressionCrc = AZ_CRC(InvalidExpressionId);
 
     }
 }

@@ -26,7 +26,7 @@ namespace ScriptCanvasEditor
         , public VersionControlledNodeInterface
     {
     public:    
-        AZ_COMPONENT(ScriptEventSenderNodeDescriptorComponent, "{6B646A3A-CB7F-49C4-8146-D848F418E0B1}", NodeDescriptorComponent);
+        AZ_COMPONENT(ScriptEventSenderNodeDescriptorComponent, "{7EB63D67-4F32-40E5-8B15-4C3E28D886F9}", NodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
         
         ScriptEventSenderNodeDescriptorComponent();
@@ -35,6 +35,7 @@ namespace ScriptCanvasEditor
 
         // Component
         void Activate() override;
+        void Deactivate() override;
         ////
         
         // AZ::Data::AssetBus::Handler

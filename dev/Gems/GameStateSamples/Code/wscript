@@ -16,11 +16,8 @@ def build(bld):
         disable_pch             = True,
         vs_filter               = 'Gems/PlatformServices',
         file_list               = ['gamestatesamples.waf_files'],
-        includes                = ['.',
-                                   bld.ThirdPartyPath('boost'),
-                                   bld.Path('Code/CryEngine/CryCommon')],
-        
-        # Testing
+        includes                = [bld.Path('Code/CryEngine/CryCommon')
+                                  ],
         test_all_file_list      = ['gamestatesamples_tests.waf_files'],
         platform_roots          = [bld.PlatformRoot('Include/Platform', export_includes=True)]
     )

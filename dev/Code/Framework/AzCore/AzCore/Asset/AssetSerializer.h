@@ -128,7 +128,7 @@ namespace AZ {
                 return GetAssetClassId();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {

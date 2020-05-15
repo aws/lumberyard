@@ -149,7 +149,7 @@ namespace ScriptEvents
                 bus->m_events[methodName].m_broadcast = aznew ScriptEventBroadcast(behaviorContext, definition, methodName);
             }
 
-            behaviorContext->m_ebuses[definition.GetBehaviorContextName()] = bus;
+            behaviorContext->m_ebuses[bus->m_name] = bus;
 
             return bus;
         }

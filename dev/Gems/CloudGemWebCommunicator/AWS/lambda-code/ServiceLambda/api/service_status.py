@@ -9,11 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
 
 @service.api
 def get(request):
-    print 'testing service status'
+    print('testing service status')
     return {
         'status': 'online'
     }

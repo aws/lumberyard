@@ -710,6 +710,12 @@ namespace TouchBending
                 testState.m_physicalizedSkeleton);
             testState.m_physicalizedSkeleton = nullptr;
 
+            // Make sure we also clean up the touchbending trigger handle.
+            // This also tests for regressions of LY-111942 - deletion of touch bending triggers should not
+            // trigger an error about multithreaded scene usage in debug builds.
+            Physics::TouchBendingBus::Broadcast(&Physics::TouchBendingRequest::DeleteTouchBendingTrigger, testState.m_touchBendingTriggerHandle);
+            testState.m_touchBendingTriggerHandle = nullptr;
+
             return (countOfBonesPendingToReturnToInitialPosition == 0);
         }
 
@@ -755,7 +761,65 @@ namespace TouchBending
         ASSERT_TRUE(_06_MoveMainActorAwaysFromTheSkeleton_SkeletonShouldSpringBackToStartingPose(testState));
     }
 
+    TEST_F(TouchBendingTest, TouchBending_LY111977_CreateAndPopulateWorld_UnloadLevelToDestroyWorld)
+    {
+        // While this test runs nearly the same steps as the previous test, it triggers an "unload level" event
+        // prior to cleanup.  The point of this test is to regress bug LY-111977 - destruction of physicalized
+        // skeletons after an "unload level" event should not trigger errors about multithreaded scene usage
+        // in debug builds.
+
+        TouchBendingTestState testState;
+
+        Simulation::PhysicsComponent* physicsComponent = nullptr;
+
+        // Slightly non-obvious way to locate our physics component.  We use this method because the test environment
+        // we're using creates a separate non-exposed entity to put our Gem's "system" components on, instead of
+        // the actual system component.  Without the entity ID, this seemed like the easiest way to find it.
+
+        // NOTE: The reason we need a direct pointer to the PhysicsComponent is to trigger the "unload level" event in isolation
+        // on that component.  If we try to mock a full CrySystemEventDispatcher, events will also get set to the PhysX
+        // components, which will perform additional work that we don't want in a unit/integration test, like
+        // loading default configurations out of files, etc.  Instead, we grab the pointer to the touch bending component
+        // to let us direct-call the event when necessary.
+        Physics::TouchBendingBus::EnumerateHandlers([&physicsComponent](Physics::TouchBendingRequest* handler) -> bool
+        {
+            Simulation::PhysicsComponent* component = azrtti_cast<Simulation::PhysicsComponent*>(handler);
+            if (component)
+            {
+                physicsComponent = component;
+            }
+            return true;
+        });
+
+        EXPECT_TRUE(physicsComponent != nullptr);
+
+        // Perform the same setup steps as before - these will create our physics world, touch bending triggers,
+        // physicalized skeletons, etc.
+        ASSERT_TRUE(_01_PopulateWorld_MainActorIsSettledOnTopOfFloor(testState));
+        ASSERT_TRUE(_02_PhysicalizeTouchBendingInstance_NewInstanceIsNotNull(testState));
+        ASSERT_TRUE(_03_MoveMainActorUntilItTouchesProximityTrigger_PhysicalizedSkeletonIsInstantiated(testState));
+        ASSERT_TRUE(_04_SetSkeletonVisible_CheckStartingPose(testState));
+        ASSERT_TRUE(_05_MoveMainActorUntilItReachesTheLocationOfTheSkeleton_AllJointsOfTheSkeletonAreCloseToTheFloor(testState));
+
+        // Direct-call the event handler on the touchbending component to trigger the "level unload" events.
+        // This will cause the PhysicsComponent to clear its world state prior to asset cleanup, which is
+        // required to test for regressions of LY-111977.
+        if (physicsComponent)
+        {
+            physicsComponent->OnSystemEvent(ESYSTEM_EVENT_LEVEL_UNLOAD, 0, 0);
+            physicsComponent->OnSystemEvent(ESYSTEM_EVENT_LEVEL_POST_UNLOAD, 0, 0);
+        }
+
+        // Skip step 6 of the previous test, and just perform the cleanup, as that's all that is needed to validate
+        // the level unload regression.
+        Physics::TouchBendingBus::Broadcast(&Physics::TouchBendingRequest::DephysicalizeTouchBendingSkeleton,
+            testState.m_physicalizedSkeleton);
+        testState.m_physicalizedSkeleton = nullptr;
+
+        Physics::TouchBendingBus::Broadcast(&Physics::TouchBendingRequest::DeleteTouchBendingTrigger, testState.m_touchBendingTriggerHandle);
+        testState.m_touchBendingTriggerHandle = nullptr;
+    }
+
     AZ_UNIT_TEST_HOOK(new TouchBendingTestEnvironment);
 }; //namespace TouchBending
-
 #endif // AZ_TESTS_ENABLED

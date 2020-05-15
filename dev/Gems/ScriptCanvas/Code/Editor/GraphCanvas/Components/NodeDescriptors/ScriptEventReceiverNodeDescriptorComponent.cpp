@@ -475,10 +475,10 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasGraphId;
         GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
 
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        EditorGraphRequestBus::Event(scriptCanvasGraphId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
+        EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
     }
 
     bool ScriptEventReceiverNodeDescriptorComponent::IsOutOfDate() const
@@ -508,8 +508,8 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasGraphId;
         GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
 
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
         GeneralRequestBus::Broadcast(&GeneralRequests::PushPreventUndoStateUpdate);
 
         VersionControlledNodeNotificationBus::Event(GetEntityId(), &VersionControlledNodeNotifications::OnVersionConversionBegin);
@@ -618,18 +618,18 @@ namespace ScriptCanvasEditor
 
     void ScriptEventReceiverNodeDescriptorComponent::OnDisplayConnectionsChanged()
     {
-        // If we are hiding the connections, we need to confirm that
-        // everything will be ok(i.e. no active connections)
-        if (!m_saveData.m_displayConnections)
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_scriptCanvasId);
+
+        if (entity)
         {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_scriptCanvasId);
+            ScriptCanvas::Nodes::Core::ReceiveScriptEvent* eventHandler = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::ReceiveScriptEvent>(entity);
 
-            if (entity)
+            if (eventHandler)
             {
-                ScriptCanvas::Nodes::Core::ReceiveScriptEvent* eventHandler = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::ReceiveScriptEvent>(entity);
-
-                if (eventHandler)
+                // If we are hiding the connections, we need to confirm that
+                // everything will be ok(i.e. no active connections)
+                if (!m_saveData.m_displayConnections)
                 {
                     AZStd::vector< ScriptCanvas::SlotId > scriptCanvasSlots = eventHandler->GetNonEventSlotIds();
 
@@ -653,6 +653,8 @@ namespace ScriptCanvasEditor
                         PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
                     }
                 }
+
+                eventHandler->SetAutoConnectToGraphOwner(!m_saveData.m_displayConnections);
             }
         }
 

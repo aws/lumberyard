@@ -60,7 +60,7 @@ class UserComment:
         :raises: ValueError if the encoding is unsupported.
         """
         if encoding not in cls.ENCODINGS:
-            raise ValueError('encoding %r must be one of %r' % (encoding, cls.ENCODINGS))
+            raise ValueError('encoding {!r} must be one of {!r}'.format(encoding, cls.ENCODINGS))
         prefix = {cls.ASCII: cls._ASCII_PREFIX, cls.JIS: cls._JIS_PREFIX, cls.UNICODE: cls._UNICODE_PREFIX}[encoding]
         internal_encoding = {cls.UNICODE: cls._UNICODE, cls.JIS: cls._JIS}.get(encoding, encoding)
         return prefix + data.encode(internal_encoding, errors='replace')

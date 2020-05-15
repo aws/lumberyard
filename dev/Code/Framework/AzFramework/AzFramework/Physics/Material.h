@@ -13,8 +13,6 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
-#include <AzCore/std/containers/list.h>
-#include <AzCore/std/containers/array.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Color.h>
@@ -93,8 +91,6 @@ namespace Physics
         virtual void* GetNativePointer() = 0;
     };
 
-    const AZ::u32 DefaultCryEngineSurfaceId = 0;
-
     /// Default values used for initializing materials
     /// ===================
     ///
@@ -160,7 +156,6 @@ namespace Physics
         AZ_TYPE_INFO(MaterialFromAssetConfiguration, "{FBD76628-DE57-435E-BE00-6FFAE64DDF1D}");
 
         static void Reflect(AZ::ReflectContext* context);
-
 
         MaterialConfiguration m_configuration;
         MaterialId m_id;

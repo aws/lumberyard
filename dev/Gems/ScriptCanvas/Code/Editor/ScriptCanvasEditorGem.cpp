@@ -51,12 +51,14 @@
 
 #include <Asset/EditorAssetSystemComponent.h>
 #include <Builder/ScriptCanvasBuilderComponent.h>
+#include <Editor/GraphCanvas/Components/DynamicOrderingDynamicSlotComponent.h>
 #include <Editor/GraphCanvas/Components/DynamicSlotComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverEventNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverNodeDescriptorComponent.h>
+#include <Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventSenderNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EBusSenderNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.h>
@@ -97,6 +99,7 @@ namespace ScriptCanvas
 
             // GraphCanvas additions
             ScriptCanvasEditor::DynamicSlotComponent::CreateDescriptor(),
+            ScriptCanvasEditor::DynamicOrderingDynamicSlotComponent::CreateDescriptor(),
 
             // Base Descriptor
             ScriptCanvasEditor::NodeDescriptorComponent::CreateDescriptor(),
@@ -106,7 +109,8 @@ namespace ScriptCanvas
             ScriptCanvasEditor::EBusHandlerNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::EBusHandlerEventNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::ScriptEventReceiverEventNodeDescriptorComponent::CreateDescriptor(),
-            ScriptCanvasEditor::ScriptEventReceiverNodeDescriptorComponent::CreateDescriptor(),            
+            ScriptCanvasEditor::ScriptEventReceiverNodeDescriptorComponent::CreateDescriptor(),
+            ScriptCanvasEditor::ScriptEventSenderNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::EBusSenderNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::EntityRefNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::VariableNodeDescriptorComponent::CreateDescriptor(),

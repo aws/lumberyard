@@ -32,41 +32,43 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             AnimGraphBindPoseNode* bindPoseNode = aznew AnimGraphBindPoseNode();
-            m_blendTree->AddChildNode(bindPoseNode);
-
             m_getTransformNode = aznew BlendTreeGetTransformNode();
-            m_blendTree->AddChildNode(m_getTransformNode);
-
             m_rotationMathNode = aznew BlendTreeRotationMath2Node();
-            m_blendTree->AddChildNode(m_rotationMathNode);
-
             m_setTransformNode = aznew BlendTreeSetTransformNode();
+            BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+
+            m_blendTree->AddChildNode(bindPoseNode);
+            m_blendTree->AddChildNode(m_getTransformNode);
+            m_blendTree->AddChildNode(m_rotationMathNode);
             m_blendTree->AddChildNode(m_setTransformNode);
+            m_blendTree->AddChildNode(finalNode);
 
             m_getTransformNode->AddUnitializedConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
             m_setTransformNode->AddUnitializedConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
-
             m_rotationMathNode->AddUnitializedConnection(m_getTransformNode, BlendTreeGetTransformNode::OUTPUTPORT_ROTATION, BlendTreeRotationMath2Node::INPUTPORT_X);
             m_setTransformNode->AddUnitializedConnection(m_rotationMathNode, BlendTreeRotationMath2Node::OUTPUTPORT_RESULT_QUATERNION, BlendTreeSetTransformNode::INPUTPORT_ROTATION);
-
-
-            BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
-            m_blendTree->AddChildNode(finalNode);
-
-
             finalNode->AddUnitializedConnection(m_setTransformNode, BlendTreeSetTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
-        BlendTree* m_blendTree;
-        BlendTreeGetTransformNode* m_getTransformNode;
-        BlendTreeRotationMath2Node* m_rotationMathNode;
-        BlendTreeSetTransformNode* m_setTransformNode;
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
+        BlendTree* m_blendTree = nullptr;
+        BlendTreeGetTransformNode* m_getTransformNode = nullptr;
+        BlendTreeRotationMath2Node* m_rotationMathNode = nullptr;
+        BlendTreeSetTransformNode* m_setTransformNode = nullptr;
     };
 
     TEST_F(BlendTreeRotationMath2NodeTests, EvalauteTranslationBlending)

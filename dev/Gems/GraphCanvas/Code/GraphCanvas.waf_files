@@ -75,8 +75,10 @@
             "Source/Components/Connections/DataConnections/DataConnectionVisualComponent.cpp",
             "Source/Components/Connections/DataConnections/DataConnectionVisualComponent.h"
         ],
-        "Source/Components/NodePropertyDisplays":
+        "Source/Components/NodePropertyDisplays": 
         [
+            "Source/Components/NodePropertyDisplays/AssetIdNodePropertyDisplay.cpp",
+            "Source/Components/NodePropertyDisplays/AssetIdNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.cpp",

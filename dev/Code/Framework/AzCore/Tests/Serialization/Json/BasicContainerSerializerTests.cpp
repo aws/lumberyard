@@ -11,6 +11,7 @@
 */
 
 #include <AzCore/Serialization/Json/BasicContainerSerializer.h>
+#include <AzCore/std/containers/forward_list.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
@@ -233,12 +234,15 @@ namespace JsonSerializationTests
 
     using BasicContainerConformityTestTypes = ::testing::Types
     <
+        SimpleTestDescription<AZStd::forward_list<int>>,
         SimpleTestDescription<AZStd::list<int>>,
         SimpleTestDescription<AZStd::set<int>>,
         SimpleTestDescription<AZStd::vector<int>>,
+        SimplePointerTestDescription<AZStd::forward_list<int*>>,
         SimplePointerTestDescription<AZStd::list<int*>>,
         SimplePointerTestDescription<AZStd::set<int*, SimplePointerTestDescriptionLess>>,
         SimplePointerTestDescription<AZStd::vector<int*>>,
+        ComplextTestDescription<AZStd::forward_list<SimpleClass>>,
         ComplextTestDescription<AZStd::list<SimpleClass>>,
         ComplextTestDescription<AZStd::set<SimpleClass>>,
         ComplextTestDescription<AZStd::vector<SimpleClass>>

@@ -120,7 +120,7 @@ namespace GraphCanvas
         
             RootGraphicsItemNotificationBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
             NodePropertiesRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
-            NodePropertyRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetId());
+            NodePropertyRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetSlotId());
         }
         
         UpdateLayout();

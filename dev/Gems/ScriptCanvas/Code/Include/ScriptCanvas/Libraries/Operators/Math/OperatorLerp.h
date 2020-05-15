@@ -116,6 +116,7 @@ namespace ScriptCanvas
             ~LerpBetween() override = default;
             
             void OnInit() override;
+            void OnDeactivate() override;
             void OnConfigured() override;
             
             // SystemTickBus
@@ -139,7 +140,7 @@ namespace ScriptCanvas
             void SignalLerpStep(float percent);
             
             bool IsGroupConnected() const;
-            bool IsInGroup(const SlotId& slotId) const;
+            bool IsInGroup(const SlotId& slotId) const;            
             
             template<typename DataType>
             void CalculateLerpStep(float percent, Datum& stepDatum)
@@ -159,8 +160,8 @@ namespace ScriptCanvas
             template<typename DataType>
             void SetupStartStop(Data::Type displayType)
             {
-                const Datum* startDatum = GetInput(m_startSlotId);
-                const Datum* endDatum = GetInput(m_stopSlotId);
+                const Datum* startDatum = FindDatum(m_startSlotId);
+                const Datum* endDatum = FindDatum(m_stopSlotId);
                 
                 m_startDatum = (*startDatum);
                 m_differenceDatum = Datum(displayType, Datum::eOriginality::Original);

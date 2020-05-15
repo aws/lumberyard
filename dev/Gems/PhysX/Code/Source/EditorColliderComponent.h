@@ -65,6 +65,7 @@ namespace PhysX
         Physics::BoxShapeConfiguration m_box;
         Physics::CapsuleShapeConfiguration m_capsule;
         EditorProxyAssetShapeConfig m_physicsAsset;
+        Physics::CookedMeshShapeConfiguration m_cookedMesh;
 
         bool IsSphereConfig() const;
         bool IsBoxConfig() const;
@@ -120,6 +121,7 @@ namespace PhysX
         // these functions are made virtual because we call them from other modules
         virtual const EditorProxyShapeConfig& GetShapeConfiguration() const;
         virtual const Physics::ColliderConfiguration& GetColliderConfiguration() const;
+        virtual Physics::ColliderConfiguration GetColliderConfigurationScaled() const;
 
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
@@ -162,7 +164,7 @@ namespace PhysX
         AZ::Vector3 GetBoxScale() override;
 
         // PhysX::ConfigurationNotificationBus
-        virtual void OnConfigurationRefreshed(const Configuration& configuration) override;
+        virtual void OnPhysXConfigurationRefreshed(const PhysXConfiguration& configuration) override;
         virtual void OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId& defaultMaterialLibrary) override;
 
         // LmbrCentral::MeshComponentNotificationBus
@@ -190,9 +192,6 @@ namespace PhysX
         AZ::Vector3 GetAssetScale() override;
 
         AZ::Transform GetColliderLocalTransform() const;
-        float GetUniformScale() const;
-        AZ::Vector3 GetNonUniformScale() const;
-        AZ::Vector3 GetCapsuleScale() const;
 
         EditorProxyShapeConfig m_shapeConfiguration;
         Physics::ColliderConfiguration m_configuration;

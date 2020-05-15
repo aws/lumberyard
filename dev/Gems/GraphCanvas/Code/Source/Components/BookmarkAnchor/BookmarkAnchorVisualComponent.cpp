@@ -328,14 +328,14 @@ namespace GraphCanvas
         return m_graphicsWidget->GetOutline();
     }
 
-    void BookmarkAnchorVisualComponent::SetZValue(int zValue)
+    void BookmarkAnchorVisualComponent::SetZValue(qreal zValue)
     {
         m_graphicsWidget->setZValue(zValue);
     }
 
-    int BookmarkAnchorVisualComponent::GetZValue() const
+    qreal BookmarkAnchorVisualComponent::GetZValue() const
     {
-        return m_graphicsWidget->zValue();
+        return aznumeric_cast<int>(m_graphicsWidget->zValue());
     }
 
     void BookmarkAnchorVisualComponent::OnSceneSet(const AZ::EntityId& graphId)

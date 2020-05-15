@@ -805,9 +805,18 @@ void CSettingsManager::SaveLogEventSetting(const QString& path, const QString& a
 
     QString writeAttr = attr;
 
-    // Spaces in node names not allowed
-    writeAttr.replace(" ", "");
-
+    // Simple cleanup of node names - remove all characters except letters, digits,
+    // underscores, colons, periods, and hyphens.
+    // If this ever needs to be 100% compliant, the following rules would need to
+    // be added:
+    // - name must only *start* with a letter or underscore (not a digit, colon, period, or hyphen)
+    // - name must not start with "xml" in any case combination
+    const QRegularExpression xmlNodeCleanupRegex("[^a-zA-Z0-9_:.\\-]*");
+    writeAttr.remove(xmlNodeCleanupRegex);
+    for (auto& node : strNodes)
+    {
+        node.remove(xmlNodeCleanupRegex);
+    }
 
     XmlNodeRef root = XmlHelpers::LoadXmlFromFile(EDITOR_EVENT_LOG_FILE_PATH);
 

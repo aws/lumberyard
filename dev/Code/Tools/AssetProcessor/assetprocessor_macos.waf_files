@@ -3,6 +3,10 @@
     {
         "FileWatcher": [
             "native/FileWatcher/FileWatcher_macos.cpp"
+        ],
+        "utilities": [
+            "native/utilities/Utils_UnixLike.cpp",
+            "native/utilities/Utils_UnixLike.h"
         ]
     }
 }

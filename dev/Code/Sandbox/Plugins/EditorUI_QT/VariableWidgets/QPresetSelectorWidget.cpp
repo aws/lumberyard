@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QPresetSelectorWidget.h"
 
 #define ALLOW_DELETION_OF_ALL_LIBRARIES

@@ -4,12 +4,27 @@ from collections import namedtuple
 import itertools
 import functools
 import operator
+import ctypes
 
 import numpy as np
+
+from . import _helperlib
 
 
 Extent = namedtuple("Extent", ["begin", "end"])
 
+
+attempt_nocopy_reshape = ctypes.CFUNCTYPE(
+    ctypes.c_int,
+    ctypes.c_long,  # nd
+    np.ctypeslib.ndpointer(np.ctypeslib.c_intp, ndim=1),  # dims
+    np.ctypeslib.ndpointer(np.ctypeslib.c_intp, ndim=1),  # strides
+    ctypes.c_long,  # newnd
+    np.ctypeslib.ndpointer(np.ctypeslib.c_intp, ndim=1),  # newdims
+    np.ctypeslib.ndpointer(np.ctypeslib.c_intp, ndim=1),  # newstrides
+    ctypes.c_long,  # itemsize
+    ctypes.c_int,  # is_f_order
+)(_helperlib.c_helpers['attempt_nocopy_reshape'])
 
 class Dim(object):
     """A single dimension of the array
@@ -28,8 +43,6 @@ class Dim(object):
     __slots__ = 'start', 'stop', 'size', 'stride', 'single'
 
     def __init__(self, start, stop, size, stride, single):
-        if stop < start:
-            raise ValueError("end offset is before start offset")
         self.start = start
         self.stop = stop
         self.size = size
@@ -39,52 +52,33 @@ class Dim(object):
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            start, stop, step = item.start, item.stop, item.step
-            single = False
+            start, stop, step = item.indices(self.size)
+            stride = step * self.stride
+            start = self.start + start * abs(self.stride)
+            stop = self.start + stop * abs(self.stride)
+            if stride == 0:
+                size = 1
+            else:
+                size = _compute_size(start, stop, stride)
+            ret = Dim(
+                start=start,
+                stop=stop,
+                size=size,
+                stride=stride,
+                single=False
+            )
+            return ret
         else:
-            single = True
-            start = item
-            stop = start + 1
-            step = None
-
-        # Default values
-        #   Start value is default to zero
-        if start is None:
-            start = 0
-        #   Stop value is default to self.size
-        if stop is None:
-            stop = self.size
-        #   Step is default to 1
-        if step is None:
-            step = 1
-
-        stride = step * self.stride
-
-        # Compute start in bytes
-        if start >= 0:
-            start = self.start + start * self.stride
-        else:
-            start = self.stop + start * self.stride
-        start = max(start, self.start)
-
-        # Compute stop in bytes
-        if stop >= 0:
-            stop = self.start + stop * self.stride
-        else:
-            stop = self.stop + stop * self.stride
-        stop = min(stop, self.stop)
-
-        # Clip stop
-        if (stop - start) > self.size * self.stride:
-            stop = start + self.size * stride
-
-        size = (stop - start + (stride - 1)) // stride
-
-        if stop < start:
-            start = stop
-            size = 0
-
-        return Dim(start, stop, size, stride, single)
+            sliced = self[item:item + 1] if item != -1 else self[-1:]
+            if sliced.size != 1:
+                raise IndexError
+            return Dim(
+                start=sliced.start,
+                stop=sliced.stop,
+                size=sliced.size,
+                stride=sliced.stride,
+                single=True,
+            )
 
     def get_offset(self, idx):
         return self.start + idx * self.stride
@@ -161,6 +155,7 @@ class Array(object):
             dim = Dim(offset, offset + ashape * astride, ashape, astride,
                       single=False)
             dims.append(dim)
+            offset = 0  # offset only applies to first dimension
         return cls(dims, itemsize)
 
     def __init__(self, dims, itemsize):
@@ -169,7 +164,7 @@ class Array(object):
         self.shape = tuple(dim.size for dim in self.dims)
         self.strides = tuple(dim.stride for dim in self.dims)
         self.itemsize = itemsize
-        self.size = np.prod(self.shape)
+        self.size = functools.reduce(operator.mul, self.shape, 1)
         self.extent = self._compute_extent()
         self.flags = self._compute_layout()
 
@@ -202,7 +197,7 @@ class Array(object):
         lastidx = [s - 1 for s in self.shape]
         start = compute_index(firstidx, self.dims)
         stop = compute_index(lastidx, self.dims) + self.itemsize
-        stop = max(stop, start)   # ensure postive extent
+        stop = max(stop, start)   # ensure positive extent
         return Extent(start, stop)
 
     def __repr__(self):
@@ -225,6 +220,7 @@ class Array(object):
 
         dims = [dim.__getitem__(it) for dim, it in zip(self.dims, item)]
         newshape = [d.size for d in dims if not d.single]
+
         arr = Array(dims, self.itemsize)
         if newshape:
             return arr.reshape(*newshape)[0]
@@ -265,11 +261,11 @@ class Array(object):
                     offset = compute_index(indices, self.dims)
                     yield offset, offset + self.itemsize
 
-    def reshape(self, *newshape, **kws):
+    def reshape(self, *newdims, **kws):
         oldnd = self.ndim
-        newnd = len(newshape)
+        newnd = len(newdims)
 
-        if newshape == self.shape:
+        if newdims == self.shape:
             return self, None
 
         order = kws.pop('order', 'C')
@@ -278,7 +274,7 @@ class Array(object):
         if order not in 'CFA':
             raise ValueError('order not C|F|A')
 
-        newsize = functools.reduce(operator.mul, newshape, 1)
+        newsize = functools.reduce(operator.mul, newdims, 1)
 
         if order == 'A':
             order = 'F' if self.is_f_contig else 'C'
@@ -286,20 +282,66 @@ class Array(object):
         if newsize != self.size:
             raise ValueError("reshape changes the size of the array")
 
-        elif newnd == 1 or self.is_c_contig or self.is_f_contig:
+        if self.is_c_contig or self.is_f_contig:
             if order == 'C':
-                newstrides = list(iter_strides_c_contig(self, newshape))
+                newstrides = list(iter_strides_c_contig(self, newdims))
             elif order == 'F':
-                newstrides = list(iter_strides_f_contig(self, newshape))
+                newstrides = list(iter_strides_f_contig(self, newdims))
             else:
                 raise AssertionError("unreachable")
-
-            ret = self.from_desc(self.extent.begin, shape=newshape,
-                                 strides=newstrides, itemsize=self.itemsize)
-
-            return ret, list(self.iter_contiguous_extent())
         else:
-            raise NotImplementedError("reshape on non-contiguous array")
+            newstrides = np.empty(newnd, np.ctypeslib.c_intp)
+
+            # need to keep these around in variables, not temporaries, so they
+            # don't get GC'ed before we call into the C code
+            olddims = np.array(self.shape, dtype=np.ctypeslib.c_intp)
+            oldstrides = np.array(self.strides, dtype=np.ctypeslib.c_intp)
+            newdims = np.array(newdims, dtype=np.ctypeslib.c_intp)
+
+            if not attempt_nocopy_reshape(
+                oldnd,
+                olddims,
+                oldstrides,
+                newnd,
+                newdims,
+                newstrides,
+                self.itemsize,
+                order == 'F',
+            ):
+                raise NotImplementedError('reshape would require copy')
+
+        ret = self.from_desc(self.extent.begin, shape=newdims,
+                             strides=newstrides, itemsize=self.itemsize)
+
+        return ret, list(self.iter_contiguous_extent())
+
+    def squeeze(self, axis=None):
+        newshape, newstrides = [], []
+        if axis is None:
+            for length, stride in zip(self.shape, self.strides):
+                if length != 1:
+                    newshape.append(length)
+                    newstrides.append(stride)
+        else:
+            if not isinstance(axis, tuple):
+                axis = (axis,)
+            for ax in axis:
+                if self.shape[ax] != 1:
+                    raise ValueError(
+                        "cannot select an axis to squeeze out which has size not equal "
+                        "to one"
+                    )
+            for i, (length, stride) in enumerate(zip(self.shape, self.strides)):
+                if i not in axis:
+                    newshape.append(length)
+                    newstrides.append(stride)
+        newarr = self.from_desc(
+            self.extent.begin,
+            shape=newshape,
+            strides=newstrides,
+            itemsize=self.itemsize,
+        )
+        return newarr, list(self.iter_contiguous_extent())
 
     def ravel(self, order='C'):
         if order not in 'CFA':
@@ -308,8 +350,8 @@ class Array(object):
         if self.ndim <= 1:
             return self
 
-        elif (order == 'C' and self.is_c_contig or
-                          order == 'F' and self.is_f_contig):
+        elif (order in 'CA' and self.is_c_contig or
+                          order in 'FA' and self.is_f_contig):
             newshape = (self.size,)
             newstrides = (self.itemsize,)
             arr = self.from_desc(self.extent.begin, newshape, newstrides,
@@ -321,7 +363,7 @@ class Array(object):
 
 
 def iter_strides_f_contig(arr, shape=None):
-    """yields the f-contigous strides
+    """yields the f-contiguous strides
     """
     shape = arr.shape if shape is None else shape
     itemsize = arr.itemsize
@@ -333,7 +375,7 @@ def iter_strides_f_contig(arr, shape=None):
 
 
 def iter_strides_c_contig(arr, shape=None):
-    """yields the c-contigous strides
+    """yields the c-contiguous strides
     """
     shape = arr.shape if shape is None else shape
     itemsize = arr.itemsize
@@ -363,3 +405,17 @@ def is_element_indexing(item, ndim):
 
     return False
 
+
+def _compute_size(start, stop, step):
+    """Algorithm adapted from cpython rangeobject.c
+    """
+    if step > 0:
+        lo = start
+        hi = stop
+    else:
+        lo = stop
+        hi = start
+        step = -step
+    if lo >= hi:
+        return 0
+    return (hi - lo - 1) // step + 1

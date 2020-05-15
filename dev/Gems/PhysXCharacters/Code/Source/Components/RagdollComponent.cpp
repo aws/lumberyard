@@ -168,6 +168,15 @@ namespace PhysXCharacters
         }
 
         const size_t numNodes = ragdollConfiguration.m_nodes.size();
+
+        if (numNodes == 0)
+        {
+            AZ_Error("PhysX Ragdoll Component", false,
+                "Ragdoll configuration has 0 nodes, ragdoll will not be created for entity \"%s\".",
+                GetEntity()->GetName().c_str());
+            return;
+        }
+
         ParentIndices parentIndices;
         parentIndices.resize(numNodes);
         for (size_t nodeIndex = 0; nodeIndex < numNodes; nodeIndex++)

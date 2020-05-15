@@ -121,6 +121,20 @@ namespace UnitTest
         AZ_TEST_ASSERT(hash<wstring>()(wstr1) != 0);
         AZ_TEST_ASSERT(hash<wstring>()(wstr1) != hash<wstring>()(wstr2));
     }
+    TEST_F(HashedContainers, HashRange_HashCombine_CompileWhenUsedInConstexprContext)
+    {
+        constexpr AZStd::array<int, 3> hashList{ { 4, 8, 3 } };
+        static_assert(hash_range(hashList.begin(), hashList.end()) != 0);
+
+        auto TestHashCombine = [](size_t hashValue) constexpr -> size_t
+        {
+            size_t seed = 0;
+            hash_combine(seed, hashValue);
+            return seed;
+        };
+
+        static_assert(TestHashCombine(42) != 0);
+    }
 
     /**
      * HashTableSetTraits
@@ -438,7 +452,6 @@ namespace UnitTest
         ValidateHash(int_set7, uniqueArray.size());
         AZ_TEST_ASSERT(int_set7.bucket_count() >= 100);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_set_type int_set8({ 1, 2, 3, 4, 4, 5 });
         ValidateHash(int_set8, 5);
         EXPECT_EQ(1, int_set8.count(1));
@@ -454,7 +467,6 @@ namespace UnitTest
         int_set_type int_set10;
         int_set10.insert({ 1, 2, 3, 4, 4, 5 });
         EXPECT_EQ(int_set8, int_set10);
-#endif
     }
 
     TEST_F(HashedContainers, FixedUnorderedSetTest)
@@ -526,7 +538,6 @@ namespace UnitTest
         ValidateHash(int_set7, uniqueArray.size());
         AZ_TEST_ASSERT(int_set7.bucket_count() >= 100);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_multiset_type int_set8({ 1, 2, 3, 4, 4, 5 });
         ValidateHash(int_set8, 6);
         EXPECT_EQ(1, int_set8.count(1));
@@ -542,7 +553,6 @@ namespace UnitTest
         int_multiset_type int_set10;
         int_set10.insert({ 1, 2, 3, 4, 4, 5 });
         EXPECT_EQ(int_set8, int_set10);
-#endif
     }
 
     TEST_F(HashedContainers, FixedUnorderedMultiSet)
@@ -634,7 +644,6 @@ namespace UnitTest
         ValidateHash(intint_map7, uniqueArray.size());
         AZ_TEST_ASSERT(intint_map7.bucket_count() >= 100);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_int_map_type intint_map8({
             { 1, 10 },{ 2, 200 },{ 3, 3000 },{ 4, 40000 },{ 4, 40001 },{ 5, 500000 }
         });
@@ -658,7 +667,6 @@ namespace UnitTest
         int_int_map_type intint_map9;
         intint_map9.insert({ { 1, 10 }, { 2, 200 }, { 3, 3000 }, { 4, 40000 }, { 4, 40001 }, { 5, 500000 } });
         EXPECT_EQ(intint_map8, intint_map9);
-#endif
     }
 
     TEST_F(HashedContainers, UnorderedMapNoncopyableValue)
@@ -742,7 +750,6 @@ namespace UnitTest
         ValidateHash(intclass_map7, uniqueArray.size());
         AZ_TEST_ASSERT(intclass_map7.bucket_count() >= 100);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_myclass_map_type intclass_map8({
             { 1, MyClass(10) },{ 2, MyClass(200) },{ 3, MyClass(3000) },{ 4, MyClass(40000) },{ 4, MyClass(40001) },{ 5, MyClass(500000) }
         });
@@ -766,7 +773,6 @@ namespace UnitTest
         int_myclass_map_type intclass_map9;
         intclass_map9.insert({ { 1, MyClass(10) },{ 2, MyClass(200) },{ 3, MyClass(3000) },{ 4, MyClass(40000) },{ 4, MyClass(40001) },{ 5, MyClass(500000) } });
         EXPECT_EQ(intclass_map8, intclass_map9);
-#endif
     }
 
     TEST_F(HashedContainers, UnorderedMapNonTrivialKey)
@@ -947,7 +953,6 @@ namespace UnitTest
         ValidateHash(intint_map7, multiArray.size());
         AZ_TEST_ASSERT(intint_map7.bucket_count() >= 100);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_int_multimap_type intint_map8({
             { 1, 10 },{ 2, 200 },{ 3, 3000 },{ 4, 40000 },{ 4, 40001 },{ 5, 500000 }
         });
@@ -967,7 +972,6 @@ namespace UnitTest
         int_int_multimap_type intint_map9;
         intint_map9.insert({ { 1, 10 },{ 2, 200 },{ 3, 3000 },{ 4, 40000 },{ 4, 40001 },{ 5, 500000 } });
         EXPECT_EQ(intint_map8, intint_map9);
-#endif
     }
 
     TEST_F(HashedContainers, FixedUnorderedMultiMapBasic)

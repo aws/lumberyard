@@ -60,6 +60,8 @@
 #include <CryProfileMarker.h>
 #include <IRemoteCommand.h>
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 #pragma warning(disable: 6255)  // _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead. (Note: _malloca requires _freea.)
 
 #ifndef _RELEASE
@@ -2486,7 +2488,9 @@ void CEntitySystem::OnEntityEvent(CEntity* pEntity, SEntityEvent& event)
 //////////////////////////////////////////////////////////////////////////
 bool CEntitySystem::OnLoadLevel(const char* szLevelPath)
 {
-    int nTerrainSize = gEnv->p3DEngine ? gEnv->p3DEngine->GetTerrainSize() : 0;
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int nTerrainSize = static_cast<int>(terrainAabb.GetWidth());
     ResizeProximityGrid(nTerrainSize, nTerrainSize);
 
     assert(m_pEntityPoolManager);

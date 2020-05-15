@@ -688,7 +688,7 @@ void CViewSystem::EndCutScene(IAnimSequence* pSeq, unsigned long dwFlags)
 
 void CViewSystem::SendGlobalEvent(const char* pszEvent)
 {
-    // TODO: broadcast to flowgraph/script system
+    // TODO: broadcast to script system
 }
 
 //////////////////////////////////////////////////////////////////////////

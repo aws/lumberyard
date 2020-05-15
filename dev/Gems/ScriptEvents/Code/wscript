@@ -21,12 +21,7 @@ def build(bld):
 
         win_features    = ['crcfix'],
 
-        includes        = ['.',
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           'Include',
-                           'Include/ScriptEvents',
-                           'Source'],
+        includes        = ['Include', 'Include/ScriptEvents', 'Source'],
         export_includes = ['.', 'Include', 'Include/ScriptCanvas'],
 
         use             = ['AzCore', 'AzFramework'],
@@ -65,8 +60,8 @@ def build(bld):
             export_includes = ['.'],
             vs_filter       = 'Gems/ScriptEvents',
 
-            file_list       = ['scriptevents_common.waf_files', 'scriptevents_editor.waf_files'],
-            use             = ['ScriptEventsStatic','EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework'],
+            file_list       = ['scriptevents_common.waf_files', 'scriptevents_editor.waf_files', 'scriptevents_editor_builder.waf_files'],
+            use             = ['ScriptEventsStatic','EditorUI_QT','EditorCommon','EditorCore','AssetBuilderSDK','AzToolsFramework'],
             configurations  = ['debug', 'profile','debug_test', 'profile_test'],
 
             win_features    = ['crcfix'],

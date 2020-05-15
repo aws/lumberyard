@@ -61,8 +61,6 @@
 #include <Cry_Geo.h>
 #include <CryListenerSet.h>
 
-#define USE_PYTHON_SCRIPTING
-
 #ifdef max
 #undef max
 #undef min

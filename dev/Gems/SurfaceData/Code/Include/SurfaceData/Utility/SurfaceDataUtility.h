@@ -232,4 +232,30 @@ namespace SurfaceData
         }
         return false;
     }
+
+    // Utility method to compare two AABBs for overlapping XY coordinates while ignoring the Z coordinates.
+    AZ_INLINE bool AabbOverlaps2D(const AZ::Aabb& box1, const AZ::Aabb& box2)
+    {
+        return box1.GetMin().GetX().IsLessEqualThan(box2.GetMax().GetX()) &&
+               box1.GetMin().GetY().IsLessEqualThan(box2.GetMax().GetY()) &&
+               box1.GetMax().GetX().IsGreaterEqualThan(box2.GetMin().GetX()) &&
+               box1.GetMax().GetY().IsGreaterEqualThan(box2.GetMin().GetY());
+    }
+
+    // Utility method to compare an AABB and a point for overlapping XY coordinates while ignoring the Z coordinates.
+    AZ_INLINE bool AabbContains2D(const AZ::Aabb& box, const AZ::Vector2& point)
+    {
+        return box.GetMin().GetX().IsLessEqualThan(point.GetX()) &&
+               box.GetMin().GetY().IsLessEqualThan(point.GetY()) &&
+               box.GetMax().GetX().IsGreaterEqualThan(point.GetX()) &&
+               box.GetMax().GetY().IsGreaterEqualThan(point.GetY());
+    }
+    // Utility method to compare an AABB and a point for overlapping XY coordinates while ignoring the Z coordinates.
+    AZ_INLINE bool AabbContains2D(const AZ::Aabb& box, const AZ::Vector3& point)
+    {
+        return box.GetMin().GetX().IsLessEqualThan(point.GetX()) &&
+               box.GetMin().GetY().IsLessEqualThan(point.GetY()) &&
+               box.GetMax().GetX().IsGreaterEqualThan(point.GetX()) &&
+               box.GetMax().GetY().IsGreaterEqualThan(point.GetY());
+    }
 }

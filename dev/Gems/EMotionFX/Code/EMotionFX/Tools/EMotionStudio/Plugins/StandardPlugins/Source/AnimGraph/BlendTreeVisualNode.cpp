@@ -80,7 +80,7 @@ namespace EMStudio
                 const uint32 sourcePort = connection->GetSourcePort();
                 const uint32 targetPort = connection->GetTargetPort();
 
-                NodeConnection* visualConnection = new NodeConnection(childIndex, target, targetPort, source, sourcePort);
+                NodeConnection* visualConnection = new NodeConnection(mParentGraph, childIndex, target, targetPort, source, sourcePort);
                 target->AddConnection(visualConnection);
             }
         }
@@ -150,12 +150,13 @@ namespace EMStudio
 
         // check if we need to color all nodes or not and if the node has an error
         const bool colorAllNodes = GetAlwaysColor();
-        const bool hasError     = GetHasError();
+        const bool hasError = GetHasError();
+        const bool isSelected = GetIsSelected();
 
         // border color
         QColor borderColor;
         pen->setWidth(1);
-        if (mIsSelected)
+        if (isSelected)
         {
             borderColor.setRgb(255, 128, 0);
 
@@ -181,7 +182,7 @@ namespace EMStudio
 
         // background and header colors
         QColor bgColor;
-        if (mIsSelected)
+        if (isSelected)
         {
             bgColor.setRgbF(0.93f, 0.547f, 0.0f, 1.0f); //  rgb(72, 63, 238)
         }
@@ -206,7 +207,7 @@ namespace EMStudio
         }
 
         // blinking error
-        if (hasError && mIsSelected == false)
+        if (hasError && !isSelected)
         {
             if (mParentGraph->GetUseAnimation())
             {
@@ -231,7 +232,7 @@ namespace EMStudio
 
         // text color
         QColor textColor;
-        if (mIsSelected == false)
+        if (!isSelected)
         {
             if (mIsEnabled)
             {
@@ -259,7 +260,7 @@ namespace EMStudio
             // draw the main rect
             painter.setPen(borderColor);
 
-            if (mIsProcessed == false && mIsEnabled && mIsSelected == false && colorAllNodes == false)
+            if (!mIsProcessed && mIsEnabled && !isSelected && !colorAllNodes)
             {
                 if (mIsHighlighted == false)
                 {
@@ -377,7 +378,7 @@ namespace EMStudio
         if (mParentGraph->GetScale() > 0.3f)
         {
             // draw the collapse triangle
-            if (mIsSelected)
+            if (isSelected)
             {
                 painter.setBrush(textColor);
                 painter.setPen(headerBgColor);
@@ -443,7 +444,7 @@ namespace EMStudio
 
         // draw the subtitle
         painter.setFont(mSubTitleFont);
-        painter.drawStaticText(mRect.left(), mRect.top() + mTitleText.size().height() - 3, mSubTitleText);
+        painter.drawStaticText(mRect.left(), aznumeric_cast<int>(mRect.top() + mTitleText.size().height() - 3), mSubTitleText);
 
         // draw the info text
         if (mIsCollapsed == false)
@@ -481,7 +482,7 @@ namespace EMStudio
                 {
                     continue;
                 }
-                painter.drawStaticText(mRect.right() - 10 - mOutputPortText[i].size().width(), portRect.top() - 3, mOutputPortText[i]);
+                painter.drawStaticText(aznumeric_cast<int>(mRect.right() - 10 - mOutputPortText[i].size().width()), portRect.top() - 3, mOutputPortText[i]);
             }
         }
 

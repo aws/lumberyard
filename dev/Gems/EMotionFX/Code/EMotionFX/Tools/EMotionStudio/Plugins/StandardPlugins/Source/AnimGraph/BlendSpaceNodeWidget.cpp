@@ -12,6 +12,7 @@
 
 #include "BlendSpaceNodeWidget.h"
 #include <MCore/Source/Algorithms.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 
 namespace EMStudio
@@ -91,10 +92,10 @@ void BlendSpaceNodeWidget::RenderTextBox(QPainter& painter, const QPointF& point
     const int halfBoxHeight = static_cast<int>(static_cast<float>(boxHeight) * 0.5f + 0.5f);
 
     QRect rect;
-    rect.setTop(point.y() - halfBoxHeight);
-    rect.setLeft(point.x() - halfBoxWidth);
-    rect.setBottom(point.y() + halfBoxHeight);
-    rect.setRight(point.x() + halfBoxWidth);
+    rect.setTop(aznumeric_cast<int>(point.y() - halfBoxHeight));
+    rect.setLeft(aznumeric_cast<int>(point.x() - halfBoxWidth));
+    rect.setBottom(aznumeric_cast<int>(point.y() + halfBoxHeight));
+    rect.setRight(aznumeric_cast<int>(point.x() + halfBoxWidth));
     
     painter.setPen(Qt::NoPen);
     QColor semiTransparentColor = s_currentSamplePointColor;

@@ -28,7 +28,7 @@ namespace
         AZ::Vector2(1.0f, 1.0f)
     };
 
-    AZ_STATIC_ASSERT(PivotPresets::PresetIndexCount == AZ_ARRAY_SIZE(presets), "presets and PresetIndexCount MUST be the same size.");
+    static_assert(PivotPresets::PresetIndexCount == AZ_ARRAY_SIZE(presets), "presets and PresetIndexCount MUST be the same size.");
 } // anonymous namespace.
 
 namespace PivotPresets

@@ -10,8 +10,12 @@
 *
 */
 
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtGui>
 #include <QtWidgets/QMenu>
+#include <QtNetwork/QHostInfo>
+AZ_POP_DISABLE_WARNING
 
 #ifdef AZ_PLATFORM_WINDOWS
 // windows include must be first so we get the full version (AZCore bring the trimmed one)
@@ -29,8 +33,6 @@
 
 #include <GridMate/Carrier/Utils.h>
 #include <GridMate/Session/LANSession.h>
-
-#include <QtNetwork/QHostInfo>
 
 #include <time.h>   // for output timestamp
 

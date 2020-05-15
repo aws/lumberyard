@@ -347,8 +347,8 @@ namespace EMStudio
         //QPoint scaledMouseDelta = (mousePos - mMouseLastPos) * (1.0f / mActiveGraph->GetScale());
         //QPoint unSnappedTopRight = oldTopRight + scaledMouseDelta;
         QPoint snapped;
-        snapped.setX(inPoint.x() - MCore::Math::FMod(inPoint.x(), 10.0f));
-        snapped.setY(inPoint.y() - MCore::Math::FMod(inPoint.y(), 10.0f));
+        snapped.setX(inPoint.x() - aznumeric_cast<int>(MCore::Math::FMod(aznumeric_cast<float>(inPoint.x()), 10.0f)));
+        snapped.setY(inPoint.y() - aznumeric_cast<int>(MCore::Math::FMod(aznumeric_cast<float>(inPoint.y()), 10.0f)));
         //snapDelta = snappedTopRight - unSnappedTopRight;
         return snapped;
     }

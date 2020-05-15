@@ -1,3 +1,14 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 import retry
 import boto3_util
 import metric_constant as c
@@ -13,10 +24,10 @@ class CloudWatch(object):
     def __init__(self, context={}):        
         self.__context = context        
         self.__client = boto3_util.client('cloudwatch', api_version='2010-08-01')
-        self.__avg_save_duration = None;    
-        self.__avg_delete_duration = None;
-        self.__sum_save_duration = None;    
-        self.__sum_delete_duration = None;
+        self.__avg_save_duration = None
+        self.__avg_delete_duration = None
+        self.__sum_save_duration = None
+        self.__sum_delete_duration = None
 
     def get_metric(self, namespace, metric_name, dimension_name, dimension_value, stat, start = None, end = None, period=300):
         start = datetime.datetime.utcnow() - datetime.timedelta(days=4) if not start else start

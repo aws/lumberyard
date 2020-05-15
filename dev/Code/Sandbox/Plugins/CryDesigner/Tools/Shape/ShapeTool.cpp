@@ -143,7 +143,7 @@ void ShapeTool::DisplayCurrentSpot(DisplayContext& dc)
 
 void ShapeTool::DrawIntermediatePolygon(DisplayContext& dc)
 {
-    int oldThickness = dc.GetLineWidth();
+    float oldThickness = dc.GetLineWidth();
     dc.SetLineWidth(CD::kLineThickness);
     dc.SetColor(CD::PolygonLineColor);
 

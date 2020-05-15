@@ -10,94 +10,17 @@
 *
 */
 
-#include "Core.h"
+#include "CoreNodes.h"
 
 #include <ScriptCanvas/Libraries/Libraries.h>
 #include <Data/DataMacros.h>
 #include <Data/DataTrait.h>
 #include <ScriptCanvas/Core/Attributes.h>
 
-namespace CoreCPP
+#include <ScriptCanvas/Libraries/Core/ContainerTypeReflection.h>
+
+namespace ContainerTypeReflection
 {
-
-    template<typename t_Type>
-    struct BehaviorClassReflection
-    {
-    };
-
-    template<typename t_Type, bool isHashable = ScriptCanvas::Data::Traits<t_Type>::s_isKey>
-    struct HashContainerReflector
-    {
-        static void Reflect(AZ::ReflectContext*)
-        {
-        }
-    };
-
-#define SCRIPT_CANVAS_REFLECT_SERIALIZATION_KEY_VALUE_TYPE(VALUE_TYPE, CONTAINER_TYPE)\
-        if (auto genericClassInfo = AZ::SerializeGenericTypeInfo< CONTAINER_TYPE <t_Type, VALUE_TYPE##Type>>::GetGenericInfo())\
-        {\
-            genericClassInfo->Reflect(serializeContext);\
-        }
-
-#define SCRIPT_CANVAS_REFLECT_BEHAVIOR_KEY_VALUE_TYPE(VALUE_TYPE, CONTAINER_TYPE)\
-        ->Method("Reflect" #VALUE_TYPE #CONTAINER_TYPE "Func", [](const CONTAINER_TYPE < t_Type, VALUE_TYPE##Type >&){})
-
-    template<typename t_Type>
-    struct HashContainerReflector<t_Type, true>
-    {
-        static void Reflect(AZ::ReflectContext* reflectContext)
-        {
-            using namespace ScriptCanvas::Data;
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
-            {
-                if (auto genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::unordered_set<t_Type>>::GetGenericInfo())
-                {
-                    genericClassInfo->Reflect(serializeContext);
-                }
-
-                SCRIPT_CANVAS_PER_DATA_TYPE_1(SCRIPT_CANVAS_REFLECT_SERIALIZATION_KEY_VALUE_TYPE, AZStd::unordered_map);
-            }
-
-            if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext))
-            {
-                AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, azrtti_typeid<BehaviorClassReflection<t_Type>>());
-                AZ::BehaviorContext::ClassBuilder<BehaviorClassReflection<t_Type>> classBuilder (behaviorContext, behaviorClass);
-                classBuilder->Method("ReflectSet", [](const AZStd::unordered_set<t_Type>&) {})
-                    SCRIPT_CANVAS_PER_DATA_TYPE_1(SCRIPT_CANVAS_REFLECT_BEHAVIOR_KEY_VALUE_TYPE, AZStd::unordered_map)
-                    ;
-            }
-        }
-    };
-#undef SCRIPT_CANVAS_REFLECT_SERIALIZATION_KEY_VALUE_TYPE
-#undef SCRIPT_CANVAS_REFLECT_BEHAVIOR_KEY_VALUE_TYPE
-
-    template<typename t_Type>
-    struct TraitsReflector
-    {
-        static void Reflect(AZ::ReflectContext* reflectContext)
-        {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
-            {
-                if (auto genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::vector<t_Type>>::GetGenericInfo())
-                {
-                    genericClassInfo->Reflect(serializeContext);
-                }
-            }
-
-            if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext))
-            {
-                behaviorContext->Class<BehaviorClassReflection<t_Type>>(AZStd::string::format("ReflectOnDemandTargets_%s", ScriptCanvas::Data::Traits<t_Type>::GetName().data()).data())
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                    ->Attribute(AZ::Script::Attributes::Ignore, true)
-                    ->Method("ReflectVector", [](const AZStd::vector<t_Type>&) {})
-                    ;
-            }
-
-            HashContainerReflector<t_Type>::Reflect(reflectContext);
-        }
-    };
-
-
     #define SCRIPT_CANVAS_CALL_REFLECT_ON_TRAITS(TYPE)\
         TraitsReflector<TYPE##Type>::Reflect(reflectContext);
 
@@ -118,13 +41,14 @@ namespace CoreCPP
         static void Reflect(AZ::ReflectContext* reflectContext)
         {
             using namespace ScriptCanvas::Data;
+
+            // First Macro creates a list of all of the types, that is invoked using the second macro.
             SCRIPT_CANVAS_PER_DATA_TYPE(SCRIPT_CANVAS_CALL_REFLECT_ON_TRAITS);
         }
     };
 
-    #undef SCRIPT_CANVAS_CALL_REFLECT_ON_TRAITS
-
-} // namespace CoreCPP
+#undef SCRIPT_CANVAS_CALL_REFLECT_ON_TRAITS
+}
 
 namespace ScriptCanvas
 {
@@ -153,8 +77,9 @@ namespace ScriptCanvas
             Nodes::Core::Internal::ScriptEventEntry::Reflect(reflection);
             Nodes::Core::Internal::ScriptEventBase::Reflect(reflection);
 
-            CoreCPP::ReflectOnDemandTargets::Reflect(reflection);
+            ContainerTypeReflection::ReflectOnDemandTargets::Reflect(reflection);
 
+            ContainerTypeReflection::TraitsReflector<AzFramework::SliceInstantiationTicket>::Reflect(reflection);
         }
 
         void Core::InitNodeRegistry(NodeRegistry& nodeRegistry)
@@ -196,9 +121,4 @@ namespace ScriptCanvas
             });
         }
     }
-}
-
-namespace AZ
-{
-    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(CoreCPP::BehaviorClassReflection, "(BehaviorClassReflection<t_Type>)", "{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}", AZ_TYPE_INFO_TYPENAME);
 }

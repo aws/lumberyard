@@ -185,10 +185,10 @@ namespace EMStudio
         CreateEntry(selectionMenu, mToolbarLayout, "Align Right", "Images/AnimGraphPlugin/AlignRight.png", true, false, SELECTION_ALIGNRIGHT, 0, false, false);
         CreateEntry(selectionMenu, mToolbarLayout, "Align Top", "Images/AnimGraphPlugin/AlignTop.png", true, false, SELECTION_ALIGNTOP, 0, false, false);
         CreateEntry(selectionMenu, mToolbarLayout, "Align Bottom", "Images/AnimGraphPlugin/AlignBottom.png", true, false, SELECTION_ALIGNBOTTOM, 0, false, false);
-        connect(mActions[SELECTION_ALIGNLEFT], &QAction::triggered, this, &BlendGraphViewWidget::AlignLeft);
-        connect(mActions[SELECTION_ALIGNRIGHT], &QAction::triggered, this, &BlendGraphViewWidget::AlignRight);
-        connect(mActions[SELECTION_ALIGNTOP], &QAction::triggered, this, &BlendGraphViewWidget::AlignTop);
-        connect(mActions[SELECTION_ALIGNBOTTOM], &QAction::triggered, this, &BlendGraphViewWidget::AlignBottom);
+        connect(mActions[SELECTION_ALIGNLEFT], &QAction::triggered, &mParentPlugin->GetActionManager(), &AnimGraphActionManager::AlignLeft);
+        connect(mActions[SELECTION_ALIGNRIGHT], &QAction::triggered, &mParentPlugin->GetActionManager(), &AnimGraphActionManager::AlignRight);
+        connect(mActions[SELECTION_ALIGNTOP], &QAction::triggered, &mParentPlugin->GetActionManager(), &AnimGraphActionManager::AlignTop);
+        connect(mActions[SELECTION_ALIGNBOTTOM], &QAction::triggered, &mParentPlugin->GetActionManager(), &AnimGraphActionManager::AlignBottom);
 
         QWidget* toolbarSpacerWidget = new QWidget();
         toolbarSpacerWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
@@ -348,9 +348,12 @@ namespace EMStudio
 
     void BlendGraphViewWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
-        if (newFocusParent == oldFocusParent)
+        AZ_UNUSED(newFocusIndex);
+        AZ_UNUSED(oldFocusIndex);
+
+        if (newFocusParent == oldFocusParent && newFocusParent.isValid())
         {
-            // not interested if the parent didn't change
+            // Not interested if the parent didn't change, and the parent is still a valid model index.
             return;
         }
 
@@ -445,6 +448,7 @@ namespace EMStudio
         if (addToToolbar && strcmp(toolbarIconFileName, "") != 0)
         {
             QPushButton* toolbarButton = new QPushButton();
+            toolbarButton->setObjectName(QString("EMFX.BlendGraphViewWidget.%1Button").arg(entryName));
             mToolbarButtons[actionIndex] = toolbarButton;
             toolbarButton->setIcon(MysticQt::GetMysticQt()->FindIcon(toolbarIconFileName));
             toolbarButton->setCheckable(checkable);
@@ -537,148 +541,6 @@ namespace EMStudio
         layout->addWidget(spacer);
     }
 
-
-    void BlendGraphViewWidget::AlignNodes(uint32 mode)
-    {
-        NodeGraph* nodeGraph = mParentPlugin->GetGraphWidget()->GetActiveGraph();
-        if (!nodeGraph)
-        {
-            return;
-        }
-
-        if (!mParentPlugin->GetActionFilter().m_editNodes)
-        {
-            return;
-        }
-
-        int32 alignedXPos = 0;
-        int32 alignedYPos = 0;
-        int32 maxGraphNodeHeight = 0;
-        int32 maxGraphNodeWidth = 0;
-
-        // iterate over all graph nodes
-        bool firstSelectedNode = true;
-        const QModelIndexList selectedItems = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
-        AZStd::vector<GraphNode*> alignedGraphNodes;
-
-        for (const QModelIndex& selected : selectedItems)
-        {
-            if (selected.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE)
-            {
-                GraphNode* graphNode = nodeGraph->FindGraphNode(selected);
-                if (graphNode) // otherwise it does not belong to the current active graph
-                {
-                    alignedGraphNodes.push_back(graphNode);
-
-                    EMotionFX::AnimGraphNode* animGraphNode = selected.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                    const int32 xPos = animGraphNode->GetVisualPosX();
-                    const int32 yPos = animGraphNode->GetVisualPosY();
-                    const int32 graphNodeHeight = graphNode->CalcRequiredHeight();
-                    const int32 graphNodeWidth = graphNode->CalcRequiredWidth();
-
-                    if (firstSelectedNode)
-                    {
-                        alignedXPos = xPos;
-                        alignedYPos = yPos;
-                        maxGraphNodeHeight = graphNodeHeight;
-                        maxGraphNodeWidth = graphNodeWidth;
-                        firstSelectedNode = false;
-                    }
-
-                    if (graphNodeHeight > maxGraphNodeHeight)
-                    {
-                        maxGraphNodeHeight = graphNodeHeight;
-                    }
-
-                    if (graphNodeWidth > maxGraphNodeWidth)
-                    {
-                        maxGraphNodeWidth = graphNodeWidth;
-                    }
-
-                    switch (mode)
-                    {
-                    case SELECTION_ALIGNLEFT:
-                    {
-                        if (xPos < alignedXPos)
-                        {
-                            alignedXPos = xPos;
-                        }
-                        break;
-                    }
-                    case SELECTION_ALIGNRIGHT:
-                    {
-                        if (xPos + graphNodeWidth > alignedXPos)
-                        {
-                            alignedXPos = xPos + graphNodeWidth;
-                        }
-                        break;
-                    }
-                    case SELECTION_ALIGNTOP:
-                    {
-                        if (yPos < alignedYPos)
-                        {
-                            alignedYPos = yPos;
-                        }
-                        break;
-                    }
-                    case SELECTION_ALIGNBOTTOM:
-                    {
-                        if (yPos + graphNodeHeight > alignedYPos)
-                        {
-                            alignedYPos = yPos + graphNodeHeight;
-                        }
-                        break;
-                    }
-                    default:
-                        MCORE_ASSERT(false);
-                    }
-                }
-            }
-        }
-
-        if (alignedGraphNodes.size() > 1)
-        {
-            // create the command group
-            AZStd::string command;
-            AZStd::string outResult;
-            MCore::CommandGroup commandGroup("Align anim graph nodes");
-
-            const QModelIndex& modelIndex = nodeGraph->GetModelIndex();
-            EMotionFX::AnimGraphNode* parentNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-            AZ_Assert(parentNode, "Expected the parent to be a node");
-            EMotionFX::AnimGraph* animGraph = parentNode->GetAnimGraph();
-
-            // iterate over all nodes
-            for (GraphNode* node : alignedGraphNodes)
-            {
-                command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" ", animGraph->GetID(), node->GetName());
-
-                switch (mode)
-                {
-                case SELECTION_ALIGNLEFT:
-                    command += AZStd::string::format("-xPos %i", alignedXPos);
-                    break;
-                case SELECTION_ALIGNRIGHT:
-                    command += AZStd::string::format("-xPos %i", alignedXPos - node->CalcRequiredWidth());
-                    break;
-                case SELECTION_ALIGNTOP:
-                    command += AZStd::string::format("-yPos %i", alignedYPos);
-                    break;
-                case SELECTION_ALIGNBOTTOM:
-                    command += AZStd::string::format("-yPos %i", alignedYPos - node->CalcRequiredHeight());
-                    break;
-                default:
-                    MCORE_ASSERT(false);
-                }
-
-                commandGroup.AddCommandString(command);
-            }
-
-            // execute the group command
-            GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
-        }
-    }
-
     void BlendGraphViewWidget::OnCreateAnimGraph()
     {
         // get the current selection list and the number of actor instances selected
@@ -735,11 +597,6 @@ namespace EMStudio
         }
     }
 
-    void BlendGraphViewWidget::AlignLeft()          { AlignNodes(SELECTION_ALIGNLEFT); }
-    void BlendGraphViewWidget::AlignRight()         { AlignNodes(SELECTION_ALIGNRIGHT); }
-    void BlendGraphViewWidget::AlignTop()           { AlignNodes(SELECTION_ALIGNTOP); }
-    void BlendGraphViewWidget::AlignBottom()        { AlignNodes(SELECTION_ALIGNBOTTOM); }
-
     void BlendGraphViewWidget::ZoomSelected()
     {
         BlendGraphWidget* blendGraphWidget = mParentPlugin->GetGraphWidget();
@@ -782,7 +639,8 @@ namespace EMStudio
             }
         }
 
-        EMotionFX::AnimGraph* animGraph = mParentPlugin->GetAnimGraphModel().GetFocusedAnimGraph();
+        const EMStudio::AnimGraphModel& animGraphModel = mParentPlugin->GetAnimGraphModel();
+        EMotionFX::AnimGraph* animGraph = animGraphModel.FindRootAnimGraph(animGraphModel.GetFocus());
         if (animGraph)
         {
             mParentPlugin->GetActionManager().ActivateGraphForSelectedActors(animGraph, motionSet);

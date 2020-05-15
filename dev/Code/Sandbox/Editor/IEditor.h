@@ -60,7 +60,6 @@ class CMaterail;
 class CEntityPrototype;
 struct IEditorParticleManager;
 class CPrefabManager;
-class CGameTokenManager;
 class CLensFlareManager;
 class CEAXPresetManager;
 class CErrorReport;
@@ -69,7 +68,6 @@ class CBaseLibraryDialog;
 class ICommandManager;
 class CEditorCommandManager;
 class CHyperGraphManager;
-class CFlowGraphManager;
 class CConsoleSynchronization;
 class CUIEnumsDatabase;
 struct ISourceControl;
@@ -84,12 +82,9 @@ class C3DConnexionDriver;
 #endif
 class CRuler;
 class CSettingsManager;
-class CCustomActionsEditorManager;
 struct IExportManager;
 class CDisplaySettings;
 struct SGizmoParameters;
-class CFlowGraphDebuggerEditor;
-class CEditorFlowGraphModuleManager;
 class CLevelIndependentFileMan;
 class CMissingAssetResolver;
 class CSelectionTreeManager;
@@ -180,8 +175,8 @@ enum EEditorNotifyEvent
     // Game related events.
     eNotify_OnBeginGameMode,           // Sent when editor goes to game mode.
     eNotify_OnEndGameMode,             // Sent when editor goes out of game mode.
-    eNotify_OnEnableFlowSystemUpdate,  // Sent when game engine enables flowsystem updates
-    eNotify_OnDisableFlowSystemUpdate, // Sent when game engine disables flowsystem updates
+    eNotify_Deprecated0,               // formerly eNotify_OnEnableFlowSystemUpdate
+    eNotify_Deprecated1,               // formerly eNotify_OnDisableFlowSystemUpdate
 
     // AI/Physics simulation related events.
     eNotify_OnBeginSimulationMode,     // Sent when simulation mode is started.
@@ -261,7 +256,12 @@ enum EEditorNotifyEvent
 
     // Entity selection events.
     eNotify_OnEntitiesSelected,
-    eNotify_OnEntitiesDeselected
+    eNotify_OnEntitiesDeselected,
+
+    // More document events - added here in case enum values matter to any event consumers, metrics reporters, etc.
+    eNotify_OnBeginCreate,               // Sent when the document is starting to be created.
+    eNotify_OnEndCreate,                 // Sent when the document creation is finished.
+
 };
 
 // UI event handler
@@ -418,7 +418,7 @@ enum EDataBaseItemType
     EDB_TYPE_PREFAB,
     EDB_TYPE_EAXPRESET,
     EDB_TYPE_SOUNDMOOD,
-    EDB_TYPE_GAMETOKEN,
+    EDB_TYPE_DEPRECATED, // formerly EDB_TYPE_GAMETOKEN
     EDB_TYPE_FLARE
 };
 
@@ -656,32 +656,16 @@ struct IEditor
     virtual CMusicManager* GetMusicManager() = 0;
     //! Get Prefabs Manager.
     virtual CPrefabManager* GetPrefabManager() = 0;
-    //! Get Game Tokens Manager.
-    virtual CGameTokenManager* GetGameTokenManager() = 0;
     //! Get Lens Flare Manager.
     virtual CLensFlareManager* GetLensFlareManager() = 0;
     virtual float GetTerrainElevation(float x, float y) = 0;
     virtual class CHeightmap* GetHeightmap() = 0;
+    virtual class IHeightmap* GetIHeightmap() = 0;
     virtual class CVegetationMap* GetVegetationMap() = 0;
     virtual class CAIManager*   GetAI() = 0;
     virtual Editor::EditorQtApplication* GetEditorQtApplication() = 0;
     virtual const QColor& GetColorByName(const QString& name) = 0;
 
-    virtual class CCustomActionsEditorManager*  GetCustomActionManager() = 0;
-    //////////////////////////////////////////////////////////////////////////
-    // Material FX  Related.
-    //////////////////////////////////////////////////////////////////////////
-    virtual class CMaterialFXGraphMan*  GetMatFxGraphManager() = 0;
-
-    //////////////////////////////////////////////////////////////////////////
-    // Flowgraph Modules  Related.
-    //////////////////////////////////////////////////////////////////////////
-    virtual class CEditorFlowGraphModuleManager*    GetFlowGraphModuleManager() = 0;
-
-    //////////////////////////////////////////////////////////////////////////
-    // Flowgraph Debugger  Related.
-    //////////////////////////////////////////////////////////////////////////
-    virtual class CFlowGraphDebuggerEditor* GetFlowGraphDebuggerEditor() = 0;
     virtual struct IMovieSystem* GetMovieSystem() = 0;
     virtual class CEquipPackLib* GetEquipPackLib() = 0;
     virtual class CPluginManager* GetPluginManager() = 0;
@@ -862,6 +846,7 @@ struct IEditor
     //! Get global Error Report instance.
     virtual IErrorReport* GetErrorReport() = 0;
     virtual IErrorReport* GetLastLoadedLevelErrorReport() = 0;
+    virtual void StartLevelErrorReportRecording() = 0;
     virtual void CommitLevelErrorReport() = 0;
     // Retrieve interface to FileUtil
     virtual IFileUtil* GetFileUtil() = 0;
@@ -883,9 +868,6 @@ struct IEditor
     virtual bool IsSourceControlAvailable() = 0;
     //! Only returns true if source control is both available AND currently connected and functioning
     virtual bool IsSourceControlConnected() = 0;
-    // Retrieve pointer to the global flow graph manager.
-    virtual CFlowGraphManager* GetFlowGraphManager() = 0;
-
 
     virtual CUIEnumsDatabase* GetUIEnumsDatabase() = 0;
     virtual void AddUIEnums() = 0;

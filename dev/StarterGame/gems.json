@@ -68,6 +68,12 @@
             "_comment": "LightningArc"
         },
         {
+            "Path": "Gems/ExpressionEvaluation",
+            "Uuid": "4c6f9df57ca2468f93c8d860ee6a1167",
+            "Version": "0.1.0",
+            "_comment": "ExpressionEvaluation"
+        },
+        {
             "Path": "Gems/Clouds",
             "Uuid": "4f293a6f11ab4cd7b9db3017d12b5eda",
             "Version": "0.1.0",
@@ -188,10 +194,10 @@
             "_comment": "FastNoise"
         },
         {
-            "Path": "Gems/UserLoginDefault",
-            "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
+            "Path": "Gems/LegacyTerrain",
+            "Uuid": "c87f9fc3e7054f3482311da444e84456",
             "Version": "0.1.0",
-            "_comment": "UserLoginDefault"
+            "_comment": "LegacyTerrain"
         },
         {
             "Path": "Gems/GameEffectSystem",

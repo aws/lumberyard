@@ -19,7 +19,7 @@ def get(request, time = None, lang = None):
         time_diff_in_hours = time_diff.total_seconds()/3600
         #No matter where you are in the world you should not have a time difference greater than 12 hours
         if time_diff_in_hours > 12 or time_diff_in_hours < -12 :
-            print 'Time diff is %d'%time_diff_in_hours
+            print('Time diff is {}'.format(time_diff_in_hours))
             raise errors.ClientError('Invalid client time')
 
     #This function will return UTC if no timestring is provided
@@ -40,8 +40,10 @@ def get(request, time = None, lang = None):
 
 def convert_table_entry(entry):
     message_object = {}
-    message_object['message'] = entry.get('message', "Undefined")
-    message_object['priority'] =  entry.get('priority', "Undefined")
-    message_object['startTime'] =  message_utils.get_formatted_time_from_number(entry.get('startTime', "Undefined"))
-    message_object['endTime'] =  message_utils.get_formatted_time_from_number(entry.get('endTime', "Undefined"))
+    message_object['message'] = entry.get('message', 'Undefined')
+    message_object['startTime'] =  message_utils.get_formatted_time_from_number(entry.get('startTime', 'Undefined'))
+    message_object['endTime'] =  message_utils.get_formatted_time_from_number(entry.get('endTime', 'Undefined'))
+
+    if entry.get('priority') != None:
+        message_object['priority'] =  int(entry['priority'])
     return message_object

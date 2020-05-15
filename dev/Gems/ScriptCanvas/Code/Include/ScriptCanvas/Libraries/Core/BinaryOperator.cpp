@@ -74,7 +74,7 @@ namespace ScriptCanvas
         {
             if (slotId == GetSlotId(k_evaluateName))
             {
-                const Datum output = Evaluate(*GetDatumByIndex(k_datumIndexLHS), *GetDatumByIndex(k_datumIndexRHS));
+                const Datum output = Evaluate(*FindDatumByIndex(k_datumIndexLHS), *FindDatumByIndex(k_datumIndexRHS));
                 if (auto slot = GetSlot(GetOutputSlotId()))
                 {
                     PushOutput(output, *slot);
@@ -158,7 +158,7 @@ namespace ScriptCanvas
         {
             if (slotId == GetSlotId(k_evaluateName))
             {
-                const Datum output = Evaluate(*GetDatumByIndex(k_datumIndexLHS), *GetDatumByIndex(k_datumIndexRHS));
+                const Datum output = Evaluate(*FindDatumByIndex(k_datumIndexLHS), *FindDatumByIndex(k_datumIndexRHS));
                 if (auto slot = GetSlot(GetOutputSlotId()))
                 {
                     PushOutput(output, *slot);
@@ -334,6 +334,8 @@ namespace ScriptCanvas
             ///////// Version Conversion to Dynamic Grouped based operators
             Slot* firstSlot = GetSlot(m_firstSlotId);
 
+            bool addedGroup = false;
+
             if (firstSlot)
             {
                 if (!firstSlot->IsDynamicSlot())
@@ -344,6 +346,7 @@ namespace ScriptCanvas
                 if (firstSlot->GetDynamicGroup() == AZ::Crc32())
                 {
                     SetDynamicGroup(firstSlot->GetId(), AZ::Crc32("ExpressionGroup"));
+                    addedGroup = true;
                 }
             }
 
@@ -358,65 +361,18 @@ namespace ScriptCanvas
 
                 if (secondSlot->GetDynamicGroup() == AZ::Crc32())
                 {
-                    SetDynamicGroup(secondSlot->GetId(), AZ::Crc32("ExpressionGroup"));
+                    SetDynamicGroup(secondSlot->GetId(), AZ_CRC("ExpressionGroup", 0xd34c978c));                    
+                    addedGroup = true;
                 }
+            }
+
+            if (addedGroup && m_displayType.IsValid())
+            {                
+                SetDisplayType(AZ_CRC("ExpressionGroup", 0xd34c978c), m_displayType);
             }
             ////
             ////
-        }
-
-        void EqualityExpression::OnEndpointConnected(const Endpoint& endpoint)
-        {
-            Node::OnEndpointConnected(endpoint);
-
-            // Don't need to do anything if we have a valid display type.
-            if (m_displayType.IsValid())
-            {
-                return;
-            }
-
-            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::Type::Invalid();
-            ScriptCanvas::NodeRequestBus::EventResult(dataType, endpoint.GetNodeId(), &ScriptCanvas::NodeRequestBus::Events::GetSlotDataType, endpoint.GetSlotId());
-
-            SetDisplayType(dataType);
-        }
-
-        void EqualityExpression::OnEndpointDisconnected(const Endpoint& endpoint)
-        {
-            Node::OnEndpointDisconnected(endpoint);
-
-            const Endpoint* currentEndpoint = EndpointNotificationBus::GetCurrentBusId();
-
-            if (currentEndpoint == nullptr)
-            {
-                return;
-            }
-
-            bool hasConnections = IsConnected(m_firstSlotId) || IsConnected(m_secondSlotId);
-
-            if (!hasConnections)
-            {
-                SetDisplayType(ScriptCanvas::Data::Type::Invalid());
-            }
-        }
-
-        void EqualityExpression::SetDisplayType(ScriptCanvas::Data::Type dataType)
-        {
-            if (dataType != m_displayType)
-            {
-                m_displayType = dataType;
-
-                for (auto slotId : { m_firstSlotId, m_secondSlotId })
-                {
-                    Slot* sourceSlot = GetSlot(slotId);
-
-                    if (sourceSlot)
-                    {
-                        sourceSlot->SetDisplayType(m_displayType);
-                    }
-                }
-            }
-        }
+        }        
 
         void EqualityExpression::Reflect(AZ::ReflectContext* reflection)
         {

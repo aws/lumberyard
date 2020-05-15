@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import boto3
 from botocore.exceptions import ClientError
@@ -11,6 +12,6 @@ class CloudWatch(object):
         try:            
             return self.__client.put_metric_data(Namespace=namespace, MetricData=metric_data)                 
         except ClientError as e:
-            print e            
+            print(e)
         return 
         

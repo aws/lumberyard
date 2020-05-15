@@ -113,7 +113,7 @@ namespace AzFramework
         GridMate::GridSession* m_session; ///< currently bound session
 
     private:
-        InterestManagerComponent(const InterestManagerComponent&) AZ_DELETE_METHOD; //Cannot use default due to unique_ptr.
+        InterestManagerComponent(const InterestManagerComponent&) = delete; //Cannot use default due to unique_ptr.
     };
 } // namesapce AzFramework
 

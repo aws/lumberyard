@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -206,6 +207,7 @@ namespace LmbrCentral
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(entityId);
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(entityId);
     }
 
     void EditorDecalComponent::Deactivate()
@@ -217,6 +219,7 @@ namespace LmbrCentral
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
 
         m_configuration.m_editorEntityId.SetInvalid();
 
@@ -390,5 +393,39 @@ namespace LmbrCentral
     _smart_ptr<IMaterial> EditorDecalComponent::GetMaterial()
     {
         return m_decalRenderNode->GetMaterial();
+    }
+
+    AZ::Aabb EditorDecalComponent::GetEditorSelectionBoundsViewport(const AzFramework::ViewportInfo& /*viewportInfo*/)
+    {
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+
+        bbox.AddPoint(AZ::Vector3(-1, -1, 0));
+        bbox.AddPoint(AZ::Vector3(-1, 1, 0));
+        bbox.AddPoint(AZ::Vector3(1, 1, 0));
+        bbox.AddPoint(AZ::Vector3(1, -1, 0));
+
+        bbox.ApplyTransform(transform);
+
+        return bbox;
+    }
+
+    bool EditorDecalComponent::EditorSelectionIntersectRayViewport(const AzFramework::ViewportInfo& /*viewportInfo*/, const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    {
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+
+        AZ::Vector3 p0 = transform * AZ::Vector3(-1, -1, 0);
+        AZ::Vector3 p1 = transform * AZ::Vector3(-1, 1, 0);
+        AZ::Vector3 p2 = transform * AZ::Vector3(1, 1, 0);
+        AZ::Vector3 p3 = transform * AZ::Vector3(1, -1, 0);
+        float t{ 0.0f };
+
+        bool hitResult = AZ::Intersect::IntersectRayQuad(src, dir, p0, p1, p2, p3, t) != 0;
+        distance = t;
+
+        return hitResult;
     }
 } // namespace LmbrCentral

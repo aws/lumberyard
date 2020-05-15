@@ -18,7 +18,7 @@
 #include "ToolBox.h"
 #include "MainWindow.h"
 #include "KeyboardCustomizationSettings.h"
-#include "Util/BoostPythonHelpers.h"
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
 #include <QCompleter>
 #include <QDialogButtonBox>
@@ -821,25 +821,21 @@ void CToolsConfigPage::FillConsoleCmds()
 //////////////////////////////////////////////////////////////////////////
 void CToolsConfigPage::FillScriptCmds()
 {
-    QStringList commands;
     // Add module names to the auto-completion list.
-    const CAutoRegisterPythonModuleHelper::ModuleList modules
-        = CAutoRegisterPythonModuleHelper::s_modules;
-    for (size_t i = 0; i < modules.size(); ++i)
+    QStringList commands;
+
+    using namespace AzToolsFramework;
+    EditorPythonConsoleInterface* editorPythonConsoleInterface = AZ::Interface<EditorPythonConsoleInterface>::Get();
+    if (editorPythonConsoleInterface)
     {
-        commands.push_back(modules[i].name);
-    }
-
-    // Add full command names to the auto-completion list.
-    CAutoRegisterPythonCommandHelper* pCurrent = CAutoRegisterPythonCommandHelper::s_pFirst;
-    while (pCurrent)
-    {
-        const QString command = pCurrent->m_name;
-        const QString fullCmd = QString("%1.%2()").arg(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name).arg(command);
-
-        commands.push_back(fullCmd);
-
-        pCurrent = pCurrent->m_pNext;
+        EditorPythonConsoleInterface::GlobalFunctionCollection globalFunctionCollection;
+        editorPythonConsoleInterface->GetGlobalFunctionList(globalFunctionCollection);
+        commands.reserve(globalFunctionCollection.size());
+        for (const EditorPythonConsoleInterface::GlobalFunction& globalFunction : globalFunctionCollection)
+        {
+            const QString fullCmd = QString("%1.%2()").arg(globalFunction.m_moduleName.data()).arg(globalFunction.m_functionName.data());
+            commands.push_back(fullCmd);
+        }
     }
 
     m_completionModel->setStringList(commands);

@@ -96,7 +96,7 @@ namespace GraphCanvas
         m_filters.emplace_back(filter);
     }
 
-    bool SlotConnectionFilterComponent::CanConnectWith(const Endpoint& endpoint) const
+    bool SlotConnectionFilterComponent::CanConnectWith(const Endpoint& endpoint, const ConnectionMoveType& moveType) const
     {
         if (GetEntityId() == endpoint.GetSlotId())
         {
@@ -121,7 +121,7 @@ namespace GraphCanvas
         return AZStd::all_of(m_filters.begin(), m_filters.end(), 
             [&](ConnectionFilter* filter) 
             { 
-                return filter->CanConnectWith(endpoint); 
+                return filter->CanConnectWith(endpoint, moveType);
             }
         );
     }

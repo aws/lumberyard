@@ -26,6 +26,10 @@
 #include <QElapsedTimer>
 #include <QCoreApplication>
 
+#if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+    #include <native/utilities/Utils_UnixLike.h>
+#endif
+
 namespace AssetProcessor
 {
     //! Amount of time in milliseconds to wait between checking the status of the AssetBuilder process and pumping the stdout/err pipes
@@ -207,13 +211,31 @@ namespace AssetProcessor
         int portNumber = 0;
         ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
+        bool isProjectExternal = false;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
+
+        AZStd::string params;
+        if (isProjectExternal)
+        {
+            QString appRootStringNormalized = appRoot.absolutePath();
         #if !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
-        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
+            params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -approot="%s" -gameroot="%s" -port %d)",
+                task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), appRootStringNormalized.toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
+        #else
+            params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="\"%s\"" -gamecache="\"%s\"" -approot="\"%s\"" -gameroot="\"%s\"" -port %d)",
+                task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), appRootStringNormalized.toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
+        #endif // !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        }
+        else
+        {
+        #if !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+            params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
                 task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
         #else
-        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="\"%s\"" -gamecache="\"%s\"" -gameroot="\"%s\"" -port %d)",
+            params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="\"%s\"" -gamecache="\"%s\"" -gameroot="\"%s\"" -port %d)",
                 task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
         #endif // !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        }
 
         if (moduleFilePath && moduleFilePath[0])
         {
@@ -243,6 +265,16 @@ namespace AssetProcessor
         processLaunchInfo.m_commandlineParameters = AZStd::string::format("\"%s\" %s", fullExePath, params.c_str());
         processLaunchInfo.m_showWindow = false;
         processLaunchInfo.m_processPriority = AzToolsFramework::ProcessPriority::PROCESSPRIORITY_IDLE;
+
+        // for external projects on unix platforms, we need to propagate the project's loader 
+        // path to the builder subprocesses
+    #if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+        AZStd::vector<AZStd::string> evnVars;
+        if (GetExternalProjectEnv(evnVars))
+        {
+            processLaunchInfo.m_environmentVariables = &evnVars;
+        }
+    #endif // AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Executing AssetBuilder with parameters: %s\n", processLaunchInfo.m_commandlineParameters.c_str());
 

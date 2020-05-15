@@ -27,15 +27,14 @@
 #include <EMotionFX/Source/TwoStringEventData.h>
 #include <Tests/Printers.h>
 #include <Tests/UI/UIFixture.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 
 namespace EMotionFX
 {
     TEST_F(UIFixture, CanDeleteMotionWhenMotionIsBeingBlended)
     {
-        Actor* actor = Actor::Create("testActor");
-        Node* rootJoint = Node::Create("rootNode", actor->GetSkeleton());
-        rootJoint->SetNodeIndex(0);
-        actor->AddNode(rootJoint);
+        AZStd::unique_ptr<Actor> actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(1);
 
         // Create motions
         SkeletalSubMotion* rootJointXMotion = SkeletalSubMotion::Create();
@@ -63,10 +62,6 @@ namespace EMotionFX
         ymotion->GetEventTable()->AutoCreateSyncTrack(ymotion);
         ymotion->GetEventTable()->GetSyncTrack()->AddEvent(0.25f, GetEventManager().FindOrCreateEventData<TwoStringEventData>("leftFoot", ""));
         ymotion->GetEventTable()->GetSyncTrack()->AddEvent(0.75f, GetEventManager().FindOrCreateEventData<TwoStringEventData>("rightFoot", ""));
-
-        actor->SetMesh(0, rootJoint->GetNodeIndex(), Mesh::Create());
-        actor->ResizeTransformData();
-        actor->PostCreateInit(true, true, false);
 
         // Create anim graph
         AnimGraphMotionNode* motionX = aznew AnimGraphMotionNode();
@@ -108,7 +103,7 @@ namespace EMotionFX
         motionSet->AddMotionEntry(motionEntryY);
 
         // Create ActorInstance
-        ActorInstance* actorInstance = ActorInstance::Create(actor);
+        ActorInstance* actorInstance = ActorInstance::Create(actor.get());
 
         // Create AnimGraphInstance
         AnimGraphInstance* animGraphInstance = AnimGraphInstance::Create(animGraph.get(), actorInstance, motionSet.get());
@@ -135,6 +130,5 @@ namespace EMotionFX
         );
 
         actorInstance->Destroy();
-        actor->Destroy();
     }
 } // namespace EMotionFX

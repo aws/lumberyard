@@ -1,5 +1,4 @@
-﻿
-/*
+﻿/*
  * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
  * its licensors.
  *
@@ -43,7 +42,7 @@
 
 namespace PhysX
 {
-
+    
     void EditorProxyAssetShapeConfig::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -203,6 +202,14 @@ namespace PhysX
         return m_configuration;
     }
 
+    Physics::ColliderConfiguration EditorColliderComponent::GetColliderConfigurationScaled() const
+    {
+        // Scale the collider offset
+        Physics::ColliderConfiguration colliderConfiguration = m_configuration;
+        colliderConfiguration.m_position *= Utils::GetNonUniformScale(GetEntityId());
+        return colliderConfiguration;
+    }
+
     EditorProxyShapeConfig::EditorProxyShapeConfig(const Physics::ShapeConfiguration& shapeConfiguration)
     {
         m_shapeType = shapeConfiguration.GetShapeType();
@@ -219,6 +226,9 @@ namespace PhysX
             break;
         case Physics::ShapeType::PhysicsAsset:
             m_physicsAsset.m_configuration = static_cast<const Physics::PhysicsAssetShapeConfiguration&>(shapeConfiguration);
+            break;
+        case Physics::ShapeType::CookedMesh:
+            m_cookedMesh = static_cast<const Physics::CookedMeshShapeConfiguration&>(shapeConfiguration);
             break;
         default:
             AZ_Warning("EditorProxyShapeConfig", false, "Invalid shape type!");
@@ -262,6 +272,8 @@ namespace PhysX
             return m_capsule;
         case Physics::ShapeType::PhysicsAsset:
             return m_physicsAsset.m_configuration;
+        case Physics::ShapeType::CookedMesh:
+            return m_cookedMesh;
         default:
             AZ_Warning("EditorProxyShapeConfig", false, "Unsupported shape type");
             return m_box;
@@ -307,6 +319,7 @@ namespace PhysX
     void EditorColliderComponent::Deactivate()
     {
         m_colliderDebugDraw.Disconnect();
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         LmbrCentral::MeshComponentNotificationBus::Handler::BusDisconnect();
         ColliderShapeRequestBus::Handler::BusDisconnect();
         AzToolsFramework::BoxManipulatorRequestBus::Handler::BusDisconnect();
@@ -347,6 +360,7 @@ namespace PhysX
         m_colliderDebugDraw.ClearCachedGeometry();
 
         ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
 
         return AZ::Edit::PropertyRefreshLevels::None;
     }
@@ -392,33 +406,23 @@ namespace PhysX
                 "EditorColliderComponent::BuildGameEntity. No asset assigned to Collider Component. Entity: %s",
                 GetEntity()->GetName().c_str());
             break;
+        case Physics::ShapeType::CookedMesh:
+            colliderComponent = gameEntity->CreateComponent<BaseColliderComponent>();
+            colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(sharedColliderConfig,
+                AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(m_shapeConfiguration.m_cookedMesh)) });
+            break;
+        default:
+            AZ_Warning("EditorColliderComponent", false, "Unsupported shape type for building game entity!")
         }
+
+        StaticRigidBodyUtils::TryCreateRuntimeComponent(*GetEntity(), *gameEntity);
     }
 
     AZ::Transform EditorColliderComponent::GetColliderLocalTransform() const
     {
+        const AZ::Vector3 nonUniformScale = Utils::GetNonUniformScale(GetEntityId());
         return AZ::Transform::CreateFromQuaternionAndTranslation(
-            m_configuration.m_rotation, m_configuration.m_position * GetNonUniformScale());
-    }
-
-    float EditorColliderComponent::GetUniformScale() const
-    {
-        return GetNonUniformScale().GetMaxElement();
-    }
-
-    AZ::Vector3 EditorColliderComponent::GetNonUniformScale() const
-    {
-        return GetWorldTM().RetrieveScale();
-    }
-
-    AZ::Vector3 EditorColliderComponent::GetCapsuleScale() const
-    {
-        AZ::Vector3 nonUniformScale = GetNonUniformScale();
-        // Capsule radius scales with max of X and Y
-        // Capsule height scales with Z
-        float radiusScale = nonUniformScale.GetX().GetMax(nonUniformScale.GetY());
-        float heightScale = nonUniformScale.GetZ();
-        return AZ::Vector3(radiusScale, radiusScale, heightScale);
+            m_configuration.m_rotation, m_configuration.m_position * nonUniformScale);
     }
 
     void EditorColliderComponent::UpdateMeshAsset()
@@ -436,9 +440,9 @@ namespace PhysX
 
     void EditorColliderComponent::CreateStaticEditorCollider()
     {
-        // We're ignoring dynamic bodies in the editor for now
-        auto rigidBody = GetEntity()->FindComponent<PhysX::EditorRigidBodyComponent>();
-        if (rigidBody)
+        // Don't create static rigid body in the editor if current entity components
+        // don't allow creation of runtime static rigid body component
+        if (!StaticRigidBodyUtils::CanCreateRuntimeComponent(*GetEntity()))
         {
             return;
         }
@@ -447,6 +451,7 @@ namespace PhysX
         {
             // Mesh asset has not been loaded, wait for OnAssetReady to be invoked.
             // We specifically check Ready state here rather than ReadyPreNotify to ensure OnAssetReady has been invoked
+            m_editorBody.reset();
             return;
         }
 
@@ -477,9 +482,11 @@ namespace PhysX
             }
             else
             {
+                const Physics::ColliderConfiguration colliderConfiguration = GetColliderConfigurationScaled();
+
                 const auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
                 AZStd::shared_ptr<Physics::Shape> shape = AZ::Interface<Physics::System>::Get()->CreateShape(
-                    m_configuration, shapeConfiguration);
+                    colliderConfiguration, shapeConfiguration);
 
                 m_editorBody->AddShape(shape);
             }
@@ -683,16 +690,13 @@ namespace PhysX
         switch (m_shapeConfiguration.m_shapeType)
         {
         case Physics::ShapeType::Sphere:
-            m_colliderDebugDraw.DrawSphere(debugDisplay, m_configuration, m_shapeConfiguration.m_sphere,
-                AZ::Vector3(GetUniformScale()));
+            m_colliderDebugDraw.DrawSphere(debugDisplay, m_configuration, m_shapeConfiguration.m_sphere);
             break;
         case Physics::ShapeType::Box:
-            m_colliderDebugDraw.DrawBox(debugDisplay, m_configuration, m_shapeConfiguration.m_box,
-                GetNonUniformScale());
+            m_colliderDebugDraw.DrawBox(debugDisplay, m_configuration, m_shapeConfiguration.m_box);
             break;
         case Physics::ShapeType::Capsule:
-            m_colliderDebugDraw.DrawCapsule(debugDisplay, m_configuration, m_shapeConfiguration.m_capsule,
-                GetCapsuleScale());
+            m_colliderDebugDraw.DrawCapsule(debugDisplay, m_configuration, m_shapeConfiguration.m_capsule);
             break;
         }
     }
@@ -726,33 +730,34 @@ namespace PhysX
                 const Physics::CookedMeshShapeConfiguration* cookedMeshShapeConfiguration =
                     static_cast<const Physics::CookedMeshShapeConfiguration*>(shapeConfiguration);
 
+                const AZ::Vector3 nonUniformScale = Utils::GetNonUniformScale(GetEntityId());
+
                 m_colliderDebugDraw.DrawMesh(debugDisplay, *colliderConfiguration, *cookedMeshShapeConfiguration,
-                    assetScale, shapeIndex);
+                    assetScale * nonUniformScale, shapeIndex);
                 break;
             }
             case Physics::ShapeType::Sphere:
             {
-                const Physics::SphereShapeConfiguration* sphereShapeConfiguration
-                    = static_cast<const Physics::SphereShapeConfiguration*>(shapeConfiguration);
+                const Physics::SphereShapeConfiguration* sphereShapeConfiguration =
+                    static_cast<const Physics::SphereShapeConfiguration*>(shapeConfiguration);
 
-                m_colliderDebugDraw.DrawSphere(debugDisplay, *colliderConfiguration, *sphereShapeConfiguration,
-                    AZ::Vector3(GetUniformScale() * assetScale.GetMaxElement()));
+                m_colliderDebugDraw.DrawSphere(debugDisplay, *colliderConfiguration, *sphereShapeConfiguration, assetScale);
                 break;
             }
             case Physics::ShapeType::Box:
             {
                 const Physics::BoxShapeConfiguration* boxShapeConfiguration =
                     static_cast<const Physics::BoxShapeConfiguration*>(shapeConfiguration);
-                m_colliderDebugDraw.DrawBox(debugDisplay, *colliderConfiguration, *boxShapeConfiguration,
-                    GetNonUniformScale() * assetScale);
+
+                m_colliderDebugDraw.DrawBox(debugDisplay, *colliderConfiguration, *boxShapeConfiguration, assetScale);
                 break;
             }
             case Physics::ShapeType::Capsule:
             {
                 const Physics::CapsuleShapeConfiguration* capsuleShapeConfiguration =
                     static_cast<const Physics::CapsuleShapeConfiguration*>(shapeConfiguration);
-                m_colliderDebugDraw.DrawCapsule(debugDisplay, *colliderConfiguration, *capsuleShapeConfiguration,
-                    GetCapsuleScale() * assetScale.GetMaxElement());
+
+                m_colliderDebugDraw.DrawCapsule(debugDisplay, *colliderConfiguration, *capsuleShapeConfiguration, assetScale);
                 break;
             }
             default:
@@ -819,7 +824,7 @@ namespace PhysX
     }
 
     // PhysX::ConfigurationNotificationBus
-    void EditorColliderComponent::OnConfigurationRefreshed(const Configuration& /*configuration*/)
+    void EditorColliderComponent::OnPhysXConfigurationRefreshed(const PhysXConfiguration& /*configuration*/)
     {
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
             &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,

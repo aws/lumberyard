@@ -30,8 +30,8 @@
         {
             "long_form": "--incredibuild-profile", 
             "attribute": "incredibuild_profile", 
-            "default_value": "Tools/build/waf-1.7.13/profile.xml", 
-            "description": "The Incredibuild configuration value to load for incredibuild builds"
+            "default_value": "", 
+            "description": "The Incredibuild configuration value to load for incredibuild builds. If blank, generate one automatically."
         }
     ], 
     "Build Options": [
@@ -62,7 +62,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.23.0.0", 
+            "default_value": "1.24.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -94,12 +94,6 @@
             "attribute": "uber_file_size", 
             "default_value": "307200", 
             "description": "Maximum content size of auto-generated uber files"
-        }, 
-        {
-            "long_form": "--enable-msvc-timings", 
-            "attribute": "enable_msvc_timings", 
-            "default_value": "False", 
-            "description": "Output timing information for msvc compile and link operations"
         }, 
         {
             "long_form": "--use-bullseye-coverage", 
@@ -142,6 +136,12 @@
             "attribute": "win_build_renderer", 
             "default_value": "DX11", 
             "description": "If building a monolithic build this option is used to select the type of renderer, options are DX11 or DX12"
+        }, 
+        {
+            "long_form": "--use-other-in-monolithic", 
+            "attribute": "use_other_in_monolithic", 
+            "default_value": "False", 
+            "description": "If building a monolithic build this option is used to decide whether to link the other module"
         }, 
         {
             "long_form": "--max-parallel-link", 
@@ -197,6 +197,18 @@
             "attribute": "symbol_token", 
             "default_value": "", 
             "description": "Command line override for token used for uploading symbols"
+        }, 
+        {
+            "long_form": "--symbol-store", 
+            "attribute": "symbol_store", 
+            "default_value": "", 
+            "description": "Command line override for token used for uploading symbols to a bucket = <bucket_region>:<bucket_name>/<folder> eg: us-west-2:somebucketname/mysymbolfolder"
+        }, 
+        {
+            "long_form": "--symbol-role", 
+            "attribute": "symbol_role", 
+            "default_value": "", 
+            "description": "Command line override for an iam role arn to assume when attempting to upload symbols"
         }, 
         {
             "long_form": "--upload-symbol-list", 
@@ -263,6 +275,18 @@
             "attribute": "product_sku", 
             "default_value": "default", 
             "description": "Enables a project wide define PRODUCT_SKU_<this value>, alters where the paks are built to and read from, and which platform resources are used in the gem\\resources\\  Ex. For a demo version of the game you could set product_sku = demo  then PRODUCT_SKU_demo would be defined, and then you could disable systems based on that."
+        }, 
+        {
+            "long_form": "--enable_statistical_profiling", 
+            "attribute": "enable_statistical_profiling", 
+            "default_value": "False", 
+            "description": "Enables statistical profiling when using AZ_PROFILE_SCOPE. If True, it takes effect only if RAD Telemetry is disabled."
+        }, 
+        {
+            "long_form": "--enable_legacy_terrain_editor", 
+            "attribute": "enable_legacy_terrain_editor", 
+            "default_value": "True", 
+            "description": "Enables the Editor options to edit legacy terrain data. If set to False the Legacy Terrain Gem can not be enabled."
         }
     ], 
     "Misc Options": [
@@ -347,18 +371,6 @@
     ], 
     "Visual Studio Project Generator": [
         {
-            "long_form": "--generate-vs-projects-automatically", 
-            "attribute": "generate_vs_projects_automatically", 
-            "default_value": "True", 
-            "description": "Automatically generate Visual Studio Projects/Solutions"
-        }, 
-        {
-            "long_form": "--visual-studio-solution-name", 
-            "attribute": "visual_studio_solution_name", 
-            "default_value": "LumberyardSDK", 
-            "description": "Name of the generated solution"
-        }, 
-        {
             "long_form": "--visual-studio-solution-folder", 
             "attribute": "visual_studio_solution_folder", 
             "default_value": "Solutions", 
@@ -373,7 +385,7 @@
         {
             "long_form": "--specs-to-include-in-project-generation", 
             "attribute": "specs_to_include_in_project_generation", 
-            "default_value": "all, game, game_and_engine", 
+            "default_value": "all", 
             "description": "List of specs to include in solution generation"
         }, 
         {

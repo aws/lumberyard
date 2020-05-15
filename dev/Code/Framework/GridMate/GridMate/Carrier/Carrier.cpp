@@ -1455,7 +1455,7 @@ void CarrierThread::NotifyRateUpdate(ThreadConnection* conn)
     float rtt = lifetime.m_rtt > 1.f ? lifetime.m_rtt : 100.f; //For unknown RTT use conservative 100ms to avoid buffer bloat
                                                                 //Note: using lifetime RTT as stand-in for smoothed RTT
     float ratef = (1010 * (cState.m_congestionWindow)) / rtt;   //Add 10% to allow rate increases until buffer fills up
-    AZ_Assert(ratef <= 0x7FFFFFFFf, " ratef %f > 0x7FFFFFFFf", ratef);
+    AZ_Assert(ratef <= aznumeric_cast<float>(0x7FFFFFFFf), " ratef %f > 0x7FFFFFFFf", ratef);
     bytesPerSecond = static_cast<AZ::u32>(ratef);
 
     //Avoid buffer bloat

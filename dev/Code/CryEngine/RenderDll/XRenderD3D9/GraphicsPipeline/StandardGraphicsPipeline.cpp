@@ -22,6 +22,7 @@
 #include "MotionBlur.h"
 #include "DepthOfField.h"
 #include "PostAA.h"
+#include "VideoRenderPass.h"
 #include "Common/TypedConstantBuffer.h"
 #include "Common/Textures/TextureHelpers.h"
 #include "Common/Include_HLSL_CPP_Shared.h"
@@ -53,6 +54,7 @@ void CStandardGraphicsPipeline::Init()
     RegisterPass<CMotionBlurPass>(m_pMotionBlurPass);
     RegisterPass<DepthOfFieldPass>(m_pDepthOfFieldPass);
     RegisterPass<PostAAPass>(m_pPostAAPass);
+    RegisterPass<VideoRenderPass>(m_pVideoRenderPass);
 
     // default material resources
     {
@@ -612,4 +614,9 @@ SubpixelJitter::Sample SubpixelJitter::EvaluateSample(AZ::u32 counter, Pattern p
 
     sample.m_mipBias = JitterMipBias[clampedJitternPattern];
     return sample;
+}
+
+void CStandardGraphicsPipeline::RenderVideo(const AZ::VideoRenderer::DrawArguments& drawArguments)
+{
+    m_pVideoRenderPass->Execute(drawArguments);
 }

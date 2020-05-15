@@ -28,7 +28,7 @@ def build(bld):
         exclude_monolithic      = True,
         client_only             = True,
         features                = ['qt5'],
-        includes                = [bld.ThirdPartyPath('boost'),
+        includes                = ['.',
                                    bld.Path('Code/CryEngine/CryCommon'),
                                    bld.Path('Code/Sandbox/Editor'),
                                    bld.Path('Code/Sandbox/Editor/Include'),

@@ -659,7 +659,6 @@ namespace UnitTest
         inserted.m_bool = true;
         AZ_TEST_ASSERT(nocopy_map.begin()->second.m_bool == true);
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_map_type map3({
                 {1, 2}, {3, 4}, {5, 6}
             });
@@ -668,7 +667,6 @@ namespace UnitTest
         AZ_TEST_ASSERT((*map3.begin()).second == 2);
         AZ_TEST_ASSERT((*prior(map3.end())).first == 5);
         AZ_TEST_ASSERT((*prior(map3.end())).second == 6);
-#endif
     }
 
     TEST_F(Tree_Map, ExplicitAllocatorSucceeds)
@@ -809,7 +807,6 @@ namespace UnitTest
         AZ_TEST_ASSERT(range.first == map.end());
         AZ_TEST_ASSERT(range.second == map.end());
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         int_multimap_type intint_map3({
                 {1, 10}, {2, 200}, {3, 3000}, {4, 40000}, {4, 40001}, {5, 500000}
             });
@@ -825,7 +822,6 @@ namespace UnitTest
         AZ_TEST_ASSERT(intint_map3.lower_bound(4)->second == 40000 || intint_map3.lower_bound(4)->second == 40001);
         AZ_TEST_ASSERT((++intint_map3.lower_bound(4))->second == 40000 || (++intint_map3.lower_bound(4))->second == 40001);
         AZ_TEST_ASSERT(intint_map3.lower_bound(5)->second == 500000);
-#endif
     }
 
     TEST_F(Tree_MultiMap, ExplicitAllocatorSucceeds)

@@ -10,6 +10,7 @@
 #
 
 import boto3
+from six import iteritems # Python 2.7/3.7 Compatibility
 import survey_utils
 import validation_utils
 import validation_common
@@ -30,8 +31,8 @@ def get_survey(survey_id, question_index, question_count, ensure_active, is_admi
     if ensure_active:
         ensure_survey_active_from_metadata(survey_metadata, survey_id)
 
-    question_ids = map(lambda x: x['id'], survey_metadata['questions'])
-    question_active_flags = map(lambda x: x['active'], survey_metadata['questions'])
+    question_ids = [x['id'] for x in survey_metadata['questions']]
+    question_active_flags = [x['active'] for x in survey_metadata['questions']]
     if is_admin:
         question_ids = question_ids[question_index:end_index]
     else:
@@ -93,6 +94,14 @@ def get_questions(survey_id, question_ids):
             # flatten metadata
             metadata = question.get('metadata')
             if metadata is not None:
+                # Convert double to int
+                if metadata.get('min') != None:
+                    metadata['min'] = int(metadata['min'])
+                if metadata.get('max') != None:
+                    metadata['max'] = int(metadata['max'])
+                if metadata.get('max_chars') != None:
+                    metadata['max_chars'] = int(metadata['max_chars'])
+
                 question.update(metadata)
                 del question['metadata']
             questions.append(question)
@@ -105,11 +114,37 @@ def get_survey_metadata_by_id(survey_id, ensure_active):
     if ensure_active:
         ensure_survey_active_from_metadata(survey_metadata)
 
-    __remove_or_populate_published_attribute(ensure_active, survey_metadata)
+    __clean_up_attributes(ensure_active, survey_metadata)
 
     return {
         'metadata_list':[survey_metadata]
     }
+
+def get_survey_metadata_by_survey_name(survey_name, limit, pagination_token, sort):
+    limit = validation_common.validate_limit(limit, MAX_LIMIT)
+    sort = validation_common.validate_sort_order(sort)
+
+    params = {}
+    params['KeyConditionExpression'] = 'creation_time_dummy_hash = :true'
+    params['ProjectionExpression'] = 'survey_id, survey_name, creation_time, num_active_questions, activation_start_time, activation_end_time, published, num_responses'
+    params['Limit'] = limit
+    params['FilterExpression'] = 'contains(survey_name, :survey_name)'
+    params['ExpressionAttributeValues'] = {':survey_name':survey_name, ':true':1}
+    params['IndexName'] = 'CreationTimeIndex'
+
+    if sort == 'desc':
+        params['ScanIndexForward'] = False
+
+    if pagination_token is not None:
+        params['ExclusiveStartKey'] = survey_common.decode_pagination_token(pagination_token)
+
+    scan_result = survey_utils.get_survey_table().query(**params)
+    out = {'metadata_list': [__clean_up_attributes(ensure_active, x) for x in scan_result['Items']]}
+    last_evaluated_key = scan_result.get('LastEvaluatedKey')
+    if last_evaluated_key is not None:
+        out['pagination_token'] = encode_pagination_token(last_evaluated_key)
+
+    return out
 
 def get_survey_metadata_list(limit, max_limit, pagination_token, sort, ensure_active):
     limit = validation_common.validate_limit(limit, max_limit)
@@ -134,12 +169,31 @@ def get_survey_metadata_list(limit, max_limit, pagination_token, sort, ensure_ac
 
     scan_result = survey_utils.get_survey_table().query(**params)
 
-    out = {'metadata_list': map(lambda x: __remove_or_populate_published_attribute(ensure_active, x), scan_result['Items'])}
+    out = {'metadata_list': [__clean_up_attributes(ensure_active, x) for x in scan_result['Items']]}
     last_evaluated_key = scan_result.get('LastEvaluatedKey')
     if last_evaluated_key is not None:
         out['pagination_token'] = encode_pagination_token(last_evaluated_key)
 
     return out
+
+def __clean_up_attributes(ensure_active, survey_metadata):
+    # Convert number in scientific notation to int
+    if survey_metadata.get('creation_time') != None:
+        survey_metadata['creation_time'] = int(float(survey_metadata['creation_time']))
+
+    # Conver double to int
+    if survey_metadata.get('activation_start_time') != None:
+        survey_metadata['activation_start_time'] = int(survey_metadata['activation_start_time'])
+    if survey_metadata.get('activation_end_time') != None:
+        survey_metadata['activation_end_time'] = int(survey_metadata['activation_end_time'])
+    if survey_metadata.get('num_active_questions') != None:
+        survey_metadata['num_active_questions'] = int(survey_metadata['num_active_questions'])
+    if survey_metadata.get('num_responses') != None:
+        survey_metadata['num_responses'] = int(survey_metadata['num_responses'])
+
+    __remove_or_populate_published_attribute(ensure_active, survey_metadata)
+
+    return survey_metadata
 
 def __remove_or_populate_published_attribute(ensure_active, survey_metadata):
     if ensure_active:
@@ -152,7 +206,7 @@ def __remove_or_populate_published_attribute(ensure_active, survey_metadata):
     return survey_metadata
 
 def encode_pagination_token(last_evaluated_key):
-    for k,v in last_evaluated_key.items():
+    for k,v in iteritems(last_evaluated_key):
         if isinstance(v, Decimal):
             if v % 1 > 0:
                 last_evaluated_key[k] = float(v)
@@ -163,7 +217,7 @@ def encode_pagination_token(last_evaluated_key):
 def decode_pagination_token(pagination_token):
     try:
         last_evaluated_key = json.loads(base64.b64decode(pagination_token))
-        for k,v in last_evaluated_key.items():
+        for k,v in iteritems(last_evaluated_key):
             if isinstance(v, int) or isinstance(v, float):
                 last_evaluated_key[k] = Decimal(v)
         return last_evaluated_key
@@ -260,7 +314,7 @@ def get_answer_submissions(survey_id, limit, pagination_token, sort):
 def __convert_answers_map_to_list(submission):
     answers_map = submission['answers']
     answer_list = []
-    for question_id, answer in answers_map.items():
+    for question_id, answer in iteritems(answers_map):
         answer_list.append({
             'question_id': question_id,
             'answer': answer
@@ -269,7 +323,7 @@ def __convert_answers_map_to_list(submission):
 
 def extract_question_metadata(question):
     metadata_map = {}
-    for key, val in question.items():
+    for key, val in iteritems(question):
         if key in extract_question_metadata.metadata_fields:
             metadata_map[key] = val
     return metadata_map

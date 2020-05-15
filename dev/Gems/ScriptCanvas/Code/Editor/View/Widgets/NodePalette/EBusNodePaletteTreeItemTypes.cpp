@@ -61,10 +61,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateEBusSenderMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
+    ScriptCanvasEditor::NodeIdPair CreateEBusSenderMimeEvent::CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropSender, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasGraphId);
-        return Nodes::CreateObjectMethodNode(m_busName, m_eventName, scriptCanvasGraphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropSender, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasId);
+        return Nodes::CreateObjectMethodNode(m_busName, m_eventName, scriptCanvasId);
     }
 
     /////////////////////////////////
@@ -158,10 +158,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateEBusHandlerMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
+    ScriptCanvasEditor::NodeIdPair CreateEBusHandlerMimeEvent::CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), scriptCanvasGraphId);
-        return Nodes::CreateEbusWrapperNode(m_busName, scriptCanvasGraphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), scriptCanvasId);
+        return Nodes::CreateEbusWrapperNode(m_busName, scriptCanvasId);
     }
 
     ////////////////////////////////////
@@ -212,31 +212,15 @@ namespace ScriptCanvasEditor
 
     bool CreateEBusHandlerEventMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
     {
-        NodeIdPair eventNode = CreateEventNode(graphCanvasGraphId, sceneDropPosition);
-
-        if (eventNode.m_graphCanvasId.IsValid())
-        {
-            GraphCanvas::SceneMemberUIRequestBus::Event(eventNode.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
-
-            AZ::EntityId scriptCanvasGraphId;
-            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
-
-            ScriptCanvasEditor::NodeCreationNotificationBus::Event(scriptCanvasGraphId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, eventNode.m_graphCanvasId);
-
-            AZ::EntityId gridId;
-            GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
-
-            AZ::Vector2 offset;
-            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
-
-            sceneDropPosition += offset;
-        }
-        return eventNode.m_graphCanvasId.IsValid();
+        return ExecuteEventImpl(mousePosition, sceneDropPosition, graphCanvasGraphId).m_graphCanvasId.IsValid();
     }
 
     NodeIdPair CreateEBusHandlerEventMimeEvent::CreateEventNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
+
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), scriptCanvasId);
 
         NodeIdPair nodeIdPair;
         nodeIdPair.m_graphCanvasId = Nodes::DisplayEbusEventNode(graphCanvasGraphId, m_busName, m_eventName, m_eventId);
@@ -247,6 +231,38 @@ namespace ScriptCanvasEditor
         }
 
         return nodeIdPair;
+    }
+
+    NodeIdPair CreateEBusHandlerEventMimeEvent::ExecuteEventImpl(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
+    {
+        NodeIdPair eventNode = CreateEventNode(graphCanvasGraphId, sceneDropPosition);
+
+        if (eventNode.m_graphCanvasId.IsValid())
+        {
+            GraphCanvas::SceneMemberUIRequestBus::Event(eventNode.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
+
+            ScriptCanvas::ScriptCanvasId scriptCanvasId;
+            GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
+
+            ScriptCanvasEditor::NodeCreationNotificationBus::Event(scriptCanvasId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, eventNode.m_graphCanvasId);
+
+            AZ::EntityId gridId;
+            GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ::Vector2 offset;
+            GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+            sceneDropPosition += offset;
+        }
+
+        return eventNode;
+    }
+    
+    void CreateEBusHandlerEventMimeEvent::ConfigureEvent(AZStd::string_view busName, AZStd::string_view eventName, const ScriptCanvas::EBusEventId& eventId)
+    {
+        m_busName = busName;
+        m_eventName = eventName;
+        m_eventId = eventId;
     }
 
     ///////////////////////////////////

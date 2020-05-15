@@ -53,10 +53,13 @@
 #include <UiLayoutColumnComponent.h>
 #include <UiRadioButtonGroupComponent.h>
 #include <UiParticleEmitterComponent.h>
+#include <UiCanvasManager.h>
+#include <Mocks/IRendererMock.h>
 
 AZ_UNIT_TEST_HOOK();
 
 using namespace AZ;
+using ::testing::NiceMock;
 
 class LyShineSystemTestComponent 
     : public LyShine::LyShineSystemComponent
@@ -72,6 +75,13 @@ protected:
     void SetUp() override
     {
         using namespace LyShine;
+
+        m_priorEnv = gEnv;
+
+        m_data = AZStd::make_unique<DataMembers>();
+        memset(&m_data->m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
+        m_data->m_stubEnv.pRenderer = &m_data->m_renderer;
+        gEnv = &m_data->m_stubEnv;
 
         m_app.Start(m_descriptor);
         AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
@@ -142,12 +152,24 @@ protected:
         m_sysComponent->Deactivate();
         m_sysComponent = nullptr;
         m_app.Stop();
+
+        m_data.reset();
+        gEnv = m_priorEnv;
     }
 
     AZStd::unique_ptr<LyShineSystemTestComponent> m_sysComponent;
     AzToolsFramework::ToolsApplication m_app;
     AZ::ComponentApplication::Descriptor m_descriptor;
     AZStd::vector<AZStd::unique_ptr<AZ::ComponentDescriptor>> m_componentDescriptors;
+
+    struct DataMembers
+    {
+        SSystemGlobalEnvironment m_stubEnv;
+        NiceMock<IRendererMock> m_renderer;
+    };
+
+    AZStd::unique_ptr<DataMembers> m_data;
+    SSystemGlobalEnvironment* m_priorEnv = nullptr;
 };
 
 AZStd::string GetTestFileAliasedPath(AZStd::string_view fileName)
@@ -192,4 +214,17 @@ TEST_F(LyShineEditorTest, ProcessUiCanvas_ReturnsDependencyOnSpriteAndTexture)
         ProductPathDependency{ "textures/defaults/grey.dds", ProductPathDependencyType::ProductFile },
         ProductPathDependency{ "textures/defaults/grey.sprite", ProductPathDependencyType::ProductFile }
     ));
+}
+
+TEST_F(LyShineEditorTest, FindLoadedCanvasByPathName_FT)
+{
+    UiCanvasManager canvasManager;
+
+    //find loaded canvas, should return invalid id
+    AZ::EntityId entityId = canvasManager.FindLoadedCanvasByPathName("Gems/LyShine/Code/Tests/TestAssets/Canvases/empty.uicanvas", false);
+    EXPECT_FALSE(entityId.IsValid());
+
+    //load a new canvas
+    entityId = canvasManager.FindLoadedCanvasByPathName("Gems/LyShine/Code/Tests/TestAssets/Canvases/empty.uicanvas", true);
+    EXPECT_TRUE(entityId.IsValid());
 }

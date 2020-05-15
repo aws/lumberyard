@@ -67,11 +67,17 @@ namespace AZ
             bool operator!=(const AssetId& rhs) const;
             bool operator<(const AssetId& rhs) const;
 
-            template<class StringType>
-            StringType ToString() const;
+            enum class SubIdDisplayType
+            {
+                Hex,
+                Decimal
+            };
 
             template<class StringType>
-            void ToString(StringType& result) const;
+            StringType ToString(SubIdDisplayType displayType = SubIdDisplayType::Hex) const;
+
+            template<class StringType>
+            void ToString(StringType& result, SubIdDisplayType displayType = SubIdDisplayType::Hex) const;
 
             static AssetId CreateString(AZStd::string_view input);
             static void Reflect(ReflectContext* context);
@@ -147,6 +153,17 @@ namespace AZ
              * loaded assets map (which is why when we call AssetDatabase::GetAsset it will not be found a new will be create)
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
+
+            /**
+             * Override this function to control automatic reload behavior. 
+             * By default, the asset will reload automatically.
+             * Return false to disable automatic reload. Potential use cases include:
+             * 1, If an asset is dependent on a parent asset(i.e.both assets need to be reloaded as a group) the parent asset can explicitly reload the child.
+             * 2, The asset does not support reload.
+             * Note: Disabling an auto reload means that the asset in memory will be stale compared to what triggered the reload
+             * This moves the responsibility of loading the asset or editing/handling the stale asset onto the system that disabled the reload
+             */
+            virtual bool HandleAutoReload() { return true; }
 
             AssetData(const AssetData&) = delete;
             AZStd::atomic_int m_useCount;
@@ -536,18 +553,26 @@ namespace AZ
 
         //=========================================================================
         template<class StringType>
-        inline StringType AssetId::ToString() const
+        inline StringType AssetId::ToString(SubIdDisplayType displayType) const
         {
             StringType result;
-            ToString(result);
+            ToString(result, displayType);
             return result;
         }
 
         //=========================================================================
         template<class StringType>
-        inline void AssetId::ToString(StringType& result) const
+        inline void AssetId::ToString(StringType& result, SubIdDisplayType displayType) const
         {
-            result = StringType::format("%s:%x", m_guid.ToString<StringType>().c_str(), m_subId);
+            switch (displayType)
+            {
+            case SubIdDisplayType::Hex:
+                result = StringType::format("%s:%x", m_guid.ToString<StringType>().c_str(), m_subId);
+                break;
+            case SubIdDisplayType::Decimal:
+                result = StringType::format("%s:%d", m_guid.ToString<StringType>().c_str(), m_subId);
+                break;
+            }
         }
 
         //=========================================================================
@@ -608,7 +633,7 @@ namespace AZ
             : m_assetType(azrtti_typeid<T>())
             , m_loadBehavior(loadBehavior)
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<AssetData, T>::value), "Can only specify desired type if asset type is AssetData");
+            static_assert((AZStd::is_base_of<AssetData, T>::value), "Can only specify desired type if asset type is AssetData");
         }
 
         //=========================================================================

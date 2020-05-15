@@ -256,11 +256,24 @@ def _as_float(value):
     """
     return struct.unpack('f', struct.pack('f', value))[0]
 
+
+def _as_half(value):
+    """
+    Truncate to half-precision float.
+    """
+    try:
+        return struct.unpack('e', struct.pack('e', value))[0]
+    except struct.error:
+        # 'e' only added in Python 3.6+
+        return _as_float(value)
+
+
 def _format_float_as_hex(value, packfmt, unpackfmt, numdigits):
     raw = struct.pack(packfmt, float(value))
     intrep = struct.unpack(unpackfmt, raw)[0]
     out = '{{0:#{0}x}}'.format(numdigits).format(intrep)
     return out
+
 
 def _format_double(value):
     """
@@ -284,6 +297,20 @@ class _BaseFloatType(Type):
     @classmethod
     def _create_instance(cls):
         cls._instance_cache = super(_BaseFloatType, cls).__new__(cls)
+
+
+class HalfType(_BaseFloatType):
+    """
+    The type for single-precision floats.
+    """
+    null = '0.0'
+    intrinsic_name = 'f16'
+
+    def __str__(self):
+        return 'half'
+
+    def format_constant(self, value):
+        return _format_double(_as_half(value))
 
 
 class FloatType(_BaseFloatType):
@@ -314,7 +341,7 @@ class DoubleType(_BaseFloatType):
         return _format_double(value)
 
 
-for _cls in (FloatType, DoubleType):
+for _cls in (HalfType, FloatType, DoubleType):
     _cls._create_instance()
 
 
@@ -331,6 +358,57 @@ class _Repeat(object):
             return self.value
         else:
             raise IndexError(item)
+
+class VectorType(Type):
+    """
+    The type for vectors of primitive data items (e.g. "<f32 x 4>").
+    """
+
+    def __init__(self, element, count):
+        self.element = element
+        self.count = count
+
+    @property
+    def elements(self):
+        return _Repeat(self.element, self.count)
+
+    def __len__(self):
+        return self.count
+
+    def _to_string(self):
+        return "<%d x %s>" % (self.count, self.element)
+
+    def __eq__(self, other):
+        if isinstance(other, VectorType):
+            return self.element == other.element and self.count == other.count
+
+    def __hash__(self):
+        # TODO: why does this not take self.element/self.count into account?
+        return hash(VectorType)
+
+    def __copy__(self):
+        return self
+
+    def format_constant(self, value):
+        itemstring = ", " .join(["{0} {1}".format(x.type, x.get_reference())
+                                 for x in value])
+        return "<{0}>".format(itemstring)
+
+    def wrap_constant_value(self, values):
+        from . import Value, Constant
+        if not isinstance(values, (list, tuple)):
+            if isinstance(values, Constant):
+                if values.type != self.element:
+                    raise TypeError("expected % for %"
+                                    % (self.element, values.type))
+                return (values, ) * self.count
+            return (Constant(self.element, values), ) * self.count
+        if len(values) != len(self):
+            raise ValueError("wrong constant size for %s: got %d elements"
+                             % (self, len(values)))
+        return [Constant(ty, val) if not isinstance(val, Value) else val
+                for ty, val in zip(self.elements, values)]
+
 
 
 class Aggregate(Type):

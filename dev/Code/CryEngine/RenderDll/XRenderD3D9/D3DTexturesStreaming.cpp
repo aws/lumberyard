@@ -915,7 +915,7 @@ void CTexture::OutputDebugInfo()
     }
 
     char szText[512];
-    sprintf_s(szText, "Size | WantedSize |  MF   | P |  Mips  |  N  | F | Z | S | Name");
+    sprintf_s(szText, "Size(MB) | WantedSize | MipFactor | HighPriority | #Mips(Desired/Current/Actual) | RoundID Normal/Fast | RecentlyUsed | Name");
     r->WriteXY(nX, nY, 1.f, 1.f, 1, 1, 0, 1, szText);
     if (CRenderer::CV_r_TexturesStreamingDebugDumpIntoLog)
     {

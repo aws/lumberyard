@@ -228,6 +228,9 @@ namespace ScriptCanvasEditor
 
     LiveLoggingWindowSession::~LiveLoggingWindowSession()
     {
+        AzFramework::TargetManagerClient::Bus::Handler::BusDisconnect();
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+        ScriptCanvas::Debugger::ServiceNotificationsBus::Handler::BusDisconnect();
     }
 
     void LiveLoggingWindowSession::DesiredTargetChanged(AZ::u32 newId, AZ::u32 oldId)

@@ -94,12 +94,18 @@ class InternalAsyncMqttClient(object):
     def configure_last_will(self, topic, payload, qos, retain=False):
         self._paho_client.will_set(topic, payload, qos, retain)
 
+    def configure_alpn_protocols(self, alpn_protocols):
+        self._paho_client.config_alpn_protocols(alpn_protocols)
+
     def clear_last_will(self):
         self._paho_client.will_clear()
 
     def set_username_password(self, username, password=None):
         self._paho_client.username_pw_set(username, password)
 
+    def set_socket_factory(self, socket_factory):
+        self._paho_client.socket_factory_set(socket_factory)
+        
     def configure_reconnect_back_off(self, base_reconnect_quiet_sec, max_reconnect_quiet_sec, stable_connection_sec):
         self._paho_client.setBackoffTiming(base_reconnect_quiet_sec, max_reconnect_quiet_sec, stable_connection_sec)
 

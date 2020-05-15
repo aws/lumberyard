@@ -64,7 +64,9 @@ private:
     bool m_isDraggingDockWidget;
     QWidget* m_mainControl; //Tabbar or label
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     AZStd::function<QMenu*(void)> m_showMenuButtonContextMenuCallback;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // DOCKWIDGETTITLEBARR_H

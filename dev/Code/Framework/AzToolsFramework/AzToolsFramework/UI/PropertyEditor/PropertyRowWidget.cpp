@@ -302,6 +302,16 @@ namespace AzToolsFramework
             // --------------------- HANDLER discovery:
             // in order to discover this, we need the property type and handler type.
             EBUS_EVENT_RESULT(m_handler, PropertyTypeRegistrationMessages::Bus, ResolvePropertyHandler, m_handlerName, typeUuid);
+
+            
+            if (m_handler)
+            {
+                QString newNameLabel = label();
+                if (m_handler->ModifyNameLabel(m_childWidget, newNameLabel))
+                {
+                    SetNameLabel(newNameLabel.toUtf8().constData());
+                }
+            }
         }
 
         if (m_forbidExpansion)
@@ -607,17 +617,9 @@ namespace AzToolsFramework
     {
         if (node)
         {
-            if (auto editorData = node->GetElementEditMetadata())
-            {
-                if (auto visibilityAttribute = editorData->FindAttribute(AZ::Edit::Attributes::Visibility))
-                {
-                    AZ::Crc32 visibility;
-                    if (ReadVisibilityAttribute(node->FirstInstance(), visibilityAttribute, visibility))
-                    {
-                        return visibility == AZ::Edit::PropertyVisibility::ShowChildrenOnly;
-                    }
-                }
-            }
+            // Must use ResolveVisibilityAttribute otherwise class elements will be missed
+            AZ::Crc32 visibility = ResolveVisibilityAttribute(*node);
+            return visibility == AZ::Edit::PropertyVisibility::ShowChildrenOnly;
         }
         return false;
     }
@@ -827,6 +829,12 @@ namespace AzToolsFramework
             {
                 setTabOrder(m_dropDownArrow, pfirstTarget);
             }
+        }
+
+        QString newNameLabel = label();
+        if (m_handler->ModifyNameLabel(m_childWidget, newNameLabel))
+        {
+            SetNameLabel(newNameLabel.toUtf8().constData());
         }
 
         QString newToolTip = toolTip();

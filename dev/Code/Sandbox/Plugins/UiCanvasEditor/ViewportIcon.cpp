@@ -25,7 +25,7 @@ ViewportIcon::~ViewportIcon()
 
 AZ::Vector2 ViewportIcon::GetTextureSize() const
 {
-    return AZ::Vector2(m_texture->GetWidth(), m_texture->GetHeight());
+    return AZ::Vector2(aznumeric_cast<float>(m_texture->GetWidth()), aznumeric_cast<float>(m_texture->GetHeight()));
 }
 
 void ViewportIcon::DrawImageAligned(Draw2dHelper& draw2d, AZ::Vector2& pivot, float opacity)

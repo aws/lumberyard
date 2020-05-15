@@ -95,7 +95,6 @@ namespace EMotionFX
             ;
     }
 
-    // constructor
     Recorder::Recorder()
         : BaseObject()
     {
@@ -108,15 +107,18 @@ namespace EMotionFX
 
         mObjects.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
         mActiveNodes.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
+
+        GetEMotionFX().GetEventManager()->AddEventHandler(this);
     }
 
-
-    // destructor
     Recorder::~Recorder()
     {
+        if (EventManager* eventManager = GetEMotionFX().GetEventManager())
+        {
+            eventManager->RemoveEventHandler(this);
+        }
         Clear();
     }
-
 
     // create a new recorder
     Recorder* Recorder::Create()
@@ -195,13 +197,14 @@ namespace EMotionFX
     {
         Lock();
 
-        mIsInPlayMode   = false;
-        mIsRecording    = false;
-        mAutoPlay       = false;
-        mRecordTime     = 0.0f;
+        mIsInPlayMode = false;
+        mIsRecording = false;
+        mAutoPlay = false;
+        mRecordTime = 0.0f;
         mLastRecordTime = 0.0f;
         mCurrentPlayTime = 0.0f;
-        mRecordSettings.mActorInstances.Clear();
+        mRecordSettings.m_actorInstances.clear();
+        m_timeDeltas.clear();
 
         // delete all actor instance datas
         for (const ActorInstanceData* actorInstanceData : m_actorInstanceDatas)
@@ -209,7 +212,6 @@ namespace EMotionFX
             delete actorInstanceData;
         }
         m_actorInstanceDatas.clear();
-        m_timeDeltas.clear();
 
         Unlock();
     }
@@ -231,15 +233,15 @@ namespace EMotionFX
         mRecordSettings = settings;
         mIsRecording    = true;
 
-        // add all actor instances if we want to record them all
-        if (mRecordSettings.mActorInstances.GetLength() == 0)
+        // Add all actor instances if we did not specify them explicitly.
+        if (mRecordSettings.m_actorInstances.empty())
         {
             const uint32 numActorInstances = GetActorManager().GetNumActorInstances();
-            mRecordSettings.mActorInstances.Resize(numActorInstances);
+            mRecordSettings.m_actorInstances.resize(numActorInstances);
             for (uint32 i = 0; i < numActorInstances; ++i)
             {
                 ActorInstance* actorInstance = GetActorManager().GetActorInstance(i);
-                mRecordSettings.mActorInstances[i] = actorInstance;
+                mRecordSettings.m_actorInstances[i] = actorInstance;
             }
         }
 
@@ -312,15 +314,15 @@ namespace EMotionFX
     // prepare for recording by resizing and preallocating space/arrays
     void Recorder::PrepareForRecording()
     {
-        const uint32 numActorInstances = mRecordSettings.mActorInstances.GetLength();
+        const size_t numActorInstances = mRecordSettings.m_actorInstances.size();
         m_actorInstanceDatas.resize(numActorInstances);
-        for (uint32 i = 0; i < numActorInstances; ++i)
+        for (size_t i = 0; i < numActorInstances; ++i)
         {
             m_actorInstanceDatas[i] = aznew ActorInstanceData();
             ActorInstanceData& actorInstanceData = *m_actorInstanceDatas[i];
 
             // link it to the right actor instance
-            ActorInstance* actorInstance = mRecordSettings.mActorInstances[i];
+            ActorInstance* actorInstance = mRecordSettings.m_actorInstances[i];
             actorInstanceData.mActorInstance = actorInstance;
 
             // add the transform tracks
@@ -382,28 +384,23 @@ namespace EMotionFX
 
     void Recorder::ShrinkTransformTracks()
     {
-        // for all actor instances
-        const uint32 numActorInstances = mRecordSettings.mActorInstances.GetLength();
-        for (uint32 i = 0; i < numActorInstances; ++i)
+        for (ActorInstanceData* actorInstanceData : m_actorInstanceDatas)
         {
-            ActorInstanceData& actorInstanceData = *m_actorInstanceDatas[i];
-            const ActorInstance* actorInstance = actorInstanceData.mActorInstance;
-
-            if (actorInstanceData.m_transformTracks.empty())
+            const ActorInstance* actorInstance = actorInstanceData->mActorInstance;
+            if (actorInstanceData->m_transformTracks.empty())
             {
                 continue;
             }
 
-            // for all nodes in the actor instance
             const uint32 numNodes = actorInstance->GetNumNodes();
             for (uint32 n = 0; n < numNodes; ++n)
             {
-                actorInstanceData.m_transformTracks[n].mPositions.Shrink();
-                actorInstanceData.m_transformTracks[n].mRotations.Shrink();
+                actorInstanceData->m_transformTracks[n].mPositions.Shrink();
+                actorInstanceData->m_transformTracks[n].mRotations.Shrink();
 
                 EMFX_SCALECODE
                 (
-                    actorInstanceData.m_transformTracks[n].mScales.Shrink();
+                    actorInstanceData->m_transformTracks[n].mScales.Shrink();
                 )
             }
         }
@@ -740,20 +737,17 @@ namespace EMotionFX
         )
     }
 
-
-    // sample and apply
     void Recorder::SampleAndApplyTransforms(float timeInSeconds, ActorInstance* actorInstance) const
     {
-        // sample the transforms
-        const uint32 index = mRecordSettings.mActorInstances.Find(actorInstance);
-        if (index != MCORE_INVALIDINDEX32)
+        const AZStd::vector<ActorInstance*>& recordedActorInstances = mRecordSettings.m_actorInstances;
+        const auto iterator = AZStd::find(recordedActorInstances.begin(), recordedActorInstances.end(), actorInstance);
+        if (iterator != recordedActorInstances.end())
         {
+            const size_t index = iterator - recordedActorInstances.begin();
             SampleAndApplyTransforms(timeInSeconds, index);
         }
     }
 
-
-    // sample and apply all animgraphs
     void Recorder::SampleAndApplyAnimGraphs(float timeInSeconds) const
     {
         for (const ActorInstanceData* actorInstanceData : m_actorInstanceDatas)
@@ -765,24 +759,24 @@ namespace EMotionFX
         }
     }
 
-
-    // sample and apply a given main actor instance transform
     void Recorder::SampleAndApplyMainTransform(float timeInSeconds, ActorInstance* actorInstance) const
     {
-        const uint32 index = mRecordSettings.mActorInstances.Find(actorInstance);
-        if (index != MCORE_INVALIDINDEX32)
+        const AZStd::vector<ActorInstance*>& recordedActorInstances = mRecordSettings.m_actorInstances;
+        const auto iterator = AZStd::find(recordedActorInstances.begin(), recordedActorInstances.end(), actorInstance);
+        if (iterator != recordedActorInstances.end())
         {
+            const size_t index = iterator - recordedActorInstances.begin();
             SampleAndApplyMainTransform(timeInSeconds, index);
         }
     }
 
-
-    // sample and apply morph targets
     void Recorder::SampleAndApplyMorphs(float timeInSeconds, ActorInstance* actorInstance) const
     {
-        const uint32 index = mRecordSettings.mActorInstances.Find(actorInstance);
-        if (index != MCORE_INVALIDINDEX32)
+        const AZStd::vector<ActorInstance*>& recordedActorInstances = mRecordSettings.m_actorInstances;
+        const auto iterator = AZStd::find(recordedActorInstances.begin(), recordedActorInstances.end(), actorInstance);
+        if (iterator != recordedActorInstances.end())
         {
+            const size_t index = iterator - recordedActorInstances.begin();
             const ActorInstanceData& actorInstanceData = *m_actorInstanceDatas[index];
             const uint32 numMorphs = actorInstanceData.mMorphTracks.GetLength();
             if (numMorphs == actorInstance->GetMorphSetupInstance()->GetNumMorphTargets())
@@ -796,9 +790,7 @@ namespace EMotionFX
         }
     }
 
-
-    // sample and apply the actor instance transform
-    void Recorder::SampleAndApplyMainTransform(float timeInSeconds, uint32 actorInstanceIndex) const
+    void Recorder::SampleAndApplyMainTransform(float timeInSeconds, size_t actorInstanceIndex) const
     {
         // get the actor instance
         const ActorInstanceData& actorInstanceData = *m_actorInstanceDatas[actorInstanceIndex];
@@ -817,9 +809,7 @@ namespace EMotionFX
         )
     }
 
-
-    // sample and apply transforms
-    void Recorder::SampleAndApplyTransforms(float timeInSeconds, uint32 actorInstanceIndex) const
+    void Recorder::SampleAndApplyTransforms(float timeInSeconds, size_t actorInstanceIndex) const
     {
         const ActorInstanceData& actorInstanceData = *m_actorInstanceDatas[actorInstanceIndex];
         ActorInstance* actorInstance = actorInstanceData.mActorInstance;
@@ -834,8 +824,8 @@ namespace EMotionFX
             const TransformTracks& track = actorInstanceData.m_transformTracks[n];
 
             // build the output transform by sampling the keytracks
-            outTransform.mPosition      = track.mPositions.GetValueAtTime(timeInSeconds);
-            outTransform.mRotation      = track.mRotations.GetValueAtTime(timeInSeconds);
+            outTransform.mPosition = track.mPositions.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate);
+            outTransform.mRotation = track.mRotations.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate);
 
             EMFX_SCALECODE
             (
@@ -850,8 +840,6 @@ namespace EMotionFX
         }
     }
 
-
-    // sample and apply anim graphs
     void Recorder::SampleAndApplyAnimGraphStates(float timeInSeconds, const AnimGraphInstanceData& animGraphInstanceData) const
     {
         // find out the frame number
@@ -897,8 +885,12 @@ namespace EMotionFX
         MCORE_ASSERT(totalBytesRead == currentFrame.mNumBytes);
     }
 
+    bool Recorder::GetHasRecorded(ActorInstance* actorInstance) const
+    {
+        return AZStd::find(mRecordSettings.m_actorInstances.begin(), mRecordSettings.m_actorInstances.end(), actorInstance)
+            != mRecordSettings.m_actorInstances.end();
+    }
 
-    // find the actor instance data
     uint32 Recorder::FindActorInstanceDataIndex(ActorInstance* actorInstance) const
     {
         // for all actor instances
@@ -914,8 +906,6 @@ namespace EMotionFX
         return MCORE_INVALIDINDEX32;
     }
 
-
-    // update the node history items
     void Recorder::UpdateNodeHistoryItems()
     {
         // for all actor instances
@@ -1406,13 +1396,17 @@ namespace EMotionFX
         return MCORE_INVALIDINDEX32;
     }
 
-
-    // remove an actor instance from the recorder
     void Recorder::RemoveActorInstanceFromRecording(ActorInstance* actorInstance)
     {
         Lock();
 
-        // check if we recorded any actor instances at all
+        // Remove the actor instance from the record settings.
+        AZStd::vector<ActorInstance*>& recordedActorInstances = mRecordSettings.m_actorInstances;
+        recordedActorInstances.erase(AZStd::remove_if(recordedActorInstances.begin(), recordedActorInstances.end(),
+            [&actorInstance](ActorInstance* recordedActorInstance){ return recordedActorInstance == actorInstance;}),
+            recordedActorInstances.end());
+
+        // Remove the actual recorded data.
         for (uint32 i = 0; i < m_actorInstanceDatas.size();)
         {
             if (m_actorInstanceDatas[i]->mActorInstance == actorInstance)
@@ -1429,8 +1423,6 @@ namespace EMotionFX
         Unlock();
     }
 
-
-    // remove an animgraph from the recording
     void Recorder::RemoveAnimGraphFromRecording(AnimGraph* animGraph)
     {
         Lock();
@@ -1453,15 +1445,18 @@ namespace EMotionFX
         Unlock();
     }
 
+    void Recorder::OnDeleteActorInstance(ActorInstance* actorInstance)
+    {
+        // Actor instances created by actor components do not use the command system and don't call a ClearRecorder command.
+        // Thus, these actor instances will have to be removed from the recorder to avoid dangling data.
+        RemoveActorInstanceFromRecording(actorInstance);
+    }
 
-    // multithread lock the recorder
     void Recorder::Lock()
     {
         mLock.Lock();
     }
 
-
-    // multithread unlock
     void Recorder::Unlock()
     {
         mLock.Unlock();
@@ -1500,20 +1495,20 @@ namespace EMotionFX
                 switch (valueType)
                 {
                 case VALUETYPE_GLOBALWEIGHT:
-                    item.mValue = curItem->mGlobalWeights.GetValueAtTime(item.mKeyTrackSampleTime);
+                    item.mValue = curItem->mGlobalWeights.GetValueAtTime(item.mKeyTrackSampleTime, nullptr, nullptr, mRecordSettings.mInterpolate);
                     break;
 
                 case VALUETYPE_LOCALWEIGHT:
-                    item.mValue = curItem->mLocalWeights.GetValueAtTime(item.mKeyTrackSampleTime);
+                    item.mValue = curItem->mLocalWeights.GetValueAtTime(item.mKeyTrackSampleTime, nullptr, nullptr, mRecordSettings.mInterpolate);
                     break;
 
                 case VALUETYPE_PLAYTIME:
-                    item.mValue = curItem->mPlayTimes.GetValueAtTime(item.mKeyTrackSampleTime);
+                    item.mValue = curItem->mPlayTimes.GetValueAtTime(item.mKeyTrackSampleTime, nullptr, nullptr, mRecordSettings.mInterpolate);
                     break;
 
                 default:
                     MCORE_ASSERT(false);    // unsupported mode
-                    item.mValue = curItem->mGlobalWeights.GetValueAtTime(item.mKeyTrackSampleTime);
+                    item.mValue = curItem->mGlobalWeights.GetValueAtTime(item.mKeyTrackSampleTime, nullptr, nullptr, mRecordSettings.mInterpolate);
                 }
 
                 outItems->SetElem(curItem->mTrackIndex, item);

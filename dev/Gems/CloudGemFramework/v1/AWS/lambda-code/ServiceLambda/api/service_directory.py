@@ -33,7 +33,7 @@ def put_service_interfaces(request, deployment_name, service_url, service_interf
     try:
         impl.put_service_interfaces(deployment_name, service_url, items)
     except ValueError as e:
-        raise errors.ClientError(e.message)
+        raise errors.ClientError(str(e))
 
 
 @service.api
@@ -41,8 +41,8 @@ def delete_service_interfaces(request, deployment_name, service_url):
 
     try:
         impl.delete_service_interfaces(deployment_name, service_url)
-    except valueError as e:
-        raise errors.ClientError(e.message)
+    except ValueError as e:
+        raise errors.ClientError(str(e))
 
 
 @service.api
@@ -51,7 +51,7 @@ def get_service_interfaces(request, deployment_name, service_url):
     try:
         interfaces = impl.get_service_interfaces(deployment_name, service_url)
     except ValueError as e:
-        raise errors.ClientError(e.message)
+        raise errors.ClientError(str(e))
 
     return { 'Items': interfaces }
 
@@ -62,9 +62,9 @@ def get_interface_services(request, deployment_name, interface_id):
     try:
         services = impl.get_interface_services(deployment_name, interface_id)
     except ValueError as e:
-        raise errors.ClientError(e.message)
+        raise errors.ClientError(str(e))
 
-    return { 'Items': services }
+    return {'Items': services}
 
 
 @service.api
@@ -73,7 +73,7 @@ def get_interface_service_swagger(request, deployment_name, interface_id, interf
     try:
         swagger_document = impl.get_interface_service_swagger(deployment_name, interface_id, interface_url)
     except ValueError as e:
-        raise errors.ClientError(e.message)
+        raise errors.ClientError(str(e))
 
     if not swagger_document:
         raise errors.NotFoundError()

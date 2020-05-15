@@ -30,7 +30,6 @@ static const char kNewLevelDialog_LevelsFolder[] = "Levels";
 CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     : QDialog(pParent)
     , m_ilevelFolders(0)
-    , m_useTerrain(false)
     , m_terrainResolution(0)
     , m_terrainUnitsIndex(0)
     , m_bUpdate(false)
@@ -56,7 +55,6 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     ui->LEVEL->setValidator(validator);
 
 #ifdef LY_TERRAIN_EDITOR
-    connect(ui->USE_TERRAIN, &QGroupBox::clicked, this, &CNewLevelDialog::OnBnClickedUseTerrain);
     connect(ui->TERRAIN_RESOLUTION, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerrainResolution()));
     connect(ui->TERRAIN_UNITS, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerraniUnits()));
 #endif
@@ -83,11 +81,6 @@ void CNewLevelDialog::UpdateData(bool fromUi)
         m_ilevelFolders = ui->LEVEL_FOLDERS->currentIndex();
 
 #ifdef LY_TERRAIN_EDITOR
-        //The checkbox is disabled during resize. Don't bother checking it. 
-        if (!m_bIsResize)
-        {
-            m_useTerrain = ui->USE_TERRAIN->isChecked();
-        }
         m_terrainResolution = ui->TERRAIN_RESOLUTION->currentIndex();
         m_terrainUnitsIndex = ui->TERRAIN_UNITS->currentIndex();
 #endif
@@ -100,7 +93,6 @@ void CNewLevelDialog::UpdateData(bool fromUi)
         ui->LEVEL_FOLDERS->setCurrentIndex(m_ilevelFolders);
 
 #ifdef LY_TERRAIN_EDITOR
-        ui->USE_TERRAIN->setChecked(m_useTerrain);
         ui->TERRAIN_RESOLUTION->setCurrentIndex(m_terrainResolution);
         ui->TERRAIN_UNITS->setCurrentIndex(m_terrainUnitsIndex);
 #endif
@@ -115,8 +107,6 @@ void CNewLevelDialog::OnInitDialog()
     ReloadLevelFolders();
 
 #ifdef LY_TERRAIN_EDITOR
-    m_useTerrain = true;
-
     // Inititialize terrain values.
 
     int i;
@@ -129,11 +119,10 @@ void CNewLevelDialog::OnInitDialog()
 
     UpdateTerrainUnits();
 #else
-    m_useTerrain = false;
     ui->USE_TERRAIN->setDisabled(true);
 #endif
 
-    ToggleTerrainControlLayout();
+    UpdateTerrainInfo();
 
     if (m_bIsResize)
     {
@@ -153,6 +142,9 @@ void CNewLevelDialog::OnInitDialog()
     }
     else
     {
+        // hide terrain related UI
+        ui->USE_TERRAIN->hide();
+
         // Disable OK until some text is entered
         if (QPushButton* button = ui->buttonBox->button(QDialogButtonBox::Ok))
         {
@@ -208,7 +200,7 @@ void CNewLevelDialog::UpdateTerrainUnits()
     {
         m_terrainUnitsIndex = 0;
     }
-    ui->TERRAIN_UNITS->setCurrentText(QString::number(m_terrainUnitsIndex));
+    ui->TERRAIN_UNITS->setCurrentText(QString::number(GetTerrainUnits()));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -216,16 +208,9 @@ void CNewLevelDialog::UpdateTerrainInfo()
 {
     int sizeX = 0, sizeY = 0;
 
-    if (m_useTerrain)
-    {
-        int size = GetTerrainResolution() * GetTerrainUnits();
-        sizeX = sizeY = size;
-        size > Ui::MAXIMUM_TERRAIN_RESOLUTION ? ShowWarning(tr("4096x4096 maximum recommended")) : ShowWarning("");
-    }
-    else
-    {
-        ShowWarning("");
-    }
+    int size = GetTerrainResolution() * GetTerrainUnits();
+    sizeX = sizeY = size;
+    size > Ui::MAXIMUM_TERRAIN_RESOLUTION ? ShowWarning(tr("4096x4096 maximum recommended")) : ShowWarning("");
 
     QString str;
     if (sizeX >= 1000)
@@ -268,7 +253,7 @@ QString CNewLevelDialog::GetLevel() const
 //////////////////////////////////////////////////////////////////////////
 bool CNewLevelDialog::IsUseTerrain() const
 {
-    return m_useTerrain != false;
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -280,13 +265,6 @@ int CNewLevelDialog::GetTerrainResolution() const
 int CNewLevelDialog::GetTerrainUnits() const
 {
     return Ui::START_TERRAIN_UNITS * (1 << m_terrainUnitsIndex);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CNewLevelDialog::OnBnClickedUseTerrain()
-{
-    UpdateData();
-    ToggleTerrainControlLayout();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -375,28 +353,6 @@ void CNewLevelDialog::SetTerrainUnits(int units)
 void CNewLevelDialog::IsResize(bool bIsResize)
 {
     m_bIsResize = bIsResize;
-}
-
-void CNewLevelDialog::ToggleTerrainControlLayout()
-{
-    if (m_useTerrain)
-    {
-        ui->TERRAIN_RESOLUTION->show();
-        ui->STATIC3->show();
-
-        ui->TERRAIN_UNITS->show();
-        ui->STATIC4->show();
-    }
-    else
-    {
-        ui->TERRAIN_RESOLUTION->hide();
-        ui->STATIC3->hide();
-
-        ui->TERRAIN_UNITS->hide();
-        ui->STATIC4->hide();
-    }
-
-    UpdateTerrainInfo();
 }
 
 //////////////////////////////////////////////////////////////////////////

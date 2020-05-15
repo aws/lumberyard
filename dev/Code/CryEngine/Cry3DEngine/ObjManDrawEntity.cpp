@@ -17,11 +17,9 @@
 #include "StdAfx.h"
 #include <ICryAnimation.h>
 
-#include "terrain.h"
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-#include "terrain_sector.h"
 #include "3dEngine.h"
 #include "CullBuffer.h"
 #include "3dEngine.h"

@@ -40,10 +40,9 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             m_blendNNode = aznew BlendTreeBlendNNode();
             m_blendTree->AddChildNode(m_blendNNode);
@@ -72,12 +71,12 @@ namespace EMotionFX
             {
                 Parameter* parameter = ParameterFactory::Create(azrtti_typeid<Vector3Parameter>());
                 parameter->SetName("parameter_vector3_test");
-                m_animGraph->AddParameter(parameter);
+                m_blendTreeAnimGraph->AddParameter(parameter);
             }
             {
                 Parameter* parameter = ParameterFactory::Create(azrtti_typeid<Vector2Parameter>());
                 parameter->SetName("parameter_vector2_test");
-                m_animGraph->AddParameter(parameter);
+                m_blendTreeAnimGraph->AddParameter(parameter);
             }
 
             BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
@@ -92,8 +91,17 @@ namespace EMotionFX
             m_vector3DecomposeNode->AddUnitializedConnection(parameterNode, 1, BlendTreeVector3DecomposeNode::INPUTPORT_VECTOR);
 
             m_blendNNode->AddUnitializedConnection(m_vector3DecomposeNode, BlendTreeVector3DecomposeNode::OUTPUTPORT_X, BlendTreeBlendNNode::INPUTPORT_WEIGHT);
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTreeBlendNNode* m_blendNNode = nullptr;
         BlendTree* m_blendTree = nullptr;
         BlendTreeVector3DecomposeNode* m_vector3DecomposeNode = nullptr;
@@ -102,9 +110,9 @@ namespace EMotionFX
 
     TEST_F(Vector2ToVector3CompatibilityTests, Evaluation)
     {
-        AZ::Outcome<size_t> vector2ParamIndexOutcome = m_animGraph->FindValueParameterIndexByName("parameter_vector2_test");
+        AZ::Outcome<size_t> vector2ParamIndexOutcome = m_blendTreeAnimGraph->FindValueParameterIndexByName("parameter_vector2_test");
         ASSERT_TRUE(vector2ParamIndexOutcome.IsSuccess());
-        AZ::Outcome<size_t> vector3ParamIndexOutcome = m_animGraph->FindValueParameterIndexByName("parameter_vector3_test");
+        AZ::Outcome<size_t> vector3ParamIndexOutcome = m_blendTreeAnimGraph->FindValueParameterIndexByName("parameter_vector3_test");
         ASSERT_TRUE(vector3ParamIndexOutcome.IsSuccess());
         
         MCore::AttributeVector2* testVector2Parameter = static_cast<MCore::AttributeVector2*>(m_animGraphInstance->GetParameterValue(static_cast<uint32>(vector2ParamIndexOutcome.GetValue())));

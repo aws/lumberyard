@@ -10,10 +10,8 @@
 #
 # $Revision: #1 $
 
-import util
-
 from resource_manager_common import resource_type_info
-from resource_manager_common import stack_info
+
 
 class ResourceTypeContext(object):
     def __init__(self, context):

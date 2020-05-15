@@ -1,0 +1,150 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/game_project_gem_template",
+    "copyFiles": [
+        {
+            "inFile": "Platform/iOS/platform_ios.waf_files",
+            "outfile": "Code/Platform/iOS/platform_ios.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/wscript_ios",
+            "outfile": "Code/Platform/iOS/wscript_ios",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Info.plist",
+            "outfile": "Resources/IOSLauncher/Info.plist",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/Contents.json",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/Contents.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadAppIcon152x152.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadAppIcon152x152.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadAppIcon76x76.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadAppIcon76x76.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadProAppIcon167x167.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadProAppIcon167x167.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadSettingsIcon29x29.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadSettingsIcon29x29.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadSettingsIcon58x58.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadSettingsIcon58x58.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadSpotlightIcon40x40.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadSpotlightIcon40x40.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPadSpotlightIcon80x80.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPadSpotlightIcon80x80.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneAppIcon120x120.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneAppIcon120x120.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneAppIcon180x180.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneAppIcon180x180.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneSettingsIcon58x58.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneSettingsIcon58x58.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneSettingsIcon87x87.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneSettingsIcon87x87.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneSpotlightIcon120x120.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneSpotlightIcon120x120.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/AppIcon.appiconset/iPhoneSpotlightIcon80x80.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/AppIcon.appiconset/iPhoneSpotlightIcon80x80.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/Contents.json",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/Contents.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage1024x768.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage1024x768.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage1536x2048.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage1536x2048.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage2048x1536.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage2048x1536.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage768x1024.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPadLaunchImage768x1024.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPhoneLaunchImage640x1136.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPhoneLaunchImage640x1136.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/iOS/Images.xcassets/LaunchImage.launchimage/iPhoneLaunchImage640x960.png",
+            "outfile": "Resources/IOSLauncher/Images.xcassets/LaunchImage.launchimage/iPhoneLaunchImage640x960.png",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

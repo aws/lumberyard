@@ -17,7 +17,6 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <Metastream_Traits_Platform.h>
 
 #include "MetastreamGem.h"
@@ -102,10 +101,6 @@ namespace Metastream
 
         switch (event)
         {
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            RegisterExternalFlowNodes();
-            break;
-
         case ESYSTEM_EVENT_GAME_POST_INIT:
             // All other Gems will exist at this point, for a full list of civet options, see https://github.com/civetweb/civetweb/blob/master/docs/UserManual.md
             // 
@@ -324,6 +319,11 @@ namespace Metastream
 
     bool MetastreamGem::StartHTTPServer()
     {
+        if (!m_serverOptionsCVar)
+        {
+            return false;
+        }
+
 #if AZ_TRAIT_METASTREAM_USE_CIVET
         // Start server if it is not started
         if (!m_server.get())
@@ -360,6 +360,7 @@ namespace Metastream
             m_server->Stop();
             m_server.reset();
 
+            ClearCache();
             m_serverEnabled = 0;
         }
     }
@@ -373,6 +374,41 @@ namespace Metastream
     {
         EBUS_EVENT(Metastream::MetastreamRequestBus, StopHTTPServer);
     }
+
+    // Unit test methods to get at m_cache and status
+    bool Metastream::MetastreamGem::IsServerEnabled() const
+    {
+        return (m_serverEnabled == 1);
+    }
+
+    std::string Metastream::MetastreamGem::GetDatabasesJSON() const
+    {
+        if (m_cache)
+        {
+            return m_cache->GetDatabasesJSON();
+        }
+        return "";
+    }
+
+    std::string Metastream::MetastreamGem::GetTableKeysJSON(const std::string& tableName) const
+    {
+        if (m_cache)
+        {
+            return m_cache->GetTableKeysJSON(tableName);
+        }
+        return "";
+    }
+
+    bool Metastream::MetastreamGem::ClearCache()
+    {
+        if (m_cache)
+        {
+            m_cache->ClearCache();
+            return true;
+        }
+        return false;
+    }
+
 }
 
 AZ_DECLARE_MODULE_CLASS(Metastream_c02d7efe05134983b5699d9ee7594c3a, Metastream::MetastreamGem)

@@ -35,7 +35,7 @@ namespace Vegetation
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~SystemConfigurationRequests() AZ_DEFAULT_METHOD;
+        virtual ~SystemConfigurationRequests() = default;
 
         // update the internal configuration
         virtual void UpdateSystemConfig(const AZ::ComponentConfig* config) = 0;

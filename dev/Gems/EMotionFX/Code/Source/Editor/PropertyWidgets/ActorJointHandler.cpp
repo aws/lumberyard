@@ -118,7 +118,14 @@ namespace EMotionFX
     void ActorJointPicker::UpdateInterface()
     {
         const size_t numJoints = m_weightedJointNames.size();
-        m_label->setText(QString("%1 joint%2 selected").arg(QString::number(numJoints), numJoints == 1 ? QString() : "s"));
+        if (numJoints == 1)
+        {
+            m_label->setText(QString::fromUtf8(m_weightedJointNames[0].first.c_str()));
+        }
+        else
+        {
+            m_label->setText(QString("%1 joint%2 selected").arg(QString::number(numJoints), numJoints == 1 ? QString() : "s"));
+        }
         m_resetButton->setVisible(numJoints > 0);
 
         // Build and set the tooltip containing all joints.

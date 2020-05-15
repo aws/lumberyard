@@ -23,7 +23,7 @@
 #include "Util/UIEnumerations.h"
 #include "IResourceSelectorHost.h"
 #include "MathConversion.h"
-
+#include "QtViewPaneManager.h"
 
 AnimationPropertyCtrl::AnimationPropertyCtrl(QWidget *pParent)
     : QWidget(pParent),
@@ -112,7 +112,7 @@ void AnimationPropertyCtrl::OnBrowseClicked()
     // If not, just open the whole character editor so that the user can select a character.
     else
     {
-        GetIEditor()->ExecuteCommand("general.open_pane 'Character Editor'");
+        QtViewPaneManager::instance()->OpenPane("Character Editor");
     }
 }
 

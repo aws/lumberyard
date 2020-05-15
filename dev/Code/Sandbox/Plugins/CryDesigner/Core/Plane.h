@@ -303,7 +303,7 @@ struct SBrushPlane
 
         if (vout)
         {
-            * vout = p0 + t * dir;
+            * vout = p0 + aznumeric_cast<float>(t) * dir;
         }
 
         return true;
@@ -466,14 +466,14 @@ private:
         Vec3_tpl<T> u, v;
         if (std::abs(normal.x) >= std::abs(normal.y))
         {
-            T invLength = 1 / sqrtf(normal.x * normal.x + normal.z * normal.z);
+            T invLength = 1 / sqrtf(aznumeric_cast<float>(normal.x * normal.x + normal.z * normal.z));
             u.x = normal.z * invLength;
             u.y = 0;
             u.z = -normal.x * invLength;
         }
         else
         {
-            T invLength = 1 / sqrtf(normal.y * normal.y + normal.z * normal.z);
+            T invLength = 1 / sqrtf(aznumeric_cast<float>(normal.y * normal.y + normal.z * normal.z));
             u.x = 0;
             u.y = normal.z * invLength;
             u.z = -normal.y * invLength;
@@ -490,7 +490,7 @@ static SBrushPlane<float> ToFloatPlane(const BrushPlane& plane)
 {
     if (sizeof(BrushPlane) == sizeof(SBrushPlane<float>))
     {
-        return SBrushPlane<float>(plane.Normal(), plane.Distance());
+        return SBrushPlane<float>(plane.Normal(), aznumeric_cast<float>(plane.Distance()));
     }
     return SBrushPlane<float>(CD::ToVec3(plane.Normal()), CD::ToFloat(plane.Distance()));
 }

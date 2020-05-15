@@ -1,6 +1,5 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
     "additionalProperties": {
         "oneOf": [
             {
@@ -15,43 +14,82 @@
         ]
     },
     "definitions": {
-        "basicAuth": {
-            "required": [ "type" ],
-            "properties": {
-                "type": { "enum": [ "basicAuth" ] }
-            },
-            "additionalProperties": false
-        },
         "apiKey": {
-            "required": [ "type", "passAs", "keyname" ],
+            "additionalProperties": false,
             "properties": {
-                "type": { "enum": [ "apiKey" ] },
-                "passAs": { "enum": [ "header", "query" ] },
-                "keyname": { "type": "string" }
+                "keyname": {
+                    "type": "string"
+                },
+                "passAs": {
+                    "enum": [
+                        "header",
+                        "query"
+                    ]
+                },
+                "type": {
+                    "enum": [
+                        "apiKey"
+                    ]
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "type",
+                "passAs",
+                "keyname"
+            ]
+        },
+        "basicAuth": {
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "enum": [
+                        "basicAuth"
+                    ]
+                }
+            },
+            "required": [
+                "type"
+            ]
         },
         "oauth2": {
-            "type": "object",
-            "required": [ "type", "grantTypes" ],
+            "additionalProperties": false,
             "properties": {
-                "type": { "enum": [ "oauth2" ] },
-                "scopes": {
-                    "type": "array",
-                    "items": { "$ref": "#/definitions/oauth2Scope" }
+                "grantTypes": {
+                    "$ref": "oauth2GrantType.json#"
                 },
-                "grantTypes": { "$ref": "oauth2GrantType.json#" }
+                "scopes": {
+                    "items": {
+                        "$ref": "#/definitions/oauth2Scope"
+                    },
+                    "type": "array"
+                },
+                "type": {
+                    "enum": [
+                        "oauth2"
+                    ]
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "type",
+                "grantTypes"
+            ],
+            "type": "object"
         },
         "oauth2Scope": {
-            "type": "object",
-            "required": [ "scope" ],
+            "additionalProperties": false,
             "properties": {
-                "scope": { "type": "string" },
-                "description": { "type": "string" }
+                "description": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                }
             },
-            "additionalProperties": false
+            "required": [
+                "scope"
+            ],
+            "type": "object"
         }
-    }
+    },
+    "type": "object"
 }

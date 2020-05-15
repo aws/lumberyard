@@ -85,6 +85,11 @@
             "AzCore/Math/Random_Windows.h"
         ],
 
+        "Module/Internal/Platform/Mac":
+        [
+            "AzCore/Module/Internal/ModuleManagerSearchPathTool_Windows.cpp"
+        ],
+
         "Math/Internal/Platform/Windows":
         [
             "AzCore/Math/Internal/MathTypes_Windows.h",

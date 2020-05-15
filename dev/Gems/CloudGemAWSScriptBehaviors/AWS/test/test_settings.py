@@ -16,21 +16,19 @@ import pkgutil
 
 from .. import get_setting
 
+
 class TestSettings(unittest.TestCase):
 
     def test_returns_None_when_no_settings_module(self):
         actual = get_setting('TestLogicalName')
         self.assertIsNone(actual)
 
-
     def test_loads_settings_module(self):
-        
         settings = {
             'TestLogicalName': 'TestPhysicalName'
         }
 
         with mock.patch.object(pkgutil, 'find_loader') as mock_find_loader:
-
             mock_find_loader.return_value = mock.MagicMock()
             mock_find_loader.return_value.load_module = mock.MagicMock()
             mock_find_loader.return_value.load_module.return_value = mock.MagicMock()
@@ -41,6 +39,3 @@ class TestSettings(unittest.TestCase):
 
             mock_find_loader.assert_called_once_with('CloudCanvas.settings')
             mock_find_loader.return_value.load_module.called_once_with('CloudCanvas.settings')
-
-
-

@@ -1,32 +1,32 @@
 """This module is designed for community supported date conversion functions"""
-from pandas.compat import range, map
 import numpy as np
-import pandas._libs.lib as lib
+
+from pandas._libs.tslibs import parsing
 
 
 def parse_date_time(date_col, time_col):
     date_col = _maybe_cast(date_col)
     time_col = _maybe_cast(time_col)
-    return lib.try_parse_date_and_time(date_col, time_col)
+    return parsing.try_parse_date_and_time(date_col, time_col)
 
 
 def parse_date_fields(year_col, month_col, day_col):
     year_col = _maybe_cast(year_col)
     month_col = _maybe_cast(month_col)
     day_col = _maybe_cast(day_col)
-    return lib.try_parse_year_month_day(year_col, month_col, day_col)
+    return parsing.try_parse_year_month_day(year_col, month_col, day_col)
 
 
-def parse_all_fields(year_col, month_col, day_col, hour_col, minute_col,
-                     second_col):
+def parse_all_fields(year_col, month_col, day_col, hour_col, minute_col, second_col):
     year_col = _maybe_cast(year_col)
     month_col = _maybe_cast(month_col)
     day_col = _maybe_cast(day_col)
     hour_col = _maybe_cast(hour_col)
     minute_col = _maybe_cast(minute_col)
     second_col = _maybe_cast(second_col)
-    return lib.try_parse_datetime_components(year_col, month_col, day_col,
-                                             hour_col, minute_col, second_col)
+    return parsing.try_parse_datetime_components(
+        year_col, month_col, day_col, hour_col, minute_col, second_col
+    )
 
 
 def generic_parser(parse_func, *cols):
@@ -56,7 +56,9 @@ def _check_columns(cols):
 
     for i, n in enumerate(map(len, tail)):
         if n != N:
-            raise AssertionError('All columns must have the same length: {0}; '
-                                 'column {1} has length {2}'.format(N, i, n))
+            raise AssertionError(
+                f"All columns must have the same length: {N}; "
+                f"column {i} has length {n}"
+            )
 
     return N

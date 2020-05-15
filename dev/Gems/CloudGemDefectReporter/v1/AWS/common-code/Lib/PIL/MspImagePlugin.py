@@ -23,13 +23,11 @@
 #
 # See also: http://www.fileformat.info/format/mspaint/egff.htm
 
-from . import Image, ImageFile
-from ._binary import i16le as i16, o16le as o16, i8
-import struct
 import io
+import struct
 
-__version__ = "0.1"
-
+from . import Image, ImageFile
+from ._binary import i8, i16le as i16, o16le as o16
 
 #
 # read MSP files
@@ -42,6 +40,7 @@ def _accept(prefix):
 ##
 # Image plugin for Windows MSP images.  This plugin supports both
 # uncompressed (Windows 1.0).
+
 
 class MspImageFile(ImageFile.ImageFile):
 
@@ -58,17 +57,17 @@ class MspImageFile(ImageFile.ImageFile):
         # Header checksum
         checksum = 0
         for i in range(0, 32, 2):
-            checksum = checksum ^ i16(s[i:i+2])
+            checksum = checksum ^ i16(s[i : i + 2])
         if checksum != 0:
             raise SyntaxError("bad MSP checksum")
 
         self.mode = "1"
-        self.size = i16(s[4:]), i16(s[6:])
+        self._size = i16(s[4:]), i16(s[6:])
 
         if s[:4] == b"DanM":
-            self.tile = [("raw", (0, 0)+self.size, 32, ("1", 0, 1))]
+            self.tile = [("raw", (0, 0) + self.size, 32, ("1", 0, 1))]
         else:
-            self.tile = [("MSP", (0, 0)+self.size, 32, None)]
+            self.tile = [("MSP", (0, 0) + self.size, 32, None)]
 
 
 class MspDecoder(ImageFile.PyDecoder):
@@ -111,13 +110,14 @@ class MspDecoder(ImageFile.PyDecoder):
     def decode(self, buffer):
 
         img = io.BytesIO()
-        blank_line = bytearray((0xff,)*((self.state.xsize+7)//8))
+        blank_line = bytearray((0xFF,) * ((self.state.xsize + 7) // 8))
         try:
             self.fd.seek(32)
-            rowmap = struct.unpack_from("<%dH" % (self.state.ysize),
-                                        self.fd.read(self.state.ysize*2))
+            rowmap = struct.unpack_from(
+                "<%dH" % (self.state.ysize), self.fd.read(self.state.ysize * 2)
+            )
         except struct.error:
-            raise IOError("Truncated MSP file in row map")
+            raise OSError("Truncated MSP file in row map")
 
         for x, rowlen in enumerate(rowmap):
             try:
@@ -126,30 +126,31 @@ class MspDecoder(ImageFile.PyDecoder):
                     continue
                 row = self.fd.read(rowlen)
                 if len(row) != rowlen:
-                    raise IOError("Truncated MSP file, expected %d bytes on row %s",
-                                  (rowlen, x))
+                    raise OSError(
+                        "Truncated MSP file, expected %d bytes on row %s", (rowlen, x)
+                    )
                 idx = 0
                 while idx < rowlen:
                     runtype = i8(row[idx])
                     idx += 1
                     if runtype == 0:
-                        (runcount, runval) = struct.unpack("Bc", row[idx:idx+2])
+                        (runcount, runval) = struct.unpack_from("Bc", row, idx)
                         img.write(runval * runcount)
                         idx += 2
                     else:
                         runcount = runtype
-                        img.write(row[idx:idx+runcount])
+                        img.write(row[idx : idx + runcount])
                         idx += runcount
 
             except struct.error:
-                raise IOError("Corrupted MSP file in row %d" % x)
+                raise OSError("Corrupted MSP file in row %d" % x)
 
         self.set_as_raw(img.getvalue(), ("1", 0, 1))
 
         return 0, 0
 
 
-Image.register_decoder('MSP', MspDecoder)
+Image.register_decoder("MSP", MspDecoder)
 
 
 #
@@ -159,7 +160,7 @@ Image.register_decoder('MSP', MspDecoder)
 def _save(im, fp, filename):
 
     if im.mode != "1":
-        raise IOError("cannot write mode %s as MSP" % im.mode)
+        raise OSError("cannot write mode %s as MSP" % im.mode)
 
     # create MSP header
     header = [0] * 16
@@ -180,7 +181,7 @@ def _save(im, fp, filename):
         fp.write(o16(h))
 
     # image body
-    ImageFile._save(im, fp, [("raw", (0, 0)+im.size, 32, ("1", 0, 1))])
+    ImageFile._save(im, fp, [("raw", (0, 0) + im.size, 32, ("1", 0, 1))])
 
 
 #

@@ -20,6 +20,7 @@
 #include <EditorForceRegionComponent.h>
 #include <ShapeColliderComponent.h>
 #include <RigidBodyComponent.h>
+#include <RigidBodyStatic.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
@@ -379,4 +380,49 @@ namespace PhysXEditorTests
         // the second rigid body should not have entered the force region and so its X position should not have been affected
         EXPECT_NEAR(rigidBodyGameEntity2->GetTransform()->GetWorldTranslation().GetX(), box2Position.GetX(), 1e-3f);
     }
+
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithScaleSetToParentEntity_CorrectRuntimeScale)
+    {
+        // create an editor parent entity (empty, need transform component only)
+        EntityPtr editorParentEntity = CreateInactiveEditorEntity("ParentEntity");
+        editorParentEntity->Activate();
+
+        // set some scale to parent entity
+        const AZ::Vector3 parentScale(2.0f);
+        AZ::TransformBus::Event(editorParentEntity->GetId(),
+            &AZ::TransformInterface::SetLocalScale,
+            parentScale);
+
+        // create an editor child entity with a shape collider component and a box shape component
+        EntityPtr editorChildEntity = CreateInactiveEditorEntity("ChildEntity");
+        editorChildEntity->CreateComponent<PhysX::EditorShapeColliderComponent>();
+        editorChildEntity->CreateComponent<PhysX::EditorRigidBodyComponent>();
+        editorChildEntity->CreateComponent(LmbrCentral::EditorBoxShapeComponentTypeId);
+        editorChildEntity->Activate();
+
+        // set some dimensions to child entity box component
+        const AZ::Vector3 boxDimensions(2.0f, 3.0f, 4.0f);
+        LmbrCentral::BoxShapeComponentRequestsBus::Event(editorChildEntity->GetId(),
+            &LmbrCentral::BoxShapeComponentRequests::SetBoxDimensions,
+            boxDimensions);
+
+        // set one entity as parent of another
+        AZ::TransformBus::Event(editorChildEntity->GetId(),
+            &AZ::TransformBus::Events::SetParentRelative,
+            editorParentEntity->GetId());
+
+        // build child game entity (parent will be built implicitly)
+        EntityPtr gameChildEntity = CreateActiveGameEntityFromEditorEntity(editorChildEntity.get());
+
+        // since there was an editor rigid body component, the runtime entity should have a dynamic rigid body
+        const Physics::RigidBody* rigidBody =
+            gameChildEntity->FindComponent<PhysX::RigidBodyComponent>()->GetRigidBody();
+        
+        // the bounding box of the rigid body should reflect the dimensions of the box set above
+        // and parent entity scale
+        const AZ::Aabb aabb = rigidBody->GetAabb();
+        EXPECT_THAT(aabb.GetMax(), UnitTest::IsClose(0.5f * boxDimensions * parentScale));
+        EXPECT_THAT(aabb.GetMin(), UnitTest::IsClose(-0.5f * boxDimensions * parentScale));
+    }
+
 } // namespace PhysXEditorTests

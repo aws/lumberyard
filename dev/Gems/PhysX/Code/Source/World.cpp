@@ -26,10 +26,15 @@
 #include <PhysX/TriggerEventCallback.h>
 #include <AzFramework/Physics/CollisionNotificationBus.h>
 #include <AzFramework/Physics/TriggerBus.h>
+#include <PhysX/PhysXLocks.h>
 
 
 namespace PhysX
 {
+    /*static*/ thread_local AZStd::vector<physx::PxRaycastHit>   World::s_raycastBuffer;
+    /*static*/ thread_local AZStd::vector<physx::PxSweepHit>     World::s_sweepBuffer;
+    /*static*/ thread_local AZStd::vector<physx::PxOverlapHit>   World::s_overlapBuffer;
+
     // Helper function to convert AZ hit type to PhysX one.
     static physx::PxQueryHitType::Enum GetPxHitType(Physics::QueryHitType hitType)
     {
@@ -93,11 +98,10 @@ namespace PhysX
         : m_worldId(id)
         , m_maxDeltaTime(settings.m_maxTimeStep)
         , m_fixedDeltaTime(settings.m_fixedTimeStep)
+        , m_maxRaycastBufferSize(settings.m_raycastBufferSize)
+        , m_maxSweepBufferSize(settings.m_sweepBufferSize)
+        , m_maxOverlapBufferSize(settings.m_overlapBufferSize)
     {
-        m_raycastBuffer.resize(static_cast<size_t>(settings.m_raycastBufferSize));
-        m_sweepBuffer.resize(static_cast<size_t>(settings.m_sweepBufferSize));
-        m_overlapBuffer.resize(static_cast<size_t>(settings.m_overlapBufferSize));
-
         Physics::WorldRequestBus::Handler::BusConnect(id);
 
         physx::PxTolerancesScale tolerancesScale = physx::PxTolerancesScale();
@@ -152,6 +156,12 @@ namespace PhysX
             pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
             pvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
         }
+
+        World::s_raycastBuffer = {};
+        World::s_sweepBuffer   = {};
+        World::s_overlapBuffer = {};
+
+        Physics::SystemNotificationBus::Broadcast(&Physics::SystemNotificationBus::Events::OnWorldCreated, this);
     }
 
     World::~World()
@@ -178,6 +188,7 @@ namespace PhysX
 
         if (pxHit.faceIndex != 0xFFFFffff)
         {
+            PHYSX_SCENE_READ_LOCK(pxHit.actor->getScene());
             hit.m_material = Utils::GetUserData(pxHit.shape->getMaterialFromInternalFaceIndex(pxHit.faceIndex));
         }
         else
@@ -267,7 +278,11 @@ namespace PhysX
         
         // Raycast
         physx::PxRaycastBuffer castResult;
-        bool status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+        bool status = false;
+        {
+            PHYSX_SCENE_READ_LOCK(*m_world);
+            status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+        }
 
         // Convert to generic API
         Physics::RayCastHit hit;
@@ -290,14 +305,26 @@ namespace PhysX
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
         PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
+        //resize if needed
+        const AZ::u64 maxResults = AZ::GetMin(m_maxRaycastBufferSize, request.m_maxResults);
+        AZ_Warning("World", request.m_maxResults == maxResults, "Raycast request exceeded maximum set in PhysX Configuration. Max[%u] Requested[%u]", m_maxRaycastBufferSize, request.m_maxResults);
+        if (s_raycastBuffer.size() < maxResults)
+        {
+            s_raycastBuffer.resize(maxResults);
+        }
         // Raycast
-        physx::PxRaycastBuffer castResult(m_raycastBuffer.begin(), (physx::PxU32)m_raycastBuffer.size());
-        bool status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+        physx::PxRaycastBuffer castResult(s_raycastBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+        bool status = false;
+        {
+            PHYSX_SCENE_READ_LOCK(*m_world);
+            status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+        }
 
         // Convert to generic API
         AZStd::vector<Physics::RayCastHit> hits;
         if (status)
         {
+            PHYSX_SCENE_READ_LOCK(*m_world);
             if (castResult.hasBlock)
             {
                 hits.push_back(GetHitFromPxHit(castResult.block));
@@ -323,8 +350,6 @@ namespace PhysX
         PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, 
             GetBlockFilterCallback(request.m_filterCallback), physx::PxQueryHitType::eBLOCK);
 
-        // Buffer to store results in.
-        physx::PxSweepBuffer pxResult;
         physx::PxGeometryHolder pxGeometry;
         Utils::CreatePxGeometryFromConfig(*request.m_shapeConfiguration, pxGeometry);
 
@@ -334,7 +359,13 @@ namespace PhysX
             pxGeometry.any().getType() == physx::PxGeometryType::eCAPSULE ||
             pxGeometry.any().getType() == physx::PxGeometryType::eCONVEXMESH)
         {
-            bool status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+            // Buffer to store results in.
+            physx::PxSweepBuffer pxResult;
+            bool status = false;
+            {
+                PHYSX_SCENE_READ_LOCK(*m_world);
+                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+            }
             if (status)
             {
                 hit = GetHitFromPxHit(pxResult.block);
@@ -358,8 +389,6 @@ namespace PhysX
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
         PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
-        // Buffer to store results in.
-        physx::PxSweepBuffer pxResult(m_sweepBuffer.begin(), (physx::PxU32)m_sweepBuffer.size());
         physx::PxGeometryHolder pxGeometry;
         Utils::CreatePxGeometryFromConfig(*request.m_shapeConfiguration, pxGeometry);
 
@@ -369,7 +398,22 @@ namespace PhysX
             pxGeometry.any().getType() == physx::PxGeometryType::eCAPSULE ||
             pxGeometry.any().getType() == physx::PxGeometryType::eCONVEXMESH)
         {
-            bool status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+            //resize if needed
+            const AZ::u64 maxResults = AZ::GetMin(m_maxSweepBufferSize, request.m_maxResults);
+            AZ_Warning("World", request.m_maxResults == maxResults, "Shape cast request exceeded maximum set in PhysX Configuration. Max[%u] Requested[%u]", m_maxSweepBufferSize, request.m_maxResults);
+            if (s_sweepBuffer.size() < maxResults)
+            {
+                s_sweepBuffer.resize(maxResults);
+            }
+
+            // Buffer to store results
+            physx::PxSweepBuffer pxResult(s_sweepBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+
+            bool status = false;
+            {
+                PHYSX_SCENE_READ_LOCK(*m_world);
+                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+            }
             if (status)
             {
                 if (pxResult.hasBlock)
@@ -403,9 +447,20 @@ namespace PhysX
         const physx::PxQueryFilterData defaultFilterData(queryFlags);
         PhysXQueryFilterCallback filterCallback(request.m_collisionGroup, GetFilterCallbackFromOverlap(request.m_filterCallback), physx::PxQueryHitType::eTOUCH);
 
-        // Buffer to store results in.
-        physx::PxOverlapBuffer queryHits(m_overlapBuffer.begin(), (physx::PxU32)m_overlapBuffer.size());
-        bool status = m_world->overlap(pxGeometry.any(), pose, queryHits, defaultFilterData, &filterCallback);
+        //resize if needed
+        const AZ::u64 maxResults = AZ::GetMin(m_maxOverlapBufferSize, request.m_maxResults);
+        AZ_Warning("World", request.m_maxResults == maxResults, "Overlap request exceeded maximum set in PhysX Configuration. Max[%u] Requested[%u]", m_maxOverlapBufferSize, request.m_maxResults);
+        if (s_overlapBuffer.size() < maxResults)
+        {
+            s_overlapBuffer.resize(maxResults);
+        }
+        // Buffer to store results
+        physx::PxOverlapBuffer queryHits(s_overlapBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+        bool status = false;
+        {
+            PHYSX_SCENE_READ_LOCK(*m_world);
+            status = m_world->overlap(pxGeometry.any(), pose, queryHits, defaultFilterData, &filterCallback);
+        }
         AZStd::vector<Physics::OverlapHit> hits;
         if (status)
         {
@@ -493,35 +548,113 @@ namespace PhysX
         m_simFunc = func;
     }
 
+    void World::StartSimulation(float deltaTime)
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "World::StartSimulation");
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "OnPrePhysicsUpdate");
+            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPrePhysicsUpdate, deltaTime);
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::Collide");
+
+            PHYSX_SCENE_WRITE_LOCK(*m_world);
+
+            // Performs collision detection for the scene
+            m_world->collide(deltaTime);
+        }
+
+        m_currentDeltaTime = deltaTime;
+    }
+
+    void World::FinishSimulation()
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "World::FinishSimulation");
+
+        bool activeActorsEnabled = false;
+
+        {
+            PHYSX_SCENE_WRITE_LOCK(*m_world);
+
+            activeActorsEnabled = m_world->getFlags() & physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS;
+
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::FetchCollision");
+
+                // Wait for the collision phase to finish.
+                m_world->fetchCollision(true);
+            }
+
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::Advance");
+
+                // Performs dynamics phase of the simulation pipeline.
+                m_world->advance();
+            }
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::CheckResults");
+
+            // Wait for the simulation to complete.
+            // In the multithreaded environment we need to make sure we don't lock the scene for write here.
+            // This is because contact modification callbacks can be issued from the job threads and cause deadlock
+            // due to the callback code locking the scene.
+            // https://devtalk.nvidia.com/default/topic/1024408/pxcontactmodifycallback-and-pxscene-locking/
+            m_world->checkResults(true);
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::FetchResults");
+            PHYSX_SCENE_WRITE_LOCK(*m_world);
+
+            // Swap the buffers, invoke callbacks, build the list of active actors.
+            m_world->fetchResults(true);
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::ExecuteCollisionNotifications");
+            Physics::CollisionNotificationBus::ExecuteQueuedEvents();
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::ExecuteTriggerNotifications");
+            Physics::TriggerNotificationBus::ExecuteQueuedEvents();
+        }
+
+        if (activeActorsEnabled && m_simFunc)
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::ActiveActors");
+
+            PHYSX_SCENE_READ_LOCK(*m_world);
+
+            physx::PxU32 numActiveActors = 0;
+            physx::PxActor** activeActors = m_world->getActiveActors(numActiveActors);
+
+            for (physx::PxU32 i = 0; i < numActiveActors; ++i)
+            {
+                m_simFunc(activeActors[i]);
+            }
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "PhysX::OnPostPhysicsUpdate");
+            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPostPhysicsUpdate, m_currentDeltaTime);
+        }
+
+        m_deferredDeletions.clear();
+    }
+
     void World::Update(float deltaTime)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
 
-        auto simulateFetch = [this](float simDeltaTime, std::function<void(void * activeAct)> activeActorsLambda)
+        auto simulateFetch = [this](float simDeltaTime)
         {
-            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPrePhysicsUpdate, simDeltaTime);
-            {
-                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "World::SimulateFetchResults");
-                m_world->simulate(simDeltaTime);
-                m_world->fetchResults(true);
-            }
-            Physics::CollisionNotificationBus::ExecuteQueuedEvents();
-            Physics::TriggerNotificationBus::ExecuteQueuedEvents();
-
-            if (m_world->getFlags() & physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS)
-            {
-                physx::PxU32 numActiveActors = 0;
-                physx::PxActor** activeActors = m_world->getActiveActors(numActiveActors);
-
-                for (physx::PxU32 i = 0; i < numActiveActors; ++i)
-                {
-                    if (activeActorsLambda)
-                    {
-                        activeActorsLambda(activeActors[i]);
-                    }
-                }
-            }
-            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPostPhysicsUpdate, simDeltaTime);
+            StartSimulation(simDeltaTime);
+            FinishSimulation();
         };
 
         deltaTime = AZ::GetClamp(deltaTime, 0.0f, m_maxDeltaTime);
@@ -533,17 +666,16 @@ namespace PhysX
             while (m_accumulatedTime >= m_fixedDeltaTime)
             {
 
-                simulateFetch(m_fixedDeltaTime, m_simFunc);
+                simulateFetch(m_fixedDeltaTime);
                 m_accumulatedTime -= m_fixedDeltaTime;
 
             }
         }
         else
         {
-            simulateFetch(deltaTime, m_simFunc);
+            simulateFetch(deltaTime);
         }
 
-        m_deferredDeletions.clear();
     }
 
     AZ::Crc32 World::GetNativeType() const
@@ -558,6 +690,7 @@ namespace PhysX
 
     void World::SetEventHandler(Physics::WorldEventHandler* eventHandler)
     {
+        PHYSX_SCENE_WRITE_LOCK(*m_world);
          m_eventHandler = eventHandler;
          if (m_eventHandler == nullptr && m_triggerCallback == nullptr)
          {
@@ -571,6 +704,7 @@ namespace PhysX
 
     void World::SetTriggerEventCallback(Physics::ITriggerEventCallback* callback)
     {
+        PHYSX_SCENE_WRITE_LOCK(*m_world);
         m_triggerCallback = static_cast<IPhysxTriggerEventCallback*>(callback);
         if (m_triggerCallback == nullptr && m_eventHandler == nullptr )
         {
@@ -780,6 +914,7 @@ namespace PhysX
     {
         if (m_world)
         {
+            PHYSX_SCENE_READ_LOCK(*m_world);
             return PxMathConvert(m_world->getGravity());
         }
         return AZ::Vector3::CreateZero();
@@ -789,8 +924,20 @@ namespace PhysX
     {
         if (m_world)
         {
+            PHYSX_SCENE_WRITE_LOCK(*m_world);
             m_world->setGravity(PxMathConvert(gravity));
         }
+    }
+
+    void World::SetMaxDeltaTime(float maxDeltaTime)
+    {
+        m_maxDeltaTime = maxDeltaTime;
+    }
+
+
+    void World::SetFixedDeltaTime(float fixedDeltaTime)
+    {
+        m_fixedDeltaTime = fixedDeltaTime;
     }
 
     void World::DeferDelete(AZStd::unique_ptr<Physics::WorldBody> worldBody)

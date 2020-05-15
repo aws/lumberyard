@@ -38,7 +38,8 @@ namespace AzToolsFramework
     enum SliceEntityRestoreType
     {
         Deleted,
-        Detached
+        Detached,
+        Added
     };
 
     /**
@@ -95,6 +96,9 @@ namespace AzToolsFramework
         /// Detaches all entities from input instances and adds them to the root slice as loose entities.
         virtual void DetachSliceInstances(const AZ::SliceComponent::SliceInstanceAddressSet& instances) = 0;
 
+        /// Detaches the supplied subslices from their owning slice instance.
+        virtual void DetachSubsliceInstances(const AZ::SliceComponent::SliceInstanceEntityIdRemapList& subsliceRootList) = 0;
+
         /// Resets any slice data overrides for the specified entity
         virtual void ResetEntitiesToSliceDefaults(EntityIdList entities) = 0;
 
@@ -127,6 +131,13 @@ namespace AzToolsFramework
         /// \return address of new slice instance. A null address will be returned if the source instance address is invalid.
         virtual AZ::SliceComponent::SliceInstanceAddress CloneEditorSliceInstance(AZ::SliceComponent::SliceInstanceAddress sourceInstance, 
                                                                                   AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap) = 0;
+
+        /// Moves existing entities in the EditorEntityContext into a new SliceInstance based off of the provided SliceAsset
+        /// \param sliceAsset Asset of the slice that the entities will be promoted into
+        /// \param liveToAssetMap A mapping of the EntityIDs found in the provided SliceAsset and existing "live" EntityIDs found in the EditorEntityContext
+        /// \return A SliceInstanceAddress pointing to the new SliceInstance that wraps the entities provided in the liveToAssetMap
+        ///    Can return an empty invalid SliceInstanceAddress if an error occurs during the process
+        virtual AZ::SliceComponent::SliceInstanceAddress PromoteEditorEntitiesIntoSlice(const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, const AZ::SliceComponent::EntityIdToEntityIdMap& liveToAssetMap) = 0;
 
         /// Instantiates a editor slice.
         virtual AzFramework::SliceInstantiationTicket InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform) = 0;
@@ -184,24 +195,6 @@ namespace AzToolsFramework
         /// Returns an array of the required editor component types added by AddRequiredComponents()
         virtual const AZ::ComponentTypeList& GetRequiredComponentTypes() = 0;
 
-        /// Editor functionality to replace a set of entities with a new instance of a new slice asset.
-        /// This is a deferred operation since the asset may not yet have been processed (i.e. new asset).
-        /// Once the asset has been created, it will be loaded and instantiated.
-        /// \param targetPath path to the slice asset to be instanced in-place over the specified entities.
-        /// \param selectedToAssetMap relates selected (live) entity Ids to Ids in the slice asset for post-replace Id reference patching.
-        /// \param entitiesToReplace contains entity Ids to be replaced.
-        /// \param parentAfterReplacement Entity that the slice should be a child of upon replacement (If this is invalid, then the slice is free standing)
-        /// \param offsetAfterReplacement offset from the parentAfterReplacement that the slice root must be moved to post replacement
-        /// \param rotationAfterReplacement rotation from the parentAfterReplacement that the slice root must be rotated to post replacement
-        /// \param rootAutoCreated true if the root was auto-created for the user
-        virtual void QueueSliceReplacement(const char* targetPath, 
-            const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
-            const AZStd::unordered_set<AZ::EntityId>& entitiesToReplace,
-            const AZ::EntityId& parentAfterReplacement,
-            const AZ::Vector3& offsetAfterReplacement,
-            const AZ::Quaternion& rotationAfterReplacement,
-            bool rootAutoCreated) = 0;
-
         /// Maps an editor Id to a runtime entity Id. Relevant only during in-editor simulation.
         /// \param Id of editor entity
         /// \param destination parameter for runtime entity Id
@@ -245,9 +238,9 @@ namespace AzToolsFramework
         //! Fired when an Editor entity is deleted
         virtual void OnEditorEntityDeleted(const AZ::EntityId& /*entityId*/) {}
 
-        // When a slice is created , the editor entities are replaced by an instance of the slice, this notification
-        // sends a map from the old Entity id's to the new Entity id's
-        virtual void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& /*replacedEntitiesMap*/) {}
+        // When a slice is created, the editor entities are moved into the first instance of the slice, this notification
+        // sends a list of the promoted entities
+        virtual void OnEditorEntitiesPromotedToSlicedEntities(const AzToolsFramework::EntityIdList& /*promotedEntities*/) {}
 
         //Fired when an entity is duplicated. newEntity is the new duplicate of oldEntity
         virtual void OnEditorEntityDuplicated(const AZ::EntityId& /*oldEntity*/, const AZ::EntityId& /*newEntity*/) {}
@@ -276,6 +269,16 @@ namespace AzToolsFramework
 
         //! Fired when the entities needs to be focused in Entity Outliner
         virtual void OnFocusInEntityOutliner(const EntityIdList& /*entityIdList*/) {}
+
+        //! Fired before the EditorEntityContext exports the root level slice to the game stream
+        virtual void OnSaveStreamForGameBegin(AZ::IO::GenericStream& /*gameStream*/, AZ::DataStream::StreamType /*streamType*/, AZStd::vector<AZStd::unique_ptr<AZ::Entity>>& /*levelEntities*/) {}
+
+        //! Fired after the EditorEntityContext exports the root level slice to the game stream
+        virtual void OnSaveStreamForGameSuccess(AZ::IO::GenericStream& /*gameStream*/) {}
+
+        //! Fired after the EditorEntityContext fails to export the root level slice to the game stream
+        virtual void OnSaveStreamForGameFailure(AZStd::string_view /*failureString*/) {}
+
     };
 
     using EditorEntityContextNotificationBus = AZ::EBus<EditorEntityContextNotification>;

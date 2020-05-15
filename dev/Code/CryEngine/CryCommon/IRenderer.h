@@ -408,6 +408,7 @@ enum PublicRenderPrimitiveType
 #define R_GL_RENDERER 6
 #define R_METAL_RENDERER 7
 #define R_DX12_RENDERER 8
+#define R_OTHER_RENDERER 9
 
 //////////////////////////////////////////////////////////////////////
 // Render features
@@ -901,6 +902,7 @@ enum ERenderType
     eRT_Provo,
     eRT_OpenGL,
     eRT_Metal,
+    eRT_Other,
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -1095,6 +1097,11 @@ namespace AZ {
     namespace Vertex {
         class Format;
     }
+    namespace VideoRenderer
+    {
+        struct IVideoRenderer;
+        struct DrawArguments;
+    }
 }
 enum eRenderPrimitiveType : int8;
 enum RenderIndexType : int;
@@ -1270,7 +1277,7 @@ struct IRenderer
 
     // Summary:
     //  Changes viewport size.
-    virtual void  ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false) = 0;
+    virtual void  ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false, float scaleWidth = 1.0f, float scaleHeight = 1.0f) = 0;
 
     // Summary:
     //  Saves source data to a Tga file.
@@ -2061,6 +2068,8 @@ struct IRenderer
 #if !defined(_RELEASE)
     //Get draw call info for frame
     virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMesh(bool mainThread = true) = 0;
+    virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMeshPreviousFrame(bool mainThread = true) = 0;
+    virtual RNDrawcallsMapNode& GetDrawCallsInfoPerNodePreviousFrame(bool mainThread = true) = 0;
     virtual int GetDrawCallsPerNode(IRenderNode* pRenderNode) = 0;
     virtual void ForceRemoveNodeFromDrawCallsMap(IRenderNode* pNode) = 0;
 #endif
@@ -2190,7 +2199,7 @@ struct IRenderer
     virtual void ClearShaderItem(SShaderItem* pShaderItem) = 0;
     virtual void UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
     virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
-    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial) = 0;
+    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, IMaterial* pMaterial) = 0;
 
     // Summary:
     //  Determine if a switch to stereo mode will occur at the start of the next frame
@@ -2401,6 +2410,11 @@ struct IRenderer
     virtual void BeginProfilerSection(const char* name, uint32 eProfileLabelFlags = 0) = 0;
     virtual void EndProfilerSection(const char* name) = 0;
     virtual void AddProfilerLabel(const char* name) = 0;
+
+    // Video Renderer interface
+    virtual void InitializeVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer) = 0;
+    virtual void CleanupVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer) = 0;
+    virtual void DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments) = 0;
 
 private:
     // use private for EF_Query to prevent client code to submit arbitrary combinations of output data/size

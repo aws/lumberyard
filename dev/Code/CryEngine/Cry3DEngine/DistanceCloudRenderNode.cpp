@@ -16,7 +16,6 @@
 #include "VisAreas.h"
 #include "ObjMan.h"
 #include "MatMan.h"
-#include "terrain.h"
 #include "Environment/OceanEnvironmentBus.h"
 
 CDistanceCloudRenderNode::CDistanceCloudRenderNode()

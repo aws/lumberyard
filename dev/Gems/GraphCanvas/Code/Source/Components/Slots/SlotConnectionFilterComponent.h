@@ -52,7 +52,7 @@ namespace GraphCanvas
 
         // ConnectionFilterRequestBus
         void AddFilter(ConnectionFilter* slotFilter) override;
-        bool CanConnectWith(const Endpoint& endpoint) const override;
+        bool CanConnectWith(const Endpoint& endpoint, const ConnectionMoveType& moveType) const override;
         ////
 
     private:

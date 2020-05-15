@@ -49,6 +49,13 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelAxis2D::SimulateRawInput2D(float rawValueX, float rawValueY)
+    {
+        const AZ::Vector2 rawValues(rawValueX, rawValueY);
+        ProcessRawInputEvent(rawValues);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelAxis2D::ProcessRawInputEvent(const AZ::Vector2& rawValues,
                                                   const AZ::Vector2* rawValuesPreDeadZone) // = nullptr
     {

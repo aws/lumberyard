@@ -58,5 +58,5 @@ def build(bld):
         linux_linkflags           = ['-stdlib=libstdc++'],
 
         # Testing
-        win_test_all_file_list    = 'resourcecompilerscene_tests.waf_files',
+        test_all_file_list    = 'resourcecompilerscene_tests.waf_files',
     )

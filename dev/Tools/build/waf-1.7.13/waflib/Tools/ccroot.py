@@ -25,10 +25,10 @@ USELIB_VARS = Utils.defaultdict(set)
 Mapping for features to :py:class:`waflib.ConfigSet.ConfigSet` variables. See :py:func:`waflib.Tools.ccroot.propagate_uselib_vars`.
 """
 
-USELIB_VARS['c']        = set(['INCLUDES', 'FRAMEWORKPATH', 'DEFINES', 'CPPFLAGS', 'CCDEPS', 'CFLAGS', 'ARCH'])
-USELIB_VARS['cxx']      = set(['INCLUDES', 'FRAMEWORKPATH', 'DEFINES', 'CPPFLAGS', 'CXXDEPS', 'CXXFLAGS', 'ARCH'])
-USELIB_VARS['d']        = set(['INCLUDES', 'DFLAGS'])
-USELIB_VARS['includes'] = set(['INCLUDES', 'FRAMEWORKPATH', 'ARCH'])
+USELIB_VARS['c']        = set(['INCLUDES', 'SYSTEM_INCLUDES', 'FRAMEWORKPATH', 'DEFINES', 'CPPFLAGS', 'CCDEPS', 'CFLAGS', 'ARCH'])
+USELIB_VARS['cxx']      = set(['INCLUDES', 'SYSTEM_INCLUDES', 'FRAMEWORKPATH', 'DEFINES', 'CPPFLAGS', 'CXXDEPS', 'CXXFLAGS', 'ARCH'])
+USELIB_VARS['d']        = set(['INCLUDES', 'SYSTEM_INCLUDES', 'DFLAGS'])
+USELIB_VARS['includes'] = set(['INCLUDES', 'SYSTEM_INCLUDES', 'FRAMEWORKPATH', 'ARCH'])
 
 USELIB_VARS['cprogram'] = USELIB_VARS['cxxprogram'] = set(['LIB', 'STLIB', 'LIBPATH', 'STLIBPATH', 'LINKFLAGS', 'RPATH', 'LINKDEPS', 'FRAMEWORK', 'FRAMEWORKPATH', 'ARCH'])
 USELIB_VARS['cshlib']   = USELIB_VARS['cxxshlib']   = set(['LIB', 'STLIB', 'LIBPATH', 'STLIBPATH', 'LINKFLAGS', 'RPATH', 'LINKDEPS', 'FRAMEWORK', 'FRAMEWORKPATH', 'ARCH'])
@@ -139,6 +139,27 @@ def apply_incpaths(self):
 
 	self.includes_nodes = unique_lst
 	self.env['INCPATHS'] = [x.abspath() for x in unique_lst]
+
+@feature('c', 'cxx', 'd', 'asm', 'fc', 'includes')
+@before_method('apply_incpaths')
+def apply_system_incpaths(self):
+	"""
+	Processes 3rdParty system_include paths values and adds to to a SYSTEM_INCPATHS value
+	System includes will use the -isystem switch for clang and /external:I switch for msvc
+	This allows compilers warnings to be controlled separately from project source files
+	"""
+
+	lst = self.to_incnodes(self.to_list(getattr(self, 'system_includes', [])) + self.env['SYSTEM_INCLUDES'])
+	abspath_set = set()
+	unique_lst = []
+	for node in lst:
+		abs_path = node.abspath()
+		if abs_path not in abspath_set:
+			abspath_set.add(abs_path)
+			unique_lst.append(node)
+
+	self.includes_nodes = unique_lst
+	self.env['SYSTEM_INCPATHS'] = [x.abspath() for x in unique_lst]
 
 class link_task(Task.Task):
 	"""
@@ -312,6 +333,7 @@ def process_use(self):
 	use_prec = self.tmp_use_prec = {}
 	self.uselib = self.to_list(getattr(self, 'uselib', []))
 	self.includes = self.to_list(getattr(self, 'includes', []))
+	self.system_includes = self.to_list(getattr(self, 'system_includes', []))
 	names = self.to_list(getattr(self, 'use', []))
 
 	for x in names:
@@ -325,7 +347,7 @@ def process_use(self):
 	out = []
 	tmp = []
 	for x in self.tmp_use_seen:
-		for k in use_prec.values():
+		for k in list(use_prec.values()):
 			if x in k:
 				break
 		else:
@@ -372,7 +394,7 @@ def process_use(self):
 					
 					self.env.append_value(var, [libname[libname.rfind(os.sep) + 1:]])
 					self.link_task.dep_nodes.extend(y.link_task.outputs)
-					tmp_path = y.link_task.outputs[0].parent.path_from(self.bld.bldnode)
+					tmp_path = y.link_task.outputs[0].parent.abspath()
 					self.env.append_unique(var + 'PATH', [tmp_path])
 				else:
 					raise Errors.WafError("Unable to determine link file for tg '{}'".format(x))

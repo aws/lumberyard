@@ -23,7 +23,6 @@
 #include "LayoutConfigDialog.h"
 #include "TopRendererWnd.h"
 
-#include "Util/BoostPythonHelpers.h"
 #include "UserMessageDefines.h"
 
 #include "MainWindow.h"
@@ -281,6 +280,12 @@ void CLayoutViewPane::ResizeViewport(int width, int height)
     // the one we need to grow/shrink proportional to.
     const QSize deltaSize = requestedSize - mainWidgetSize;
 
+    // Do nothing if the new size is the same as the old size.
+    if (deltaSize == QSize(0, 0))
+    {
+        return;
+    }
+
     MainWindow* mainWindow = MainWindow::instance();
 
     // We need to adjust the main window size to make it larger/smaller as appropriate
@@ -443,7 +448,15 @@ void CLayoutViewPane::ShowTitleMenu()
     }
     action->setChecked(IsFullscreen());
 
-    action = root.addAction(tr("Configure Layout..."));
+    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
+    {
+        action = root.addAction(tr("Configure Layout... (Disabled when other is active)"));
+        action->setDisabled(true);
+    }
+    else
+    {
+        action = root.addAction(tr("Configure Layout..."));
+    }
 
     // NOTE: this must be a QueuedConnection, so that it executes after the menu is deleted.
     // Changing the layout can cause the current "this" pointer to be deleted
@@ -545,13 +558,7 @@ namespace
         }
     }
 
-    boost::python::tuple PyLegacyGetViewPortSize()
-    {
-        AZ::Vector2 viewportSize = PyGetViewPortSize();
-        return boost::python::make_tuple(static_cast<int>(viewportSize.GetX()), static_cast<int>(viewportSize.GetY()));
-    }
-
-    static void PySetViewPortSize(int width, int height)
+    void PySetViewPortSize(int width, int height)
     {
         CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
         if (viewPane)
@@ -575,7 +582,6 @@ namespace
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PyBindViewport(const char* viewportName)
     {
         CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
@@ -601,7 +607,7 @@ namespace
         }
     }
 
-    const char *PyGetViewportExpansionPolicy()
+    const char* PyGetViewportExpansionPolicy()
     {
         CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
         if (viewPane)
@@ -637,28 +643,10 @@ namespace AzToolsFramework
             addLegacyGeneral(behaviorContext->Method("update_viewport", PyUpdateViewPort, nullptr, "Update all visible SDK viewports."));
             addLegacyGeneral(behaviorContext->Method("resize_viewport", PyResizeViewport, nullptr, "Resizes the viewport resolution to a given width & height."));
             addLegacyGeneral(behaviorContext->Method("bind_viewport", PyBindViewport, nullptr, "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'."));
-
+            addLegacyGeneral(behaviorContext->Method("get_viewport_expansion_policy", PyGetViewportExpansionPolicy, nullptr, "Returns whether viewports are auto-resized with the main window ('AutoExpand') or if they remain a fixed size ('FixedSize')."));
+            addLegacyGeneral(behaviorContext->Method("set_viewport_expansion_policy", PySetViewportExpansionPolicy, nullptr, "Sets whether viewports are auto-resized with the main window ('AutoExpand') or if they remain a fixed size ('FixedSize')."));
         }
     }
 }
 
-REGISTER_PYTHON_COMMAND(PyLegacyGetViewPortSize, general, get_viewport_size, "Get the width and height of the active viewport.");
-REGISTER_PYTHON_COMMAND(PySetViewPortSize, general, set_viewport_size, "Set the width and height of the active viewport.");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyUpdateViewPort, general, update_viewport,
-    "Update all visible SDK viewports.",
-    "general.update_viewport()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyResizeViewport, general, resize_viewport,
-    "Resizes the viewport resolution to a given width & height.",
-    "general.resize_viewport(int width, int height)");
-#ifdef FEATURE_ORTHOGRAPHIC_VIEW
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyBindViewport, general, bind_viewport,
-    "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'.",
-    "general.bind_viewport(str viewportName)");
-#endif
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetViewportExpansionPolicy, general, get_viewport_expansion_policy,
-    "Returns whether viewports are auto-resized with the main window ('AutoResize') or if they remain a fixed size ('FixedSize').", 
-    "[str] general.get_viewport_expansion_policy()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetViewportExpansionPolicy, general, set_viewport_expansion_policy,
-    "Sets whether viewports are auto-resized with the main window ('AutoResize') or if they remain a fixed size ('FixedSize').",
-    "general.set_viewport_expansion_policy(str policy)");
 #include <ViewPane.moc>

@@ -352,7 +352,7 @@ void ScriptContextDebug::EnumRegisteredEBuses(EnumEBus enumEBus, EnumEBusSender 
 
         enumEBus(ebus->m_name, canBroadcast, canQueue, hasHandler, userData);
 
-        for (auto const eventSender : ebus->m_events)
+        for (const auto& eventSender : ebus->m_events)
         {
             if (eventSender.second.m_event)
             {

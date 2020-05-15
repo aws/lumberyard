@@ -28,6 +28,7 @@
 #include <AzCore/NativeUI/NativeUISystemComponent.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Module/ModuleManagerBus.h>
+#include <AzCore/Interface/Interface.h>
 
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
@@ -58,6 +59,8 @@
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
+#include <AzCore/Console/Console.h>
+#include <AzFramework/Viewport/ViewportBus.h>
 #include <GridMate/Memory.h>
 #include <AzCore/std/string/tokenize.h>
 
@@ -164,7 +167,6 @@ namespace AzFramework
         m_assetRoot[0] = '\0';
         m_engineRoot[0] = '\0';
         
-
         if ((argc) && (argv))
         {
             m_argC = argc;
@@ -172,17 +174,25 @@ namespace AzFramework
         }
         else
         {
-            // use a "valid" value here.  This is becuase Qt and potentially other third party libraries require
+            // use a "valid" value here.  This is because Qt and potentially other third party libraries require
             // that ArgC be 'at least 1' and that (*argV)[0] be a valid pointer to a real null terminated string.
             m_argC = &ApplicationInternal::s_argCUninitialized;
             m_argV = &ApplicationInternal::s_argVUninitialized;
+        }
+
+        // Az Console initialization..
+        // note that tests destroy and construct the application over and over, which is not a desirable pattern
+        // so we allow the console to construct once and skip destruction / construction on consecutive runs
+        if (AZ::Interface<AZ::IConsole>::Get() == nullptr)
+        {
+            new AZ::Console;
+            AZ::Interface<AZ::IConsole>::Get()->LinkDeferredFunctors(AZ::ConsoleFunctorBase::GetDeferredHead());
         }
 
         ApplicationRequests::Bus::Handler::BusConnect();
         AZ::UserSettingsFileLocatorBus::Handler::BusConnect();
         NetSystemRequestBus::Handler::BusConnect();
     }
-
 
     int* Application::GetArgC() const
     {
@@ -271,12 +281,25 @@ namespace AzFramework
         if (descriptorFound)
         {
             // Pass applicationDescriptorFile instead of m_configFilePath because Create() expects AppRoot-relative path.
-            systemEntity = Create(applicationDescriptorFile, startupParameters);
+            systemEntity = Create(applicationDescriptorFile, startupParameters); // NOTE This creates the AZ system allocator
         }
         else
         {
             systemEntity = Create(Descriptor(), startupParameters);
         }
+
+        // Execute any command-line arguments passed to the application now that our allocators are set up
+        {
+            AZStd::string commandLineJoined;
+            for (int32_t iter = 0; iter < *m_argC; ++iter)
+            {
+                commandLineJoined += (*m_argV)[iter];
+                commandLineJoined += " ";
+            }
+
+            AZ::Interface<AZ::IConsole>::Get()->ExecuteCommandLine(commandLineJoined.c_str());
+        }
+
         StartCommon(systemEntity);
     }
 
@@ -432,12 +455,6 @@ namespace AzFramework
              */
             AZ::ReflectionEnvironment::GetReflectionManager()->RemoveReflectContext<NetworkContext>();
 
-            if (AZ::IO::FileIOBase::GetInstance() == m_defaultFileIO.get())
-            {
-                AZ::IO::FileIOBase::SetInstance(nullptr);
-            }
-            m_defaultFileIO.reset();
-
             // Free any memory owned by the command line container.
             m_commandLine = CommandLine();
 
@@ -484,7 +501,7 @@ namespace AzFramework
 
             azrtti_typeid<AzFramework::AssetCatalogComponent>(),
             azrtti_typeid<AzFramework::CustomAssetTypeComponent>(),
-            azrtti_typeid<AzFramework::FileTag::BlackListFileComponent>(),
+            azrtti_typeid<AzFramework::FileTag::ExcludeFileComponent>(),
             azrtti_typeid<AzFramework::NetBindingComponent>(),
             azrtti_typeid<AzFramework::NetBindingSystemComponent>(),
             azrtti_typeid<AzFramework::TransformComponent>(),
@@ -518,6 +535,8 @@ namespace AzFramework
         AzFramework::SimpleAssetReferenceBase::Reflect(context);
         AzFramework::ConsoleRequests::Reflect(context);
         AzFramework::ConsoleNotifications::Reflect(context);
+        AzFramework::ViewportRequests::Reflect(context);
+
         Physics::ReflectionUtils::ReflectPhysicsApi(context);
 
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -545,7 +564,7 @@ namespace AzFramework
             azrtti_typeid<AzFramework::BootstrapReaderComponent>(),
             azrtti_typeid<AzFramework::AssetCatalogComponent>(),
             azrtti_typeid<AzFramework::CustomAssetTypeComponent>(),
-            azrtti_typeid<AzFramework::FileTag::BlackListFileComponent>(),
+            azrtti_typeid<AzFramework::FileTag::ExcludeFileComponent>(),
             azrtti_typeid<AzFramework::SceneSystemComponent>(),
             azrtti_typeid<AzFramework::AzFrameworkConfigurationSystemComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),

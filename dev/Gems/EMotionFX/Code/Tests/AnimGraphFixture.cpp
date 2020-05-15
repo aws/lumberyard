@@ -12,6 +12,7 @@
 
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/Random.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include "AnimGraphFixture.h"
 #include <EMotionFX/Source/Actor.h>
@@ -26,7 +27,9 @@
 #include <EMotionFX/Source/Transform.h>
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
-
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -34,6 +37,7 @@ namespace EMotionFX
     {
         AZ::Debug::TraceMessageBus::Handler::BusConnect();
         SystemComponentFixture::SetUp();
+        AnimGraphFactory::ReflectTestTypes(GetSerializeContext());
 
         // This fixture sets up the basic pieces to test animation graphs:
         // 1) will create an actor with a root node (joint) at the origin
@@ -44,7 +48,7 @@ namespace EMotionFX
             ConstructActor();
             ASSERT_TRUE(m_actor) << "Construct actor did not build a valid actor.";
             m_actor->ResizeTransformData();
-            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
+            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/ false, /*generateOBBs=*/ false, /*convertUnitType=*/ false);
         }
         {
             m_motionSet = aznew MotionSet("testMotionSet");
@@ -54,42 +58,33 @@ namespace EMotionFX
             m_animGraph->InitAfterLoading();
         }
         {
-            m_actorInstance = ActorInstance::Create(m_actor);
-            m_animGraphInstance = AnimGraphInstance::Create(m_animGraph, m_actorInstance, m_motionSet);
+            m_actorInstance = ActorInstance::Create(m_actor.get());
+            m_animGraphInstance = AnimGraphInstance::Create(m_animGraph.get(), m_actorInstance, m_motionSet);
             m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
             m_animGraphInstance->IncreaseReferenceCount(); // Two owners now, the test and the actor instance
             m_animGraphInstance->UpdateUniqueData();
         }
     }
-
+    
     void AnimGraphFixture::ConstructGraph()
     {
-        m_animGraph = aznew AnimGraph();
-        m_rootStateMachine = aznew AnimGraphStateMachine();
-        m_rootStateMachine->SetName("Root");
-        m_animGraph->SetRootStateMachine(m_rootStateMachine);
+        m_animGraph = AnimGraphFactory::Create<EmptyAnimGraph>();
+        m_rootStateMachine = m_animGraph->GetRootStateMachine();
     }
 
     void AnimGraphFixture::ConstructActor()
     {
-        m_actor = Actor::Create("testActor");
-        Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
-        m_actor->AddNode(rootNode);
-        m_actor->GetSkeleton()->UpdateNodeIndexValues(0);
-        Pose& actorBindPose = *m_actor->GetBindPose();
-        EMotionFX::Transform identity;
-        identity.Identity();
-        actorBindPose.SetModelSpaceTransform(0, identity);
+        m_actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(1);
     }
 
     AZStd::string AnimGraphFixture::SerializeAnimGraph() const
     {
-        if (!m_animGraph)
+        if (!m_animGraph.get())
         {
             return AZStd::string();
         }
 
-        return MCore::ReflectionSerializer::Serialize(m_animGraph).GetValue();
+        return MCore::ReflectionSerializer::Serialize(m_animGraph.get()).GetValue();
     }
 
     void AnimGraphFixture::TearDown()
@@ -108,16 +103,6 @@ namespace EMotionFX
         {
             delete m_motionSet;
             m_motionSet = nullptr;
-        }
-        if (m_animGraph)
-        {
-            delete m_animGraph;
-            m_animGraph = nullptr;
-        }
-        if (m_actor)
-        {
-            m_actor->Destroy();
-            m_actor = nullptr;
         }
 
         SystemComponentFixture::TearDown();
@@ -188,10 +173,10 @@ namespace EMotionFX
     }
 
     void AnimGraphFixture::Simulate(float simulationTime, float expectedFps, float fpsVariance,
-            SimulateCallback preCallback,
-            SimulateCallback postCallback,
-            SimulateFrameCallback preUpdateCallback,
-            SimulateFrameCallback postUpdateCallback)
+        SimulateCallback preCallback,
+        SimulateCallback postCallback,
+        SimulateFrameCallback preUpdateCallback,
+        SimulateFrameCallback postUpdateCallback)
     {
         AZ::SimpleLcgRandom random;
         random.SetSeed(875960);

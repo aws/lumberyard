@@ -27,8 +27,6 @@
 #include "EditorPreferencesPageViewportDebug.h"
 #include "EditorPreferencesPageMannequinGeneral.h"
 #include "EditorPreferencesPageExperimentalLighting.h"
-#include "EditorPreferencesPageFlowGraphGeneral.h"
-#include "EditorPreferencesPageFlowGraphColors.h"
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
@@ -72,8 +70,6 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
             CEditorPreferencesPage_MannequinGeneral::Reflect(*serializeContext);
 #endif //ENABLE_LEGACY_ANIMATION
             CEditorPreferencesPage_ExperimentalLighting::Reflect(*serializeContext);
-            CEditorPreferencesPage_FlowGraphGeneral::Reflect(*serializeContext);
-            CEditorPreferencesPage_FlowGraphColors::Reflect(*serializeContext);
         }
     }
 

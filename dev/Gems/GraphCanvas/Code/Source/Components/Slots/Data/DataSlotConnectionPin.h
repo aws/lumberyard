@@ -31,6 +31,8 @@ namespace GraphCanvas
         
     private:
 
+        void Setup(QPainter* painter, QPen& pen, QBrush& brush, QRectF drawRect, bool isConnected);
+
         const Styling::StyleHelper* m_colorPalette;
         AZStd::vector<const Styling::StyleHelper*> m_containerColorPalettes;
     };

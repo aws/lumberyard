@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "NullVR_Traits_Platform.h",
+            "NullVR_Traits_Windows.h"
+        ]
+    }
+}

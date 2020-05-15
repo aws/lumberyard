@@ -160,7 +160,9 @@ namespace AssetProcessor
             {
                 //do not add log files and folders
                 QFileInfo fileInfo(info.m_filePath);
-                if (!QRegExp(".*.log", Qt::CaseInsensitive, QRegExp::RegExp).exactMatch(info.m_filePath) && !fileInfo.isDir())
+                if (!QRegExp(".*.log", Qt::CaseInsensitive, QRegExp::RegExp).exactMatch(info.m_filePath)
+                    &&!QRegExp("*.cov", Qt::CaseInsensitive, QRegExp::RegExp).exactMatch(info.m_filePath)
+                    && !fileInfo.isDir())
                 {
                     collectedChanges.append(info.m_filePath);
                 }
@@ -378,7 +380,7 @@ namespace AssetProcessor
 
         QList<JobDetails> processResults;
         QList<QPair<QString, QString> > changedInputResults;
-        QList<QPair<QString, AzFramework::AssetSystem::AssetNotificationMessage> > assetMessages;
+        QList<AzFramework::AssetSystem::AssetNotificationMessage>  assetMessages;
 
         bool idling = false;
         unsigned int CRC_Of_Change_Message =  AssetUtilities::ComputeCRC32Lowercase("AssetProcessorManager::assetChanged");
@@ -391,9 +393,9 @@ namespace AssetProcessor
             });
 
         connect(&apm, &AssetProcessorManager::AssetMessage,
-            this, [&assetMessages](QString platform, AzFramework::AssetSystem::AssetNotificationMessage message)
+            this, [&assetMessages](AzFramework::AssetSystem::AssetNotificationMessage message)
             {
-                assetMessages.push_back(qMakePair(platform, message));
+                assetMessages.push_back( message);
             });
 
         connect(&apm, &AssetProcessorManager::InputAssetProcessed,
@@ -780,29 +782,29 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "es3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].first == "es3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_data == "basefile.arc2");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_sizeBytes != 0);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_sizeBytes != 0);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_assetId.IsValid());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_assetId.IsValid());
-        UNIT_TEST_EXPECT_TRUE(!assetMessages[0].second.m_legacyAssetIds.empty());
-        UNIT_TEST_EXPECT_TRUE(!assetMessages[1].second.m_legacyAssetIds.empty());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[0].IsValid());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[0].IsValid());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[0] != assetMessages[0].second.m_assetId);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[0] != assetMessages[1].second.m_assetId);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_platform == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_data == "basefile.arc2");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_sizeBytes != 0);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_sizeBytes != 0);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_assetId.IsValid());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_assetId.IsValid());
+        UNIT_TEST_EXPECT_TRUE(!assetMessages[0].m_legacyAssetIds.empty());
+        UNIT_TEST_EXPECT_TRUE(!assetMessages[1].m_legacyAssetIds.empty());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_legacyAssetIds[0].IsValid());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_legacyAssetIds[0].IsValid());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_legacyAssetIds[0] != assetMessages[0].m_assetId);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_legacyAssetIds[0] != assetMessages[1].m_assetId);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds.size() == 3);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds.size() == 2);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_legacyAssetIds.size() == 3);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_legacyAssetIds.size() == 2);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[1].m_subId == 1234);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[2].m_subId == 5678);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[1].m_subId == 2222);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_legacyAssetIds[1].m_subId == 1234);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_legacyAssetIds[2].m_subId == 5678);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_legacyAssetIds[1].m_subId == 2222);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(absolutePath));
 
@@ -915,8 +917,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "es3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.azm");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.azm");
 
         changedInputResults.clear();
         assetMessages.clear();
@@ -940,8 +942,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.arc1");
 
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(absolutePath));
@@ -968,8 +970,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.azm");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.azm");
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(absolutePath));
 
@@ -1096,8 +1098,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.azm");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.azm");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(absolutePath));
 
         changedInputResults.clear();
@@ -1220,28 +1222,28 @@ namespace AssetProcessor
 
         for (auto element : assetMessages)
         {
-            if (element.second.m_data == "basefile.arc1")
+            if (element.m_data == "basefile.arc1")
             {
-                if (element.first == "pc")
+                if (element.m_platform == "pc")
                 {
-                    UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+                    UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
                 }
                 else
                 {
-                    UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+                    UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
                 }
             }
 
-            if (element.second.m_data == "basefilea.arc1")
+            if (element.m_data == "basefilea.arc1")
             {
-                UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
-                UNIT_TEST_EXPECT_TRUE(element.first == "es3");
+                UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+                UNIT_TEST_EXPECT_TRUE(element.m_platform == "es3");
             }
 
-            if (element.second.m_data == "basefile.arc2")
+            if (element.m_data == "basefile.arc2")
             {
-                UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-                UNIT_TEST_EXPECT_TRUE(element.first == "es3");
+                UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+                UNIT_TEST_EXPECT_TRUE(element.m_platform == "es3");
             }
         }
 
@@ -1425,7 +1427,7 @@ namespace AssetProcessor
 
         for (auto element : assetMessages)
         {
-            UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+            UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
         }
 
         UNIT_TEST_EXPECT_FALSE(QFile::exists(pcouts[0]));
@@ -1571,8 +1573,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == absolutePath);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefilea.arc1" || assetMessages[0].second.m_data == "basefilea.azm");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefilea.arc1" || assetMessages[0].m_data == "basefilea.azm");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "es3");
 
         for (auto& payload : payloadList)
         {
@@ -1617,8 +1619,8 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
 
         // always RELATIVE, always with the product name.
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
 
         changedInputResults.clear();
         assetMessages.clear();
@@ -1729,7 +1731,7 @@ namespace AssetProcessor
         for (auto element : assetMessages)
         {
             // because the source asset had UPPER CASE in it, we should have multiple legacy IDs
-            UNIT_TEST_EXPECT_TRUE(element.second.m_legacyAssetIds.size() == 2);
+            UNIT_TEST_EXPECT_TRUE(element.m_legacyAssetIds.size() == 2);
         }
 
         // ------------- setup complete, now do the test...
@@ -1991,7 +1993,7 @@ namespace AssetProcessor
             {
                 foundIt = false;
 
-                apm.OnRequestAssetExists(requestId, "pc", testCase);
+                apm.OnRequestAssetExists(requestId, "pc", testCase, AZ::Data::AssetId());
                 UNIT_TEST_EXPECT_FALSE(foundIt);
             }
 
@@ -2001,7 +2003,7 @@ namespace AssetProcessor
                 foundIt = false;
                 AZStd::string withPath = AZStd::string("folder/") + testCase;
 
-                apm.OnRequestAssetExists(requestId, "pc", withPath.c_str());
+                apm.OnRequestAssetExists(requestId, "pc", withPath.c_str(), AZ::Data::AssetId());
                 UNIT_TEST_EXPECT_TRUE(foundIt);
             }
 
@@ -2020,7 +2022,7 @@ namespace AssetProcessor
             {
                 foundIt = false;
 
-                apm.OnRequestAssetExists(requestId, "pc", testCase);
+                apm.OnRequestAssetExists(requestId, "pc", testCase, AZ::Data::AssetId());
                 UNIT_TEST_EXPECT_FALSE(foundIt);
             }
         }
@@ -2085,7 +2087,7 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 4);
         for (auto element : assetMessages)
         {
-            UNIT_TEST_EXPECT_TRUE(element.second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+            UNIT_TEST_EXPECT_TRUE(element.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
         }
 
         processResults.clear();
@@ -2335,25 +2337,25 @@ namespace AssetProcessor
         // we should have gotten 2 product removed, 2 product changed, total of 4 asset messages
 
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 4);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_assetId != AZ::Data::AssetId());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_assetId != AZ::Data::AssetId());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[2].second.m_assetId != AZ::Data::AssetId());
-        UNIT_TEST_EXPECT_TRUE(assetMessages[3].second.m_assetId != AZ::Data::AssetId());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_assetId != AZ::Data::AssetId());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_assetId != AZ::Data::AssetId());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[2].m_assetId != AZ::Data::AssetId());
+        UNIT_TEST_EXPECT_TRUE(assetMessages[3].m_assetId != AZ::Data::AssetId());
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "es3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].first == "es3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[2].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[3].first == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_platform == "es3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[2].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[3].m_platform == "pc");
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "fewer_products/test.txt.0.txt");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_data == "fewer_products/test.txt.1.txt");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[2].second.m_data == "fewer_products/test.txt.0.txt");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[3].second.m_data == "fewer_products/test.txt.1.txt");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "fewer_products/test.txt.0.txt");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_data == "fewer_products/test.txt.1.txt");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[2].m_data == "fewer_products/test.txt.0.txt");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[3].m_data == "fewer_products/test.txt.1.txt");
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[2].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[3].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[2].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[3].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
 
         // and finally, the actual removed products should be gone from the HDD:
@@ -2488,7 +2490,7 @@ namespace AssetProcessor
 
         QList<JobDetails> processResults;
         QList<QPair<QString, QString> > changedInputResults;
-        QList<QPair<QString, AzFramework::AssetSystem::AssetNotificationMessage> > assetMessages;
+        QList<AzFramework::AssetSystem::AssetNotificationMessage > assetMessages;
 
         bool idling = false;
 
@@ -2499,9 +2501,9 @@ namespace AssetProcessor
         });
 
         connect(&apm, &AssetProcessorManager::AssetMessage,
-            this, [&assetMessages](QString platform, AzFramework::AssetSystem::AssetNotificationMessage message)
+            this, [&assetMessages](AzFramework::AssetSystem::AssetNotificationMessage message)
         {
-            assetMessages.push_back(qMakePair(platform, message));
+            assetMessages.push_back( message);
         });
 
         connect(&apm, &AssetProcessorManager::InputAssetProcessed,
@@ -2564,12 +2566,12 @@ namespace AssetProcessor
 
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_data == "basefile.arc2");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_data == "basefile.arc2");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(sourceFile));
 
@@ -2592,9 +2594,9 @@ namespace AssetProcessor
 
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
 
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "basefile.arc3");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "basefile.arc3");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(sourceFile));
 
@@ -3290,7 +3292,7 @@ namespace AssetProcessor
 
         QList<JobDetails> processResults;
         QList<QPair<QString, QString> > changedInputResults;
-        QList<QPair<QString, AzFramework::AssetSystem::AssetNotificationMessage> > assetMessages;
+        QList< AzFramework::AssetSystem::AssetNotificationMessage > assetMessages;
 
         bool idling = false;
 
@@ -3301,9 +3303,9 @@ namespace AssetProcessor
         });
 
         connect(&apm, &AssetProcessorManager::AssetMessage,
-            this, [&assetMessages](QString platform, AzFramework::AssetSystem::AssetNotificationMessage message)
+            this, [&assetMessages](AzFramework::AssetSystem::AssetNotificationMessage message)
         {
-            assetMessages.push_back(qMakePair(platform, message));
+            assetMessages.push_back( message);
         });
 
         connect(&apm, &AssetProcessorManager::InputAssetProcessed,
@@ -3355,9 +3357,9 @@ namespace AssetProcessor
 
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "redirected/basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "redirected/basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(sourceFile));
 
@@ -3412,9 +3414,9 @@ namespace AssetProcessor
 
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "redirected/basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "redirected/basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(sourceFile));
 
@@ -3464,9 +3466,9 @@ namespace AssetProcessor
 
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
         UNIT_TEST_EXPECT_TRUE(changedInputResults.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "redirected/basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "redirected/basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(sourceFile));
 
@@ -3487,9 +3489,9 @@ namespace AssetProcessor
         QCoreApplication::processEvents(QEventLoop::AllEvents);
 
         UNIT_TEST_EXPECT_TRUE(assetMessages.size() == 1);
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].first == "pc");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_data == "redirected/basefile.arc1");
-        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_platform == "pc");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_data == "redirected/basefile.arc1");
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].m_type == AzFramework::AssetSystem::AssetNotificationMessage::AssetRemoved);
 
         // also ensure file is actually gone!
         UNIT_TEST_EXPECT_TRUE(!QFile::exists(deletedProductPath));

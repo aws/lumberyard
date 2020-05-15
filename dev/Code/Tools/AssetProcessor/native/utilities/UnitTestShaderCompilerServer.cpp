@@ -114,7 +114,7 @@ void UnitTestShaderCompilerServer::incomingMessage()
         if (m_totalBytesReadInPayloadSize == static_cast<qint64>(sizeof(qint64)))
         {
             m_isPayloadSizeKnown = true;
-            m_payload.resize(m_payloadSize);
+            m_payload.resize(aznumeric_cast<int>(m_payloadSize));
         }
 
         if (m_socket->bytesAvailable() > 0)

@@ -45,39 +45,6 @@ namespace AZ
     }
 
     /**
-     * @deprecated Use EntitySystemBus
-     * Event bus for dispatching component application events to listeners.
-     */
-    class AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
-        ComponentApplicationEvents
-        : public AZ::EBusTraits
-    {
-    public:
-
-        /**
-         * @deprecated Use EntitySystemBus
-         * Notifies listeners that an entity was added to the application.
-         * @param entity The entity that was added to the application.
-         */
-        AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
-        virtual void OnEntityAdded(AZ::Entity* entity) { (void)entity; };
-
-        /**
-         * @deprecated Use EntitySystemBus
-         * Notifies listeners that an entity was removed from the application.
-         * @param entity The entity that was removed from the application.
-         */
-        AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
-        virtual void OnEntityRemoved(const AZ::EntityId& entityId) { (void)entityId; };
-    };
-
-    /**
-     * @deprecated Use EntitySystemBus
-     * Used when dispatching a component application event. 
-     */
-    DEPRECATE_EBUS(ComponentApplicationEvents, ComponentApplicationEventBus, "The ComponentApplicationEventsBus has been deprecated in favor of using the EntitySystemBus in Lumberyard release 1.18");
-
-    /**
      * Event bus that components use to make requests of the main application.
      * Only one application can exist at a time, which is why this bus 
      * supports only one listener.

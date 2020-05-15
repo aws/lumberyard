@@ -2,7 +2,7 @@
     "name": "lzma",
     "source": "@3P:Lzma@",
     "description": "LZMA Compression Library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

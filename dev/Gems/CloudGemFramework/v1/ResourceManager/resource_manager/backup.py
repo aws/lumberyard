@@ -7,16 +7,17 @@
 # or, if provided, by the license below or the license accompanying this file. Do not
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from multiprocessing.dummy import Pool
+import time
+import six
 
-import boto3
-import botocore
+from botocore.exceptions import ClientError
+from botocore.client import Config
 
 from cgf_utils import custom_resource_utils
-from botocore.client import Config
-from errors import HandledError
-from multiprocessing.dummy import Pool
-import transfer_jobs
-import time
+from . import transfer_jobs
+from .errors import HandledError
+
 
 THREAD_COUNT = 24
 MAX_KEYS_PER_READ = 75
@@ -96,7 +97,7 @@ def __backup_deployment(context, args):
     if not args.backup_name:
         raise HandledError(
             'For full deployment backup you must specify a backup name')
-    print "Backing up whole deployment {}".format(args.deployment)
+    print("Backing up whole deployment {}".format(args.deployment))
 
     resources = __gather_resource_descriptions(context, args.deployment)
 
@@ -128,7 +129,7 @@ def __gather_resource_descriptions(context, deployment):
             continue
         resource_group_stack_id = context.config.get_resource_group_stack_id(deployment, resource_group.name)
         resources = context.stack.describe_resources(resource_group_stack_id)
-        for resource_name, resource_description in resources.iteritems():
+        for resource_name, resource_description in six.iteritems(resources):
             if resource_description['ResourceType'] in DDB_TYPES + S3_TYPES:
                 resource_description['LogicalName'] = resource_name
                 resource_description['ResourceGroup'] = resource_group.name
@@ -137,20 +138,20 @@ def __gather_resource_descriptions(context, deployment):
 
 
 def __backup_ddb(client, table_name, backup_name):
-    print "Backing up {} to {}".format(table_name, backup_name)
+    print("Backing up {} to {}".format(table_name, backup_name))
     response = client.create_backup(
         TableName=table_name, BackupName=backup_name)
     if 'BackupDetails' in response:
-        print "Backup {} was created successfully ({})".format(response['BackupDetails']['BackupName'], response['BackupDetails']['BackupArn'])
+        print("Backup {} was created successfully ({})".format(response['BackupDetails']['BackupName'], response['BackupDetails']['BackupArn']))
 
 
 def __backup_s3(client, bucket_name, backup_bucket, region_name):
-    print "Backing up {} to {}".format(bucket_name, backup_bucket.lower())
+    print("Backing up {} to {}".format(bucket_name, backup_bucket.lower()))
     __transfer_s3(client, bucket_name, backup_bucket.lower(), region_name)
 
 
 def __restore_s3(client, source_bucket, target_bucket, region_name):
-    print "Restoring {} from {}".format(target_bucket, source_bucket)
+    print("Restoring {} from {}".format(target_bucket, source_bucket))
     __transfer_s3(client, source_bucket, target_bucket, region_name)
 
 
@@ -174,17 +175,17 @@ def __transfer_s3(client, source_bucket, target_bucket, region_name):
         t_mgr.add_jobs(jobs)
 
     t_mgr.close_pool()
-    print "all s3 transfer jobs fired off. waiting for returns"
+    print("all s3 transfer jobs fired off. waiting for returns")
     t_mgr.wait_for_finish()
     finish = time.time() - start
-    print "results:"
+    print("results:")
     error_count = 0
     for result in t_mgr.concatenate_results():
-        if "TrasnferException" in result:
-            print "Transfer Error in {}: {}".format(result["Key"], result["TrasnferException"])
+        if "TransferException" in result:
+            print("Transfer Error in {}: {}".format(result["Key"], result["TransferException"]))
             error_count = error_count + 1
-    print "transfer completed with {} errors".format(error_count)
-    print "finished in {} seconds".format(finish)
+    print("transfer completed with {} errors".format(error_count))
+    print("finished in {} seconds".format(finish))
 
 
 def __get_resource(context, deployment, resource_group, resource_name):
@@ -203,7 +204,7 @@ def __get_resource(context, deployment, resource_group, resource_name):
 def __get_resource_name(context, deployment, resource_group, resource_name):
     description = __get_resource(context, deployment, resource_group, resource_name)
     phys_id = description.get('PhysicalResourceId', None)
-    if (description['ResourceType'].startswith("Custom::")):
+    if description['ResourceType'].startswith("Custom::"):
         return custom_resource_utils.get_embedded_physical_id(phys_id)
     return phys_id
 
@@ -227,7 +228,7 @@ def __bucket_exists(client, bucket_name):
         client.head_bucket(
             Bucket=bucket_name
         )
-    except botocore.exceptions.ClientError as e:
+    except ClientError as e:
         return False
     return True
 

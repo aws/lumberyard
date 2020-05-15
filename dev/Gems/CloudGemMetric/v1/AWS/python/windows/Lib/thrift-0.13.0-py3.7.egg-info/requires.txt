@@ -1,0 +1,13 @@
+six>=1.7.2
+
+[all]
+tornado>=4.0
+twisted
+
+[ssl]
+
+[tornado]
+tornado>=4.0
+
+[twisted]
+twisted

@@ -19,9 +19,12 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetManager.h>
 
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
@@ -682,7 +685,7 @@ namespace EMotionFX
         }
 
         bool EditorActorComponent::EditorSelectionIntersectRayViewport(
-            const AzFramework::ViewportInfo& /*viewportInfo*/,
+            const AzFramework::ViewportInfo& viewportInfo,
             const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
         {
             if (!m_actorAsset.Get() || !m_actorAsset.Get()->GetActor() || !m_actorInstance || !m_actorInstance->GetTransformData() || !m_renderCharacter)
@@ -694,9 +697,11 @@ namespace EMotionFX
             bool isHit = false;
 
             // Get the MCore::Ray used by Mesh::Intersects
-            // Convert the input source + direction to make a line segment, since that's the format that is used for an MCore::Ray
-            AZ::Vector3 dest = src + dir;
-            MCore::Ray ray(src, dest);
+            // Convert the input source position and direction to a line segment by using the frustum depth as line length.
+            const AzFramework::CameraState cameraState = AzToolsFramework::GetCameraState(viewportInfo.m_viewportId);
+            const float frustumDepth = cameraState.m_farClip - cameraState.m_nearClip;
+            const AZ::Vector3 dest = src + dir * frustumDepth;
+            const MCore::Ray ray(src, dest);
 
             // Update the mesh deformers so the intersection test will hit the actor if it is being
             // animated by a motion component that is previewing the animation in the editor
@@ -707,7 +712,7 @@ namespace EMotionFX
             const Pose* currentPose = transformData->GetCurrentPose();
 
             // Iterate through the meshes in the actor, looking for the closest hit
-            Actor* actor = m_actorAsset.Get()->GetActor().get();
+            Actor* actor = m_actorAsset.Get()->GetActor();
             const uint32 numNodes = actor->GetNumNodes();
             const uint32 numLods = actor->GetNumLODLevels();
             for (uint32 lod = 0; lod < numLods; ++lod)

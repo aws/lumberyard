@@ -25,6 +25,7 @@
 #include "../Common/TypedConstantBuffer.h"
 #include "GraphicsPipeline/FurBendData.h"
 #include "GraphicsPipeline/FurPasses.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
@@ -2337,11 +2338,16 @@ void CD3D9Renderer::UpdatePerFrameParameters()
     p3DEngine->GetGlobalParameter(E3DPARAM_CLOUDSHADING_SKYCOLOR, PF.m_CloudShadingColorSky);
 
     {
-        const int heightMapSize = p3DEngine->GetTerrainSize();
+        //Prevent division by Zero if there's no terrain system.
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3::CreateZero(), AZ::Vector3::CreateOne());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        const float heightMapSizeX = terrainAabb.GetWidth();
+        const float heightMapSizeY = terrainAabb.GetHeight();
+
         Vec3 cloudShadowOffset = m_cloudShadowSpeed * gEnv->pTimer->GetCurrTime();
         cloudShadowOffset.x -= (int)cloudShadowOffset.x;
         cloudShadowOffset.y -= (int)cloudShadowOffset.y;
-        PF.m_CloudShadowAnimParams = Vec4(m_cloudShadowTiling / heightMapSize, -m_cloudShadowTiling / heightMapSize, cloudShadowOffset.x, -cloudShadowOffset.y);
+        PF.m_CloudShadowAnimParams = Vec4(m_cloudShadowTiling / heightMapSizeX, -m_cloudShadowTiling / heightMapSizeY, cloudShadowOffset.x, -cloudShadowOffset.y);
         PF.m_CloudShadowParams = Vec4(0, 0, m_cloudShadowInvert ? 1.0f : 0.0f, m_cloudShadowBrightness);
     }
 

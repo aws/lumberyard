@@ -16,44 +16,25 @@ namespace AzFramework
 {
     namespace Statistics
     {
-        void TimeDataStatisticsManager::RemoveStatistic(const AZStd::string& name)
-        {
-            //Let's get the current index of the statistic we are
-            //supposed to remove.
-            AZ::u32 statIndex;
-            NamedRunningStatistic* statistic = GetStatistic(name, &statIndex);
-            if (!statistic)
-            {
-                return;
-            }
-            m_previousTimeData.erase(m_previousTimeData.begin() + statIndex);
-            //Now we can safely remove the statistic from RunningStatisticsManager private collections,
-            RunningStatisticsManager::RemoveStatistic(name);
-            //The private m_statistics and m_previousTimeData are now in sync.
-        }
-
         void TimeDataStatisticsManager::PushTimeDataSample(const char * registerName, const AZ::Debug::ProfilerRegister::TimeData& timeData)
         {
-            AZStd::string statName(registerName);
-            AZ::u32 statIndex;
-            NamedRunningStatistic* statistic = GetStatistic(statName, &statIndex);
+            const AZStd::string statName(registerName);
+            NamedRunningStatistic* statistic = GetStatistic(statName);
             if (!statistic)
             {
-                const char * units = "us";
-                AddStatisticValidated(statName, units);
+                const AZStd::string units("us");
+                AddStatistic(statName, statName, units, false);
                 AZ::Debug::ProfilerRegister::TimeData zeroTimeData;
                 memset(&zeroTimeData, 0, sizeof(AZ::Debug::ProfilerRegister::TimeData));
-                m_previousTimeData.emplace_back(zeroTimeData);
-                statIndex = static_cast<AZ::u32>(m_previousTimeData.size() - 1);
-                AZ::u32 tmpStatIndex;
-                statistic = GetStatistic(statName, &tmpStatIndex);
-                AZ_Assert((statistic != nullptr) && (tmpStatIndex == statIndex), "Fatal error adding a new statistic object");
+                m_previousTimeData[statName] = zeroTimeData;
+                statistic = GetStatistic(statName);
+                AZ_Assert(statistic != nullptr, "Fatal error adding a new statistic object");
             }
 
             const AZ::u64 accumulatedTime = timeData.m_time;
             const AZ::s64 totalNumCalls = timeData.m_calls;
-            const AZ::u64 previousAccumulatedTime = m_previousTimeData[statIndex].m_time;
-            const AZ::s64 previousTotalNumCalls = m_previousTimeData[statIndex].m_calls;
+            const AZ::u64 previousAccumulatedTime = m_previousTimeData[statName].m_time;
+            const AZ::s64 previousTotalNumCalls = m_previousTimeData[statName].m_calls;
             const AZ::u64 deltaTime = accumulatedTime - previousAccumulatedTime;
             const AZ::s64 deltaCalls = totalNumCalls - previousTotalNumCalls;
             
@@ -66,7 +47,7 @@ namespace AzFramework
             double newSample = static_cast<double>(deltaTime) / deltaCalls;
 
             statistic->PushSample(newSample);
-            m_previousTimeData[statIndex] = timeData;
+            m_previousTimeData[statName] = timeData;
         }
     } //namespace Statistics
 } //namespace AzFramework

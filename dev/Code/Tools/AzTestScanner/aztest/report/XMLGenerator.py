@@ -25,9 +25,13 @@ def create_xml_output_file(path_to_file, error_code, error_msg):
     """
     if not path_to_file:
         raise InvalidUseError("XML creation requires path to XML output file")
-    if not isinstance(error_code, int) and not isinstance(error_code, long):
+
+    try:
+        error_code = int(error_code)
+    except TypeError:
         raise InvalidUseError("The error code produced by the test runner should be an integer")
-    if not isinstance(error_msg, basestring):
+
+    if not isinstance(error_msg, str):
         raise InvalidUseError("The error message produced by the test runner should be of type basestring")
 
     current_time = datetime.now().strftime("%Y-%m-%dT%X")
@@ -35,7 +39,7 @@ def create_xml_output_file(path_to_file, error_code, error_msg):
     testsuite_attributes = {"tests": "0", "time": "0.0",  "failures": "0", "disabled": "0", "errors": "1",
                             "timestamp": current_time}
 
-    xml_root = Element(tag="testsuites", attrib=testsuite_attributes)
+    xml_root = Element("testsuites", testsuite_attributes)
     properties = SubElement(xml_root, "properties")
     error_code_property = SubElement(properties, "property", name="ErrorCode", value=str(error_code))
     error_msg_property = SubElement(properties, "property", name="ErrorMsg", value=error_msg)

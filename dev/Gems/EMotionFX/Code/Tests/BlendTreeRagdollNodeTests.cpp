@@ -30,10 +30,9 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            BlendTree* blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            BlendTree* blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             /*
                 +-------------+    +---------+    +------------+
@@ -52,8 +51,17 @@ namespace EMotionFX
 
             m_ragdollNode->AddUnitializedConnection(floatConstNode, BlendTreeFloatConstantNode::PORTID_OUTPUT_RESULT, BlendTreeRagdollNode::PORTID_ACTIVATE);
             finalNode->AddUnitializedConnection(m_ragdollNode, BlendTreeRagdollNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTreeRagdollNode* m_ragdollNode = nullptr;
     };
 

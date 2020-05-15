@@ -13,7 +13,7 @@
 #include <ImageProcessing_precompiled.h>
 #include "TexturePreviewWidget.h"
 #include <Processing/PixelFormatInfo.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
@@ -71,7 +71,7 @@ namespace ImageProcessingEditor
         }
 
         QSize size = m_ui->imageLabel->size();
-        m_imageLabelSize = size.width();
+        m_imageLabelSize = aznumeric_cast<float>(size.width());
 
         SetUpResolutionInfo();
         RefreshUI(true);
@@ -412,11 +412,11 @@ namespace ImageProcessingEditor
         QSize preferredSize;
         if (aspectRatio >= 1.0f)
         {
-            preferredSize = QSize(m_imageLabelSize, m_imageLabelSize / aspectRatio);
+            preferredSize = QSize(aznumeric_cast<int>(m_imageLabelSize), aznumeric_cast<int>(m_imageLabelSize / aspectRatio));
         }
         else
         {
-            preferredSize = QSize(m_imageLabelSize * aspectRatio, m_imageLabelSize);
+            preferredSize = QSize(aznumeric_cast<int>(m_imageLabelSize * aspectRatio), aznumeric_cast<int>(m_imageLabelSize));
         }
 
         m_ui->imageLabel->resize(preferredSize);
@@ -431,9 +431,9 @@ namespace ImageProcessingEditor
     {
         // Since setting pixmap will change the label size 
         // Need to set back to initial size and recenter before displaying text
-        m_ui->imageLabel->resize(QSize(m_imageLabelSize, m_imageLabelSize));
+        m_ui->imageLabel->resize(QSize(aznumeric_cast<int>(m_imageLabelSize), aznumeric_cast<int>(m_imageLabelSize)));
         QPoint center = m_ui->mainWidget->rect().center();
-        m_ui->imageLabel->move(center - QPoint(m_imageLabelSize / 2, m_imageLabelSize / 2));
+        m_ui->imageLabel->move(center - QPoint(aznumeric_cast<int>(m_imageLabelSize / 2), aznumeric_cast<int>(m_imageLabelSize / 2)));
         m_ui->imageLabel->setText(text);
 
         // Set busy label status and position to align with the text

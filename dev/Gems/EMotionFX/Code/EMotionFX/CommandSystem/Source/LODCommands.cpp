@@ -68,7 +68,7 @@ namespace CommandSystem
             parameters.GetValue("actorFileName", this, &lodFileName);
 
             // load the LOD actor
-            EMotionFX::Actor* lodActor = EMotionFX::GetImporter().LoadActor(lodFileName.c_str());
+            AZStd::unique_ptr<EMotionFX::Actor> lodActor = EMotionFX::GetImporter().LoadActor(lodFileName.c_str());
             if (lodActor == nullptr)
             {
                 outResult = AZStd::string::format("Cannot execute LOD command. Loading LOD actor from file '%s' failed.", lodFileName.c_str());
@@ -76,7 +76,7 @@ namespace CommandSystem
             }
 
             // replace the given LOD level with the lod actor and remove the LOD actor object from memory afterwards
-            actor->CopyLODLevel(lodActor, 0, lodLevel, false);
+            actor->CopyLODLevel(lodActor.get(), 0, lodLevel, false);
         }
         // add a copy of the last LOD level to the end?
         else if (parameters.CheckIfHasParameter("addLastLODLevel"))
@@ -101,7 +101,7 @@ namespace CommandSystem
                 copyFrom++;
             }
 
-            actor->CopyLODLevel(actor, copyFrom, insertAt, true, false);
+            actor->CopyLODLevel(actor, copyFrom, insertAt, true);
 
             // enable or disable nodes based on the skeletal LOD flags
             const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();

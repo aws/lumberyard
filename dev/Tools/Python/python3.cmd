@@ -30,4 +30,9 @@ ECHO Could not find python.exe in %PYTHONHOME%
 GOTO :EOF
 
 :PYTHON_EXISTS
+
+SET PATH_SCRIPT=%CMD_DIR%\3.7.5\extend_pythonpath.py
+FOR /F "tokens=*" %%g IN ('%PYTHON% %PATH_SCRIPT%') do (SET NEW_PYTHON_PATH=%%g)
+SET PYTHONPATH=%NEW_PYTHON_PATH%
+
 "%PYTHON%" %*

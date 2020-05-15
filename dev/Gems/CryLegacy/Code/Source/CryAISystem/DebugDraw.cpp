@@ -54,6 +54,8 @@
 #include "PersonalInterestManager.h"
 #include "BehaviorTree/BehaviorTreeManager.h"
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 #pragma warning(disable: 4244)
 
 #define whiteTrans ColorB(255, 255, 255, 179)
@@ -1973,10 +1975,13 @@ void CAISystem::DebugDrawSteepSlopes()
 
     if (triangles.empty())
     {
-        I3DEngine* pEngine = gEnv->p3DEngine;
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        int terrainArraySize = static_cast<int>(terrainAabb.GetWidth());
 
-        int terrainArraySize = pEngine->GetTerrainSize();
-        float dx = pEngine->GetHeightMapUnitSize();
+        AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+        float dx = gridResolution.GetX();
 
         float minX = currentPos.x - 0.5f * drawBoxWidth;
         float minY = currentPos.y - 0.5f * drawBoxWidth;
@@ -2064,12 +2069,13 @@ void CAISystem::DebugDrawVegetationCollision()
         return;
     }
 
-    I3DEngine* pEngine = gEnv->p3DEngine;
-
     CDebugDrawContext dc;
 
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     Vec3 playerPos = dc->GetCameraPos();
-    playerPos.z = pEngine->GetTerrainElevation(playerPos.x, playerPos.y);
+    playerPos.z = terrain ? terrain->GetHeightFromFloats(playerPos.x, playerPos.y) : defaultTerrainHeight;
 
     AABB aabb(AABB::RESET);
     aabb.Add(playerPos + Vec3(range, range, range));
@@ -2120,9 +2126,9 @@ void CAISystem::DebugDrawVegetationCollision()
                 Vec3 pt1 = vertices[vidx1];
                 Vec3 pt2 = vertices[vidx2];
 
-                float z0 = pEngine->GetTerrainElevation(pt0.x, pt0.y);
-                float z1 = pEngine->GetTerrainElevation(pt1.x, pt1.y);
-                float z2 = pEngine->GetTerrainElevation(pt2.x, pt2.y);
+                float z0 = terrain ? terrain->GetHeightFromFloats(pt0.x, pt0.y) : defaultTerrainHeight;
+                float z1 = terrain ? terrain->GetHeightFromFloats(pt1.x, pt1.y) : defaultTerrainHeight;
+                float z2 = terrain ? terrain->GetHeightFromFloats(pt2.x, pt2.y) : defaultTerrainHeight;
 
                 const float criticalAlt = 1.8f;
                 if (pt0.z < z0 && pt1.z < z1 && pt2.z < z2)
@@ -2179,8 +2185,11 @@ void CAISystem::DebugDrawHideSpots()
     Vec3 playerPos = dc->GetCameraPos();
 
     Vec3 groundPos = playerPos;
-    I3DEngine* pEngine = gEnv->p3DEngine;
-    groundPos.z = pEngine->GetTerrainElevation(groundPos.x, groundPos.y);
+    float terrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainHeight
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , groundPos.x, groundPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR);
+    groundPos.z = terrainHeight;
     dc->DrawSphere(groundPos, 0.01f * (playerPos.z - groundPos.z), ColorB(255, 0, 0));
 
     MultimapRangeHideSpots hidespots;

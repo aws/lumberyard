@@ -2,12 +2,6 @@
     "GemListFormatVersion": 2,
     "Gems": [
         {
-            "Path": "Gems/AWS",
-            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
-            "Version": "0.1.0",
-            "_comment": "AWS"
-        },
-        {
             "Path": "Gems/StartingPointInput",
             "Uuid": "09f4bedeee614358bc36788e77f97e51",
             "Version": "0.1.0",
@@ -54,6 +48,12 @@
             "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
             "Version": "0.1.0",
             "_comment": "Maestro"
+        },
+        {
+            "Path": "Gems/ExpressionEvaluation",
+            "Uuid": "4c6f9df57ca2468f93c8d860ee6a1167",
+            "Version": "0.1.0",
+            "_comment": "ExpressionEvaluation"
         },
         {
             "Path": "Gems/CameraFramework",
@@ -106,14 +106,13 @@
         {
             "Path": "CloudGemDefectReportSample/Gem",
             "Uuid": "99fd2a91d540451fa728e40d2e4dd16f",
-            "Version": "0.1.0",
-            "_comment": "CloudGemDefectReportSample"
+            "Version": "0.1.0"
         },
         {
-            "Path": "Gems/NativeUI",
-            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
+            "Path": "Gems/LegacyTerrain",
+            "Uuid": "c87f9fc3e7054f3482311da444e84456",
             "Version": "0.1.0",
-            "_comment": "NativeUI"
+            "_comment": "LegacyTerrain"
         },
         {
             "Path": "Gems/ScriptCanvasDiagnosticLibrary",
@@ -150,12 +149,6 @@
             "Uuid": "ff06785f7145416b9d46fde39098cb0c",
             "Version": "0.1.0",
             "_comment": "LmbrCentral"
-        },
-        {
-            "Path": "Gems/ImageProcessing",
-            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
-            "Version": "0.1.0",
-            "_comment": "ImageProcessing"
         }
     ]
 }

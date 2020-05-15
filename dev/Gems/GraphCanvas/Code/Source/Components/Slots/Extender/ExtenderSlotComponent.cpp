@@ -151,7 +151,13 @@ namespace GraphCanvas
 
     int ExtenderSlotComponent::GetLayoutPriority() const
     {
-        return 0;
+        return std::numeric_limits<int>::min();
+    }
+
+    void ExtenderSlotComponent::SetLayoutPriority(int layoutPriority)
+    {
+        // Extenders should not have their layout priority changed
+        AZ_UNUSED(layoutPriority);
     }
 
     void ExtenderSlotComponent::OnMoveFinalized(bool isValidConnection)
@@ -165,6 +171,13 @@ namespace GraphCanvas
         {
             if (isValidConnection)
             {
+                NodeId nodeId = GetNode();
+
+                GraphId graphId;
+                SceneMemberRequestBus::EventResult(graphId, GetNode(), &SceneMemberRequests::GetScene);                
+
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::FinalizeExtension, nodeId, m_extenderId);
+
                 m_createdSlot.SetInvalid();
             }
             else
@@ -200,6 +213,15 @@ namespace GraphCanvas
     {
         // Don't need to track anything. Just create the slot then ignore whatever the return is.
         ConstructSlot();
+
+        if (m_createdSlot.IsValid())
+        {
+            GraphId graphId;
+            SceneMemberRequestBus::EventResult(graphId, GetNode(), &SceneMemberRequests::GetScene);
+
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+        }
+
         m_createdSlot.SetInvalid();
     }
 
@@ -225,7 +247,7 @@ namespace GraphCanvas
         {
             EraseSlot();
             return Endpoint();
-        }                
+        }
 
         m_proposedSlot = true;
 
@@ -247,8 +269,11 @@ namespace GraphCanvas
 
             GraphId graphId;
             SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
-            
-            GraphModelRequestBus::EventResult(m_createdSlot, graphId, &GraphModelRequests::RequestExtension, nodeId, m_extenderId);
+
+            {
+                ScopedGraphUndoBlocker undoBlocker(graphId);
+                GraphModelRequestBus::EventResult(m_createdSlot, graphId, &GraphModelRequests::RequestExtension, nodeId, m_extenderId);
+            }
         }
     }
 
@@ -261,7 +286,11 @@ namespace GraphCanvas
             GraphId graphId;
             SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
 
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RemoveSlot, nodeId, m_createdSlot);
+            {
+                ScopedGraphUndoBlocker undoBlocker(graphId);
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RemoveSlot, Endpoint(nodeId, m_createdSlot));
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::ExtensionCancelled, nodeId, m_extenderId);
+            }
 
             m_createdSlot.SetInvalid();
         }

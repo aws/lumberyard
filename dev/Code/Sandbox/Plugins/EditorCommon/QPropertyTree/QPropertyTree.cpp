@@ -347,7 +347,7 @@ void DragWindow::drawRow(QPainter& p)
 	p.drawRect(entireRowRect);
 
 	QPoint leftTop = row_->rect().topLeft();
-	int offsetX = -leftTop.x() - tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight() + 3;
+	int offsetX = aznumeric_cast<int>(-leftTop.x() - tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight() + 3);
 	int offsetY = -leftTop.y() + 3;
 	p.translate(offsetX, offsetY);
 	int rowIndex = 0;
@@ -405,7 +405,7 @@ public:
 			if (row_->canBeDragged()){
 				needCapture = true;
 				QRect rect = row_->rect();
-				rect = QRect(rect.topLeft() - tree_->offset_ + QPoint(tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight(), 0),
+				rect = QRect(rect.topLeft() - tree_->offset_ + QPoint(aznumeric_cast<int>(tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight()), 0),
 					rect.bottomRight() - tree_->offset_);
 
 				window_.set(tree_, row_, rect);
@@ -467,7 +467,7 @@ public:
 	{
 		if (dragging_ && destinationRow_ == hoveredRow_ && hoveredRow_){
 			QRect rowRect = hoveredRow_->rect();
-			rowRect.setLeft(rowRect.left() + tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight());
+			rowRect.setLeft(aznumeric_cast<int>(rowRect.left() + tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight()));
 			QBrush brush(true ? tree_->palette().highlight() : tree_->palette().shadow());
 			QColor brushColor = brush.color();
 			QColor borderColor(brushColor.alpha() / 4, brushColor.red(), brushColor.green(), brushColor.blue());
@@ -485,7 +485,7 @@ public:
 		if (destinationRow_ != hoveredRow_ && hoveredRow_){
 			const int tickSize = 4;
 			QRect hoveredRect = hoveredRow_->rect();
-			hoveredRect.setLeft(hoveredRect.left() + tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight());
+			hoveredRect.setLeft(aznumeric_cast<int>(hoveredRect.left() + tree_->treeStyle().firstLevelIndent * tree_->_defaultRowHeight()));
 
 			if (!before_){ // previous
 				QRect rect(hoveredRect.left() - 1, hoveredRect.bottom() - 1, hoveredRect.width(), 2);
@@ -849,7 +849,7 @@ bool QPropertyTree::rowProcessesKey(PropertyRow* row, const QKeyEvent* ev)
 		default:
 			break;
 	}
-	
+
 	return false;
 }
 
@@ -1225,7 +1225,7 @@ void QPropertyTree::updateHeights(bool recalculateTextSize)
 	}
 
 	update();
-	updateHeightsTime_ = timer.elapsed();
+	updateHeightsTime_ = aznumeric_cast<int>(timer.elapsed());
 
 	QSize	contentSize = QSize(area_.width(), contentHeight);
 	if (contentSize_.height() != contentSize.height())
@@ -1553,7 +1553,7 @@ void QPropertyTree::apply(bool continuousUpdate)
 		signalChanged();
 	else
 		signalContinuousChange();
-	applyTime_ = timer.elapsed();
+	applyTime_ = aznumeric_cast<int>(timer.elapsed());
 }
 
 void QPropertyTree::applyInplaceEditor()
@@ -2208,7 +2208,7 @@ void QPropertyTree::RowFilter::parse(const char* filter)
 		}
 		else
 		{
-			while (*str != '\0' && *str != ' ' && *str != '*' && *str != '=' && *str != ':' && *str != '#')
+			while (*str != '\0' && *str != ' ' && *str != '=' && *str != ':' && *str != '#')
 				++str;
 		}
 		if (str != tokenStart) {
@@ -2365,7 +2365,7 @@ void QPropertyTree::drawFilteredString(QPainter& p, const wchar_t* text, RowFilt
 				if (h < 0)
 					h += 360;
 				highlightColor.setHsv(h, min(255, int(s * 1.33f)), v, 255);
-				highlightBorderColor.setHsv(h, s * 0.5f, v, 255);
+				highlightBorderColor.setHsv(h, aznumeric_cast<int>(s * 0.5f), v, 255);
 			}
 
 			int left = int(boxFull.left() + boxStart.width()) - 1;
@@ -2565,7 +2565,7 @@ void QPropertyTree::paintEvent(QPaintEvent* ev)
 		// 		DrawFocusRect(dc, &clientRect);
 		// 	}
 	}
-	paintTime_ = timer.elapsed();
+	paintTime_ = aznumeric_cast<int>(timer.elapsed());
 }
 
 QPropertyTree::HitTest QPropertyTree::hitTest(PropertyRow* row, const QPoint& pointInWindowSpace, const QRect& rowRect)

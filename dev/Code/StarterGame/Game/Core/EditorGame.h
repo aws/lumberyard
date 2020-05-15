@@ -39,8 +39,6 @@ namespace LYGame
         void OnBeforeLevelLoad() override;
         void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
         void OnCloseLevel() override;
-        IFlowSystem* GetIFlowSystem() override;
-        IGameTokenSystem* GetIGameTokenSystem() override;
         //////////////////////////////////////////////////////////////////////////
 
     protected:

@@ -13,6 +13,8 @@
 #pragma once
 
 // include required files
+#include <AzCore/std/typetraits/integral_constant.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include "StandardHeaders.h"
 #include "MultiThreadManager.h"
 
@@ -75,4 +77,7 @@ namespace MCore
      * @param object The object to be destroyed.
      */
     MCORE_API void Destroy(MemoryObject* object);
+
+    template<typename T>
+    using MemoryObjectUniquePtr = AZStd::unique_ptr<T, AZStd::integral_constant<decltype(&Destroy), &Destroy>>;
 }   // namespace MCore

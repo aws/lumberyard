@@ -264,7 +264,7 @@ namespace ImGui
                     AzFramework::SystemCursorState currentCursorState;
                     AzFramework::InputSystemCursorRequestBus::EventResult(currentCursorState, AzFramework::InputDeviceMouse::Id, &AzFramework::InputSystemCursorRequests::GetSystemCursorState);
                     int comboCursorState = static_cast<int>(currentCursorState);
-                    ImGui::Combo("LY Cursor State", &comboCursorState, SystemCursorStateComboGetter, this, static_cast<int>(AzFramework::SystemCursorState::UnconstrainedAndVisible) + 1);
+                    ImGui::Combo("System Cursor State", &comboCursorState, SystemCursorStateComboGetter, this, static_cast<int>(AzFramework::SystemCursorState::UnconstrainedAndVisible) + 1);
                     AzFramework::SystemCursorState postComboCursorState = static_cast<AzFramework::SystemCursorState>(comboCursorState);
 
                     if (postComboCursorState != currentCursorState)

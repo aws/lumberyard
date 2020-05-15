@@ -47,6 +47,7 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             MotionSetAsset();
+            ~MotionSetAsset();
 
             // AZ::Data::AssetBus::MultiHandler
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;

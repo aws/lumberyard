@@ -363,12 +363,9 @@ namespace AZ
         //! Stores the result of the std::is_enum check
         is_enum = 0b100
     };
-}
 
-AZ_DEFINE_ENUM_BITWISE_OPERATORS(AZ::TypeTraits);
+    AZ_DEFINE_ENUM_BITWISE_OPERATORS(AZ::TypeTraits);
 
-namespace AZ
-{
     /**
     * Since we fully support cross shared libraries (DLL) operation, we can no longer rely on typeid, static templates, etc.
     * to generate the same result in different compilations. We will need to used (codegen too when used) to generate a unique

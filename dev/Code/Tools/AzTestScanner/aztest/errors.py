@@ -39,24 +39,24 @@ class RunnerReturnCodes:
     MODULE_TIMEOUT = 106
 
     UNEXPECTED_EXCEPTION = 900
-    NTSTATUS_BREAKPOINT = -2147483645L
-    ACCESS_VIOLATION = -1073741819L
+    NTSTATUS_BREAKPOINT = -2147483645
+    ACCESS_VIOLATION = -1073741819
 
-    CODE_TO_STRING_DICT = defaultdict(lambda: "Unknown return code", **{
-        TESTS_SUCCEEDED: None,
-        TESTS_FAILED: "Tests Failed",
+    CODE_TO_STRING_DICT = defaultdict(lambda: "Unknown return code", [
+        (TESTS_SUCCEEDED, None),
+        (TESTS_FAILED, "Tests Failed"),
 
-        INCORRECT_USAGE: "Incorrect usage of test runner",
-        FAILED_TO_LOAD_LIBRARY: "Failed to load library",
-        SYMBOL_NOT_FOUND: "Symbol not found",
-        MODULE_SKIPPED: "Skipped (Not an error)",
+        (INCORRECT_USAGE, "Incorrect usage of test runner"),
+        (FAILED_TO_LOAD_LIBRARY, "Failed to load library"),
+        (SYMBOL_NOT_FOUND, "Symbol not found"),
+        (MODULE_SKIPPED, "Skipped (Not an error)"),
 
-        MODULE_TIMEOUT: "Module timed out.",
+        (MODULE_TIMEOUT, "Module timed out."),
 
-        UNEXPECTED_EXCEPTION: "Unexpected Exception while scanning module",
-        NTSTATUS_BREAKPOINT: "NTSTATUS: STATUS_BREAKPOINT",
-        ACCESS_VIOLATION: "ACCESS_VIOLATION"
-    })
+        (UNEXPECTED_EXCEPTION, "Unexpected Exception while scanning module"),
+        (NTSTATUS_BREAKPOINT, "NTSTATUS: STATUS_BREAKPOINT"),
+        (ACCESS_VIOLATION, "ACCESS_VIOLATION")
+    ])
 
     @staticmethod
     def to_string(return_code):

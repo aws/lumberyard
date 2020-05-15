@@ -74,10 +74,20 @@ namespace AZ
             rapidjson::Document::AllocatorType& allocator, const void* object, const void* defaultObject, 
             const Uuid& typeId, StackedString& path, const JsonSerializerSettings& settings, Flags flags = Flags::None);
 
+        //! Helper function similar to ContinueLoading, but loads the data as a member of 'value' rather than 'value' itself, if it exists.
+        JsonSerializationResult::ResultCode ContinueLoadingFromJsonObjectField(void* object, const Uuid& typeId, const rapidjson::Value& value,
+            rapidjson::Value::StringRefType memberName, StackedString& path, const JsonDeserializerSettings& settings, Flags flags = Flags::None);
+
+        //! Helper function similar to ContinueStoring, but stores the data as a member of 'output' rather than overwriting 'output'.
+        JsonSerializationResult::ResultCode ContinueStoringToJsonObjectField(rapidjson::Value& output, rapidjson::Value::StringRefType newMemberName,
+            rapidjson::Document::AllocatorType& allocator, const void* object, const void* defaultObject, const Uuid& typeId, StackedString& path,
+            const JsonSerializerSettings& settings, Flags flags = Flags::None);
+
         //! Checks if a value is an explicit default. This useful for containers where not storing anything as a default would mean
         //! a slot wouldn't be used so something has to be added to represent the fully default target.
         bool IsExplicitDefault(const rapidjson::Value& value);
     };
 
+    AZ_DEFINE_ENUM_BITWISE_OPERATORS(AZ::BaseJsonSerializer::Flags)
+
 } // namespace AZ
-AZ_DEFINE_ENUM_BITWISE_OPERATORS(AZ::BaseJsonSerializer::Flags)

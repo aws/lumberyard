@@ -93,6 +93,11 @@ namespace Capabilities
             const AZStd::string& persistenceFilePath) = 0;
 
         /**
+         * Easy refresh of capabilities state.
+         */
+        virtual void ReloadCapabilities() = 0;
+
+        /**
          * Get a list of all the capabilities loaded by LoadCapabilities. Capabilities are represented by the Capability class.
          *
          * \returns     AZStd::vector of Capability objects.
@@ -143,11 +148,12 @@ namespace Capabilities
          */
         virtual bool IsTagSet(const AZStd::string& tag) const = 0;
     };
+
     using CapabilitiesRequestsBus = AZ::EBus<CapabilitiesRequests>;
 
     /**
-    * Bus for notification of Capabilities operations.
-    */
+     * Bus for notification of Capabilities operations.
+     */
     class CapabilitiesNotification
         : public AZ::EBusTraits
     {
@@ -160,21 +166,31 @@ namespace Capabilities
         //////////////////////////////////////////////////////////////////////////
 
         /**
-        * Fires when a notification is enabled in the Capabilities Module
-        *
-        * \param[in] enabled   The capability that is enabled
-        *
-        */
-        virtual void OnCapabilityEnabled(const Capability& enabled) { }
+         * Fires when a notification is enabled in the Capabilities Module
+         *
+         * \param[in] enabled   The capability that is enabled
+         *
+         */
+        virtual void OnCapabilityEnabled(const Capability& enabled) {}
 
         /**
-        * Fires when a notification is disabled in the Capabilities Module
-        *
-        * \param[in] disabled  The capability that is disabled
-        *
-        */
-        virtual void OnCapabilityDisabled(const Capability& disabled) { }
+         * Fires when a notification is disabled in the Capabilities Module
+         *
+         * \param[in] disabled  The capability that is disabled
+         *
+         */
+        virtual void OnCapabilityDisabled(const Capability& disabled) {}
 
+        /**
+         * Fires when the Capabilities Manager (handling CapabilitiesRequests)
+         * needs to add a file path to be watched.
+         *
+         * \param[in] filePath The file path to watch
+         *
+         */
+        virtual void OnWatchFilePath(const AZStd::string& filepath) {}
     };
+
     using CapabilitiesNotificationBus = AZ::EBus<CapabilitiesNotification>;
-}
+
+} // namespace Capabilities

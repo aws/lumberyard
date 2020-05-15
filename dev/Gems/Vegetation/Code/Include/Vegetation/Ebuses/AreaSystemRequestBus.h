@@ -43,12 +43,12 @@ namespace Vegetation
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~AreaSystemRequests() AZ_DEFAULT_METHOD;
+        virtual ~AreaSystemRequests() = default;
 
         // register an area to override vegetation; returns a handle to used to unregister the area
-        virtual void RegisterArea(AZ::EntityId areaId) = 0;
+        virtual void RegisterArea(AZ::EntityId areaId, AZ::u32 layer, AZ::u32 priority, const AZ::Aabb& bounds) = 0;
         virtual void UnregisterArea(AZ::EntityId areaId) = 0;
-        virtual void RefreshArea(AZ::EntityId areaId) = 0;
+        virtual void RefreshArea(AZ::EntityId areaId, AZ::u32 layer, AZ::u32 priority, const AZ::Aabb& bounds) = 0;
         virtual void RefreshAllAreas() = 0;
         virtual void ClearAllAreas() = 0;
 
@@ -56,8 +56,20 @@ namespace Vegetation
         virtual void MuteArea(AZ::EntityId areaId) = 0;
         virtual void UnmuteArea(AZ::EntityId areaId) = 0;
 
-        // visit all instances contained within bounds until callback decides otherwise
+        //! Visit all instances contained within every vegetation sector that overlaps the given bounds
+        //! until callback decides otherwise.  The sector boundary is additionally expanded by the sector
+        //! search padding value in the Area System component's configuration.
+        //! @param bounds The AABB that contains the bounds of the area to expand and scan for instances
+        //! @param callback The function to call for every instance found
+        virtual void EnumerateInstancesInOverlappingSectors(const AZ::Aabb& bounds, AreaSystemEnumerateCallback callback) const = 0;
+
+        //! Visit all instances contained within bounds until callback decides otherwise.
+        //! @param bounds The AABB that contains the area to scan for instances
+        //! @param callback The function to call for every instance found
         virtual void EnumerateInstancesInAabb(const AZ::Aabb& bounds, AreaSystemEnumerateCallback callback) const = 0;
+
+        // Get the current number of instances contained within the AABB
+        virtual AZStd::size_t GetInstanceCountInAabb(const AZ::Aabb& bounds) const = 0;
     };
 
     using AreaSystemRequestBus = AZ::EBus<AreaSystemRequests>;

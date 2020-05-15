@@ -23,7 +23,7 @@
 #include "QtViewPaneManager.h"
 #include "Util/AutoDirectoryRestoreFileDialog.h"
 
-#include <ITerrain.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include "QtUtilWin.h"
 #include "QtUI/ClickableLabel.h"
@@ -50,7 +50,7 @@
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzFramework/Physics/Material.h>
 
-#include "Util/BoostPythonHelpers.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 
 enum Columns
 {
@@ -780,6 +780,7 @@ void CTerrainTextureDialog::OnInitDialog()
     connect(m_ui->assignMaterialClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnAssignMaterial);
     connect(m_ui->assignSplatMapClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnAssignSplatMap);
     connect(m_ui->importSplatMapsClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnImportSplatMaps);
+    connect(m_ui->exportSplatMapClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnExportSplatMap);
 
     connect(m_ui->changeLayerTextureClickable, &QLabel::linkActivated, this, &CTerrainTextureDialog::OnLoadTexture);
 
@@ -894,6 +895,7 @@ void CTerrainTextureDialog::EnableControls()
 
     UpdateAssignMaterialItem();
     UpdateAssignSplatMapItem();
+    UpdateExportSplatMapItem();
 }
 
 void CTerrainTextureDialog::UpdateControlData()
@@ -1015,7 +1017,8 @@ void CTerrainTextureDialog::OnFileExportLargePreview()
     // Show a large preview of the final texture
     ////////////////////////////////////////////////////////////////////////
 
-    if (!gEnv->p3DEngine->GetITerrain())
+    const bool isLegacyTerrainActive = LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers();
+    if (!isLegacyTerrainActive)
     {
         QMessageBox::warning(this, "No Terrain", "Terrain is not presented in the current level.");
         return;
@@ -1610,12 +1613,87 @@ void CTerrainTextureDialog::OnAssignSplatMap()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTerrainTextureDialog::OnExportSplatMap()
+{
+    Layers layers = GetSelectedLayers();
+
+    // No layers selected, so nothing to assign.
+    if (layers.size() != 1)
+    {
+        QMessageBox::warning(this, "Can't Export Splat Map", "Select a target layer before exporting a splat map.");
+        return;
+    }
+
+    auto editor = GetIEditor();
+    CHeightmap* heightMap = editor->GetHeightmap();
+    if (!heightMap->IsAllocated())
+    {
+        QMessageBox::warning(this, "Can't Export Splat Map", "Terrain isn't properly initialized in this level.");
+        return;
+    }
+
+    CLayer* layer = layers[0];
+    QString filePath = layer->GetSplatMapPath();
+
+    if (!filePath.isEmpty())
+    {
+        filePath = Path::GamePathToFullPath(filePath);
+    }
+
+    QString selectedFile = filePath;
+
+    char szFilters[] = "BMP Files (*.bmp);;PNG Files (*.png);;JPEG Files (*.jpg);;PGM Files (*.pgm);;All files (*.*)";
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "bmp", selectedFile, szFilters, {}, {}, this);
+    if (dlg.exec())
+    {
+        QWaitCursor wait;
+        CLogFile::WriteLine("Exporting splat map...");
+
+        QString newPath = dlg.selectedFiles().first();
+        if (!ExportSplatMap(layer->GetCurrentLayerId(), newPath))
+        {
+            QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Error: Can't save image file."));
+            return;
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CTerrainTextureDialog::ExportSplatMap(uint32 layerId, const QString& imagePath)
+{
+    auto editor = GetIEditor();
+    if (editor)
+    {
+        CHeightmap* heightMap = editor->GetHeightmap();
+        if (heightMap && heightMap->IsAllocated())
+        {
+            // Get the splatmap, then rotate it for export.  (All data inside of heightmap is stored rotated 270 degrees)
+            CImageEx unrotatedSplatImage;
+            CImageEx splatImage;
+            heightMap->GetLayerWeights(layerId, &unrotatedSplatImage);
+            splatImage.RotateOrt(unrotatedSplatImage, ImageRotationDegrees::Rotate90);
+
+            if (CImageUtil::SaveImage(imagePath, splatImage))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::OnDataBaseItemEvent(IDataBaseItem* item, EDataBaseItemEvent event)
 {
     if (event == EDB_ITEM_EVENT_SELECTED)
     {
         UpdateAssignMaterialItem();
         UpdateAssignSplatMapItem();
+        UpdateExportSplatMapItem();
     }
 }
 
@@ -1641,6 +1719,15 @@ void CTerrainTextureDialog::UpdateAssignSplatMapItem()
     bool layerSelected = layers.size() == 1;
 
     m_ui->assignSplatMapClickable->setEnabled(layerSelected);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTerrainTextureDialog::UpdateExportSplatMapItem()
+{
+    Layers layers = GetSelectedLayers();
+    bool layerSelected = layers.size() == 1;
+
+    m_ui->exportSplatMapClickable->setEnabled(layerSelected);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1676,14 +1763,14 @@ void CTerrainTextureDialog::OnImportSplatMaps()
     }
 
     // Import our data and mark things as modified
-    ImportSplatMaps();
-
-    editor->SetModifiedFlag();
-    editor->SetModifiedModule(eModifiedTerrain);
+    if (!ImportSplatMaps())
+    {
+        QMessageBox::critical(this, QString(), tr("Error: Can't load BMP file. Probably out of memory."));
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainTextureDialog::ImportSplatMaps()
+bool CTerrainTextureDialog::ImportSplatMaps()
 {
     auto editor = GetIEditor();
     auto terrainManager = editor->GetTerrainManager();
@@ -1708,8 +1795,7 @@ void CTerrainTextureDialog::ImportSplatMaps()
 
         if (!CImageUtil::LoadBmp(path, splat))
         {
-            QMessageBox::critical(this, QString(), tr("Error: Can't load BMP file. Probably out of memory."));
-            return;
+            return false;
         }
 
         splatMaps[layerIds.size()].RotateOrt(splat, ImageRotationDegrees::Rotate270);
@@ -1720,6 +1806,11 @@ void CTerrainTextureDialog::ImportSplatMaps()
 
     // Now build the weight map using the masked layers
     heightMap->SetLayerWeights(layerIds, splatMaps.data(), layerIds.size());
+
+    editor->SetModifiedFlag();
+    editor->SetModifiedModule(eModifiedTerrain);
+
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1978,7 +2069,26 @@ public:
             return;
         }
 
-        editor->Notify(eNotify_OnSplatmapImport);
+        CTerrainTextureDialog::ImportSplatMaps();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static bool ExportSplatMap(int index, const char* filename)
+    {
+        QString imagePath(filename);
+        IEditor* editor = GetIEditor();
+
+        if (editor)
+        {
+            CLayer* layer = GetLayer(index);
+
+            if (layer)
+            {
+                return CTerrainTextureDialog::ExportSplatMap(layer->GetCurrentLayerId(), imagePath);
+            }
+        }
+
+        return false;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2029,33 +2139,29 @@ private:
     }
 };
 
+void AzToolsFramework::TerrainTexturePythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+{
+    if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+    {
+        auto addLegacyTerrain = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+        {
+            methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "legacy.terrain_texture"); // this will put these methods into the 'azlmbr.legacy.terrain_texture' module
+        };
+
+        addLegacyTerrain(behaviorContext->Method("open_layers", TextureScriptBindings::OpenTool, nullptr, "Opens the texture layers tool."));
+        addLegacyTerrain(behaviorContext->Method("create_layer", TextureScriptBindings::CreateLayer, nullptr, "Creates a new texture layer with the given index and name."));
+        addLegacyTerrain(behaviorContext->Method("delete_layer", TextureScriptBindings::DeleteLayer, nullptr, "Deletes the texture layer matching the index provided."));
+        addLegacyTerrain(behaviorContext->Method("move_layer", TextureScriptBindings::MoveLayer, nullptr, "Moves the texture layer matching the index provided to a new index."));
+        addLegacyTerrain(behaviorContext->Method("get_layer_index", TextureScriptBindings::GetTextureLayerIndex, nullptr, "Returns the index of a named texture layer."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_material", TextureScriptBindings::SetMaterial, nullptr, "Sets a material to the texture layer matching the index provided."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_splatmap", TextureScriptBindings::SetSplatMap, nullptr, "Sets a splatmap to the texture layer matching the index provided."));
+        addLegacyTerrain(behaviorContext->Method("import_layer_splatmaps", TextureScriptBindings::ImportSplatMaps, nullptr, "Imports splatmaps."));
+        addLegacyTerrain(behaviorContext->Method("export_layer_splatmap", TextureScriptBindings::ExportSplatMap, nullptr, "Exports a splatmap."));
+        addLegacyTerrain(behaviorContext->Method("set_layer_name", TextureScriptBindings::SetTextureLayerName, nullptr, "Renames the texture layer matching the index provided."));
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::OpenTool, terrain, open_layers,
-    "Opens the texture layers tool.", "void terrain.open_layers()");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::CreateLayer, terrain, create_layer,
-    "Creates a new texture layer with the given index and name.", "void terrain.create_layer(int index, string layer_name)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::DeleteLayer, terrain, delete_layer,
-    "Deletes the texture layer matching the index provided.", "void terrain.delete_layer(int index)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::MoveLayer, terrain, move_layer,
-    "Moves the texture layer matching the index provided to a new index.", "void terrain.move_layer(int old_index, int new_index)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::GetTextureLayerIndex, terrain, get_layer_index,
-    "Returns the index of a named texture layer.", "int terrain.get_layer_index(string layer_name)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetMaterial, terrain, set_layer_material,
-    "Sets a material to the texture layer matching the index provided.", "void terrain.set_layer_material(int index, string material_name)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetSplatMap, terrain, set_layer_splatmap,
-    "Sets a splatmap to the texture layer matching the index provided.", "void terrain.set_layer_splatmap(int index, string splatmap_path)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::ImportSplatMaps, terrain, import_layer_splatmaps,
-    "Imports splatmaps.", "void terrain.import_layer_splatmaps()");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetTextureLayerName, terrain, set_layer_name,
-    "Renames the texture layer matching the index provided.", "void terrain.set_layer_name(int index, string layer_name)");
-
 #include <TerrainTexture.moc>

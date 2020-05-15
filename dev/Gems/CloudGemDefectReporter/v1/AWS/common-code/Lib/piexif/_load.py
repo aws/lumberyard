@@ -1,9 +1,10 @@
 import struct
+import sys
 
 from ._common import *
 from ._exceptions import InvalidImageDataError
 from ._exif import *
-
+from piexif import _webp
 
 LITTLE_ENDIAN = b"\x49\x49"
 
@@ -64,23 +65,25 @@ def load(input_data, key_is_name=False):
 
 class _ExifReader(object):
     def __init__(self, data):
-        if data[0:2] == b"\xff\xd8":  # JPEG
+        # Prevents "UnicodeWarning: Unicode equal comparison failed" warnings on Python 2
+        maybe_image = sys.version_info >= (3,0,0) or isinstance(data, str)
+
+        if maybe_image and data[0:2] == b"\xff\xd8":  # JPEG
             segments = split_into_segments(data)
             app1 = get_exif_seg(segments)
             if app1:
                 self.tiftag = app1[10:]
             else:
                 self.tiftag = None
-        elif data[0:2] in (b"\x49\x49", b"\x4d\x4d"):  # TIFF
+        elif maybe_image and data[0:2] in (b"\x49\x49", b"\x4d\x4d"):  # TIFF
             self.tiftag = data
-        elif data[0:4] == b"Exif":  # Exif
+        elif maybe_image and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
+            self.tiftag = _webp.get_exif(data)
+        elif maybe_image and data[0:4] == b"Exif":  # Exif
             self.tiftag = data[6:]
         else:
-            try:
-                with open(data, 'rb') as f:
-                    magic_number = f.read(2)
-            except:
-                raise ValueError("Got invalid value.")
+            with open(data, 'rb') as f:
+                magic_number = f.read(2)
             if magic_number == b"\xff\xd8":  # JPEG
                 app1 = read_exif_from_file(data)
                 if app1:
@@ -91,7 +94,14 @@ class _ExifReader(object):
                 with open(data, 'rb') as f:
                     self.tiftag = f.read()
             else:
-                raise InvalidImageDataError("Given file is neither JPEG nor TIFF.")
+                with open(data, 'rb') as f:
+                    header = f.read(12)
+                if header[0:4] == b"RIFF"and header[8:12] == b"WEBP":
+                    with open(data, 'rb') as f:
+                        file_data = f.read()
+                    self.tiftag = _webp.get_exif(file_data)
+                else:
+                    raise InvalidImageDataError("Given file is neither JPEG nor TIFF.")
 
     def get_ifd_dict(self, pointer, ifd_name, read_unknown=False):
         ifd_dict = {}

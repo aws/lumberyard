@@ -43,12 +43,6 @@
 #include "StringDlg.h"
 #include "GenericSelectItemDialog.h"
 
-#include "HyperGraph/FlowGraphManager.h"
-#include "HyperGraph/FlowGraph.h"
-#include "HyperGraph/HyperGraphDialog.h"
-#include "HyperGraph/FlowGraphSearchCtrl.h"
-#include "HyperGraph/FlowGraphHelpers.h"
-
 #include "BrushObject.h"
 #include "GameEngine.h"
 
@@ -67,7 +61,6 @@
 #include <Serialization/IArchiveHost.h>
 
 #include "../Controls/RollupBar.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayer.h"
 
 #include "IFlares.h"
@@ -85,18 +78,13 @@
 #include "TrackView/TrackViewSequenceManager.h"
 #include "TrackView/TrackViewAnimNode.h"
 
-#include "UndoEntityProperty.h"
-#include "UndoEntityParam.h"
-
 #include "IGeomCache.h"
 
 #include <QWidget> // To use the view pane
 #include <QCoreApplication> // To message the view pane
 #include <IEntityHelper.h>
-#include "Components/IComponentFlowGraph.h"
 #include "Components/IComponentRender.h"
 #include "Components/IComponentEntityAttributes.h"
-#include <boost/make_shared.hpp>
 
 #include <Controls/ReflectedPropertyControl/ReflectedPropertiesPanel.h>
 
@@ -291,7 +279,6 @@ CEntityObject::CEntityObject()
     m_entityId = 0;
     m_bVisible = true;
     m_bCalcPhysics = true;
-    m_pFlowGraph = 0;
     m_bLight = false;
     m_bAreaLight = false;
     m_fAreaWidth = 1;
@@ -376,16 +363,6 @@ void CEntityObject::InitVariables()
 //////////////////////////////////////////////////////////////////////////&
 void CEntityObject::Done()
 {
-    if (m_pFlowGraph)
-    {
-        CFlowGraphManager* pFGMGR = GetIEditor()->GetFlowGraphManager();
-        if (pFGMGR)
-        {
-            pFGMGR->UnregisterAndResetView(m_pFlowGraph);
-        }
-    }
-    SAFE_RELEASE(m_pFlowGraph);
-
     DeleteEntity();
     UnloadScript();
 
@@ -428,11 +405,6 @@ bool CEntityObject::Init(IEditor* pEditor, CBaseObject* pPrev, const QString& fi
         // When cloning entity, do not get properties from script.
         SetClass(pPreviousEntity->GetEntityClass(), false, false);
         SpawnEntity();
-
-        if (pPreviousEntity->m_pFlowGraph)
-        {
-            SetFlowGraph(( CFlowGraph* )pPreviousEntity->m_pFlowGraph->Clone());
-        }
 
         mv_createdThroughPool = pPreviousEntity->mv_createdThroughPool;
 
@@ -1420,55 +1392,6 @@ void CEntityObject::SpawnEntity()
         // Calculate entity bounding box.
         CalcBBox();
 
-        if (m_pFlowGraph)
-        {
-            // Re-apply entity for flow graph.
-            m_pFlowGraph->SetEntity(this, true);
-
-            IComponentFlowGraphPtr pFlowGraphComponent = m_pEntity->GetOrCreateComponent<IComponentFlowGraph>();
-            IFlowGraph* pGameFlowGraph = m_pFlowGraph->GetIFlowGraph();
-            pFlowGraphComponent->SetFlowGraph(pGameFlowGraph);
-            if (pGameFlowGraph)
-            {
-                pGameFlowGraph->SetActive(true);
-            }
-
-            // Check for new entity flownode data
-            CFlowGraphManager* pFGManager = GetIEditor()->GetFlowGraphManager();
-
-            if (pFGManager)
-            {
-                int numFG = pFGManager->GetFlowGraphCount();
-
-                for (int i = 0; i < numFG; ++i)
-                {
-                    CFlowGraph* pFG = pFGManager->GetFlowGraph(i);
-
-                    if (pFG)
-                    {
-                        IHyperGraphEnumerator* pEnum = pFG->GetNodesEnumerator();
-                        for (IHyperNode* pINode = pEnum->GetFirst(); pINode; pINode = pEnum->GetNext())
-                        {
-                            CHyperNode* pNode = (CHyperNode*)pINode;
-
-                            string classname = string("entity:") + GetIEntity()->GetClass()->GetName();
-                            TFlowNodeTypeId id = gEnv->pFlowSystem->GetTypeId(classname);
-                            IFlowNodeData* pFlowNodeData = pFG->GetIFlowGraph()->GetNodeData(pNode->GetFlowNodeId());
-
-                            if (pFlowNodeData && pFlowNodeData->GetNodeTypeId() == id)
-                            {
-                                // Reload flownode port data
-                                pFGManager->ReloadNodeConfig(pFlowNodeData, (CFlowNode*)pNode);
-                                // Check for non existing port connections after reloading data
-                                pFG->ValidateEdges(pNode);
-                                pFG->SendNotifyEvent(0, EHG_GRAPH_INVALIDATE);
-                            }
-                        }
-                        pEnum->Release();
-                    }
-                }
-            }
-        }
         if (m_physicsState)
         {
             m_pEntity->SetPhysicsState(m_physicsState);
@@ -1701,7 +1624,7 @@ void CEntityObject::EndEditParams(IEditor* ie)
     }
     ms_pTreePanel = NULL;
 
-    if (s_pPropertiesPanel && s_pPropertiesPanel)
+    if (s_pPropertiesPanel)
     {
         s_pPropertiesPanel->ClearUpdateCallback();
     }
@@ -2671,13 +2594,6 @@ void CEntityObject::Serialize(CObjectArchive& ar)
 
         // Save Entity Links.
         SaveLink(xmlNode);
-
-        // Save flow graph.
-        if (m_pFlowGraph && !m_pFlowGraph->IsEmpty())
-        {
-            XmlNodeRef graphNode = xmlNode->newChild("FlowGraph");
-            m_pFlowGraph->Serialize(graphNode, false, &ar);
-        }
     }
 }
 
@@ -2708,29 +2624,6 @@ void CEntityObject::PostLoad(CObjectArchive& ar)
     // Load Links.
     XmlNodeRef linksNode = ar.node->findChild("EntityLinks");
     LoadLink(linksNode, &ar);
-
-    //////////////////////////////////////////////////////////////////////////
-    // Load flow graph after loading of everything.
-    XmlNodeRef graphNode = ar.node->findChild("FlowGraph");
-    if (graphNode)
-    {
-        if (!m_pFlowGraph)
-        {
-            SetFlowGraph(GetIEditor()->GetFlowGraphManager()->CreateGraphForEntity(this));
-        }
-        if (m_pFlowGraph && m_pFlowGraph->GetIFlowGraph())
-        {
-            m_pFlowGraph->ExtractObjectsPrefabIdToGlobalIdMappingFromPrefab(ar);
-            m_pFlowGraph->Serialize(graphNode, true, &ar);
-        }
-    }
-    else
-    {
-        if (m_pFlowGraph)
-        {
-            SetFlowGraph(nullptr);
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2974,13 +2867,6 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
         m_pEntity->SerializeXML(objNode, false);
     }
 
-    // Save flow graph.
-    if (m_pFlowGraph && !m_pFlowGraph->IsEmpty())
-    {
-        XmlNodeRef graphNode = objNode->newChild("FlowGraph");
-        m_pFlowGraph->Serialize(graphNode, false, 0);
-    }
-
     return objNode;
 }
 
@@ -3129,13 +3015,6 @@ void CEntityObject::Reload(bool bReloadScript)
         event.event = ENTITY_EVENT_RESET;
         event.nParam[0] = (UINT_PTR)1;
         m_pEntity->SendEvent(event);
-    }
-
-    // if it changed, kick of a setEntityId event
-    EntityId newEntityId = m_entityId;
-    if (m_pEntity && newEntityId != oldEntityId)
-    {
-        gEnv->pFlowSystem->OnEntityIdChanged(FlowEntityId(oldEntityId), FlowEntityId(newEntityId));
     }
 }
 
@@ -3643,12 +3522,6 @@ void CEntityObject::PostClone(CBaseObject* pFromObject, CObjectCloneContext& ctx
                 AddEntityLink(et.name, GUID_NULL);
             }
         }
-    }
-
-
-    if (m_pFlowGraph)
-    {
-        m_pFlowGraph->PostClone(pFromObject, ctx);
     }
 }
 
@@ -4467,135 +4340,7 @@ bool CEntityObject::IsSimilarObject(CBaseObject* pObject)
     return false;
 }
 
-//////////////////////////////////////////////////////////////////////////
-bool CEntityObject::CreateFlowGraphWithGroupDialog()
-{
-    if (m_pFlowGraph)
-    {
-        return false;
-    }
 
-    CUndo undo("Create Flow graph");
-
-    CFlowGraphManager* pFlowGraphManager = GetIEditor()->GetFlowGraphManager();
-    std::set<QString> groupsSet;
-    pFlowGraphManager->GetAvailableGroups(groupsSet);
-
-    QString groupName;
-    bool bDoNewGroup  = true;
-    bool bCreateGroup = false;
-    bool bDoNewGraph  = false;
-
-    if (groupsSet.size() > 0)
-    {
-        std::vector<QString> groups;
-        groups.push_back("<None>");
-        groups.insert (groups.end(), groupsSet.begin(), groupsSet.end());
-
-        CGenericSelectItemDialog gtDlg; // KDAP_PORT need to fix parent
-        gtDlg.setWindowTitle(QObject::tr("Choose Group for the Flow Graph"));
-        gtDlg.SetItems(groups);
-        gtDlg.AllowNew(true);
-        switch (gtDlg.exec())
-        {
-        case QDialog::Accepted:
-            groupName = gtDlg.GetSelectedItem();
-            bCreateGroup = true;
-            bDoNewGroup = false;
-            bDoNewGraph = true;
-            break;
-        case CGenericSelectItemDialog::New:
-            bDoNewGroup = true;
-            break;
-        }
-    }
-
-    if (bDoNewGroup)
-    {
-        StringDlg dlg(QObject::tr("Choose Group for the Flow Graph"));
-        dlg.SetString(QObject::tr("<None>"));
-        if (dlg.exec() == QDialog::Accepted)
-        {
-            bCreateGroup = true;
-            groupName = dlg.GetString();
-        }
-    }
-
-    if (bCreateGroup)
-    {
-        if (groupName == tr("<None>"))
-        {
-            groupName.clear();
-        }
-        bDoNewGraph = true;
-        OpenFlowGraph(groupName);
-        if (m_panel)
-        {
-            m_panel->SetEntity(this);
-        }
-    }
-    return bDoNewGraph;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityObject::SetFlowGraph(CFlowGraph* pGraph)
-{
-    if (pGraph != m_pFlowGraph)
-    {
-        if (m_pFlowGraph)
-        {
-            m_pFlowGraph->Release();
-        }
-        m_pFlowGraph = pGraph;
-        if (m_pFlowGraph)
-        {
-            m_pFlowGraph->SetEntity(this, true);   // true -> re-adjust graph entity nodes
-            m_pFlowGraph->AddRef();
-
-            if (m_pEntity)
-            {
-                IComponentFlowGraphPtr flowGraphComponent = m_pEntity->GetOrCreateComponent<IComponentFlowGraph>();
-                flowGraphComponent->SetFlowGraph(m_pFlowGraph->GetIFlowGraph());
-            }
-        }
-        SetModified(false);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityObject::OpenFlowGraph(const QString& groupName)
-{
-    if (!m_pFlowGraph)
-    {
-        StoreUndo("Create Flow Graph");
-        SetFlowGraph(GetIEditor()->GetFlowGraphManager()->CreateGraphForEntity(this, groupName.toUtf8().data()));
-        UpdatePrefab();
-    }
-    GetIEditor()->GetFlowGraphManager()->OpenView(m_pFlowGraph);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityObject::RemoveFlowGraph(bool bInitFlowGraph)
-{
-    if (m_pFlowGraph)
-    {
-        StoreUndo("Remove Flow Graph");
-        GetIEditor()->GetFlowGraphManager()->UnregisterAndResetView(m_pFlowGraph, bInitFlowGraph);
-        m_pFlowGraph->Release();
-        m_pFlowGraph = 0;
-
-        if (m_pEntity)
-        {
-            IComponentFlowGraphPtr pFlowGraphComponent = m_pEntity->GetComponent<IComponentFlowGraph>();
-            if (pFlowGraphComponent)
-            {
-                pFlowGraphComponent->SetFlowGraph(0);
-            }
-        }
-
-        SetModified(false);
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////
 QString CEntityObject::GetSmartObjectClass() const
@@ -4625,35 +4370,6 @@ IRenderNode*  CEntityObject::GetEngineNode() const
     }
 
     return NULL;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityObject::OnMenuCreateFlowGraph()
-{
-    if (CreateFlowGraphWithGroupDialog())
-    {
-        OpenFlowGraph("");
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityObject::OnMenuFlowGraphOpen(CFlowGraph* pFlowGraph)
-{
-    GetIEditor()->GetFlowGraphManager()->OpenView(pFlowGraph);
-
-    CHyperGraphDialog* pHGDlg = CHyperGraphDialog::instance();
-    if (pHGDlg)
-    {
-        CFlowGraphSearchCtrl* pSC = pHGDlg->GetSearchControl();
-        if (pSC)
-        {
-            CFlowGraphSearchOptions* pOpts = CFlowGraphSearchOptions::GetSearchOptions();
-            pOpts->m_bIncludeEntities = true;
-            pOpts->m_findSpecial = CFlowGraphSearchOptions::eFLS_None;
-            pOpts->m_LookinIndex = CFlowGraphSearchOptions::eFL_Current;
-            pSC->Find(GetName(), false, true, true);
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4798,52 +4514,6 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
         pMenu->addSeparator();
     }
 
-    std::vector<CFlowGraph*> flowgraphs;
-    CFlowGraph* pEntityFG = 0;
-    FlowGraphHelpers::FindGraphsForEntity(this, flowgraphs, pEntityFG);
-
-    QAction* action;
-    if (GetFlowGraph() == 0)
-    {
-        action = pMenu->addAction(QObject::tr("Create Flow Graph"));
-        QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuCreateFlowGraph);
-        pMenu->addSeparator();
-    }
-
-    if (!flowgraphs.empty())
-    {
-        QMenu* fgMenu = pMenu->addMenu(QObject::tr("Flow Graphs"));
-
-        for (auto flowGraph : flowgraphs)
-        {
-            if (!flowGraph)
-            {
-                continue;
-            }
-            QString name;
-            FlowGraphHelpers::GetHumanName(flowGraph, name);
-            if (flowGraph == pEntityFG)
-            {
-                name += " <GraphEntity>";
-
-                action = fgMenu->addAction(name);
-                QObject::connect(action, &QAction::triggered, this, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
-                    });
-                if (fgMenu->actions().size() > 1)
-                {
-                    fgMenu->addSeparator();
-                }
-            }
-            else
-            {
-                action = fgMenu->addAction(name);
-                QObject::connect(action, &QAction::triggered, this, [this, flowGraph] { OnMenuFlowGraphOpen(flowGraph);
-                    });
-            }
-        }
-        pMenu->addSeparator();
-    }
-
     // TrackView sequences
     CTrackViewAnimNodeBundle bundle = GetIEditor()->GetSequenceManager()->GetAllRelatedAnimNodes(this);
 
@@ -4858,7 +4528,7 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
 
             if (pSequence)
             {
-                action = sequenceMenu->addAction(pSequence->GetName());
+                QAction* action = sequenceMenu->addAction(pSequence->GetName());
                 auto node = bundle.GetNode(nodeIndex);
                 QObject::connect(action, &QAction::triggered, this, [this, node] { OnMenuOpenTrackView(node);
                     });
@@ -4878,22 +4548,24 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
         for (int i = 0; i < eventCount; ++i)
         {
             QString sourceEvent = pScript->GetEvent(i);
-            action = eventMenu->addAction(sourceEvent);
+            QAction* action = eventMenu->addAction(sourceEvent);
             QObject::connect(action, &QAction::triggered, this, [this, i] { OnMenuScriptEvent(i);
                 });
         }
         pMenu->addSeparator();
     }
 
-    action = pMenu->addAction(QObject::tr("Reload Script"));
-    QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadScripts);
+    {
+        QAction* action = pMenu->addAction(QObject::tr("Reload Script"));
+        QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadScripts);
 
-    action = pMenu->addAction(QObject::tr("Reload All Scripts"));
-    QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadAllScripts);
+        action = pMenu->addAction(QObject::tr("Reload All Scripts"));
+        QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuReloadAllScripts);
+    }
 
     if (pScript && pScript->GetClass() && _stricmp(pScript->GetClass()->GetName(), "ProceduralObject") == 0)
     {
-        action = pMenu->addAction(QObject::tr("Convert to prefab"));
+        QAction* action = pMenu->addAction(QObject::tr("Convert to prefab"));
         QObject::connect(action, &QAction::triggered, this, &CEntityObject::OnMenuConvertToPrefab);
         //pMenu->AddSeparator();
     }
@@ -4904,10 +4576,6 @@ void CEntityObject::OnContextMenu(QMenu* pMenu)
 void CEntityObject::SetFrozen(bool bFrozen)
 {
     CBaseObject::SetFrozen(bFrozen);
-    if (m_pFlowGraph)
-    {
-        GetIEditor()->GetFlowGraphManager()->SendNotifyEvent(EHG_GRAPH_UPDATE_FROZEN);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5755,390 +5423,5 @@ void CEntityObject::SetEntityPropertyString(const char* name, const QString& val
 {
     SetEntityProperty<QString>(name, value);
 }
-
-SPyWrappedProperty CEntityObject::PyGetEntityProperty(const char* pName) const
-{
-    CVarBlock* pProperties = GetProperties2();
-    IVariable* pVariable = NULL;
-    if (pProperties)
-    {
-        pVariable = pProperties->FindVariable(pName, true, true);
-    }
-
-    if (!pVariable)
-    {
-        pProperties = GetProperties();
-        if (pProperties)
-        {
-            pVariable = pProperties->FindVariable(pName, true, true);
-        }
-
-        if (!pVariable)
-        {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toUtf8().data());
-        }
-    }
-
-    SPyWrappedProperty value;
-    if (pVariable->GetType() == IVariable::BOOL)
-    {
-        value.type =  SPyWrappedProperty::eType_Bool;
-        pVariable->Get(value.property.boolValue);
-        return value;
-    }
-    else if (pVariable->GetType() == IVariable::INT)
-    {
-        value.type = SPyWrappedProperty::eType_Int;
-        pVariable->Get(value.property.intValue);
-        return value;
-    }
-    else if (pVariable->GetType() == IVariable::FLOAT)
-    {
-        value.type = SPyWrappedProperty::eType_Float;
-        pVariable->Get(value.property.floatValue);
-        return value;
-    }
-    else if (pVariable->GetType() == IVariable::STRING)
-    {
-        value.type = SPyWrappedProperty::eType_String;
-        pVariable->Get(value.stringValue);
-        return value;
-    }
-    else if (pVariable->GetType() == IVariable::VECTOR)
-    {
-        Vec3 tempVec3;
-        pVariable->Get(tempVec3);
-
-        if (pVariable->GetDataType() == IVariable::DT_COLOR)
-        {
-            value.type = SPyWrappedProperty::eType_Color;
-            QColor col = ColorLinearToGamma(ColorF(
-                        tempVec3[0],
-                        tempVec3[1],
-                        tempVec3[2]));
-            value.property.colorValue.r = col.red();
-            value.property.colorValue.g = col.green();
-            value.property.colorValue.b = col.blue();
-        }
-        else
-        {
-            value.type = SPyWrappedProperty::eType_Vec3;
-            value.property.vecValue.x = tempVec3[0];
-            value.property.vecValue.y = tempVec3[1];
-            value.property.vecValue.z = tempVec3[2];
-        }
-
-        return value;
-    }
-
-    throw std::runtime_error("Data type is invalid.");
-}
-
-void CEntityObject::PySetEntityProperty(const char* pName, const SPyWrappedProperty& value)
-{
-    CVarBlock* pProperties = GetProperties2();
-    IVariable* pVariable = NULL;
-    if (pProperties)
-    {
-        pVariable = pProperties->FindVariable(pName, true, true);
-    }
-
-    if (!pVariable)
-    {
-        pProperties = GetProperties();
-        if (pProperties)
-        {
-            pVariable = pProperties->FindVariable(pName, true, true);
-        }
-
-        if (!pVariable)
-        {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toUtf8().data());
-        }
-    }
-
-    if (value.type == SPyWrappedProperty::eType_Bool)
-    {
-        pVariable->Set(value.property.boolValue);
-    }
-    else if (value.type == SPyWrappedProperty::eType_Int)
-    {
-        pVariable->Set(value.property.intValue);
-    }
-    else if (value.type == SPyWrappedProperty::eType_Float)
-    {
-        pVariable->Set(value.property.floatValue);
-    }
-    else if (value.type == SPyWrappedProperty::eType_String)
-    {
-        pVariable->Set(value.stringValue);
-    }
-    else if (value.type == SPyWrappedProperty::eType_Vec3)
-    {
-        pVariable->Set(Vec3(value.property.vecValue.x, value.property.vecValue.y, value.property.vecValue.z));
-    }
-    else if (value.type == SPyWrappedProperty::eType_Color)
-    {
-        pVariable->Set(Vec3(value.property.colorValue.r, value.property.colorValue.g, value.property.colorValue.b));
-    }
-    else
-    {
-        throw std::runtime_error("Data type is invalid.");
-    }
-
-    UpdatePropertyPanels(true);
-}
-
-SPyWrappedProperty PyGetEntityProperty(const char* pObjName, const char* pPropName)
-{
-    CBaseObject* pObject;
-    if (GetIEditor()->GetObjectManager()->FindObject(pObjName))
-    {
-        pObject = GetIEditor()->GetObjectManager()->FindObject(pObjName);
-    }
-    else if (GetIEditor()->GetObjectManager()->FindObject(GuidUtil::FromString(pObjName)))
-    {
-        pObject = GetIEditor()->GetObjectManager()->FindObject(GuidUtil::FromString(pObjName));
-    }
-    else
-    {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
-    }
-
-    if (qobject_cast<CEntityObject*>(pObject))
-    {
-        CEntityObject* pEntityObject = static_cast<CEntityObject*>(pObject);
-        return pEntityObject->PyGetEntityProperty(pPropName);
-    }
-    else
-    {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toUtf8().data());
-    }
-}
-
-pSPyWrappedProperty PyGetEntityPropertyUsingSharedPtr(const char* pObjName, const char* pPropName)
-{
-    SPyWrappedProperty property = PyGetEntityProperty(pObjName, pPropName);
-    return boost::make_shared<SPyWrappedProperty>(property);
-}
-
-
-void PySetEntityProperty(const char* entityName, const char* propName, SPyWrappedProperty value)
-{
-    CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(entityName);
-    if (!pObject || !qobject_cast<CEntityObject*>(pObject))
-    {
-        throw std::logic_error((QString("\"") + entityName + "\" is an invalid entity.").toUtf8().data());
-    }
-
-    CUndo undo("Set Entity Property");
-    if (CUndo::IsRecording())
-    {
-        CUndo::Record(new CUndoEntityProperty(entityName, propName));
-    }
-
-    CEntityObject* pEntityObject = static_cast<CEntityObject*>(pObject);
-    pEntityObject->PySetEntityProperty(propName, value);
-}
-
-void PySetEntityPropertyUsingSharedPtr(const char* entityName, const char* propName, pSPyWrappedProperty sharedPtr)
-{
-    PySetEntityProperty(entityName, propName, *sharedPtr);
-}
-
-SPyWrappedProperty PyGetObjectVariableRec(IVariableContainer* pVariableContainer, std::deque<QString>& path)
-{
-    SPyWrappedProperty value;
-    QString currentName = path.back();
-    QString currentPath = path.front();
-
-    IVariableContainer* pSubVariableContainer = pVariableContainer;
-    if (path.size() != 1)
-    {
-        pSubVariableContainer = pSubVariableContainer->FindVariable(currentPath.toUtf8().data(), false, true);
-        if (!pSubVariableContainer)
-        {
-            throw std::logic_error("Path is invalid.");
-        }
-        path.pop_front();
-        PyGetObjectVariableRec(pSubVariableContainer, path);
-    }
-
-    IVariable* pVariable = pSubVariableContainer->FindVariable(currentName.toUtf8().data(), false, true);
-
-    if (pVariable)
-    {
-        if (pVariable->GetType() == IVariable::BOOL)
-        {
-            value.type = SPyWrappedProperty::eType_Bool;
-            pVariable->Get(value.property.boolValue);
-            return value;
-        }
-        else if (pVariable->GetType() == IVariable::INT)
-        {
-            value.type = SPyWrappedProperty::eType_Int;
-            pVariable->Get(value.property.intValue);
-            return value;
-        }
-        else if (pVariable->GetType() == IVariable::FLOAT)
-        {
-            value.type = SPyWrappedProperty::eType_Float;
-            pVariable->Get(value.property.floatValue);
-            return value;
-        }
-        else if (pVariable->GetType() == IVariable::STRING)
-        {
-            value.type = SPyWrappedProperty::eType_String;
-            pVariable->Get(value.stringValue);
-            return value;
-        }
-        else if (pVariable->GetType() == IVariable::VECTOR)
-        {
-            value.type = SPyWrappedProperty::eType_Vec3;
-            Vec3 tempVec3;
-            pVariable->Get(tempVec3);
-            value.property.vecValue.x = tempVec3[0];
-            value.property.vecValue.y = tempVec3[1];
-            value.property.vecValue.z = tempVec3[2];
-            return value;
-        }
-
-        throw std::logic_error("Data type is invalid.");
-    }
-
-    throw std::logic_error((QString("\"") + currentName + "\" is an invalid parameter.").toUtf8().data());
-}
-
-SPyWrappedProperty PyGetEntityParam(const char* pObjName, const char* pVarPath)
-{
-    SPyWrappedProperty result;
-    QString varPath = pVarPath;
-    std::deque<QString> splittedPath;
-    for (auto token : varPath.split(QRegularExpression(QStringLiteral(R"([\\/])")), QString::SkipEmptyParts))
-    {
-        splittedPath.push_back(token);
-    }
-
-    CBaseObject* pObject;
-    if (GetIEditor()->GetObjectManager()->FindObject(pObjName))
-    {
-        pObject = GetIEditor()->GetObjectManager()->FindObject(pObjName);
-    }
-    else if (GetIEditor()->GetObjectManager()->FindObject(GuidUtil::FromString(pObjName)))
-    {
-        pObject = GetIEditor()->GetObjectManager()->FindObject(GuidUtil::FromString(pObjName));
-    }
-    else
-    {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
-        return result;
-    }
-
-    if (qobject_cast<CEntityObject*>(pObject))
-    {
-        CVarBlock* pVarBlock = pObject->GetVarBlock();
-        if (pVarBlock)
-        {
-            return PyGetObjectVariableRec(pVarBlock, splittedPath);
-        }
-    }
-    else
-    {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toUtf8().data());
-    }
-
-    return result;
-}
-
-pSPyWrappedProperty PyGetEntityParamUsingSharedPtr(const char* pObjName, const char* pVarPath)
-{
-    SPyWrappedProperty property = PyGetEntityParam(pObjName, pVarPath);
-    return  boost::make_shared<SPyWrappedProperty>(property);
-}
-
-void PySetEntityParam(const char* pObjectName, const char* pVarPath, SPyWrappedProperty value)
-{
-    QString varPath = pVarPath;
-    std::deque<QString> splittedPath;
-    for (auto token : varPath.split(QRegularExpression(QStringLiteral(R"([\\/])")), QString::SkipEmptyParts))
-    {
-        splittedPath.push_back(token);
-    }
-
-    CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pObjectName);
-    if (pObject)
-    {
-        CVarBlock* pVarBlock = pObject->GetVarBlock();
-        if (pVarBlock)
-        {
-            IVariable* pVariable = pVarBlock->FindVariable(splittedPath.back().toUtf8().data(), false, true);
-
-            CUndo undo("Set Entity Param");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoEntityParam(pObjectName, pVarPath));
-            }
-
-            if (pVariable)
-            {
-                if (value.type == SPyWrappedProperty::eType_Bool)
-                {
-                    pVariable->Set(value.property.boolValue);
-                }
-                else if (value.type == SPyWrappedProperty::eType_Int)
-                {
-                    pVariable->Set(value.property.intValue);
-                }
-                else if (value.type == SPyWrappedProperty::eType_Float)
-                {
-                    pVariable->Set(value.property.floatValue);
-                }
-                else if (value.type == SPyWrappedProperty::eType_String)
-                {
-                    pVariable->Set(value.stringValue);
-                }
-                else if (value.type == SPyWrappedProperty::eType_Vec3)
-                {
-                    Vec3 tempVec3;
-                    tempVec3[0] = value.property.vecValue.x;
-                    tempVec3[1] = value.property.vecValue.y;
-                    tempVec3[2] = value.property.vecValue.z;
-                    pVariable->Set(tempVec3);
-                }
-                else
-                {
-                    throw std::logic_error("Data type is invalid.");
-                }
-            }
-            else
-            {
-                throw std::logic_error((QString("\"") + pVarPath + "\"" + " is an invalid parameter.").toUtf8().data());
-            }
-        }
-    }
-    else
-    {
-        throw std::logic_error((QString("\"") + pObjectName + "\" is an invalid entity.").toUtf8().data());
-    }
-}
-
-void PySetEntityParamUsingSharedPtr(const char* pObjectName, const char* pVarPath, pSPyWrappedProperty sharedPtr)
-{
-    PySetEntityParam(pObjectName, pVarPath, *sharedPtr);
-}
-
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetEntityParamUsingSharedPtr, general, get_entity_param,
-    "Gets an object param",
-    "general.get_entity_param(str entityName, str paramName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetEntityParamUsingSharedPtr, general, set_entity_param,
-    "Sets an object param",
-    "general.set_entity_param(str entityName, str paramName, [ bool || int || float || str || (float, float, float) ] paramValue)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetEntityPropertyUsingSharedPtr, general, get_entity_property,
-    "Gets an entity property or property2",
-    "general.get_entity_property(str entityName, str propertyName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetEntityPropertyUsingSharedPtr, general, set_entity_property,
-    "Sets an entity property or property2",
-    "general.set_entity_property(str entityName, str propertyName, [ bool || int || float || str || (float, float, float) ] propertyValue)");
-
 
 #include <Objects/EntityObject.moc>

@@ -8,13 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import os
-import plistlib
-import shutil
-import subprocess
 
-from lmbr_install_context import LmbrInstallContext
-from build_configurations import PLATFORM_MAP
+# lmbrwaflib imports
+from lmbrwaflib.lmbr_install_context import LmbrInstallContext
+from lmbrwaflib.build_configurations import PLATFORM_MAP
 
 
 class DeployContext(LmbrInstallContext):
@@ -25,13 +22,14 @@ class DeployContext(LmbrInstallContext):
         """
         Creates a deploy task using the old feature method
         """
+        kw['use_platform_root'] = True
         self.process_restricted_settings(kw)
 
         if self.is_platform_and_config_valid(**kw):
             self(features='deploy_{}'.format(self.platform), group=self.group_name)
 
 
-for platform_name, platform in PLATFORM_MAP.items():
+for platform_name, platform in list(PLATFORM_MAP.items()):
     for configuration in platform.get_configuration_names():
         platform_config_key = '{}_{}'.format(platform_name, configuration)
 
@@ -44,3 +42,4 @@ for platform_name, platform in PLATFORM_MAP.items():
         }
 
         subclass = type('{}{}DeployContext'.format(platform_name.title(), configuration.title()), (DeployContext,), class_attributes)
+        subclass.doc = "Deploy contents for platform '{}' and configuration '{}'".format(platform_name, configuration)

@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <AzCore/EBus/EBus.h>
 

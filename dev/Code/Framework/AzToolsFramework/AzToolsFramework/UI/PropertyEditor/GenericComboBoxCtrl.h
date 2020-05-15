@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -19,6 +19,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 
+#include <AzToolsFramework/UI/PropertyEditor/DHQComboBox.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <QPushButton>
 
@@ -69,6 +70,7 @@ namespace AzToolsFramework
 
         const T& value() const;
         void setValue(const T& value);
+        void setInvalidValue();
 
         void addElements(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
         void addElement(const AZStd::pair<T, AZStd::string>& genericValue);
@@ -90,7 +92,7 @@ namespace AzToolsFramework
         void addElementImpl(const AZStd::pair<T, AZStd::string>& genericValue);
 
         QLabel*    m_warningLabel = nullptr;
-        QComboBox* m_pComboBox;
+        DHQComboBox* m_pComboBox;
         AZStd::vector<AZStd::pair<T, AZStd::string>> m_values;
         AZ::AttributeFunction <void(const T&)>* m_postChangeNotifyCB{};
     };
@@ -121,6 +123,7 @@ namespace AzToolsFramework
     private:
 
         void InvokePostChangeNotify(size_t index, GenericComboBoxCtrl<T>* genericGUI, const typename GenericComboBoxHandler::property_t& oldValue, AzToolsFramework::InstanceDataNode* node) const;
+        T m_firstEntityValue;
     };
 
     template<typename T>

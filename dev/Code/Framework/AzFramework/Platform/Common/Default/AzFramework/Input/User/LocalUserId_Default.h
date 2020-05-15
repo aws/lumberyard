@@ -13,8 +13,7 @@
 #pragma once
 
 #include <AzCore/base.h>
-
-#include <limits>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
@@ -24,10 +23,10 @@ namespace AzFramework
     using LocalUserId = AZ::u32;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Constant representing any local user id
-    static const LocalUserId LocalUserIdAny = std::numeric_limits<LocalUserId>::max();
+    //! Reflection (AZ::u32 is already reflected)
+    inline void LocalUserIdReflect(AZ::ReflectContext* context) { AZ_UNUSED(context); }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Constant representing no local user id
-    static const LocalUserId LocalUserIdNone = std::numeric_limits<LocalUserId>::max() - 1;
+    //! Convert to a string (use for debugging purposes only)
+    inline AZStd::string LocalUserIdToString(const LocalUserId& localUserId) { return AZStd::string::format("%u", localUserId); }
 } // namespace AzFramework

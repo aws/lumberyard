@@ -18,6 +18,7 @@
 #include <QScopedValueRollback>
 #include <QTimer>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 #include <Components/Nodes/Group/NodeGroupFrameComponent.h>
@@ -268,8 +269,8 @@ namespace GraphCanvas
 
         QRectF titleSize = m_titleWidget->boundingRect();
 
-        m_saveData.m_displayHeight = blockRectangle.height() + titleSize.height();
-        m_saveData.m_displayWidth = AZ::GetMax(m_frameWidget->m_minimumSize.width(), blockRectangle.width());
+        m_saveData.m_displayHeight = aznumeric_cast<float>(blockRectangle.height() + titleSize.height());
+        m_saveData.m_displayWidth = aznumeric_cast<float>(AZ::GetMax(m_frameWidget->m_minimumSize.width(), blockRectangle.width()));
         m_saveData.SignalDirty();
 
         m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
@@ -277,9 +278,9 @@ namespace GraphCanvas
 
         QPointF position = blockRectangle.topLeft();
 
-        position.setY(m_frameWidget->RoundToClosestStep(position.y() - titleSize.height(), m_frameWidget->GetGridYStep()));
+        position.setY(m_frameWidget->RoundToClosestStep(aznumeric_cast<int>(position.y() - titleSize.height()), m_frameWidget->GetGridYStep()));
 
-        GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SetPosition, AZ::Vector2(position.x(), position.y()));
+        GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SetPosition, AZ::Vector2(aznumeric_cast<float>(position.x()), aznumeric_cast<float>(position.y())));
     }
 
     QRectF NodeGroupFrameComponent::GetGroupBoundingBox() const
@@ -480,25 +481,27 @@ namespace GraphCanvas
                 SceneNotificationBus::Handler::BusDisconnect();
                 SceneNotificationBus::Handler::BusConnect(sceneId);
 
-                CommentNotificationBus::Handler::BusConnect(GetEntityId());
-                GeometryNotificationBus::Handler::BusConnect(GetEntityId());
+                const AZ::EntityId& entityId = GetEntityId();
 
-                GeometryRequestBus::EventResult(m_previousPosition, GetEntityId(), &GeometryRequests::GetPosition);
+                CommentNotificationBus::Handler::BusConnect(entityId);
+                GeometryNotificationBus::Handler::BusConnect(entityId);
 
-                m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
+                GeometryRequestBus::EventResult(m_previousPosition, entityId, &GeometryRequests::GetPosition);
+
+                m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);                
 
                 AZ::Color backgroundColor;
-                CommentRequestBus::EventResult(backgroundColor, GetEntityId(), &CommentRequests::GetBackgroundColor);
+                CommentRequestBus::EventResult(backgroundColor, entityId, &CommentRequests::GetBackgroundColor);
 
                 OnBackgroundColorChanged(backgroundColor);
 
                 if (m_saveData.m_enableAsBookmark)
                 {
-                    BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, GetEntityId());
+                    BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, entityId);
                     SceneBookmarkRequestBus::Handler::BusConnect(sceneId);
                 }
 
-                m_saveData.RegisterIds(GetEntityId(), sceneId);
+                m_saveData.RegisterIds(entityId, sceneId);
             }
         }
     }
@@ -939,8 +942,8 @@ namespace GraphCanvas
         blockArea.setX(m_previousPosition.GetX());
         blockArea.setY(m_previousPosition.GetY());
 
-        blockArea.setWidth(m_frameWidget->RoundToClosestStep(blockArea.width(), m_frameWidget->GetGridXStep()));
-        blockArea.setHeight(m_frameWidget->RoundToClosestStep(blockArea.height(), m_frameWidget->GetGridYStep()));
+        blockArea.setWidth(m_frameWidget->RoundToClosestStep(aznumeric_cast<int>(blockArea.width()), m_frameWidget->GetGridXStep()));
+        blockArea.setHeight(m_frameWidget->RoundToClosestStep(aznumeric_cast<int>(blockArea.height()), m_frameWidget->GetGridYStep()));
 
         // Want to adjust everything by half a step in each direction to get the elements that are directly on the edge of the frame widget
         // without grabbing the elements that are a single step off the edge.
@@ -977,7 +980,7 @@ namespace GraphCanvas
     {
         if (m_frameWidget && m_frameWidget->m_minimumSize.height() > height)
         {
-            height = m_frameWidget->m_minimumSize.height();
+            height = aznumeric_cast<float>(m_frameWidget->m_minimumSize.height());
         }
 
         m_saveData.m_displayHeight = height;
@@ -992,7 +995,7 @@ namespace GraphCanvas
     {
         if (m_frameWidget && m_frameWidget->m_minimumSize.width() > width)
         {
-            width = m_frameWidget->m_minimumSize.width();
+            width = aznumeric_cast<float>(m_frameWidget->m_minimumSize.width());
         }
 
         m_saveData.m_displayWidth = width;
@@ -1497,7 +1500,7 @@ namespace GraphCanvas
         // and then just set ourselves to the minimum size that is passed in.
         if (maximumWidth() == QWIDGETSIZE_MAX)
         {
-            ResizeTo(minimumSize.height(), minimumSize.width());
+            ResizeTo(aznumeric_cast<float>(minimumSize.height()), aznumeric_cast<float>(minimumSize.width()));
         }
     }
 
@@ -1648,8 +1651,8 @@ namespace GraphCanvas
                 newHeight = RoundToClosestStep(height, GetGridYStep());
             }
 
-            newWidth = m_nodeFrameComponent.SetDisplayWidth(newWidth);
-            newHeight = m_nodeFrameComponent.SetDisplayHeight(newHeight);
+            newWidth = m_nodeFrameComponent.SetDisplayWidth(aznumeric_cast<float>(newWidth));
+            newHeight = m_nodeFrameComponent.SetDisplayHeight(aznumeric_cast<float>(newHeight));
 
             qreal widthDelta = newWidth - originalSize.width();
             qreal heightDelta = newHeight - originalSize.height();
@@ -1759,7 +1762,7 @@ namespace GraphCanvas
                 // If we can, just expand down, otherwise then we want to grow up a tick.
                 qreal frameHeight = m_nodeFrameComponent.m_blockWidget->boundingRect().height();
 
-                if (heightDelta >= 0 && GrowToNextStep(frameHeight - heightDelta, GetGridYStep()) > frameHeight)
+                if (heightDelta >= 0 && GrowToNextStep(aznumeric_cast<int>(frameHeight - heightDelta), GetGridYStep()) > frameHeight)
                 {
                     heightDelta = 0;
                     newHeight = originalHeight;
@@ -1783,7 +1786,7 @@ namespace GraphCanvas
             setPreferredHeight(newHeight);
             setMaximumHeight(newHeight);
 
-            m_nodeFrameComponent.SetDisplayHeight(newHeight);
+            m_nodeFrameComponent.SetDisplayHeight(aznumeric_cast<float>(newHeight));
 
             adjustSize();
         }
@@ -2023,7 +2026,7 @@ namespace GraphCanvas
             // this to be recalculated which stomps on the save data.
             if (m_nodeFrameComponent.m_saveData.m_displayHeight < m_minimumSize.height())
             {
-                m_nodeFrameComponent.SetDisplayHeight(m_minimumSize.height());
+                m_nodeFrameComponent.SetDisplayHeight(aznumeric_cast<float>(m_minimumSize.height()));
             }
         }
 
@@ -2039,7 +2042,7 @@ namespace GraphCanvas
             // this to be recalculated which stomps on the save data.
             if (m_nodeFrameComponent.m_saveData.m_displayWidth < m_minimumSize.width())
             {
-                m_nodeFrameComponent.SetDisplayWidth(m_minimumSize.width());
+                m_nodeFrameComponent.SetDisplayWidth(aznumeric_cast<float>(m_minimumSize.width()));
             }
         }
 

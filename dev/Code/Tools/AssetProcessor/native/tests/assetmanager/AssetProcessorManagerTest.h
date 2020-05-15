@@ -28,6 +28,7 @@
 #include <QTemporaryDir>
 #include <QMetaObject>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
+#include "resourcecompiler/rccontroller.h"
 
 class AssetProcessorManager_Test;
 
@@ -61,7 +62,6 @@ protected:
     AZStd::unique_ptr<AssetProcessor::MockApplicationManager> m_mockApplicationManager;
     AZStd::unique_ptr<AssetProcessor::PlatformConfiguration> m_config;
     UnitTestUtils::AssertAbsorber m_assertAbsorber; // absorb asserts/warnings/errors so that the unit test output is not cluttered
-    AssetProcessor::FileStatePassthrough m_fileStateCache; // handles the cache api but just goes straight to disk
     QString m_gameName;
     QDir m_normalizedCacheRootDir;
     AZStd::atomic_bool m_isIdling;
@@ -167,7 +167,7 @@ struct ModtimeScanningTest
 
     struct StaticData
     {
-        QString m_relativePathFromWatchFolder[2];
+        QString m_relativePathFromWatchFolder[3];
         AZStd::vector<QString> m_absolutePath;
         AZStd::vector<AssetProcessor::JobDetails> m_processResults;
         AZStd::vector<QString> m_deletedSources;
@@ -204,6 +204,54 @@ struct JobDependencyTest
     };
 
     AZStd::unique_ptr<StaticData> m_data;
+};
+
+struct MockMultiBuilderInfoHandler
+    : public AssetProcessor::AssetBuilderInfoBus::Handler
+{
+    ~MockMultiBuilderInfoHandler();
+
+    struct AssetBuilderExtraInfo
+    {
+        QString m_jobDependencyFilePath;
+    };
+
+    //! AssetProcessor::AssetBuilderInfoBus Interface
+    void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+    void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
+
+    void CreateJobs(AssetBuilderExtraInfo extraInfo, const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
+    void ProcessJob(AssetBuilderExtraInfo extraInfo, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
+
+    void CreateBuilderDesc(const QString& builderName, const QString& builderId, const AZStd::vector<AssetBuilderSDK::AssetBuilderPattern>& builderPatterns, AssetBuilderExtraInfo extraInfo);
+
+    AZStd::vector<AssetBuilderSDK::AssetBuilderDesc> m_builderDesc;
+    AZStd::vector<AssetUtilities::BuilderFilePatternMatcher> m_matcherBuilderPatterns;
+    AZStd::unordered_map<AZ::Uuid, AssetBuilderSDK::AssetBuilderDesc> m_builderDescMap;
+
+    int m_createJobsCount = 0;
+};
+
+struct ChainJobDependencyTest
+    : public PathDependencyTest
+{
+    void SetUp() override;
+    void TearDown() override;
+
+    struct StaticData
+    {
+        MockMultiBuilderInfoHandler m_mockBuilderInfoHandler;
+        AZStd::unique_ptr<AssetProcessor::RCController> m_rcController;
+    };
+
+    static constexpr int ChainLength = 10;
+    AZStd::unique_ptr<StaticData> m_data;
+};
+
+struct DuplicateProductsTest
+    : public AssetProcessorManagerTest
+{
+    void SetupDuplicateProductsTest(QString& sourceFile, QDir& tempPath, QString& productFile, AZStd::vector<AssetProcessor::JobDetails>& jobDetails, AssetBuilderSDK::ProcessJobResponse& response);
 };
 
 struct DeleteTest

@@ -1248,13 +1248,17 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 "When they are apart, the offsets to each edge of the element's rect are displayed")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiTransform2dComponent::IsNotControlledByParent)
-                ->Attribute(AZ_CRC("LayoutFitterType", 0x7c009203), &UiTransform2dComponent::GetLayoutFitterType);
+                ->Attribute(AZ_CRC("LayoutFitterType", 0x7c009203), &UiTransform2dComponent::GetLayoutFitterType)
+                ->Attribute(AZ::Edit::Attributes::Min, -AZ::Constants::MaxFloatBeforePrecisionLoss)
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Constants::MaxFloatBeforePrecisionLoss);
 
             editInfo->DataElement("Pivot", &UiTransform2dComponent::m_pivot, "Pivot",
                 "Rotation and scaling happens around the pivot point.\n"
                 "If the anchors are together then the offsets specify the offset from the anchor to the pivot")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
-                ->Attribute(AZ::Edit::Attributes::Step, 0.1f);
+                ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                ->Attribute(AZ::Edit::Attributes::Min, -AZ::Constants::MaxFloatBeforePrecisionLoss)
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Constants::MaxFloatBeforePrecisionLoss);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::SpinBox, &UiTransform2dComponent::m_rotation, "Rotation",
                 "The rotation in degrees about the pivot point")
@@ -1264,7 +1268,9 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement(0, &UiTransform2dComponent::m_scale, "Scale",
                 "The X and Y scale around the pivot point")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::OnTransformPropertyChanged);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::OnTransformPropertyChanged)
+                ->Attribute(AZ::Edit::Attributes::Min, -AZ::Constants::MaxFloatBeforePrecisionLoss)
+                ->Attribute(AZ::Edit::Attributes::Max, AZ::Constants::MaxFloatBeforePrecisionLoss);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTransform2dComponent::m_scaleToDeviceMode, "Scale to device",
                 "Controls how this element and all its children will be scaled to allow for\n"
@@ -1309,12 +1315,6 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetPivotX", &UiTransformBus::Events::SetPivotX)
             ->Event("GetPivotY", &UiTransformBus::Events::GetPivotY)
             ->Event("SetPivotY", &UiTransformBus::Events::SetPivotY)
-            ->Event("GetScaleToDevice", &UiTransformBus::Events::Deprecated_GetScaleToDevice)
-                ->Attribute(AZ::Script::Attributes::Deprecated, true)
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)  // Hide from Script Canvas Node Palette
-            ->Event("SetScaleToDevice", &UiTransformBus::Events::Deprecated_SetScaleToDevice)
-                ->Attribute(AZ::Script::Attributes::Deprecated, true)
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)  // Hide from Script Canvas Node Palette
             ->Event("GetScaleToDeviceMode", &UiTransformBus::Events::GetScaleToDeviceMode)
             ->Event("SetScaleToDeviceMode", &UiTransformBus::Events::SetScaleToDeviceMode)
             ->Event("GetViewportPosition", &UiTransformBus::Events::GetViewportPosition)

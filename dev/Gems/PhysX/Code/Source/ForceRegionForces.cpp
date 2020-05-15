@@ -15,8 +15,8 @@
 namespace PhysX
 {
     static const float s_forceRegionZeroValue = 0.0f;
-    static const float s_forceRegionMaxDamping = 200.0f;
-    static const float s_forceRegionMaxDensity = 1500.0f;
+    static const float s_forceRegionMaxDamping = 100.0f; // Large values create an oscillation that sends the body too far out. Legacy renderer's Octree may throw errors.
+    static const float s_forceRegionMaxDensity = 400.0f; // Large values create an oscillation that sends the body too far out. Legacy renderer's Octree may throw errors. Maximum density is defined as a value capable of slowing down a radius 1 ball weighing 1 ton.
     static const float s_forceRegionMaxValue = 1000000.0f;
     static const float s_forceRegionMinValue = -s_forceRegionMaxValue;
     static const float s_forceRegionMaxDampingRatio = 1.5f;
@@ -347,7 +347,7 @@ namespace PhysX
         // down.
         const AZ::Vector3 direction(-entity.m_velocity.GetX().GetSign(), -entity.m_velocity.GetY().GetSign(), -entity.m_velocity.GetZ().GetSign());
 
-        return dragForce * direction;
+        return dragForce * direction.GetNormalized();
     }
 
     ForceLinearDamping::ForceLinearDamping(float damping) 

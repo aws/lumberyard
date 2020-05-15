@@ -38,11 +38,14 @@ def read_exif_from_file(filename):
     head = data[2:6]
     HEAD_LENGTH = 4
     exif = None
-    while 1:
+    while len(head) == HEAD_LENGTH:
         length = struct.unpack(">H", head[2: 4])[0]
 
         if head[:2] == b"\xff\xe1":
             segment_data = f.read(length - 2)
+            if segment_data[:4] != b'Exif':
+                head = f.read(HEAD_LENGTH)
+                continue
             exif = head + segment_data
             break
         elif head[0:1] == b"\xff":

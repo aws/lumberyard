@@ -1,4 +1,16 @@
-from StringIO import StringIO
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
+from six import StringIO
 from random import randint
 from athena import DEFAULT_EVENTS
 import os
@@ -92,8 +104,8 @@ class DataGenerator(object):
         return random.uniform(0.0, 300.0)
 
     @property
-    def random_int(self):          
-        return random.randint(0,sys.maxint)
+    def random_int(self):
+        return random.randint(0, c.MAX_INT)
 
     @property
     def defect(self):
@@ -138,7 +150,7 @@ class DataGenerator(object):
         return self.__events[randint(0, len(self.__events)-3)]
 
     def csv(self, number_of_events, event_type='random_event'):       
-        print "Generating CSV test data with {} events.".format(number_of_events)        
+        print("Generating CSV test data with {} events.".format(number_of_events))
         event = eval('self.{}'.format(event_type))
         
         csv = StringIO()
@@ -189,7 +201,7 @@ class DataGenerator(object):
         return result
 
     def json(self, number_of_events, event_type='random_event'):       
-        print "Generating JSON test data with {} events.".format(number_of_events)
+        print("Generating JSON test data with {} events.".format(number_of_events))
         set = []
         event = eval('self.{}'.format(event_type))
         

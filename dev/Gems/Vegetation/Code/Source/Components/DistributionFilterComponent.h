@@ -40,7 +40,7 @@ namespace Vegetation
         GradientSignal::GradientSampler m_gradientSampler;
 
     private:
-        AZStd::function<float(float)> GetFilterFunc();
+        AZStd::function<float(float, const GradientSignal::GradientSampleParams&)> GetFilterFunc();
         GradientSignal::GradientSampler* GetSampler();
     };
 

@@ -2,7 +2,7 @@
     "name": "fbxsdk",
     "source": "@3P:fbxsdk@",
     "description": "FBX SDK Library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": []

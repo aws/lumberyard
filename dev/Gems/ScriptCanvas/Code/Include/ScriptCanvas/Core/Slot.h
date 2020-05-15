@@ -19,7 +19,11 @@
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Endpoint.h>
 #include <ScriptCanvas/Core/SlotConfigurations.h>
+#include <ScriptCanvas/Core/ModifiableDatumView.h>
 #include <ScriptCanvas/Data/Data.h>
+
+#include <ScriptCanvas/Variable/VariableCore.h>
+#include <ScriptCanvas/Variable/VariableBus.h>
 
 namespace ScriptCanvas
 {
@@ -27,9 +31,18 @@ namespace ScriptCanvas
     class Node;
     
     class Slot final
+        : public VariableNotificationBus::Handler
     {
         friend class Node;
     public:
+
+        enum DataType
+        {
+            NoData,
+            Data,
+            VariableReference
+        };
+
         AZ_CLASS_ALLOCATOR(Slot, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(Slot, "{FBFE0F02-4C26-475F-A28B-18D3A533C13C}");
 
@@ -41,9 +54,9 @@ namespace ScriptCanvas
 
         Slot(const SlotConfiguration& slotConfiguration);
 
-        Slot& operator=(const Slot& slot);
+        ~Slot();
 
-        ~Slot() = default;
+        Slot& operator=(const Slot& slot);
 
         void AddContract(const ContractDescriptor& contractDesc);
 
@@ -59,11 +72,16 @@ namespace ScriptCanvas
         ////
 
         const SlotDescriptor& GetDescriptor() const { return m_descriptor; }
-        const SlotId& GetId() const { return m_id; }
-        const AZ::EntityId& GetNodeId() const { return m_nodeId; }
-        Endpoint GetEndpoint() const { return Endpoint(GetNodeId(), GetId()); }
+        const SlotId& GetId() const { return m_id; }        
 
-        void SetNodeId(const AZ::EntityId& nodeId) { m_nodeId = nodeId; }
+        const Node* GetNode() const { return m_node; }
+        Node* GetNode() { return m_node; }
+
+        Endpoint GetEndpoint() const;
+        AZ::EntityId GetNodeId() const;
+
+        void SetNode(Node* node);
+        void InitializeVariables();
 
         const AZStd::string& GetName() const { return m_name; }
         const AZStd::string& GetToolTip() const { return m_toolTip; }
@@ -71,11 +89,38 @@ namespace ScriptCanvas
         Data::Type GetDataType() const;
 
         bool IsData() const;
+        
+        const Datum* FindDatum() const;
+        void FindModifiableDatumView(ModifiableDatumView& datumView);
+
+        // If you are data. You could be a reference pin(i.e. must be a variable)
+        // Or a value data pin.
+        bool IsVariableReference() const;
+
+        bool CanConvertTypes() const;
+
+        bool CanConvertToValue() const;
+        bool ConvertToValue();
+
+        bool CanConvertToReference() const;
+        bool ConvertToReference();
+        void SetVariableReference(const VariableId& variableId);
+        const VariableId& GetVariableReference() const;
+        GraphVariable* GetVariable() const;
+
+        void ClearVariableReference();
+
         bool IsExecution() const;
 
         bool IsInput() const;
         bool IsOutput() const;
-        bool IsLatent() const;        
+        ScriptCanvas::ConnectionType GetConnectionType() const;
+
+        bool IsLatent() const;
+
+        // VariableNotificationBus
+        void OnVariableValueChanged() override;
+        ////
 
         // Here to allow conversion of the previously untyped any slots into the dynamic type any.
         void SetDynamicDataType(DynamicDataType dynamicDataType);
@@ -111,14 +156,20 @@ namespace ScriptCanvas
         AZ::Crc32 m_displayGroup;
         AZ::Crc32 m_dynamicGroup;
 
-        bool               m_isLatentSlot;
+        bool               m_isLatentSlot  = false;
         SlotDescriptor     m_descriptor;
 
+        bool               m_isVariableReference = false;
+        DataType           m_dataType = DataType::NoData;
+
+        VariableId         m_variableReference;
+        GraphVariable*     m_variable = nullptr;
+
         DynamicDataType m_dynamicDataType{ DynamicDataType::None };
-        ScriptCanvas::Data::Type m_displayDataType{ ScriptCanvas::Data::Type::Invalid() };
+        ScriptCanvas::Data::Type m_displayDataType{ ScriptCanvas::Data::Type::Invalid() };        
 
         SlotId m_id;
-        AZ::EntityId m_nodeId;
+        Node*  m_node;
 
         AZStd::vector<AZStd::unique_ptr<Contract>> m_contracts;
     };

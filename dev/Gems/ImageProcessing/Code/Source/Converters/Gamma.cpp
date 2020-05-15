@@ -11,13 +11,15 @@
 */
 #include <ImageProcessing_precompiled.h>
 
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/ImageToProcess.h>
 #include <Processing/PixelFormatInfo.h>
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 
 #include <Converters/FIR-Weights.h>
 #include <Converters/PixelOperation.h>
+
+#include <Processing/ImageFlags.h>
 
 namespace ImageProcessing
 {

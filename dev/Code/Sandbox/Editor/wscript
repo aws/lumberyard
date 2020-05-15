@@ -13,6 +13,7 @@
 #
 ########################################################################################
 
+from waflib import Logs
 
 def build(bld):
 
@@ -60,7 +61,6 @@ def build(bld):
                                    bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                    bld.ThirdPartyPath('squish'),
                                    'Include',
-                                   bld.Path('Code/CryEngine/CryAction'),
                                    bld.Path('Code/Tools')],
 
         # Compiler Specific
@@ -86,12 +86,20 @@ def build(bld):
     #Terrain editing tools will be removed from Editor.exe.
     #This is useful for customers who author Terrain assets through external
     #tools, or simply make games that don't require a terrain system at all.
-    enableTerrainEditing = getattr(bld, 'enable_legacy_terrain', True)
-
     fileList = ['editor_lib.waf_files']
     testFileList = ['editor_lib_test.waf_files']
 
-    if enableTerrainEditing:
+    if bld.is_option_true('enable_legacy_terrain_editor'):
+        game_project_list = bld.get_enabled_game_project_list()
+        for game_project in game_project_list:
+            gems = bld.get_game_gems(game_project)
+            legacyTerrainGemIsEnabled = False
+            for gem in gems:
+                if gem.name == "LegacyTerrain":
+                    legacyTerrainGemIsEnabled = True
+                    break
+            if not legacyTerrainGemIsEnabled:
+                Logs.warn("[WARNING] For project <{}>, The Legacy Terrain editor tools are enabled, but the Legacy Terrain Gem is not.".format(game_project))
         additionalDefines.append('LY_TERRAIN_EDITOR')
         fileList.append('editor_lib_terrain.waf_files')
         testFileList.append('editor_lib_test_terrain.waf_files')
@@ -105,7 +113,7 @@ def build(bld):
         file_list                           = fileList,
         darwin_file_list                    = 'editor_lib_darwin.waf_files',
         linux_file_list                     = 'editor_lib_linux.waf_files',
-        win_file_list                       = [ ],
+        win_file_list                       = ['editor_lib_windows.waf_files'],
         platforms                           = ['win', 'darwin', 'linux'],
         configurations                      = ['all'],
         exclude_monolithic                  = True,
@@ -117,7 +125,6 @@ def build(bld):
                                                'Include',
                                                bld.ThirdPartyPath('squish'),
                                                bld.Path('Code/CryEngine'),
-                                               bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
                                                bld.Path('Gems/LmbrCentral/Code/include'),
                                                bld.Path('Code/Tools/'),
@@ -161,53 +168,43 @@ def build(bld):
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
                                                'AWS_CPP_SDK_IDENTITY_LAMBDA',
                                                'AWS_CPP_SDK_IDENTITY_METRICS',
-                                               'BOOSTPYTHON',
                                                'ZLIB'],
         use_required_gems                   = True,
         features                            = ['qt5',
-                                               'EmbeddedPython',
-                                               'ExternalLyIdentity', 'ExternalLyMetrics'],
+                                               'ExternalLyIdentity', 'ExternalLyMetrics', 'EmbeddedPython'],
 
         langname                            = 'en-us',
 
         win_linkflags                       = ['/SUBSYSTEM:WINDOWS'],
         win_debug_all_linkflags             = '/NODEFAULTLIB:LIBCMTD.lib',
         win_ndebug_linkflags                = '/NODEFAULTLIB:LIBCMT.lib',
-        win_uselib                          = ['BOOSTPYTHON'],
         msvc_cxxflags                       = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
 
         # Platform Specific
         win_features                        = [ 'crcfix' ],
         winres_defines                      = ['NDEBUG' ],
         win_lib                             = ['version'],
+        win_enable_rtti                     = True,
 
         clang_cxxflags                      = ['-Wno-sometimes-uninitialized', # required for squish library to compile
                                                '-Wno-shift-negative-value', # required for squish library to compile
                                                '-Wno-null-dereference', # required for squish library to compile
                                                '-Wno-deprecated-declarations', # using Gesalt macOS calls that are deprecated.
-                                               '-Wno-unused-local-typedef', #BOOSTPYTHON
-                                               '-Wno-inconsistent-dllimport', #BOOSTPYTHON
-                                               '-Wno-deprecated-register', #BOOSTPYTHON
                                                '-Wno-writable-strings',
                                                '-Wno-return-type',
                                                '-Wno-enum-compare-switch',
                                                '-Wno-microsoft-include', #SQUISH
-                                               '-fexceptions', #BOOSTPYTHON
                                               ],
-        darwin_x64_lib                      = ['python2.7'],
         darwin_lib                          = ['curl', 'bsm'],
-        darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
-                                               bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
+        darwin_includes                     = [bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AssetBrowser'),
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
         darwin_x64_framework                = ['Security'],
-        darwin_uselib                       = ['BOOSTPYTHON'],
         darwin_enable_rtti                  = True,
         linux_rpath                         = ['$ORIGIN/qtlibs/lib'],
-        linux_lib                           = ['jpeg','python2.7','jbig'],
-        linux_uselib                        = ['BOOSTPYTHON_STATIC'],
-        linux_x64_lib                       = ['python2.7', 'jpeg', 'jbig'], # Our 3rdparty libtiff.a depends on libjpeg and libjbig
+        linux_lib                           = ['jpeg','jbig'],
+        linux_x64_lib                       = ['jpeg', 'jbig'], # Our 3rdparty libtiff.a depends on libjpeg and libjbig
 
         # Testing
         test_all_file_list  = testFileList,
@@ -232,13 +229,11 @@ def build(bld):
         configurations                      = ['all'],
         exclude_monolithic                  = True,
         client_only                         = True,
-        includes                            = ['..',
+        includes                            = ['.',
                                                bld.Path('Code/CryEngine/CryCommon'),
+                                               '..',
                                                'Include',
-                                               bld.ThirdPartyPath('boost'),
-                                               bld.Path('Code/CryEngine/CryCommon'),
                                                bld.Path('Code/CryEngine'),
-                                               bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
                                                bld.Path('Gems/LmbrCentral/Code/include'),
                                                bld.Path('Code/Tools/'),
@@ -278,7 +273,6 @@ def build(bld):
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
                                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                                               'BOOSTPYTHON',
                                                'TIFF',
                                                'ZLIB',
                                                'D3D_COMPILER',
@@ -290,7 +284,6 @@ def build(bld):
         use_required_gems                   = True,
 
         features                            = ['qt5',
-                                               'EmbeddedPython',
                                                'ExternalLyIdentity', 'ExternalLyMetrics'],
 
         langname                            = 'en-us',
@@ -311,23 +304,36 @@ def build(bld):
         darwin_file_list                    = ['editor_darwin.waf_files'],
         darwin_enable_rtti                  = True,
         clang_cxxflags                      = ['-Wno-error', '-Wno-unused-local-typedef'],
-        darwin_x64_lib                      = ['python2.7'],
         darwin_lib                          = ['curl', 'bsm'],
         darwin_rpath                        = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc', '@executable_path/EditorPlugins', '@executable_path/../Frameworks'],
         darwin_use                          = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
-        darwin_includes                     = [bld.Path('Code/Sandbox/Editor/HyperGraph'),
-                                               bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
+        darwin_includes                     = [bld.Path('Code/Sandbox/Editor/Mannequin/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AssetBrowser'),
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
         darwin_x64_framework                = ['Security'],
 
         darwin_xcassets                     = 'Code/Sandbox/Editor/res/Images.xcassets',
-        linux_x64_lib                       = ['python2.7'],
         linux_enable_rtti                   = True,
         linux_rpath                         = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc', '@executable_path/EditorPlugins']
     )
 
+    bld.LYToolLauncher(
+        target                  = 'EditorLauncher',
+        vs_filter               = 'ToolLaunchers',
+        platforms               = ['win'],
+        configurations          = ['debug', 'profile'],
+        file_list               = ['editor_launcher.waf_files'],
+        win_file_list           = ['editor_win_launcher.waf_files'],
+        win_lib                 = ['Shell32'],
+        launch_target           = 'Editor',
+        includes                = bld.Path('Code/Tools/ToolsLauncher'),
+    
+        # Platform Roots
+        platform_roots          = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+    
+        use                     = ['AzFramework'],
+    )
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )

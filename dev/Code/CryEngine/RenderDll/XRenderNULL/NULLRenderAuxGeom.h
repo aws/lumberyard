@@ -67,6 +67,7 @@ public:
     virtual void DrawOBB(const OBB& obb, const Matrix34& matWorld, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle) {}
 
     virtual void DrawSphere(const Vec3& pos, float radius, const ColorB& col, bool drawShaded = true);
+    virtual void DrawDisk(const Vec3& pos, const Vec3& dir, float radius, const ColorB& col, bool drawShaded = true) {}
     virtual void DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height, const ColorB& col, bool drawShaded = true) {}
     virtual void DrawCylinder(const Vec3& pos, const Vec3& dir, float radius, float height, const ColorB& col, bool drawShaded = true) {}
 

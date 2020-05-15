@@ -34,6 +34,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Build String", "Formats and creates a string from the provided text.\nAny word within {} will create a data pin on this node.")
                     ScriptCanvas_Node::Uuid("{B16259BA-9CF6-4143-B09B-5A0F3B4585E6}")
                     ScriptCanvas_Node::Category("String")
+                    ScriptCanvas_Node::DynamicSlotOrdering(true)
                     ScriptCanvas_Node::Version(0)
                 );
 
@@ -43,6 +44,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Name("String", "The resulting string.")
                     ScriptCanvas_Property::Output
                     ScriptCanvas_Property::OutputStorageSpec
+                    ScriptCanvas_Property::DisplayGroup("PrintDisplayGroup")
                 );
 
                 void OnInputSignal(const SlotId& slotId) override;

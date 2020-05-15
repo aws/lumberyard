@@ -121,95 +121,101 @@ namespace AZStd
         typedef typename iterator_traits<Iterator>::pointer         pointer;
         typedef typename iterator_traits<Iterator>::difference_type difference_type;
 
-        AZ_FORCE_INLINE reverse_iterator() {}
-        AZ_FORCE_INLINE explicit reverse_iterator(iterator_type iter)
+        constexpr reverse_iterator() = default;
+        constexpr explicit reverse_iterator(iterator_type iter)
             : m_current(iter)  {}
-        AZ_FORCE_INLINE reverse_iterator(const this_type& rhs)
+        constexpr reverse_iterator(const this_type& rhs)
             : m_current(rhs.m_current)       {}
         template<class U>
-        AZ_FORCE_INLINE reverse_iterator(const reverse_iterator<U>& u)
+        constexpr reverse_iterator(const reverse_iterator<U>& u)
             : m_current(u.base())    {}
         template <class U>
-        AZ_FORCE_INLINE reverse_iterator& operator=(const reverse_iterator<U>& u)               { m_current = u.base(); }
-        AZ_FORCE_INLINE iterator_type      base() const                                         { return m_current; }
+        constexpr reverse_iterator& operator=(const reverse_iterator<U>& u)               { m_current = u.base(); }
+        constexpr iterator_type      base() const                                         { return m_current; }
 
-        AZ_FORCE_INLINE reference operator*() const
+        constexpr reference operator*() const
         {
             iterator_type tmp = m_current;
             --tmp;
             return *tmp;
         }
-        AZ_FORCE_INLINE pointer operator->() const
+        constexpr pointer operator->() const
         {
             iterator_type tmp = m_current;
             --tmp;
             return &(*tmp);
         }
 
-        AZ_FORCE_INLINE this_type& operator++()
+        constexpr this_type& operator++()
         {
             --m_current;
             return *this;
         }
-        AZ_FORCE_INLINE this_type  operator++(int)
+        constexpr this_type  operator++(int)
         {
             this_type tmp = *this;
             --m_current;
             return tmp;
         }
-        AZ_FORCE_INLINE this_type& operator--()
+        constexpr this_type& operator--()
         {
             ++m_current;
             return *this;
         }
-        AZ_FORCE_INLINE this_type  operator--(int)
+        constexpr this_type  operator--(int)
         {
             this_type tmp = *this;
             ++m_current;
             return tmp;
         }
 
-        AZ_FORCE_INLINE reverse_iterator operator+ (difference_type offset) const   { return this_type(m_current - offset); }
-        AZ_FORCE_INLINE reverse_iterator& operator+=(difference_type offset)
+        constexpr reverse_iterator operator+ (difference_type offset) const   { return this_type(m_current - offset); }
+        constexpr reverse_iterator& operator+=(difference_type offset)
         {
             m_current -= offset;
             return *this;
         }
-        AZ_FORCE_INLINE reverse_iterator operator- (difference_type offset) const   { return this_type(m_current + offset); }
-        AZ_FORCE_INLINE reverse_iterator& operator-=(difference_type offset)
+        constexpr reverse_iterator operator- (difference_type offset) const   { return this_type(m_current + offset); }
+        constexpr reverse_iterator& operator-=(difference_type offset)
         {
             m_current += offset;
             return *this;
         }
-        AZ_FORCE_INLINE reference operator[](difference_type offset) const
+        constexpr reference operator[](difference_type offset) const
         {
             return m_current[-offset - 1];
         }
     };
 
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator==(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)  { return x.base() == y.base(); }
+    constexpr bool operator==(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)  { return x.base() == y.base(); }
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator<(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)  { return x.base() > y.base(); }
+    constexpr bool operator<(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)  { return x.base() > y.base(); }
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator!=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() != y.base(); }
+    constexpr bool operator!=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() != y.base(); }
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator>(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)   { return x.base() < y.base(); }
+    constexpr bool operator>(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)   { return x.base() < y.base(); }
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator>=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() <= y.base(); }
+    constexpr bool operator>=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() <= y.base(); }
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE bool operator<=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() >= y.base(); }
+    constexpr bool operator<=(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y) { return x.base() >= y.base(); }
 
     template <class Iterator1, class Iterator2>
-    AZ_FORCE_INLINE typename reverse_iterator<Iterator1>::difference_type operator-(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)
+    constexpr typename reverse_iterator<Iterator1>::difference_type operator-(const reverse_iterator<Iterator1>& x, const reverse_iterator<Iterator2>& y)
     {
         return y.base() - x.base();
     }
 
     template <class Iterator>
-    AZ_FORCE_INLINE reverse_iterator<Iterator> operator+(typename reverse_iterator<Iterator>::difference_type offset, const reverse_iterator<Iterator>& x)
+    constexpr reverse_iterator<Iterator> operator+(typename reverse_iterator<Iterator>::difference_type offset, const reverse_iterator<Iterator>& x)
     {
         return x + offset;
+    }
+
+    template<class Iterator>
+    constexpr reverse_iterator<Iterator> make_reverse_iterator(Iterator iter)
+    {
+        return reverse_iterator<Iterator>(iter);
     }
 
     /**
@@ -238,73 +244,73 @@ namespace AZStd
         typedef move_iterator<Iterator>     this_type;
         typedef Iterator                    iterator_type;
 
-        move_iterator() {}
-        explicit move_iterator(iterator_type rhs)
+        constexpr move_iterator() = default;
+        constexpr explicit move_iterator(iterator_type rhs)
             : m_current(rhs) {}
 
         template<class U>
-        move_iterator(const move_iterator<U>& rhs)
+        constexpr move_iterator(const move_iterator<U>& rhs)
             : m_current(rhs.base()) {}
 
         template<class U>
-        this_type& operator=(const move_iterator<U>& rhs)
+        constexpr this_type& operator=(const move_iterator<U>& rhs)
         {
             m_current = rhs.base();
             return (*this);
         }
 
-        Iterator base() const           { return m_current; }
-        reference operator*() const     { return (AZStd::move(*m_current)); }
-        pointer operator->() const      { return (&**this); }
-        this_type& operator++()
+        constexpr Iterator base() const           { return m_current; }
+        constexpr reference operator*() const     { return (AZStd::move(*m_current)); }
+        constexpr pointer operator->() const      { return (&**this); }
+        constexpr this_type& operator++()
         {
             ++m_current;
             return (*this);
         }
 
-        this_type operator++(int)
+        constexpr this_type operator++(int)
         {
             this_type tmp = *this;
             ++m_current;
             return tmp;
         }
 
-        this_type& operator--()
+        constexpr this_type& operator--()
         {
             --m_current;
             return (*this);
         }
 
-        this_type operator--(int)
+        constexpr this_type operator--(int)
         {
             this_type tmp = *this;
             --m_current;
             return tmp;
         }
 
-        this_type& operator+=(difference_type offset)
+        constexpr this_type& operator+=(difference_type offset)
         {
             m_current += offset;
             return (*this);
         }
 
-        this_type operator+(difference_type offset) const
+        constexpr this_type operator+(difference_type offset) const
         {
             return (this_type(m_current + offset));
         }
 
-        this_type& operator-=(difference_type offset)
+        constexpr this_type& operator-=(difference_type offset)
         {
             m_current -= offset;
             return (*this);
         }
 
-        this_type operator-(difference_type offset) const
+        constexpr this_type operator-(difference_type offset) const
         {
             return (this_type(m_current - offset));
         }
 
-        reference operator[](difference_type offset) const
+        constexpr reference operator[](difference_type offset) const
         {
             return (AZStd::move(m_current[offset]));
         }
@@ -313,64 +319,55 @@ namespace AZStd
     };
 
     template<class Iterator, class Difference>
-    inline
-    move_iterator<Iterator> operator+(Difference offset, const move_iterator<Iterator>& right)
+    inline constexpr move_iterator<Iterator> operator+(Difference offset, const move_iterator<Iterator>& right)
     {
         return (right + offset);
     }
 
     template<class Iterator1, class Iterator2>
-    inline
-    typename move_iterator<Iterator1>::difference_type operator-(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr typename move_iterator<Iterator1>::difference_type operator-(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {
         return (left.base() - right.base());
     }
 
     template<class Iterator1,   class Iterator2>
-    inline
-    bool operator==(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator==(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {
         return (left.base() == right.base());
     }
 
     template<class Iterator1,   class Iterator2>
-    inline
-    bool operator!=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator!=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {   // test for move_iterator inequality
         return (!(left == right));
     }
 
     template<class Iterator1,   class Iterator2>
-    inline
-    bool operator<(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator<(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {   // test for move_iterator < move_iterator
         return (left.base() < right.base());
     }
 
     template<class Iterator1,   class Iterator2>
-    inline
-    bool operator>(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator>(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {   // test for move_iterator > move_iterator
         return (right < left);
     }
 
     template<class Iterator1, class Iterator2>
-    inline
-    bool operator<=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator<=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {
         return (!(right < left));
     }
 
     template<class Iterator1, class Iterator2>
-    inline
-    bool operator>=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    constexpr bool operator>=(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {
         return (!(left < right));
     }
 
     template<class Iterator>
-    inline
-    move_iterator<Iterator> make_move_iterator(const Iterator iter)
+    constexpr move_iterator<Iterator> make_move_iterator(const Iterator iter)
     {
         return (move_iterator<Iterator>(iter));
     }
@@ -493,7 +490,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Advance
     template <class InputIterator, class Distance>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, Distance offset, const input_iterator_tag&)
+    constexpr void advance(InputIterator& iterator, Distance offset, const input_iterator_tag&)
     {
         //AZ_Assert(offset>=0,"AZStd::advance input iterator can only advance forward!");
         for (; 0 < offset; --offset)
@@ -502,7 +499,7 @@ namespace AZStd
         }
     }
     template <class InputIterator, class Distance>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, Distance offset, const forward_iterator_tag&)
+    constexpr void advance(InputIterator& iterator, Distance offset, const forward_iterator_tag&)
     {
         //AZ_Assert(offset>=0,"AZStd::advance forward iterator can only advance forward!");
         for (; 0 < offset; --offset)
@@ -511,7 +508,7 @@ namespace AZStd
         }
     }
     template <class InputIterator, class Distance>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, Distance offset, const bidirectional_iterator_tag&)
+    constexpr void advance(InputIterator& iterator, Distance offset, const bidirectional_iterator_tag&)
     {
         for (; 0 < offset; --offset)
         {
@@ -523,7 +520,7 @@ namespace AZStd
         }
     }
     template <class InputIterator>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, AZStd::size_t offset, const bidirectional_iterator_tag&)
+    constexpr void advance(InputIterator& iterator, AZStd::size_t offset, const bidirectional_iterator_tag&)
     {
         for (; 0 < offset; --offset)
         {
@@ -531,12 +528,12 @@ namespace AZStd
         }
     }
     template <class InputIterator, class Distance>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, Distance offset, const random_access_iterator_tag&)
+    constexpr void advance(InputIterator& iterator, Distance offset, const random_access_iterator_tag&)
     {
         iterator += offset;
     }
     template <class InputIterator, class Distance>
-    AZ_FORCE_INLINE void advance(InputIterator& iterator, Distance offset)
+    constexpr void advance(InputIterator& iterator, Distance offset)
     {
         advance(iterator, offset, typename iterator_traits<InputIterator>::iterator_category());
     }
@@ -545,7 +542,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Reverse
     template<class InputIterator>
-    AZ_INLINE void reverse(InputIterator first, InputIterator last, const bidirectional_iterator_tag&)
+    void reverse(InputIterator first, InputIterator last, const bidirectional_iterator_tag&)
     {   // reverse elements in [first, last), bidirectional iterators
         for (; first != last && first != --last; ++first)
         {
@@ -554,7 +551,7 @@ namespace AZStd
     }
 
     template<class InputIterator>
-    AZ_INLINE void reverse(InputIterator first, InputIterator last, const random_access_iterator_tag&)
+    void reverse(InputIterator first, InputIterator last, const random_access_iterator_tag&)
     {   // reverse elements in [first, last), random-access iterators
         //      _DEBUG_RANGE(first, last);
         for (; first < last; ++first)
@@ -564,7 +561,7 @@ namespace AZStd
     }
 
     template<class InputIterator>
-    AZ_INLINE void reverse(InputIterator first, InputIterator last)
+    void reverse(InputIterator first, InputIterator last)
     {   // reverse elements in [first, lLast)
         AZStd::reverse(first, last, typename iterator_traits<InputIterator>::iterator_category());
     }
@@ -573,7 +570,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Rotate
     template<class InputIterator>
-    AZ_INLINE void rotate(InputIterator first, InputIterator mid, InputIterator last, const forward_iterator_tag&)
+    void rotate(InputIterator first, InputIterator mid, InputIterator last, const forward_iterator_tag&)
     {
         // rotate [first, _Last), forward iterators
         for (InputIterator next = mid;; )
@@ -599,7 +596,7 @@ namespace AZStd
     }
 
     template<class InputIterator>
-    AZ_INLINE void rotate(InputIterator first, InputIterator mid, InputIterator last, const bidirectional_iterator_tag&)
+    void rotate(InputIterator first, InputIterator mid, InputIterator last, const bidirectional_iterator_tag&)
     {
         // rotate [first, last), bidirectional iterators
         AZStd::reverse(first, mid);
@@ -607,7 +604,7 @@ namespace AZStd
         AZStd::reverse(first, last);
     }
     template<class InputIterator>
-    AZ_INLINE void rotate(InputIterator first, InputIterator mid, InputIterator last, const random_access_iterator_tag&)
+    void rotate(InputIterator first, InputIterator mid, InputIterator last, const random_access_iterator_tag&)
     {
         // rotate [first, last), random-access iterators
         typename iterator_traits<InputIterator>::difference_type shift = mid - first;
@@ -644,7 +641,7 @@ namespace AZStd
     }
 
     template<class InputIterator>
-    AZ_INLINE void rotate(InputIterator first, InputIterator mid, InputIterator last)
+    void rotate(InputIterator first, InputIterator mid, InputIterator last)
     {
         // rotate [first, last)
         if (first != mid && mid != last)
@@ -658,7 +655,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Distance functions.
     template<class InputIterator, class DistanceType>
-    AZ_FORCE_INLINE void distance(const InputIterator& first, const InputIterator& last, DistanceType& n, const input_iterator_tag&)
+    constexpr void distance(const InputIterator& first, const InputIterator& last, DistanceType& n, const input_iterator_tag&)
     {
         InputIterator iter(first);
         while (iter != last)
@@ -669,13 +666,13 @@ namespace AZStd
     }
 
     template<class RandomAccessIterator, class DistanceType>
-    AZ_FORCE_INLINE void distance(const RandomAccessIterator& first, const RandomAccessIterator& last, DistanceType& n, const random_access_iterator_tag&)
+    constexpr void distance(const RandomAccessIterator& first, const RandomAccessIterator& last, DistanceType& n, const random_access_iterator_tag&)
     {
         n += last - first;
     }
 
     template<typename InputIterator>
-    AZ_FORCE_INLINE typename iterator_traits<InputIterator>::difference_type distance(const InputIterator& first, const InputIterator& last, const input_iterator_tag&)
+    constexpr typename iterator_traits<InputIterator>::difference_type distance(const InputIterator& first, const InputIterator& last, const input_iterator_tag&)
     {
         InputIterator iter(first);
         typename iterator_traits<InputIterator>::difference_type n = 0;
@@ -688,14 +685,14 @@ namespace AZStd
     }
 
     template<typename RandomAccessIterator>
-    AZ_FORCE_INLINE typename iterator_traits<RandomAccessIterator>::difference_type distance(const RandomAccessIterator& first, const RandomAccessIterator& last,  const random_access_iterator_tag&)
+    constexpr typename iterator_traits<RandomAccessIterator>::difference_type distance(const RandomAccessIterator& first, const RandomAccessIterator& last,  const random_access_iterator_tag&)
     {
         typename iterator_traits<RandomAccessIterator>::difference_type n = last - first;
         return n;
     }
 
     template<class InputIterator>
-    AZ_FORCE_INLINE typename iterator_traits<InputIterator>::difference_type    distance(const InputIterator& first, const InputIterator& last)
+    constexpr typename iterator_traits<InputIterator>::difference_type distance(const InputIterator& first, const InputIterator& last)
     {
         return distance(first, last, typename iterator_traits<InputIterator>::iterator_category());
     }
@@ -704,7 +701,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // equal
     template<class InputIterator1, class InputIterator2>
-    AZ_FORCE_INLINE bool equal(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2)
+    constexpr bool equal(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2)
     {
         // \todo Check iterators.
         for (; first1 != last1; ++first1, ++first2)
@@ -719,7 +716,7 @@ namespace AZStd
     }
 
     template<class InputIterator1, class InputIterator2, class BinaryPredicate>
-    AZ_FORCE_INLINE bool equal(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, BinaryPredicate binaryPredicate)
+    constexpr bool equal(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, BinaryPredicate binaryPredicate)
     {
         // \todo Check iterators.
         for (; first1 != last1; ++first1, ++first2)
@@ -737,20 +734,20 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // next prev utils
     template <class Iterator>
-    Iterator next(Iterator iterator) { return ++iterator; }
+    constexpr Iterator next(Iterator iterator) { return ++iterator; }
 
     template <class Iterator, class Distance>
-    Iterator next(Iterator iterator, Distance offset)
+    constexpr Iterator next(Iterator iterator, Distance offset)
     {
         AZStd::advance(iterator, offset);
         return iterator;
     }
 
     template <class Iterator>
-    Iterator prior(Iterator iterator) { return --iterator; }
+    constexpr Iterator prior(Iterator iterator) { return --iterator; }
 
     template <class Iterator, class Distance>
-    Iterator prior(Iterator iterator, Distance offset)
+    constexpr Iterator prior(Iterator iterator, Distance offset)
     {
         AZStd::advance(iterator, -offset);
         return iterator;
@@ -760,25 +757,25 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     //  begin end utils
     template<class Container>
-    typename Container::iterator begin(Container& container)
+    constexpr typename Container::iterator begin(Container& container)
     {
         return container.begin();
     }
 
     template<class Container>
-    typename Container::const_iterator begin(const Container& container)
+    constexpr typename Container::const_iterator begin(const Container& container)
     {
         return container.begin();
     }
 
     template<class Container>
-    typename Container::iterator end(Container& container)
+    constexpr typename Container::iterator end(Container& container)
     {
         return container.end();
     }
 
     template<class Container>
-    typename Container::const_iterator end(const Container& container)
+    constexpr typename Container::const_iterator end(const Container& container)
     {
         return container.end();
     }
@@ -799,13 +796,13 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     //  cbegin cend utils
     template<class Container>
-    typename Container::const_iterator cbegin(const Container& container)
+    constexpr typename Container::const_iterator cbegin(const Container& container)
     {
         return begin(container);
     }
 
     template<class Container>
-    typename Container::const_iterator cend(const Container& container)
+    constexpr typename Container::const_iterator cend(const Container& container)
     {
         return end(container);
     }
@@ -826,25 +823,25 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // rbegin rend utils
     template<class Container>
-    typename Container::reverse_iterator rbegin(Container& container)
+    constexpr typename Container::reverse_iterator rbegin(Container& container)
     {
         return container.rbegin();
     }
 
     template<class Container>
-    typename Container::const_reverse_iterator rbegin(const Container& container)
+    constexpr typename Container::const_reverse_iterator rbegin(const Container& container)
     {
         return container.rbegin();
     }
 
     template<class Container>
-    typename Container::reverse_iterator rend(Container& container)
+    constexpr typename Container::reverse_iterator rend(Container& container)
     {
         return container.rend();
     }
 
     template<class Container>
-    typename Container::const_reverse_iterator rend(const Container& container)
+    constexpr typename Container::const_reverse_iterator rend(const Container& container)
     {
         return container.rend();
     }
@@ -864,13 +861,13 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     //  crbegin crend utils
     template<class Container>
-    typename Container::const_reverse_iterator crbegin(const Container& container)
+    constexpr typename Container::const_reverse_iterator crbegin(const Container& container)
     {
         return rbegin(container);
     }
 
     template<class Container>
-    typename Container::const_reverse_iterator crend(const Container& container)
+    constexpr typename Container::const_reverse_iterator crend(const Container& container)
     {
         return rend(container);
     }
@@ -1560,8 +1557,8 @@ namespace AZStd
         template<class Iterator, class ConstIterator>
         inline Iterator ConstIteratorCast(ConstIterator& iter)
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<ConstIterator, Iterator>::value), "For this cast to work Iterator should derive from ConstIterator");
-            AZ_STATIC_ASSERT(sizeof(ConstIterator) == sizeof(Iterator), "For this cast to work ConstIterator and Iterator should be binarily identical");
+            static_assert((AZStd::is_base_of<ConstIterator, Iterator>::value), "For this cast to work Iterator should derive from ConstIterator");
+            static_assert(sizeof(ConstIterator) == sizeof(Iterator), "For this cast to work ConstIterator and Iterator should be binarily identical");
             return *reinterpret_cast<Iterator*>(&iter);
         }
     }

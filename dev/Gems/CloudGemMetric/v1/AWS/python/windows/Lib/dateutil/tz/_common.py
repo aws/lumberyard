@@ -1,4 +1,4 @@
-from six import PY3
+from six import PY2
 
 from functools import wraps
 
@@ -16,14 +16,18 @@ def tzname_in_python2(namefunc):
     tzname() API changed in Python 3. It used to return bytes, but was changed
     to unicode strings
     """
-    def adjust_encoding(*args, **kwargs):
-        name = namefunc(*args, **kwargs)
-        if name is not None and not PY3:
-            name = name.encode()
+    if PY2:
+        @wraps(namefunc)
+        def adjust_encoding(*args, **kwargs):
+            name = namefunc(*args, **kwargs)
+            if name is not None:
+                name = name.encode()
 
-        return name
+            return name
 
-    return adjust_encoding
+        return adjust_encoding
+    else:
+        return namefunc
 
 
 # The following is adapted from Alexander Belopolsky's tz library
@@ -60,6 +64,36 @@ else:
         .. versionadded:: 2.6.0
         """
         __slots__ = ()
+
+        def replace(self, *args, **kwargs):
+            """
+            Return a datetime with the same attributes, except for those
+            attributes given new values by whichever keyword arguments are
+            specified. Note that tzinfo=None can be specified to create a naive
+            datetime from an aware datetime with no conversion of date and time
+            data.
+
+            This is reimplemented in ``_DatetimeWithFold`` because pypy3 will
+            return a ``datetime.datetime`` even if ``fold`` is unchanged.
+            """
+            argnames = (
+                'year', 'month', 'day', 'hour', 'minute', 'second',
+                'microsecond', 'tzinfo'
+            )
+
+            for arg, argname in zip(args, argnames):
+                if argname in kwargs:
+                    raise TypeError('Duplicate argument: {}'.format(argname))
+
+                kwargs[argname] = arg
+
+            for argname in argnames:
+                if argname not in kwargs:
+                    kwargs[argname] = getattr(self, argname)
+
+            dt_class = self.__class__ if kwargs.get('fold', 1) else datetime
+
+            return dt_class(**kwargs)
 
         @property
         def fold(self):
@@ -178,7 +212,7 @@ class _tzinfo(tzinfo):
         Since this is the one time that we *know* we have an unambiguous
         datetime object, we take this opportunity to determine whether the
         datetime is ambiguous and in a "fold" state (e.g. if it's the first
-        occurence, chronologically, of the ambiguous datetime).
+        occurrence, chronologically, of the ambiguous datetime).
 
         :param dt:
             A timezone-aware :class:`datetime.datetime` object.
@@ -216,7 +250,7 @@ class _tzinfo(tzinfo):
         Since this is the one time that we *know* we have an unambiguous
         datetime object, we take this opportunity to determine whether the
         datetime is ambiguous and in a "fold" state (e.g. if it's the first
-        occurance, chronologically, of the ambiguous datetime).
+        occurrence, chronologically, of the ambiguous datetime).
 
         :param dt:
             A timezone-aware :class:`datetime.datetime` object.
@@ -383,12 +417,3 @@ class tzrangebase(_tzinfo):
         return "%s(...)" % self.__class__.__name__
 
     __reduce__ = object.__reduce__
-
-
-def _total_seconds(td):
-    # Python 2.6 doesn't have a total_seconds() method on timedelta objects
-    return ((td.seconds + td.days * 86400) * 1000000 +
-            td.microseconds) // 1000000
-
-
-_total_seconds = getattr(timedelta, 'total_seconds', _total_seconds)

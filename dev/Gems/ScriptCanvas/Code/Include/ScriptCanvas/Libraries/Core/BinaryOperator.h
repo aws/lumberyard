@@ -101,16 +101,8 @@ namespace ScriptCanvas
         protected:
             // adds any required input types
             void InitializeBooleanExpression() override;
-            
-
-            // Node
-            void OnEndpointConnected(const Endpoint& endpoint) override;
-            void OnEndpointDisconnected(const Endpoint& endpoint) override;
-            ////
 
         private:
-
-            void SetDisplayType(ScriptCanvas::Data::Type dataType);
 
             SlotId                   m_firstSlotId;
             SlotId                   m_secondSlotId;

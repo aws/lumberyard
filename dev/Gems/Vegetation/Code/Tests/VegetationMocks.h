@@ -58,7 +58,7 @@ namespace UnitTest
             Vegetation::AreaSystemRequestBus::Handler::BusDisconnect();
         }
 
-        void RegisterArea(AZ::EntityId areaId) override
+        void RegisterArea(AZ::EntityId areaId, AZ::u32 layer, AZ::u32 priority, const AZ::Aabb& bounds) override
         {
             ++m_count;
         }
@@ -68,7 +68,7 @@ namespace UnitTest
             ++m_count;
         }
 
-        void RefreshArea(AZ::EntityId areaId) override
+        void RefreshArea(AZ::EntityId areaId, AZ::u32 layer, AZ::u32 priority, const AZ::Aabb& bounds) override
         {
             ++m_count;
         }
@@ -94,6 +94,11 @@ namespace UnitTest
         }
 
         AZStd::vector<Vegetation::InstanceData> m_existingInstances;
+        void EnumerateInstancesInOverlappingSectors(const AZ::Aabb& bounds, Vegetation::AreaSystemEnumerateCallback callback) const override
+        {
+            EnumerateInstancesInAabb(bounds, callback);
+        }
+
         void EnumerateInstancesInAabb(const AZ::Aabb& bounds, Vegetation::AreaSystemEnumerateCallback callback) const override
         {
             ++m_count;
@@ -104,6 +109,12 @@ namespace UnitTest
                     return;
                 }
             }
+        }
+
+        AZStd::size_t GetInstanceCountInAabb(const AZ::Aabb& bounds) const override
+        {
+            ++m_count;
+            return m_existingInstances.size();
         }
     };
 
@@ -394,6 +405,11 @@ namespace UnitTest
             surfacePointList.push_back(outPoint);
         }
 
+        void GetSurfacePointsFromRegion(const AZ::Aabb& inRegion, const AZ::Vector2 stepSize, const SurfaceData::SurfaceTagVector& desiredTags,
+            SurfaceData::SurfacePointListPerPosition& surfacePointListPerPosition) const override
+        {
+        }
+
         SurfaceData::SurfaceDataRegistryHandle RegisterSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
             ++m_count;
@@ -405,7 +421,7 @@ namespace UnitTest
             ++m_count;
         }
 
-        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
             ++m_count;
         }
@@ -421,7 +437,12 @@ namespace UnitTest
             ++m_count;
         }
 
-        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
+        {
+            ++m_count;
+        }
+
+        void RefreshSurfaceData(const AZ::Aabb& dirtyBounds) override
         {
             ++m_count;
         }

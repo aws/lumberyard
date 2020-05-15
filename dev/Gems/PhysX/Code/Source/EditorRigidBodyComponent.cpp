@@ -12,6 +12,7 @@
 
 #include <PhysX_precompiled.h>
 
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <Source/EditorRigidBodyComponent.h>
 #include <Source/EditorColliderComponent.h>
@@ -118,10 +119,6 @@ namespace PhysX
         }
     }
 
-    void EditorRigidBodyComponent::Init()
-    {
-    }
-
     void EditorRigidBodyComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
@@ -129,15 +126,16 @@ namespace PhysX
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         PhysX::ConfigurationNotificationBus::Handler::BusConnect();
         PhysX::ColliderComponentEventBus::Handler::BusConnect(GetEntityId());
+        Physics::WorldNotificationBus::Handler::BusConnect(Physics::EditorPhysicsWorldId);
 
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+        const PhysX::PhysXConfiguration& configuration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
         UpdateDebugDrawSettings(configuration);
         UpdateEditorWorldRigidBody();
     }
 
     void EditorRigidBodyComponent::Deactivate()
     {
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
         PhysX::ColliderComponentEventBus::Handler::BusDisconnect();
         PhysX::ConfigurationNotificationBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
@@ -229,18 +227,20 @@ namespace PhysX
             const AZStd::vector<EditorColliderComponent*> colliders = GetEntity()->FindComponents<EditorColliderComponent>();
             for (const EditorColliderComponent* collider : colliders)
             {
-                EditorProxyShapeConfig shapeConfigurationProxy = collider->GetShapeConfiguration();
+                const EditorProxyShapeConfig& shapeConfigurationProxy = collider->GetShapeConfiguration();
 
                 if (shapeConfigurationProxy.IsAssetConfig() && !shapeConfigurationProxy.m_physicsAsset.m_configuration.m_asset.IsReady())
                 {
                     continue;
                 }
 
+                const Physics::ColliderConfiguration colliderConfiguration = collider->GetColliderConfigurationScaled();
+
                 if (shapeConfigurationProxy.IsAssetConfig())
                 {
                     AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
                     Utils::GetShapesFromAsset(shapeConfigurationProxy.m_physicsAsset.m_configuration,
-                        collider->GetColliderConfiguration(),
+                        colliderConfiguration,
                         shapes);
 
                     for (const auto& shape : shapes)
@@ -251,10 +251,11 @@ namespace PhysX
                 }
                 else
                 {
-                    Physics::ShapeConfiguration& shapeConfiguration = shapeConfigurationProxy.GetCurrent();
+                    const Physics::ShapeConfiguration& shapeConfiguration = shapeConfigurationProxy.GetCurrent();
 
                     AZStd::shared_ptr<Physics::Shape> shape = AZ::Interface<Physics::System>::Get()->CreateShape(
-                        collider->GetColliderConfiguration(), shapeConfiguration);
+                        colliderConfiguration,
+                        shapeConfiguration);
                     
                     if (shape)
                     {
@@ -286,22 +287,45 @@ namespace PhysX
 
     void EditorRigidBodyComponent::OnColliderChanged()
     {
-        UpdateEditorWorldRigidBody();
+        SetShouldBeUpdated();
     }
 
     void EditorRigidBodyComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        UpdateEditorWorldRigidBody();
+        SetShouldBeUpdated();
     }
 
-    void EditorRigidBodyComponent::OnConfigurationRefreshed(const Configuration& newConfiguration)
+    void EditorRigidBodyComponent::OnPhysXConfigurationRefreshed(const PhysXConfiguration& newConfiguration)
     {
         UpdateDebugDrawSettings(newConfiguration);
     }
 
-    void EditorRigidBodyComponent::UpdateDebugDrawSettings(const Configuration& configuration)
+    void EditorRigidBodyComponent::OnPrePhysicsUpdate(float /*fixedDeltaTime*/)
+    {
+        if (m_shouldBeUpdated)
+        {
+            UpdateEditorWorldRigidBody();
+            m_shouldBeUpdated = false;
+        }
+    }
+
+    void EditorRigidBodyComponent::UpdateDebugDrawSettings(const PhysXConfiguration& configuration)
     {
         m_centerOfMassDebugColor = configuration.m_editorConfiguration.m_centerOfMassDebugColor;
         m_centerOfMassDebugSize = configuration.m_editorConfiguration.m_centerOfMassDebugSize;
+    }
+
+    const Physics::RigidBody* EditorRigidBodyComponent::GetRigidBody() const
+    {
+        return m_editorBody.get();
+    }
+
+    void EditorRigidBodyComponent::SetShouldBeUpdated()
+    {
+        if (!m_shouldBeUpdated)
+        {
+            m_shouldBeUpdated = true;
+            Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
+        }
     }
 } // namespace PhysX

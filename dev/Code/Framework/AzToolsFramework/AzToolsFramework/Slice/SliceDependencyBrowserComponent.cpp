@@ -214,7 +214,7 @@ namespace AzToolsFramework
         bool found = false;
         bool succeeded = m_databaseConnection->QueryDependsOnSourceBySourceDependency(
             relativePath.c_str(),"%.slice", 
-            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceToSource, 
+            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceOrJob, 
             [&](AssetDatabase::SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -229,7 +229,7 @@ namespace AzToolsFramework
         bool found = false;
         bool succeeded = m_databaseConnection->QuerySourceDependencyByDependsOnSource(
             relativePath.c_str(), "%.slice",
-            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceToSource,
+            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceOrJob,
             [&](AssetDatabase::SourceFileDependencyEntry& entry)
         {
             found = true;

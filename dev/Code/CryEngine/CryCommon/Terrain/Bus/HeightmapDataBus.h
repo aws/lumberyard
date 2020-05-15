@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Math/Aabb.h>
 
 namespace Terrain
 {
@@ -95,7 +96,7 @@ namespace Terrain
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
-        virtual void HeightmapVersionUpdate() = 0;
+        virtual void OnTerrainHeightDataChanged(const AZ::Aabb& dirtyRegion) = 0;
     };
     using HeightmapDataNotificationBus = AZ::EBus<HeightmapDataNotifications>;
 }

@@ -1586,7 +1586,10 @@ bool CREPostProcess:: mfDraw(CShader* ef, SShaderPass* sfm)
         }
         if (nRenderFlags & PSP_UPDATE_SCENE_SPECULAR)
         {
-            PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexSceneSpecular);
+            bool optimizeRT = CRenderer::CV_r_SlimGBuffer == 1;
+            // When optimization is on, we use a single channel format texture for specular. This copy requires full RGBA so use normal map render target instead.
+            PostProcessUtils().CopyScreenToTexture(optimizeRT ? CTexture::s_ptexSceneNormalsMap : CTexture::s_ptexSceneSpecular);
+
         }
 # ifndef _RELEASE
         SPostEffectsDebugInfo* pDebugInfo = NULL;

@@ -604,6 +604,12 @@ class MPSession
     : public CarrierEventBus::Handler
 {
 public:
+
+    ~MPSession()
+    {
+        CarrierEventBus::Handler::BusDisconnect();
+    }
+
     ReplicaManager& GetReplicaMgr() { return m_rm; }
     void            SetTransport(Carrier* transport) { m_pTransport = transport; CarrierEventBus::Handler::BusConnect(transport->GetGridMate()); }
     Carrier*        GetTransport() { return m_pTransport; }

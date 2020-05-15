@@ -16,7 +16,9 @@ import CloudCanvas
 import dynamodb_pagination
 import errors
 import service
+from six import iteritems # Python 2.7/3.7 Compatibility
 import traceback
+import functools
 
 @service.api(logging_filter=account_utils.apply_logging_filter)
 def get(request, StartPlayerName='', CognitoIdentityId=None, CognitoUsername=None, Email=None, PageToken=None):
@@ -94,7 +96,7 @@ def search_by_username(Username):
 
     users = response.get('Users', [])
     if not users:
-        print 'No users found for the requested username prefix.'
+        print('No users found for the requested username prefix.')
         return {'Accounts': []}
 
     accounts = []
@@ -102,7 +104,7 @@ def search_by_username(Username):
     for user in users:
         accounts.append(populate_account_for_user(user))
 
-    accounts.sort(cmp=account_utils.compare_accounts)
+    accounts.sort(key=functools.cmp_to_key(account_utils.compare_accounts))
 
     return {'Accounts': accounts}
 
@@ -115,7 +117,7 @@ def search_by_email(Email):
 
     users = response.get('Users', [])
     if not users:
-        print 'No users found for the requested email prefix.'
+        print('No users found for the requested email prefix.')
         return {'Accounts': []}
 
     accounts = []
@@ -123,7 +125,7 @@ def search_by_email(Email):
     for user in users:
         accounts.append(populate_account_for_user(user))
 
-    accounts.sort(cmp=account_utils.compare_accounts)
+    accounts.sort(key=functools.cmp_to_key(account_utils.compare_accounts))
 
     return {'Accounts': accounts}
 
@@ -147,11 +149,11 @@ def default_search():
                 populate_identity_provider(account)
         accounts.append(account)
 
-    for username, user in usersByName.iteritems():
+    for username, user in iteritems(usersByName):
         account = populate_account_for_user(user)
         accounts.append(account)
 
-    accounts.sort(cmp=account_utils.compare_accounts)
+    accounts.sort(key=functools.cmp_to_key(account_utils.compare_accounts))
 
     return {'Accounts': accounts}
 
@@ -183,7 +185,7 @@ def populate_identity_provider(account):
                 account['IdentityProviders'] = {}
             account['IdentityProviders'][account_utils.IDP_COGNITO] = account_utils.convert_user_from_cognito_to_model(user)
         except:
-            print 'Failed to lookup username {} for account {}:'.format(account['CognitoUsername'], account['AccountId'])
+            print('Failed to lookup username {} for account {}:'.format(account['CognitoUsername'], account['AccountId']))
             traceback.print_exc()
             # Skip user lookup and continue with possibly incomplete results.
 
@@ -193,7 +195,7 @@ def populate_account_for_user(user):
     matching_accounts = get_accounts_by_username(username)
     if matching_accounts:
         if len(matching_accounts) > 1:
-            print 'Warning: found multiple accounts associated with username "{}"'.format(username)
+            print('Warning: found multiple accounts associated with username "{}"'.format(username))
         account = matching_accounts[0]
         if 'IdentityProviders' not in account:
             account['IdentityProviders'] = {}

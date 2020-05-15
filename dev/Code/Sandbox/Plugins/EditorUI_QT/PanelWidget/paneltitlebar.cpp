@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "paneltitlebar.h"
 #include "ContextMenu.h"
 #include <PanelWidget/ui_PanelTitleBar.h>

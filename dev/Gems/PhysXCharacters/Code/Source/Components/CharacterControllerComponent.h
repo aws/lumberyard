@@ -103,11 +103,11 @@ namespace PhysXCharacters
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         // CollisionFilteringRequestBus
-        void SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag) override;
+        void SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag) override;
         AZStd::string GetCollisionLayerName() override;
-        void SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& colliderTag) override;
+        void SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 colliderTag) override;
         AZStd::string GetCollisionGroupName() override;
-        void ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag, bool enabled) override;
+        void ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled) override;
 
     private:
         void AttachColliders(Physics::Character& character);

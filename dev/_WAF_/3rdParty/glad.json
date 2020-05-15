@@ -2,7 +2,7 @@
     "name": "glad",
     "source": "@3P:glad@",
     "description": "Glad OpenGL loader library (Header Only)",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

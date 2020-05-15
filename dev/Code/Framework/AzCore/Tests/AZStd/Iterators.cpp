@@ -30,7 +30,7 @@ namespace UnitTest
     template<typename Container>
     void Test_WrapperFunctions_MutableIterator_MutableContainer()
     {
-        Container int_container = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        Container int_container = {{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }};
 
         typename Container::iterator iter_begin = begin(int_container);
         EXPECT_EQ(*iter_begin, 0);
@@ -67,7 +67,7 @@ namespace UnitTest
     template<typename Container>
     void Test_WrapperFunctions_ConstIterator_MutableContainer()
     {
-        Container int_container = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        Container int_container = {{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }};
 
         typename Container::const_iterator iter_cbegin = cbegin(int_container);
         EXPECT_EQ(*iter_cbegin, 0);
@@ -100,7 +100,7 @@ namespace UnitTest
     template<typename ConstContainer>
     void Test_WrapperFunctions_ConstIterator_ConstContainer()
     {
-        const ConstContainer const_int_container = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+        const ConstContainer const_int_container = {{ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }};
 
         typename ConstContainer::const_iterator const_iter_begin = begin(const_int_container);
         EXPECT_EQ(*const_iter_begin, 10);
@@ -112,7 +112,7 @@ namespace UnitTest
         EXPECT_EQ(*prior(const_iter_end), 19);
         EXPECT_EQ(*prior(const_iter_end, 2), 18);
     }
-        
+
     TEST_F(Iterators, FunctionWrappers_MutableContainers)
     {
         Test_WrapperFunctions_MutableIterator_MutableContainer<AZStd::vector<int>>();
@@ -137,7 +137,7 @@ namespace UnitTest
     }
 
     TEST_F(Iterators, FunctionWrappers_MutableRawArray)
-    {            
+    {
         int int_array[10] = { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 };
 
         EXPECT_EQ(*begin(int_array), 20);

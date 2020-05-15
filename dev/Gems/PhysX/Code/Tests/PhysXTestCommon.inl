@@ -10,6 +10,11 @@
 *
 */
 
+#include <AzFramework/Components/TransformComponent.h>
+
+#include <RigidBodyComponent.h>
+#include <StaticRigidBodyComponent.h>
+
 namespace PhysX
 {
     namespace TestUtils
@@ -45,6 +50,9 @@ namespace PhysX
             auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
             auto shapeConfig = AZStd::make_shared<typename ColliderType::Configuration>();
             colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
+            entity->CreateComponent<StaticRigidBodyComponent>();
+            
             entity->Init();
             entity->Activate();
             return entity;
@@ -64,6 +72,8 @@ namespace PhysX
             auto shapeConfiguration = AZStd::make_shared<typename ColliderT::Configuration>();
             auto colliderComponent = triggerEntity->CreateComponent<ColliderT>();
             colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfiguration, shapeConfiguration) });
+
+            triggerEntity->CreateComponent<StaticRigidBodyComponent>();
 
             triggerEntity->Init();
             triggerEntity->Activate();

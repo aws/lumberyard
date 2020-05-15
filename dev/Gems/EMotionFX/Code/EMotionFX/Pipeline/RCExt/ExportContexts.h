@@ -137,7 +137,7 @@ namespace EMotionFX
         {
             AZ_RTTI(ActorMorphBuilderContext, "{A9D4B0B1-016B-4714-BD95-85A9DEFC254B}", AZ::SceneAPI::Events::ICallContext);
         
-            ActorMorphBuilderContext(const AZ::SceneAPI::Containers::Scene& scene, bool useMeshOptimization, AZStd::vector<AZ::u32>* meshNodeIndices,
+            ActorMorphBuilderContext(const AZ::SceneAPI::Containers::Scene& scene, AZStd::vector<AZ::u32>* meshNodeIndices,
                 const Group::IActorGroup& actorGroup, EMotionFX::Actor* actor, CoordinateSystemConverter& coordinateSystemConverter, AZ::RC::Phase phase);
             ActorMorphBuilderContext(const ActorMorphBuilderContext& copyContext, AZ::RC::Phase phase);
             ActorMorphBuilderContext(const ActorMorphBuilderContext& copyContext) = delete;
@@ -146,7 +146,6 @@ namespace EMotionFX
             ActorMorphBuilderContext& operator=(const ActorMorphBuilderContext& other) = delete;
 
             const AZ::SceneAPI::Containers::Scene&  m_scene;
-            bool                                    m_useMeshOptimization;
             AZStd::vector<AZ::u32>*                 m_meshNodeIndices;
             EMotionFX::Actor*                       m_actor;
             const Group::IActorGroup&               m_group;

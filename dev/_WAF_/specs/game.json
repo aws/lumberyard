@@ -1,9 +1,0 @@
-{
-    "description"           : "Configuration to build the Game Projects",
-    "visual_studio_name"    : "Game",
-    "modules" :
-    [
-        "CryAction",
-        "CryAction_AutoFlowNode"
-    ]
-}

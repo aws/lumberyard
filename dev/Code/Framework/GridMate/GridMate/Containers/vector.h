@@ -17,15 +17,7 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class T, class Allocator = SysContAlloc>
     using vector = AZStd::vector<T, Allocator>;
-#else
-    template<class T, class Allocator = SysContAlloc>
-    class vector
-        : public AZStd::vector<T, Allocator>
-    {
-    };
-#endif
 }
 #endif // GM_CONTAINERS_VECTOR_H

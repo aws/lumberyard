@@ -17,9 +17,7 @@ def build(bld):
         bld.recurse(['Platform/Android'], mandatory=True)
 
     bld.CryLauncher(
-        ############
         # Common
-        ############
         target              = 'ClientLauncher',
         file_list           = 'launcher.waf_files',
         pch                 = 'Launcher_precompiled.cpp',
@@ -50,9 +48,57 @@ def build(bld):
         platform_roots      = [{'root': 'Platform', 'export_includes': False}],
     )
 
+    # Setup the bootstrapping executables for external projects
+    if bld.is_engine_local():
+        return
+
+    active_game_projects = bld.get_enabled_game_project_list()
+    assert len(active_game_projects) == 1, 'Multiple game projects cannot be active while running from an external folder'
+    project = active_game_projects[0]
+
+    common_launcher_tool_settings = dict(
+        vs_filter       = 'ToolLaunchers',
+
+        file_list       = ['tool_launcher.waf_files'],
+        use             = ['AzFramework'],
+        includes        = bld.Path('Code/Tools/ToolsLauncher'),
+
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+
+        # for icon generation
+        resource_path   = bld.get_launch_node().make_node([bld.game_code_folder(project), 'Resources']),
+    )
+
+    bld.LYToolLauncher(
+        target              = 'ClientBootstrapper',
+        launch_target       = bld.get_executable_name(project),
+        platforms           = ['darwin', 'linux', 'win'],
+        client_only         = True,
+        exclude_monolithic  = True,
+
+        is_launcher         = True,
+
+        **common_launcher_tool_settings
+    )
+
+    bld.LYToolLauncher(
+        target              = 'ServerBootstrapper',
+        launch_target       = bld.get_dedicated_server_executable_name(project),
+        platforms           = ['linux', 'win'],
+        server_only         = True,
+        exclude_test        = True,
+        exclude_monolithic  = True,
+
+        is_dedicated_server = True,
+
+        **common_launcher_tool_settings
+    )
+
 
 def package(pkg):
     build(pkg) # Need to execute this to generate our task_generator...
+    pkg.init_dirs() # initialize the directory paths for packaging
 
     pkg.package_game(
         target          = '{}Launcher'.format(pkg.project),
@@ -67,7 +113,7 @@ def package(pkg):
         platforms           = ['android'],
         client_only         = True,
         exclude_test        = False,
-        restricted_script   = 'update_restricted_package_parameters',
+        restricted_script   = 'update_restricted_non_build_parameters',
     )
 
 
@@ -77,7 +123,7 @@ def deploy(ctx):
         platforms           = ['android'],
         client_only         = True,
         exclude_test        = False,
-        restricted_script   = 'update_restricted_deploy_parameters',
+        restricted_script   = 'update_restricted_non_build_parameters',
     )    
 
 def run_unit_test(ctx):
@@ -85,5 +131,5 @@ def run_unit_test(ctx):
         target              = 'ClientLauncher',
         test_only           = True,
         platforms           = ['android', 'win'],
-        restricted_script   = 'update_restricted_deploy_parameters',
+        restricted_script   = 'update_restricted_non_build_parameters',
     )

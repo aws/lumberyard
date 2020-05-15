@@ -38,11 +38,14 @@ struct QTUIEditorSettings;
 
 #define QTUI_EDITOR_ENDRENAME_FUNCTIONNAME "EndRename"
 
-
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
 class EDITOR_QT_UI_API DockableLibraryPanel
     : public FloatableDockPanel
     , public EditorUIPlugin::LibraryPanelRequests::Bus::Handler
 {
+AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
     DockableLibraryPanel(QWidget* parent);
@@ -224,7 +227,9 @@ private: //Functions
     QVector<CLibraryTreeViewItem*> GetSelectedTreeItemsWithChildren();
     QVector<CBaseLibraryItem*> GetSelectedItemsWithChildren();
 protected:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QString, DockableLibraryTreeView*> m_libraryTreeViews;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QString m_lastAddedItem;
     CBaseLibraryManager* m_libraryManager;
 
@@ -262,13 +267,17 @@ private: //Variables
     QWidget* m_layoutWidget;
 
     QString m_panelName;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QString, bool> m_libExpandData;
     QMap<QString, QString> m_ItemExpandState;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     QColor m_enabledItemTextColor;
     QColor m_disabledItemTextColor;
     QString m_selectedLibraryKey;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QString, QAction*> m_actions;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     
     //used for disable library order change when load a library
     bool m_loadingLibrary;

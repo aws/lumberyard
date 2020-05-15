@@ -146,7 +146,10 @@ class _CUDAGUFuncCallSteps(GUFuncCallSteps):
     ]
 
     def is_device_array(self, obj):
-        return devicearray.is_cuda_ndarray(obj)
+        return cuda.is_cuda_array(obj)
+
+    def as_device_array(self, obj):
+        return cuda.as_cuda_array(obj)
 
     def to_device(self, hostary):
         return cuda.to_device(hostary, stream=self._stream)
@@ -191,13 +194,15 @@ class CUDAUFuncMechanism(UFuncMechanism):
     Provide OpenCL specialization
     """
     DEFAULT_STREAM = 0
-    ARRAY_ORDER = 'A'
 
     def launch(self, func, count, stream, args):
         func.forall(count, stream=stream)(*args)
 
     def is_device_array(self, obj):
-        return devicearray.is_cuda_ndarray(obj)
+        return cuda.is_cuda_array(obj)
+
+    def as_device_array(self, obj):
+        return cuda.as_cuda_array(obj)
 
     def to_device(self, hostary, stream):
         return cuda.to_device(hostary, stream=stream)

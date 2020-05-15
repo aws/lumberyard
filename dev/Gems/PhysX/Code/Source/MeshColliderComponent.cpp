@@ -12,11 +12,13 @@
 
 #include <PhysX_precompiled.h>
 
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <Source/MeshColliderComponent.h>
+#include <Source/Utils.h>
 
 namespace PhysX
 {
@@ -59,6 +61,7 @@ namespace PhysX
     void MeshColliderComponent::Deactivate()
     {
         BaseColliderComponent::Deactivate();
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         MeshColliderComponentRequestsBus::Handler::BusDisconnect();
         m_colliderConfiguration = nullptr;
         m_shapeConfiguration = nullptr;
@@ -138,6 +141,6 @@ namespace PhysX
             return;
         }
 
-        m_shapeConfigList[0].second->m_scale = GetNonUniformScale();
+        m_shapeConfigList[0].second->m_scale = Utils::GetNonUniformScale(GetEntityId());
     }
 } // namespace PhysX

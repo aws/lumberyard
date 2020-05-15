@@ -135,7 +135,8 @@ CMainWindow::CMainWindow()
     // restore happens after the QtViewPaneManager does it's restore
     QTimer::singleShot(0, this, [this]()
         {
-            StateLoad();
+            // State loading is busted for undocked windows and layout loading is about to be replaced by UI 2.0, so just restore the default layout when opened for now.
+            ResetToDefaultEditorLayout();
 
             UpdatePalette();
 
@@ -144,7 +145,6 @@ CMainWindow::CMainWindow()
             RegisterActions();
 
             m_layoutMenu = new QMenu();
-            StateLoad_layoutMenu();
             View_PopulateMenu();
         });
 
@@ -1022,9 +1022,10 @@ void CMainWindow::showEvent(QShowEvent * event)
 {
     if (m_requireLayoutReload)
     {
-        StateLoad();
-        StateLoad_layoutMenu();
         m_requireLayoutReload = false;
+
+        // State loading is busted for undocked windows and layout loading is about to be replaced by UI 2.0, so just restore the default layout when opened for now.
+        ResetToDefaultEditorLayout();
     }
 
     RefreshLibraries();

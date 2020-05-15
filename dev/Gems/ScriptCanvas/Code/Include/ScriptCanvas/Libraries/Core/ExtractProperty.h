@@ -37,8 +37,10 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{D4C9DA8E-838B-41C6-B870-C75294C323DC}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Placeholder.png")
                     ScriptCanvas_Node::Category("Utilities")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1, VersionConverter)
                 );
+
+                static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
 
                 Data::Type GetSourceSlotDataType() const;
                 AZStd::vector<AZStd::pair<AZStd::string_view, SlotId>> GetPropertyFields() const;
@@ -48,9 +50,7 @@ namespace ScriptCanvas
 
                 void OnInputSignal(const SlotId&) override;
 
-                // NodeNotificationBus
-                void OnEndpointConnected(const Endpoint& targetEndpoint) override;
-                ////
+                void OnSlotDisplayTypeChanged(const SlotId& slotId, const Data::Type& dataType) override;
 
                 void AddPropertySlots(const Data::Type& type);
                 void ClearPropertySlots();
@@ -62,8 +62,12 @@ namespace ScriptCanvas
                 // Outputs
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled after all property haves have been pushed to the output slots"));
 
-                ScriptCanvas_SerializeProperty(SlotMetadata, m_sourceAccount);
+                ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                    ScriptCanvas::ConnectionType::Input,
+                    ScriptCanvas_DynamicDataSlot::Name("Source", "The value on which to extract properties from.")
+                )
 
+                ScriptCanvas_SerializeProperty(Data::Type, m_dataType);
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
 
                 friend class ExtractPropertyEventHandler;

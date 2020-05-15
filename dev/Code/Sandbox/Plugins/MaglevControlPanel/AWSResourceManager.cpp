@@ -268,7 +268,7 @@ void AWSResourceManager::RefreshGameConfigurations()
     versionConstraints.push_back(">=1.0");
     if (gemManager && !gemManager->IsGemEnabled("6fc787a982184217a5a553ca24676cfa", versionConstraints))
     {
-        // No CloudGemFramework means no reason to warn below - 
+        // No CloudGemFramework means no reason to warn below -
         return;
     }
 
@@ -339,6 +339,9 @@ AWSResourceManager::PythonOutputHandlerMap AWSResourceManager::s_PythonOutputHan
     },
     {
         "create-admin", &AWSResourceManager::ProcessOutputCreateAdmin
+    },
+    {
+        "deployment-updated", &AWSResourceManager::ProcessOutputDeploymentUpdated
     }
 };
 
@@ -561,6 +564,11 @@ void AWSResourceManager::ProcessOutputCreateAdmin(RequestId requestId, const QVa
     m_logger->LogWarning("The Cloud Gem Portal temporary administrator account credentials are:");
     m_logger->LogWarning("Username:  " + message["administrator_name"].toString());
     m_logger->LogWarning("Temporary password:  " + message["password"].toString());
+}
+
+void AWSResourceManager::ProcessOutputDeploymentUpdated(RequestId requestId, const QVariant& value)
+{
+    CheckGameConfigurations();
 }
 
 void AWSResourceManager::ProcessOutputSupportedRegionList(RequestId requestId, const QVariant& value)
@@ -1256,7 +1264,7 @@ void AWSResourceManager::GetRegionList()
     ExecuteAsync(AllocateRequestId(), "list-regions", args);     // TODO: error handling
 }
 
-bool AWSResourceManager::InitializeProject(const QString& region, const QString& stackName, const QString& accessKey, const QString& secretKey)
+bool AWSResourceManager::InitializeProject(const QString& region, const QString& stackName, const QString& accessKey, const QString& secretKey, bool createAdminRoles)
 {
     m_initializationState = InitializingState;
     ProjectInitializedChanged();
@@ -1276,6 +1284,11 @@ bool AWSResourceManager::InitializeProject(const QString& region, const QString&
     }
     args["confirm_aws_usage"] = true;
     args["confirm_security_change"] = true;
+
+    // Note: args are sent through a generic args parser when calling through gui.py rather than cli
+    // Need to target shared var rather than admin-roles/no-admin-role
+    args["create_admin_roles"] = createAdminRoles;
+
     args["cognito_prod"] = GetIdentityId().c_str();
     ExecuteAsync(GetProjectStatusModel()->GetStackEventsModelInternal()->GetRequestId(), "create-project-stack", args);
 

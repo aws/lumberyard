@@ -31,6 +31,14 @@ public: //types
 
     using EntityComboBoxVec = AZStd::vector<AZStd::pair<AZ::EntityId, AZStd::string> >;
     using SequenceComboBoxVec = AZStd::vector<AZStd::string>;
+    enum class State
+    {
+        Hiding,
+        Hidden,
+        DelayBeforeShow,
+        Showing,
+        Shown
+    };
 
 public: // member functions
 
@@ -40,6 +48,8 @@ public: // member functions
     ~UiTooltipDisplayComponent() override;
 
     // UiTooltipDisplayInterface
+    TriggerMode GetTriggerMode() override;
+    void SetTriggerMode(TriggerMode triggerMode) override;
     bool GetAutoPosition() override;
     void SetAutoPosition(bool autoPosition) override;
     AutoPositionMode GetAutoPositionMode() override;
@@ -67,6 +77,8 @@ public: // member functions
     void OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, IUiAnimSequence* pAnimSequence);
     // ~IUiAnimationListener
 
+    State GetState();
+
 public:  // static member functions
 
     static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -87,17 +99,6 @@ public:  // static member functions
     }
 
     static void Reflect(AZ::ReflectContext* context);
-
-protected: // types
-
-    enum class State
-    {
-        Hiding,
-        Hidden,
-        DelayBeforeShow,
-        Showing,
-        Shown
-    };
 
 protected: // member functions
 
@@ -161,6 +162,8 @@ private: // static member functions
         AZ::SerializeContext::DataElementNode& classElement);
 
 protected: // data
+
+    TriggerMode m_triggerMode;
 
     bool m_autoPosition;
     AutoPositionMode m_autoPositionMode;

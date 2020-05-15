@@ -6,35 +6,11 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>360</width>
-    <height>282</height>
+    <width>1387</width>
+    <height>964</height>
    </rect>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="3">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="SELECT_SOURCE">
-       <property name="text">
-        <string>Select Source</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="SELECT_TARGET">
-       <property name="text">
-        <string>Select Target</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
    <item row="1" column="1" colspan="2">
     <widget class="QCheckBox" name="SYNC_HEIGHT">
      <property name="text">
@@ -42,50 +18,8 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="LBL_TARGET_ROTATION">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>Target Rotation:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1" colspan="2">
-    <widget class="QComboBox" name="ROT_TARGET"/>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="LBL_DYMX">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>DymX:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="QSpinBox" name="DYMX">
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="2">
-    <widget class="QLabel" name="MOVETOOL_OFFSETX">
+   <item row="5" column="2">
+    <widget class="QLabel" name="MOVETOOL_OFFSETZ">
      <property name="text">
       <string/>
      </property>
@@ -117,13 +51,104 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="2">
-    <widget class="QLabel" name="MOVETOOL_OFFSETY">
+   <item row="5" column="1">
+    <widget class="QSpinBox" name="DYMZ">
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="3">
+    <layout class="QHBoxLayout" name="V_H_LAYOUT">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QGroupBox" name="V_BOX">
+       <property name="title">
+        <string>Vegetation Settings</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <property name="spacing">
+         <number>60</number>
+        </property>
+        <property name="topMargin">
+         <number>9</number>
+        </property>
+        <item>
+         <widget class="QRadioButton" name="V_MOVE">
+          <property name="text">
+           <string>Move</string>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="V_COPY">
+          <property name="text">
+           <string>Copy</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="V_IGNORE">
+          <property name="text">
+           <string>Ignore</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="V_SPACER">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="LBL_DYMX">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
-      <string/>
+      <string>DymX:</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QSpinBox" name="DYMX">
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
@@ -143,15 +168,35 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="1">
-    <widget class="QSpinBox" name="DYMZ">
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
+   <item row="2" column="1" colspan="2">
+    <widget class="QComboBox" name="ROT_TARGET"/>
    </item>
-   <item row="5" column="2">
-    <widget class="QLabel" name="MOVETOOL_OFFSETZ">
+   <item row="0" column="0" colspan="3">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="SELECT_SOURCE">
+       <property name="text">
+        <string>Select Source</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="SELECT_TARGET">
+       <property name="text">
+        <string>Select Target</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="3" column="2">
+    <widget class="QLabel" name="MOVETOOL_OFFSETX">
      <property name="text">
       <string/>
      </property>
@@ -160,34 +205,91 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="1" colspan="2">
-    <widget class="QCheckBox" name="ONLY_VEGETATION">
+   <item row="11" column="0" colspan="3">
+    <widget class="QPushButton" name="APPLY">
      <property name="text">
-      <string>Only Vegetation</string>
+      <string>Apply</string>
      </property>
     </widget>
    </item>
-   <item row="7" column="1" colspan="2">
-    <widget class="QCheckBox" name="ONLY_TERRAIN">
+   <item row="2" column="0">
+    <widget class="QLabel" name="LBL_TARGET_ROTATION">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
-      <string>Only Terrain</string>
+      <string>Target Rotation:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
      </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="3">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <item row="4" column="2">
+    <widget class="QLabel" name="MOVETOOL_OFFSETY">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="3">
+    <layout class="QHBoxLayout" name="T_H_LAYOUT">
      <item>
-      <widget class="QPushButton" name="COPY">
-       <property name="text">
-        <string>Copy</string>
+      <widget class="QGroupBox" name="T_BOX">
+       <property name="title">
+        <string>Terrain Settings</string>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="MOVE">
-       <property name="text">
-        <string>Move</string>
-       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>60</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="T_OFFSET">
+          <property name="minimumSize">
+           <size>
+            <width>51</width>
+            <height>0</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="T_COPY">
+          <property name="text">
+           <string>Copy</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="T_IGNORE">
+          <property name="text">
+           <string>Ignore</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="T_SPACER">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </widget>
      </item>
     </layout>

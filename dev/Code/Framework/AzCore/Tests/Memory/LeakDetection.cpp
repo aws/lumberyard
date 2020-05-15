@@ -167,7 +167,7 @@ namespace UnitTest
             {
                 AZ::Debug::TraceMessageBus::Handler::BusConnect();
             }
-            ~BusRedirector()
+            ~BusRedirector() override
             {
                 EXPECT_EQ(m_leakExpected, m_leakDetected);
                 AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
@@ -223,7 +223,7 @@ namespace UnitTest
         };
 
     public:
-        ~AllocatorSetupLeakDetectionTest()
+        ~AllocatorSetupLeakDetectionTest() override
         {
             EXPECT_EQ(m_busRedirector.m_leakExpected, UnitTest::TestRunner::Instance().m_isAssertTest);
         }

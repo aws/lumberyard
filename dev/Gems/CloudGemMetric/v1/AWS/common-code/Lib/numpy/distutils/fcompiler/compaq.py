@@ -95,7 +95,7 @@ class CompaqVisualFCompiler(FCompiler):
                 raise e
         except ValueError:
             e = get_exception()
-            if not "path']" in str(e):
+            if not "'path'" in str(e):
                 print("Unexpected ValueError in", __file__)
                 raise e
 
@@ -122,7 +122,5 @@ class CompaqVisualFCompiler(FCompiler):
 if __name__ == '__main__':
     from distutils import log
     log.set_verbosity(2)
-    from numpy.distutils.fcompiler import new_fcompiler
-    compiler = new_fcompiler(compiler='compaq')
-    compiler.customize()
-    print(compiler.get_version())
+    from numpy.distutils import customized_fcompiler
+    print(customized_fcompiler(compiler='compaq').get_version())

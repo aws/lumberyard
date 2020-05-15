@@ -1,6 +1,6 @@
 CloudGemFramework.LambdaSettings
 CloudGemFramework.LambdaService
 CloudGemDynamicContent.Constant
-CloudGemFramework.Crypto
+CloudGemFramework.lib
 CloudGemFramework.ResourceManagerCommon
 CloudGemFramework.Utils

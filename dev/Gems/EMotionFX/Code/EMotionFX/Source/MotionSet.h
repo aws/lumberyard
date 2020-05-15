@@ -14,6 +14,7 @@
 
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
@@ -382,7 +383,7 @@ namespace EMotionFX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        static MotionSet* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context);
+        static MotionSet* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& loadFilter = AZ::ObjectStream::FilterDescriptor(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         static MotionSet* LoadFromBuffer(const void* buffer, const AZStd::size_t length, AZ::SerializeContext* context);
 
         bool SaveToFile(const AZStd::string& filename, AZ::SerializeContext* context) const;

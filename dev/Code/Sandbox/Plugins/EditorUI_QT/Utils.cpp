@@ -10,7 +10,7 @@
 *
 */
 
-#include <stdafx.h>
+#include <EditorUI_QT_Precompiled.h>
 #include "Utils.h"
 #include "LibraryTreeViewItem.h"
 #include "Particles/ParticleItem.h"

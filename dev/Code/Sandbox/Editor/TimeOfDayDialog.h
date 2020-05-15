@@ -32,6 +32,7 @@ namespace Ui {
     class TimeOfDayDialog;
 }
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //////////////////////////////////////////////////////////////////////////
 // Window that holds effector info.
 //////////////////////////////////////////////////////////////////////////
@@ -41,9 +42,10 @@ class SANDBOX_API CTimeOfDayDialog
     , public ISystemEventListener
     , public IUndoManagerListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
-    static const char* ClassName() { return "Time Of Day"; }
+    static const char* ClassName() { return LyViewPane::TimeOfDayEditor; }
     static const GUID& GetClassID();
 
     CTimeOfDayDialog(QWidget* parent = nullptr);

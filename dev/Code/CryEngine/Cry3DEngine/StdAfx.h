@@ -85,15 +85,10 @@ const int nThreadsNum = 3;
 #include "ObjMan.h"
 #include "Vegetation.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#else
-#define OCEAN_IS_VERY_FAR_AWAY 1000000.f
 #include <ISerialize.h>
 #include <IParticles.h>
 #include "BasicArea.h"
 #include "Environment/OceanEnvironmentBus.h"
-#endif
 
 #include "ObjectsTree.h"
 

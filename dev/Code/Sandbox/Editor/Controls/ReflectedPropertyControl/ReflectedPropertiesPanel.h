@@ -21,10 +21,12 @@
 /////////////////////////////////////////////////////////////////////////////
 // ReflectedPropertiesPanel dialog
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //This class is a port of ReflectedPropertiesPanel to use the ReflectedPropertyControl
 class SANDBOX_API ReflectedPropertiesPanel
     : public ReflectedPropertyControl
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     ReflectedPropertiesPanel(QWidget* pParent = nullptr);   // standard constructor
 

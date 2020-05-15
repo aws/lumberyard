@@ -1406,7 +1406,7 @@ namespace CD
             }
             else if (fDistance < fShorestDist)
             {
-                fShorestDist = fDistance;
+                fShorestDist = aznumeric_cast<float>(fDistance);
                 outPosOnEdge = posOnEdge;
                 outEdges.clear();
                 outEdges.push_back(SQueryEdgeResult(pPolygon, edge));
@@ -1446,7 +1446,7 @@ namespace CD
             }
             else if (fDistance < fShorestDist)
             {
-                fShorestDist = fDistance;
+                fShorestDist = aznumeric_cast<float>(fDistance);
                 outPosOnEdge = posOnEdge;
                 outEdges.clear();
                 outEdges.push_back(SQueryEdgeResult(pPolygon, edge));
@@ -1604,8 +1604,8 @@ namespace CD
         DESIGNER_ASSERT(m_ShelfID >= 0 && m_ShelfID < kMaxShelfCount);
         MODEL_SHELF_RECONSTRUCTOR(this);
 
-        int oldThickness = dc.GetLineWidth();
-        dc.SetLineWidth(nLineThickness);
+        float oldThickness = dc.GetLineWidth();
+        dc.SetLineWidth(aznumeric_cast<float>(nLineThickness));
         dc.SetColor(lineColor);
 
         for (ShelfID shelfID = 0; shelfID < kMaxShelfCount; ++shelfID)

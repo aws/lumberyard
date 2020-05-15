@@ -32,7 +32,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiTooltipDisplayComponent::UiTooltipDisplayComponent()
-    : m_autoPosition(true)
+    : m_triggerMode(TriggerMode::OnHover)
+    , m_autoPosition(true)
     , m_autoPositionMode(AutoPositionMode::OffsetFromMouse)
     , m_offset(0.0f, -10.0f)
     , m_autoSize(true)
@@ -51,6 +52,18 @@ UiTooltipDisplayComponent::UiTooltipDisplayComponent()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiTooltipDisplayComponent::~UiTooltipDisplayComponent()
 {
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiTooltipDisplayInterface::TriggerMode UiTooltipDisplayComponent::GetTriggerMode()
+{
+    return m_triggerMode;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTooltipDisplayComponent::SetTriggerMode(TriggerMode triggerMode)
+{
+    m_triggerMode = triggerMode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,18 +163,8 @@ void UiTooltipDisplayComponent::PrepareToShow(AZ::EntityId tooltipElement)
         SetState(State::Hidden);
     }
 
-    // Figure out how much delay should occur before being shown. If the time since the display element
-    // was last hidden is less than a certain threshold, only delay by a small amount.
-    const float timeSinceLastHiddenThreshold = 0.35f;
-    const float shortDelay = 0.1f;
-    if ((m_timeSinceLastShown >= 0.0f) && ((gEnv->pTimer->GetCurrTime(ITimer::ETIMER_UI) - m_timeSinceLastShown) <= timeSinceLastHiddenThreshold))
-    {
-        m_curDelayTime = shortDelay;
-    }
-    else
-    {
-        m_curDelayTime = m_delayTime;
-    }
+    m_curDelayTime = m_delayTime;
+    
 
     SetState(State::DelayBeforeShow);
 }
@@ -275,6 +278,12 @@ void UiTooltipDisplayComponent::OnUiAnimationEvent(EUiAnimationEvent uiAnimation
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+UiTooltipDisplayComponent::State UiTooltipDisplayComponent::GetState()
+{
+    return m_state;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -286,6 +295,7 @@ void UiTooltipDisplayComponent::Reflect(AZ::ReflectContext* context)
     {
         serializeContext->Class<UiTooltipDisplayComponent, AZ::Component>()
             ->Version(2, &VersionConverter)
+            ->Field("TriggerMode", &UiTooltipDisplayComponent::m_triggerMode)
             ->Field("AutoPosition", &UiTooltipDisplayComponent::m_autoPosition)
             ->Field("AutoPositionMode", &UiTooltipDisplayComponent::m_autoPositionMode)
             ->Field("Offset", &UiTooltipDisplayComponent::m_offset)
@@ -308,6 +318,11 @@ void UiTooltipDisplayComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
+            editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTooltipDisplayComponent::m_triggerMode, "Trigger Mode",
+                "Sets the way the tooltip is triggered to display.")
+                ->EnumAttribute(UiTooltipDisplayInterface::TriggerMode::OnHover, "On Hover")
+                ->EnumAttribute(UiTooltipDisplayInterface::TriggerMode::OnPress, "On Press")
+                ->EnumAttribute(UiTooltipDisplayInterface::TriggerMode::OnClick, "On Click");
             editInfo->DataElement(0, &UiTooltipDisplayComponent::m_autoPosition, "Auto position",
                 "Whether the element will automatically be positioned.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
@@ -344,7 +359,13 @@ void UiTooltipDisplayComponent::Reflect(AZ::ReflectContext* context)
         behaviorContext->Enum<(int)UiTooltipDisplayInterface::AutoPositionMode::OffsetFromMouse>("eUiTooltipDisplayAutoPositionMode_OffsetFromMouse")
             ->Enum<(int)UiTooltipDisplayInterface::AutoPositionMode::OffsetFromElement>("eUiTooltipDisplayAutoPositionMode_OffsetFromElement");
 
+        behaviorContext->Enum<(int)UiTooltipDisplayInterface::TriggerMode::OnHover>("eUiTooltipDisplayTriggerMode_OnHover")
+            ->Enum<(int)UiTooltipDisplayInterface::TriggerMode::OnPress>("eUiTooltipDisplayTriggerMode_OnPress")
+            ->Enum<(int)UiTooltipDisplayInterface::TriggerMode::OnPress>("eUiTooltipDisplayTriggerMode_OnClick");
+
         behaviorContext->EBus<UiTooltipDisplayBus>("UiTooltipDisplayBus")
+            ->Event("GetTriggerMode", &UiTooltipDisplayBus::Events::GetTriggerMode)
+            ->Event("SetTriggerMode", &UiTooltipDisplayBus::Events::SetTriggerMode)
             ->Event("GetAutoPosition", &UiTooltipDisplayBus::Events::GetAutoPosition)
             ->Event("SetAutoPosition", &UiTooltipDisplayBus::Events::SetAutoPosition)
             ->Event("GetAutoPositionMode", &UiTooltipDisplayBus::Events::GetAutoPositionMode)
@@ -413,13 +434,26 @@ void UiTooltipDisplayComponent::SetState(State state)
 
     switch (m_state)
     {
+    case State::Hiding:
+        UiTooltipDisplayNotificationBus::Event(m_tooltipElement, &UiTooltipDisplayNotificationBus::Events::OnHiding);
+        break;
+
     case State::Hidden:
-        EBUS_EVENT_ID(GetEntityId(), UiElementBus, SetIsEnabled, false);
+        UiTooltipDisplayNotificationBus::Event(m_tooltipElement, &UiTooltipDisplayNotificationBus::Events::OnHidden);
+        UiElementBus::Event(GetEntityId(), &UiElementBus::Events::SetIsEnabled, false);
         break;
 
     case State::Showing:
     case State::Shown:
-        EBUS_EVENT_ID(GetEntityId(), UiElementBus, SetIsEnabled, true);
+        UiElementBus::Event(GetEntityId(), &UiElementBus::Events::SetIsEnabled, true);
+        if (m_state == State::Showing)
+        {
+            UiTooltipDisplayNotificationBus::Event(m_tooltipElement, &UiTooltipDisplayNotificationBus::Events::OnShowing);
+        }
+        else
+        {
+            UiTooltipDisplayNotificationBus::Event(m_tooltipElement, &UiTooltipDisplayNotificationBus::Events::OnShown);
+        }
         break;
 
     default:

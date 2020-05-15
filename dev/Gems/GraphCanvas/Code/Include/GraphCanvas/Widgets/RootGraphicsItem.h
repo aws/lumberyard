@@ -13,10 +13,12 @@
 
 #include <type_traits>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QGraphicsSceneEvent>
 #include <QGraphicsItem>
 #include <QGraphicsView>
 #include <QDebug>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/chrono/chrono.h>
@@ -110,12 +112,15 @@ namespace GraphCanvas
 
         void SetSnapToGridEnabled(bool enabled)
         {
-            m_snapToGrid = enabled;
-
-            if (m_snapToGrid)
+            if (m_snapToGrid != enabled)
             {
-                GraphicsItem* thisItem = static_cast<GraphicsItem*>(this);
-                thisItem->setPos(CalculatePosition(thisItem->pos()));
+                m_snapToGrid = enabled;
+
+                if (m_snapToGrid)
+                {
+                    GraphicsItem* thisItem = static_cast<GraphicsItem*>(this);
+                    thisItem->setPos(CalculatePosition(thisItem->pos()));
+                }
             }
         }
 
@@ -560,31 +565,31 @@ namespace GraphCanvas
             offset.setWidth(GetBoundingRect().width() * m_anchorPoint.GetX());
             offset.setHeight(GetBoundingRect().height() * m_anchorPoint.GetY());
 
-            int xPoint = position.x() + offset.width();
-            int yPoint = position.y() + offset.height();
+            int xPoint = aznumeric_cast<int>(position.x() + offset.width());
+            int yPoint = aznumeric_cast<int>(position.y() + offset.height());
 
             if (m_snapToGrid && !AZ::TickBus::Handler::BusIsConnected())
             {
                 if (xPoint < 0)
                 {
-                    xPoint = xPoint - (m_gridX * 0.5f);
-                    xPoint += abs(xPoint) % m_gridX;
+                    xPoint = aznumeric_cast<int>(xPoint - (m_gridX * 0.5f));
+                    xPoint += aznumeric_cast<int>(abs(xPoint)) % m_gridX;
                 }
                 else
                 {
-                    xPoint = xPoint + (m_gridX * 0.5f);
-                    xPoint -= xPoint % m_gridX;
+                    xPoint = aznumeric_cast<int>(xPoint + (m_gridX * 0.5f));
+                    xPoint -= aznumeric_cast<int>(xPoint) % m_gridX;
                 }
 
                 if (yPoint < 0)
                 {
-                    yPoint = yPoint - (m_gridY * 0.5f);
-                    yPoint += abs(yPoint) % m_gridY;
+                    yPoint = aznumeric_cast<int>(yPoint - (m_gridY * 0.5f));
+                    yPoint += aznumeric_cast<int>(abs(yPoint)) % m_gridY;
                 }
                 else
                 {
-                    yPoint = yPoint + (m_gridY * 0.5f);
-                    yPoint -= yPoint % m_gridY;
+                    yPoint = aznumeric_cast<int>(yPoint + (m_gridY * 0.5f));
+                    yPoint -= aznumeric_cast<int>(yPoint) % m_gridY;
                 }
             }
 

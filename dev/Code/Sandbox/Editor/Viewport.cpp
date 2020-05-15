@@ -1378,6 +1378,28 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         return true;
     }
 
+    // RAII wrapper for Pre / PostWidgetRendering calls.
+    // It also tracks the times a mouse callback potentially created a new viewport context.
+    struct ScopedProcessingMouseCallback
+    {
+        explicit ScopedProcessingMouseCallback(QtViewport* viewport)
+            : m_viewport(viewport)
+        {
+            m_viewport->m_processingMouseCallbacksCounter++;
+            m_viewport->PreWidgetRendering();
+        }
+
+        ~ScopedProcessingMouseCallback()
+        {
+            m_viewport->PostWidgetRendering();
+            m_viewport->m_processingMouseCallbacksCounter--;
+        }
+
+        QtViewport* m_viewport;
+    };
+
+    ScopedProcessingMouseCallback scopedProcessingMouseCallback(this);
+
     //////////////////////////////////////////////////////////////////////////
     // Hit test gizmo objects.
     //////////////////////////////////////////////////////////////////////////
@@ -1391,8 +1413,6 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         ((buttons& Qt::MiddleButton) ? MK_MBUTTON : 0) |
         ((buttons& Qt::RightButton) ? MK_RBUTTON : 0);
 
-    PreWidgetRendering();
-
     switch (event)
     {
     case eMouseMove:
@@ -1400,7 +1420,6 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         if (m_nLastUpdateFrame == m_nLastMouseMoveFrame)
         {
             // If mouse move event generated in the same frame, ignore it.
-            PostWidgetRendering();
             return false;
         }
         m_nLastMouseMoveFrame = m_nLastUpdateFrame;
@@ -1427,7 +1446,6 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
     {
         if (pRuler->MouseCallback(this, event, tempPoint, flags))
         {
-            PostWidgetRendering();
             return true;
         }
     }
@@ -1442,7 +1460,6 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         {
             if (pManipulator->MouseCallback(this, event, tempPoint, flags))
             {
-                PostWidgetRendering();
                 return true;
             }
         }
@@ -1455,7 +1472,6 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
     {
         if (pEditTool->MouseCallback(this, event, tempPoint, flags))
         {
-            PostWidgetRendering();
             return true;
         }
 
@@ -1465,14 +1481,11 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         {
             if (pParentTool->MouseCallback(this, event, tempPoint, flags))
             {
-                PostWidgetRendering();
                 return true;
             }
             pParentTool = pParentTool->GetParentTool();
         }
     }
-
-    PostWidgetRendering();
 
     return false;
 }

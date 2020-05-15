@@ -287,9 +287,9 @@ namespace LmbrCentral
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
                 ->Method("Clone", &AZ::InputEventNotificationId::Clone)
                 ->Property("actionName", nullptr, [](AZ::InputEventNotificationId* thisPtr, AZStd::string_view value) { *thisPtr = AZ::InputEventNotificationId(value.data()); })
-                ->Method("CreateInputEventNotificationId", [](AZStd::string_view value) -> AZ::InputEventNotificationId { return AZ::InputEventNotificationId(value.data()); },
-                { { { "actionName", "The name of the Input event action used to create an InputEventNotificationId" } } })
-                ;
+                ->Method("CreateInputEventNotificationId", [](AzFramework::LocalUserId localUserId, AZStd::string_view value) -> AZ::InputEventNotificationId { return AZ::InputEventNotificationId(localUserId, value.data()); },
+                { { { "localUserId", "Local User ID" },
+                    { "actionName", "The name of the Input event action used to create an InputEventNotificationId" } } });
 
             behaviorContext->EBus<AZ::GameplayNotificationBus>("GameplayNotificationBus")
                 ->Attribute(AZ::Script::Attributes::Deprecated, true)

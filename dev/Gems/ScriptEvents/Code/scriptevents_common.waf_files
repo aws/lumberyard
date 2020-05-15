@@ -18,7 +18,9 @@
       "Include/ScriptEvents/ScriptEventMethod.h",
       "Include/ScriptEvents/ScriptEvent.cpp",
       "Include/ScriptEvents/ScriptEventParameter.h",
-      "Include/ScriptEvents/ScriptEventTypes.h"
+      "Include/ScriptEvents/ScriptEventTypes.h",
+      "Include/ScriptEvents/ScriptEventSystem.h",
+      "Include/ScriptEvents/ScriptEventSystem.cpp"
     ],
     "Include/Internal": [
       "Include/ScriptEvents/Internal/VersionedProperty.h",

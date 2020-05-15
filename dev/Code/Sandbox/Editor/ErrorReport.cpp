@@ -68,9 +68,6 @@ QString CErrorRecord::GetErrorText() const
     case VALIDATOR_MODULE_PHYSICS:
         sModuleName = "Physics";
         break;
-    case VALIDATOR_MODULE_FLOWGRAPH:
-        sModuleName = "FlowGraph";
-        break;
     case VALIDATOR_MODULE_FEATURETESTS:
         sModuleName = "FeatureTests";
         break;
@@ -125,9 +122,11 @@ QString CErrorRecord::GetErrorText() const
 CErrorReport::CErrorReport()
 {
     m_errors.reserve(100);
-    m_bImmidiateMode = true;
-    m_pObject = 0;
-    m_pItem = 0;
+    m_bImmediateMode = true;
+    m_bShowErrors = true;
+    m_pObject = nullptr;
+    m_pItem = nullptr;
+    m_pParticle = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -140,7 +139,7 @@ void CErrorReport::ReportError(CErrorRecord& err)
     }
 
     bNoRecurse = true;
-    if (m_bImmidiateMode)
+    if (m_bImmediateMode)
     {
         if (err.module == VALIDATOR_MODULE_EDITOR && err.severity == static_cast<int>(VALIDATOR_ERROR))
         {
@@ -202,7 +201,7 @@ void CErrorReport::Display()
 {
     if (m_errors.empty() || !m_bShowErrors)
     {
-        SetImmidiateMode(true);
+        SetImmediateMode(true);
         return;
     }
 
@@ -248,7 +247,7 @@ void CErrorReport::Display()
         CErrorReportDialog::Open(this);
     }
 
-    SetImmidiateMode(true);
+    SetImmediateMode(true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -265,12 +264,12 @@ CErrorRecord& CErrorReport::GetError(int i)
 };
 
 //////////////////////////////////////////////////////////////////////////
-void CErrorReport::SetImmidiateMode(bool bEnable)
+void CErrorReport::SetImmediateMode(bool bEnable)
 {
-    if (bEnable != m_bImmidiateMode)
+    if (bEnable != m_bImmediateMode)
     {
         Clear();
-        m_bImmidiateMode = bEnable;
+        m_bImmediateMode = bEnable;
     }
 }
 

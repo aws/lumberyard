@@ -26,6 +26,8 @@
         "Source": [
             "Source/EditorPropertyTypes.cpp",
             "Source/EditorPropertyTypes.h",
+            "Source/LyShineLoadScreen.cpp",
+            "Source/LyShineLoadScreen.h",
             "Source/LyShineModule.cpp",
             "Source/LyShineModule.h",
             "Source/LyShineSystemComponent.cpp",
@@ -119,8 +121,9 @@
             "Source/UiTooltipDisplayComponent.cpp",
             "Source/UiTooltipDisplayComponent.h",
             "Source/UiTransform2dComponent.cpp",
-            "Source/UiTransform2dComponent.h"
-		],
+            "Source/UiTransform2dComponent.h",
+            "Source/UiClipboard.h"
+        ],
         "Source/Sprite Support":
         [
             "Source/Sprite.cpp",

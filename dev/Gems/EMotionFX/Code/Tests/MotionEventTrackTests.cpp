@@ -21,6 +21,8 @@
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
 #include <Integration/System/SystemCommon.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 
 #include <AzCore/std/algorithm.h>
 
@@ -149,13 +151,9 @@ namespace EMotionFX
 
             GetParam().eventFactory(m_track);
 
-            m_actor = Actor::Create("testActor");
-            Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
-            m_actor->AddNode(rootNode);
-            m_actor->ResizeTransformData();
-            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
+            m_actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(5);
 
-            m_actorInstance = ActorInstance::Create(m_actor);
+            m_actorInstance = ActorInstance::Create(m_actor.get());
 
             m_motionInstance = MotionInstance::Create(m_motion, m_actorInstance, 0);
 
@@ -173,7 +171,6 @@ namespace EMotionFX
             m_motionInstance->Destroy();
             m_motion->Destroy();
             m_actorInstance->Destroy();
-            m_actor->Destroy();
             SystemComponentFixture::TearDown();
         }
 
@@ -209,7 +206,7 @@ namespace EMotionFX
         SkeletalMotion* m_motion = nullptr;
         MotionInstance* m_motionInstance = nullptr;
         MotionEventTrack* m_track = nullptr;
-        Actor* m_actor = nullptr;
+        AZStd::unique_ptr<Actor> m_actor{};
         ActorInstance* m_actorInstance = nullptr;
         TestProcessEventsEventHandler* m_eventHandler = nullptr;
 
@@ -227,7 +224,7 @@ namespace EMotionFX
             return this->m_track->ExtractEvents(startTime, endTime, motionInstance, m_buffer);
         });
     }
-
+ 
     TEST_P(TestExtractProcessEventsFixture, TestProcessEvents)
     {
         m_shouldContainActiveEvents = false;
@@ -861,6 +858,28 @@ namespace EMotionFX
                     nullptr, nullptr, nullptr,
                     EMotionFX::EventInfo::EventState::END // Start became end, because of backward playback.
                 }
+            }
+        },
+        { // When we start out of the range of the motion, while playing forward, and we suddenly go to somewhere inside the play time of the motion, we basically go from time 0 to the current play position.
+            MakeOneEvent,
+            3.0f,
+            0.5f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        { // When we start out of the range of the motion, while playing backward, and we suddenly go to somewhere inside the play time of the motion. We will trigger events between the end of the motion and 0.5 seconds, which is nothing.
+            MakeOneEvent,
+            -1.0f,
+            0.5f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo>
+            {
             }
         }
     };

@@ -2,7 +2,7 @@
     "name": "TomMath",
     "source": "@3P:libtommath@",
     "description": "LibTomMath open source library (http://www.libtom.org/)",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

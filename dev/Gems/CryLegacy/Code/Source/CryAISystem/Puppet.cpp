@@ -1106,11 +1106,6 @@ void CPuppet::UpdatePuppetInternalState()
         const EAITargetThreat oldThreat = m_State.eTargetThreat;
         const EAITargetThreat newThreat = targetSelectionInfo.targetThreat;
 
-        if (newThreat > oldThreat && newThreat >= AITHREAT_THREATENING)
-        {
-            gEnv->pAISystem->GetAIActionManager()->AbortAIAction(GetEntity());
-        }
-
         m_State.eTargetThreat = targetSelectionInfo.targetThreat;
         m_State.eTargetType = targetSelectionInfo.targetType;
         m_State.eTargetID = targetSelectionInfo.bestTarget.GetObjectID();

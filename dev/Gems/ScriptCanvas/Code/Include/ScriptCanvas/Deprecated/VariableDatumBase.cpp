@@ -9,70 +9,68 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-#include <ScriptCanvas/Variable/VariableDatum.h>
+#include <ScriptCanvas/Deprecated/VariableDatum.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 
 namespace ScriptCanvas
 {
-    void VariableDatumBase::Reflect(AZ::ReflectContext* context)
+    namespace Deprecated
     {
-        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        void VariableDatumBase::Reflect(AZ::ReflectContext* context)
         {
-            serializeContext->Class<VariableDatumBase>()
-                ->Version(0)
-                ->Field("m_data", &VariableDatumBase::m_data)
-                ->Field("m_variableId", &VariableDatumBase::m_id)
-                ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &VariableId::MakeVariableId)
-                ;
-
-            if (auto editContext = serializeContext->GetEditContext())
+            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                editContext->Class<VariableDatumBase>("Variable", "Represents a Variable field within a Script Canvas Graph")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &VariableDatumBase::m_data, "Datum", "Datum within Script Canvas Graph")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VariableDatumBase::OnValueChanged)
+                serializeContext->Class<VariableDatumBase>()
+                    ->Version(0)
+                    ->Field("m_data", &VariableDatumBase::m_data)
+                    ->Field("m_variableId", &VariableDatumBase::m_id)
+                    ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &VariableId::MakeVariableId)
                     ;
+
+                if (auto editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<VariableDatumBase>("Variable", "Represents a Variable field within a Script Canvas Graph")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &VariableDatumBase::m_data, "Datum", "Datum within Script Canvas Graph")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VariableDatumBase::OnValueChanged)
+                        ;
+                }
             }
         }
-    }
-    VariableDatumBase::VariableDatumBase(const Datum& datum)
-        : m_data(datum)
-        , m_id(VariableId::MakeVariableId())
-    {}
+        VariableDatumBase::VariableDatumBase(const Datum& datum)
+            : m_data(datum)
+            , m_id(VariableId::MakeVariableId())
+        {}
 
-    VariableDatumBase::VariableDatumBase(const Datum& value, VariableId id)
-        : m_data(value)
-        , m_id(id)
-    {}
-    
-    VariableDatumBase::VariableDatumBase(Datum&& datum)
-        : m_data(AZStd::move(datum))
-        , m_id(VariableId::MakeVariableId())
-    {}
+        VariableDatumBase::VariableDatumBase(const Datum& value, VariableId id)
+            : m_data(value)
+            , m_id(id)
+        {}
 
-    bool VariableDatumBase::operator==(const VariableDatumBase& rhs) const
-    {
-        if (this == &rhs)
+        VariableDatumBase::VariableDatumBase(Datum&& datum)
+            : m_data(AZStd::move(datum))
+            , m_id(VariableId::MakeVariableId())
+        {}
+
+        bool VariableDatumBase::operator==(const VariableDatumBase& rhs) const
         {
-            return true;
+            if (this == &rhs)
+            {
+                return true;
+            }
+
+            return (m_data == rhs.m_data).IsSuccess();
         }
 
-        return (m_data == rhs.m_data).IsSuccess();
-    }
-
-    bool VariableDatumBase::operator!=(const VariableDatumBase& rhs) const
-    {
-        return !operator==(rhs);
-    }
-
-    void VariableDatumBase::OnValueChanged()
-    {
-        if (m_signalValueChanges)
+        bool VariableDatumBase::operator!=(const VariableDatumBase& rhs) const
         {
-            VariableNotificationBus::Event(m_id, &VariableNotifications::OnVariableValueChanged);
+            return !operator==(rhs);
+        }
+
+        void VariableDatumBase::OnValueChanged()
+        {
         }
     }
 }

@@ -14,7 +14,7 @@ import os
 
 from resource_manager_common import constant
 
-from errors import HandledError
+from .errors import HandledError
 
 
 def resolve_imports(context, target_directory_path, imported_paths=None, multi_imports=None):

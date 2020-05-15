@@ -15,15 +15,13 @@
 #define CRYINCLUDE_CRY3DENGINE_TERRAIN_SECTOR_H
 #pragma once
 
-#define MML_NOT_SET ((uint8) - 1)
-
 #define ARR_TEX_OFFSETS_SIZE 4
 
-
-#include "BasicArea.h"
 #include <CryArray2d.h>
 #include "Terrain/Texture/MacroTexture.h"
+#include "Terrain/LegacyTerrainBase.h"
 #include <ITerrain.h>
+#include <Terrain/ITerrainNode.h>
 
 class BuildMeshData;
 class InPlaceIndexBuffer;
@@ -226,9 +224,6 @@ struct SurfaceTile
         return m_Heightmap;
     }
 
-    static const int Hole = 128;
-    static const int MaxSurfaceCount = 129;
-
 private:
     float m_Offset;
     float m_Range;
@@ -256,48 +251,9 @@ private:
     }
 };
 
-struct STerrainNodeLeafData
-{
-    STerrainNodeLeafData()
-    {
-        memset(this, 0, sizeof(*this));
-    }
-    ~STerrainNodeLeafData();
-
-    struct TextureParams
-    {
-        void Set(const SSectorTextureSet& set)
-        {
-            offsetX = set.fTexOffsetX;
-            offsetY = set.fTexOffsetY;
-            scale = set.fTexScale;
-            id = set.nTex0;
-        }
-
-        float offsetX;
-        float offsetY;
-        float scale;
-        uint32 id;
-    };
-
-#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
-    // Use m_TextureParams for double buffering to prevent flickering due to threading issues
-    // Only level 0 was used before.
-    TextureParams m_TextureParams[RT_COMMAND_BUF_COUNT];
-#else
-    TextureParams m_TextureParams[MAX_RECURSION_LEVELS];
-#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
-
-
-    int m_SurfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4];
-    PodArray<CTerrainNode*> m_Neighbors;
-    PodArray<uint8> m_NeighborLods;
-    _smart_ptr<IRenderMesh> m_pRenderMesh;
-};
-
 class CTerrainNode
-    : public Cry3DEngineBase
-    , public IShadowCaster
+    : public ITerrainNode
+    , public LegacyTerrainBase
 {
 public:
     friend class CTerrain;
@@ -311,6 +267,17 @@ public:
     virtual bool IsRenderNode() { return false; }
     virtual EERType GetRenderNodeType();
 
+    ///////////////////////////////////////////////////////////////////////////
+    // ITerrainNode START
+    ITerrainNode* FindMinNodeContainingBox(const AABB& aabbBox) override;
+    const AABB& GetLocalAABB() const override { return m_LocalAABB; }
+    ITerrainNode* GetParent() const override { return m_Parent; }
+    SSectorTextureSet* GetTextureSet() override { return &m_TextureSet; }
+    int GetAreaLOD(const SRenderingPassInfo& passInfo) const override;
+    STerrainNodeLeafData* GetLeafData() const override { return m_pLeafData; }
+    // ITerrainNode END
+
+
     void Init(int x1, int y1, int nNodeSize, CTerrainNode* pParent, bool bBuildErrorsTable);
     CTerrainNode()
         : m_TextureSet(0)
@@ -322,8 +289,8 @@ public:
         , m_nSetLodFrameId(0)
         , m_ZErrorFromBaseLOD(0)
         , m_vegetationSectorPtr(nullptr)
-        , m_nGSMFrameId(0)
         , m_pRNTmpData(0)
+        , m_bProcObjectsReady(0)
         , m_nEditorDiffuseTex(0)
         , m_nEditorDiffuseTexSize(0)
     {
@@ -345,14 +312,11 @@ public:
 
     void SetChildsLod(int nNewGeomLOD, const SRenderingPassInfo& passInfo);
 
-    int GetAreaLOD(const SRenderingPassInfo& passInfo);
-
     bool CheckUpdateProcObjects(const SRenderingPassInfo& passInfo);
 
     void IntersectTerrainAABB(const AABB& aabbBox, PodArray<CTerrainNode*>& lstResult);
-    void IntersectWithShadowFrustum(bool bAllIn, PodArray<CTerrainNode*>* plstResult, ShadowMapFrustum* pFrustum, const float fHalfGSMBoxSize, const SRenderingPassInfo& passInfo);
+    void IntersectWithShadowFrustum(bool bAllIn, PodArray<ITerrainNode*>* plstResult, ShadowMapFrustum* pFrustum, const float fHalfGSMBoxSize, const SRenderingPassInfo& passInfo);
     void IntersectWithBox(const AABB& aabbBox, PodArray<CTerrainNode*>* plstResult);
-    CTerrainNode* FindMinNodeContainingBox(const AABB& aabbBox);
 
     void UpdateDetailLayersInfo(bool bRecursive);
     void RemoveProcObjects(bool bRecursive = false);
@@ -382,8 +346,6 @@ public:
 
     int GetSectorSizeInHeightmapUnits() const;
 
-    inline STerrainNodeLeafData* GetLeafData() { return m_pLeafData; }
-
     inline const SurfaceTile& GetSurfaceTile() const
     {
         return m_SurfaceTile;
@@ -400,8 +362,7 @@ public:
     uint8 m_bProcObjectsReady : 1;
     uint8 m_bForceHighDetail : 1;
     uint8 m_bHasHoles : 2;
-    uint8 m_bNoOcclusion : 1; // sector has visareas under terrain surface
-    uint8 m_QueuedLOD, m_CurrentLOD, m_TextureLOD;
+    uint8 m_TextureLOD;
     uint8 m_nTreeLevel;
 
     uint16 m_nEditorDiffuseTexSize;
@@ -416,8 +377,6 @@ public:
     SurfaceTile m_SurfaceTile;
 
     SSectorTextureSet m_TextureSet;
-
-    int m_nGSMFrameId;
 
     float m_DistanceToCamera[MAX_RECURSION_LEVELS];
     int FTell(uint8*& f);
@@ -449,9 +408,9 @@ private:
 
     void BuildVertices(int step);
 
-    void AddIndexAliased(int _x, int _y, int _step, int nSectorSize, PodArray<CTerrainNode*>* plstNeighbourSectors, InPlaceIndexBuffer& indices, const SRenderingPassInfo& passInfo);
+    void AddIndexAliased(int _x, int _y, int _step, int nSectorSize, PodArray<ITerrainNode*>* plstNeighbourSectors, InPlaceIndexBuffer& indices, const SRenderingPassInfo& passInfo);
 
-    void BuildIndices(InPlaceIndexBuffer& si, PodArray<CTerrainNode*>* pNeighbourSectors, const SRenderingPassInfo& passInfo);
+    void BuildIndices(InPlaceIndexBuffer& si, PodArray<ITerrainNode*>* pNeighbourSectors, const SRenderingPassInfo& passInfo);
 
     void RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo);
 
@@ -482,16 +441,16 @@ private:
 
     BuildMeshData* m_MeshData;
 
-    static PodArray<vtx_idx> s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
+    static PodArray<vtx_idx> s_SurfaceIndices[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount][4];
 
     static void SetupTexGenParams(SSurfaceType* pLayer, float* pOutParams, uint8 ucProjAxis, bool bOutdoor, float fTexGenScale = 1.f);
 
-    static void GenerateIndicesForAllSurfaces(IRenderMesh * mesh, int surfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4], BuildMeshData * meshData);
+    static void GenerateIndicesForAllSurfaces(IRenderMesh * mesh, int surfaceAxisIndexCount[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount][4], BuildMeshData * meshData);
 };
 
 // Container to manager temp memory as well as running update jobs
 class CTerrainUpdateDispatcher
-    : public Cry3DEngineBase
+    : public LegacyTerrainBase
 {
 public:
     CTerrainUpdateDispatcher();

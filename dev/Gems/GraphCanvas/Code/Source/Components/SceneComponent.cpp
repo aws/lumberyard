@@ -24,6 +24,7 @@
 #include <QScreen>
 #include <QMimeData>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Serialization/Utils.h>
@@ -196,7 +197,7 @@ namespace GraphCanvas
         if (!m_splicingNode.IsValid() && m_splicingPath.isEmpty())
         {
             AZ::EntityId targetId;
-            AZ::Vector2 targetVector(dragPoint.x(), dragPoint.y());
+            AZ::Vector2 targetVector(aznumeric_cast<float>(dragPoint.x()), aznumeric_cast<float>(dragPoint.y()));
 
             AZStd::vector< AZ::EntityId > connectionEntities;
             SceneRequestBus::EventResult(connectionEntities, GetSceneId(), &SceneRequests::GetEntitiesAt, targetVector);
@@ -238,7 +239,7 @@ namespace GraphCanvas
                     AssetEditorSettingsRequestBus::EventResult(spliceDuration, GetEditorId(), &AssetEditorSettingsRequests::GetDropConnectionSpliceTime);
 
                     m_spliceTimer.stop();
-                    m_spliceTimer.setInterval(spliceDuration.count());
+                    m_spliceTimer.setInterval(aznumeric_cast<int>(spliceDuration.count()));
                     m_spliceTimer.start();
                 }
             }
@@ -305,7 +306,7 @@ namespace GraphCanvas
 
         bool success = false;
 
-        AZ::Vector2 sceneMousePoint = AZ::Vector2(dropPoint.x(), dropPoint.y());
+        AZ::Vector2 sceneMousePoint = AZ::Vector2(aznumeric_cast<float>(dropPoint.x()), aznumeric_cast<float>(dropPoint.y()));
         AZ::Vector2 sceneDropPoint = sceneMousePoint;
         
         QGraphicsScene* graphicsScene = nullptr;
@@ -429,7 +430,7 @@ namespace GraphCanvas
 
                             if (totalSamples > 0)
                             {
-                                centerPoint /= totalSamples;
+                                centerPoint /= aznumeric_cast<float>(totalSamples);
                             }
 
                             m_positionOffset = ConversionUtils::QPointToVector(m_targetPosition) - centerPoint;
@@ -456,7 +457,7 @@ namespace GraphCanvas
                             SceneRequestBus::Event(GetSceneId(), &SceneRequests::CreatePulseAroundSceneMember, m_splicingNode, k_squaresToPulse, pulseConfiguration);
 
                             bool enableNudging = false;
-                            AssetEditorSettingsRequestBus::EventResult(enableNudging, GetEditorId(), &AssetEditorSettingsRequests::IsSplicedNodeNudgingEnabled);
+                            AssetEditorSettingsRequestBus::EventResult(enableNudging, GetEditorId(), &AssetEditorSettingsRequests::IsNodeNudgingEnabled);
                             
                             if (enableNudging)
                             {
@@ -543,7 +544,6 @@ namespace GraphCanvas
 
     void GestureSceneHelper::Deactivate()
     {
-        AssetEditorSettingsNotificationBus::Handler::BusDisconnect();
         GeometryNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusDisconnect();
     }
@@ -673,7 +673,7 @@ namespace GraphCanvas
         
         AZStd::chrono::milliseconds duration(500);
         AssetEditorSettingsRequestBus::EventResult(duration, GetEditorId(), &AssetEditorSettingsRequests::GetMaximumShakeDuration);
-        m_timer.setInterval(duration.count());
+        m_timer.setInterval(aznumeric_cast<int>(duration.count()));
 
         AssetEditorSettingsRequestBus::EventResult(m_trackShake, GetEditorId(), &AssetEditorSettingsRequests::IsShakeToDespliceEnabled);        
 
@@ -694,8 +694,6 @@ namespace GraphCanvas
 
     void GestureSceneHelper::OnEditorIdSet()
     {
-        AssetEditorSettingsNotificationBus::Handler::BusConnect(GetEditorId());
-
         OnSettingsChanged();
     }
 
@@ -804,7 +802,7 @@ namespace GraphCanvas
                     {
                         if (item->zValue() > maxZValue)
                         {
-                            maxZValue = item->zValue();
+                            maxZValue = aznumeric_cast<int>(item->zValue());
                         }
 
                         if (boundingRect.isEmpty())
@@ -1078,6 +1076,7 @@ namespace GraphCanvas
         SceneBookmarkActionBus::Handler::BusDisconnect();
         SceneMimeDelegateRequestBus::Handler::BusDisconnect();
         SceneRequestBus::Handler::BusDisconnect();
+        AssetEditorSettingsNotificationBus::Handler::BusDisconnect();
 
         m_activeDelegates.clear();
 
@@ -1207,6 +1206,10 @@ namespace GraphCanvas
             m_editorId = editorId;
             m_mimeDelegateSceneHelper.SetEditorId(editorId);
             m_gestureSceneHelper.SetEditorId(editorId);
+
+            OnSettingsChanged();
+
+            AssetEditorSettingsNotificationBus::Handler::BusConnect(m_editorId);
 
             StyleManagerNotificationBus::Handler::BusConnect(m_editorId);
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnStylesChanged);
@@ -1420,12 +1423,12 @@ namespace GraphCanvas
                 baseConfiguration.m_styleHelper = styleHelper;
                 baseConfiguration.m_color = drawColor;
 
-                baseConfiguration.m_zValue = graphicsItem->zValue();
+                baseConfiguration.m_zValue = aznumeric_cast<int>(graphicsItem->zValue());
 
                 boundingRect.adjust(minorPitch.GetX() * 0.5f, minorPitch.GetY() * 0.5f, -minorPitch.GetX() * 0.5f, -minorPitch.GetY() * 0.5f);
 
-                int yPos = boundingRect.top();
-                int xPos = boundingRect.left();
+                int yPos = aznumeric_cast<int>(boundingRect.top());
+                int xPos = aznumeric_cast<int>(boundingRect.left());
 
                 while (yPos < boundingRect.bottom())
                 {
@@ -1439,11 +1442,11 @@ namespace GraphCanvas
 
                             double impulseVariance = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 
-                            float directionSpray = ((boundingRect.center().x() - xPos)/boundingRect.width()) * 2.0f;
+                            double directionSpray = ((boundingRect.center().x() - xPos)/boundingRect.width()) * 2.0;
 
-                            float xImpulse = impulseVector.GetX() * 10.0f * -directionSpray + impulseVector.GetX() * 6.0f * impulseVariance;
+                            double xImpulse = impulseVector.GetX() * 10.0 * -directionSpray + impulseVector.GetX() * 6.0 * impulseVariance;
 
-                            float yImpulse = -impulseVector.GetY() * 4.0f - impulseVector.GetY() * 2.0f * impulseVariance;
+                            double yImpulse = -impulseVector.GetY() * 4.0 - impulseVector.GetY() * 2.0 * impulseVariance;
 
                             baseConfiguration.m_initialImpulse = QPointF(xImpulse, yImpulse);
 
@@ -1453,11 +1456,11 @@ namespace GraphCanvas
                             effectIds.emplace_back(CreateParticle(baseConfiguration));
                         }
 
-                        xPos += minorPitch.GetX();
+                        xPos += aznumeric_cast<int>(minorPitch.GetX());
                     }
 
-                    yPos += minorPitch.GetY();
-                    xPos = boundingRect.left();
+                    yPos += aznumeric_cast<int>(minorPitch.GetY());
+                    xPos = aznumeric_cast<int>(boundingRect.left());
                 }
             }
         }
@@ -2469,8 +2472,8 @@ namespace GraphCanvas
             if (graphicsItem)
             {
                 QPointF scenePosition = graphicsItem->scenePos();
-                itemPos.SetX(scenePosition.x());
-                itemPos.SetY(scenePosition.y());
+                itemPos.SetX(aznumeric_cast<float>(scenePosition.x()));
+                itemPos.SetY(aznumeric_cast<float>(scenePosition.y()));
             }
             
             aggregatePos += itemPos;
@@ -2486,14 +2489,14 @@ namespace GraphCanvas
             if (graphicsItem)
             {
                 QPointF scenePosition = graphicsItem->scenePos();
-                itemPos.SetX(scenePosition.x());
-                itemPos.SetY(scenePosition.y());
+                itemPos.SetX(aznumeric_cast<float>(scenePosition.x()));
+                itemPos.SetY(aznumeric_cast<float>(scenePosition.y()));
             }
 
             aggregatePos += itemPos;
         }
 
-        AZ::Vector2 averagePos = aggregatePos / (serializedEntities.m_nodes.size() + serializedEntities.m_bookmarkAnchors.size());
+        AZ::Vector2 averagePos = aggregatePos / aznumeric_cast<float>(serializedEntities.m_nodes.size() + serializedEntities.m_bookmarkAnchors.size());
         serializationTarget.SetAveragePosition(averagePos);
 
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnEntitiesSerialized, serializationTarget);
@@ -2502,7 +2505,7 @@ namespace GraphCanvas
     void SceneComponent::DeserializeEntities(const QPointF& scenePoint, const GraphSerialization& serializationSource)
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
-        AZ::Vector2 deserializePoint = AZ::Vector2(scenePoint.x(), scenePoint.y());
+        AZ::Vector2 deserializePoint = AZ::Vector2(aznumeric_cast<float>(scenePoint.x()), aznumeric_cast<float>(scenePoint.y()));
         const AZ::Vector2& averagePos = serializationSource.GetAveragePosition();
 
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnEntitiesDeserialized, serializationSource);
@@ -3018,7 +3021,7 @@ namespace GraphCanvas
 
     void SceneComponent::SignalDesplice()
     {
-        m_nudgingController.CancelNudging();
+        CancelNudging();
     }
 
     QRectF SceneComponent::GetSelectedSceneBoundingArea() const
@@ -3168,13 +3171,37 @@ namespace GraphCanvas
         GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::RequestUndoPoint);
     }
 
+    void SceneComponent::StartNudging(const AZStd::unordered_set<AZ::EntityId>& fixedNodes)
+    {
+        if (m_enableNudging)
+        {
+            m_nudgingController.StartNudging(fixedNodes);
+        }
+    }
+
+    void SceneComponent::FinalizeNudging()
+    {
+        if (m_enableNudging)
+        {
+            m_nudgingController.FinalizeNudging();
+        }
+    }
+
+    void SceneComponent::CancelNudging()
+    {
+        if (m_enableNudging)
+        {
+            m_nudgingController.CancelNudging();
+        }
+    }
+
     void SceneComponent::RemoveUnusedElements()
     {
         {
             ScopedGraphUndoBlocker undoBlocker(GetEntityId());
             RemoveUnusedNodes();
             GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::OnRemoveUnusedElements);
-        }        
+        }
 
         GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::RequestUndoPoint);
     }
@@ -3474,6 +3501,18 @@ namespace GraphCanvas
     void SceneComponent::OnStylesLoaded()
     {
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnStylesChanged);
+    }
+
+    void SceneComponent::OnSettingsChanged()
+    {
+        m_gestureSceneHelper.OnSettingsChanged();
+
+        AssetEditorSettingsRequestBus::EventResult(m_enableNudging, GetEditorId(), &AssetEditorSettingsRequests::IsNodeNudgingEnabled);
+
+        if (!m_enableNudging)
+        {
+            m_nudgingController.CancelNudging();
+        }
     }
 
     void SceneComponent::ConfigureAndAddGraphicsEffect(GraphicsEffectInterface* graphicsEffect)
@@ -3916,9 +3955,7 @@ namespace GraphCanvas
 
             if (m_spliceTarget.IsValid())
             {
-                int spliceTimeout = 0;
-
-                m_spliceTimer.setInterval(spliceTime.count());
+                m_spliceTimer.setInterval(aznumeric_cast<int>(spliceTime.count()));
                 m_spliceTimer.start();
             }
         }
@@ -3944,9 +3981,6 @@ namespace GraphCanvas
         m_spliceTargetDisplayStateStateSetter.ResetStateSetter();
         m_pressedEntityDisplayStateStateSetter.ReleaseState();
         m_couplingEntityDisplayStateStateSetter.ReleaseState();
-
-        bool enableNudging = false;
-        AssetEditorSettingsRequestBus::EventResult(enableNudging, GetEditorId(), &AssetEditorSettingsRequests::IsSplicedNodeNudgingEnabled);
         
         // Make sure we have a valid target for whatever we are trying to 'splice' against.
         // Then check the preconditions for the various other tracking elements.
@@ -3971,12 +4005,8 @@ namespace GraphCanvas
                     if (GraphUtils::SpliceSubGraphOntoConnection(m_selectedSubGraph, m_spliceTarget))
                     {
                         m_forceDragReleaseUndo = true;
-                        pulseConfiguration.m_drawColor = QColor(255, 255, 255);
-
-                        if (enableNudging)
-                        {
-                            m_nudgingController.StartNudging(m_selectedSubGraph.m_containedNodes);
-                        }
+                        pulseConfiguration.m_drawColor = QColor(255, 255, 255);                        
+                        StartNudging(m_selectedSubGraph.m_containedNodes);
                     }
                     else
                     {
@@ -3993,10 +4023,7 @@ namespace GraphCanvas
                         m_forceDragReleaseUndo = true;
                         pulseConfiguration.m_drawColor = QColor(255, 255, 255);
 
-                        if (enableNudging)
-                        {
-                            m_nudgingController.StartNudging(m_selectedSubGraph.m_containedNodes);
-                        }
+                        StartNudging(m_selectedSubGraph.m_containedNodes);
                     }
                     else
                     {
@@ -4018,7 +4045,7 @@ namespace GraphCanvas
                     targetRect = targetItem->sceneBoundingRect();
                 }
 
-                QGraphicsItem* draggingEntity = nullptr;                
+                QGraphicsItem* draggingEntity = nullptr;
 
                 AZStd::unordered_set< GraphCanvas::ConnectionType > allowableTypes;
 
@@ -4038,7 +4065,7 @@ namespace GraphCanvas
                     allowableTypes.insert(GraphCanvas::ConnectionType::CT_Output);
                 }
 
-                SceneMemberUIRequestBus::EventResult(draggingEntity, m_couplingTarget, &SceneMemberUIRequests::GetRootGraphicsItem);  
+                SceneMemberUIRequestBus::EventResult(draggingEntity, m_couplingTarget, &SceneMemberUIRequests::GetRootGraphicsItem);
 
                 if (draggingEntity && targetItem)
                 {
@@ -4062,11 +4089,11 @@ namespace GraphCanvas
                     if (allowableTypes.count(allowedType) > 0)
                     {
                         AZStd::vector< AZ::EntityId > slotIds;
-                        NodeRequestBus::EventResult(slotIds, m_couplingTarget, &NodeRequests::GetSlotIds);                        
+                        NodeRequestBus::EventResult(slotIds, m_couplingTarget, &NodeRequests::GetSlotIds);
 
                         for (const AZ::EntityId& testSlotId : slotIds)
                         {
-                            //if (GraphUtils::IsSlotVisible(testSlotId))
+                            if (GraphUtils::IsSlotVisible(testSlotId))
                             {
                                 GraphCanvas::ConnectionType connectionType = GraphCanvas::ConnectionType::CT_Invalid;
                                 SlotRequestBus::EventResult(connectionType, testSlotId, &SlotRequests::GetConnectionType);
@@ -4430,7 +4457,7 @@ namespace GraphCanvas
 
         QGraphicsScene::mouseReleaseEvent(event);
 
-        m_scene.m_nudgingController.FinalizeNudging();
+        m_scene.FinalizeNudging();
     }
 
     void GraphCanvasGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
@@ -4447,7 +4474,7 @@ namespace GraphCanvas
 
         QGraphicsScene::mouseMoveEvent(event);
 
-        if (m_scene.m_enableSpliceTracking)
+        if (m_scene.m_enableSpliceTracking && event->lastPos() != event->pos())
         {
             m_scene.OnCursorMoveForSplice();
         }

@@ -83,12 +83,20 @@ namespace AzToolsFramework
          * \param targetDirectory - the preferred directory path.
          * \param inheritSlices - if true, entities already part of slice instances will be added by cascading from their corresponding slices.
          * \param setAsDynamic - if true, the slice is setup as a dynamic slice on creation
+         * \param acceptDefaultPath - Whether to prompt the user for a path save location or to proceed with the generated one. Defaults to false
+         * \param defaultMoveExternalRefs - Whether to prompt the user on if external entity references found in added entities get added to the created slice or do this automatically. Defaults to false
+         * \param defaultGenerateSharedRoot - Whether to generate a shared root if one or more added entities do not share the same root. Defaults to false
+         * \param silenceWarningPopups - Disables QT warning popups from being generated, can still rely on the return value for error handling. Defaults to false
          * \return true if slice was created successfully.
          */
-        bool MakeNewSlice(const AzToolsFramework::EntityIdSet& entities, 
+        bool MakeNewSlice(const AzToolsFramework::EntityIdSet& entities,
                           const char* targetDirectory, 
                           bool inheritSlices,
                           bool setAsDynamic,
+                          bool acceptDefaultPath = false,
+                          bool defaultMoveExternalRefs = false,
+                          bool defaultGenerateSharedRoot = false,
+                          bool silenceWarningPopups = false,
                           AZ::SerializeContext* serializeContext = nullptr);
 
         /**
@@ -164,7 +172,8 @@ namespace AzToolsFramework
             const AZStd::unordered_set<AZ::EntityId>& entitiesToUpdate,
             const AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
             const AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
-            SliceTransaction::PreSaveCallback preSaveCallback);
+            SliceTransaction::PreSaveCallback preSaveCallback,
+            SliceTransaction::PostSaveCallback postSaveCallback);
 
         /**
          * Push an individual entity field back to a given slice asset.
@@ -196,10 +205,20 @@ namespace AzToolsFramework
          */
         SliceTransaction::Result SlicePreSaveCallbackForWorldEntities(SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset);
 
+        void SlicePostPushCallback(SliceTransaction::TransactionPtr transaction, const char* fullSourcePath, const SliceTransaction::SliceAssetPtr& asset);
+
+        void SlicePostSaveCallbackForNewSlice(SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& transactionAsset);
+
         /**
          * Returns true if the entity has no transform parent.
          */
         bool IsRootEntity(const AZ::Entity& entity);
+
+        /**
+        * \brief Determines whether the provided entity id is the root of a slice or subslice
+        * \param id The entity id to check
+        */
+        bool IsSliceOrSubsliceRootEntity(const AZ::EntityId& id);
 
         /**
          * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
@@ -341,14 +360,6 @@ namespace AzToolsFramework
         void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AzToolsFramework::EntityIdSet& selectedTransformHierarchyEntities, const AZStd::string& headerText = "Detach");
 
         /**
-        * Populates a (provided) QMenu with a list of slices that are antecedents of the current entity, allowing the user to select them.
-        * \param selectedEntity The Entity to use to populate the menu with. 
-        * \param selectMenu A pointer to the menu to populate
-        * \return true if any items have been added to the menu
-        */
-        bool PopulateSliceSelectSubMenu(const AZ::EntityId& selectedEntity, QMenu*& selectMenu);
-
-        /**
         * Save slice overrides using the hot key.
         * \param inputEntities list of entities whose overrides need to be pushed.
         * \param numEntitiesToAdd [out] number of new entities to add.
@@ -408,7 +419,15 @@ namespace AzToolsFramework
          * \param newParentId The target parent entity
          * \return The root ID of the new entity hierarchy after necessary cloning/reparenting
          */
+         // LUMBERYARD_DEPRECATED(LY-108703)
         AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
+
+        /**
+         * Performs the necessary detach operations on orphaned slice and subslice entities while reparenting existing loose entities and slices.
+         * \param entityId The target entity to reparent
+         * \param newParentId The target parent entity
+        */
+        void ReparentNonTrivialSliceInstanceHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
 
         /**
         * Reflects slice tools related structures for serialization/editing.

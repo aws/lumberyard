@@ -9,7 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-# depreceated
+# deprecated
 
 from cgf_lambda_service import api, Request, dispatch
 from cgf_lambda_service import ClientError

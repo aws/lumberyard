@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from random import sample
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
@@ -14,6 +26,7 @@ import datetime
 import os
 import errors
 import json
+from cgf_lambda_service import ClientError
 
 class DynamoDb(object):
     def __init__(self, context={}):                 
@@ -69,7 +82,7 @@ class DynamoDb(object):
         try:
             return self.update(self.context_table.update_item, params)        
         except Exception as e:
-            raise errors.ClientError("Error updating the context parameter '{}' with value '{}'.\nError: {}".format(key, value, e))
+            raise ClientError("Error updating the context parameter '{}' with value '{}'.\nError: {}".format(key, value, e))
     
     def delete_item(self, key):
         params = dict({})                
@@ -94,22 +107,28 @@ class DynamoDb(object):
                 attempts += 1
                 if e.response['Error']['Code'] == 'ConditionalCheckFailedException' or e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':                    
                     if not retry:
-                        return None                 
-                    print "\n\n[ConditionalCheckFailedException] Func: {} Retry: {}\n\n".format(func, retry)
+                        return None
+                    print("\n\n[ConditionalCheckFailedException] Func: {} Retry: {}\n\n".format(func, retry))
                     backoff = min(self.__context[c.KEY_BACKOFF_MAX_SECONDS], random.uniform(self.__context[c.KEY_BACKOFF_BASE_SECONDS], backoff * 3.0))
                     if self.__break_retry(backoff, attempts):
-                        raise e    
-                    print "Sleeping {} seconds before attempting the {} request again.".format(backoff, func)
+                        raise e
+                    print("Sleeping {} seconds before attempting the {} request again.".format(backoff, func))
                     time.sleep(backoff)                 
                 else:                    
                     raise e
     
     def __break_retry(self, backoff, current_attempt_number):        
         time_remaining = util.time_remaining(self.__context)
-        print "The lambda has {} seconds remaining. It started at {}.".format(time_remaining, datetime.datetime.fromtimestamp(self.__context[c.KEY_START_TIME]).strftime('%Y-%m-%d %H:%M:%S'))        
+        print("The lambda has {} seconds remaining. It started at {}.".format(time_remaining,
+                                                                              datetime.datetime.fromtimestamp(
+                                                                                  self.__context[
+                                                                                      c.KEY_START_TIME]).strftime(
+                                                                                  '%Y-%m-%d %H:%M:%S')))
         if time_remaining - backoff < context[c.CW_ATTR_SAVE_DURATION] or current_attempt_number >= self.__context[c.KEY_BACKOFF_MAX_TRYS] :
-            print "Breaking the lock attempt as the lambda is nearing timeout or maximum retry limit is hit.  The lambda has {} seconds remaining.  There have been {} attempts made.".format(time_remaining,current_attempt_number)
-            return True;
+            print(
+                "Breaking the lock attempt as the lambda is nearing timeout or maximum retry limit is hit.  The lambda has {} seconds remaining.  There have been {} attempts made.".format(
+                    time_remaining, current_attempt_number))
+            return True
         return False
 
 

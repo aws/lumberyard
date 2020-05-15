@@ -9,24 +9,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision$
-
-import contextlib
-import mock
+import unittest
 import os
+import warnings
 
 from cgf_utils.version_utils import Version
 import resource_manager.hook
 
-import lmbr_aws_test_support
-import project_snapshot
-import test_constant
+from . import project_snapshot
 from resource_manager.test import base_stack_test
-
-class Foo(object):
-
-    def bar(self, x):
-        print 'callled bar with', x
-
 
 
 class IntegrationTest_CloudGemFramework_ResourceManager_version_update(base_stack_test.BaseStackTestCase):
@@ -35,65 +26,69 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(base_stac
         super(IntegrationTest_CloudGemFramework_ResourceManager_version_update, self).__init__(*args, **kwargs)
 
     def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.prepare_test_environment("project_update_1_0_0")
 
-    def test_framework_version_update_end_to_end(self):  
-        self.run_all_tests()    
+    def test_framework_version_update_end_to_end(self):
+        self.run_all_tests()
 
     def snapshot_path(self, snapshot_name):
         return os.path.abspath(os.path.join(__file__, '..', 'snapshots', snapshot_name))
 
     ############################################
-    ## Unitialized Project Tests
-    ##
+    # Uninitialized Project Tests
+    #
 
-    def __010_make_unitialized_framework_version_1_0_0_project(self):
+    def __010_make_uninitialized_framework_version_1_0_0_project(self):
         project_snapshot.restore_snapshot(
-            region = self.TEST_REGION, 
-            profile = self.TEST_PROFILE, 
-            stack_name = self.TEST_PROJECT_STACK_NAME, 
-            project_directory_path = self.GAME_DIR, 
-            snapshot_file_path = self.snapshot_path('CGF_1_0_0_Minimal_Uninitialized'),
-            root_directory_path = self.REAL_ROOT_DIR)
+            region=self.TEST_REGION,
+            profile=self.TEST_PROFILE,
+            stack_name=self.TEST_PROJECT_STACK_NAME,
+            project_directory_path=self.GAME_DIR,
+            snapshot_file_path=self.snapshot_path('CGF_1_0_0_Minimal_Uninitialized'),
+            root_directory_path=self.REAL_ROOT_DIR)
 
-    def __020_commands_fail_before_updating_unitialized_project(self):
-        self.lmbr_aws('resource-group', 'list', expect_failure = True)
-        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--region', self.TEST_REGION, '--confirm-aws-usage', '--confirm-security-change', expect_failure = True)
-        self.lmbr_aws('deployment', 'list', expect_failure = True)
-        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment1', expect_failure = True)
+    def __020_commands_fail_before_updating_uninitialized_project(self):
+        self.lmbr_aws('resource-group', 'list', expect_failure=True)
+        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--region', self.TEST_REGION, '--confirm-aws-usage',
+                      '--confirm-security-change', expect_failure=True)
+        self.lmbr_aws('deployment', 'list', expect_failure=True)
+        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment1', expect_failure=True)
 
-    def __030_updating_unitialized_project_is_successful(self):
-
+    def __030_updating_uninitialized_project_is_successful(self):
         with self.spy_decorator(resource_manager.hook.HookContext.call_module_handlers) as mock_call_module_handlers:
-        
             self.lmbr_aws('project', 'update-framework-version')
 
             mock_call_module_handlers.assert_any_call(
-                'resource-manager-code/update.py', 
-                'before_framework_version_updated', 
-                kwargs={
-                    'from_version': Version('1.0.0'),
-                    'to_version': self.CURRENT_FRAMEWORK_VERSION
-                })
-        
-            mock_call_module_handlers.assert_any_call(
-                'resource-manager-code/update.py', 
-                'after_framework_version_updated', 
+                'resource-manager-code/update.py',
+                'before_framework_version_updated',
                 kwargs={
                     'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
 
-    def __040_commands_succeed_after_updating_unitialized_project(self):
+            mock_call_module_handlers.assert_any_call(
+                'resource-manager-code/update.py',
+                'after_framework_version_updated',
+                kwargs={
+                    'from_version': Version('1.0.0'),
+                    'to_version': self.CURRENT_FRAMEWORK_VERSION
+                })
+
+    def __040_commands_succeed_after_updating_uninitialized_project(self):
         self.lmbr_aws('resource-group', 'list')
 
-    def __041_commands_succeed_after_updating_unitialized_project(self):
-        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--region', self.TEST_REGION, '--confirm-aws-usage', '--confirm-security-change')
-    
-    def __042_commands_succeed_after_updating_unitialized_project(self):
+    def __041_commands_succeed_after_updating_uninitialized_project(self):
+        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--region', self.TEST_REGION, '--confirm-aws-usage',
+                      '--confirm-security-change')
+
+    def __042_commands_succeed_after_updating_uninitialized_project(self):
         self.lmbr_aws('deployment', 'list')
-    
-    def __043_commands_succeed_after_updating_unitialized_project(self):
+
+    def __043_commands_succeed_after_updating_uninitialized_project(self):
         self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment1', '--confirm-aws-usage', '--confirm-security-change', '--parallel')
 
     def __099_cleanup_uninitialized_project(self):
@@ -101,42 +96,40 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(base_stac
         self.lmbr_aws('project', 'delete', '--confirm-resource-deletion')
 
     ##
-    ## Unitialized Project Tests
+    # Uninitialized Project Tests
     ############################################
-    ## Initialized Project Tests
-    ##
+    # Initialized Project Tests
+    #
 
     def __110_make_initialized_framework_version_1_0_0_project(self):
         project_snapshot.restore_snapshot(
-            region = self.TEST_REGION, 
-            profile = self.TEST_PROFILE, 
-            stack_name = self.TEST_PROJECT_STACK_NAME, 
-            project_directory_path = self.GAME_DIR, 
-            snapshot_file_path = self.snapshot_path('CGF_1_0_0_Minimal_Initialized'),
-            root_directory_path = self.REAL_ROOT_DIR)        
+            region=self.TEST_REGION,
+            profile=self.TEST_PROFILE,
+            stack_name=self.TEST_PROJECT_STACK_NAME,
+            project_directory_path=self.GAME_DIR,
+            snapshot_file_path=self.snapshot_path('CGF_1_0_0_Minimal_Initialized'),
+            root_directory_path=self.REAL_ROOT_DIR)
 
     def __120_commands_fail_before_updating_initialized_project(self):
-        self.lmbr_aws('resource-group', 'list', expect_failure = True)
-        self.lmbr_aws('deployment', 'list', expect_failure = True)
-        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment2', expect_failure = True)
+        self.lmbr_aws('resource-group', 'list', expect_failure=True)
+        self.lmbr_aws('deployment', 'list', expect_failure=True)
+        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment2', expect_failure=True)
 
     def __130_updating_initialized_project_is_successful(self):
-
         with self.spy_decorator(resource_manager.hook.HookContext.call_module_handlers) as mock_call_module_handlers:
-
             self.lmbr_aws('project', 'update-framework-version', '--confirm-aws-usage', '--confirm-security-change', '--confirm-resource-deletion')
 
             mock_call_module_handlers.assert_any_call(
-                'resource-manager-code/update.py', 
-                'before_framework_version_updated', 
+                'resource-manager-code/update.py',
+                'before_framework_version_updated',
                 kwargs={
                     'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
-        
+
             mock_call_module_handlers.assert_any_call(
-                'resource-manager-code/update.py', 
-                'after_framework_version_updated', 
+                'resource-manager-code/update.py',
+                'after_framework_version_updated',
                 kwargs={
                     'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
@@ -144,15 +137,14 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(base_stac
 
     def __140_commands_succeed_after_updating_initialized_project(self):
         self.lmbr_aws('resource-group', 'list')
-        self.assertIn('CGF100ResourceGroup', self.lmbr_aws_stdout) # verify project local resource group present
-        self.assertIn('CGF100GemResourceGroup', self.lmbr_aws_stdout) # verify gem resource group present
+        self.assertIn('CGF100ResourceGroup', self.lmbr_aws_stdout)  # verify project local resource group present
+        self.assertIn('CGF100GemResourceGroup', self.lmbr_aws_stdout)  # verify gem resource group present
 
     def __141_commands_succeed_after_updating_initialized_project(self):
         self.lmbr_aws('deployment', 'list')
 
     def __142_commands_succeed_after_updating_initialized_project(self):
-        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment2', '--confirm-aws-usage', '--confirm-security-change', '--parallel' )
-
+        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment2', '--confirm-aws-usage', '--confirm-security-change', '--parallel')
 
     def __199_cleanup_initialized_project(self):
         self.lmbr_aws('deployment', 'delete', '-d', 'TestDeployment1', '--confirm-resource-deletion')

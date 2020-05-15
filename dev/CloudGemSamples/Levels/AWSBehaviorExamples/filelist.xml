@@ -1,6 +1,6 @@
 <download name="AWSBehaviorExamples" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="12631" md5="a2b3b1f6b9fc9db8846d002800b0dcc4"/>
+  <file src="level.pak" dest="level.pak" size="12603" md5="145a54437c979bbb0b98b4cbbd8d760f"/>
  </files>
 </download>

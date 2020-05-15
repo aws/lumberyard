@@ -2,7 +2,7 @@
     "name": "expat",
     "source": "@3P:expat@",
     "description": "Expat Library",
-    "includes": [
+    "system_includes": [
         "lib"
     ],
     "defines": [],

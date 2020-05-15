@@ -345,7 +345,7 @@ namespace EMotionFX
         Importer* importer = GetEMotionFX().GetImporter();
         importer->SetLoggingEnabled(false);
 
-        Actor* actor = importer->LoadActor(ResolvePath(actorFilename));
+        AZStd::unique_ptr<Actor> actor = importer->LoadActor(ResolvePath(actorFilename));
         ASSERT_NE(actor, nullptr) << "Actor failed to load.";
         MotionSet* motionSet = importer->LoadMotionSet(ResolvePath(motionSetFilename));
         ASSERT_NE(motionSet, nullptr) << "Motion set failed to load.";
@@ -359,7 +359,7 @@ namespace EMotionFX
         actorInstances.reserve(param.m_numInstances);
         for (size_t i = 0; i < param.m_numInstances; ++i)
         {
-            ActorInstance* actorInstance = ActorInstance::Create(actor);
+            ActorInstance* actorInstance = ActorInstance::Create(actor.get());
             if (!AZ::IsClose(param.m_motionSamplingRate, 0.0f, AZ::g_fltEps))
             {
                 actorInstance->SetMotionSamplingRate(1.0f / param.m_motionSamplingRate);
@@ -377,7 +377,7 @@ namespace EMotionFX
             // Add skin attachments.
             for (size_t attachmentNr = 0; attachmentNr < param.m_numSkinAttachmentsPerInstance; ++attachmentNr)
             {
-                ActorInstance* attachmentActorInstance = ActorInstance::Create(actor);
+                ActorInstance* attachmentActorInstance = ActorInstance::Create(actor.get());
                 EMotionFX::Attachment* attachment = EMotionFX::AttachmentSkin::Create(/*attachmentTarget*/actorInstance, attachmentActorInstance);
                 actorInstance->AddAttachment(attachment);
                 actorInstancesIncludingAttachments.emplace_back(attachmentActorInstance);
@@ -440,7 +440,6 @@ namespace EMotionFX
         {
             actorInstance->Destroy();
         }
-        actor->Destroy();
         delete animGraph;
         delete motionSet;
     }

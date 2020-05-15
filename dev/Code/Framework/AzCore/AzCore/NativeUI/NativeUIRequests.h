@@ -35,6 +35,7 @@ namespace AZ
             // EBusTraits overrides
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+            using MutexType = AZStd::recursive_mutex;
 
             // Waits for user to select an option before execution continues
             // Returns the option string selected by the user

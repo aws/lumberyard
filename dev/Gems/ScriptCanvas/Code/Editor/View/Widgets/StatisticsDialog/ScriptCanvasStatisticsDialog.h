@@ -15,7 +15,7 @@
 #include <QDialog>
 #include <QSortFilterProxyModel>
 
-#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
@@ -60,7 +60,8 @@ namespace ScriptCanvasEditor
 
     class StatisticsDialog
         : public QDialog
-        , AzFramework::AssetSystemBus::Handler
+        , AzFramework::AssetCatalogEventBus::Handler
+        , public NodePaletteModelNotificationBus::Handler
     {
         Q_OBJECT
     public:
@@ -72,11 +73,20 @@ namespace ScriptCanvasEditor
         void InitStatisticsWindow();
         void ResetModel();
 
-        //! Called by the AssetProcessor when an asset in the cache has been modified.
-        void AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage /*message*/) override;
+        // AssetSystemBus
+        //! Called by the AssetCatalog when an asset has been modified
+        void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
 
         //! Called by the AssetProcessor when an asset in the cache has been removed.
-        void AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage /*message*/) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        ////
+
+        // NodePaletteModelNotificationBus
+        void OnAssetModelRepopulated() override;
+
+        void OnAssetNodeAdded(NodePaletteModelInformation* modelInformation) override;
+        void OnAssetNodeRemoved(NodePaletteModelInformation* modelInformation) override;
+        ////
 
         void OnScriptCanvasAssetClicked(const QModelIndex& modelIndex);
 
@@ -104,5 +114,7 @@ namespace ScriptCanvasEditor
         ScriptCanvasAssetNodeUsageTreeItemRoot* m_scriptCanvasAssetTreeRoot;
         GraphCanvas::GraphCanvasTreeModel* m_scriptCanvasAssetTree;
         ScriptCanvasAssetNodeUsageFilterModel* m_scriptCanvasAssetFilterModel;
+
+        AZStd::unordered_map< ScriptCanvas::NodeTypeIdentifier, GraphCanvas::GraphCanvasTreeItem* > m_leafMap;
     };
 }

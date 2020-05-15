@@ -148,13 +148,13 @@ void CGotoPositionDlg::accept()
     m_ui->m_dymY->setValue(vPos.y);
     m_ui->m_dymZ->setValue(vPos.z);
 
-    QString cmdTxt = QString::fromLatin1("general.set_current_view_position %1 %2 %3")
-            .arg(m_ui->m_dymX->value()).arg(m_ui->m_dymY->value()).arg(m_ui->m_dymZ->value());
-    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toUtf8().data());
-
-    cmdTxt = QString::fromLatin1("general.set_current_view_rotation %1 %2 %3")
-            .arg(m_ui->m_dymAngleX->value()).arg(m_ui->m_dymAngleY->value()).arg(m_ui->m_dymAngleZ->value());
-    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toUtf8().data());
+    AzToolsFramework::IEditorCameraController* editorCameraController = AZ::Interface<AzToolsFramework::IEditorCameraController>::Get();
+    AZ_Error("editor", editorCameraController, "IEditorCameraCommands is not registered.");
+    if (editorCameraController)
+    {
+        editorCameraController->SetCurrentViewPosition(AZ::Vector3{ m_ui->m_dymX->value(), m_ui->m_dymY->value(), m_ui->m_dymZ->value() });
+        editorCameraController->SetCurrentViewRotation(AZ::Vector3{ m_ui->m_dymAngleX->value(), m_ui->m_dymAngleY->value(), m_ui->m_dymAngleZ->value() });
+    }
 
     QDialog::accept();
 }

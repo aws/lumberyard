@@ -755,6 +755,11 @@ namespace AzToolsFramework
             return m_editorTransform.m_scale;
         }
 
+        AZ::Vector3 TransformComponent::GetWorldScale()
+        {
+            return GetWorldTM().RetrieveScale();
+        }
+
         const AZ::Transform& TransformComponent::GetParentWorldTM() const
         {
             auto parent = GetParentTransformComponent();
@@ -878,7 +883,7 @@ namespace AzToolsFramework
         EntityIdList TransformComponent::GetChildren()
         {
             EntityIdList children;
-            EBUS_EVENT_ID(GetEntityId(), AZ::TransformHierarchyInformationBus, GatherChildren, children);
+            AZ::TransformHierarchyInformationBus::Event(GetEntityId(), &AZ::TransformHierarchyInformation::GatherChildren, children);
             return children;
         }
 
@@ -887,7 +892,17 @@ namespace AzToolsFramework
             EntityIdList descendants = GetChildren();
             for (size_t i = 0; i < descendants.size(); ++i)
             {
-                EBUS_EVENT_ID(descendants[i], AZ::TransformHierarchyInformationBus, GatherChildren, descendants);
+                AZ::TransformHierarchyInformationBus::Event(descendants[i], &AZ::TransformHierarchyInformation::GatherChildren, descendants);
+            }
+            return descendants;
+        }
+
+        AZStd::vector<AZ::EntityId> TransformComponent::GetEntityAndAllDescendants()
+        {
+            AZStd::vector<AZ::EntityId> descendants = { GetEntityId() };
+            for (size_t i = 0; i < descendants.size(); ++i)
+            {
+                AZ::TransformHierarchyInformationBus::Event(descendants[i], &AZ::TransformHierarchyInformation::GatherChildren, descendants);
             }
             return descendants;
         }
@@ -896,10 +911,15 @@ namespace AzToolsFramework
         {
             children.push_back(GetEntityId());
         }
-
+        
         bool TransformComponent::IsStaticTransform()
         {
             return m_isStatic;
+        }
+
+        void TransformComponent::SetIsStaticTransform(bool isStatic)
+        {
+            m_isStatic = isStatic;
         }
 
         TransformComponent* TransformComponent::GetParentTransformComponent() const
@@ -1079,7 +1099,7 @@ namespace AzToolsFramework
         {
             AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
                 &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
-                AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+                AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values);
 
             if (GetEntity())
             {
@@ -1087,7 +1107,7 @@ namespace AzToolsFramework
                 AZ::TransformNotificationBus::Event(GetEntityId(), &AZ::TransformNotificationBus::Events::OnStaticChanged, m_isStatic);
             }
 
-            return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+            return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
         }
 
         void TransformComponent::ModifyEditorTransform(AZ::Vector3& vec, const AZ::Vector3& data, const AZ::Transform& parentInverse)

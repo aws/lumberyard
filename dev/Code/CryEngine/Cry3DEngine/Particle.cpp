@@ -17,9 +17,7 @@
 #include "ParticleEmitter.h"
 #include "ParticleContainer.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#endif
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "GeomQuery.h"
 #include "MatMan.h"
@@ -1290,8 +1288,9 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
     }
     if (!params.bRemainWhileVisible)
     {
-        assert(m_fAge <= m_fStopAge);
-        fFrameTime = min(fFrameTime, m_fStopAge - m_fAge);
+        // [LY-112058] Clamp to 0.f in case (m_fAge > m_fStopAge) due to a long frame step
+        float fRemainTime = max(m_fStopAge - m_fAge, 0.f);
+        fFrameTime = min(fFrameTime, fRemainTime);
     }
 
     if (m_pCollisionInfo && m_pCollisionInfo->Stopped())
@@ -1673,8 +1672,8 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
     }
     case ParticleParams::EFacing::Terrain:
     {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (CTerrain* const pTerrain = GetTerrain())
+        // So long as this code runs on main thread, it is safe to use the pointer returned by FindFirstHandler()
+        if (auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler())
         {
             // Project center and velocity onto plane.
             if (state.m_Loc.s > 0.f)
@@ -1689,7 +1688,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
                         avCorner[c].x += ((c & 1) * 2 - 1) * state.m_Loc.s;
                         avCorner[c].y += ((c & 2) - 1) * state.m_Loc.s;
                     }
-                    avCorner[c].z = pTerrain->GetBilinearZ(avCorner[c].x, avCorner[c].y);
+                    avCorner[c].z = terrain->GetHeightFromFloats(avCorner[c].x, avCorner[c].y);
                 }
 
                 // Rotate sprite to average normal of quad.
@@ -1712,7 +1711,6 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
                 }
             }
         }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
         break;
     }
     case ParticleParams::EFacing::Velocity:
@@ -1846,7 +1844,8 @@ void CParticle::TargetMovement(ParticleTarget const& target, SParticleState& sta
     }
 
     // Goal is to reach target radius in a quarter revolution over particle's life.
-    float fLife = state.m_fStopAge - state.m_fAge;
+    // [LY-112058] Clamp to 0.f in case (m_fAge > m_fStopAge) due to a long frame step
+    float fLife = max(state.m_fStopAge - state.m_fAge, 0.f);
     fArrivalTime = div_min(gf_PI * 0.5f * fDist * fLife, fOrbitalVel * state.m_fStopAge, fArrivalTime);
 
     if (fArrivalTime > fLife)

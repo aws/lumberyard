@@ -78,7 +78,7 @@ namespace GraphCanvas
             {
                 RootGraphicsItemRequestBus::Event(mapPair.first, &RootGraphicsItemRequests::CancelAnimation);
 
-                AZ::Vector2 position(mapPair.second.topLeft().x(), mapPair.second.topLeft().y());
+                AZ::Vector2 position(aznumeric_cast<float>(mapPair.second.topLeft().x()), aznumeric_cast<float>(mapPair.second.topLeft().y()));
                 GeometryRequestBus::Event(mapPair.first, &GeometryRequests::SetPosition, position);
             }
         }
@@ -96,6 +96,26 @@ namespace GraphCanvas
     void NodeNudgingController::OnPositionChanged(const AZ::EntityId& /*targetEntity*/, const AZ::Vector2& /*position*/)
     {
         DirtyPositioning();
+    }
+
+    void NodeNudgingController::OnBoundsChanged()
+    {
+        const AZ::EntityId* entityId = GeometryNotificationBus::GetCurrentBusId();
+
+        if (entityId)
+        {
+            auto cachedElementIter = m_cachedNodeElements.find((*entityId));
+
+            if (cachedElementIter != m_cachedNodeElements.end())
+            {
+                QGraphicsItem* rootGraphicsItem = nullptr;
+                SceneMemberUIRequestBus::EventResult(rootGraphicsItem, (*entityId), &SceneMemberUIRequests::GetRootGraphicsItem);
+
+                cachedElementIter->second = rootGraphicsItem->sceneBoundingRect();
+            }
+
+            DirtyPositioning();
+        }
     }
     
     void NodeNudgingController::UpdatePositioning()
@@ -163,10 +183,10 @@ namespace GraphCanvas
                 
             // Helper Elements
             QPointF originalBoundingCenter = currentBoundingBox.center();
-            AZ::Vector2 originalCenterPoint(originalBoundingCenter.x(), originalBoundingCenter.y());
+            AZ::Vector2 originalCenterPoint(aznumeric_cast<float>(originalBoundingCenter.x()), aznumeric_cast<float>(originalBoundingCenter.y()));
 
-            float halfWidth = currentBoundingBox.width() * 0.5;
-            float halfHeight = currentBoundingBox.height() * 0.5;               
+            float halfWidth(aznumeric_cast<float>(currentBoundingBox.width() * 0.5));
+            float halfHeight(aznumeric_cast<float>(currentBoundingBox.height() * 0.5));
 
             auto incitingRange = incitingElements.equal_range(currentNodeId);
                 
@@ -179,7 +199,7 @@ namespace GraphCanvas
             // Future Improvments: Make this play nicely with grouped nodes(uncollapsed groups don't really work as I'd want which is
             //       moving the group as a whole instead of as sub elements)
             //
-            // Future Improvments: Attempt to do soemthing with connection lines to make them go in the right direction(i.e. splicing a group of nodes onto
+            // Future Improvments: Attempt to do something with connection lines to make them go in the right direction(i.e. splicing a group of nodes onto
             //       a small connection between two nodes will not create sufficient space currently.
             if (incitingRange.first != incitingElements.end())
             {                    
@@ -198,10 +218,10 @@ namespace GraphCanvas
                 for (auto iter = incitingRange.first; iter != incitingRange.second; ++iter)
                 {
                     // Calculate our current center, since we are moving around.
-                    AZ::Vector2 centerPoint(currentBoundingBox.center().x(), currentBoundingBox.center().y());
+                    AZ::Vector2 centerPoint(aznumeric_cast<float>(currentBoundingBox.center().x()), aznumeric_cast<float>(currentBoundingBox.center().y()));
                         
                     QRectF incitingRect = finalBoundingBoxes[iter->second];
-                    AZ::Vector2 incitingCenter = AZ::Vector2(incitingRect.center().x(), incitingRect.center().y());                        
+                    AZ::Vector2 incitingCenter = AZ::Vector2(aznumeric_cast<float>(incitingRect.center().x()), aznumeric_cast<float>(incitingRect.center().y()));
                         
                     QPointF incitingMovement = movementDirections[iter->second];
                         
@@ -217,7 +237,7 @@ namespace GraphCanvas
                     }
                     else
                     {
-                        movementDirection = AZ::Vector2(incitingMovement.x(), incitingMovement.y());
+                        movementDirection = AZ::Vector2(aznumeric_cast<float>(incitingMovement.x()), aznumeric_cast<float>(incitingMovement.y()));
                     }
 
                     SanitizeDirection(movementDirection, incitingMovement);
@@ -230,7 +250,7 @@ namespace GraphCanvas
                     // like that.
                     if (abs(movementDirection.GetX()) > abs(movementDirection.GetY()))
                     {
-                        float horMove = halfWidth + incitingRect.width() * 0.5f + gridStep.GetX();
+                        float horMove(aznumeric_cast<float>(halfWidth + incitingRect.width() * 0.5f + gridStep.GetX()));
                             
                         transitionDirection.setX(1);
                             
@@ -245,7 +265,7 @@ namespace GraphCanvas
                     }
                     else
                     {
-                        float verMove = halfHeight + incitingRect.height() * 0.5f + gridStep.GetY();
+                        float verMove(aznumeric_cast<float>(halfHeight + incitingRect.height() * 0.5f + gridStep.GetY()));
                         transitionDirection.setY(1);
                             
                         if (movementDirection.GetY() < 0)

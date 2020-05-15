@@ -11,6 +11,8 @@
 */
 
 #include <Tests/SystemComponentFixture.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Node.h>
@@ -30,19 +32,63 @@ namespace EMotionFX
         std::vector<AZ::u32> m_expectedEnabledJointIndices; // The expected enabled joints.
     };
 
+    class AutoSkeletonLODActor
+        : public SimpleJointChainActor
+    {
+        // This creates an Actor with following hierarchy.
+        // The numbers are the joint indices.
+        //
+        //                            5
+        //                           /
+        //                          /
+        // 0-----1-----2-----3-----4
+        //                          \
+        //                           \
+        //                            6
+        //
+        // 7 (a node with skinned mesh)
+        //
+        // The mesh is on node 7, which is also a root node, just like joint number 0.
+        // We (fake) skin the first six joints to the mesh of node 7.
+        // Our test will actually skin to only a selection of these first seven joints.
+        // We then test which joints get disabled and which not.
+    public:
+        explicit AutoSkeletonLODActor(AZ::u32 numSubMeshJoints)
+            : SimpleJointChainActor(5)
+        {
+            GetSkeleton()->GetNode(0)->SetName("Joint0");
+            GetSkeleton()->GetNode(1)->SetName("Joint1");
+            GetSkeleton()->GetNode(2)->SetName("Joint2");
+            GetSkeleton()->GetNode(3)->SetName("Joint3");
+            GetSkeleton()->GetNode(4)->SetName("Joint4");
+
+            AddNode(5, "ChildA", 4);
+            AddNode(6, "ChildB", 4);
+
+            // Create a node that has a mesh.
+            // Please note that we don't go the full way here, by also filling vertex position, normal and skinning data.
+            // Every submesh stores a list of joints used to skin that submesh. We simply fill that list, as the auto-skeletal LOD algorithm looks at this list and doesn't
+            // look at the actual per vertex skinning information.
+            // This way we simplify the test code slightly, while achieving the same correct test results.
+            Node* meshNode = AddNode(7, "MeshNode");
+            Mesh* mesh = Mesh::Create();
+            SubMesh* subMesh = SubMesh::Create(mesh, 0, 0, 0, 8, 24, 12, 0, numSubMeshJoints); // The numbers are just some dummy values for a fake mesh.
+            mesh->AddSubMesh(subMesh);
+            if (numSubMeshJoints)
+            {
+                SkinningInfoVertexAttributeLayer* skinningLayer = SkinningInfoVertexAttributeLayer::Create(8); // Create a fake skinning layer.
+                mesh->AddSharedVertexAttributeLayer(skinningLayer);
+            }
+
+            SetMesh(0, meshNode->GetNodeIndex(), mesh);
+        }
+    };
+
     class AutoSkeletonLODFixture
         : public SystemComponentFixture
         , public ::testing::WithParamInterface<AutoLODTestParams>
     {
     public:
-        void SetUp() override
-        {
-            SystemComponentFixture::SetUp();
-
-            m_actor = nullptr;
-            m_actorInstance = nullptr;
-        }
-
         void TearDown() override
         {
             if (m_actorInstance)
@@ -51,95 +97,18 @@ namespace EMotionFX
                 m_actorInstance = nullptr;
             }
 
-            if (m_actor)
-            {
-                m_actor->Destroy();
-                m_actor = nullptr;
-            }
-
             SystemComponentFixture::TearDown();
         }
 
         SubMesh* SetupActor(AZ::u32 numSubMeshJoints)
         {
-            // This creates an Actor with following hierarchy.
-            // The numbers are the joint indices.
-            //
-            //                            5
-            //                           /
-            //                          /
-            // 0-----1-----2-----3-----4
-            //                          \
-            //                           \
-            //                            6
-            //           
-            // 7 (a node with skinned mesh)
-            //
-            // The mesh is on node 7, which is also a root node, just like joint number 0.
-            // We (fake) skin the first six joints to the mesh of node 7.
-            // Our test will actually skin to only a selection of these first seven joints.
-            // We then test which joints get disabled and which not.
-            m_actor = Actor::Create("testActor");
+            m_actor = ActorFactory::CreateAndInit<AutoSkeletonLODActor>(numSubMeshJoints);
 
-            // Create a chain of 5 nodes.
-            Node* parent = nullptr;
-            for (AZ::u32 i = 0; i < 5; ++i)
-            {
-                const AZStd::string jointName = AZStd::string::format("Joint%d", i);
-                Node* newJoint = Node::Create(jointName.c_str(), m_actor->GetSkeleton());
-                m_actor->AddNode(newJoint);
-
-                newJoint->SetNodeIndex(i);
-                if (parent)
-                {
-                    newJoint->SetParentIndex(parent->GetNodeIndex());
-                    parent->AddChild(newJoint->GetNodeIndex());
-                }
-
-                parent = newJoint;
-            }
-
-            // Create two child nodes with the last node in the chain as parent.
-            Node* childA = Node::Create("ChildA", m_actor->GetSkeleton());
-            childA->SetNodeIndex(m_actor->GetNumNodes());
-            childA->SetParentIndex(parent->GetNodeIndex());
-            m_actor->AddNode(childA);
-            parent->AddChild(childA->GetNodeIndex());
-
-            Node* childB = Node::Create("ChildB", m_actor->GetSkeleton());
-            childB->SetNodeIndex(m_actor->GetNumNodes());
-            childB->SetParentIndex(parent->GetNodeIndex());
-            m_actor->AddNode(childB);
-            parent->AddChild(childB->GetNodeIndex());
-
-            // Create a node that has a mesh.
-            // Please note that we don't go the full way here, by also filling vertex position, normal and skinning data.
-            // Every submesh stores a list of joints used to skin that submesh. We simply fill that list, as the auto-skeletal LOD algorithm looks at this list and doesn't 
-            // look at the actual per vertex skinning information.
-            // This way we simplify the test code slightly, while achieving the same correct test results.
-            Node* meshNode = Node::Create("MeshNode", m_actor->GetSkeleton());
-            meshNode->SetNodeIndex(m_actor->GetNumNodes());
-            m_actor->AddNode(meshNode);
-            Mesh* mesh = Mesh::Create();
-            SubMesh* subMesh = SubMesh::Create(mesh, 0, 0, 0, 8, 24, 12, 0, numSubMeshJoints); // The numbers are just some dummy values for a fake mesh.
-            mesh->AddSubMesh(subMesh);
-            if (numSubMeshJoints > 0)
-            {
-                SkinningInfoVertexAttributeLayer* skinningLayer = SkinningInfoVertexAttributeLayer::Create(8); // Create a fake skinning layer.
-                mesh->AddSharedVertexAttributeLayer(skinningLayer);
-            }
-
-            m_actor->SetMesh(0, meshNode->GetNodeIndex(), mesh);
-
-            // Post init the actor.
-            m_actor->ResizeTransformData();
-            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
-
-            return subMesh;
+            return m_actor->GetMesh(0, m_actor->GetSkeleton()->FindNodeByName("MeshNode")->GetNodeIndex())->GetSubMesh(0);
         }
 
     public:
-        Actor* m_actor = nullptr;
+        AZStd::unique_ptr<Actor> m_actor = nullptr;
         ActorInstance* m_actorInstance = nullptr;
     };
 
@@ -147,7 +116,7 @@ namespace EMotionFX
     {
         SetupActor(0);
 
-        m_actorInstance = ActorInstance::Create(m_actor);
+        m_actorInstance = ActorInstance::Create(m_actor.get());
 
         ASSERT_NE(m_actor, nullptr);
         ASSERT_NE(m_actorInstance, nullptr);
@@ -193,7 +162,7 @@ namespace EMotionFX
         m_actor->AutoSetupSkeletalLODsBasedOnSkinningData(criticalJoints);
 
         // Verify the skeletal LOD flags.
-        m_actorInstance = ActorInstance::Create(m_actor);
+        m_actorInstance = ActorInstance::Create(m_actor.get());
         const Skeleton* skeleton = m_actor->GetSkeleton();
 
         // All nodes should be enabled as we use all joints.

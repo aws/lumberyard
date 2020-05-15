@@ -159,6 +159,7 @@ public:
     // The supported MIME type name of a drag & drop object. Used for filtering.
     const QString MIMEType = "LibraryTreeViewItem";
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QString, QTreeWidgetItem*> m_nameToNode;
     IDataBaseLibrary* m_baseLibrary;
     QIcon* m_iconFolderClosed;
@@ -170,6 +171,7 @@ private:
     //item selection doesn't always survive changes
     //added this list to track what is selected when a change happens
     QVector<CLibraryTreeViewItem*> m_activeItems;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //used during rename and reloading to prevent problematic code
     bool m_allowSelection;
     bool m_isInDrop;

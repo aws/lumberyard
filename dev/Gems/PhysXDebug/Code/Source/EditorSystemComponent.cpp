@@ -11,8 +11,10 @@
 */
 
 #include "PhysXDebug_precompiled.h"
+
 #include "EditorSystemComponent.h"
 #include <PhysX/SystemComponentBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 #include <IEditor.h>
@@ -92,7 +94,7 @@ namespace PhysXDebug
         }
     }
 
-    void EditorSystemComponent::OnConfigurationRefreshed(const PhysX::Configuration& configuration)
+    void EditorSystemComponent::OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration)
     {
         if(configuration.m_settings.IsAutoConnectionEditorMode())
         {
@@ -106,8 +108,7 @@ namespace PhysXDebug
 
     void EditorSystemComponent::OnStartPlayInEditorBegin()
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+        const PhysX::PhysXConfiguration& configuration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
         if(configuration.m_settings.IsAutoConnectionGameMode())
         {
             PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::ConnectToPvd);
@@ -115,8 +116,7 @@ namespace PhysXDebug
     }
     void EditorSystemComponent::OnStopPlayInEditor()
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+        const PhysX::PhysXConfiguration& configuration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
 
         if(configuration.m_settings.IsAutoConnectionGameMode())
         {
@@ -131,8 +131,7 @@ namespace PhysXDebug
 
     void EditorSystemComponent::AutoConnectPVD()
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+        const PhysX::PhysXConfiguration& configuration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
 
         if(configuration.m_settings.IsAutoConnectionEditorMode())
         {

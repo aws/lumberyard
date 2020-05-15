@@ -24,7 +24,6 @@
 #include <GraphCanvas/Components/Connections/ConnectionFilters/DataConnectionFilters.h>
 #include <GraphCanvas/Components/StyleBus.h>
 
-
 namespace GraphCanvas
 {
     //////////////////////
@@ -37,13 +36,12 @@ namespace GraphCanvas
         if (serializeContext)
         {
             serializeContext->Class<DataSlotComponent, SlotComponent>()
-                ->Version(3)
+                ->Version(5)
                 ->Field("TypeId", &DataSlotComponent::m_dataTypeId)
                 ->Field("DataSlotType", &DataSlotComponent::m_dataSlotType)
-                ->Field("VariableId", &DataSlotComponent::m_variableId)
-                ->Field("FixedType", &DataSlotComponent::m_fixedType)
-                ->Field("CopiedVariableId", &DataSlotComponent::m_copiedVariableId)
+                ->Field("CanConvertSlotTypes", &DataSlotComponent::m_canConvertSlotTypes)
                 ->Field("ContainedTypeIds", &DataSlotComponent::m_containedTypeIds)
+                ->Field("DataValueType", &DataSlotComponent::m_valueType)
             ;
         }
     }
@@ -94,8 +92,9 @@ namespace GraphCanvas
     
     DataSlotComponent::DataSlotComponent()
         : SlotComponent(SlotTypes::DataSlot)
-        , m_fixedType(false)
+        , m_canConvertSlotTypes(false)
         , m_dataSlotType(DataSlotType::Value)
+        , m_valueType(DataValueType::Primitive)
         , m_dataTypeId(AZ::Uuid::CreateNull())
         , m_previousDataSlotType(DataSlotType::Unknown)
     {
@@ -107,31 +106,16 @@ namespace GraphCanvas
 
     DataSlotComponent::DataSlotComponent(const DataSlotConfiguration& dataSlotConfiguration)
         : SlotComponent(SlotTypes::DataSlot, dataSlotConfiguration)
-        , m_fixedType(true)
+        , m_canConvertSlotTypes(dataSlotConfiguration.m_canConvertTypes)
         , m_dataSlotType(dataSlotConfiguration.m_dataSlotType)
+        , m_valueType(dataSlotConfiguration.m_dataValueType)
         , m_dataTypeId(dataSlotConfiguration.m_typeId)
         , m_containedTypeIds(dataSlotConfiguration.m_containerTypeIds)
         , m_previousDataSlotType(DataSlotType::Unknown)
     {
         if (m_slotConfiguration.m_slotGroup == SlotGroups::Invalid)
         {
-            if (m_dataSlotType == DataSlotType::Variable)
-            {
-                m_slotConfiguration.m_slotGroup = SlotGroups::VariableSourceGroup;
-            }
-            else if (m_dataSlotType == DataSlotType::Reference)
-            {
-                m_slotConfiguration.m_slotGroup == SlotGroups::VariableReferenceGroup;
-            }
-            else
-            {
-                m_slotConfiguration.m_slotGroup = SlotGroups::DataGroup;
-            }
-        }
-
-        if (m_dataSlotType == DataSlotType::Variable && m_slotConfiguration.m_connectionType != ConnectionType::CT_Output)
-        {
-            m_slotConfiguration.m_connectionType = ConnectionType::CT_Output;
+            m_slotConfiguration.m_slotGroup = SlotGroups::DataGroup;
         }
     }
 
@@ -150,9 +134,11 @@ namespace GraphCanvas
         
         DataSlotRequestBus::Handler::BusConnect(GetEntityId());
 
-        if (m_variableId.IsValid() && m_dataSlotType == DataSlotType::Reference)
+        // Will usually happen in a copy/paste scenario
+        if (m_valueType == DataValueType::Container)
         {
-        }
+            SetDataAndContainedTypeIds(m_dataTypeId, m_containedTypeIds, m_valueType);
+        }        
     }
     
     void DataSlotComponent::Deactivate()
@@ -160,15 +146,6 @@ namespace GraphCanvas
         SlotComponent::Deactivate();
         
         DataSlotRequestBus::Handler::BusDisconnect();
-
-        if (m_variableId.IsValid() && m_dataSlotType == DataSlotType::Reference)
-        {
-        }
-    }
-
-    void DataSlotComponent::OnSceneMemberAboutToSerialize(GraphSerialization&)
-    {
-        m_copiedVariableId = static_cast<AZ::u64>(m_variableId);
     }
 
     void DataSlotComponent::DisplayProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint)
@@ -179,59 +156,31 @@ namespace GraphCanvas
         DataSlotType slotType = DataSlotType::Unknown;
         DataSlotRequestBus::EventResult(slotType, endpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
 
-        if (slotType == DataSlotType::Variable)
+        m_displayedConnection = connectionId;
+        m_connections.emplace_back(m_displayedConnection);
+        m_previousDataSlotType = m_dataSlotType;
+
+        bool isDisabled = false;
+
+        if (slotType == DataSlotType::Value)
         {
-            m_previousDataSlotType = m_dataSlotType;
-            m_cachedVariableId = m_variableId;
-
-            DataSlotRequestBus::EventResult(m_variableId, endpoint.GetSlotId(), &DataSlotRequests::GetVariableId);
-            m_dataSlotType = DataSlotType::Reference;
-
-            if (m_previousDataSlotType != m_dataSlotType)
-            {
-                NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
-                DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
-                SetConnectionDisplayState(RootGraphicsItemDisplayState::Deletion);
-            }
-        }
-        else if (slotType == DataSlotType::Value)
-        {
-            m_displayedConnection = connectionId;
-
-            m_connections.emplace_back(m_displayedConnection);
-
-            m_previousDataSlotType = m_dataSlotType;
-            m_cachedVariableId = m_variableId;
-
-            m_variableId.SetInvalid();
             m_dataSlotType = DataSlotType::Value;
-
-            if (m_previousDataSlotType != m_dataSlotType)
-            {
-                DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
-            }
-
-            NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
+            isDisabled = HasConnections();
         }
-        else if (slotType == DataSlotType::Container)
+        else if (slotType == DataSlotType::Reference)
         {
-            m_displayedConnection = connectionId;
-
-            m_connections.emplace_back(m_displayedConnection);
-
-            m_previousDataSlotType = m_dataSlotType;
-            m_cachedVariableId = m_variableId;
-
-            m_variableId.SetInvalid();
-            m_dataSlotType = DataSlotType::Container;
-
-            if (m_previousDataSlotType != m_dataSlotType)
+            if (DataSlotUtils::IsValueDataReferenceType(m_dataSlotType) || CanConvertToReference())
             {
-                DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+                m_dataSlotType = DataSlotType::Reference;
             }
-
-            NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
         }
+
+        if (m_previousDataSlotType != m_dataSlotType)
+        {
+            DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+        }
+
+        NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, isDisabled);
 
         UpdateDisplay();
     }
@@ -286,44 +235,6 @@ namespace GraphCanvas
         return slotConfiguration;
     }
 
-    bool DataSlotComponent::AssignVariable(const AZ::EntityId& variableId)
-    {
-        RestoreDisplay();
-
-        if (m_dataSlotType == DataSlotType::Value)
-        {
-            if (!ConvertToReference())
-            {
-                return false;
-            }
-        }
-
-        if (m_variableId != variableId)
-        {
-            Endpoint endpoint(GetNode(), GetEntityId());
-
-            if (m_dataSlotType != DataSlotType::Variable)
-            {
-            }
-            
-            m_variableId = variableId;
-
-            // If we are the owner of the variable. We don't want to signal things out.
-            if (m_dataSlotType != DataSlotType::Variable)
-            {
-                DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnVariableAssigned, m_variableId);
-
-                if (m_variableId.IsValid())
-                {
-                }
-            }
-
-            UpdateDisplay();
-        }
-
-        return true;
-    }
-
     void DataSlotComponent::UpdateDisplay()
     {
         DataSlotLayoutRequestBus::Event(GetEntityId(), &DataSlotLayoutRequests::UpdateDisplay);
@@ -336,7 +247,6 @@ namespace GraphCanvas
             bool typeChanged = m_dataSlotType != m_previousDataSlotType;
 
             m_dataSlotType = m_previousDataSlotType;
-            m_variableId = m_cachedVariableId;
 
             if (m_displayedConnection.IsValid())
             {
@@ -363,7 +273,6 @@ namespace GraphCanvas
             }
 
             m_previousDataSlotType = DataSlotType::Unknown;
-            m_cachedVariableId.SetInvalid();
             m_displayedConnection.SetInvalid();
         }
     }
@@ -379,25 +288,39 @@ namespace GraphCanvas
         {
             NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
         }
-        else if (m_dataSlotType == DataSlotType::Value)
+        else if (DataSlotUtils::IsValueDataSlotType(m_dataSlotType))
         {
             NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
         }
-    }
-
-    AZ::EntityId DataSlotComponent::GetVariableId() const
-    {
-        return m_variableId;
     }
 
     bool DataSlotComponent::ConvertToReference()
     {
         if (CanConvertToReference())
         {
-            ClearConnections();
-            m_dataSlotType = DataSlotType::Reference;
+            AZ::EntityId nodeId = GetNode();
+            GraphId graphId;
 
-            DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+            SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
+
+            {
+                ScopedGraphUndoBlocker undoBlocker(graphId);
+
+                bool convertedToReference = false;
+                GraphModelRequestBus::EventResult(convertedToReference, graphId, &GraphModelRequests::ConvertSlotToReference, Endpoint(nodeId, GetEntityId()));
+
+                if (convertedToReference)
+                {
+                    m_dataSlotType = DataSlotType::Reference;
+                    DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+                    NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
+                }
+            }
+
+            if (m_dataSlotType == DataSlotType::Reference)
+            {
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+            }
         }
 
         return m_dataSlotType == DataSlotType::Reference;
@@ -405,35 +328,78 @@ namespace GraphCanvas
 
     bool DataSlotComponent::CanConvertToReference() const
     {
-        return !m_fixedType && m_dataSlotType == DataSlotType::Value;
+        bool canToggleReference = false;        
+
+        if (m_canConvertSlotTypes && DataSlotUtils::IsValueDataSlotType(m_dataSlotType) && !HasConnections())
+        {
+            AZ::EntityId nodeId = GetNode();
+            GraphId graphId;
+
+            SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);            
+            GraphModelRequestBus::EventResult(canToggleReference, graphId, &GraphModelRequests::CanConvertSlotToReference, Endpoint(nodeId, GetEntityId()));
+        }
+
+        return canToggleReference;
     }
 
     bool DataSlotComponent::ConvertToValue()
     {
         if (CanConvertToValue())
         {
-            m_dataSlotType = DataSlotType::Value;
+            AZ::EntityId nodeId = GetNode();
+            GraphId graphId;
 
-            DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
-            NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
+            SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
 
-            if (m_variableId.IsValid())
             {
-                m_variableId.SetInvalid();
+                ScopedGraphUndoBlocker undoBlocker(graphId);
+                
+                bool converted = false;
+                GraphModelRequestBus::EventResult(converted, graphId, &GraphModelRequests::ConvertSlotToValue, Endpoint(nodeId, GetEntityId()));
+
+                if (converted)
+                {
+                    m_dataSlotType = DataSlotType::Value;
+
+                    DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+                    NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
+                }
+            }
+
+            if (DataSlotUtils::IsValueDataSlotType(m_dataSlotType))
+            {
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
             }
         }
 
-        return m_dataSlotType == DataSlotType::Value;
+        return DataSlotUtils::IsValueDataSlotType(m_dataSlotType);
     }
 
     bool DataSlotComponent::CanConvertToValue() const
     {
-        return !m_fixedType && m_dataSlotType == DataSlotType::Reference;
+        bool canConvertToValue = false;
+
+        if (m_canConvertSlotTypes && m_dataSlotType == DataSlotType::Reference)
+        {
+            AZ::EntityId nodeId = GetNode();
+
+            GraphId graphId;
+            SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
+
+            GraphModelRequestBus::EventResult(canConvertToValue, graphId, &GraphModelRequests::CanConvertSlotToValue, Endpoint(nodeId, GetEntityId()));
+        }
+
+        return canConvertToValue;
     }
 
     DataSlotType DataSlotComponent::GetDataSlotType() const
     {
         return m_dataSlotType;
+    }
+
+    DataValueType DataSlotComponent::GetDataValueType() const
+    {
+        return m_valueType;
     }
 
     AZ::Uuid DataSlotComponent::GetDataTypeId() const
@@ -490,12 +456,24 @@ namespace GraphCanvas
         return stylingHelper;
     }
 
-    void DataSlotComponent::SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds)
+    void DataSlotComponent::SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds, DataValueType valueType)
     {
         if (m_dataTypeId != typeId)
         {
             m_dataTypeId = typeId;
-            m_containedTypeIds = typeIds;
+
+            // Handles a weird case with string.
+            // Since it's a primitive, but is a container of chars.
+            if (valueType == DataValueType::Primitive)
+            {
+                m_containedTypeIds.clear();
+            }
+            else
+            {
+                m_containedTypeIds = typeIds;
+            }
+
+            m_valueType = valueType;
 
             DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDisplayTypeChanged, m_dataTypeId, m_containedTypeIds);
             
@@ -505,9 +483,12 @@ namespace GraphCanvas
 
     AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
     {
-        const AZStd::string k_connectionSubStyle = ".varFlow";
+        const AZStd::string k_valueConnectionSubStyle = ".varFlow";
+        const AZStd::string k_referenceConnectionSubStyle = ".referenceFlow";
+
+        bool isReference = GetDataSlotType() == DataSlotType::Reference;
 
         // Create this Connection's entity.
-        return DataConnectionComponent::CreateDataConnection(sourceEndpoint, targetEndpoint, createModelConnection, k_connectionSubStyle);
+        return DataConnectionComponent::CreateDataConnection(sourceEndpoint, targetEndpoint, createModelConnection, isReference ? k_referenceConnectionSubStyle : k_valueConnectionSubStyle);
     }
 }

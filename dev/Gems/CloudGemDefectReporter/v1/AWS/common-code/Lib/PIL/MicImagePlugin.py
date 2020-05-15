@@ -17,12 +17,9 @@
 #
 
 
-from . import Image, TiffImagePlugin
-
 import olefile
 
-__version__ = "0.1"
-
+from . import Image, TiffImagePlugin
 
 #
 # --------------------------------------------------------------------
@@ -34,6 +31,7 @@ def _accept(prefix):
 
 ##
 # Image plugin for Microsoft's Image Composer file format.
+
 
 class MicImageFile(TiffImagePlugin.TiffImageFile):
 
@@ -48,7 +46,7 @@ class MicImageFile(TiffImagePlugin.TiffImageFile):
 
         try:
             self.ole = olefile.OleFileIO(self.fp)
-        except IOError:
+        except OSError:
             raise SyntaxError("not an MIC file; invalid OLE file")
 
         # find ACI subfiles with Image members (maybe not the
@@ -95,8 +93,16 @@ class MicImageFile(TiffImagePlugin.TiffImageFile):
         self.frame = frame
 
     def tell(self):
-
         return self.frame
+
+    def _close__fp(self):
+        try:
+            if self.__fp != self.fp:
+                self.__fp.close()
+        except AttributeError:
+            pass
+        finally:
+            self.__fp = None
 
 
 #

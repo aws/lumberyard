@@ -142,6 +142,7 @@ void UiSpawnerComponent::Activate()
 void UiSpawnerComponent::Deactivate()
 {
     UiSpawnerBus::Handler::BusDisconnect();
+    UiGameEntityContextSliceInstantiationResultsBus::MultiHandler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

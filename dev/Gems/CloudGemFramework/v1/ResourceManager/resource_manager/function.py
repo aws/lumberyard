@@ -12,16 +12,20 @@
 
 # python
 import datetime
-import urllib2
+import io
+import requests
+import six
 
 from zipfile import ZipFile
-from StringIO import StringIO
 
-from errors import HandledError
+from botocore.exceptions import ClientError
+
+from .errors import HandledError
 
 # resource_manager
-import uploader
-import util
+from . import uploader
+from . import util
+
 
 def upload_lambda_code(context, args):
 
@@ -56,7 +60,7 @@ def __upload_lambda_code(context, stack_id, uploader, function_name, keep):
     resource_region = util.get_region_from_arn(stack_id)
     client = context.aws.client('lambda', region = resource_region)
 
-    #Get the resources description in the stack
+    # Get the resources description in the stack
     resources = context.stack.describe_resources(stack_id)
 
     lambda_function_descriptions = []
@@ -67,8 +71,8 @@ def __upload_lambda_code(context, stack_id, uploader, function_name, keep):
         else:
             raise HandledError('Lambda function {} does not exist.'.format(function_name))
     else:
-        #If the function name isn't given, find the descriptions for all the Lambda functions
-        for logical_name, description in resources.iteritems():
+        # If the function name isn't given, find the descriptions for all the Lambda functions
+        for logical_name, description in six.iteritems(resources):
             if description['ResourceType'] == 'AWS::Lambda::Function':
                 lambda_function_descriptions.append(description)
 
@@ -83,7 +87,7 @@ def __upload_lambda_code(context, stack_id, uploader, function_name, keep):
         # zip and send it to s3 in preparation for lambdas
         function_name = lambda_function_description['LogicalResourceId']
         key = uploader.upload_lambda_function_code(
-            function_name, function_runtime="python2.7", aggregated_content=aggregated_content, keep=keep)
+            function_name, function_runtime="python3.7", aggregated_content=aggregated_content, keep=keep)
 
         # update the lambda function
         client.update_function_code(FunctionName = lambda_function_description['PhysicalResourceId'], S3Bucket = uploader.bucket, S3Key = key)
@@ -100,8 +104,8 @@ def __get_settings_content(context, client, lambda_function_description):
     location = res.get('Code', {}).get('Location', None)
     if location:
 
-        zip_content = urllib2.urlopen(location)
-        zip_file = ZipFile(StringIO(zip_content.read()), 'r')
+        r = requests.get(location, stream=True)
+        zip_file = ZipFile(io.BytesIO(r.content))
 
         for name in zip_file.namelist():
             if name in ['CloudCanvas/settings.py', 'CloudCanvas/settings.js', 'cgf_lambda_settings/settings.json']:
@@ -172,6 +176,7 @@ def get_function_log(context, args):
             message = event['message'][:-1]
             context.view.log_event(time_stamp, message)
         nextForwardToken = res.get('nextForwardToken', None)
-        if not nextForwardToken: break
+        if not nextForwardToken:
+            break
         res = logs.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name, startFromHead=True, nextToken=nextForwardToken)
 

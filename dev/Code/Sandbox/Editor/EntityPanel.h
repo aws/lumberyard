@@ -61,18 +61,12 @@ protected slots:
     void OnPrototype();
     void OnBnClickedGetphysics();
     void OnBnClickedResetphysics();
-    void OnBnClickedOpenFlowGraph();
-    void OnBnClickedRemoveFlowGraph();
-    void OnBnClickedListFlowGraphs();
     void OnBnClickedTrackViewSequence();
 
 protected:
     QPushButton*    m_editScriptButton;
     QPushButton*    m_reloadScriptButton;
     QPushButton*    m_prototypeButton;
-    QPushButton*    m_flowGraphOpenBtn;
-    QPushButton*    m_flowGraphRemoveBtn;
-    QPushButton*    m_flowGraphListBtn;
     QPushButton*    m_physicsBtn[2];
     QPushButton*    m_trackViewSequenceButton;
     CEntityObject*  m_entity;

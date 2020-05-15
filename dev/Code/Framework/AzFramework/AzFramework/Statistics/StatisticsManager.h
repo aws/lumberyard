@@ -21,68 +21,184 @@ namespace AzFramework
     namespace Statistics
     {
         /**
-         * @brief Order-preserving collection of a set of statistics.
+         * @brief A Collection of Running Statistics, addressable by a hashable
+         *        class/primitive. e.g. AZ::Crc32, int, AZStd::string, etc.
          *
-         * The order in which a new object is stored when calling AddStatistic()
-         * will be preserved.
          */
-        class RunningStatisticsManager
+        template <class StatIdType = AZStd::string>
+        class StatisticsManager
         {
         public:
-            RunningStatisticsManager() = default;
-            virtual ~RunningStatisticsManager() = default;
+            StatisticsManager() = default;
 
-            bool ContainsStatistic(const AZStd::string& name);
+            StatisticsManager(const StatisticsManager& other)
+            {
+                m_statistics.reserve(other.m_statistics.size());
+                for (auto const& it : other.m_statistics)
+                {
+                    const StatIdType& statId = it.first;
+                    const NamedRunningStatistic* stat = it.second;
+                    m_statistics[statId] = new NamedRunningStatistic(*stat);
+                }
+            }
 
-            /**
-             * Returns false if a NamedRunningStatistic with such name already exists.
-             */
-            bool AddStatistic(const AZStd::string& name, const AZStd::string& units);
+            virtual ~StatisticsManager()
+            {
+                Clear();
+            }
 
-            /**
-             * Removing a RunningStatistic should be a rare operation.
-             * Once an item is removed we need to go over the existing
-             * ones in the unordered_map and update the indices.
-             */
-            virtual void RemoveStatistic(const AZStd::string& name);
+            bool ContainsStatistic(const StatIdType& statId) const
+            {
+                auto iterator = m_statistics.find(statId);
+                return iterator != m_statistics.end();
+            }
 
-            void ResetStatistic(const AZStd::string& name);
+            AZ::u32 GetCount() const
+            {
+                return static_cast<AZ::u32>(m_statistics.size());
+            }
 
-            void ResetAllStatistics();
+            void GetAllStatistics(AZStd::vector<NamedRunningStatistic*>& vector)
+            {
+                for (auto const& it : m_statistics)
+                {
+                    NamedRunningStatistic* stat = it.second;
+                    vector.push_back(stat);
+                }
+            }
 
-            void PushSampleForStatistic(const AZStd::string& name, double value);
+            //! Helper method to apply units to statistics with empty units string.
+            AZ::u32 ApplyUnits(const AZStd::string& units)
+            {
+                AZ::u32 updatedCount = 0;
+                for (auto& it : m_statistics)
+                {
+                    NamedRunningStatistic* stat = it.second;
+                    if (stat->GetUnits().empty())
+                    {
+                        stat->UpdateUnits(units);
+                        updatedCount++;
+                    }
+                }
+                return updatedCount;
+            }
+
+            void Clear()
+            {
+                for (auto& it : m_statistics)
+                {
+                    NamedRunningStatistic* stat = it.second;
+                    delete stat;
+                }
+                m_statistics.clear();
+            }
 
             /**
              * Returns nullptr if a statistic with such name doesn't exist,
              * otherwise returns a pointer to the statistic.
              */
-            NamedRunningStatistic* GetStatistic(const AZStd::string& name)
+            NamedRunningStatistic* GetStatistic(const StatIdType& statId)
             {
-                return GetStatistic(name, nullptr);
+                auto iterator = m_statistics.find(statId);
+                if (iterator == m_statistics.end())
+                {
+                    return nullptr;
+                }
+                return iterator->second;
             }
 
-            const AZStd::vector<NamedRunningStatistic>& GetAllStatistics() const;
+            //! Returns false if a NamedRunningStatistic with such id already exists.
+            NamedRunningStatistic* AddStatistic(const StatIdType& statId, const bool failIfExist = true)
+            {
+                if (failIfExist)
+                {
+                    NamedRunningStatistic* prevStat = GetStatistic(statId);
+                    if (prevStat)
+                    {
+                        return nullptr;
+                    }
+                }
+                NamedRunningStatistic* stat = new NamedRunningStatistic();
+                m_statistics[statId] = stat;
+                return stat;
+            }
 
-        protected:
-           /**
-             * Same as the public method with the extra convenience of the @param index
-             * that can be used by subclasses to avoid extra searching steps.
-             */
-            NamedRunningStatistic* GetStatistic(const AZStd::string& name, AZ::u32* index);
+            //! Returns false if a NamedRunningStatistic with such id already exists.
+            NamedRunningStatistic* AddStatistic(const StatIdType& statId, const AZStd::string& name, const AZStd::string& units, const bool failIfExist = true)
+            {
+                if (failIfExist)
+                {
+                    NamedRunningStatistic* prevStat = GetStatistic(statId);
+                    if (prevStat)
+                    {
+                        return nullptr;
+                    }
+                }
+                NamedRunningStatistic* stat = new NamedRunningStatistic(name, units);
+                m_statistics[statId] = stat;
+                return stat;
+            }
 
-            /**
-             * This one is called when it is guaranteed that a statistic with such name is
-             * not in the internal collection. For example: The code had called ContainsStatistic()
-             * or GetStatistic() before calling this method.
-             */
-            void AddStatisticValidated(const AZStd::string& name, const AZStd::string& units);
+            virtual void RemoveStatistic(const StatIdType& statId)
+            {
+                auto iterator = m_statistics.find(statId);
+                if (iterator == m_statistics.end())
+                {
+                    return;
+                }
+                NamedRunningStatistic* prevStat = iterator->second;
+                delete prevStat;
+                m_statistics.erase(iterator);
+            }
+
+            void ResetStatistic(const StatIdType& statId)
+            {
+                NamedRunningStatistic* stat = GetStatistic(statId);
+                if (!stat)
+                {
+                    return;
+                }
+                stat->Reset();
+            }
+
+            void ResetAllStatistics()
+            {
+                for (auto& it : m_statistics)
+                {
+                    NamedRunningStatistic* stat = it.second;
+                    stat->Reset();
+                }
+            }
+
+            void PushSampleForStatistic(const StatIdType& statId, double value)
+            {
+                NamedRunningStatistic* stat = GetStatistic(statId);
+                if (!stat)
+                {
+                    return;
+                }
+                stat->PushSample(value);
+            }
+
+            //! Expensive function because it does a reverse lookup
+            bool GetStatId(NamedRunningStatistic* searchStat, StatIdType& statIdOut) const
+            {
+                for (auto& it : m_statistics)
+                {
+                    NamedRunningStatistic* stat = it.second;
+                    if (stat == searchStat)
+                    {
+                        statIdOut = it.first;
+                        return true;
+                    }
+                }
+                return false;
+            }
+
 
         private:
-            ///List of the RunningStat objects.
-            AZStd::vector<NamedRunningStatistic> m_statistics;
-
-            ///Key: Stat name, Value: Index in @param m_statistics
-            AZStd::unordered_map<AZStd::string, AZ::u32> m_statisticsNamesToIndexMap;
-        };//class RunningStatisticsManager
+            ///Key: StatIdType, Value: NamedRunningStatistic*
+            AZStd::unordered_map<StatIdType, NamedRunningStatistic*> m_statistics;
+        };//class StatisticsManager
     }//namespace Statistics
 }//namespace AzFramework

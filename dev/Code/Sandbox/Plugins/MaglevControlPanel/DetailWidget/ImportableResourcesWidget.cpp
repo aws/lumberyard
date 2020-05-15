@@ -60,7 +60,7 @@ ImportableResourcesWidget::ImportableResourcesWidget(QString resource_group, QSh
     //Keep the list window open so the user can import other resources after the current process finishes
     disconnect(GetPrimaryButton(), &QPushButton::clicked, this, &QDialog::accept);
     connect(GetPrimaryButton(), &QPushButton::clicked, this, &ImportableResourcesWidget::OnPrimaryButtonClick);
-    setMinimumSize(GetWidth(m_listTable) * 1.5, GetHeight(m_listTable));
+    setMinimumSize(aznumeric_cast<int>(GetWidth(m_listTable) * 1.5), GetHeight(m_listTable));
 }
 
 void ImportableResourcesWidget::CreateRegionRow()
@@ -170,7 +170,7 @@ void ImportableResourcesWidget::CreateResourcesTable()
     m_listTable->setContextMenuPolicy(Qt::CustomContextMenu);
     m_listTable->setEditTriggers(QTableView::NoEditTriggers);
     m_listTable->setSelectionMode(QTableView::NoSelection);
-    m_listTable->setColumnWidth(IAWSImporterModel::TypeColumn, m_listTable->columnWidth(IAWSImporterModel::TypeColumn) * 1.5);
+    m_listTable->setColumnWidth(IAWSImporterModel::TypeColumn, aznumeric_cast<int>(m_listTable->columnWidth(IAWSImporterModel::TypeColumn) * 1.5));
 
     QHeaderView* headerView = m_listTable->horizontalHeader();
     headerView->setSectionResizeMode(0, QHeaderView::ResizeMode::Stretch);

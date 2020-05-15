@@ -2,7 +2,7 @@
     "name": "md5",
     "source": "@3P:md5@",
     "description": "MD5 Library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

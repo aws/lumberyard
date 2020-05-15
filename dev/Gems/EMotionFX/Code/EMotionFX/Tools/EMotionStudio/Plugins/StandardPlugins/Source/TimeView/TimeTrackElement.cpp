@@ -60,8 +60,8 @@ namespace EMStudio
     {
         TimeViewPlugin* plugin = mTrack->GetPlugin();
 
-        *outStartX  = plugin->TimeToPixel(mStartTime);
-        int32 endX  = plugin->TimeToPixel(mEndTime);
+        *outStartX  = aznumeric_cast<int32>(plugin->TimeToPixel(mStartTime));
+        int32 endX  = aznumeric_cast<int32>(plugin->TimeToPixel(mEndTime));
         *outStartY  = mTrack->GetStartY() + 1;
         *outWidth   = (endX - *outStartX);
         *outHeight  = mTrack->GetHeight() - 1;
@@ -204,7 +204,7 @@ namespace EMStudio
         }
 
         // take scrolling into account
-        startX += mTrack->GetPlugin()->GetScrollX();
+        startX = aznumeric_cast<int32>(startX + mTrack->GetPlugin()->GetScrollX());
 
         // check if we're inside the area of the element
         if (MCore::InRange<int32>(x, startX, startX + width) && MCore::InRange<int32>(y, startY, startY + height))
@@ -231,7 +231,7 @@ namespace EMStudio
         const double elementEndDif      = *inOutTime - GetEndTime();
 
         // check if it's close enough to the start time
-        if (MCore::Math::Abs(elementStartDif) < snapThreshold)
+        if (MCore::Math::Abs(aznumeric_cast<float>(elementStartDif)) < snapThreshold)
         {
             *inOutTime = GetStartTime();
             return true;
@@ -239,7 +239,7 @@ namespace EMStudio
         else
         {
             // check if it's close enough to the end time
-            if (MCore::Math::Abs(elementEndDif) < snapThreshold)
+            if (MCore::Math::Abs(aznumeric_cast<float>(elementEndDif)) < snapThreshold)
             {
                 *inOutTime = GetEndTime();
                 return true;

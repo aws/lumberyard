@@ -126,12 +126,8 @@ namespace EMotionFX
          * @param neutralPose The actor that contains the neutral pose.
          * @param targetPose The actor representing the pose of the character when the weight value would equal 1.
          * @param name The unique name of the morph target.
-         * @param delPoseFromMem When set to true (which is default) the target pose actor will automatically be deleted from memory
-         *                       deleted from memory when it's no longer needed by this method anymore.
-         *                       So when set to true, you cannot use this actor (targetPose) anymore, because it is deleted from memory.
-         *                       When set to false, you must not forget to delete this pose actor later on yourself.
          */
-        static MorphTargetStandard* Create(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name, bool delPoseFromMem = true);
+        static MorphTargetStandard* Create(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name);
 
         /**
          * Get the type of morph target.
@@ -150,12 +146,8 @@ namespace EMotionFX
          * @param captureMeshDeforms Set this to true if you want this morph target to capture mesh deformations (changes in vertex positions).
          * @param neutralPose The actor that represents the neutral pose.
          * @param targetPose The actor representing the pose of the character when the weight value would equal 1.
-         * @param delPoseFromMem When set to true (which is default) the target pose actor will automatically be deleted from memory
-         *                       deleted from memory when it's no longer needed by this method anymore.
-         *                       So when set to true, you cannot use this actor (targetPose) anymore, because it is deleted from memory.
-         *                       When set to false, you must not forget to delete this pose actor later on yourself.
          */
-        void InitFromPose(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, bool delPoseFromMem = true) override;
+        void InitFromPose(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose) override;
 
         /**
          * Apply the relative transformation caused by this morph target to a given node.
@@ -286,12 +278,8 @@ namespace EMotionFX
          * @param neutralPose The actor that contains the neutral pose.
          * @param targetPose The actor representing the pose of the character when the weight value would equal 1.
          * @param name The unique name of the morph target.
-         * @param delPoseFromMem When set to true (which is default) the target pose actor will automatically be deleted from memory
-         *                       deleted from memory when it's no longer needed by this method anymore.
-         *                       So when set to true, you cannot use this actor (targetPose) anymore, because it is deleted from memory.
-         *                       When set to false, you must not forget to delete this pose actor later on yourself.
          */
-        MorphTargetStandard(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name, bool delPoseFromMem = true);
+        MorphTargetStandard(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name);
 
         /**
          * The destructor.

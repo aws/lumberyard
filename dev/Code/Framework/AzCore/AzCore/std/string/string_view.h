@@ -20,201 +20,241 @@ namespace AZStd
     namespace StringInternal
     {
         template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
+        constexpr SizeT char_find(const CharT* s, size_t count, CharT ch) noexcept
         {
-            AZ_Assert(ptr != NULL, "Invalid input!");
+            const CharT* foundIter = Traits::find(s, count, ch);
+            return foundIter ? AZStd::distance(s, foundIter) : npos;
+        }
 
-            // look for [ptr, ptr + count) beginning at or after offset
-            if (count == 0 && offset <= size)
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT find(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
+        {
+            if (offset > size || count > size)
             {
-                return offset;  // null string always matches (if inside string)
+                return npos;
             }
-            
-            SizeT nm;
-            if (offset < size && count <= (nm = size - offset))
-            {   // room for match, look for it
-                nm -= count - 1;
-                const CharT* vptr = data + offset;
-                const CharT* uptr = Traits::find(vptr, nm, *ptr);
-                for (; uptr != nullptr; nm -= uptr - vptr + 1, vptr = uptr + 1)
-                {
-                    if (Traits::compare(uptr, ptr, count) == 0)
-                    {
-                        return (uptr - data);   // found a match
-                    }
-
-                    uptr = Traits::find(vptr, nm, *ptr);
-                }
-            }
-
-            return (npos);  // no match
-        }
-
-        template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find(const CharT* data, SizeT size, CharT c, SizeT offset)
-        {
-            if (offset < size)
-            {   // room for match, look for it
-                const CharT* vptr = data + offset;
-                const CharT* uptr = Traits::find(vptr, size - offset, c);
-                if (uptr)
-                {
-                    return uptr - data;
-                }
-            }
-
-            return (npos);  // no match
-        }
-
-        template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT rfind(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
-        {   // look for [ptr, ptr + count) beginning before offset
             if (count == 0)
             {
-                return (offset < size ? offset : size); // null always matches
-            }
-            if (count <= size)
-            {   // room for match, look for it
-                const CharT* uptr = data + (offset < size - count ? offset : size - count);
-                for (;; --uptr)
-                {
-                    if (Traits::eq(*uptr, *ptr) && Traits::compare(uptr, ptr, count) == 0)
-                    {
-                        return (uptr - data);   // found a match
-                    }
-                    else if (uptr == data)
-                    {
-                        break;  // at beginning, no more chance for match
-                    }
-                }
+                return offset; // count == 0 means that highest index should be returned
             }
 
-            return npos;    // no match
-        }
-
-        template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT rfind(const CharT* data, SizeT size, CharT c, SizeT offset)
-        {
-            if (size != 0)
-            {   // room for match, look for it
-                const CharT* uptr = data + (offset < size ? offset + 1 : size);
-                for (; data != uptr;)
-                {
-                    if (Traits::eq(*--uptr, c))
-                    {
-                        return (uptr - data);   // found a match
-                    }
-                }
-            }
-
-            return npos;    // no match
-        }
-
-        template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_first_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
-        {   // look for one of [ptr, ptr + count) at or after offset
-            if (0 < count && offset < size)
-            {   // room for match, look for it
-                const CharT* const vptr = data + size;
-                for (const CharT* uptr = data + offset; uptr < vptr; ++uptr)
-                {
-                    if (Traits::find(ptr, count, *uptr) != nullptr)
-                    {
-                        return uptr - data; // found a match
-                    }
-                }
-            }
-            return npos;    // no match
-        }
-
-        template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_last_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
-        {   // look for one of [ptr, ptr + count) before offset
-            if (0 < count && 0 < size)
+            size_t searchRange = size - offset;
+            for (size_t searchIndex = offset; searchIndex < size;)
             {
-                for (const CharT* uptr = data + (offset < size ? offset : size - 1);; --uptr)
+                size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(&data[searchIndex], searchRange, *ptr);
+                if (charFindIndex == npos)
                 {
-                    if (Traits::find(ptr, count, *uptr) != nullptr)
-                    {
-                        return uptr - data; // found a match
-                    }
-                    else if (uptr == data)
-                    {
-                        break;  // at beginning, no more chance for match
-                    }
+                    return npos;
                 }
+                size_t foundIndex = searchIndex + charFindIndex;
+                if (Traits::compare(&data[foundIndex], ptr, count) == 0)
+                {
+                    return foundIndex;
+                }
+
+                searchRange = size - (foundIndex + 1);
+                searchIndex = foundIndex + 1;
             }
 
-            return npos;    // no match
+            return npos;
         }
 
         template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_first_not_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
+        constexpr SizeT find(const CharT* data, SizeT size, CharT c, SizeT offset) noexcept
         {
-            // look for none of [ptr, ptr + count) at or after offset
-            if (offset < size)
-            {   // room for match, look for it
-                const CharT* const vptr = data + size;
-                for (const CharT* uptr = data + offset; uptr < vptr; ++uptr)
+            if (offset > size)
+            {
+                return npos;
+            }
+
+            size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(&data[offset], size - offset, c);
+            return charFindIndex != npos ? offset + charFindIndex : npos;
+        }
+
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT rfind(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
+        {
+            if (size == 0 || count > size)
+            {
+                return npos;
+            }
+
+            if (count == 0)
+            {
+                return offset > size ? size : offset; // count == 0 means that highest index should be returned
+            }
+
+            // Add one to offset so that for loop condition can check against 0 as the breakout condition
+            size_t lastIndex = AZ::GetMin(offset, size - count) + 1;
+
+            for (; lastIndex; --lastIndex)
+            {
+                if (Traits::eq(*ptr, data[lastIndex - 1]) && Traits::compare(ptr, &data[lastIndex - 1], count) == 0)
                 {
-                    if (Traits::find(ptr, count, *uptr) == nullptr)
-                    {
-                        return uptr - data;
-                    }
+                    return lastIndex - 1;
+                }
+            }
+
+            return npos;
+        }
+
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT rfind(const CharT* data, SizeT size, CharT c, SizeT offset) noexcept
+        {
+            if (size == 0)
+            {
+                return npos;
+            }
+
+            // Add one to offset so that for loop condition can check against 0 as the breakout condition
+            size_t lastIndex = offset > size ? size : offset + 1;
+
+            for (; lastIndex; --lastIndex)
+            {
+                if (Traits::eq(c, data[lastIndex - 1]))
+                {
+                    return lastIndex - 1;
+                }
+            }
+
+            return npos;
+        }
+
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT find_first_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
+        {
+            if (size == 0)
+            {
+                return npos;
+            }
+
+            if (count == 0)
+            {
+                return npos; // count == 0 means that the set of valid entries is empty
+            }
+
+            for (size_t firstIndex = offset; firstIndex < size; ++firstIndex)
+            {
+                size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(ptr, count, data[firstIndex]);
+                if (charFindIndex != npos)
+                {
+                    return firstIndex;
                 }
             }
             return npos;
         }
 
         template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_first_not_of(const CharT* data, SizeT size, CharT c, SizeT offset)
+        constexpr SizeT find_last_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
         {
-            // look for none of [ptr, ptr + count) at or after offset
-            if (offset < size)
-            {   // room for match, look for it
-                const CharT* const vptr = data + size;
-                for (const CharT* uptr = data + offset; uptr < vptr; ++uptr)
+            if (size == 0)
+            {
+                return npos;
+            }
+
+            if (count == 0)
+            {
+                return npos; // count == 0 means that the set of valid entries is empty
+            }
+
+            // Add one to offset so that for loop condition can against 0 as the breakout condition
+            size_t lastIndex = offset > size ? size : offset + 1;
+            for (; lastIndex; --lastIndex)
+            {
+                size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(ptr, count, data[lastIndex - 1]);
+                if (charFindIndex != npos)
                 {
-                    if (!Traits::eq(*uptr, c))
-                    {
-                        return uptr - data;
-                    }
+                    return lastIndex - 1;
+                }
+            }
+
+            return npos;
+        }
+
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT find_first_not_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
+        {
+            if (size == 0)
+            {
+                return npos;
+            }
+
+            if (count == 0)
+            {
+                return offset; // count == 0 means that the every character is part of the set of valid entries
+            }
+
+            for (size_t firstIndex = offset; firstIndex < size; ++firstIndex)
+            {
+                size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(ptr, count, data[firstIndex]);
+                if (charFindIndex == npos)
+                {
+                    return firstIndex;
                 }
             }
             return npos;
         }
 
         template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_last_not_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count)
-        {   // look for none of [ptr, ptr + count) before offset
-            if (0 < size)
+        constexpr SizeT find_first_not_of(const CharT* data, SizeT size, CharT c, SizeT offset) noexcept
+        {
+            if (size == 0)
             {
-                for (const CharT* uptr = data + (offset < size ? offset : size - 1);; --uptr)
+                return npos;
+            }
+
+            for (size_t firstIndex = offset; firstIndex < size; ++firstIndex)
+            {
+                if (!Traits::eq(c, data[firstIndex]))
                 {
-                    if (Traits::find(ptr, count, *uptr) == nullptr)
-                    {
-                        return uptr - data;
-                    }
-                    else if (uptr == data)
-                    {
-                        break;
-                    }
+                    return firstIndex;
                 }
             }
             return npos;
         }
 
         template<class CharT, class SizeT, class Traits, SizeT npos>
-        SizeT find_last_not_of(const CharT* data, SizeT size, CharT c, SizeT offset)
-        {   // look for none of [ptr, ptr + count) before offset
-            if (0 != size)
+        constexpr SizeT find_last_not_of(const CharT* data, SizeT size, const CharT* ptr, SizeT offset, SizeT count) noexcept
+        {
+            if (size == 0)
             {
-                for (const CharT* uptr = data + (offset < size ? offset + 1 : size); data != uptr;)
+                return npos;
+            }
+
+            // Add one to offset so that for loop condition can check against 0 as the breakout condition
+            size_t lastIndex = offset > size ? size : offset + 1;
+            if (count == 0)
+            {
+                return lastIndex - 1; // count == 0 means that the every character is part of the set of valid entries
+            }
+
+            for (; lastIndex; --lastIndex)
+            {
+                size_t charFindIndex = char_find<CharT, SizeT, Traits, npos>(ptr, count, data[lastIndex - 1]);
+                if (charFindIndex == npos)
                 {
-                    if (!Traits::eq(*--uptr, c))
-                    {
-                        return uptr - data;
-                    }
+                    return lastIndex - 1;
+                }
+            }
+
+            return npos;
+        }
+
+        template<class CharT, class SizeT, class Traits, SizeT npos>
+        constexpr SizeT find_last_not_of(const CharT* data, SizeT size, CharT c, SizeT offset) noexcept
+        {
+            if (size == 0)
+            {
+                return npos;
+            }
+
+            // Add one to offset so that for loop condition can against 0 as the breakout condition
+            size_t lastIndex = offset > size ? size : offset + 1;
+            for (; lastIndex; --lastIndex)
+            {
+                if (!Traits::eq(c, data[lastIndex - 1]))
+                {
+                    return lastIndex - 1;
                 }
             }
             return npos;
@@ -222,69 +262,144 @@ namespace AZStd
     }
 
     template<class Element>
-    struct char_traits;
-    /**
-    * \ref C++0x (21.2.3.1)
-    * char Traits (todo move to a separate file)
-    */
-    template<>
-    struct char_traits<char>
+    struct char_traits
     {
-        // properties of a string or stream char element
-        typedef char        char_type;
-        typedef int         int_type;
-        //typedef AZSTD_STL::streampos  pos_type;
-        //typedef AZSTD_STL::streamoff  off_type;
-        //typedef AZSTD_STL::mbstate_t  state_type;
+        // properties of a string or stream char_type element
+        using char_type = Element;
+        using int_type = AZStd::conditional_t<AZStd::is_same_v<Element, char>, int,
+            AZStd::conditional_t<AZStd::is_same_v<Element, wchar_t>, wint_t, int>
+        >;
+        using pos_type = std::streampos;
+        using off_type = std::streamoff;
+        using state_type = mbstate_t;
 
-        inline static void assign(char_type& left, const char_type& right) { left = right; }
-        inline static bool eq(char_type left, char_type right) { return left == right; }
-        inline static bool lt(char_type left, char_type right) { return left < right; }
-        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count) { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::memcmp(s1, s2, count); }
-        inline static AZStd::size_t length(const char_type* s) { AZ_Assert(s != NULL, "Invalid input!"); return ::strlen(s); }
-        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::memchr(s, ch, count); }
-        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memmove(dest, src, count); }
-        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memcpy(dest, src, count); }
-        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch) { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::memset(dest, ch, count); }
-        inline static char_type to_char_type(int_type c) { return (char_type)c; }
-        inline static int_type      to_int_type(char_type c) { return ((unsigned char)c); }
-        inline static bool          eq_int_type(int_type left, int_type right) { return left == right; }
-        inline static int_type      eof() { return (int_type)-1; }
-        inline static int_type      not_eof(const int_type c) { return (c != (int_type)-1 ? c : !eof()); }
-    };
-
-    template<>
-    struct char_traits<wchar_t>
-    {
-        // properties of a string or stream char element
-        typedef wchar_t     char_type;
-#ifdef _WCTYPE_T_DEFINED
-        typedef wint_t      int_type;
-#else
-        typedef unsigned short int_type;
+        static constexpr void assign(char_type& left, const char_type& right) noexcept { left = right; }
+        static char_type* assign(char_type* dest, size_t count, char_type ch) noexcept
+        {
+            AZ_Assert(dest, "Invalid input!");
+            if constexpr (AZStd::is_same_v<char_type, char>)
+            {
+                return static_cast<char_type*>(::memset(dest, ch, count));
+            }
+            else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
+            {
+                return static_cast<char_type*>(::wmemset(dest, ch, count));
+            }
+            else
+            {
+                for (char* iter = dest; count; --count, ++iter)
+                {
+                    assign(*iter, ch);
+                }
+                return dest;
+            }
+        }
+        static constexpr bool eq(char_type left, char_type right) noexcept { return left == right; }
+        static constexpr bool lt(char_type left, char_type right) noexcept { return left < right; }
+        static constexpr int compare(const char_type* s1, const char_type* s2, size_t count) noexcept
+        {
+            // Regression in VS2017 15.8 and 15.9 where __builtin_memcmp fails in valid checks in constexpr evaluation
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC < 1915 || AZ_COMPILER_MSVC > 1916
+            if constexpr (AZStd::is_same_v<char_type, char>)
+            {
+                return __builtin_memcmp(s1, s2, count);
+            }
+            else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
+            {
+                return __builtin_wmemcmp(s1, s2, count);
+            }
+            else
 #endif
-        //typedef AZSTD_STL::streampos  pos_type;
-        //typedef AZSTD_STL::streamoff  off_type;
-        //typedef AZSTD_STL::mbstate_t  state_type;
+            {
+                for (; count; --count, ++s1, ++s2)
+                {
+                    if (lt(*s1, *s2))
+                    {
+                        return -1;
+                    }
+                    else if (lt(*s2, *s1))
+                    {
+                        return 1;
+                    }
+                }
+                return 0;
+            }
+        }
+        static constexpr size_t length(const char_type* s) noexcept
+        {
+            if constexpr (AZStd::is_same_v<char_type, char>)
+            {
+                return __builtin_strlen(s);
+            }
+            else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
+            {
+                return __builtin_wcslen(s);
+            }
+            else
+            {
+                size_t strLength{};
+                for (; *s; ++s, ++strLength)
+                {
+                    ;
+                }
+                return strLength;
+            }
+        }
+        static constexpr const char_type* find(const char_type* s, size_t count, const char_type& ch) noexcept
+        {
+                // There is a bug with the __builtin_char_memchr intrinsic in Visual Studio 2017 15.8.x and 15.9.x
+                // It reads in one more additional character than the value of count.
+                // This is probably due to assuming null-termination
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC < 1915 || AZ_COMPILER_MSVC > 1916
+            if constexpr (AZStd::is_same_v<char_type, char>)
+            {
+                return __builtin_char_memchr(s, ch, count);
+            }
+            else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
+            {
+                return __builtin_wmemchr(s, ch, count);
 
-        inline static void assign(char_type& left, const char_type& right) { left = right; }
-        inline static bool eq(char_type left, char_type right) { return left == right; }
-        inline static bool lt(char_type left, char_type right) { return left < right; }
-        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count) { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::wmemcmp(s1, s2, count); }
-        inline static AZStd::size_t length(const char_type* s) { AZ_Assert(s != NULL, "Invalid input!"); return ::wcslen(s); }
-        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::wmemchr(s, ch, count); }
-        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemmove(dest, src, count); }
-        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemcpy(dest, src, count); }
-        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch) { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::wmemset(dest, ch, count); }
-        inline static char_type to_char_type(int_type c) { return (char_type)c; }
-        inline static int_type      to_int_type(char_type c) { return ((unsigned char)c); }
-        inline static bool          eq_int_type(int_type left, int_type right) { return left == right; }
-        inline static int_type      eof() { return (int_type)-1; }
-        inline static int_type      not_eof(const int_type c) { return (c != (int_type)-1 ? c : !eof()); }
+            }
+            else
+#endif
+            {
+                for (; count; --count, ++s)
+                {
+                    if (eq(*s, ch))
+                    {
+                        return s;
+                    }
+                }
+                return nullptr;
+            }
+        }
+        static char_type* move(char_type* dest, const char_type* src, size_t count) noexcept
+        {
+            AZ_Assert(dest != nullptr && src != nullptr, "Invalid input!");
+            return static_cast<char_type*>(::memmove(dest, src, count * sizeof(char_type)));
+        }
+        static char_type* copy(char_type* dest, const char_type* src, size_t count)
+        {
+            AZ_Assert(dest != nullptr && src != nullptr, "Invalid input!");
+            AZ_Assert(src < dest || src >= dest + count, "Copying from an memory range where the src overlays the dest is undefined behavior and would modify the src string");
+            return static_cast<char_type*>(::memcpy(dest, src, count * sizeof(char_type)));
+        }
+        static constexpr char_type to_char_type(int_type c) noexcept { return static_cast<char_type>(c); }
+        static constexpr int_type to_int_type(char_type c) noexcept
+        {
+            if constexpr (AZStd::is_same_v<char_type, char>)
+            {
+                return static_cast<int_type>(static_cast<unsigned char>(c));
+            }
+            else
+            {
+                return static_cast<int_type>(c);
+            }
+        }
+        static constexpr bool eq_int_type(int_type left, int_type right) noexcept { return left == right; }
+        static constexpr int_type eof() noexcept { return static_cast<int_type>(-1); }
+        static constexpr int_type not_eof(int_type c) noexcept { return c != eof() ? c : !eof(); }
     };
-
-    template<class Element, class Traits, class Allocator>
-    class basic_string;
 
     /**
      * Immutable string wrapper based on boost::const_string and std::string_view. When we operate on
@@ -304,8 +419,8 @@ namespace AZStd
         using reference = value_type&;
         using const_reference = const value_type&;
 
-        using size_type = AZStd::size_t;
-        using difference_type = AZStd::ptrdiff_t;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
 
         static const size_type npos = size_type(-1);
 
@@ -314,36 +429,36 @@ namespace AZStd
         using reverse_iterator = AZStd::reverse_iterator<iterator>;
         using const_reverse_iterator = AZStd::reverse_iterator<const_iterator>;
 
-        basic_string_view()
+        constexpr basic_string_view() noexcept
             : m_begin(nullptr)
             , m_end(nullptr)
         { }
 
-        basic_string_view(const_pointer s)
+        constexpr basic_string_view(const_pointer s)
             : m_begin(s)
             , m_end(s ? s + traits_type::length(s) : nullptr)
         { }
 
-        basic_string_view(const_pointer s, size_type length)
+        constexpr basic_string_view(const_pointer s, size_type count)
             : m_begin(s)
-            , m_end(m_begin + length)
-        { }
+            , m_end(m_begin + count)
+        {}
 
-        basic_string_view(const_pointer first, const_pointer last)
+        constexpr basic_string_view(const_pointer first, const_pointer last)
             : m_begin(first)
             , m_end(last)
         { }
 
-        basic_string_view(const basic_string_view&) = default;
-        basic_string_view(basic_string_view&& other)
+        constexpr basic_string_view(const basic_string_view&) noexcept = default;
+        constexpr basic_string_view(basic_string_view&& other)
             : basic_string_view()
         {
             swap(other);
         }
 
-        const_reference operator[](size_type index) const { return m_begin[index]; }
+        constexpr const_reference operator[](size_type index) const { return m_begin[index]; }
         /// Returns value, not reference. If index is out of bounds, 0 is returned (can't be reference).
-        value_type at(size_type index) const
+        constexpr value_type at(size_type index) const
         {
             AZ_Assert(index < size(), "pos value is out of range");
             return index >= size()
@@ -351,50 +466,42 @@ namespace AZStd
                 : m_begin[index];
         }
 
-        const_reference front() const
+        constexpr const_reference front() const
         {
             AZ_Assert(!empty(), "string_view::front(): string is empty");
             return m_begin[0];
         }
 
-        const_reference back() const
+        constexpr const_reference back() const
         {
             AZ_Assert(!empty(), "string_view::back(): string is empty");
             return m_end[-1];
         }
 
-        const_pointer data() const { return m_begin; }
+        constexpr const_pointer data() const { return m_begin; }
 
-        size_type length() const { return m_end - m_begin; }
-        size_type size() const { return m_end - m_begin; }
-        size_type max_size() const { return (std::numeric_limits<size_type>::max)(); } //< Wrapping the numeric_limits<size_type>::max function in parenthesis to get around the issue with windows.h defining max as a macro
-        bool      empty() const { return m_end == m_begin; }
+        constexpr size_type length() const { return m_end - m_begin; }
+        constexpr size_type size() const { return m_end - m_begin; }
+        constexpr size_type max_size() const { return (std::numeric_limits<size_type>::max)(); } //< Wrapping the numeric_limits<size_type>::max function in parenthesis to get around the issue with windows.h defining max as a macro
+        constexpr bool      empty() const { return m_end == m_begin; }
 
-        void erase() { m_begin = m_end = nullptr; }
-        void resize(size_type new_len) { if (m_begin + new_len < m_end) m_end = m_begin + new_len; }
-        void rshorten(size_type shift = 1) { m_end -= shift; if (m_end <= m_begin) erase(); }
-        void lshorten(size_type shift = 1) { m_begin += shift; if (m_end <= m_begin) erase(); }
-        void remove_prefix(size_type n)
+        constexpr void rshorten(size_type shift = 1) { m_end -= shift; if (m_end <= m_begin) erase(); }
+        constexpr void lshorten(size_type shift = 1) { m_begin += shift; if (m_end <= m_begin) erase(); }
+        constexpr void remove_prefix(size_type n)
         {
             AZ_Assert(n <= size(), "Attempting to remove prefix larger than string size");
             lshorten(n);
         }
 
-        void remove_suffix(size_type n)
+        constexpr void remove_suffix(size_type n)
         {
             AZ_Assert(n <= size(), "Attempting to remove suffix larger than string size");
             rshorten(n);
         }
 
-        basic_string_view& operator=(const basic_string_view& s) { if (&s != this) { m_begin = s.m_begin; m_end = s.m_end; } return *this; }
-        basic_string_view& operator=(const_pointer s) { return *this = basic_string_view(s); }
+        constexpr basic_string_view& operator=(const basic_string_view& s) noexcept = default;
 
-        basic_string_view& assign(const basic_string_view& s) { return *this = s; }
-        basic_string_view& assign(const_pointer s) { return *this = basic_string_view(s); }
-        basic_string_view& assign(const_pointer s, size_type len) { return *this = basic_string_view(s, len); }
-        basic_string_view& assign(const_pointer f, const_pointer l) { return *this = basic_string_view(f, l); }
-
-        void swap(basic_string_view& s)
+        constexpr void swap(basic_string_view& s) noexcept
         {
             const_pointer tmp1 = m_begin;
             const_pointer tmp2 = m_end;
@@ -403,28 +510,28 @@ namespace AZStd
             s.m_begin = tmp1;
             s.m_end = tmp2;
         }
-        friend bool operator==(basic_string_view s1, basic_string_view s2)
+        friend bool constexpr operator==(basic_string_view s1, basic_string_view s2) noexcept
         {
             return s1.length() == s2.length() && (s1.length() == 0 || traits_type::compare(s1.m_begin, s2.m_begin, s1.length()) == 0);
         }
 
-        friend bool operator!=(basic_string_view s1, basic_string_view s2) { return !(s1 == s2); }
-        friend bool operator<(basic_string_view lhs, basic_string_view rhs) { return lhs.compare(rhs) < 0; }
-        friend bool operator>(basic_string_view lhs, basic_string_view rhs) { return lhs.compare(rhs) > 0; }
-        friend bool operator<=(basic_string_view lhs, basic_string_view rhs) { return lhs.compare(rhs) <= 0; }
-        friend bool operator>=(basic_string_view lhs, basic_string_view rhs) { return lhs.compare(rhs) >= 0; }
+        friend constexpr bool operator!=(basic_string_view s1, basic_string_view s2) noexcept { return !(s1 == s2); }
+        friend constexpr bool operator<(basic_string_view lhs, basic_string_view rhs) noexcept { return lhs.compare(rhs) < 0; }
+        friend constexpr bool operator>(basic_string_view lhs, basic_string_view rhs) noexcept { return lhs.compare(rhs) > 0; }
+        friend constexpr bool operator<=(basic_string_view lhs, basic_string_view rhs) noexcept { return lhs.compare(rhs) <= 0; }
+        friend constexpr bool operator>=(basic_string_view lhs, basic_string_view rhs) noexcept { return lhs.compare(rhs) >= 0; }
 
-        iterator         begin() const { return m_begin; }
-        iterator         end() const { return m_end; }
-        const_iterator   cbegin() const { return m_begin; }
-        const_iterator   cend() const { return m_end; }
-        reverse_iterator rbegin() const { return reverse_iterator(m_end); }
-        reverse_iterator rend() const { return reverse_iterator(m_begin); }
-        const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-        const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        constexpr iterator         begin() const noexcept { return m_begin; }
+        constexpr iterator         end() const noexcept { return m_end; }
+        constexpr const_iterator   cbegin() const noexcept { return m_begin; }
+        constexpr const_iterator   cend() const noexcept { return m_end; }
+        constexpr reverse_iterator rbegin() const noexcept { return reverse_iterator(m_end); }
+        constexpr reverse_iterator rend() const noexcept { return reverse_iterator(m_begin); }
+        constexpr const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+        constexpr const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
         // [string.view.modifiers], modifiers:
-        size_type copy(pointer dest, size_type count, size_type pos = 0) const
+        constexpr size_type copy(pointer dest, size_type count, size_type pos = 0) const
         {
             AZ_Assert(pos <= size(), "Position of bytes to copy to destination is out of string_view range");
             if (pos > size())
@@ -436,13 +543,13 @@ namespace AZStd
             return rlen;
         }
 
-        basic_string_view substr(size_type pos = 0, size_type count = npos) const
+        constexpr basic_string_view substr(size_type pos = 0, size_type count = npos) const
         {
             AZ_Assert(pos <= size(), "Cannot create substring where position is larger than size");
             return pos > size() ? basic_string_view() : basic_string_view(data() + pos, AZ::GetMin<size_type>(count, size() - pos));
         }
 
-        int compare(basic_string_view other) const
+        constexpr int compare(basic_string_view other) const
         {
             size_t cmpSize = AZ::GetMin<size_type>(size(), other.size());
             int cmpval = cmpSize == 0 ? 0 : Traits::compare(data(), other.data(), cmpSize);
@@ -463,208 +570,205 @@ namespace AZStd
             return cmpval;
         }
 
-        int compare(size_type pos1, size_type count1, basic_string_view other) const
+        constexpr int compare(size_type pos1, size_type count1, basic_string_view other) const
         {
             return substr(pos1, count1).compare(other);
         }
 
-        int compare(size_type pos1, size_type count1, basic_string_view sv, size_type pos2, size_type count2) const
+        constexpr int compare(size_type pos1, size_type count1, basic_string_view sv, size_type pos2, size_type count2) const
         {
             return substr(pos1, count1).compare(sv.substr(pos2, count2));
         }
 
-        int compare(const_pointer s) const
+        constexpr int compare(const_pointer s) const
         {
             return compare(basic_string_view(s));
         }
 
-        int compare(size_type pos1, size_type count1, const_pointer s) const
+        constexpr int compare(size_type pos1, size_type count1, const_pointer s) const
         {
             return substr(pos1, count1).compare(basic_string_view(s));
         }
 
-        int compare(size_type pos1, size_type count1, const_pointer s, size_type count2) const
+        constexpr int compare(size_type pos1, size_type count1, const_pointer s, size_type count2) const
         {
             return substr(pos1, count1).compare(basic_string_view(s, count2));
         }
 
         // starts_with
-        bool starts_with(basic_string_view prefix) const
+        constexpr bool starts_with(basic_string_view prefix) const
         {
             return size() >= prefix.size() && compare(0, prefix.size(), prefix) == 0;
         }
 
-        bool starts_with(value_type prefix) const
+        constexpr bool starts_with(value_type prefix) const
         {
             return starts_with(basic_string_view(&prefix, 1));
         }
 
-        bool starts_with(const_pointer prefix) const
+        constexpr bool starts_with(const_pointer prefix) const
         {
             return starts_with(basic_string_view(prefix));
         }
 
         // ends_with
-        bool ends_with(basic_string_view suffix) const
+        constexpr bool ends_with(basic_string_view suffix) const
         {
             return size() >= suffix.size() && compare(size() - suffix.size(), npos, suffix) == 0;
         }
 
-        bool ends_with(value_type suffix) const
+        constexpr bool ends_with(value_type suffix) const
         {
             return ends_with(basic_string_view(&suffix, 1));
         }
 
-        bool ends_with(const_pointer suffix) const
+        constexpr bool ends_with(const_pointer suffix) const
         {
             return ends_with(basic_string_view(suffix));
         }
 
         // find
-        size_type find(basic_string_view other, size_type pos = 0) const
+        constexpr size_type find(basic_string_view other, size_type pos = 0) const
         {
-            AZ_Assert(other.size() == 0 || other.data(), "other string is not valid");
             return StringInternal::find<value_type, size_type, traits_type, npos>(data(), size(), other.data(), pos, other.size());
         }
 
-        AZ_INLINE size_type find(value_type c, size_type pos = 0) const
+        constexpr size_type find(value_type c, size_type pos = 0) const
         {
             return StringInternal::find<value_type, size_type, traits_type, npos>(data(), size(), c, pos);
         }
 
-        AZ_INLINE size_type find(const_pointer s, size_type pos, size_type count) const
+        constexpr size_type find(const_pointer s, size_type pos, size_type count) const
         {
             AZ_Assert(count == 0 || s, "string_view::find(): received nullptr");
-            return StringInternal::find<value_type, size_type, traits_type, npos>(data(), size(), s, pos, count);
+            return find(basic_string_view{ s, count }, pos);
         }
 
-        AZ_INLINE size_type find(const_pointer s, size_type pos = 0) const
+        constexpr size_type find(const_pointer s, size_type pos = 0) const
         {
             AZ_Assert(s, "string_view::find(): received nullptr");
-            return StringInternal::find<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return find(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
         // rfind
-        size_type rfind(basic_string_view s, size_type pos = npos) const
+        constexpr size_type rfind(basic_string_view s, size_type pos = npos) const
         {
-            AZ_Assert(s.size() == 0 || s.data(), "string_view::find(): received nullptr");
             return StringInternal::rfind<value_type, size_type, traits_type, npos>(data(), size(), s.data(), pos, s.size());
         }
 
-        size_type rfind(value_type c, size_type pos = npos) const
+        constexpr size_type rfind(value_type c, size_type pos = npos) const
         {
             return StringInternal::rfind<value_type, size_type, traits_type, npos>(data(), size(), c, pos);
         }
 
-        size_type rfind(const_pointer s, size_type pos, size_type n)
+        constexpr size_type rfind(const_pointer s, size_type pos, size_type count) const
         {
-            AZ_Assert(n == 0 || s, "string_view::rfind(): received nullptr");
-            return StringInternal::rfind<value_type, size_type, traits_type, npos>(data(), size(), s, pos, n);
+            AZ_Assert(count == 0 || s, "string_view::rfind(): received nullptr");
+            return rfind(basic_string_view{ s, count }, pos);
         }
 
-        size_type rfind(const_pointer s, size_type pos = npos) const
+        constexpr size_type rfind(const_pointer s, size_type pos = npos) const
         {
             AZ_Assert(s, "string_view::rfind(): received nullptr");
-            return StringInternal::rfind<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return rfind(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
         // find_first_of
-        size_type find_first_of(basic_string_view s, size_type pos = 0) const
+        constexpr size_type find_first_of(basic_string_view s, size_type pos = 0) const
         {
-            AZ_Assert(s.size() == 0 || s.data(), "string_view::find_first_of(): received nullptr");
             return StringInternal::find_first_of<value_type, size_type, traits_type, npos>(data(), size(), s.data(), pos, s.size());
         }
 
-        size_type find_first_of(value_type c, size_type pos = 0) const
+        constexpr size_type find_first_of(value_type c, size_type pos = 0) const
         {
             return find(c, pos);
         }
 
-        size_type find_first_of(const_pointer s, size_type pos, size_type count) const
+        constexpr size_type find_first_of(const_pointer s, size_type pos, size_type count) const
         {
             AZ_Assert(count == 0 || s, "string_view::find_first_of(): received nullptr");
-            return StringInternal::find_first_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, count);
+            return find_first_of(basic_string_view{ s, count }, pos);
         }
 
-        size_type find_first_of(const_pointer s, size_type pos = 0) const
+        constexpr size_type find_first_of(const_pointer s, size_type pos = 0) const
         {
             AZ_Assert(s, "string_view::find_first_of(): received nullptr");
-            return StringInternal::find_first_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return find_first_of(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
         // find_last_of
-        size_type find_last_of(basic_string_view s, size_type pos = npos) const
+        constexpr size_type find_last_of(basic_string_view s, size_type pos = npos) const
         {
-            AZ_Assert(s.size() == 0 || s.data(), "string_view::find_last_of(): received nullptr");
             return StringInternal::find_last_of<value_type, size_type, traits_type, npos>(data(), size(), s.data(), pos, s.size());
         }
 
-        size_type find_last_of(value_type c, size_type pos = npos) const
+        constexpr size_type find_last_of(value_type c, size_type pos = npos) const
         {
             return rfind(c, pos);
         }
 
-        size_type find_last_of(const_pointer s, size_type pos, size_type count) const
+        constexpr size_type find_last_of(const_pointer s, size_type pos, size_type count) const
         {
             AZ_Assert(count == 0 || s, "string_view::find_last_of(): received nullptr");
-            return StringInternal::find_last_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, count);
+            return find_last_of(basic_string_view{ s, count }, pos);
         }
 
-        size_type find_last_of(const_pointer s, size_type pos = npos) const
+        constexpr size_type find_last_of(const_pointer s, size_type pos = npos) const
         {
             AZ_Assert(s, "string_view::find_last_of(): received nullptr");
-            return StringInternal::find_last_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return find_last_of(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
         // find_first_not_of
-        size_type find_first_not_of(basic_string_view s, size_type pos = 0) const
+        constexpr size_type find_first_not_of(basic_string_view s, size_type pos = 0) const
         {
-            AZ_Assert(s.size() == 0 || s.data(), "string_view::find_first_not_of(): received nullptr");
             return StringInternal::find_first_not_of<value_type, size_type, traits_type, npos>(data(), size(), s.data(), pos, s.size());
         }
 
-        size_type find_first_not_of(value_type c, size_type pos = 0) const
+        constexpr size_type find_first_not_of(value_type c, size_type pos = 0) const
         {
             return StringInternal::find_first_not_of<value_type, size_type, traits_type, npos>(data(), size(), c, pos);
         }
 
-        size_type find_first_not_of(const_pointer s, size_type pos, size_type count) const
+        constexpr size_type find_first_not_of(const_pointer s, size_type pos, size_type count) const
         {
             AZ_Assert(count == 0 || s, "string_view::find_first_not_of(): received nullptr");
-            return StringInternal::find_first_not_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, count);
+            return find_first_not_of(basic_string_view{ s, count }, pos);
         }
 
-        size_type find_first_not_of(const_pointer s, size_type pos = 0) const
+        constexpr size_type find_first_not_of(const_pointer s, size_type pos = 0) const
         {
             AZ_Assert(s, "string_view::find_first_not_of(): received nullptr");
-            return StringInternal::find_first_not_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return find_first_not_of(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
         // find_last_not_of
-        size_type find_last_not_of(basic_string_view s, size_type pos = npos) const
+        constexpr size_type find_last_not_of(basic_string_view s, size_type pos = npos) const
         {
-            AZ_Assert(s.size() == 0 || s.data(), "string_view::find_last_not_of(): received nullptr");
             return StringInternal::find_last_not_of<value_type, size_type, traits_type, npos>(data(), size(), s.data(), pos, s.size());
         }
 
-        size_type find_last_not_of(value_type c, size_type pos = npos) const
+        constexpr size_type find_last_not_of(value_type c, size_type pos = npos) const
         {
             return StringInternal::find_last_not_of<value_type, size_type, traits_type, npos>(data(), size(), c, pos);
         }
 
-        size_type find_last_not_of(const_pointer s, size_type pos, size_type count) const
+        constexpr size_type find_last_not_of(const_pointer s, size_type pos, size_type count) const
         {
             AZ_Assert(count == 0 || s, "string_view::find_last_not_of(): received nullptr");
-            return StringInternal::find_last_not_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, count);
+            return find_last_not_of(basic_string_view{ s, count }, pos);
         }
 
-        size_type find_last_not_of(const_pointer s, size_type pos = npos) const
+        constexpr size_type find_last_not_of(const_pointer s, size_type pos = npos) const
         {
             AZ_Assert(s, "string_view::find_last_not_of(): received nullptr");
-            return StringInternal::find_last_not_of<value_type, size_type, traits_type, npos>(data(), size(), s, pos, traits_type::length(s));
+            return find_last_not_of(basic_string_view{ s, traits_type::length(s) }, pos);
         }
 
     private:
+        constexpr void erase() { m_begin = m_end = nullptr; }
+        constexpr void resize(size_type new_len) { if (m_begin + new_len < m_end) m_end = m_begin + new_len; }
+
         const_pointer m_begin;
         const_pointer m_end;
     };
@@ -680,17 +784,61 @@ namespace AZStd
     using const_string = string_view;
     using const_wstring = wstring_view;
 
-    /// For string hashing we are using FNV-1a algorithm with 32 and 64 bit versions.
+    template <class Element, class Traits = AZStd::char_traits<Element>>
+    constexpr typename basic_string_view<Element, Traits>::const_iterator begin(basic_string_view<Element, Traits> sv)
+    {
+        return sv.begin();
+    }
+
+    template <class Element, class Traits = AZStd::char_traits<Element>>
+    constexpr typename basic_string_view<Element, Traits>::const_iterator end(basic_string_view<Element, Traits> sv)
+    {
+        return sv.end();
+    }
+
+    inline namespace literals
+    {
+        inline namespace string_view_literals
+        {
+            constexpr string_view operator "" _sv(const char* str, size_t len) noexcept
+            {
+                return string_view{ str, len };
+            }
+
+            constexpr wstring_view operator "" _sv(const wchar_t* str, size_t len) noexcept
+            {
+                return wstring_view{ str, len };
+            }
+        }
+    }
+
+    /// For string hashing we are using FNV-1a algorithm 64 bit version.
     template<class RandomAccessIterator>
-    AZ_FORCE_INLINE AZStd::size_t hash_string(RandomAccessIterator first, AZStd::size_t length)
+    constexpr size_t hash_string(RandomAccessIterator first, size_t length)
     {
         size_t hash = 14695981039346656037ULL;
-        const size_t fnvPrime = 1099511628211ULL;
-        const char* cptr = reinterpret_cast<const char*>(&(*first));
-        for (; length; --length)
+        constexpr size_t fnvPrime = 1099511628211ULL;
+
+        const RandomAccessIterator last(first + length);
+        for (; first != last; ++first)
         {
-            hash ^= static_cast<size_t>(*cptr++);
+            hash ^= static_cast<size_t>(*first);
+#if AZ_COMPILER_MSVC < 1924
+            // Workaround for integer overflow warning for hash function when used in a constexpr context
+            // The warning must be disabled at the call site and is a compiler bug that has been fixed
+            // with Visual Studio 2019 version 16.4
+            // https://developercommunity.visualstudio.com/content/problem/211134/unsigned-integer-overflows-in-constexpr-functionsa.html?childToView=211580#comment-211580
+            constexpr size_t fnvPrimeHigh{ 0x100ULL };
+            constexpr size_t fnvPrimeLow{ 0x000001b3 };
+            const uint64_t hashHigh{ hash >> 32 };
+            const uint64_t hashLow{ hash & 0xFFFF'FFFF };
+            const uint64_t lowResult{ hashLow * fnvPrimeLow };
+            const uint64_t fnvPrimeHighResult{ hashLow * fnvPrimeHigh };
+            const uint64_t hashHighResult{ hashHigh * fnvPrimeLow };
+            hash = (lowResult & 0xffff'ffff) + (((lowResult >> 32) + (fnvPrimeHighResult & 0xffff'ffff) + (hashHighResult & 0xffff'ffff)) << 32);
+#else
             hash *= fnvPrime;
+#endif
         }
         return hash;
     }
@@ -698,13 +846,19 @@ namespace AZStd
     template<class Element, class Traits>
     struct hash<basic_string_view<Element, Traits>>
     {
-        using argument_type = basic_string_view<Element, Traits>;
-        using result_type = AZStd::size_t;
-
-        inline result_type operator()(const argument_type& value) const
+        constexpr size_t operator()(const basic_string_view<Element, Traits>& value) const
         {
             // from the string class
             return hash_string(value.begin(), value.length());
         }
     };
+
 } // namespace AZStd
+
+//! Use this macro to simplify safe printing of a string_view which may not be null-terminated.
+//! Example: AZStd::string::format("Safely formatted: %.*s", AZ_STRING_ARG(myString));
+#define AZ_STRING_ARG(str) static_cast<int>(str.size()), str.data()
+
+//! Can be used with AZ_STRING_ARG for convenience, rather than manually including "%.*s" in format strings
+//! Example: AZStd::string::format("Safely formatted: " AZ_STRING_FORMAT, AZ_STRING_ARG(myString));
+#define AZ_STRING_FORMAT "%.*s"

@@ -342,8 +342,6 @@ int CVisArea::LoadObjectsTree_T(T& f, int& nDataSizeLeft, int nSID, std::vector<
         PakLoadDataUtils::LoadDataFromFile_Seek(objBlockSize, f, nDataSizeLeft, eEndian);
     }
 
-    UpdateOcclusionFlagInTerrain();
-
     return true;
 }
 

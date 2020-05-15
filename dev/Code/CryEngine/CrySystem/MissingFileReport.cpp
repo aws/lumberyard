@@ -65,7 +65,7 @@ namespace CryPakInternal
             FileTags[static_cast<unsigned int>(FileTagsIndex::ProductDependency)] };
 
         bool shouldIgnore = false;
-        QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::BlackList, &QueryFileTagsEventBus::Events::Match, szPath, tags);
+        QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude, &QueryFileTagsEventBus::Events::Match, szPath, tags);
 
         return shouldIgnore;
     }

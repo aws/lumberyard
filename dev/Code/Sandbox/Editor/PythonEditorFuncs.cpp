@@ -16,15 +16,14 @@
 #include "IEditor.h"
 #include "GameEngine.h"
 #include "ViewManager.h"
-#include "Util/BoostPythonHelpers.h"
 #include "StringDlg.h"
 #include "GenericSelectItemDialog.h"
 #include "Util/Ruler.h"
-#include "Util/Mailer.h"
-#include "UndoCVar.h"
 #include "DisplaySettings.h"
 
+#include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -43,42 +42,6 @@ namespace
             throw std::logic_error((QString("\"") + pName + "\" is an invalid cvar.").toUtf8().data());
         }
         return pCVar->GetString();
-    }
-    //////////////////////////////////////////////////////////////////////////
-    void PySetCVar(const char* pName, pSPyWrappedProperty pValue)
-    {
-        ICVar* pCVar = GetIEditor()->GetSystem()->GetIConsole()->GetCVar(pName);
-        if (!pCVar)
-        {
-            Warning("PySetCVar: Attempt to access non-existent CVar '%s'", pName ? pName : "(null)");
-            throw std::logic_error((QString("\"") + pName + " is an invalid cvar.").toUtf8().data());
-        }
-
-        CUndo undo("Set CVar");
-        if (CUndo::IsRecording())
-        {
-            CUndo::Record(new CUndoCVar(pName));
-        }
-
-        if (pCVar->GetType() == CVAR_INT && pValue->type == SPyWrappedProperty::eType_Int)
-        {
-            pCVar->Set(pValue->property.intValue);
-        }
-        else if (pCVar->GetType() == CVAR_FLOAT && pValue->type == SPyWrappedProperty::eType_Float)
-        {
-            pCVar->Set(pValue->property.floatValue);
-        }
-        else if (pCVar->GetType() == CVAR_STRING && pValue->type == SPyWrappedProperty::eType_String)
-        {
-            pCVar->Set(pValue->stringValue.toUtf8().data());
-        }
-        else
-        {
-            Warning("PyGetCVar: Type mismatch while assigning CVar '%s'", pName ? pName : "(null)");
-            throw std::logic_error("Invalid data type.");
-        }
-
-        CryLog("PySetCVar: %s set to %s", pName, pCVar->GetString());
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -120,11 +83,6 @@ namespace
         }
         else
         {
-            CUndo undo("Set CVar");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoCVar(pName));
-            }
             pCVar->Set(pValue);
         }
     }
@@ -152,11 +110,6 @@ namespace
         }
         else
         {
-            CUndo undo("Set CVar");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoCVar(pName));
-            }
             pCVar->Set(pValue);
         }
     }
@@ -184,12 +137,33 @@ namespace
         }
         else
         {
-            CUndo undo("Set CVar");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoCVar(pName));
-            }
             pCVar->Set(pValue);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    void PySetCVarFromAny(const char* pName, const AZStd::any& value)
+    {
+        ICVar* pCVar = GetIEditor()->GetSystem()->GetIConsole()->GetCVar(pName);
+        if (!pCVar)
+        {
+            AZ_Warning("editor", false, "Attempt to set non-existent float CVar '%s'", pName ? pName : "(null)");
+        }
+        else if (pCVar->GetType() == CVAR_INT)
+        {
+            PySetCVarFromInt(pName, AZStd::any_cast<AZ::s64>(value));
+        }
+        else if (pCVar->GetType() == CVAR_FLOAT)
+        {
+            PySetCVarFromFloat(pName, AZStd::any_cast<double>(value));
+        }
+        else if (pCVar->GetType() == CVAR_STRING)
+        {
+            PySetCVarFromString(pName, AZStd::any_cast<AZStd::string_view>(value).data());
+        }
+        else
+        {
+            AZ_Warning("editor", false, "Type mismatch while assigning CVar '%s' as a float.", pName ? pName : "(null)");
         }
     }
 
@@ -249,38 +223,6 @@ namespace
         {
             return "";
         }
-    }
-
-    pPyGameObject PyCreateObject(const char* typeName, const char* fileName, const char* name, float x, float y, float z)
-    {
-        CBaseObject* pObject = GetIEditor()->GetObjectManager()->NewObject(typeName, 0, fileName);
-
-        if (pObject != NULL)
-        {
-            GetIEditor()->SetModifiedFlag();
-
-            if (strcmp(typeName, "Brush") == 0)
-            {
-                GetIEditor()->SetModifiedModule(eModifiedBrushes);
-            }
-            else if (strcmp(typeName, "Entity") == 0)
-            {
-                GetIEditor()->SetModifiedModule(eModifiedEntities);
-            }
-            else
-            {
-                GetIEditor()->SetModifiedModule(eModifiedAll);
-            }
-
-            if (strcmp(name, "") != 0)
-            {
-                pObject->SetUniqueName(name);
-            }
-
-            pObject->SetPos(Vec3(x, y, z));
-        }
-
-        return PyScript::CreatePyGameObject(pObject);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -356,14 +298,18 @@ namespace
             // If not found try editor folder
             if (!CFileUtil::FileExists(path))
             {
-                QString scriptFolder = QDir::currentPath() + QString("/Editor/Scripts/");
+                const char* engineRoot = nullptr;
+                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+                QDir engineDir = engineRoot ? QDir(engineRoot) : QDir::current();
+
+                QString scriptFolder = engineDir.absoluteFilePath("Editor/Scripts/");
                 Path::ConvertBackSlashToSlash(scriptFolder);
                 path = scriptFolder + pFile;
 
                 if (!CFileUtil::FileExists(path))
                 {
                     QString error = QString("Could not find '%1'\n in '%2'\n or '%3'\n").arg(pFile).arg(userSandboxFolder).arg(scriptFolder);
-                    PyScript::PrintError(error.toUtf8().data());
+                    AZ_Warning("python", false, error.toUtf8().data());
                     return false;
                 }
             }
@@ -374,7 +320,7 @@ namespace
             if (!CFileUtil::FileExists(path))
             {
                 QString error = QString("Could not find '") + pFile + "'\n";
-                PyScript::PrintError(error.toUtf8().data());
+                AZ_Warning("python", false, error.toUtf8().data());
                 return false;
             }
         }
@@ -402,43 +348,19 @@ namespace
         GetPythonArgumentsVector(pArguments, inputArguments);
         if (GetPythonScriptPath(pFile, path))
         {
-            bool releasePythonLock = false;
+            AZStd::vector<AZStd::string_view> argList;
+            argList.reserve(inputArguments.size() + 1);
+            QByteArray p = path.toUtf8();
 
-            if (!PyScript::HasPythonLock())
+            QVector<QByteArray> argData;
+            argData.reserve(inputArguments.count());
+            for (auto iter = inputArguments.begin(); iter != inputArguments.end(); ++iter)
             {
-                PyScript::AcquirePythonLock();
-                releasePythonLock = true;
+                argData.push_back(iter->toLatin1());
+                argList.push_back(argData.last().data());
             }
-
-            char fileOp[] = "r";
-            PyObject* pyFileObject = PyFile_FromString(const_cast<char*>(path.toUtf8().data()), fileOp);
-
-            if (pyFileObject)
-            {
-                std::vector<const char*> argv;
-                argv.reserve(inputArguments.size() + 1);
-                QByteArray p = path.toUtf8();
-                argv.push_back(p.data());
-
-                QVector<QByteArray> args(inputArguments.count());
-
-                for (auto iter = inputArguments.begin(); iter != inputArguments.end(); ++iter)
-                {
-                    args.push_back(iter->toLatin1());
-                    argv.push_back(args.last().data());
-                }
-
-                PySys_SetArgv(argv.size(), const_cast<char**>(&argv[0]));
-                int result = PyRun_SimpleFile(PyFile_AsFile(pyFileObject), path.toUtf8().data());
-                AZ_TracePrintf("Python", "Python result code: %d", result);
-                PyErr_Print();
-            }
-            Py_DECREF(pyFileObject);
-
-            if (releasePythonLock)
-            {
-                PyScript::ReleasePythonLock();
-            }
+            using namespace AzToolsFramework;
+            EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs, p.data(), argList);
         }
     }
 
@@ -478,16 +400,6 @@ namespace
         return QMessageBox::information(QApplication::activeWindow(), QString(), pMessage) == QMessageBox::Ok;
     }
 
-    QString PyLegacyEditBox(const char* pTitle)
-    {
-        StringDlg stringDialog(pTitle);
-        if (stringDialog.exec() == QDialog::Accepted)
-        {
-            return stringDialog.GetString();
-        }
-        return "";
-    }
-
     AZStd::string PyEditBox(AZStd::string_view pTitle)
     {
         StringDlg stringDialog(pTitle.data());
@@ -498,14 +410,11 @@ namespace
         return "";
     }
 
-    SPyWrappedProperty PyEditBoxAndCheckSPyWrappedProperty(const char* pTitle)
+    AZStd::any PyEditBoxAndCheckProperty(const char* pTitle)
     {
         StringDlg stringDialog(pTitle);
-        SPyWrappedProperty value;
         stringDialog.SetString(QStringLiteral(""));
-        bool isValidDataType(false);
-
-        while (!isValidDataType && stringDialog.exec() == QDialog::Accepted)
+        if (stringDialog.exec() == QDialog::Accepted)
         {
             const QString stringValue = stringDialog.GetString();
 
@@ -547,148 +456,88 @@ namespace
 
             if (countDots == 3 && countComa == 2 && countOpenRoundBraket == 1 && countCloseRoundBraket == 1)
             {
-                value.type = SPyWrappedProperty::eType_Vec3;
+                // for example: (1.95, 2.75, 3.36)
+                QString valueRed = stringValue;
+                int iStart = valueRed.indexOf("(");
+                valueRed.remove(0, iStart + 1);
+                int iEnd = valueRed.indexOf(",");
+                valueRed.remove(iEnd, valueRed.length());
+                float fValueRed = valueRed.toFloat();
+
+                QString valueGreen = stringValue;
+                iStart = valueGreen.indexOf(",");
+                valueGreen.remove(0, iStart + 1);
+                iEnd = valueGreen.indexOf(",");
+                valueGreen.remove(iEnd, valueGreen.length());
+                float fValueGreen = valueGreen.toFloat();
+
+                QString valueBlue = stringValue;
+                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
+                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
+                valueBlue.remove(valueBlue.indexOf(")"), valueBlue.length());
+                float fValueBlue = valueBlue.toFloat();
+
+                return AZStd::make_any<AZ::Vector3>(fValueRed, fValueGreen, fValueBlue);
             }
             else if (countDots == 0 && countComa == 2 && countOpenRoundBraket == 1 && countCloseRoundBraket == 1)
             {
-                value.type = SPyWrappedProperty::eType_Color;
+                // for example: (128, 32, 240)
+                const AZ::u8 lowColorValue { 0 };
+                const AZ::u8 highColorValue { 255 };
+                QString valueRed = stringValue;
+                int iStart = valueRed.indexOf("(");
+                valueRed.remove(0, iStart + 1);
+                int iEnd = valueRed.indexOf(",");
+                valueRed.remove(iEnd, valueRed.length());
+                AZ::u8 iValueRed = AZStd::clamp(aznumeric_cast<AZ::u8>(valueRed.toInt()), lowColorValue, highColorValue);
+
+                QString valueGreen = stringValue;
+                iStart = valueGreen.indexOf(",");
+                valueGreen.remove(0, iStart + 1);
+                iEnd = valueGreen.indexOf(",");
+                valueGreen.remove(iEnd, valueGreen.length());
+                AZ::u8 iValueGreen = AZStd::clamp(aznumeric_cast<AZ::u8>(valueGreen.toInt()), lowColorValue, highColorValue);
+
+                QString valueBlue = stringValue;
+                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
+                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
+                valueBlue.remove(valueBlue.indexOf(")"), valueBlue.length());
+                AZ::u8 iValueBlue = AZStd::clamp(aznumeric_cast<AZ::u8>(valueBlue.toInt()), lowColorValue, highColorValue);
+
+                return AZStd::make_any<AZ::Color>(iValueRed, iValueGreen, iValueBlue, highColorValue);
             }
             else if (countDots == 1 && countComa == 0 && countOpenRoundBraket == 0 && countCloseRoundBraket == 0)
             {
-                value.type = SPyWrappedProperty::eType_Float;
+                // for example: 2.56
+                return AZStd::make_any<double>(stringValue.toDouble());
             }
             else if (countDots == 0 && countComa == 0 && countOpenRoundBraket == 0 && countCloseRoundBraket == 0)
             {
                 if (stringValue == "False" || stringValue == "True")
                 {
-                    value.type = SPyWrappedProperty::eType_Bool;
+                    // for example: True
+                    return AZStd::make_any<bool>(stringValue == "True");
                 }
                 else
                 {
-                    bool isString(false);
+                    const bool anyNotDigits = AZStd::any_of(stringValue.begin(), stringValue.end(), [](const QChar& ch) { return !ch.isDigit(); });
 
-                    if (stringValue.isEmpty())
+                    // looks like a string value?
+                    if (stringValue.isEmpty() || anyNotDigits)
                     {
-                        isString = true;
+                        // for example: Hello
+                        return AZStd::make_any<AZStd::string>(stringValue.toUtf8().data());
                     }
-
-                    char tempString[255];
-                    azstrcpy(tempString, AZ_ARRAY_SIZE(tempString), stringValue.toUtf8().data());
-
-                    for (int i = 0; i < stringValue.length(); i++)
+                    else // then it looks like an integer 
                     {
-                        if (!isdigit(tempString[i]))
-                        {
-                            isString = true;
-                        }
-                    }
-
-                    if (isString)
-                    {
-                        value.type = SPyWrappedProperty::eType_String;
-                    }
-                    else
-                    {
-                        value.type = SPyWrappedProperty::eType_Int;
+                        // for example: 456
+                        return AZStd::make_any<AZ::s64>(stringValue.toInt());
                     }
                 }
             }
-
-            // initialize value
-            if (value.type == SPyWrappedProperty::eType_Vec3)
-            {
-                QString valueRed = stringValue;
-                int iStart = valueRed.indexOf("(");
-                valueRed.remove(0, iStart + 1);
-                int iEnd = valueRed.indexOf(",");
-                valueRed.remove(iEnd, valueRed.length());
-                float fValueRed = valueRed.toDouble();
-
-                QString valueGreen = stringValue;
-                iStart = valueGreen.indexOf(",");
-                valueGreen.remove(0, iStart + 1);
-                iEnd = valueGreen.indexOf(",");
-                valueGreen.remove(iEnd, valueGreen.length());
-                float fValueGreen = valueGreen.toDouble();
-
-                QString valueBlue = stringValue;
-                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
-                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
-                valueBlue.remove(valueBlue.indexOf(")"), valueBlue.length());
-                float fValueBlue = valueBlue.toDouble();
-
-                value.property.vecValue.x = fValueRed;
-                value.property.vecValue.y = fValueGreen;
-                value.property.vecValue.z = fValueBlue;
-                isValidDataType = true;
-            }
-            else if (value.type == SPyWrappedProperty::eType_Color)
-            {
-                QString valueRed = stringValue;
-                int iStart = valueRed.indexOf("(");
-                valueRed.remove(0, iStart + 1);
-                int iEnd = valueRed.indexOf(",");
-                valueRed.remove(iEnd, valueRed.length());
-                int iValueRed = valueRed.toInt();
-
-                QString valueGreen = stringValue;
-                iStart = valueGreen.indexOf(",");
-                valueGreen.remove(0, iStart + 1);
-                iEnd = valueGreen.indexOf(",");
-                valueGreen.remove(iEnd, valueGreen.length());
-                int iValueGreen = valueGreen.toInt();
-
-                QString valueBlue = stringValue;
-                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
-                valueBlue.remove(0, valueBlue.indexOf(",") + 1);
-                valueBlue.remove(valueBlue.indexOf(")"), valueBlue.length());
-                int iValueBlue = valueBlue.toInt();
-
-                value.property.colorValue.r = iValueRed;
-                value.property.colorValue.g = iValueGreen;
-                value.property.colorValue.b = iValueBlue;
-                isValidDataType = true;
-            }
-            else if (value.type == SPyWrappedProperty::eType_Int)
-            {
-                value.property.intValue = stringValue.toInt();
-                isValidDataType = true;
-            }
-            else if (value.type == SPyWrappedProperty::eType_Float)
-            {
-                value.property.floatValue = stringValue.toDouble();
-                isValidDataType = true;
-            }
-            else if (value.type == SPyWrappedProperty::eType_String)
-            {
-                value.stringValue = stringValue;
-                isValidDataType = true;
-            }
-            else if (value.type == SPyWrappedProperty::eType_Bool)
-            {
-                if (stringValue == "True" || stringValue == "False")
-                {
-                    value.property.boolValue = stringValue == "True";
-                    isValidDataType = true;
-                }
-            }
-            else
-            {
-                QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Invalid Data"), QObject::tr("Invalid data type."));
-                isValidDataType = false;
-            }
         }
-        return value;
-    }
-
-    QString PyLegacyOpenFileBox()
-    {
-        QString path = QFileDialog::getOpenFileName();
-        if (!path.isEmpty())
-        {
-            Path::ConvertBackSlashToSlash(path);
-        }
-        return path;
+        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Invalid Data"), QObject::tr("Invalid data type."));
+        return {};
     }
 
     AZStd::string PyOpenFileBox()
@@ -699,36 +548,6 @@ namespace
             Path::ConvertBackSlashToSlash(path);
         }
         return path.toUtf8().constData();
-    }
-
-    QString PyLegacyComboBox(QString title, QStringList values, int selectedIdx = 0)
-    {
-        QString result;
-
-        if (title.isEmpty())
-        {
-            throw std::runtime_error("Incorrect title argument passed in. ");
-            return result;
-        }
-
-        if (values.size() == 0)
-        {
-            throw std::runtime_error("Empty value list passed in. ");
-            return result;
-        }
-
-        CGenericSelectItemDialog pyDlg;
-        pyDlg.setWindowTitle(title);
-        pyDlg.SetMode(CGenericSelectItemDialog::eMODE_LIST);
-        pyDlg.SetItems(values);
-        pyDlg.PreSelectItem(values[selectedIdx]);
-
-        if (pyDlg.exec() == QDialog::Accepted)
-        {
-            result = pyDlg.GetSelectedItem();
-        }
-
-        return result;
     }
 
     AZStd::string PyComboBox(AZStd::string title, AZStd::vector<AZStd::string> values, int selectedIdx = 0)
@@ -822,7 +641,7 @@ namespace
         }
     }
 
-    void PyLegacySetAxisConstraint(QString pConstrain)
+    void PySetAxisConstraint(AZStd::string_view pConstrain)
     {
         if (pConstrain == "X")
         {
@@ -868,11 +687,6 @@ namespace
         }
     }
 
-    void PySetAxisConstraint(AZStd::string pConstrain)
-    {
-        PyLegacySetAxisConstraint(pConstrain.data());
-    }
-
     //////////////////////////////////////////////////////////////////////////
     // Edit Mode
     //////////////////////////////////////////////////////////////////////////
@@ -898,7 +712,7 @@ namespace
         }
     }
 
-    void PyLegacySetEditMode(QString pEditMode)
+    void PySetEditMode(AZStd::string_view pEditMode)
     {
         if (pEditMode == "MOVE")
         {
@@ -933,11 +747,6 @@ namespace
         {
             throw std::logic_error("Invalid edit mode.");
         }
-    }
-
-    void PySetEditMode(AZStd::string_view pEditMode)
-    {
-        PyLegacySetEditMode(pEditMode.data());
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1323,6 +1132,7 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
             };
             addLegacyGeneral(behaviorContext->Method("get_cvar", PyGetCVarAsString, nullptr, "Gets a CVar value as a string."));
+            addLegacyGeneral(behaviorContext->Method("set_cvar", PySetCVarFromAny, nullptr, "Sets a CVar value from any simple value."));
             addLegacyGeneral(behaviorContext->Method("set_cvar_string", PySetCVarFromString, nullptr, "Sets a CVar value from a string."));
             addLegacyGeneral(behaviorContext->Method("set_cvar_integer", PySetCVarFromInt, nullptr, "Sets a CVar value from an integer."));
             addLegacyGeneral(behaviorContext->Method("set_cvar_float", PySetCVarFromFloat, nullptr, "Sets a CVar value from a float."));
@@ -1345,8 +1155,7 @@ namespace AzToolsFramework
             addLegacyGeneral(behaviorContext->Method("message_box_ok", PyMessageBoxOK, nullptr, "Shows a confirmation message box with only ok and shows a custom message."));
             addLegacyGeneral(behaviorContext->Method("edit_box", PyEditBox, nullptr, "Shows an edit box and returns the value as string."));
 
-            // Blocked by LY-101816
-            //addLegacyGeneral(behaviorContext->Method("edit_box_check_data_type", PyEditBoxAndCheckSPyWrappedProperty, nullptr, "Shows an edit box and checks the custom value to use the return value with other functions correctly."));
+            addLegacyGeneral(behaviorContext->Method("edit_box_check_data_type", PyEditBoxAndCheckProperty, nullptr, "Shows an edit box and checks the custom value to use the return value with other functions correctly."));
 
             addLegacyGeneral(behaviorContext->Method("open_file_box", PyOpenFileBox, nullptr, "Shows an open file box and returns the selected file path and name."));
 
@@ -1380,118 +1189,3 @@ namespace AzToolsFramework
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCVar, general, get_cvar,
-    "Gets a cvar value as a string.",
-    "general.get_cvar(str cvarName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetCVar, general, set_cvar,
-    "Sets a cvar value from an integer, float or string.",
-    "general.set_cvar(str cvarName, [int, float, string] cvarValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyEnterGameMode, general, enter_game_mode,
-    "Enters the editor game mode.",
-    "general.enter_game_mode()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyExitGameMode, general, exit_game_mode,
-    "Exits the editor game mode.",
-    "general.exit_game_mode()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyIsInGameMode, general, is_in_game_mode,
-    "Queries if it's in the game mode or not.",
-    "general.is_in_game_mode()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyEnterSimulationMode, general, enter_simulation_mode,
-    "Enters the editor simulation mode.",
-    "general.enter_simulation_mode()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyExitSimulationMode, general, exit_simulation_mode,
-    "Exits the editor simulation mode.",
-    "general.exit_simulation_mode()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyIsInSimulationMode, general, is_in_simulation_mode,
-    "Queries if it's in the simulation mode or not.",
-    "general.is_in_simulation_mode()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyNewObject, general, new_object,
-    "Creates a new object with given arguments and returns the name of the object.",
-    "general.new_object(str entityTypeName, str cgfName, str entityName, float xValue, float yValue, float zValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyNewObjectAtCursor, general, new_object_at_cursor,
-    "Creates a new object at a position targeted by cursor and returns the name of the object.",
-    "general.new_object_at_cursor(str entityTypeName, str cgfName, str entityName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyStartObjectCreation, general, start_object_creation,
-    "Creates a new object, which is following the cursor.",
-    "general.start_object_creation(str entityTypeName, str cgfName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyRunConsole, general, run_console,
-    "Runs a console command.",
-    "general.run_console(str consoleCommand)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyRunLua, general, run_lua,
-    "Runs a lua script command.",
-    "general.run_lua(str luaName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyRunFile, general, run_file,
-    "Runs a script file. A relative path from the editor user folder or an absolute path should be given as an argument",
-    "general.run_file(str fileName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyRunFileWithParameters, general, run_file_parameters,
-    "Runs a script file with parameters. A relative path from the editor user folder or an absolute path should be given as an argument. The arguments should be separated by whitespace.",
-    "general.run_file_parameters(str fileName, str arguments)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyExecuteCommand, general, execute_command,
-    "Executes a given string as an editor command.",
-    "general.execute_command(str editorCommand)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyMessageBox, general, message_box,
-    "Shows a confirmation message box with ok|cancel and shows a custom message.",
-    "general.message_box(str message)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyMessageBoxYesNo, general, message_box_yes_no,
-    "Shows a confirmation message box with yes|no and shows a custom message.",
-    "general.message_box_yes_no(str message)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyMessageBoxOK, general, message_box_ok,
-    "Shows a confirmation message box with only ok and shows a custom message.",
-    "general.message_box_ok(str message)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyEditBox, general, edit_box,
-    "Shows an edit box and returns the value as string.",
-    "general.edit_box(str title)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyEditBoxAndCheckSPyWrappedProperty, general, edit_box_check_data_type,
-    "Shows an edit box and checks the custom value to use the return value with other functions correctly.",
-    "general.edit_box_check_data_type(str title)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyOpenFileBox, general, open_file_box,
-    "Shows an open file box and returns the selected file path and name.",
-    "general.open_file_box()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetAxisConstraint, general, get_axis_constraint,
-    "Gets axis.",
-    "general.get_axis_constraint()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacySetAxisConstraint, general, set_axis_constraint,
-    "Sets axis.",
-    "general.set_axis_constraint(str axisName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetEditMode, general, get_edit_mode,
-    "Gets edit mode",
-    "general.get_edit_mode()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacySetEditMode, general, set_edit_mode,
-    "Sets edit mode",
-    "general.set_edit_mode(str editModeName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetPakFromFile, general, get_pak_from_file,
-    "Finds a pak file name for a given file",
-    "general.get_pak_from_file(str fileName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLog, general, log,
-    "Prints the message to the editor console window.",
-    "general.log(str message)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyUndo, general, undo,
-    "Undos the last operation",
-    "general.undo()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyRedo, general, redo,
-    "Redoes the last undone operation",
-    "general.redo()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyDrawLabel, general, draw_label,
-    "Shows a 2d label on the screen at the given position and given color.",
-    "general.draw_label(int x, int y, float r, float g, float b, float a, str label)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateObject, general, create_object,
-    "Creates a new object with given arguments and returns the name of the object.",
-    "general.create_object(str objectClass, str objectFile, str objectName, (float, float, float) position");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyComboBox, general, combo_box,
-    "Shows an combo box listing each value passed in, returns string value selected by the user.",
-    "general.combo_box(str title, [str] values, int selectedIndex)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetHideMaskAll, general, set_hidemask_all,
-    "Sets the current hidemask to 'all'",
-    "general.set_hidemask_all()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetHideMaskNone, general, set_hidemask_none,
-    "Sets the current hidemask to 'none'",
-    "general.set_hidemask_none()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetHideMaskInvert, general, set_hidemask_invert,
-    "Inverts the current hidemask",
-    "general.set_hidemask_invert()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetHideMask, general, set_hidemask,
-    "Assigns a specified value to a specific object type in the current hidemask",
-    "general.set_hidemask(str typeName, bool typeValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetHideMask, general, get_hidemask,
-    "Gets the value of a specific object type in the current hidemask",
-    "general.get_hidemask(str typeName)");

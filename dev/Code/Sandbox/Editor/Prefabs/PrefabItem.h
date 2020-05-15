@@ -70,8 +70,6 @@ private:
     void ModifyLibraryPrefab(CSelectionGroup& objectsInPrefabAsFlatSelection, CPrefabObject* pPrefabObject, const SObjectChangedContext& context, const TObjectIdMapping& guidMapping);
     //! Function to update a instanced prefabs in the level
     void ModifyInstancedPrefab(CSelectionGroup& objectsInPrefabAsFlatSelection, CPrefabObject* pPrefabObject, const SObjectChangedContext& context, const TObjectIdMapping& guidMapping);
-    //! Registers prefab event flowgraph nodes from all prefab instances
-    void RegisterPrefabEventFlowNodes(CBaseObject* const  pEntityObj);
     //! Searches and finds the XmlNode with a specified Id in m_objectsNode (the XML representation of this prefab in the prefab library)
     XmlNodeRef FindObjectInThisPrefabItemByGuid(REFGUID guid, bool fowardSearch);
     //! Searches for a object inside the TBaseObjects container by a prefabId
@@ -80,7 +78,7 @@ private:
     void ExtractObjectsPrefabIDtoGuidMapping(CSelectionGroup& objects, TObjectIdMapping& mapping);
     //! Remaps id to another id, or it returns the id unchanged if no mapping was found
     GUID ResolveID(const TObjectIdMapping& prefabIdToGuidMapping, GUID id, bool prefabIdToGuidDirection);
-    //! Goes through objectNode and all its children (except Flowgraph) and remaps the ids in the direction specified by the prefabIdToGuidDirection parameter
+    //! Goes through objectNode and all its children and remaps the ids in the direction specified by the prefabIdToGuidDirection parameter
     void RemapIDsInNodeAndChildren(XmlNodeRef objectNode, const TObjectIdMapping& mapping, bool prefabIdToGuidDirection);
     //! Function changes the ids XML attributes of objectNode in the direction specified by the prefabIdToGuidDirection parameter
     void RemapIDsInNode(XmlNodeRef objectNode, const TObjectIdMapping& mapping, bool prefabIdToGuidDirection);

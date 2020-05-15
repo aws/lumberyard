@@ -19,7 +19,6 @@
 #include "EntityProtLibDialog.h"
 #include "Particles/ParticleDialog.h"
 #include "Prefabs/PrefabDialog.h"
-#include "GameTokens/GameTokenDialog.h"
 #include "ShadersDialog.h"
 #include "VegetationDataBasePage.h"
 #include "IViewPane.h"
@@ -110,7 +109,6 @@ BOOL CDataBaseDialog::OnInitDialog()
     addTab(new CPrefabDialog(m_tabCtrl), tr("Prefabs Library"));
     addTab(new CVegetationDataBasePage(m_tabCtrl), tr("Vegetation"));
     addTab(new CParticleDialog(m_tabCtrl), tr("Particles"));
-    addTab(new CGameTokenDialog(m_tabCtrl), tr("GameTokens"));
 
     return TRUE;
 }
@@ -170,9 +168,6 @@ CDataBaseDialogPage* CDataBaseDialog::SelectDialog(EDataBaseItemType type, IData
         break;
     case EDB_TYPE_SOUNDMOOD:
         Select(7);
-        break;
-    case EDB_TYPE_GAMETOKEN:
-        Select(8);
         break;
     default:
         return 0;

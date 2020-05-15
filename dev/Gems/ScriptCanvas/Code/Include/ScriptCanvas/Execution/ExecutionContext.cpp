@@ -23,34 +23,40 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Execution/ExecutionContext.h>
 
-
 namespace ScriptCanvas
 {
     ExecutionContext::ExecutionContext()
     {
     }
 
-    AZ::Outcome<void, AZStd::string> ExecutionContext::Activate(AZ::EntityId runtimeId)
+    AZ::Outcome<void, AZStd::string> ExecutionContext::ActivateContext(const ScriptCanvasId& scriptCanvasId)
     {
-        m_runtimeId = runtimeId;
+        SystemRequestBus::BroadcastResult(m_systemComponentConfiguration, &SystemRequests::GetSystemComponentConfiguration);
+
+        m_scriptCanvasId = scriptCanvasId;
         if (IsInIrrecoverableErrorState())
         {
-            return AZ::Failure(AZStd::string::format("ExecutionContext with id %s is in an irrecoverable error state. It cannot be activated", m_runtimeId.ToString().data()));
+            return AZ::Failure(AZStd::string::format("ExecutionContext with id %s is in an irrecoverable error state. It cannot be activated", m_scriptCanvasId.ToString().data()));
         }
 
-        ErrorReporterBus::Handler::BusConnect(m_runtimeId);
-        ExecutionRequestBus::Handler::BusConnect(m_runtimeId);
+        ErrorReporterBus::Handler::BusConnect(m_scriptCanvasId);
+        ExecutionRequestBus::Handler::BusConnect(m_scriptCanvasId);
+
+        ExecutionStack().swap(m_executionStack);
+        m_isActive = true;        
 
         return AZ::Success();
     }
 
-    void ExecutionContext::Deactivate()
+    void ExecutionContext::DeactivateContext()
     {
         ExecutionRequestBus::Handler::BusDisconnect();
         ErrorReporterBus::Handler::BusDisconnect();
 
+        m_isActive = false;
+
+        m_executedNodes.clear();
         m_sourceToErrorHandlerNodes.clear();
-        ExecutionStack().swap(m_executionStack);
     }
 
     void ExecutionContext::AddToExecutionStack(Node& node, const SlotId& slotId)
@@ -68,13 +74,13 @@ namespace ScriptCanvas
             AZ_Warning("ScriptCanvas", false, "ERROR! Node: %s, Description: %s\n\n", m_errorReporter ? m_errorReporter->GetNodeName().c_str() : "unknown", m_errorDescription.c_str());
             ExecutionStack().swap(m_executionStack);
             // dump error report(callStackTop, m_errorReporter, m_error, graph name, entity ID)
-            Deactivate();
+            DeactivateContext();
         }
     }
 
     void ExecutionContext::AddErrorHandler(AZ::EntityId errorScopeId, AZ::EntityId errorHandlerNodeId)
     {
-        if (errorScopeId == m_runtimeId)
+        if (errorScopeId == m_scriptCanvasId)
         {
             auto foundGraphScopeHandler = m_sourceToErrorHandlerNodes.find(errorScopeId);
             AZ_Warning("ScriptCanvas", foundGraphScopeHandler == m_sourceToErrorHandlerNodes.end(), "Multiple Graph Scope Error handlers specified");
@@ -94,7 +100,7 @@ namespace ScriptCanvas
             }
         }
 
-        auto graphScopeHandlerNodeIter = m_sourceToErrorHandlerNodes.find(m_runtimeId);
+        auto graphScopeHandlerNodeIter = m_sourceToErrorHandlerNodes.find(m_scriptCanvasId);
         return (graphScopeHandlerNodeIter != m_sourceToErrorHandlerNodes.end()) ? graphScopeHandlerNodeIter->second : AZ::EntityId();
     }
 
@@ -102,21 +108,7 @@ namespace ScriptCanvas
     {
         if (!m_isInErrorHandler)
         {
-            AZ::EntityId errorHandlerNodeId = GetErrorHandler();
-            if (errorHandlerNodeId.IsValid())
-            {
-                m_isInErrorState = false;
-                UnwindStack(callStackTop);
-                SlotId errorHandlerOutSlotId;
-                NodeRequestBus::EventResult(errorHandlerOutSlotId, errorHandlerNodeId, &NodeRequests::GetSlotId, "Out");
-                SignalBus::Event(errorHandlerNodeId, &SignalInterface::SignalOutput, errorHandlerOutSlotId, ExecuteMode::Normal);
-                m_errorReporter = nullptr;
-                m_errorDescription.clear();
-            }
-            else
-            {
-                ErrorIrrecoverably();
-            }
+            ErrorIrrecoverably();
         }
         else
         {
@@ -157,6 +149,10 @@ namespace ScriptCanvas
             m_errorDescription = message;
             m_isInErrorState = true;
         }
+
+        m_errorDescription += " Graph: ";
+        m_errorDescription += reporter.GetGraphAssetName().c_str();
+
     }
 
     bool ExecutionContext::IsExecuting() const
@@ -164,42 +160,64 @@ namespace ScriptCanvas
         return m_isExecuting;
     }
 
+    bool ExecutionContext::HasQueuedExecution() const
+    {
+        return !m_executionStack.empty();
+    }
+
     void ExecutionContext::Execute()
     {
-        if (!m_isExecuting && !IsInErrorState())
+        if (m_isActive && !m_isExecuting && !IsInErrorState())
         {
             m_isExecuting = true;
             AZ::u32 executionCount(0);
             
-            while (!m_executionStack.empty())
+            while (!m_executionStack.empty() && m_isActive)
             {
                 auto nodeAndSlot = m_executionStack.back();
                 m_executionStack.pop();
                 m_preExecutedStackSize = m_executionStack.size();
-                SignalBus::Event(nodeAndSlot.first->GetEntityId(), &SignalInterface::SignalInput, nodeAndSlot.second);
+                nodeAndSlot.first->SignalInput(nodeAndSlot.second);
+
+                m_executedNodes.insert(nodeAndSlot.first);
 
                 ++executionCount;
 
-                if (executionCount == SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT)
+                if (executionCount == m_systemComponentConfiguration.m_maxIterationsForInfiniteLoopDetection)
                 {
                     ReportError(*nodeAndSlot.first, "Infinite loop detected");
                     ErrorIrrecoverably();
+
+                    executionCount = -1;
+                    break;
+                }
+
+                if (IsInErrorState())
+                {
+                    HandleError((*nodeAndSlot.first));
+
+                    if (!m_isRecoverable)
+                    {
+                        break;
+                    }
                 }
             }
-                        
+            
             m_isExecuting = false;
+            RefreshInputs();
+
             SC_EXECUTION_TRACE_THREAD_ENDED(CreateGraphInfo(m_runtimeId));
         }
     }
 
     void ExecutionContext::ExecuteUntilNodeIsTopOfStack(Node& node)
     {
-        if (!IsInErrorState())
+        if (m_isActive && !IsInErrorState())
         {
             m_isExecuting = true;
             AZ::u32 executionCount(0);
 
-            while (!m_executionStack.empty())
+            while (m_isActive && !m_executionStack.empty())
             {
                 auto nodeAndSlot = m_executionStack.back();
                 m_executionStack.pop();
@@ -212,7 +230,7 @@ namespace ScriptCanvas
                 }
 
                 m_preExecutedStackSize = m_executionStack.size();
-                SignalBus::Event(nodeAndSlot.first->GetEntityId(), &SignalInterface::SignalInput, nodeAndSlot.second);
+                nodeAndSlot.first->SignalInput(nodeAndSlot.second);
 
                 ++executionCount;
 
@@ -220,6 +238,16 @@ namespace ScriptCanvas
                 {
                     ReportError(*nodeAndSlot.first, "Infinite loop detected");
                     ErrorIrrecoverably();
+                }
+
+                if (IsInErrorState())
+                {
+                    HandleError((*nodeAndSlot.first));
+
+                    if (!m_isRecoverable)
+                    {
+                        break;
+                    }
                 }
             }
             //SC_EXECUTION_TRACE_THREAD_ENDED();
@@ -231,6 +259,19 @@ namespace ScriptCanvas
         while (m_executionStack.size() > m_preExecutedStackSize)
         {
             m_executionStack.pop();
+        }
+    }
+
+    void ExecutionContext::RefreshInputs()
+    {
+        if (!IsExecuting() && !IsInIrrecoverableErrorState())
+        {
+            for (auto node : m_executedNodes)
+            {
+                node->RefreshInput();
+            }
+
+            m_executedNodes.clear();
         }
     }
 

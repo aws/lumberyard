@@ -75,7 +75,7 @@ void CTextureManager::LoadDefaultTextures()
     // The following texture names are the name by which the texture pointers will 
     // be indexed.    Notice that they match to the previously stored textures with
     // name pattern removing 's_ptex'[Name]. Example: 's_ptexWhite' will now be 'White'
-    const TextureEntry texturesFromFileLegacy[] =
+    const TextureEntry texturesFromFile[] =
     {
         {"NoTextureCM",                 "EngineAssets/TextureMsg/ReplaceMeCM.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
         {"White",                       "EngineAssets/Textures/White.dds",                         FT_DONT_RELEASE | FT_DONT_STREAM },
@@ -129,20 +129,78 @@ void CTextureManager::LoadDefaultTextures()
 #endif
     };
 
-
-    for (const TextureEntry& entry : texturesFromFileLegacy)
+    // Reduced list of default textures to load when Other is enabled. 
+    const TextureEntry texturesFromFileReduced[] =
     {
-        // We use CTexture::ForName rather than EF_LoadTexture because in the NULL renderer EF_LoadTexture always returns m_texNoTexture
-        CTexture* pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
-        if (pNewTexture)
+        {"NoTextureCM",                 "EngineAssets/TextureMsg/ReplaceMeCM.tif",                 FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"White",                       "EngineAssets/Textures/White.tif",                         FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"Gray",                        "EngineAssets/Textures/Grey.dds",                          FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"Black",                       "EngineAssets/Textures/Black.tif",                         FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"BlackAlpha",                  "EngineAssets/Textures/BlackAlpha.tif",                    FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"BlackCM",                     "EngineAssets/Textures/BlackCM.tif",                       FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"FlatBump",                    "EngineAssets/Textures/White_ddn.tif",                     FT_DONT_RELEASE | FT_DONT_STREAM | FT_TEX_NORMAL_MAP },
+        {"AverageMemoryUsage",          "EngineAssets/Icons/AverageMemoryUsage.tif",               FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"LowMemoryUsage",              "EngineAssets/Icons/LowMemoryUsage.tif",                   FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"HighMemoryUsage",             "EngineAssets/Icons/HighMemoryUsage.tif",                  FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"LivePreview",                 "EngineAssets/Icons/LivePreview.tif",                      FT_DONT_RELEASE | FT_DONT_STREAM },
+#if !defined(_RELEASE)
+        {"NoTexture",                   "EngineAssets/TextureMsg/ReplaceMe.tif",                   FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"IconTextureCompiling",        "EngineAssets/TextureMsg/TextureCompiling.tif",            FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"IconTextureCompiling_a",      "EngineAssets/TextureMsg/TextureCompiling_a.tif",          FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"IconTextureCompiling_cm",     "EngineAssets/TextureMsg/TextureCompiling_cm.tif",         FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"IconTextureCompiling_ddn",    "EngineAssets/TextureMsg/TextureCompiling_ddn.tif",        FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"IconTextureCompiling_ddna",   "EngineAssets/TextureMsg/TextureCompiling_ddna.tif",       FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"DefaultMergedDetail",         "EngineAssets/Textures/GreyAlpha.tif",                     FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"MipMapDebug",                 "EngineAssets/TextureMsg/MipMapDebug.tif",                 FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorBlue",                   "EngineAssets/TextureMsg/color_Blue.tif",                  FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorCyan",                   "EngineAssets/TextureMsg/color_Cyan.tif",                  FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorGreen",                  "EngineAssets/TextureMsg/color_Green.tif",                 FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorPurple",                 "EngineAssets/TextureMsg/color_Purple.tif",                FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorRed",                    "EngineAssets/TextureMsg/color_Red.tif",                   FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorWhite",                  "EngineAssets/TextureMsg/color_White.tif",                 FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorYellow",                 "EngineAssets/TextureMsg/color_Yellow.tif",                FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorOrange",                 "EngineAssets/TextureMsg/color_Orange.tif",                FT_DONT_RELEASE | FT_DONT_STREAM },
+        {"ColorMagenta",                "EngineAssets/TextureMsg/color_Magenta.tif",               FT_DONT_RELEASE | FT_DONT_STREAM },
+#else
+        {"NoTexture",                   "EngineAssets/TextureMsg/ReplaceMeRelease.tif",            FT_DONT_RELEASE | FT_DONT_STREAM },
+#endif
+    };
+
+    // Loop over the appropriate texture list and load the textures, storing them in a map keyed by texture name.
+    // Use reduced subset of textures for Other.
+    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
+    {
+        for (const TextureEntry& entry : texturesFromFileReduced)
         {
-            CCryNameTSCRC texEntry(entry.szTextureName);
-            m_DefaultTextures[texEntry] = pNewTexture;
+            // Other requires that we use EF_LoadTexture rather than CTexture::ForName
+            CTexture* pNewTexture = static_cast<CTexture*>(gEnv->pRenderer->EF_LoadTexture(entry.szFileName, entry.flags));
+            if (pNewTexture)
+            {
+                CCryNameTSCRC texEntry(entry.szTextureName);
+                m_DefaultTextures[texEntry] = pNewTexture;
+            }
+            else
+            {
+                AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+                AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            }
         }
-        else
+    }
+    else
+    {
+        for (const TextureEntry& entry : texturesFromFile)
         {
-            AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
-            AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            CTexture* pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
+            if (pNewTexture)
+            {
+                CCryNameTSCRC texEntry(entry.szTextureName);
+                m_DefaultTextures[texEntry] = pNewTexture;
+            }
+            else
+            {
+                AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+                AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            }
         }
     }
 

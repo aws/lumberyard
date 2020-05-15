@@ -79,21 +79,21 @@ public:
 
     void RetryLoading() override;
 
-    // The ExecuteAsync and ExecuteAsyncWithRetry methods can be used to submit 
+    // The ExecuteAsync and ExecuteAsyncWithRetry methods can be used to submit
     // commands to the resource manager's Python implemeantion.
     //
     // There are two ways to get output. The prefered (and newer) way is to provide an
-    // ExecuteAsyncCallback function when submitting the request. 
+    // ExecuteAsyncCallback function when submitting the request.
     //
     // Alturnatively you can provide a requestId produce by calling AllocateRequestId and
     // wire up a handler to the CommandOutput signal. In this case YOU MUST IGNORE
     // all invocations where the resourceId is not the one provided when submitting the
-    // request. 
+    // request.
     //
-    // The callback or signal function will be called once for each output produced by the 
+    // The callback or signal function will be called once for each output produced by the
     // operation. This may include output data with a key value unqiue to the command. It
-    // may also include progress messages where key is "message". If the operation succeeds, 
-    // the function will be called for a final time with key == "success". If the 
+    // may also include progress messages where key is "message". If the operation succeeds,
+    // the function will be called for a final time with key == "success". If the
     // operation fails, the function will be called for a final time with key == "error".
     //
     // You can also submit commands with retry enabled. If these command fail, they are
@@ -112,7 +112,7 @@ public:
     void ExecuteAsyncWithRetry(ExecuteAsyncCallback callback, const char* command, const QVariantMap& args = QVariantMap{});
 
     void GetRegionList() override;
-    bool InitializeProject(const QString& region, const QString& stackName, const QString& accessKey, const QString& secretKey) override;
+    bool InitializeProject(const QString& region, const QString& stackName, const QString& accessKey, const QString& secretKey, bool createAdminRoles) override;
 
     void RequestEditProjectSettings() override;
     void RequestEditDeploymentTemplate() override;
@@ -135,7 +135,7 @@ public:
     void UpdateSourceControlStates() override;
 
     bool IsOperationInProgress() override;
-        
+
     void OperationStarted();
     void OperationFinished();
 
@@ -152,7 +152,7 @@ public:
 
     /// Pointer to Cloud Canvas specific logger
     QSharedPointer<CloudCanvasLogger> GetLogger() { return m_logger; }
-    
+
     void RefreshDeploymentList();
     void RefreshProjectDescription();
     void RefreshResourceGroupList();
@@ -204,6 +204,7 @@ private:
     void ProcessOutputStackEventErrors(RequestId requestId, const QVariant& value);
     void ProcessOutputSupportedRegionList(RequestId requestId, const QVariant& value);
     void ProcessOutputCreateAdmin(RequestId requestId, const QVariant& value);
+    void ProcessOutputDeploymentUpdated(RequestId requestId, const QVariant& value);
 
     QVariant m_lastProjectDescription;
     QVariant m_lastResourceGroupList;

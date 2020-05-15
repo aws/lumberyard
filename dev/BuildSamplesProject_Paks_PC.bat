@@ -11,6 +11,8 @@ set RECOMPRESS_NAME=--recompress
 set /A RECOMPRESS_VALUE=0
 set USE_FASTEST_NAME=--use_fastest
 set /A USE_FASTEST_VALUE=0
+set "BINFOLDER_HINT_NAME=--binfolder-hint"
+set "BINFOLDER_HINT="
 :CmdLineArgumentsParseLoop
 if "%1"=="" goto CmdLineArgumentsParsingDone
     if "%1"=="%RECOMPRESS_NAME%" (
@@ -21,13 +23,20 @@ if "%1"=="" goto CmdLineArgumentsParsingDone
         set /A USE_FASTEST_VALUE=1
         goto GotValidArgument
     )
+    if "%1"=="%BINFOLDER_HINT_NAME%" (
+        REM The next parameter is the hint directory
+        set BINFOLDER_HINT=%2%
+        shift
+        goto GotValidArgument
+    )
     REM If we are here, the user gave us an unexpected argument. Let them know and quit.
-    echo "%1" is an invalid argument, optional arguments are "%RECOMPRESS_NAME%" or "%USE_FASTEST_NAME%"
-    echo --recompress: If present, the ResourceCompiler (RC.exe) will decompress and compress back each
+    echo "%1" is an invalid argument, optional arguments are "%RECOMPRESS_NAME%", "%USE_FASTEST_NAME%" or "%BINFOLDER_HINT_NAME%"
+    echo %RECOMPRESS_NAME%: If present, the ResourceCompiler (RC.exe) will decompress and compress back each
     echo               PAK file found as they are transferred from the cache folder to the game_pc_pak folder.
-    echo --use_fastest: As each file is being added to its PAK file, they will be compressed across all
+    echo %USE_FASTEST_NAME%: As each file is being added to its PAK file, they will be compressed across all
     echo                available codecs (ZLIB, ZSTD and LZ4) and the one with the fastest decompression time
     echo                will be chosen. The default is to always use ZLIB.
+    echo %BINFOLDER_HINT_NAME%^=^<folder_name^>: A hint to indicate the folder name to use for finding the windows binaries i.e Bin64vc142
     exit /b 1
 :GotValidArgument
     shift
@@ -35,7 +44,7 @@ goto CmdLineArgumentsParseLoop
 :CmdLineArgumentsParsingDone
 
 REM Attempt to determine the best BinFolder for rc.exe and AssetProcessorBatch.exe
-call "%MYBATCHFILEDIRECTORY%\DetermineRCandAP.bat" SILENT
+call "%MYBATCHFILEDIRECTORY%\DetermineRCandAP.bat" SILENT %BINFOLDER_HINT%
 
 REM If a bin folder was registered, validate the presence of the binfolder/rc/rc.exe
 IF ERRORLEVEL 1 (

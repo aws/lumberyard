@@ -56,7 +56,7 @@ namespace ScriptCanvas
 
             void IsNull::OnInputSignal(const SlotId&)
             {
-                const bool isNull = GetInput(GetSlotId("Reference"))->Empty();
+                const bool isNull = FindDatum(GetSlotId("Reference"))->Empty();
                 PushOutput(Datum(isNull), *GetSlot(GetSlotId("Is Null")));
                 SignalOutput(isNull ? IsNullProperty::GetTrueSlotId(this) : IsNullProperty::GetFalseSlotId(this));
             }

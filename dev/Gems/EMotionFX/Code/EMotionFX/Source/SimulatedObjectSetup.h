@@ -102,6 +102,8 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        AZ::Crc32 GetPinnedOptionVisibility() const;
+
         SimulatedObject* m_object = nullptr; /**< The simulated object we belong to. */
         AZ::u32 m_jointIndex = 0; /**< The joint index inside the skeleton of the actor. */
         AZStd::string m_jointName; /**< The joint name in the actor skeleton. */

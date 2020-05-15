@@ -19,6 +19,7 @@
 #include <PhysX/SystemComponentBus.h>
 #include <Include/PhysXCharacters/SystemBus.h>
 #include <cfloat>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysXCharacters
 {
@@ -113,6 +114,7 @@ namespace PhysXCharacters
 
                 AppendShapeIndependentProperties(capsuleDesc, characterConfig);
                 AppendPhysXSpecificProperties(capsuleDesc, characterConfig);
+                PHYSX_SCENE_WRITE_LOCK(static_cast<physx::PxScene*>(world.GetNativePointer()));
                 pxController = manager->createController(capsuleDesc);
             }
 
@@ -127,6 +129,7 @@ namespace PhysXCharacters
 
                 AppendShapeIndependentProperties(boxDesc, characterConfig);
                 AppendPhysXSpecificProperties(boxDesc, characterConfig);
+                PHYSX_SCENE_WRITE_LOCK(static_cast<physx::PxScene*>(world.GetNativePointer()));
                 pxController = manager->createController(boxDesc);
             }
 

@@ -90,11 +90,6 @@ namespace Physics
         return GetPropertyVisibility(MaterialSelection);
     }
 
-    AZ::Crc32 ColliderConfiguration::GetIsVisibleVisibility() const
-    {
-        return GetPropertyVisibility(IsVisible);
-    }
-    
     AZ::Crc32 ColliderConfiguration::GetOffsetVisibility() const
     {
         return GetPropertyVisibility(Offset);

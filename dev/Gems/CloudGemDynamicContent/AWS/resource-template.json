@@ -240,7 +240,6 @@
             "Type": "Custom::LambdaConfiguration", 
             "Properties": {
                 "FunctionName": "ServiceLambda", 
-                "Settings": {}, 
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }, 
@@ -250,7 +249,7 @@
                 "ConfigurationKey": {
                     "Ref": "ConfigurationKey"
                 }, 
-                "Runtime": "python2.7",                
+                "Runtime": "python3.7",                
                 "Settings": {
                     "StagingTable": { "Ref": "StagingSettingsTable" },
                     "StagingBucket": { "Ref": "ContentBucket" }

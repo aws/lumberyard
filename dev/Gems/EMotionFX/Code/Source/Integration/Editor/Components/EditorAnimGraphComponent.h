@@ -86,6 +86,8 @@ namespace EMotionFX
             AZ::u32 OnAnimGraphAssetSelected();
             AZ::u32 OnMotionSetAssetSelected();
 
+            bool IsSupportedScriptPropertyType(const ValueParameter* param) const;
+
             // Called at edit-time when creating the component directly from an asset.
             void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 

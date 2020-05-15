@@ -2,7 +2,7 @@
     "name": "zlib",
     "source": "@3P:zlib@",
     "description": "ZLib Library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

@@ -32,8 +32,13 @@ namespace AzToolsFramework
         //! Determines if the name matching should be case sensitive.
         bool m_namesCaseSensitive = false;
 
-        //! List of component type ids (matches if any match).
-        AZStd::vector<AZ::Uuid> m_componentTypeIds;
+        using ComponentProperties = AZStd::unordered_map<AZStd::string, AZStd::any>;
+        using ComponentProperty = AZStd::pair<AZStd::string, AZStd::any>;
+        using Components = AZStd::unordered_map<AZ::Uuid, ComponentProperties>;
+
+        //! Map of component type ids with values as their properties if needed.
+        //! Matches if any component's property values match. If no property value given, matches if any component types match.
+        Components m_components;
 
         //! Determines if the filter should match all component type ids (AND).
         bool m_mustMatchAllComponents = false;
@@ -43,6 +48,9 @@ namespace AzToolsFramework
 
         //! Determines if the names are relative to the root or should be searched in children too.
         bool m_namesAreRootBased = false;
+
+        //! Determines if entities' position is inside the given valid AABB. 
+        AZ::Aabb m_aabb = AZ::Aabb::CreateNull();
     };
 
     //! Provides an API to search editor entity that match some conditions in the currently open level.

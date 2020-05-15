@@ -10,15 +10,15 @@
 #
 
 
-from waflib import Errors
-
-from utils import calculate_string_hash, is_value_true
-
-import unit_test
-import pytest
-
+# System Imports
 import os
 import stat
+import pytest
+
+# lmbrwaflib imports
+from lmbrwaflib import unit_test
+from lmbrwaflib.utils import calculate_string_hash, is_value_true
+
 
 @pytest.mark.parametrize(
     "input, expected", [

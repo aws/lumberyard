@@ -69,6 +69,11 @@
             "AzCore/Memory/OverrunDetectionAllocator_Platform.h"
         ],
 
+        "Module/Internal/Platform/Mac":
+        [
+            "AzCore/Module/Internal/ModuleManagerSearchPathTool_Mac.cpp"
+        ],
+
         "Math/Internal/Platform/Mac":
         [
             "AzCore/Math/Internal/MathTypes_Mac.h",

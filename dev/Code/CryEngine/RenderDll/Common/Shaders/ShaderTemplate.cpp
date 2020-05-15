@@ -52,8 +52,8 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
         pTextureRes->m_Sampler.Cleanup();
         if (!pTextureRes->m_Name.empty())
         {   // If the texture that used to exist in this resource slot was created as an alpha texture
-            // e.g. - a gloss map stored in the alpha channel of a normal map (see CShaderMan::mfRefreshResources for some 
-            // extra details on the texture slots that use the FT_ALPHA texture path), we need to pass the FT_ALPHA flag 
+            // e.g. - a gloss map stored in the alpha channel of a normal map (see CShaderMan::mfRefreshResources for some
+            // extra details on the texture slots that use the FT_ALPHA texture path), we need to pass the FT_ALPHA flag
             // into mfFindResourceTexture so it can find the actual texture resource.
             const uint32    alphaTextureFlags = textureFlags & FT_ALPHA;
 
@@ -107,8 +107,8 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
             // if there is not shader deformation or both deformations are identical
             if ((!pLoadedSRes->m_pDeformInfo && !localCopySR.m_DeformInfo.m_eType) || (pLoadedSRes->m_pDeformInfo && *pLoadedSRes->m_pDeformInfo == localCopySR.m_DeformInfo))
             {
-                // [Shader System TO DO] - optimize 
-                // The following code runs over all slots and verify a match between current shader and 
+                // [Shader System TO DO] - optimize
+                // The following code runs over all slots and verify a match between current shader and
                 // loaded shaders If no match - break and add to the loaded.
                 for (j = 0; j < EFTT_MAX; j++)
                 {
@@ -149,12 +149,12 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
         }
     }
 
-    // The current shader resource does not exist - create a dynamic copy to be loaded and 
+    // The current shader resource does not exist - create a dynamic copy to be loaded and
     // insert to the cached resources bank.
     CShaderResources*   pSR = new CShaderResources(&localCopySR);
     pSR->m_nRefCounter = 1;
     if (!CShader::s_ShaderResources_known.Num())
-    {        
+    {
         CShader::s_ShaderResources_known.AddIndex(1);
         CShaderResources* pSRNULL = new CShaderResources;
         pSRNULL->m_nRefCounter = 1;
@@ -173,7 +173,7 @@ CShaderResources* CShaderMan::mfCreateShaderResources(const SInputShaderResource
         CShader::s_ShaderResources_known[nFree] = pSR;
     }
     else
-    {        
+    {
         pSR->m_Id = CShader::s_ShaderResources_known.Num();
         pSR->m_IdGroup = pSR->m_Id;
         CShader::s_ShaderResources_known.AddElem(pSR);
@@ -301,8 +301,8 @@ uint32 SShaderItem::PostLoad()
             }
             else
             {
-                AZ_Warning("ShadersSystem", false, 
-                    "Shader %s use refraction but it's not enabled for this configuration. Check the value of the CVAR r_Refraction.", 
+                AZ_Warning("ShadersSystem", false,
+                    "Shader %s use refraction but it's not enabled for this configuration. Check the value of the CVAR r_Refraction.",
                     pSH->m_NameShader.c_str());
             }
         }
@@ -326,7 +326,7 @@ uint32 SShaderItem::PostLoad()
 // This method should be per shader type and not generic to the entire engine.
 
 // This method associates fixed slots with known contextual material textures
-// The engine slots are left unhandled and will be assigned through the 
+// The engine slots are left unhandled and will be assigned through the
 // shader and engine side - explore how!
 //------------------------------------------------------------------------------
 EEfResTextures CShaderMan::mfCheckTextureSlotName(const char* mapname)
@@ -1044,6 +1044,11 @@ bool CShaderMan::mfLoadResourceTexture(ResourceSlotIndex Id, CShaderResources& R
             texSampler.m_pTex = mfLoadResourceTexture(pTextureRes->m_Name.c_str(), RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
         }
 
+        if (!bTextureLoaded && texSampler.m_pTex->IsTextureMissing())
+        {
+            TextureWarning(pTextureRes->m_Name.c_str(), "Texture file is missing: '%s%s' in material \'%s\'", RS.m_TexturePath.c_str(), pTextureRes->m_Name.c_str(), RS.m_szMaterialName);
+        }
+
         if (!(bTextureLoaded = texSampler.m_pTex->IsTextureLoaded()) && bReplaceMeOnFail)
         {
             texSampler.m_pTex = mfLoadResourceTexture("EngineAssets/TextureMsg/ReplaceMe.tif", RS.m_TexturePath.c_str(), texSampler.GetTexFlags() | CustomFlags, pTextureRes);
@@ -1080,7 +1085,7 @@ bool CShaderMan::mfRefreshResourceConstants(CShaderResources* Res)
 }
 
 //------------------------------------------------------------------------------
-// [Shader System] - TO DO : be very careful when optimizing this as it can lead 
+// [Shader System] - TO DO : be very careful when optimizing this as it can lead
 // to loss / uncorrelated  of texture slots.
 //------------------------------------------------------------------------------
 void CShaderMan::mfRefreshResources(CShaderResources* Res)

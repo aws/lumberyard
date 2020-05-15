@@ -22,7 +22,7 @@ namespace Vegetation
     {
     public:
         using BaseClassType = EditorVegetationComponentBase<DescriptorWeightSelectorComponent, DescriptorWeightSelectorConfig>;
-        AZ_EDITOR_COMPONENT(EditorDescriptorWeightSelectorComponent, "{0FB90550-149B-4E05-B22C-2753F6526E97}", BaseClassType);
+        AZ_EDITOR_COMPONENT(EditorDescriptorWeightSelectorComponent, EditorDescriptorWeightSelectorComponentTypeId, BaseClassType);
         static void Reflect(AZ::ReflectContext* context);
 
         static constexpr const char* const s_categoryName = "Vegetation";

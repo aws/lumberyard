@@ -16,7 +16,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
-#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <AzQtComponents/Components/StyledDockWidget.h>
 
@@ -52,13 +52,14 @@ namespace ScriptCanvasEditor
     {
         class ScriptCanvasRootPaletteTreeItem
             : public GraphCanvas::NodePaletteTreeItem
-            , AzFramework::AssetSystemBus::Handler
+            , AzFramework::AssetCatalogEventBus::Handler
         {
         public:
             AZ_CLASS_ALLOCATOR(ScriptCanvasRootPaletteTreeItem, AZ::SystemAllocator, 0);
             ScriptCanvasRootPaletteTreeItem(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel);
             ~ScriptCanvasRootPaletteTreeItem();
 
+            void RegisterCategoryNode(GraphCanvas::GraphCanvasTreeItem* treeItem, const char* subCategory, GraphCanvas::NodePaletteTreeItem* parentRoot = nullptr);
             GraphCanvas::NodePaletteTreeItem* GetCategoryNode(const char* categoryPath, GraphCanvas::NodePaletteTreeItem* parentRoot = nullptr);
             void PruneEmptyNodes();
 
@@ -71,10 +72,11 @@ namespace ScriptCanvasEditor
 
             void ProcessAsset(AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry);
 
-            //! Called by the AssetProcessor when an asset in the cache has been modified.
-            void AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage /*message*/) override;
+            //! Called by the AssetCatalog when an asset has been modified
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+
             //! Called by the AssetProcessor when an asset in the cache has been removed.
-            void AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage /*message*/) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
 
             const NodePaletteModel& m_nodePaletteModel;
             AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel;
@@ -133,7 +135,7 @@ namespace ScriptCanvasEditor
             static const char* GetMimeType() { return "scriptcanvas/node-palette-mime-event"; }
             
             NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, const ScriptCanvasNodePaletteConfig& paletteConfig);
-            ~NodePaletteDockWidget() = default;
+            ~NodePaletteDockWidget();
 
             void OnNewCustomEvent();
 
@@ -153,13 +155,15 @@ namespace ScriptCanvasEditor
 
             void OnTreeSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
 
-            void SetCycleTarget(ScriptCanvas::NodeTypeIdentifier cyclingIdentifier);
+            void AddCycleTarget(ScriptCanvas::NodeTypeIdentifier cyclingIdentifier);
+            void ClearCycleTarget();
             void CycleToNextNode();
             void CycleToPreviousNode();
 
         private:
 
             void ConfigureHelper();
+            void ParseCycleTargets(GraphCanvas::GraphCanvasTreeItem* treeItem);
 
             AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel;
             const NodePaletteModel& m_nodePaletteModel;
@@ -168,7 +172,7 @@ namespace ScriptCanvasEditor
 
             QToolButton* m_newCustomEvent;
 
-            ScriptCanvas::NodeTypeIdentifier    m_cyclingIdentifier;
+            AZStd::unordered_set< ScriptCanvas::NodeTypeIdentifier > m_cyclingIdentifiers;
             GraphCanvas::NodeFocusCyclingHelper m_cyclingHelper;
 
             QAction* m_nextCycleAction;

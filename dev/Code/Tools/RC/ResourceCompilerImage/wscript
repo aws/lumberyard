@@ -13,94 +13,35 @@
 #
 ########################################################################################
 
-import os
-from runpy import run_path
-
 def build(bld):
 
-    includes    = [ '.',
-                    './PCH',
-                    bld.ThirdPartyPath('boost'),
-                    bld.Path('Code/CryEngine/CryCommon'),
-                    bld.Path('Code/Tools'),
-                    bld.Path('Code/Tools/RC/ResourceCompiler'),
-                    bld.Path('Code/Tools/CryCommonTools'),
-                    bld.Path('Code/CryEngine/CryCommon'),
-                    bld.ThirdPartyPath('squish')]
-
-    defines     = [ 'RESOURCECOMPILERIMAGE_EXPORTS',
-                    'RESOURCE_COMPILER_IMAGE']
-    win_lib     = [ 'Gdi32' ]
-    win_libpath = []
-    win_copy_dependent_files = []
-
-    darwin_copy_dependent_files = []
-
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        script_dir, script_base = os.path.split(bld.cur_script.abspath())
-        restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_base, p1))
-        if os.path.exists(restricted_script_filename):
-            restricted_script = run_path(restricted_script_filename)
-            if 'if_platform_supported' in restricted_script:
-                restricted_script['if_platform_supported'](bld, lambda *args: os.path.join(*args), includes, win_copy_dependent_files, win_lib, win_libpath)
-
-    kw = dict(
-
-        #==============================
+    bld.CryResourceCompilerModule(
         # Settings
-        #==============================
         target                      = 'ResourceCompilerImage',
         vs_filter                   = 'RC',
-        copyright_org               = 'Amazon-CryTek',
-        file_list                   = ['resourcecompilerimage.waf_files'],
-        pch                         = 'PCH/StdAfx.cpp',
-        platforms                   = ['win', 'darwin', 'linux'],
-        exclude_monolithic          = True,
+        file_list                   = 'resourcecompilerimage.waf_files',
+        platforms                   = ['win','darwin','linux'],
         client_only                 = True,
-        use                         = ['AzToolsFramework'],
+        exclude_monolithic          = True,
+        use                         = ['AzToolsFramework',
+                                       'AssetBuilderSDK'],
         uselib                      = ['QT5CORE',
-                                        'QT5GUI',
-                                        'QT5WIDGETS',
-                                        'QT5SVG',
-                                        'TIFF',
-                                        'ZLIB',
-                                        'TIFF',
-                                        'PVR_TEX_TOOL',
-                                        'ETC2COMP'],
+                                       'QT5GUI',
+                                       'QT5WIDGETS'],
         features                    = ['qt5'],
-        includes                    = includes,
-        defines                     = defines,
-        libpath                     = [ bld.Path('Code/Tools/CryCommonTools')],
+        includes                    = [ '.',
+                                        bld.Path('Code/CryEngine/CryCommon'),
+                                        bld.Path('Code/Tools'),
+                                        bld.Path('Code/Tools/RC/ResourceCompiler'),
+                                        bld.Path('Code/Tools/CryCommonTools')],
 
-        #==============================
-        # Windows
-        #==============================
-        win_defines                 = ['_WIN64'],
-        win_copy_dependent_files    = win_copy_dependent_files,
-        win_lib                     = win_lib,
-        win_libpath                 = win_libpath,
-        msvc_cflags                 = ['/W3', '/EHsc'],
-        msvc_cxxflags = [
-            '/wd4819',      # Invalid characters not in default code page.  Source contain characters above extended ascii, including in comments.
-        ],
-
-        #==============================
-        # Darwin
-        #==============================
-        darwin_copy_dependent_files = darwin_copy_dependent_files,
-        clang_cflags                = ['-Wno-shift-count-overflow',
-                                    '-Wno-shift-negative-value'],
-        clang_cxxflags              = ['-fexceptions',
-                                    '-Wno-shift-count-overflow',
-                                    '-Wno-sometimes-uninitialized', # required for squish library to compile
-                                    '-Wno-shift-negative-value'],
+        darwin_uselib               = ['AWS_CPP_SDK_CORE',
+                                       'AWS_CPP_SDK_COGNITO_IDENTITY',
+                                       'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                                       'AWS_CPP_SDK_MOBILEANALYTICS'],
 
         linux_rpath                 = ['$ORIGIN/..'],
-        linux_lib                   = ['jpeg', 'jbig'],
 
         # Testing
         test_all_file_list          = ['resourcecompilerimage_test.waf_files'],
     )
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['file_list'] += ['{0}/resourcecompilerimage_{1}.waf_files'.format(p0, p1)]
-    bld.CryResourceCompilerModule(**kw)

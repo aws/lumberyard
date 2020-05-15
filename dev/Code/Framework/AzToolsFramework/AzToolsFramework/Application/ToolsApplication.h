@@ -99,6 +99,8 @@ namespace AzToolsFramework
         void SetSelectedEntities(const EntityIdList& selectedEntities) override;
         bool IsSelectable(const AZ::EntityId& entityId) override;
         bool IsSelected(const AZ::EntityId& entityId) override;
+        bool IsSliceRootEntity(const AZ::EntityId& entityId) override;
+
         UndoSystem::UndoStack* GetUndoStack() override { return m_undoStack; }
         UndoSystem::URSequencePoint* GetCurrentUndoBatch() override { return m_currentBatchUndo; }
         PreemptiveUndoCache* GetUndoCache() override { return &m_undoCache; }
@@ -115,11 +117,22 @@ namespace AzToolsFramework
 
         bool DetachEntities(const AZStd::vector<AZ::EntityId>& entitiesToDetach, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) override;
 
+        /**
+        * Detaches the supplied subslices from their owning slice instance
+        * @param subsliceRootList A list of SliceInstanceAddresses paired with a mapping from the sub slices asset entityId's to the owing slice instance's live entityIds
+                                  See SliceComponent::GetMappingBetweenSubsliceAndSourceInstanceEntityIds for a helper to acquire this mapping
+        * @param restoreInfos A list of EntityRestoreInfo's to be filled with information on how to restore the entities in the subslices back to their original state before this operation
+        * @return Returns true on operation success, false otherwise
+        */
+        bool DetachSubsliceInstances(const AZ::SliceComponent::SliceInstanceEntityIdRemapList& subsliceRootList,
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) override;
+
         bool FindCommonRoot(const EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityIdList* topLevelEntities = nullptr) override;
         bool FindCommonRootInactive(const EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityList* topLevelEntities = nullptr) override;
         void FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds) override;
         AZ::SliceComponent::SliceInstanceAddress FindCommonSliceInstanceAddress(const EntityIdList& entityIds) override;
         AZ::EntityId GetRootEntityIdOfSliceInstance(AZ::SliceComponent::SliceInstanceAddress sliceAddress) override;
+        AZ::EntityId GetCurrentLevelEntityId() override;
 
         bool RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;
         bool CheckSourceControlConnectionAndRequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;

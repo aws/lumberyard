@@ -15,7 +15,7 @@ import boto3
 import survey_utils
 import survey_common
 import sys
-import StringIO
+from six import StringIO
 import CloudCanvas
 import zlib
 

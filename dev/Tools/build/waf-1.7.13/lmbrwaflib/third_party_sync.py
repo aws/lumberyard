@@ -9,12 +9,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import configparser
+import os
+import subprocess
+import sys
+
+# waflib imports
 from waflib import Utils
 from waflib.Configure import conf, Logs
-
-import os
-import ConfigParser
-import subprocess
 
 
 # Config file values for the p4 sync configuration file
@@ -43,14 +46,14 @@ class P4SyncThirdPartySettings:
             return
 
         try:
-            config_parser = ConfigParser.ConfigParser()
+            config_parser = configparser.ConfigParser()
             config_parser.read(config_file)
 
             self.p4_exe = config_parser.get(P4_SYNC_CONFIG_SECTION, P4_SYNC_CONFIG_EXECUTABLE)
             self.p4_port = config_parser.get(P4_SYNC_CONFIG_SECTION, P4_SYNC_CONFIG_HOST_PORT)
             self.p4_workspace = config_parser.get(P4_SYNC_CONFIG_SECTION, P4_SYNC_CONFIG_WORKSPACE)
             self.p4_repo = config_parser.get(P4_SYNC_CONFIG_SECTION, P4_SYNC_CONFIG_REPOSITORY)
-        except ConfigParser.Error as err:
+        except configparser.Error as err:
             Logs.warn('[WARN] Error reading p4 sync settings file {}.  ({}).  '
                       'Missing 3rd party libraries will not be synced from perforce'.format(config_file, str(err)))
             return
@@ -59,7 +62,7 @@ class P4SyncThirdPartySettings:
             proc = subprocess.Popen([self.p4_exe, '-p', self.p4_port, 'client', '-o', self.p4_workspace],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
-            for line in iter(proc.stdout.readline, b''):
+            for line in [line_decoded.decode(sys.stdout.encoding or 'iso8859-1', 'replace') for line_decoded in iter(proc.stdout.readline, b'')]:
                 if line.startswith("Root:"):
                     self.client_root = line.replace("Root:", "").strip()
                     break

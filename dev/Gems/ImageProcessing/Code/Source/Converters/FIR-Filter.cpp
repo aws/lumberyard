@@ -14,7 +14,7 @@
 
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/base.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/ImageConvert.h>
 #include <Processing/ImageToProcess.h>
 

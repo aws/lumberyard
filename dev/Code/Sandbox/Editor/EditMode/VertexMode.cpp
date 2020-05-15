@@ -25,32 +25,7 @@
 #include "SubObjSelectionPanel.h"
 #include "SubObjDisplayPanel.h"
 #include "SubObjectSelectionReferenceFrameCalculator.h"
-#include "Util/BoostPythonHelpers.h"
 #include "DisplaySettings.h"
-
-void CSubObjectModeTool::PySetSelectionType(const char* modeName)
-{
-    if (_stricmp(modeName, "vertex") == 0)
-    {
-        Command_SelectVertex();
-    }
-    else if (_stricmp(modeName, "edge") == 0)
-    {
-        Command_SelectEdge();
-    }
-    else if (_stricmp(modeName, "face") == 0)
-    {
-        Command_SelectFace();
-    }
-    else if (_stricmp(modeName, "polygon") == 0)
-    {
-        Command_SelectPolygon();
-    }
-}
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CSubObjectModeTool::PySetSelectionType, general, set_subobject_selection,
-    "Sets the selection type in the sub-object edit mode.",
-    "general.set_subobject_selection(str modeName)");
 
 //////////////////////////////////////////////////////////////////////////
 struct CDisplayPanelUI
@@ -197,14 +172,6 @@ void CSubObjectModeTool::BeginEditParams(IEditor* ie, int flags)
         CSubObjSelectionPanel* pPanel = new CSubObjSelectionPanel;
         m_selectionPanelId = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, "Selection", pPanel);
     }
-    /*
-    if (!m_displayPanelId)
-    {
-        CPropertiesPanel *pPanel = new CPropertiesPanel( AfxGetMainWnd() );
-        pPanel->AddVars( m_pDisplayPanelUI->pVarBlock,functor(*m_pDisplayPanelUI,&CDisplayPanelUI::OnVarChanged) );
-        m_displayPanelId = GetIEditor()->AddRollUpPage( ROLLUP_OBJECTS,"Display Selection",pPanel );
-    }
-    */
     if (!m_displayPanelId)
     {
         CSubObjDisplayPanel* pPanel = new CSubObjDisplayPanel;
@@ -266,8 +233,6 @@ bool CSubObjectModeTool::HitTest(CViewport* view, const QPoint& point, const QRe
 
     if (nFlags & SO_HIT_SELECT)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): GetIEditor()->BeginUndo();", __FILE__, __LINE__);
-
         GetIEditor()->BeginUndo();
     }
 
@@ -293,8 +258,6 @@ bool CSubObjectModeTool::HitTest(CViewport* view, const QPoint& point, const QRe
     }
     if (nFlags & SO_HIT_SELECT)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): GetIEditor()->AcceptUndo( \"SubObject Select\" );", __FILE__, __LINE__);
-
         GetIEditor()->AcceptUndo("SubObject Select");
     }
 
@@ -334,7 +297,7 @@ bool CSubObjectModeTool::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt
         {
             m_pTypePanel->SelectElemtType(m_currSelectionType);
         }
-        GetIEditor()->ExecuteCommand("general.set_subobject_selection 'vertex'");
+        Command_SelectVertex();
         view->SetActiveWindow();
         view->SetFocus();
     }
@@ -345,7 +308,7 @@ bool CSubObjectModeTool::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt
         {
             m_pTypePanel->SelectElemtType(m_currSelectionType);
         }
-        GetIEditor()->ExecuteCommand("general.set_subobject_selection 'edge'");
+        Command_SelectEdge();
         view->SetActiveWindow();
         view->SetFocus();
     }
@@ -356,7 +319,7 @@ bool CSubObjectModeTool::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt
         {
             m_pTypePanel->SelectElemtType(m_currSelectionType);
         }
-        GetIEditor()->ExecuteCommand("general.set_subobject_selection 'face'");
+        Command_SelectFace();
         view->SetActiveWindow();
         view->SetFocus();
     }
@@ -367,14 +330,13 @@ bool CSubObjectModeTool::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt
         {
             m_pTypePanel->SelectElemtType(m_currSelectionType);
         }
-        GetIEditor()->ExecuteCommand("general.set_subobject_selection 'polygon'");
+        Command_SelectPolygon();
         view->SetActiveWindow();
         view->SetFocus();
     }
 
     UpdateSelectionGizmo();
 
-    //pPanel->SelectElemtType(m_currSelectionType);
     return false;
 }
 
@@ -425,7 +387,7 @@ bool CSubObjectModeTool::OnLButtonDown(CViewport* view, int nFlags, const QPoint
         // Check for Move to position.
         if (bCtrlClick && bShiftClick)
         {
-            // Ctrl-Click on terain will move selected objects to specified location.
+            // Ctrl-Click on terrain will move selected objects to specified location.
             //MoveSelectionToPos( view,pos );
             //bLockSelection = true;
         }
@@ -475,7 +437,6 @@ bool CSubObjectModeTool::OnLButtonDown(CViewport* view, int nFlags, const QPoint
         GetCommandMode() == RotateMode ||
         GetCommandMode() == ScaleMode)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->BeginUndo();", __FILE__, __LINE__);
         view->BeginUndo();
     }
 
@@ -507,8 +468,6 @@ bool CSubObjectModeTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& 
     {
         if (GetCommandMode() == MoveMode)
         {
-            //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->AcceptUndo( \"Move SubObj Elemnt\" );", __FILE__, __LINE__);
-
             view->AcceptUndo("Move SubObj Elemnt");
             for (SelectedObjectList::iterator itObject = this->m_selectedObjects.begin(); itObject != this->m_selectedObjects.end(); ++itObject)
             {
@@ -517,8 +476,6 @@ bool CSubObjectModeTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& 
         }
         else if (GetCommandMode() == RotateMode)
         {
-            //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->AcceptUndo( \"Rotate SubObj Element\" );", __FILE__, __LINE__);
-
             view->AcceptUndo("Rotate SubObj Element");
             for (SelectedObjectList::iterator itObject = this->m_selectedObjects.begin(); itObject != this->m_selectedObjects.end(); ++itObject)
             {
@@ -527,8 +484,6 @@ bool CSubObjectModeTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& 
         }
         else if (GetCommandMode() == ScaleMode)
         {
-            //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->AcceptUndo( \"Scale SubObj Element\" );", __FILE__, __LINE__);
-
             view->AcceptUndo("Scale SubObj Element");
             for (SelectedObjectList::iterator itObject = this->m_selectedObjects.begin(); itObject != this->m_selectedObjects.end(); ++itObject)
             {
@@ -537,8 +492,6 @@ bool CSubObjectModeTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& 
         }
         else
         {
-            //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->CancelUndo();", __FILE__, __LINE__);
-
             view->CancelUndo();
         }
     }
@@ -657,7 +610,6 @@ bool CSubObjectModeTool::OnMouseMove(CViewport* view, int nFlags, const QPoint& 
     {
         if (pTransformManipulator)
         {
-            //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): Transform manipulator", __FILE__, __LINE__);
             QPoint pt = point;
             OnManipulatorDrag(view, pTransformManipulator, m_cMouseDownPos, pt /*by-ref*/, Vec3(0, 0, 0));
         }
@@ -693,13 +645,9 @@ void CSubObjectModeTool::OnManipulatorDrag(CViewport* view, ITransformManipulato
 
     Matrix34 modRefFrame = pManipulator->GetTransformation(coordSys);
 
-    //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): view->IsUndoRecording() = %d", __FILE__, __LINE__, view->IsUndoRecording());
-
     // get current axis constrains.
     if (editMode == eEditModeMove)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): GetIEditor()->RestoreUndo();", __FILE__, __LINE__);
-
         GetIEditor()->RestoreUndo();
 
         SSubObjSelectionModifyContext modCtx;
@@ -715,8 +663,6 @@ void CSubObjectModeTool::OnManipulatorDrag(CViewport* view, ITransformManipulato
     }
     if (editMode == eEditModeRotate)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): GetIEditor()->RestoreUndo();", __FILE__, __LINE__);
-
         GetIEditor()->RestoreUndo();
 
         SSubObjSelectionModifyContext modCtx;
@@ -732,8 +678,6 @@ void CSubObjectModeTool::OnManipulatorDrag(CViewport* view, ITransformManipulato
     }
     if (editMode == eEditModeScale)
     {
-        //gEnv->pLog->LogWithType(ILog::eAlways, "%s(%d): GetIEditor()->RestoreUndo();", __FILE__, __LINE__);
-
         GetIEditor()->RestoreUndo();
 
         Vec3 scl(0, 0, 0);
@@ -799,7 +743,6 @@ void CSubObjectModeTool::OnManipulatorDrag(CViewport* view, ITransformManipulato
         }
         ;
 
-        //m_cMouseDownPos = point;
         SSubObjSelectionModifyContext modCtx;
         modCtx.view = view;
         modCtx.type = SO_MODIFY_SCALE;
@@ -822,7 +765,6 @@ void CSubObjectModeTool::SetObjectCursor(CViewport* view, CBaseObject* hitObj, b
 
     EStdCursor cursor = STD_CURSOR_SUBOBJ_SEL;
     QString m_cursorStr;
-    //HCURSOR hPrevCursor = m_hCurrCursor;
     if (m_pMouseOverObject)
     {
         m_pMouseOverObject->SetHighlight(false);
@@ -883,18 +825,6 @@ void CSubObjectModeTool::SetObjectCursor(CViewport* view, CBaseObject* hitObj, b
             cursor = STD_CURSOR_SCALE;
         }
     }
-    /*
-    if (bChangeNow)
-    {
-    if (GetCapture() == NULL)
-    {
-    if (m_hCurrCursor)
-    SetCursor( m_hCurrCursor );
-    else
-    SetCursor( m_hDefaultCursor );
-    }
-    }
-    */
     view->SetCurrentCursor(cursor, m_cursorStr);
 }
 

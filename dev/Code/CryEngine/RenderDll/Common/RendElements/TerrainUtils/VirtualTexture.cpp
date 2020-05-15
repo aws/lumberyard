@@ -75,10 +75,10 @@ namespace Terrain
         m_vtWrapperPtr->RequestTile(virtualTileX, virtualTileY, mipLevel);
     }
 
-    // Request all height tiles necessary for the specified world area
-    void VirtualTexture::RequestTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel)
+    // Given a world area, walk through it tile-by-tile and perform an action.
+    void VirtualTexture::ProcessTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel, ProcessTileCallback tileProcess)
     {
-        AZ_Assert(mipLevel >= 0 && mipLevel < m_vtWrapperPtr->GetMipLevels(), "HeightMapVirtualTexture | Invalid mip level");
+        AZ_Assert(mipLevel >= 0 && mipLevel < m_vtWrapperPtr->GetMipLevels(), "VirtualTexture | Invalid mip level");
 
         float startRelativeX = worldX - m_worldOriginX;
         float startRelativeY = worldY - m_worldOriginY;
@@ -96,9 +96,30 @@ namespace Terrain
         {
             for (int y = startVirtualTileY; y < endVirtualTileY; ++y)
             {
-                m_vtWrapperPtr->RequestTile(x, y, mipLevel);
+                tileProcess(x, y, mipLevel);
             }
         }
+    }
+
+
+    // Request all height tiles necessary for the specified world area
+    void VirtualTexture::RequestTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel)
+    {
+        ProcessTiles(worldX, worldY, worldXWidth, worldYWidth, mipLevel,
+            [this](int tileX, int tileY, int mipLevel)
+            {
+                m_vtWrapperPtr->RequestTile(tileX, tileY, mipLevel);
+            });
+    }
+
+    // Request all height tiles necessary for the specified world area
+    void VirtualTexture::ClearTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel)
+    {
+        ProcessTiles(worldX, worldY, worldXWidth, worldYWidth, mipLevel,
+            [this](int tileX, int tileY, int mipLevel)
+        {
+            m_vtWrapperPtr->ClearTile(tileX, tileY, mipLevel);
+        });
     }
 
     /////////////////////////////////////////////////////////////////

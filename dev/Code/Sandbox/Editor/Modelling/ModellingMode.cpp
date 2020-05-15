@@ -24,7 +24,6 @@
 
 #include "EditMode/SubObjectSelectionReferenceFrameCalculator.h"
 
-#include "Util/BoostPythonHelpers.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #define HIT_PIXELS_SIZE (5)
@@ -123,10 +122,6 @@ namespace AzToolsFramework
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CModellingModeTool::PySetSelectionType, general, set_modelling_selection,
-    "Sets the selection type in the modelling mode.",
-    "general.set_modelling_selection(str modeName)");
 
 //////////////////////////////////////////////////////////////////////////
 CModellingModeTool* CModellingModeTool::m_pModellingModeTool = 0;

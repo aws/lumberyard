@@ -21,6 +21,7 @@ from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryThrottlingExcept
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryTimeoutException
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryFailure
 from AWSIoTPythonSDK.core.greengrass.discovery.models import DiscoveryInfo
+from AWSIoTPythonSDK.core.protocol.connection.alpn import SSLContextBuilder
 import re
 import sys
 import ssl
@@ -39,7 +40,9 @@ class DiscoveryInfoProvider(object):
 
     REQUEST_TYPE_PREFIX = "GET "
     PAYLOAD_PREFIX = "/greengrass/discover/thing/"
-    PAYLOAD_SUFFIX = " HTTP/1.1\r\n\r\n" # Space in the front
+    PAYLOAD_SUFFIX = " HTTP/1.1\r\n" # Space in the front
+    HOST_PREFIX = "Host: "
+    HOST_SUFFIX = "\r\n\r\n"
     HTTP_PROTOCOL = r"HTTP/1.1 "
     CONTENT_LENGTH = r"content-length: "
     CONTENT_LENGTH_PATTERN = CONTENT_LENGTH + r"([0-9]+)\r\n"
@@ -243,12 +246,28 @@ class DiscoveryInfoProvider(object):
 
     def _create_ssl_connection(self, sock):
         self._logger.debug("Creating ssl connection...")
-        ssl_sock = ssl.wrap_socket(sock,
-                                   certfile=self._cert_path,
-                                   keyfile=self._key_path,
-                                   ca_certs=self._ca_path,
-                                   cert_reqs=ssl.CERT_REQUIRED,
-                                   ssl_version=ssl.PROTOCOL_SSLv23)
+   
+        ssl_protocol_version = ssl.PROTOCOL_SSLv23
+ 
+        if self._port == 443:
+            ssl_context = SSLContextBuilder()\
+                .with_ca_certs(self._ca_path)\
+                .with_cert_key_pair(self._cert_path, self._key_path)\
+                .with_cert_reqs(ssl.CERT_REQUIRED)\
+                .with_check_hostname(True)\
+                .with_ciphers(None)\
+                .with_alpn_protocols(['x-amzn-http-ca'])\
+                .build()
+            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=self._host, do_handshake_on_connect=False)
+            ssl_sock.do_handshake()
+        else:
+            ssl_sock = ssl.wrap_socket(sock,
+                                       certfile=self._cert_path,
+                                       keyfile=self._key_path,
+                                       ca_certs=self._ca_path,
+                                       cert_reqs=ssl.CERT_REQUIRED,
+                                       ssl_version=ssl_protocol_version)
+
         self._logger.debug("Matching host name...")
         if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] < 2):
             self._tls_match_hostname(ssl_sock)
@@ -311,7 +330,10 @@ class DiscoveryInfoProvider(object):
         request = self.REQUEST_TYPE_PREFIX + \
                   self.PAYLOAD_PREFIX + \
                   thing_name + \
-                  self.PAYLOAD_SUFFIX
+                  self.PAYLOAD_SUFFIX + \
+                  self.HOST_PREFIX + \
+                  self._host + ":" + str(self._port) + \
+                  self.HOST_SUFFIX
         self._logger.debug("Sending discover request: " + request)
 
         start_time = time.time()

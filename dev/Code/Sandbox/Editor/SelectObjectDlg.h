@@ -14,7 +14,6 @@
 #pragma once
 #ifndef CRYINCLUDE_EDITOR_SELECTOBJECTDLG_H
 #define CRYINCLUDE_EDITOR_SELECTOBJECTDLG_H
-#include "HyperGraph/IHyperGraph.h"
 
 #include <QDialog>
 #include <QScopedPointer>
@@ -35,7 +34,6 @@ class QShowEvent;
 class CSelectObjectDlg
     : public QWidget
     , public IEditorNotifyListener
-    , public IHyperGraphManagerListener
 {
     Q_OBJECT
 public:
@@ -82,7 +80,6 @@ private Q_SLOTS:
 
 protected:
     void OnEditorNotifyEvent(EEditorNotifyEvent ev) override;
-    void OnHyperGraphManagerEvent(EHyperGraphEvent ev, IHyperGraph* pGraph, IHyperNode* pINode) override;
     void showEvent(QShowEvent* ev) override;
     void OnLayerUpdate(int event, CObjectLayer* pLayer);
     void OnObjectEvent(CBaseObject* pObject, int ev);

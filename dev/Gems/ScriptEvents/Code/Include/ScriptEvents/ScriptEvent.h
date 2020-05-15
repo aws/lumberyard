@@ -127,6 +127,7 @@ namespace ScriptEvents
                 AZ_Assert(m_refCount > 0, "Reference count logic error, trying to release reference when there are none left.");
                 if (--m_refCount == 0)
                 {
+                    AZ::Data::AssetBus::Handler::BusDisconnect();
                     delete this;
                 }
             }

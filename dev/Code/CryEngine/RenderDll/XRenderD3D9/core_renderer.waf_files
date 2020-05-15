@@ -301,6 +301,10 @@
             "../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.cpp",
             "../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.h"
         ],
+        "Common/RendElements/TerrainUtils/Debug": [
+            "../Common/RendElements/TerrainUtils/Debug/TerrainProfiler.cpp",
+            "../Common/RendElements/TerrainUtils/Debug/TerrainProfiler.h"
+        ],
         "Common/RendElements/LensOptics":
         [
             "../Common/RendElements/CameraOrbs.cpp",
@@ -419,7 +423,9 @@
 			"GraphicsPipeline/ScreenSpaceSSS.h",
 			"GraphicsPipeline/ScreenSpaceSSS.cpp",
 			"GraphicsPipeline/StandardGraphicsPipeline.h",
-			"GraphicsPipeline/StandardGraphicsPipeline.cpp"
+			"GraphicsPipeline/StandardGraphicsPipeline.cpp",
+			"GraphicsPipeline/VideoRenderPass.h",
+			"GraphicsPipeline/VideoRenderPass.cpp"
 		]
 	},
 

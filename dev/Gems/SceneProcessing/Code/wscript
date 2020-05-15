@@ -13,14 +13,12 @@
 def build(bld):
     bld.DefineGem (
         includes            = ['.',
-                               bld.ThirdPartyPath('boost'),
                                bld.Path('Code/CryEngine/CryCommon'),
                                bld.Path('Code/Tools') ],
         disable_pch         = True,
 
         editor              = dict(
             includes        = ['.',
-                               bld.ThirdPartyPath('boost'),
                                bld.Path('Code/CryEngine/CryCommon'),
                                bld.Path('Code/Tools') ],
             use             = ['SceneCore',

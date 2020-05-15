@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "UnitTest": [
+            "UnitTest/FrameworkTestTypes.h"
+        ]
+    }
+}

@@ -55,15 +55,18 @@ namespace ScriptCanvasEditor
         {
             if (index < GetElementCount())
             {
-                if (ScriptCanvas::Datum* object = GetSlotObject())
-                {
-                    if (Type* currentType = object->ModAs<Type>())
-                    {
-                        currentType->SetElement(index, aznumeric_cast<float>(value));
+                ScriptCanvas::ModifiableDatumView datumView;
+                ModifySlotObject(datumView);
 
-                        PostUndoPoint();
-                        PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
-                    }
+                if (datumView.IsValid())
+                {
+                    Type currentValue = (*datumView.GetAs<Type>());                    
+                    currentValue.SetElement(index, aznumeric_cast<float>(value));
+
+                    datumView.SetAs<Type>(currentValue);
+
+                    PostUndoPoint();
+                    PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
                 }
             }
         }

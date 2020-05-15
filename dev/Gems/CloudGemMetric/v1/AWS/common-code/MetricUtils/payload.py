@@ -1,6 +1,18 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from io import BytesIO
+from six import StringIO
 from abc import ABCMeta, abstractmethod
-from StringIO import StringIO
 from datetime import datetime, timedelta
 import sqs
 import pandas as pd
@@ -20,6 +32,7 @@ import collections
 import timeit
 import enum_type
 import uuid
+from cgf_lambda_service import ClientError
 
 PAYLOAD_TYPE = enum_type.create(CSV="CSV", JSON="JSON")
 
@@ -110,11 +123,11 @@ class AbstractPayload:
         required_fields_ordered = self.schema_order.required_fields        
         for field in required_fields_ordered:
             if field.id not in columns:
-                raise errors.ClientError("[{}] The metric is missing the attribute '{}' in columns {}".format(code.Error.missing_attribute(), field.id, columns))
+                raise ClientError("[{}] The metric is missing the attribute '{}' in columns {}".format(code.Error.missing_attribute(), field.id, columns))
         
         for field in columns:
             if not field.islower():                
-                raise errors.ClientError("[{}] The metric attribute '{}' is not lowercase.  All attributes should be lowercase.  The columns were '{}'".format(code.Error.is_not_lower(), field, columns))
+                raise ClientError("[{}] The metric attribute '{}' is not lowercase.  All attributes should be lowercase.  The columns were '{}'".format(code.Error.is_not_lower(), field, columns))
 
         return 
 
@@ -133,8 +146,8 @@ class CSV(AbstractPayload):
         AbstractPayload.__init__(self, context, compression_mode, sensitivity_type, source_IP)  
 
     def extract(self, data): 
-        pattern = r'''\\n|\n'''        
-        return re.split(pattern, data)
+        pattern = r'''\\n|\n'''
+        return re.split(pattern, data) if isinstance(data, str) else re.split(pattern.encode(), data)
 
     def to_string(self, data):         
         return self.context[c.KEY_SEPERATOR_CSV].join(data)
@@ -142,13 +155,15 @@ class CSV(AbstractPayload):
     def terminate_line(self, data):        
         return data + c.NEW_LINE
 
-    def to_partitions(self, token, data, func, sensitivity_type, partitions):        
-        data = pd.read_csv(StringIO(data),sep=self.context[c.KEY_SEPERATOR_CSV], encoding="utf-8")          
+    def to_partitions(self, token, data, func, sensitivity_type, partitions): 
+        data = pd.read_csv(
+            StringIO(data) if isinstance(data, str) else BytesIO(data),
+            sep=self.context[c.KEY_SEPERATOR_CSV], encoding="utf-8")          
         #iterator the rows in the data set to partition the data correctly
         #partition the data            
         #ie.  this message belongs in s3 path /2017/09/27/23/shotFired                            
         for row in data.itertuples(index=True): 
-            row = row.__dict__
+            row = row._asdict()
             del row['Index']              
             func(token, row, sensitivity_type)
 
@@ -183,9 +198,9 @@ class CSV(AbstractPayload):
             idx = header.index(field.id)            
             value = metric[idx] 
             if value is None or len(str(value)) == 0:
-                print header
-                print metric
-                raise errors.ClientError("[{}] The metric attribute '{}' is null or empty.  The value was '{}'. Required fields can not be null or empty.".format(code.Error.is_not_lower(), field.id, value))
+                print(header)
+                print(metric)
+                raise ClientError("[{}] The metric attribute '{}' is null or empty.  The value was '{}'. Required fields can not be null or empty.".format(code.Error.is_not_lower(), field.id, value))
 
     def chunk(self, data):
         metrics = self.extract(data)        
@@ -206,7 +221,7 @@ class CSV(AbstractPayload):
 
         message_chunk.write(self.terminate_line(header))
         if os.environ[c.ENV_VERBOSE]== "True":
-            print "The message header is {} bytes".format(header_size)
+            print("The message header is {} bytes".format(header_size))
         
         total_metrics = 0
         total_metrics_per_chunk = 0    
@@ -219,7 +234,7 @@ class CSV(AbstractPayload):
             metric = self.terminate_line(self.to_string(metric))            
             metric_size = self.compression_mode.size_of(self.compression_mode.compress(metric))        
             if metric_size + header_size > c.MAXIMUM_MESSAGE_SIZE_IN_BYTES:
-                raise errors.ClientError("[{}] The maximum of {} compressed bytes have been exceeded. The metric contains {} bytes.".format(code.Error.missing_attribute(), c.MAXIMUM_MESSAGE_SIZE_IN_BYTES, metric_size + header_size))
+                raise ClientError("[{}] The maximum of {} compressed bytes have been exceeded. The metric contains {} bytes.".format(code.Error.missing_attribute(), c.MAXIMUM_MESSAGE_SIZE_IN_BYTES, metric_size + header_size))
             #do not pack more into the message than the SQS payload limit of 256KB.
             
             message = message_chunk.getvalue()        
@@ -228,7 +243,7 @@ class CSV(AbstractPayload):
             
             if message_size + metric_size >= c.MAXIMUM_MESSAGE_SIZE_IN_BYTES:                        
                 if os.environ[c.ENV_VERBOSE]== "True":
-                    print "message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk                   
+                    print("message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk)
                 messages.append(chunk)            
                 message_chunk = StringIO()
                 message_chunk.write(self.terminate_line(header))
@@ -238,7 +253,7 @@ class CSV(AbstractPayload):
             total_metrics_per_chunk += 1
         message = message_chunk.getvalue()
         if os.environ[c.ENV_VERBOSE]== "True":
-            print "message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk   
+            print("message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk)
         message_chunk.close()
         if len(message) > 0:        
             messages.append(self.compression_mode.compress(message)) 
@@ -278,7 +293,7 @@ class JSON(AbstractPayload):
         for field in required_fields_ordered:
             value = dict[field.id]
             if value is None or len(str(value)) == 0:
-                raise errors.ClientError("[{}] The metric attribute '{}' is null or empty.  Required fields can not be null or empty.".format(code.Error.is_not_lower(), field.id))
+                raise ClientError("[{}] The metric attribute '{}' is null or empty.  Required fields can not be null or empty.".format(code.Error.is_not_lower(), field.id))
   
     def chunk(self, data):
         metrics = self.extract(data)
@@ -299,14 +314,14 @@ class JSON(AbstractPayload):
             self.validate_values(metric)
             metric_size = self.compression_mode.size_of(self.compression_mode.compress(self.to_string(metric)))+2
             if metric_size > c.MAXIMUM_MESSAGE_SIZE_IN_BYTES:
-                raise errors.ClientError("[ExceededMaximumMetricCapacity] The maximum of {} compressed bytes have been exceeded. The metric contains {} bytes.".format(c.MAXIMUM_MESSAGE_SIZE_IN_BYTES, metric_size))
+                raise ClientError("[ExceededMaximumMetricCapacity] The maximum of {} compressed bytes have been exceeded. The metric contains {} bytes.".format(c.MAXIMUM_MESSAGE_SIZE_IN_BYTES, metric_size))
             #do not pack more into the message than the SQS payload limit of 256KB.
             message = self.to_string(message_chunk)
             chunk = self.compression_mode.compress(message)  
             message_size = self.compression_mode.size_of(chunk) + sqs.message_overhead_size(self.sensitivity_type, self.compression_mode, self)   
             if message_size + metric_size >= c.MAXIMUM_MESSAGE_SIZE_IN_BYTES:                        
                 if os.environ[c.ENV_VERBOSE]== "True":
-                    print "message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk   
+                    print("message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk)
                 messages.append(chunk)
                 message_chunk = []                
                 total_metrics_per_chunk = 0
@@ -315,7 +330,7 @@ class JSON(AbstractPayload):
             total_metrics_per_chunk += 1
         message = message_chunk
         if os.environ[c.ENV_VERBOSE]== "True":
-            print "message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk   
+            print("message size(bytes): ", message_size, " total metrics in chunk: ", total_metrics_per_chunk)
         
         if len(message_chunk) > 0:        
             messages.append(self.compression_mode.compress(self.to_string(message_chunk))) 

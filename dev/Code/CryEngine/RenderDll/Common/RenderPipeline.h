@@ -666,8 +666,8 @@ struct SThreadInfo
     uint32 m_PersFlags;          // Never reset
     float m_RealTime;
 
-    Matrix44A m_matView;
-    Matrix44A m_matProj;
+    Matrix44A m_matView = Matrix44A(IDENTITY);
+    Matrix44A m_matProj = Matrix44A(IDENTITY);
 
     CCamera m_cam;  // current camera
     int m_nFrameID;                         // with recursive calls, access through GetFrameID(true)
@@ -976,9 +976,15 @@ struct SRenderPipeline
     // Drawcall count debug view - per Node - r_stats 6
     IRenderer::RNDrawcallsMapNode m_pRNDrawCallsInfoPerNode[RT_COMMAND_BUF_COUNT];
 
+    // Functionality for retrieving previous frames stats to use this frame
+    IRenderer::RNDrawcallsMapNode m_pRNDrawCallsInfoPerNodePreviousFrame[RT_COMMAND_BUF_COUNT];
+
     //===================================================================
     // Drawcall count debug view - per mesh - perf hud renderBatchStats
     IRenderer::RNDrawcallsMapMesh m_pRNDrawCallsInfoPerMesh[RT_COMMAND_BUF_COUNT];
+
+    // Functionality for retrieving previous frames stats to use this frame
+    IRenderer::RNDrawcallsMapMesh m_pRNDrawCallsInfoPerMeshPreviousFrame[RT_COMMAND_BUF_COUNT];
 #endif
 
     //================================================================

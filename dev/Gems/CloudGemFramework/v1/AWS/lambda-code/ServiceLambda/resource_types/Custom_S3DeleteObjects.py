@@ -8,24 +8,28 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
 import boto3
+from botocore.exceptions import ClientError
+from botocore.client import Config
 
 from cgf_utils import aws_utils
 from cgf_utils import custom_resource_response
 
 
-from botocore.exceptions import ClientError
-from botocore.client import Config
-
 def handler(event, context):
+    """Entry point for the Custom::S3DeleteObjects resource handler."""
+
     properties = event["ResourceProperties"]
     stack_arn = event['StackId']
-    physical_resource_id = aws_utils.get_stack_name_from_stack_arn(
-            stack_arn) + '-' + event['LogicalResourceId']
+    physical_resource_id = aws_utils.get_stack_name_from_stack_arn(stack_arn) + '-' + event['LogicalResourceId']
 
     buckets = properties.get("Buckets", [])
     if not buckets:
-        print "There were no buckets in the resource properties, returning early"
+        print("There were no buckets in the resource properties, returning early")
         return custom_resource_response.success_response({}, physical_resource_id)
 
     if event["RequestType"] != "Delete":
@@ -38,11 +42,11 @@ def handler(event, context):
 
 def clear_bucket(bucket_name):
     try:
-        print "clearing bucket {}".format(bucket_name)
+        print("clearing bucket {}".format(bucket_name))
         bucket = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(bucket_name)
         bucket.object_versions.delete()
     except ClientError as err:
         if err.response['Error']['Code'] in ['NoSuchBucket']:
-            print "Bucket does not exist"
+            print("Bucket does not exist")
         else:
             raise err

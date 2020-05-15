@@ -67,6 +67,11 @@
             "AzCore/Memory/OverrunDetectionAllocator_Platform.h"
         ],
 
+        "Module/Internal/Platform/AppleTV":
+        [
+            "../Common/Default/AzCore/Module/Internal/ModuleManagerSearchPathTool_Default.cpp"
+        ],
+
         "Math/Internal/Platform/AppleTV":
         [
             "AzCore/Math/Internal/MathTypes_AppleTV.h",

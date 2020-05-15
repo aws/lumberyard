@@ -47,6 +47,7 @@ else:
 
 from AWSIoTPythonSDK.core.protocol.connection.cores import ProgressiveBackOffCore
 from AWSIoTPythonSDK.core.protocol.connection.cores import SecuredWebSocketCore
+from AWSIoTPythonSDK.core.protocol.connection.alpn import SSLContextBuilder
 
 VERSION_MAJOR=1
 VERSION_MINOR=0
@@ -482,6 +483,7 @@ class Client(object):
         self._host = ""
         self._port = 1883
         self._bind_address = ""
+        self._socket_factory = None
         self._in_callback = False
         self._strict_protocol = False
         self._callback_mutex = threading.Lock()
@@ -506,6 +508,7 @@ class Client(object):
         self._AWSAccessKeyIDCustomConfig = ""
         self._AWSSecretAccessKeyCustomConfig = ""
         self._AWSSessionTokenCustomConfig = ""
+        self._alpn_protocols = None
 
     def __del__(self):
         pass
@@ -531,6 +534,14 @@ class Client(object):
         self._AWSAccessKeyIDCustomConfig = srcAWSAccessKeyID
         self._AWSSecretAccessKeyCustomConfig = srcAWSSecretAccessKey
         self._AWSSessionTokenCustomConfig = srcAWSSessionToken
+
+    def config_alpn_protocols(self, alpn_protocols):
+        """
+        Make custom settings for ALPN protocols
+        :param alpn_protocols: Array of strings that specifies the alpn protocols to be used
+        :return: None
+        """
+        self._alpn_protocols = alpn_protocols
 
     def reinitialise(self, client_id="", clean_session=True, userdata=None):
         if self._ssl:
@@ -770,7 +781,9 @@ class Client(object):
         self._messages_reconnect_reset()
 
         try:
-            if (sys.version_info[0] == 2 and sys.version_info[1] < 7) or (sys.version_info[0] == 3 and sys.version_info[1] < 2):
+            if self._socket_factory:
+                sock = self._socket_factory()
+            elif (sys.version_info[0] == 2 and sys.version_info[1] < 7) or (sys.version_info[0] == 3 and sys.version_info[1] < 2):
                 sock = socket.create_connection((self._host, self._port))
             else:
                 sock = socket.create_connection((self._host, self._port), source_address=(self._bind_address, 0))
@@ -778,14 +791,30 @@ class Client(object):
             if err.errno != errno.EINPROGRESS and err.errno != errno.EWOULDBLOCK and err.errno != EAGAIN:
                 raise
 
+        verify_hostname = self._tls_insecure is False  # Decide whether we need to verify hostname
+
         if self._tls_ca_certs is not None:
             if self._useSecuredWebsocket:
                 # Never assign to ._ssl before wss handshake is finished
                 # Non-None value for ._ssl will allow ops before wss-MQTT connection is established
                 rawSSL = ssl.wrap_socket(sock, ca_certs=self._tls_ca_certs, cert_reqs=ssl.CERT_REQUIRED)  # Add server certificate verification
                 rawSSL.setblocking(0)  # Non-blocking socket
-                self._ssl = SecuredWebSocketCore(rawSSL, self._host, self._port, self._AWSAccessKeyIDCustomConfig, self._AWSSecretAccessKeyCustomConfig, self._AWSSessionTokenCustomConfig)  # Overeride the _ssl socket
+                self._ssl = SecuredWebSocketCore(rawSSL, self._host, self._port, self._AWSAccessKeyIDCustomConfig, self._AWSSecretAccessKeyCustomConfig, self._AWSSessionTokenCustomConfig)  # Override the _ssl socket
                 # self._ssl.enableDebug()
+            elif self._alpn_protocols is not None:
+                # SSLContext is required to enable ALPN support
+                # Assuming Python 2.7.10+/3.5+ till the end of this elif branch
+                ssl_context = SSLContextBuilder()\
+                    .with_ca_certs(self._tls_ca_certs)\
+                    .with_cert_key_pair(self._tls_certfile, self._tls_keyfile)\
+                    .with_cert_reqs(self._tls_cert_reqs)\
+                    .with_check_hostname(True)\
+                    .with_ciphers(self._tls_ciphers)\
+                    .with_alpn_protocols(self._alpn_protocols)\
+                    .build()
+                self._ssl = ssl_context.wrap_socket(sock, server_hostname=self._host, do_handshake_on_connect=False)
+                verify_hostname = False  # Since check_hostname in SSLContext is already set to True, no need to verify it again
+                self._ssl.do_handshake()
             else:
                 self._ssl = ssl.wrap_socket(
                     sock,
@@ -796,11 +825,11 @@ class Client(object):
                     ssl_version=self._tls_version,
                     ciphers=self._tls_ciphers)
 
-                if self._tls_insecure is False:
-                    if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] < 5):  # No IP host match before 3.5.x
-                        self._tls_match_hostname()
-                    else:
-                        ssl.match_hostname(self._ssl.getpeercert(), self._host)
+            if verify_hostname:
+                if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] < 5):  # No IP host match before 3.5.x
+                    self._tls_match_hostname()
+                else:
+                    ssl.match_hostname(self._ssl.getpeercert(), self._host)
 
         self._sock = sock
 
@@ -988,6 +1017,14 @@ class Client(object):
         self._username = username.encode('utf-8')
         self._password = password
 
+    def socket_factory_set(self, socket_factory):
+        """Set a socket factory to custom configure a different socket type for
+        mqtt connection.
+        Must be called before connect() to have any effect.
+        socket_factory: create_connection function which creates a socket to user's specification
+        """
+        self._socket_factory = socket_factory
+        
     def disconnect(self):
         """Disconnect a connected client from the broker."""
         self._state_mutex.acquire()
@@ -2386,7 +2423,7 @@ class Client(object):
                         return
                 if key == 'IP Address':
                     have_san_dns = True
-                    if value.lower() == self._host.lower():
+                    if value.lower().strip() == self._host.lower().strip():
                         return
 
             if have_san_dns:

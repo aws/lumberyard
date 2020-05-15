@@ -42,7 +42,7 @@ namespace AZ
         {
         }
 
-        virtual ~SimpleSchemaAllocator()
+        ~SimpleSchemaAllocator() override
         {
             if (m_schema)
             {
@@ -190,7 +190,7 @@ namespace AZ
             return m_schema->GetUnAllocatedMemory(isPrint);
         }
         
-        virtual IAllocatorAllocate* GetSubAllocator()
+        IAllocatorAllocate* GetSubAllocator() override
         {
             return m_schema->GetSubAllocator();
         }

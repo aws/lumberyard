@@ -20,7 +20,6 @@
 class CPrefabItem;
 class CPrefabObject;
 class CPrefabLibrary;
-class CPrefabEvents;
 
 typedef _smart_ptr<CPrefabObject> CPrefabObjectPtr;
 
@@ -59,7 +58,7 @@ class CRYEDIT_API CPrefabManager
 {
 public:
     CPrefabManager();
-    ~CPrefabManager();
+    ~CPrefabManager() = default;
 
     // Clear all prototypes
     void ClearAll();
@@ -97,9 +96,6 @@ public:
     //! Get prefab instance count used in level
     int GetPrefabInstanceCount(CPrefabItem* pPrefabItem);
 
-    //! Get prefab events
-    ILINE CPrefabEvents* GetPrefabEvents() const { return m_pPrefabEvents; }
-
     IDataBaseLibrary* LoadLibrary(const QString& filename, bool bReload = false);
 
     bool ShouldSkipPrefabUpdate() const { return m_skipPrefabUpdate; }
@@ -119,7 +115,6 @@ protected:
 
     QString m_libsPath;
 
-    CPrefabEvents* m_pPrefabEvents;
     bool m_skipPrefabUpdate;
 };
 

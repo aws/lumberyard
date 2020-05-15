@@ -15,6 +15,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <cmath>
 #include <QPainter>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/MathUtils.h>
 #include <assert.h>
 
@@ -23,10 +24,10 @@ namespace AzQtComponents
     QColor AdjustGamma(const QColor& color, qreal gamma)
     {
         const QColor rgb = color.toRgb();
-        const auto r = std::pow(rgb.redF(), 1.0 / gamma);
-        const auto g = std::pow(rgb.greenF(), 1.0 / gamma);
-        const auto b = std::pow(rgb.blueF(), 1.0 / gamma);
-        const auto a = rgb.alphaF();
+        const float r = aznumeric_cast<float>(std::pow(rgb.redF(), 1.0 / gamma));
+        const float g = aznumeric_cast<float>(std::pow(rgb.greenF(), 1.0 / gamma));
+        const float b = aznumeric_cast<float>(std::pow(rgb.blueF(), 1.0 / gamma));
+        const float a = aznumeric_cast<float>(rgb.alphaF());
         return toQColor(r, g, b, a);
     }
 

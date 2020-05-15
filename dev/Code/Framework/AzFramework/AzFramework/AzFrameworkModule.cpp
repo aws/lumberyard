@@ -28,6 +28,7 @@
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzFramework/Debug/StatisticalProfilerProxySystemComponent.h>
 
 namespace AzFramework
 {
@@ -38,13 +39,14 @@ namespace AzFramework
             AzFramework::BootstrapReaderComponent::CreateDescriptor(),
             AzFramework::AssetCatalogComponent::CreateDescriptor(),
             AzFramework::CustomAssetTypeComponent::CreateDescriptor(),
-            AzFramework::FileTag::BlackListFileComponent::CreateDescriptor(),
+            AzFramework::FileTag::ExcludeFileComponent::CreateDescriptor(),
             AzFramework::NetBindingComponent::CreateDescriptor(),
             AzFramework::NetBindingSystemComponent::CreateDescriptor(),
             AzFramework::TransformComponent::CreateDescriptor(),
             AzFramework::GameEntityContextComponent::CreateDescriptor(),
     #if !defined(_RELEASE)
             AzFramework::TargetManagementComponent::CreateDescriptor(),
+            AzFramework::Debug::StatisticalProfilerProxySystemComponent::CreateDescriptor(),
     #endif
             AzFramework::CreateScriptDebugAgentFactory(),
             AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor(),
@@ -57,5 +59,15 @@ namespace AzFramework
             AzFramework::SceneSystemComponent::CreateDescriptor(),
             AzFramework::AzFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
+    }
+
+    AZ::ComponentTypeList AzFrameworkModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList
+        {
+#if !defined(_RELEASE)
+            azrtti_typeid<AzFramework::Debug::StatisticalProfilerProxySystemComponent>(),
+#endif
+        };
     }
 }

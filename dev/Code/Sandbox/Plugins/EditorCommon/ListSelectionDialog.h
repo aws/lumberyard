@@ -59,7 +59,9 @@ private:
     QStandardItemModel* m_model;
     DeepFilterProxyModel* m_filterModel;
     typedef QMap<QString, QStandardItem*> StringToItem;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     StringToItem m_firstColumnToItem;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QLineEdit* m_filterEdit;
     QByteArray m_chosenItem;
     int m_currentColumn;

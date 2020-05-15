@@ -97,7 +97,7 @@ namespace ScriptCanvas
                 if (inputSlot && outputSlot)
                 {
                     SlotId sourceSlotId = inputSlot->GetId();
-                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    const Datum* containerDatum = FindDatum(sourceSlotId);
 
                     if (Datum::IsValidDatum(containerDatum))
                     {
@@ -129,7 +129,7 @@ namespace ScriptCanvas
 
                             // Index
                             behaviorParameter = method->GetArgument(1);
-                            const Datum* indexDatum = GetInput(*inputSlotIterator);
+                            const Datum* indexDatum = FindDatum(*inputSlotIterator);
                             AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> param2 = indexDatum->ToBehaviorValueParameter(*behaviorParameter);
 
                             paramIter->Set(param2.GetValue());
@@ -138,7 +138,7 @@ namespace ScriptCanvas
                             // Value to insert
                             behaviorParameter = method->GetArgument(2);
                             ++inputSlotIterator;
-                            const Datum* inputDatum = GetInput(*inputSlotIterator);
+                            const Datum* inputDatum = FindDatum(*inputSlotIterator);
                             AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> param1 = inputDatum->ToBehaviorValueParameter(*behaviorParameter);
                             paramIter->Set(param1.GetValue());
                             ++paramIter;
@@ -146,8 +146,8 @@ namespace ScriptCanvas
                         else if (Data::IsMapContainerType(GetSourceAZType()))
                         {
                             auto inputSlotIterator = m_inputSlots.begin();
-                            const Datum* keyDatum = GetInput(*inputSlotIterator++);
-                            const Datum* valueDatum = GetInput(*inputSlotIterator);
+                            const Datum* keyDatum = FindDatum(*inputSlotIterator++);
+                            const Datum* valueDatum = FindDatum(*inputSlotIterator);
 
                             if (keyDatum && valueDatum)
                             {

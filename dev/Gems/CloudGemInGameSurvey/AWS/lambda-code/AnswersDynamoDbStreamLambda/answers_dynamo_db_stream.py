@@ -1,7 +1,18 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
 from __future__ import print_function
 
 import json
 import boto3
+from six import iteritems # Python 2.7/3.7 Compatibility
 import survey_utils
 
 def handle(event, context):
@@ -11,15 +22,15 @@ def handle(event, context):
         #DynamoDB event type (INSERT | MODIFY | REMOVE)
         eventName = record['eventName']
         dynamoRecord = record['dynamodb']
-        survey_id = dynamoRecord['Keys']['survey_id'].values()[0]
+        survey_id = list(dynamoRecord['Keys']['survey_id'].values())[0]
 
         print (dynamoRecord)
 
         if eventName == 'INSERT':
             new_image = dynamoRecord['NewImage']
-            for key, val in new_image['answers'].values()[0].items():
+            for key, val in iteritems(list(new_image['answers'].values())[0]):
                 question_id = key
-                answers = map(lambda x:x.values()[0], val.values()[0])
+                answers = [list(x.values())[0] for x in list(val.values())[0]]
 
                 question = get_question(survey_id, question_id, question_map)
                 if question is None or question.get('type') == 'text':
@@ -33,9 +44,9 @@ def handle(event, context):
         elif eventName == 'MODIFY':
             new_image = dynamoRecord['NewImage']
             old_image = dynamoRecord['OldImage']
-            for key, val in new_image['answers'].values()[0].items():
+            for key, val in iteritems(list(new_image['answers'].values())[0]):
                 question_id = key
-                answers = map(lambda x:x.values()[0], val.values()[0])
+                answers = map(lambda x:list(x.values())[0], list(val.values())[0])
 
                 question = get_question(survey_id, question_id, question_map)
                 if question is None or question.get('type') == 'text':
@@ -44,8 +55,8 @@ def handle(event, context):
                 # create the answer aggregation map if not exists
                 create_aggregated_map(answer_aggregation_table, survey_id, question_id)
 
-                old_answers_map = old_image['answers'].values()[0]
-                old_answers = map(lambda x:x.values()[0], old_answers_map[question_id].values()[0]) if question_id in old_answers_map else None
+                old_answers_map = list(old_image['answers'].values())[0]
+                old_answers = map(lambda x:list(x.values())[0], list(old_answers_map[question_id].values())[0]) if question_id in old_answers_map else None
 
                 if old_answers is not None:
                     new_answers_set = set(answers)

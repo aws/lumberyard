@@ -14,13 +14,21 @@
 
 #include <ScriptCanvas/Variable/VariableData.h>
 
+// Version Conversion
+#include <ScriptCanvas/Deprecated/VariableHelpers.h>
+////
+
 namespace ScriptCanvas
 {
+    /////////////////
+    // VariableData
+    /////////////////
+
     static bool VariableDataVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootElementNode)
     {
-        if (rootElementNode.GetVersion() == 0)
+        if (rootElementNode.GetVersion() < VariableData::Version::UUID_To_Variable)
         {
-            AZStd::unordered_map<AZ::Uuid, VariableNameValuePair> uuidToVariableMap;
+            AZStd::unordered_map<AZ::Uuid, Deprecated::VariableNameValuePair > uuidToVariableMap;
             if (!rootElementNode.GetChildData(AZ_CRC("m_nameVariableMap", 0xc4de98e7), uuidToVariableMap))
             {
                 AZ_Error("Script Canvas", false, "Variable id in version 0 VariableData element should be AZ::Uuid");
@@ -28,24 +36,63 @@ namespace ScriptCanvas
             }
 
             rootElementNode.RemoveElementByName(AZ_CRC("m_nameVariableMap", 0xc4de98e7));
-            AZStd::unordered_map<VariableId, VariableNameValuePair> nameToVariableMap;
-            for (const auto& uuidToVariableNamePair : uuidToVariableMap)
+            AZStd::unordered_map<VariableId, GraphVariable> idToVariableMap;
+            for (auto& uuidToVariableNamePair : uuidToVariableMap)
             {
-                nameToVariableMap.emplace(uuidToVariableNamePair.first, uuidToVariableNamePair.second);
+                idToVariableMap.emplace(uuidToVariableNamePair.first, GraphVariable(AZStd::move(uuidToVariableNamePair.second)));
             }
 
-            rootElementNode.AddElementWithData(context, "m_nameVariableMap", nameToVariableMap);
-            return true;
+            rootElementNode.AddElementWithData(context, "m_nameVariableMap", idToVariableMap);            
+        }
+        else if (rootElementNode.GetVersion() < VariableData::Version::VariableDatumSimplification)
+        {
+            AZStd::unordered_map<VariableId, Deprecated::VariableNameValuePair> idToPairMap;
+            if (!rootElementNode.GetChildData(AZ_CRC("m_nameVariableMap", 0xc4de98e7), idToPairMap))
+            {
+                return false;
+            }
+
+            rootElementNode.RemoveElementByName(AZ_CRC("m_nameVariableMap", 0xc4de98e7));
+
+            AZStd::unordered_map<VariableId, GraphVariable> idToVariableMap;
+
+            for (auto& idPair : idToPairMap)
+            {
+                idToVariableMap.emplace(idPair.first, GraphVariable(AZStd::move(idPair.second)));
+            }
+
+            rootElementNode.AddElementWithData(context, "m_nameVariableMap", idToVariableMap);            
         }
 
         return true;
     }
     void VariableData::Reflect(AZ::ReflectContext* context)
     {
+        Deprecated::VariableNameValuePair::Reflect(context);        
+
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            // Version Conversion Reflection
+            {
+                auto genericInfo = AZ::SerializeGenericTypeInfo<AZStd::unordered_map<AZ::Uuid, Deprecated::VariableNameValuePair>>::GetGenericInfo();
+                if (genericInfo)
+                {
+                    genericInfo->Reflect(serializeContext);
+                }
+            }
+
+            {
+                auto genericInfo = AZ::SerializeGenericTypeInfo<AZStd::unordered_map<VariableId, Deprecated::VariableNameValuePair>>::GetGenericInfo();
+                if (genericInfo)
+                {
+                    genericInfo->Reflect(serializeContext);
+                }
+            }
+            ////
+
+
             serializeContext->Class<VariableData>()
-                ->Version(1, &VariableDataVersionConverter)
+                ->Version(Version::Current, &VariableDataVersionConverter)
                 ->Field("m_nameVariableMap", &VariableData::m_variableMap)
                 ;
 
@@ -76,30 +123,32 @@ namespace ScriptCanvas
         return *this;
     }
 
-    AZ::Outcome<VariableId, AZStd::string> VariableData::AddVariable(AZStd::string_view varName, const VariableDatum& varDatum)
+    AZ::Outcome<VariableId, AZStd::string> VariableData::AddVariable(AZStd::string_view varName, const GraphVariable& graphVariable)
     {
-        auto insertIt = m_variableMap.emplace(varDatum.GetId(), VariableNameValuePair{ varName, varDatum });
+        auto insertIt = m_variableMap.emplace(graphVariable.GetVariableId(), graphVariable);
+
         if (insertIt.second)
         {
+            insertIt.first->second.SetVariableName(varName);
             return AZ::Success(insertIt.first->first);
         }
 
         return AZ::Failure(AZStd::string::format("Variable with id %s already exist in variable map. The Variable name is %s", insertIt.first->first, insertIt.first->second.GetVariableName().data()));
     }
 
-    VariableDatum* VariableData::FindVariable(AZStd::string_view variableName)
+    GraphVariable* VariableData::FindVariable(AZStd::string_view variableName)
     {
-        auto foundIt = AZStd::find_if(m_variableMap.begin(), m_variableMap.end(), [&variableName](const AZStd::pair<VariableId, VariableNameValuePair>& varPair)
+        auto foundIt = AZStd::find_if(m_variableMap.begin(), m_variableMap.end(), [&variableName](const AZStd::pair<VariableId, GraphVariable>& variablePair)
         {
-            return variableName == varPair.second.GetVariableName();
+            return variableName == variablePair.second.GetVariableName();
         });
 
-        return foundIt != m_variableMap.end() ? &foundIt->second.m_varDatum : nullptr;
+        return foundIt != m_variableMap.end() ? &foundIt->second : nullptr;
     }
 
-    VariableNameValuePair* VariableData::FindVariable(VariableId variableId)
+    GraphVariable* VariableData::FindVariable(VariableId variableId)
     {
-        AZStd::pair<AZStd::string_view, VariableDatum*> resultPair;
+        AZStd::pair<AZStd::string_view, GraphVariable*> resultPair;
         auto foundIt = m_variableMap.find(variableId);
         return foundIt != m_variableMap.end() ? &foundIt->second : nullptr;
     }
@@ -144,11 +193,15 @@ namespace ScriptCanvas
         return false;
     }
 
+    //////////////////////////////////
+    // EditableVariableDataCovnerter
+    //////////////////////////////////
+
     static bool EditableVariableDataConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
     {
         if (rootElementNode.GetVersion() <= 1)
         {
-            AZStd::list<VariableNameValuePair> varNameValueVariableList;
+            AZStd::list<Deprecated::VariableNameValuePair> varNameValueVariableList;
             if (!rootElementNode.GetChildData(AZ_CRC("m_properties", 0x4227dbda), varNameValueVariableList))
             {
                 AZ_Error("ScriptCanvas", false, "Unable to find m_properties list of VariableNameValuePairs on EditableVariableData version %d", rootElementNode.GetVersion());
@@ -158,12 +211,15 @@ namespace ScriptCanvas
             AZStd::list<EditableVariableConfiguration> editableVariableConfigurationList;
             for (auto varNameValuePair : varNameValueVariableList)
             {
-                editableVariableConfigurationList.push_back({ varNameValuePair, varNameValuePair.m_varDatum.GetData() });
+                Datum defaultValue = varNameValuePair.m_varDatum.GetData();
+
+                editableVariableConfigurationList.push_back({ GraphVariable(AZStd::move(varNameValuePair)), defaultValue });
             }
 
             rootElementNode.RemoveElementByName(AZ_CRC("m_properties", 0x4227dbda));
             rootElementNode.AddElementWithData(serializeContext, "m_variables", editableVariableConfigurationList);
         }
+
         return true;
     }
 
@@ -171,10 +227,10 @@ namespace ScriptCanvas
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            if (auto genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::list<VariableNameValuePair>>::GetGenericInfo())
+            if (auto genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::list<Deprecated::VariableNameValuePair>>::GetGenericInfo())
             {
                 genericClassInfo->Reflect(serializeContext);
-            }
+            }            
 
             serializeContext->Class<EditableVariableData>()
                 ->Version(2, &EditableVariableDataConverter)
@@ -197,16 +253,21 @@ namespace ScriptCanvas
     {
     }
 
-    AZ::Outcome<void, AZStd::string> EditableVariableData::AddVariable(AZStd::string_view varName, const VariableDatum& varDatum)
+    AZ::Outcome<void, AZStd::string> EditableVariableData::AddVariable(AZStd::string_view varName, const GraphVariable& graphVariable)
     {
-        if (FindVariable(varDatum.GetId()))
+        if (FindVariable(graphVariable.GetVariableId()))
         {
             return AZ::Failure(AZStd::string::format("Variable %s already exist", varName.data()));
         }
 
-        EditableVariableConfiguration newVarConfig{ { AZStd::string(varName), varDatum }, varDatum.GetData() };
-        newVarConfig.m_varNameValuePair.m_varDatum.GetData().SetLabel(varName);
-        m_variables.push_back(AZStd::move(newVarConfig));
+        m_variables.emplace_back();
+
+        EditableVariableConfiguration& newVarConfig = m_variables.back();
+
+        newVarConfig.m_graphVariable.DeepCopy(graphVariable);
+        newVarConfig.m_defaultValue.DeepCopyDatum((*graphVariable.GetDatum()));
+
+        newVarConfig.m_graphVariable.SetVariableName(varName);
 
         return AZ::Success();
     }
@@ -215,7 +276,7 @@ namespace ScriptCanvas
     {
         auto foundIt = AZStd::find_if(m_variables.begin(), m_variables.end(), [&variableName](const EditableVariableConfiguration& variablePair)
         {
-            return variableName == variablePair.m_varNameValuePair.GetVariableName();
+            return variableName == variablePair.m_graphVariable.GetVariableName();
         });
 
         return foundIt != m_variables.end() ? &*foundIt : nullptr;
@@ -225,7 +286,7 @@ namespace ScriptCanvas
     {
         auto foundIt = AZStd::find_if(m_variables.begin(), m_variables.end(), [&variableId](const EditableVariableConfiguration& variablePair)
         {
-            return variableId == variablePair.m_varNameValuePair.m_varDatum.GetId();
+            return variableId == variablePair.m_graphVariable.GetVariableId();
         });
 
         return foundIt != m_variables.end() ? &*foundIt : nullptr;
@@ -242,7 +303,7 @@ namespace ScriptCanvas
         auto removeIt = m_variables.begin();
         while (removeIt != m_variables.end())
         {
-            if (removeIt->m_varNameValuePair.GetVariableName() == variableName)
+            if (removeIt->m_graphVariable.GetVariableName() == variableName)
             {
                 ++removedCount;
                 removeIt = m_variables.erase(removeIt);
@@ -260,7 +321,7 @@ namespace ScriptCanvas
     {
         for (auto removeIt = m_variables.begin(); removeIt != m_variables.end(); ++removeIt)
         {
-            if (removeIt->m_varNameValuePair.m_varDatum.GetId() == variableId)
+            if (removeIt->m_graphVariable.GetVariableId() == variableId)
             {
                 m_variables.erase(removeIt);
                 return true;
@@ -270,21 +331,46 @@ namespace ScriptCanvas
         return false;
     }
 
+    //////////////////////////////////
+    // EditableVariableConfiguration
+    //////////////////////////////////
+
+    bool EditableVariableConfiguration::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
+    {
+        if (rootElementNode.GetVersion() < Version::VariableDatumSimplification)
+        {
+            Deprecated::VariableNameValuePair varNameValuePair;
+            if (!rootElementNode.GetChildData(AZ_CRC("m_variableNameValuePair", 0x89adc9d0), varNameValuePair))
+            {
+                return false;
+            }
+
+            rootElementNode.RemoveElementByName(AZ_CRC("m_variableNameValuePair", 0x89adc9d0));
+
+            GraphVariable variable(AZStd::move(varNameValuePair));
+
+            rootElementNode.AddElementWithData(serializeContext, "GraphVariable", variable);
+        }
+
+        return true;
+    }
+
     void EditableVariableConfiguration::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditableVariableConfiguration>()
-                ->Version(0)
-                ->Field("m_variableNameValuePair", &EditableVariableConfiguration::m_varNameValuePair)
+                ->Version(Version::Current, &EditableVariableConfiguration::VersionConverter)
+                ->Field("GraphVariable", &EditableVariableConfiguration::m_graphVariable)
                 ->Field("m_defaultValue", &EditableVariableConfiguration::m_defaultValue)
                 ;
+
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditableVariableConfiguration>("Variable Element", "Represents a mapping of name to value")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditableVariableConfiguration::m_varNameValuePair, "Name,Value", "Variable Name and value")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditableVariableConfiguration::m_graphVariable, "Name,Value", "Variable Name and value")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }

@@ -102,6 +102,7 @@ namespace AZ
     //-----------------------------------------------------------------------------
     void UserSettingsComponent::Reflect(ReflectContext* context)
     {
+        UserSettings::Reflect(context);
         UserSettingsProvider::Reflect(context);
 
         if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))

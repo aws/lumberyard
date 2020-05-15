@@ -39,12 +39,15 @@ namespace ScriptCanvas
                 {
                 }
 
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Key Not Found", "Triggered if the specified key was not found"));
+
             protected:
 
                 void ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs) override;
                 void OnSourceTypeChanged() override;
                 void OnInputSignal(const SlotId& slotId) override;
                 void InvokeOperator();
+                void KeyNotFound(const Datum* containerDatum);
             };
 
         }

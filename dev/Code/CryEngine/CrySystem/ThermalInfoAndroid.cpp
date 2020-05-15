@@ -21,7 +21,7 @@
 
 ThermalInfoAndroidHandler::ThermalInfoAndroidHandler()
 {
-    AZ_STATIC_ASSERT(AZ_ARRAY_SIZE(m_temperatureFiles) == static_cast<int>(ThermalSensorType::Count), "Thermal count does not match temperature array size");
+    static_assert(AZ_ARRAY_SIZE(m_temperatureFiles) == static_cast<int>(ThermalSensorType::Count), "Thermal count does not match temperature array size");
     ThermalInfoRequestsBus::Handler::BusConnect();
     memset(m_temperatureFiles, 0, sizeof(m_temperatureFiles));
 

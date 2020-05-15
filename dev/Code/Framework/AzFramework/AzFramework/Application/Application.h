@@ -115,7 +115,7 @@ namespace AzFramework
         /**
          * Executes AZ::ComponentApplication::Destroy, and shuts down Application specific constructs.
          */
-        void Stop();
+        virtual void Stop();
 
         void DestroyAllocator() override;
 

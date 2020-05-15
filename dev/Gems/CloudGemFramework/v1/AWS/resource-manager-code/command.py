@@ -12,9 +12,8 @@
 import json
 import os
 import sys
-import imp
-import string
 import types
+from six import iteritems
 
 import component_gen_utils
 
@@ -26,6 +25,7 @@ from resource_manager_common import module_utils
 import resource_management
 import swagger_processor
 import cloud_gem_portal
+
 
 def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = subparsers.add_parser("cloud-gem-framework", help="Commands to manage CloudGems and CloudGem Portal", aliases=['cgf'])
@@ -52,12 +52,12 @@ def add_gui_commands(hook, handlers, **kwargs):
     handlers['cloud-gem-portal'] = cloud_gem_portal.open_portal
     handlers['add-service-api-resources'] = resource_management.add_resources
 
-def __generate_service_api_code(context, args):
 
+def __generate_service_api_code(context, args):
     # The gem argument can be the full path to a gem directory (with a gem.json file 
     # in it), the name of a gem enabled for the project, or the name of a project
     # local resource group (support for which is deprecated). The gem full path option 
-    # is used when creating a gem because this command is executed as a seperate
+    # is used when creating a gem because this command is executed as a separate
     # process. That happens so that (a) the user can see what command they can
     # use to re-generate the code after making swagger changes, and (b) because 
     # the core lmbr_aws stuff doesn't have a good way to call this code directly.
@@ -69,14 +69,14 @@ def __generate_service_api_code(context, args):
     if gem is None:
         # TODO: remove legacy support for project local resource groups. Deprecated
         # in Lumberyard 1.11 (CGF 1.1.1).
-        resource_group = context.resource_groups.get(args.gem) # will raise if doesn't exist
+        resource_group = context.resource_groups.get(args.gem)  # will raise if doesn't exist
         swagger_file_path = os.path.join(resource_group.directory_path, 'swagger.json')
     else:
         swagger_file_path = os.path.join(gem.aws_directory_path, 'swagger.json')
 
     jinja = __initialize_jinja(context)
 
-    swagger = __load_swagger(context, swagger_file_path)
+    swagger = __load_swagger(context, swagger_file_path, args.resource_group)
 
     destination_code_path = args.component_client_path
     if destination_code_path is None:
@@ -105,13 +105,13 @@ def __generate_service_api_code(context, args):
         waf_files_updated = __update_gem_waf_files(context, gem, waf_files_updates)
 
     if not waf_files_updated:
-        print '\nNOTICE: Add the created files to the approriate .waf_files file to include them in your project builds.\n'
+        print('\nNOTICE: Add the created files to the appropriate .waf_files file to include them in your project builds.\n')
+
 
 def __update_gem_waf_files(context, gem, waf_files_updates):
-
     waf_files_file_path = os.path.join(gem.root_directory_path, 'Code', gem.name.lower() + '.waf_files')
     if not os.path.exists(waf_files_file_path):
-        print '\nWARNING: could not find gem\'s .waf_files file at {}.'.format(waf_files_file_path)
+        print('\nWARNING: could not find gem\'s .waf_files file at {}.'.format(waf_files_file_path))
         return False
 
     with open(waf_files_file_path, 'r') as file:
@@ -127,8 +127,7 @@ def __update_gem_waf_files(context, gem, waf_files_updates):
 
 
 def __merge_waf_file_updates(dst, src):
-    
-    for src_key, src_value in src.iteritems():
+    for src_key, src_value in iteritems(src):
         dst_value = dst.get(src_key, None)
         if dst_value is None:
             dst[src_key] = src_value
@@ -143,7 +142,7 @@ def __merge_waf_file_updates(dst, src):
                 raise RuntimeError('Expected source value type dict on key {} when merging {} into {}.'.format(src_key, src, dst))
             __merge_waf_file_updates(dst_value, src_value)
         else:
-            raise RuntimeError('Exepected destination value type list or dict on key {} when merging {} into {}.'.format(src_key, src, dst))
+            raise RuntimeError('Expected destination value type list or dict on key {} when merging {} into {}.'.format(src_key, src, dst))
 
 
 def __initialize_jinja(context):
@@ -169,22 +168,20 @@ def __initialize_jinja(context):
         sdk_paths[sdk_name] = sdk_path
         sys.path.append(sdk_path)
 
-    jinja_path = os.path.join(sdk_paths['jinja2'], 'jinja2')
-    loaders_module = module_utils.load_module('loaders', jinja_path)
+    jinja_path = sdk_paths['jinja2']
+    jinja2_module = module_utils.load_module('jinja2', jinja_path)
     template_path = os.path.join(os.path.dirname(__file__), 'templates')
-    print 'template_path', template_path
-    loader = loaders_module.FileSystemLoader(template_path)
-
-    environment_module = module_utils.load_module('environment', jinja_path)
-    environment = environment_module.Environment(loader=loader)
+    print('template_path: {}'.format(template_path))
+    loader = jinja2_module.loaders.FileSystemLoader(template_path)
+    environment = jinja2_module.Environment(loader=loader)
 
     return environment
 
 
-def __load_swagger(context, swagger_file_path):
+def __load_swagger(context, swagger_file_path, resource_group):
 
     if not os.path.isfile(swagger_file_path):
-        raise HandledError('The {} resource group does not provide a swagger.json file ({} does not exist).'.format(args.resource_group, swagger_file_path))
+        raise HandledError('The {} resource group does not provide a swagger.json file ({} does not exist).'.format(resource_group, swagger_file_path))
 
     with open(swagger_file_path, 'r') as file:
         return json.load(file)
@@ -193,7 +190,7 @@ def __load_swagger(context, swagger_file_path):
 def __write_file(template, jinja_json, out_file):
     result = template.render(json_object = jinja_json)
 
-    print 'Writing file {}.'.format(out_file)
+    print('Writing file {}.'.format(out_file))
     with open(out_file, 'w') as file:
         file.write(result)
 
@@ -201,7 +198,7 @@ def __write_file(template, jinja_json, out_file):
 def __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
 
     if not os.path.exists(destination_code_path):
-        print 'Making directory {}'.format(destination_code_path)
+        print('Making directory {}'.format(destination_code_path))
         os.makedirs(destination_code_path)
 
     template_h = jinja.get_template('component-client/component_template.h')
@@ -232,7 +229,7 @@ def __generate_component_client(context, base_code_path, destination_code_path, 
 def __generate_cs_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
 
     if not os.path.exists(destination_code_path):
-        print 'Making directory {}'.format(destination_code_path)
+        print('Making directory {}'.format(destination_code_path))
         os.makedirs(destination_code_path)
 
     template_cs = jinja.get_template('component-client/component_template.cs')

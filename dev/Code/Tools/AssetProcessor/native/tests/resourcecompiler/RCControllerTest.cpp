@@ -44,12 +44,12 @@ TEST_F(RCcontrollerTest, CompileGroupCreatedWithUnknownStatusForFailedJobs)
     rcJobListModel->addNewJob(job);
     // Exact Match
     NetworkRequestID requestID(1, 1234);
-    rcController.OnRequestCompileGroup(requestID, "pc", "somepath/failed.dds");
+    rcController.OnRequestCompileGroup(requestID, "pc", "somepath/failed.dds", AZ::Data::AssetId());
     ASSERT_TRUE(assetStatus == AzFramework::AssetSystem::AssetStatus_Unknown);
 
     assetStatus = AzFramework::AssetSystem::AssetStatus_Failed;
     // Broader Match
-    rcController.OnRequestCompileGroup(requestID, "pc", "somepath");
+    rcController.OnRequestCompileGroup(requestID, "pc", "somepath", AZ::Data::AssetId() );
     ASSERT_TRUE(assetStatus == AzFramework::AssetSystem::AssetStatus_Unknown);
 }
 
@@ -245,7 +245,7 @@ TEST_F(RCcontrollerTest_Simple, SameJobIsCompletedMultipleTimes_CompletesWithout
 
     for (const JobEntry& entry : jobEntries)
     {
-        m_rcController->OnFinishedProcessingJob(entry);
+        m_rcController->OnAddedToCatalog(entry);
     }
 
     ASSERT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 4); // Expected that there are 4 errors related to the files not existing on disk.  Error message: GenerateFingerprint was called but no input files were requested for fingerprinting.

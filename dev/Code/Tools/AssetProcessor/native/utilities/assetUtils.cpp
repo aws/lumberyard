@@ -506,8 +506,11 @@ namespace AssetUtilities
         QCoreApplication::addLibraryPath(finalName);
 
         azstrcpy(appPath, AZ_MAX_PATH_LEN, applicationDir.toUtf8().data());
+#if (_MSC_VER >= 1920)
+        azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc142\\qtlibs\\plugins");
+#elif (_MSC_VER >= 1910)
         azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc141\\qtlibs\\plugins");
-
+#endif
         _fullpath(finalName, appPath, AZ_MAX_PATH_LEN);
         QCoreApplication::addLibraryPath(finalName);
 
@@ -687,13 +690,13 @@ to ensure that the address is correct. Asset Processor won't be running in serve
     {
         if (initialFolder.isEmpty())
         {
-            QDir engineRoot;
-            if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+            QDir assetRoot;
+            if (!AssetUtilities::ComputeAssetRoot(assetRoot))
             {
                 return QString();
             }
 
-            initialFolder = engineRoot.absolutePath();
+            initialFolder = assetRoot.absolutePath();
         }
         // regexp that matches either the beginning of the file, some whitespace, and sys_game_folder, or,
         // matches a newline, then whitespace, then sys_game_folder
@@ -1293,10 +1296,14 @@ to ensure that the address is correct. Asset Processor won't be running in serve
             fingerprintString.append(":");
             fingerprintString.append(GetFileFingerprint(fingerprintFile.first, fingerprintFile.second));
         }
-
         // now the other jobs, which this job depends on:
         for (const AssetProcessor::JobDependencyInternal& jobDependencyInternal : jobDetail.m_jobDependencyList)
         {
+            if (jobDependencyInternal.m_jobDependency.m_type == AssetBuilderSDK::JobDependencyType::OrderOnce)
+            {
+                // we do not want to include the fingerprint of dependent jobs if the job dependency type is OrderOnce.
+                continue;
+            }
             AssetProcessor::JobDesc jobDesc(jobDependencyInternal.m_jobDependency.m_sourceFile.m_sourceFileDependencyPath,
                 jobDependencyInternal.m_jobDependency.m_jobKey, jobDependencyInternal.m_jobDependency.m_platformIdentifier);
 

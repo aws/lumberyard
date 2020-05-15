@@ -19,19 +19,7 @@
 
 namespace EMotionFX
 {
-    class RagdollCommandTests
-        : public ActorFixture
-    {
-        void SetUp()
-        {
-            ActorFixture::SetUp();
-        }
-
-        void TearDown()
-        {
-            ActorFixture::TearDown();
-        }
-    };
+    using RagdollCommandTests = ActorFixture;
 
     size_t CountRagdollJoints(const Actor* actor, bool onlyCountJointsWithColliders = false)
     {
@@ -69,28 +57,28 @@ namespace EMotionFX
 
 
         // 1. Add joints to ragdoll
-        const AZStd::string serializedBeforeAdd = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedBeforeAdd = SerializePhysicsSetup(m_actor.get());
         for (const AZStd::string& jointName : jointNames)
         {
             CommandRagdollHelpers::AddJointToRagdoll(actorId, jointName, &commandGroup, /*executeInsideCommand*/false, /*addDefaultCollider*/false);
         }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
-            const AZStd::string serializedAfterAdd = SerializePhysicsSetup(m_actor);
-            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor));
+            const AZStd::string serializedAfterAdd = SerializePhysicsSetup(m_actor.get());
+            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Undo(result));
-            EXPECT_EQ(0, CountRagdollJoints(m_actor));
-            EXPECT_EQ(serializedBeforeAdd, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(0, CountRagdollJoints(m_actor.get()));
+            EXPECT_EQ(serializedBeforeAdd, SerializePhysicsSetup(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Redo(result));
-            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor));
-            EXPECT_EQ(serializedAfterAdd, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor.get()));
+            EXPECT_EQ(serializedAfterAdd, SerializePhysicsSetup(m_actor.get()));
 
 
         // 2. Remove joints from ragdoll
         commandGroup.RemoveAllCommands();
-        const AZStd::string serializedBeforeRemove = SerializePhysicsSetup(m_actor);
+        const AZStd::string serializedBeforeRemove = SerializePhysicsSetup(m_actor.get());
 
         for (const AZStd::string& jointName : jointNames)
         {
@@ -98,15 +86,15 @@ namespace EMotionFX
         }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
-            const AZStd::string serializedAfterRemove = SerializePhysicsSetup(m_actor);
-            EXPECT_EQ(0, CountRagdollJoints(m_actor));
+            const AZStd::string serializedAfterRemove = SerializePhysicsSetup(m_actor.get());
+            EXPECT_EQ(0, CountRagdollJoints(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Undo(result));
-            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor));
-            EXPECT_EQ(serializedBeforeRemove, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(jointCount, CountRagdollJoints(m_actor.get()));
+            EXPECT_EQ(serializedBeforeRemove, SerializePhysicsSetup(m_actor.get()));
 
         EXPECT_TRUE(commandManager.Redo(result));
-            EXPECT_EQ(0, CountRagdollJoints(m_actor));
-            EXPECT_EQ(serializedAfterRemove, SerializePhysicsSetup(m_actor));
+            EXPECT_EQ(0, CountRagdollJoints(m_actor.get()));
+            EXPECT_EQ(serializedAfterRemove, SerializePhysicsSetup(m_actor.get()));
     }
 } // namespace EMotionFX

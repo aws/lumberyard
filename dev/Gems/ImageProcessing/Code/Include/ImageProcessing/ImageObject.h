@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
-#include <Processing/DDSHeader.h>
-#include <Processing/ImageFlags.h>
+#include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/Color.h>
 
 namespace AZ
 {

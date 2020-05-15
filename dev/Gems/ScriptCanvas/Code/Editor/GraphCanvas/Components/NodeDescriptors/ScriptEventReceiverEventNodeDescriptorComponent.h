@@ -47,6 +47,8 @@ namespace ScriptCanvasEditor
         AZStd::string_view GetBusName() const override;
         AZStd::string_view GetEventName() const override;
         ScriptCanvas::EBusEventId GetEventId() const override;
+
+        void SetHandlerAddress(const ScriptCanvas::Datum& idDatum) override;
         ////
 
         // NodeNotificationBus::Handler        
@@ -100,5 +102,7 @@ namespace ScriptCanvasEditor
         AZ::Crc32     m_busId;
         AZStd::string m_eventName;
         AZ::Uuid m_eventPropertyId;
+
+        ScriptCanvas::Datum m_queuedId;
     };
 }

@@ -28,9 +28,9 @@ def _get_content_bucket():
     if not hasattr(_get_content_bucket,'content_bucket'):
         content_bucket_name = CloudCanvas.get_setting('StagingBucket')   
     
-        print 'Bucket name is {}'.format(content_bucket_name)
+        print('Bucket name is {}'.format(content_bucket_name))
     
-        print 'attempting to get S3 resource from local region'
+        print('attempting to get S3 resource from local region')
         bucketResource = boto3.resource('s3', config=Config(signature_version='s3v4'))
         _get_content_bucket.content_bucket = bucketResource.Bucket(content_bucket_name)
     
@@ -43,9 +43,9 @@ def _get_staging_table():
     if not hasattr(_get_staging_table,'staging_table'):
         staging_table_name = CloudCanvas.get_setting('StagingTable')   
     
-        print 'Table name is {}'.format(staging_table_name)
+        print('Table name is {}'.format(staging_table_name))
     
-        print 'attempting to get dynamodb resource from local region'
+        print('attempting to get dynamodb resource from local region')
         dynamoresource = boto3.resource('dynamodb')
         _get_staging_table.staging_table = dynamoresource.Table(staging_table_name)
     
@@ -56,7 +56,7 @@ def _get_staging_table():
     
 @service.api 
 def list_all_content(request):
-    print 'Listing portal content'
+    print('Listing portal content')
     resultData = []
        
     tableinfo = _get_staging_table()
@@ -64,7 +64,7 @@ def list_all_content(request):
     
     this_result = {}
     for item_data in table_data['Items']:
-        print 'Found item {}'.format(item_data)
+        print('Found item {}'.format(item_data))
         resultData.append(item_data)
         
     while table_data.get('LastEvaluatedKey'):
@@ -72,35 +72,35 @@ def list_all_content(request):
 
         this_result = {}
         for item_data in table_data['Items']:
-            print 'Found item {}'.format(item_data)
+            print('Found item {}'.format(item_data))
             resultData.append(item_data)   
             
     return { 'PortalFileInfoList' : resultData}
 
 @service.api 
 def delete_all_content(request):
-    print 'Deleting portal content'
+    print('Deleting portal content')
     results_list = []
     _empty_bucket_contents()
     _clear_staging_table(results_list)
     return  { 'DeletedFileList' : results_list }
     
 def _get_bucket_content_list():
-    print 'Getting bucket content list'
+    print('Getting bucket content list')
     s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
     content_bucket_name = CloudCanvas.get_setting('StagingBucket') 
     nextMarker = 0
     contentsList = []
     while True:
         try:
-            print 'Listing objects in {}'.format(content_bucket_name)
+            print('Listing objects in {}'.format(content_bucket_name))
             res = s3.list_objects(
                 Bucket = content_bucket_name,
                 Marker = str(nextMarker)
             )
             thisList = res.get('Contents',[])
             contentsList += thisList
-            print 'Appending items: {}'.format(thisList)
+            print('Appending items: {}'.format(thisList))
             if len(thisList) < get_list_objects_limit():
                 break
             nextMarker += get_list_objects_limit()
@@ -111,7 +111,7 @@ def _get_bucket_content_list():
     return contentsList
 
 def _send_bucket_delete_list(objectList):
-    print 'Attempting to delete list'
+    print('Attempting to delete list')
     content_bucket = _get_content_bucket()
     try:
         res = content_bucket.delete_objects(
@@ -122,7 +122,7 @@ def _send_bucket_delete_list(objectList):
             
 def _remove_bucket_item(key_path):
     content_bucket = _get_content_bucket()
-    print 'Attempting to delete object {}'.format(key_path)
+    print('Attempting to delete object {}'.format(key_path))
     try:
         res = content_bucket.delete_objects(
             Delete={
@@ -133,7 +133,7 @@ def _remove_bucket_item(key_path):
                 ]
             }
         )
-        print 'Success: {}'.format(res)
+        print('Success: {}'.format(res))
     except ClientError as e:
         raise errors.PortalRequestError('Failed to remove item from bucket: {}'.format(e.response['Error']['Message']))
             
@@ -152,7 +152,7 @@ def _empty_bucket_contents():
         _send_bucket_delete_list(objectList)
 
 def _clear_staging_table(return_list):
-    print 'Clearing staging table'
+    print('Clearing staging table')
     staging_table = _get_staging_table()
     response = staging_table.scan()
     items = response['Items']
@@ -165,7 +165,7 @@ def _clear_staging_table(return_list):
                 return_list.append(key_path)
             
 def _remove_entry(key_path):
-    print 'Removing entry {}'.format(key_path)
+    print('Removing entry {}'.format(key_path))
     staging_table = _get_staging_table()
     try:
         response = staging_table.delete_item(
@@ -179,14 +179,14 @@ def _remove_entry(key_path):
 
 @service.api 
 def delete_content(request, file_name):
-    print 'Deleting content for file {}'.format(file_name)
+    print('Deleting content for file {}'.format(file_name))
     _remove_bucket_item(file_name)
     _remove_entry(file_name)
     return { 'DeletedFileList' : [ file_name ]  }
     
 @service.api 
 def describe_content(request, file_name):
-    print 'Describing portal content'
+    print('Describing portal content')
     resultData = []
     
     staging_table = _get_staging_table()
@@ -213,13 +213,13 @@ def __send_communicator_broadcast(message):
         
     interface_url = cgf_lambda_settings.get_service_url("CloudGemWebCommunicator_sendmessage_1_0_0")
     if not interface_url:
-        print 'Messaging interface not found'
+        print('Messaging interface not found')
         return
         
     client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
     try:
         result = client.navigate('broadcast').POST({"channel": "CloudGemDynamicContent", "message": message})
-        print 'Got send result {}'.format(result)
+        print('Got send result {}'.format(result))
     except Exception as error:
         raise errors.ClientError('Failed to broadcast {} due to error: {}'.format(message, error))
 
@@ -233,22 +233,22 @@ def __send_data_updated(pak_name, status):
     
 @service.api 
 def set_file_statuses(request, request_content = None):
-    print 'Setting file status'
+    print('Setting file status')
     
     staging_table = _get_staging_table()
     
-    print 'Got request_content {}'.format(request_content)
+    print('Got request_content {}'.format(request_content))
     resultData = [] 
     file_list = request_content.get('FileList', [])
-    print 'file_list is {}'.format(file_list)
+    print('file_list is {}'.format(file_list))
     for thisRequest in file_list:
-        print 'Processing request {}'.format(thisRequest)
+        print('Processing request {}'.format(thisRequest))
         fileName = thisRequest.get('FileName')
         if fileName is None:
-            print 'No FileName specified'
+            print('No FileName specified')
             continue
             
-        print 'Got request for file {} status {} start {} end {}'.format(fileName, thisRequest.get('StagingStatus'), thisRequest.get('StartDate'), thisRequest.get('EndDate'))
+        print('Got request for file {} status {} start {} end {}'.format(fileName, thisRequest.get('StagingStatus'), thisRequest.get('StartDate'), thisRequest.get('EndDate')))
                 
         attribute_updates = ''
         expression_attribute_values = {}

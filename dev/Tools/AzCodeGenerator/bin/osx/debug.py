@@ -21,21 +21,6 @@ import tempfile
 import imp
 from collections import defaultdict
 
-try:
-    # Prevent non-sxs version of msvcr90.dll from being loaded by path environment variable.
-    if 'path' in os.environ:
-        system_paths_to_check = os.environ['path'].split(os.pathsep)
-        patched_system_paths = []
-        for system_path_to_check in system_paths_to_check:
-            if os.path.isdir(system_path_to_check):
-                if "msvcr90.dll" not in map(str.lower, os.listdir(system_path_to_check)):
-                    patched_system_paths.append(system_path_to_check)
-        os.environ['path'] = os.pathsep.join(patched_system_paths)
-except Exception, e:
-    print 'error - {}'.format(e)
-    raise
-
-
 def run_cmd(cmd, **kw):
     import subprocess
     print('cmd: %r' % cmd)

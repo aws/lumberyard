@@ -63,6 +63,7 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override              { return true; }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
         bool GetHasOutputPose() const override                      { return true; }
+        bool GetCanBeEntryNode() const                              { return false; }
         bool GetCanBeInsideStateMachineOnly() const override        { return true; }
         bool GetHasVisualOutputPorts() const override               { return false; }
         bool GetCanHaveOnlyOneInsideParent() const override         { return false; }

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "DockableLibraryTreeView.h"
 
 //Editor

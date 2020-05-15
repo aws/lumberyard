@@ -285,10 +285,23 @@ namespace AzToolsFramework
             AZ::SliceComponent::SliceInstanceAddress entitySliceAddress;
             EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-            if (entitySliceAddress.IsValid())
+            // Use the bottom most slice ancestor, so nested slices will show the closest ancestor rather than their root.
+            if (!entitySliceAddress.IsValid())
             {
-                ResetTrees((entitySliceAddress.GetReference())->GetSliceAsset().GetId());
+                return;
             }
+
+            AZ::SliceComponent::EntityAncestorList ancestors;
+            entitySliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, ancestors);
+
+            if (ancestors.empty())
+            {
+                return;
+            }
+
+            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset = ancestors.back().m_sliceAddress.GetReference()->GetSliceAsset();
+
+            ResetTrees(sliceAsset.GetId());
         }
     }
 

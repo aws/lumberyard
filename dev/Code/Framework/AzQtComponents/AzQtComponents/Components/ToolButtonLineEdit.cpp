@@ -10,7 +10,10 @@
 *
 */
 #include <AzQtComponents/Components/ToolButtonLineEdit.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // disable warnings spawned by QT
 #include <QLineEdit>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {

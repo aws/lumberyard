@@ -21,7 +21,7 @@ def format_description(annotations, scope, name):
     # description has 2 args, name and desc, store them into Name and Description separately
     resolved_name = resolve_annotation(annotations, scope + '::Name', quote(name))
     description = resolve_annotation(annotations, scope + '::Description', [resolved_name, quote('No Description')])
-    if isinstance(description, basestring):
+    if isinstance(description, str):
         description = [resolved_name, description]
     if resolved_name != quote(name): # if there was a specified name, that should win
         description[0] = resolved_name
@@ -107,7 +107,7 @@ def sort_fields_by_group(fields):
         field['group'] = group
         fields_by_group[group].append(field)
     sorted_fields = fields_by_group[""]
-    for group, group_fields in fields_by_group.iteritems():
+    for group, group_fields in fields_by_group.items():
         if group: #ignore the default group, those come first above
             sorted_fields += group_fields
     return sorted_fields
@@ -120,7 +120,7 @@ def fixup_class_annotations(object):
 def format_enum_values(enum):
     annotations = enum['annotations']
     values = resolve_annotation(annotations, 'AzEnum::Values')
-    if values and values.has_key('AzEnum::Value'):
+    if values and 'AzEnum::Value' in values:
         values = values['AzEnum::Value']
         for value in values:
             if not value[0].startswith(enum['qualified_name']):

@@ -51,7 +51,7 @@ namespace AZStd
     struct hash<AZStd::tuple<Types...>>
     {
         template<size_t... Indices>
-        size_t ElementHasher(const AZStd::tuple<Types...>& value, AZStd::index_sequence<Indices...>) const
+        constexpr size_t ElementHasher(const AZStd::tuple<Types...>& value, AZStd::index_sequence<Indices...>) const
         {
             size_t seed = 0;
             int dummy[]{ 0, (hash_combine(seed, AZStd::get<Indices>(value)), 0)... };
@@ -59,7 +59,7 @@ namespace AZStd
             return seed;
         }
 
-        size_t operator()(const AZStd::tuple<Types...>& value) const
+        constexpr size_t operator()(const AZStd::tuple<Types...>& value) const
         {
             return ElementHasher(value, AZStd::make_index_sequence<sizeof...(Types)>{});
         }
@@ -71,25 +71,25 @@ namespace AZStd
     // pair code to inter operate with tuples
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2, size_t... I1, size_t... I2>
-    pair<T1, T2>::pair(piecewise_construct_t, TupleType<Args1...>& first_args, TupleType<Args2...>& second_args,
+    constexpr pair<T1, T2>::pair(piecewise_construct_t, TupleType<Args1...>& first_args, TupleType<Args2...>& second_args,
         AZStd::index_sequence<I1...>, AZStd::index_sequence<I2...>)
         : first(AZStd::forward<Args1>(AZStd::get<I1>(first_args))...)
         , second(AZStd::forward<Args2>(AZStd::get<I2>(second_args))...)
     {
         (void)first_args;
         (void)second_args;
-        AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args2...>, tuple<Args2...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
+        static_assert(AZStd::is_same_v<TupleType<Args2...>, tuple<Args2...>>, "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }
 
     // Pair constructor overloads which take in a tuple is implemented here as tuple is not included at the place where pair declares the constructor
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2>
-    pair<T1, T2>::pair(piecewise_construct_t piecewise_construct,
+    constexpr pair<T1, T2>::pair(piecewise_construct_t piecewise_construct,
         TupleType<Args1...> first_args,
         TupleType<Args2...> second_args)
         : pair(piecewise_construct, first_args, second_args, AZStd::make_index_sequence<sizeof...(Args1)>{}, AZStd::make_index_sequence<sizeof...(Args2)>{})
     {
-        AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args1...>, tuple<Args1...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
+        static_assert(AZStd::is_same_v<TupleType<Args1...>, tuple<Args1...>>, "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }
 
     namespace Internal
@@ -100,38 +100,38 @@ namespace AZStd
         struct get_pair<0>
         {
             template<class T1, class T2>
-            static T1& get(AZStd::pair<T1, T2>& pairObj) { return pairObj.first; }
+            static constexpr T1& get(AZStd::pair<T1, T2>& pairObj) { return pairObj.first; }
 
             template<class T1, class T2>
-            static const T1& get(const AZStd::pair<T1, T2>& pairObj) { return pairObj.first; }
+            static constexpr const T1& get(const AZStd::pair<T1, T2>& pairObj) { return pairObj.first; }
 
             template<class T1, class T2>
-            static T1&& get(AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T1>(pairObj.first); }
+            static constexpr T1&& get(AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T1>(pairObj.first); }
 
             template<class T1, class T2>
-            static const T1&& get(const AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T1>(pairObj.first); }
+            static constexpr const T1&& get(const AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T1>(pairObj.first); }
         };
         template<>
         struct get_pair<1>
         {
             template<class T1, class T2>
-            static T2& get(AZStd::pair<T1, T2>& pairObj) { return pairObj.second; }
+            static constexpr T2& get(AZStd::pair<T1, T2>& pairObj) { return pairObj.second; }
 
             template<class T1, class T2>
-            static const T2& get(const AZStd::pair<T1, T2>& pairObj) { return pairObj.second; }
+            static constexpr const T2& get(const AZStd::pair<T1, T2>& pairObj) { return pairObj.second; }
 
             template<class T1, class T2>
-            static T2&& get(AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T2>(pairObj.second); }
+            static constexpr T2&& get(AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T2>(pairObj.second); }
 
             template<class T1, class T2>
-            static const T2&& get(const AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T2>(pairObj.second); }
+            static constexpr const T2&& get(const AZStd::pair<T1, T2>&& pairObj) { return AZStd::forward<T2>(pairObj.second); }
         };
     }
 
     //! Wraps the std::get function in the AZStd namespace
     //! This methods retrieves the tuple element at a particular index within the pair
     template<size_t I, class T1, class T2>
-    AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>& get(AZStd::pair<T1, T2>& pairObj)
+    constexpr AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>& get(AZStd::pair<T1, T2>& pairObj)
     {
         return Internal::get_pair<I>::get(pairObj);
     }
@@ -139,7 +139,7 @@ namespace AZStd
     //! Wraps the std::get function in the AZStd namespace
     //! This methods retrieves the tuple element at a particular index within the pair
     template<size_t I, class T1, class T2>
-    const AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>& get(const AZStd::pair<T1, T2>& pairObj)
+    constexpr const AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>& get(const AZStd::pair<T1, T2>& pairObj)
     {
         return Internal::get_pair<I>::get(pairObj);
     }
@@ -147,7 +147,7 @@ namespace AZStd
     //! Wraps the std::get function in the AZStd namespace
     //! This methods retrieves the tuple element at a particular index within the pair
     template<size_t I, class T1, class T2>
-    AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>&& get(AZStd::pair<T1, T2>&& pairObj)
+    constexpr AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>&& get(AZStd::pair<T1, T2>&& pairObj)
     {
         return Internal::get_pair<I>::get(AZStd::move(pairObj));
     }
@@ -155,7 +155,7 @@ namespace AZStd
     //! Wraps the std::get function in the AZStd namespace
     //! This methods retrieves the tuple element at a particular index within the pair
     template<size_t I, class T1, class T2>
-    const AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>&& get(const AZStd::pair<T1, T2>&& pairObj)
+    constexpr const AZStd::tuple_element_t<I, AZStd::pair<T1, T2>>&& get(const AZStd::pair<T1, T2>&& pairObj)
     {
         return Internal::get_pair<I>::get(AZStd::move(pairObj));
     }
@@ -164,7 +164,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    T& get(AZStd::pair<T, U>& pairObj)
+    constexpr T& get(AZStd::pair<T, U>& pairObj)
     {
         return Internal::get_pair<0>::get(pairObj);
     }
@@ -173,7 +173,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    T& get(AZStd::pair<U, T>& pairObj)
+    constexpr T& get(AZStd::pair<U, T>& pairObj)
     {
         return Internal::get_pair<1>::get(pairObj);
     }
@@ -182,7 +182,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    const T& get(const AZStd::pair<T, U>& pairObj)
+    constexpr const T& get(const AZStd::pair<T, U>& pairObj)
     {
         return Internal::get_pair<0>::get(pairObj);
     }
@@ -191,7 +191,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    const T& get(const AZStd::pair<U, T>& pairObj)
+    constexpr const T& get(const AZStd::pair<U, T>& pairObj)
     {
         return Internal::get_pair<1>::get(pairObj);
     }
@@ -200,7 +200,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    T&& get(AZStd::pair<T, U>&& pairObj)
+    constexpr T&& get(AZStd::pair<T, U>&& pairObj)
     {
         return Internal::get_pair<0>::get(AZStd::move(pairObj));
     }
@@ -209,7 +209,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    T&& get(AZStd::pair<U, T>&& pairObj)
+    constexpr T&& get(AZStd::pair<U, T>&& pairObj)
     {
         return Internal::get_pair<1>::get(AZStd::move(pairObj));
     }
@@ -218,7 +218,7 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    const T&& get(const AZStd::pair<T, U>&& pairObj)
+    constexpr const T&& get(const AZStd::pair<T, U>&& pairObj)
     {
         return Internal::get_pair<0>::get(AZStd::move(pairObj));
     }
@@ -227,21 +227,21 @@ namespace AZStd
     //! This methods extracts an element from the pair with the specified type T
     //! If there is more than one T in the pair, then this function fails to compile
     template<class T, class U>
-    const T&& get(const AZStd::pair<U, T>&& pairObj)
+    constexpr const T&& get(const AZStd::pair<U, T>&& pairObj)
     {
         return Internal::get_pair<1>::get(AZStd::move(pairObj));
     }
 
     //! AZStd::pair to std::tuple function for replicating the functionality of std::tuple assignment operator from std::pair
     template<class T1, class T2>
-    tuple<T1, T2> tuple_assign(const AZStd::pair<T1, T2>& azPair)
+    constexpr tuple<T1, T2> tuple_assign(const AZStd::pair<T1, T2>& azPair)
     {
         return std::make_tuple(azPair.first, azPair.second);
     }
 
     //! AZStd::pair to std::tuple function for replicating the functionality of std::tuple assignment operator from std::pair
     template<class T1, class T2>
-    tuple<T1, T2> tuple_assign(AZStd::pair<T1, T2>&& azPair)
+    constexpr tuple<T1, T2> tuple_assign(AZStd::pair<T1, T2>&& azPair)
     {
         return std::make_tuple(AZStd::move(azPair.first), AZStd::move(azPair.second));
     }
@@ -252,30 +252,30 @@ namespace AZStd
     // implementation of the std::get function within the AZStd::namespace which allows AZStd::apply to be used
     // with AZStd::array
     template<size_t I, class T, size_t N>
-    T& get(AZStd::array<T, N>& arr)
+    constexpr T& get(AZStd::array<T, N>& arr)
     {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        static_assert(I < N, "AZStd::get has been called on array with an index that is out of bounds");
         return arr[I];
     };
 
     template<size_t I, class T, size_t N>
-    const T& get(const AZStd::array<T, N>& arr)
+    constexpr const T& get(const AZStd::array<T, N>& arr)
     {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        static_assert(I < N, "AZStd::get has been called on array with an index that is out of bounds");
         return arr[I];
     };
 
     template<size_t I, class T, size_t N>
-    T&& get(AZStd::array<T, N>&& arr)
+    constexpr T&& get(AZStd::array<T, N>&& arr)
     {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        static_assert(I < N, "AZStd::get has been called on array with an index that is out of bounds");
         return AZStd::move(arr[I]);
     };
 
     template<size_t I, class T, size_t N>
-    const T&& get(const AZStd::array<T, N>&& arr)
+    constexpr const T&& get(const AZStd::array<T, N>&& arr)
     {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        static_assert(I < N, "AZStd::get has been called on array with an index that is out of bounds");
         return AZStd::move(arr[I]);
     };
 }
@@ -286,7 +286,7 @@ namespace AZStd
     namespace Internal
     {
         template<class Fn, class Tuple, size_t... Is>
-        auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>) -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
+        constexpr auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>) -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
         {
             (void)tupleObj;
             return AZStd::invoke(AZStd::forward<Fn>(f), AZStd::get<Is>(AZStd::forward<Tuple>(tupleObj))...);
@@ -294,7 +294,7 @@ namespace AZStd
     }
 
     template<class Fn, class Tuple>
-    auto apply(Fn&& f, Tuple&& tupleObj)
+    constexpr auto apply(Fn&& f, Tuple&& tupleObj)
         -> decltype(Internal::apply_impl(AZStd::declval<Fn>(), AZStd::declval<Tuple>(), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{}))
     {
         return Internal::apply_impl(AZStd::forward<Fn>(f), AZStd::forward<Tuple>(tupleObj), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{});
@@ -345,7 +345,7 @@ namespace std
     template<size_t I, class T, size_t N>
     struct tuple_element<I, AZStd::array<T, N>>
     {
-        AZ_STATIC_ASSERT(I < N, "AZStd::tuple_element has been called on array with an index that is out of bounds");
+        static_assert(I < N, "AZStd::tuple_element has been called on array with an index that is out of bounds");
         using type = T;
     };
     AZ_POP_DISABLE_WARNING

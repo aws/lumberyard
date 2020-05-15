@@ -10,16 +10,17 @@
 #
 
 import copy
-import mock
 import unittest
+from unittest import mock
 
-from mock_swagger_json_navigator import SwaggerNavigatorMatcher
+from .mock_swagger_json_navigator import SwaggerNavigatorMatcher
 from swagger_json_navigator import SwaggerNavigator
 from cgf_utils.version_utils import Version
 
 import swagger_processor.interface
 import swagger_processor.lambda_dispatch
 import resource_manager_common.service_interface
+
 
 class AnyOrderListMatcher(object):
 
@@ -128,7 +129,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_interface
     @mock.patch('swagger_processor.interface.process_interface_implementation_object')
     def test_process_interface_implementation_objects_processes_all_objects(self, mock_process_interface_implementation_object):
 
-        self.add_target_path('/path-without-interface-implemenation')
+        self.add_target_path('/path-without-interface-implementation')
 
         interface_implementation_object_1 = self.add_target_interface_implementation_object(
             self.test_path + '1', 
@@ -305,10 +306,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_interface
                 }
             })
 
-
-
-    def test_insert_interface_definitions_generates_unique_defintion_names(self):
-
+    def test_insert_interface_definitions_generates_unique_definition_names(self):
         interface_definition = { 'interface': 'definition' }
         self.add_interface_definition(self.test_definition_name, interface_definition)
 

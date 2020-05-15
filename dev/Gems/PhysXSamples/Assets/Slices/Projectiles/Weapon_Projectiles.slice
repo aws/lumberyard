@@ -474,7 +474,7 @@
 											<Class name="AZStd::string" field="AssetPath" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
-									<Class name="MeshRenderOptions" field="Render Options" version="4" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
+									<Class name="MeshRenderOptions" field="Render Options" version="5" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="8000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>

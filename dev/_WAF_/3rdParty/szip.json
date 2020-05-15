@@ -2,7 +2,7 @@
     "name": "szip",
     "source": "@3P:szip@",
     "description": "Alembic SZIP library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

@@ -173,7 +173,7 @@ namespace AzToolsFramework
         AZ_Assert(metadataEntity.GetState() == AZ::Entity::ES_ACTIVE, "Metadata Entity Failed To Activate");
 
         // All metadata entities created should have a metadata association component
-        AZStd::unordered_set<AZ::EntityId> associatedEntities;
+        AZStd::set<AZ::EntityId> associatedEntities;
         AZ::SliceMetadataInfoRequestBus::Event(metadataEntity.GetId(), &AZ::SliceMetadataInfoRequestBus::Events::GetAssociatedEntities, associatedEntities);
         for (const auto& editorEntityId : associatedEntities)
         {

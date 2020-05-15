@@ -13,12 +13,15 @@
 import os
 import random
 import time
-from resource_manager_common import constant
-import util
 import json
 import datetime
-import botocore
-import boto3
+# Python 2.7/3.7 compatibility
+from six import StringIO
+from six.moves import configparser
+from six import iteritems
+from six import string_types
+
+from botocore.client import Config
 from boto3 import Session
 from botocore.exceptions import ProfileNotFound
 from botocore.exceptions import ClientError
@@ -27,14 +30,12 @@ from botocore.exceptions import IncompleteReadError
 from botocore.exceptions import ConnectionError
 from botocore.exceptions import BotoCoreError
 from botocore.exceptions import UnknownEndpointError
-from errors import HandledError
-from ConfigParser import RawConfigParser
-from StringIO import StringIO
-from config import CloudProjectSettings
 
-from botocore.client import Config
-
+from . import util
+from resource_manager_common import constant
+from cgf_utils.aws_sts import AWSSTSUtils
 from cgf_utils import json_utils
+from .errors import HandledError
 
 
 class AwsCredentials(object):
@@ -46,10 +47,9 @@ class AwsCredentials(object):
     __TEMP_DEFAULT_SECTION_HEADING = '[' + __TEMP_DEFAULT_SECTION_NAME + ']'
 
     def __init__(self):
-        self.__config = RawConfigParser()
+        self.__config = configparser.RawConfigParser()
 
     def read(self, path):
-
         with open(path, 'r') as file:
             content = file.read()
 
@@ -57,10 +57,9 @@ class AwsCredentials(object):
 
         content_io = StringIO(content)
 
-        self.__config.readfp(content_io)
+        self.__config.read_file(content_io)
 
     def write(self, path):
-
         content_io = StringIO()
 
         self.__config.write(content_io)
@@ -73,14 +72,12 @@ class AwsCredentials(object):
             file.write(content)
 
     def __to_temp_name(self, name):
-
         if name == self.__REAL_DEFAULT_SECTION_NAME:
             name = self.__TEMP_DEFAULT_SECTION_NAME
 
         return name
 
     def __to_real_name(self, name):
-
         if name == self.__TEMP_DEFAULT_SECTION_NAME:
             name = self.__REAL_DEFAULT_SECTION_NAME
 
@@ -174,24 +171,26 @@ class ClientWrapper(object):
         msg += log_msg
         msg += '\n'
 
-        print msg
+        print(msg)
 
     def __log_attempt(self, method_name, args, kwargs):
 
         msg = 'attempt: '
         comma_needed = False
         for arg in args:
-            if comma_needed: msg += ', '
+            if comma_needed:
+                msg += ', '
             msg += type(arg).__name__
             msg += str(arg)
             comma_needed = True
 
-        for key, value in kwargs.iteritems():
-            if comma_needed: msg += ', '
+        for key, value in iteritems(kwargs):
+            if comma_needed:
+                msg += ', '
             msg += key
             msg += '='
             msg += type(value).__name__
-            if isinstance(value, basestring):
+            if isinstance(value, string_types):
                 msg += '"'
                 msg += value
                 msg += '"'
@@ -217,7 +216,7 @@ class ClientWrapper(object):
         msg = ' failure '
         msg += type(e).__name__
         msg += ': '
-        msg += str(getattr(e, 'response', e.message))
+        msg += str(getattr(e, 'response', str(e)))
 
         self.log(method_name, msg)
 
@@ -263,13 +262,18 @@ class AWSContext(object):
         self.__context = context
         self.__default_profile = None
         self.__session = None
+        self.__session_without_role = None
+        self.__args = None
 
     def initialize(self, args):
         self.__args = args
 
-    def __init_session(self):
-        if self.__args.aws_access_key or self.__args.aws_secret_key:
+    def __init_session(self, region=None):
+        # If region is provided then use it, otherwise defer to project region
+        # If thats missing, boto3 will use AWS cli default region in session
+        region = self.region if region is None else region
 
+        if self.__args.aws_access_key or self.__args.aws_secret_key:
             if self.__args.profile:
                 raise HandledError('Either the --profile or the --aws-secret-key and --aws-access-key options can be specified.')
             if not self.__args.aws_access_key or not self.__args.aws_secret_key:
@@ -277,10 +281,12 @@ class AWSContext(object):
 
             self.__session = Session(
                 aws_access_key_id=self.__args.aws_access_key,
-                aws_secret_access_key=self.__args.aws_secret_key)
+                aws_secret_access_key=self.__args.aws_secret_key,
+                region_name=region
+            )
             self.__set_boto3_environment_variables(self.__args.aws_access_key, self.__args.aws_secret_key)
-        else:
 
+        else:
             if self.__args.profile:
                 if self.__args.aws_access_key or self.__args.aws_secret_key:
                     raise HandledError('Either the --profile or the --aws-secret-key and --aws-access-key options can be specified.')
@@ -291,19 +297,19 @@ class AWSContext(object):
                 self.__context.view.using_profile(profile)
 
             try:
-                self.__session = Session(profile_name=profile)
-            except (ProfileNotFound) as e:
+                self.__session = Session(profile_name=profile, region_name=self.region)
+            except ProfileNotFound as e:
                 if self.has_credentials_file():
                     raise HandledError(
                         'The AWS session failed to locate AWS credentials for profile {}. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(
-                            profile, e.message))
+                            profile, e))
                 try:
                     # Try loading from environment
-                    self.__session = Session()
-                except (ProfileNotFound) as e:
+                    self.__session = Session(region_name=self.region)
+                except ProfileNotFound as e:
                     raise HandledError(
                         'The AWS session failed to locate AWS credentials from the environment. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(
-                            e.message))
+                            e))
 
             credentials = self.__session.get_credentials()
 
@@ -316,14 +322,18 @@ class AWSContext(object):
             self.__set_boto3_environment_variables(credentials.access_key, credentials.secret_key)
         self.__add_cloud_canvas_attribution(self.__session)
 
-    def assume_role(self, logical_role_id, deployment_name):
+    def assume_role(self, logical_role_id, deployment_name, region=None):
         duration_seconds = 3600  # TODO add an option for this? Revisit after adding GUI support.
-        credentials = self.get_temporary_credentials(logical_role_id, deployment_name, duration_seconds)
+        if region is None:
+            region = self.region
+        credentials = self.get_temporary_credentials(logical_role_id, deployment_name, duration_seconds, region)
 
         self.__session = Session(
             aws_access_key_id=credentials.get('AccessKeyId'),
             aws_secret_access_key=credentials.get('SecretAccessKey'),
-            aws_session_token=credentials.get('SessionToken'))
+            aws_session_token=credentials.get('SessionToken'),
+            region_name=region
+        )
         self.__set_boto3_environment_variables(credentials.get('AccessKeyId'), credentials.get('SecretAccessKey'), credentials.get('SessionToken'))
 
         self.__add_cloud_canvas_attribution(self.__session)
@@ -365,8 +375,7 @@ class AWSContext(object):
             deployment_name = None
 
         else:
-
-            raise HandledError('Role could not find role {} in the project or deployment access templates.'.format(role_logical_id))
+            raise HandledError('Could not find role "{}" in the project or deployment access templates.'.format(role_logical_id))
 
         role_physical_id = self.__context.stack.get_physical_resource_id(stack_arn, role_logical_id)
         account_id = util.get_account_id_from_arn(stack_arn)
@@ -384,17 +393,16 @@ class AWSContext(object):
                 return True
         return False
 
-    def client(self, service_name, region=None, use_role=True):
-
+    def client(self, service_name, region=None, use_role=True, endpoint_url=None):
         if self.__session is None:
-            self.__init_session()
+            self.__init_session(region)
 
         if use_role:
             session = self.__session
         else:
             session = self.__session_without_role
 
-        client = session.client(service_name, region_name=region, config=Config(signature_version='s3v4'))
+        client = session.client(service_name, region_name=region, config=Config(signature_version='s3v4'), endpoint_url=endpoint_url)
         if service_name == 'cloudformation':
             wrapped_client = CloudFormationClientWrapper(client, self.__args.verbose)
         else:
@@ -402,7 +410,6 @@ class AWSContext(object):
         return wrapped_client
 
     def resource(self, service_name, region=None, use_role=True):
-
         if self.__session is None:
             self.__init_session()
 
@@ -418,6 +425,13 @@ class AWSContext(object):
         if self.__session is None:
             self.__init_session()
         return self.__session
+
+    @property
+    def region(self):
+        if self.__session is not None:
+            return self.__session.region_name
+        else:
+            return self.__context.config.project_region
 
     def set_default_profile(self, profile):
         self.__default_profile = profile
@@ -437,22 +451,20 @@ class AWSContext(object):
     def has_credentials_file(self):
         return os.path.isfile(self.get_credentials_file_path())
 
-    def get_temporary_credentials(self, logical_role_id, deployment_name, duration_seconds):
+    def _get_sts_client(self, region):
+        _endpoint_url = AWSSTSUtils(region).endpoint_url
+        return self.client('sts', endpoint_url=_endpoint_url, region=region)
+
+    def get_temporary_credentials(self, logical_role_id, deployment_name, duration_seconds, region):
+        print("get_temporary_credentials REGION: {}".format(region))
+        sts_client = self._get_sts_client(region=region)
 
         if logical_role_id:
-
             role_arn = self.__get_role_arn(logical_role_id, deployment_name)
-
-            sts_client = self.client('sts')
             res = sts_client.assume_role(RoleArn=role_arn, RoleSessionName='lmbr_aws', DurationSeconds=duration_seconds)
-
             credentials = res.get('Credentials', {})
-
         else:
-
-            sts_client = self.client('sts')
             res = sts_client.get_session_token(DurationSeconds=duration_seconds)
-
             credentials = res.get('Credentials', {})
 
         return credentials
@@ -465,7 +477,8 @@ class AWSContext(object):
         self.__context.view.saving_file(path)
         credentials.write(path)
 
-    def get_credentials_file_path(self):
+    @staticmethod
+    def get_credentials_file_path():
         return os.path.join(os.path.expanduser('~'), '.aws', 'credentials')
 
     def profile_exists(self, profile):

@@ -139,7 +139,7 @@ namespace GraphCanvas
     GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::LinearSlotGroupWidget(QGraphicsItem* parent)
         : QGraphicsWidget(parent)
         , m_inputs(nullptr)
-        , m_outputs(nullptr)
+        , m_outputs(nullptr)        
     {
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -193,38 +193,29 @@ namespace GraphCanvas
     void GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::DisplaySlot(const AZ::EntityId& slotId)
     {
         ConnectionType connectionType = ConnectionType::CT_Invalid;
-        SlotRequestBus::EventResult(connectionType, slotId, &SlotRequests::GetConnectionType);
+        SlotRequestBus::EventResult(connectionType, slotId, &SlotRequests::GetConnectionType);                
+        
+        int layoutOrder = 0;
 
-        QGraphicsLayoutItem* layoutItem = GetLayoutItem(slotId);
+        SlotLayoutInfo slotInfo(slotId);
 
-        if (layoutItem)
+        if (connectionType == CT_Input)
         {
-            int layoutOrder = 0;
+            SlotUINotificationBus::MultiHandler::BusConnect(slotId);
 
-            if (connectionType == CT_Input)
-            {
-                SlotLayoutInfo slotInfo(slotId);
+            m_inputSlotSet.insert(slotId);
+            layoutOrder = LayoutSlot(m_inputs, m_inputSlots, slotInfo);
+        }
+        else if (connectionType == CT_Output)
+        {
+            SlotUINotificationBus::MultiHandler::BusConnect(slotId);
 
-                layoutOrder = LayoutSlot(m_inputSlots, slotInfo);
-
-                m_inputs->insertItem(layoutOrder, layoutItem);
-                m_inputs->setAlignment(layoutItem, Qt::AlignTop);
-            }
-            else if (connectionType == CT_Output)
-            {
-                SlotLayoutInfo slotInfo(slotId);
-
-                layoutOrder = LayoutSlot(m_outputSlots, slotInfo);
-
-                m_outputs->insertItem(layoutOrder, layoutItem);
-                m_outputs->setAlignment(layoutItem, Qt::AlignTop);                
-            }
-            else
-            {
-                AZ_Warning("GraphCanvas", false, "Invalid Connection Type for slot. Cannot add to Node Layout");
-            }
-
-            SlotRequestBus::Event(slotId, &SlotRequests::SetDisplayOrdering, layoutOrder);
+            m_outputSlotSet.insert(slotId);
+            LayoutSlot(m_outputs, m_outputSlots, slotInfo);            
+        }
+        else
+        {
+            AZ_Warning("GraphCanvas", false, "Invalid Connection Type for slot. Cannot add to Node Layout");
         }
     }
 
@@ -237,6 +228,8 @@ namespace GraphCanvas
 
         if (layoutItem)
         {
+            SlotUINotificationBus::MultiHandler::BusDisconnect(slotId);
+
             if (scene())
             {
                 scene()->removeItem(layoutItem->graphicsItem());
@@ -244,6 +237,7 @@ namespace GraphCanvas
 
             if (connectionType == CT_Input)
             {
+                m_inputSlotSet.erase(slotId);
                 m_inputs->removeItem(layoutItem);
 
                 for (unsigned int i = 0; i < m_inputSlots.size(); ++i)
@@ -257,6 +251,7 @@ namespace GraphCanvas
             }
             else if (connectionType == CT_Output)
             {
+                m_outputSlotSet.erase(slotId);
                 m_outputs->removeItem(layoutItem);
 
                 for (unsigned int i = 0; i < m_outputSlots.size(); ++i)
@@ -307,7 +302,53 @@ namespace GraphCanvas
         update();
     }
 
-    int GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::LayoutSlot(AZStd::vector<SlotLayoutInfo>& slotList, const SlotLayoutInfo& slotInfo)
+    void GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::OnSlotLayoutPriorityChanged(int layoutPriority)
+    {
+        const SlotId* slotId = SlotUINotificationBus::GetCurrentBusId();
+
+        if (slotId == nullptr)
+        {
+            return;
+        }
+
+        AZStd::vector< SlotLayoutInfo >* layoutVector = nullptr;
+        QGraphicsLinearLayout* layoutElement = nullptr;
+
+        if (m_inputSlotSet.count((*slotId)) > 0)
+        {
+            layoutVector = &m_inputSlots;
+            layoutElement = m_inputs;
+        }
+        else if (m_outputSlotSet.count((*slotId)) > 0)
+        {
+            layoutVector = &m_outputSlots;
+            layoutElement = m_outputs;
+        }
+
+        if (layoutVector == nullptr || layoutElement == nullptr)
+        {
+            return;
+        }
+        
+        for (auto layoutIter = layoutVector->begin(); layoutIter != layoutVector->end(); ++layoutIter)
+        {
+            if (layoutIter->m_slotId == (*slotId))
+            {
+                SlotLayoutInfo info = (*layoutIter);
+                info.m_priority = layoutPriority;
+
+                layoutVector->erase(layoutIter);
+
+                QGraphicsLayoutItem* layoutItem = GetLayoutItem(info.m_slotId);
+                layoutElement->removeItem(layoutItem);
+
+                LayoutSlot(layoutElement, (*layoutVector), info);
+                break;
+            }
+        }
+    }
+
+    int GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::LayoutSlot(QGraphicsLinearLayout* layout, AZStd::vector<SlotLayoutInfo>& slotList, const SlotLayoutInfo& slotInfo)
     {
         bool inserted = false;
         int i = 0;
@@ -329,6 +370,15 @@ namespace GraphCanvas
         if (!inserted)
         {
             slotList.insert(slotList.end(), slotInfo);
+        }
+        
+        QGraphicsLayoutItem* layoutItem = GetLayoutItem(slotInfo.m_slotId);
+
+        if (layoutItem)
+        {
+            layout->insertItem(i, layoutItem);
+            layout->setAlignment(layoutItem, Qt::AlignTop);
+            SlotRequestBus::Event(slotInfo.m_slotId, &SlotRequests::SetDisplayOrdering, i);
         }
 
         return i;

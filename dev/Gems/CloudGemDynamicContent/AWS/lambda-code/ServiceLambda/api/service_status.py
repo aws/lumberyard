@@ -13,7 +13,7 @@ import service
 
 @service.api
 def get(request):
-    print 'testing service status'
+    print('testing service status')
     return {
         'status': 'online'
     }

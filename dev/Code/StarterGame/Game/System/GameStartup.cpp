@@ -39,9 +39,6 @@ AZ_DLL_EXPORT IEditorGame* CreateEditorGame()
 {
     return new LYGame::EditorGame();
 }
-#if defined(AZ_MONOLITHIC_BUILD)
-IGameFramework* CreateGameFramework();
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -121,18 +118,9 @@ void GameStartup::Shutdown()
 
 bool GameStartup::InitFramework(SSystemInitParams& startupParams)
 {
-#if !defined(AZ_MONOLITHIC_BUILD)
-
-    IGameFramework* gameFramework = nullptr;
-    CryGameFrameworkBus::BroadcastResult(gameFramework, &CryGameFrameworkRequests::CreateFramework);
-    AZ_Assert(gameFramework, "Legacy CreateGameFramework function called, but nothing is subscribed to the CryGameFrameworkRequests.\n"
+    CryGameFrameworkBus::BroadcastResult(m_Framework, &CryGameFrameworkRequests::CreateFramework);
+    AZ_Assert(m_Framework, "Legacy CreateGameFramework function called, but nothing is subscribed to the CryGameFrameworkRequests.\n"
         "Please use the Project Configurator to enable the CryLegacy gem for your project.");
-
-    m_Framework = gameFramework;
-#else
-    m_Framework = CreateGameFramework();
-#endif // !AZ_MONOLITHIC_BUILD
-
 
     if (!m_Framework)
     {

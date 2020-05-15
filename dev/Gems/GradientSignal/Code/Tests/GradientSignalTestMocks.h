@@ -279,32 +279,126 @@ namespace UnitTest
             }
         }
 
+        void GetSurfacePointsFromRegion(const AZ::Aabb& inRegion, const AZ::Vector2 stepSize, const SurfaceData::SurfaceTagVector& desiredTags,
+            SurfaceData::SurfacePointListPerPosition& surfacePointListPerPosition) const override
+        {
+        }
+
         SurfaceData::SurfaceDataRegistryHandle RegisterSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
-            return {};
+            return RegisterEntry(entry, m_providers);
         }
 
         void UnregisterSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle) override
         {
+            UnregisterEntry(handle, m_providers);
         }
 
         SurfaceData::SurfaceDataRegistryHandle RegisterSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
-            return {};
+            return RegisterEntry(entry, m_modifiers);
         }
 
         void UnregisterSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle) override
         {
+            UnregisterEntry(handle, m_modifiers);
         }
 
-        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
+        {
+            UpdateEntry(handle, entry, m_providers);
+        }
+
+        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
+        {
+            UpdateEntry(handle, entry, m_modifiers);
+        }
+
+        void RefreshSurfaceData(const AZ::Aabb& dirtyBounds) override
         {
         }
 
-        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        SurfaceData::SurfaceDataRegistryHandle GetSurfaceProviderHandle(AZ::EntityId id)
         {
+            return GetEntryHandle(id, m_providers);
         }
 
+        SurfaceData::SurfaceDataRegistryHandle GetSurfaceModifierHandle(AZ::EntityId id)
+        {
+            return GetEntryHandle(id, m_modifiers);
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetSurfaceProviderEntry(AZ::EntityId id)
+        {
+            return GetEntry(id, m_providers);
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetSurfaceModifierEntry(AZ::EntityId id)
+        {
+            return GetEntry(id, m_modifiers);
+        }
+    protected:
+        AZStd::vector<SurfaceData::SurfaceDataRegistryEntry> m_providers;
+        AZStd::vector<SurfaceData::SurfaceDataRegistryEntry> m_modifiers;
+
+        SurfaceData::SurfaceDataRegistryHandle RegisterEntry(const SurfaceData::SurfaceDataRegistryEntry& entry, AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // Keep a list of registered entries.  Use the "list index + 1" as the handle.  (We add +1 because 0 is used to mean "invalid handle")
+            entryList.emplace_back(entry);
+            return entryList.size();
+        }
+
+        void UnregisterEntry(const SurfaceData::SurfaceDataRegistryHandle& handle, AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // We don't actually remove the entry from our list because we use handles as indices, so the indices can't change.
+            // Clearing out the entity Id should be good enough.
+            uint32 index = static_cast<uint32>(handle) - 1;
+            if (index < entryList.size())
+            {
+                entryList[index].m_entityId = AZ::EntityId();
+            }
+        }
+
+        void UpdateEntry(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry,
+                         AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            uint32 index = static_cast<uint32>(handle) - 1;
+            if (index < entryList.size())
+            {
+                entryList[index] = entry;
+            }
+
+        }
+
+        SurfaceData::SurfaceDataRegistryHandle GetEntryHandle(AZ::EntityId id, const AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // Look up the requested entity Id and see if we have a registered surface entry with that handle.  If so, return the handle.
+            auto result = AZStd::find_if(entryList.begin(), entryList.end(), [this, id](const SurfaceData::SurfaceDataRegistryEntry& entry) { return entry.m_entityId == id; });
+            if (result == entryList.end())
+            {
+                return SurfaceData::InvalidSurfaceDataRegistryHandle;
+            }
+            else
+            {
+                // We use "index + 1" as our handle
+                return static_cast<SurfaceData::SurfaceDataRegistryHandle>(result - entryList.begin() + 1);
+            }
+
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetEntry(AZ::EntityId id, const AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            SurfaceData::SurfaceDataRegistryHandle handle = GetEntryHandle(id, entryList);
+            if (handle != SurfaceData::InvalidSurfaceDataRegistryHandle)
+            {
+                return entryList[handle - 1];
+            }
+            else
+            {
+                SurfaceData::SurfaceDataRegistryEntry emptyEntry;
+                return emptyEntry;
+            }
+        }
     };
 
     struct MockGradientPreviewContextRequestBus

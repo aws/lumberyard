@@ -13,6 +13,7 @@
 #pragma once
 
 #include "SystemComponentFixture.h"
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -34,11 +35,11 @@ namespace EMotionFX
         void Evaluate(float timeDelta);
         void AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name);
 
-    protected:
-        Actor*              m_actor             = nullptr;
-        ActorInstance*      m_actorInstance     = nullptr;
-        AnimGraph*          m_animGraph         = nullptr;
-        AnimGraphInstance*  m_animGraphInstance = nullptr;
-        MotionSet*          m_motionSet         = nullptr;        
+    protected:       
+        AZStd::unique_ptr<Actor> m_actor;
+        ActorInstance* m_actorInstance = nullptr;
+        AZStd::unique_ptr<EmptyAnimGraph> m_animGraph = nullptr;
+        AnimGraphInstance* m_animGraphInstance = nullptr;
+        MotionSet* m_motionSet = nullptr;        
     };
 }

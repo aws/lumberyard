@@ -46,22 +46,22 @@ namespace ScriptCanvasEditor
         
     bool CreateNodeMimeEvent::ExecuteEvent(const AZ::Vector2&, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
     {
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        if (!scriptCanvasGraphId.IsValid() || !graphCanvasGraphId.IsValid())
+        if (!scriptCanvasId.IsValid() || !graphCanvasGraphId.IsValid())
         {
             return false;
         }
 
-        m_nodeIdPair = CreateNode(scriptCanvasGraphId);
+        m_nodeIdPair = CreateNode(scriptCanvasId);
 
         if (m_nodeIdPair.m_graphCanvasId.IsValid() && m_nodeIdPair.m_scriptCanvasId.IsValid())
         {
             GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, m_nodeIdPair.m_graphCanvasId, sceneDropPosition);
             GraphCanvas::SceneMemberUIRequestBus::Event(m_nodeIdPair.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
 
-            ScriptCanvasEditor::NodeCreationNotificationBus::Event(scriptCanvasGraphId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, m_nodeIdPair.m_graphCanvasId);
+            ScriptCanvasEditor::NodeCreationNotificationBus::Event(scriptCanvasId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, m_nodeIdPair.m_graphCanvasId);
 
             AZ::EntityId gridId;
             GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
@@ -90,10 +90,10 @@ namespace ScriptCanvasEditor
 
     AZ::EntityId CreateNodeMimeEvent::CreateSplicingNode(const AZ::EntityId& graphCanvasGraphId)
     {
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        ScriptCanvasEditor::NodeIdPair idPair = CreateNode(scriptCanvasGraphId);
+        ScriptCanvasEditor::NodeIdPair idPair = CreateNode(scriptCanvasId);
 
         if (idPair.m_graphCanvasId.IsValid() && idPair.m_scriptCanvasId.IsValid())
         {

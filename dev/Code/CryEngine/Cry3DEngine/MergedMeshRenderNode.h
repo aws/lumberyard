@@ -530,8 +530,11 @@ public:
 
     bool PostRender(const SRenderingPassInfo& passInfo);
 
-    // util job entry function used by AsyncStreaming Callback
-    void InitializeSamples(float fExtents, const uint8* pBuffer);
+    // Used by AsyncStreaming callback to synchronously initialize the samples from the read-in buffer
+    void InitializeSamplesFromBuffer(const uint8* pBuffer);
+    // Used by AsyncStreaming callback to asynchronously perform notifications / calculations based on the
+    // samples that were initialized.
+    void FinishInitializingSamples();
     // util job entry function used by Activate Spines
     void InitializeSpines();
 

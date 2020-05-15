@@ -18,15 +18,47 @@ namespace ScriptCanvas
     {
         namespace Time
         {
-            ///////////////
+            //////////////
+            // TimeDelay
+            //////////////
+
+            void TimeDelay::OnInputSignal(const SlotId& slotId)
+            {
+                if (slotId == TimeDelayProperty::GetInSlotId(this))
+                {
+                    if (!IsActive())
+                    {
+                        StartTimer();
+                    }
+                }
+            }
+
+            bool TimeDelay::AllowInstantResponse() const
+            {
+                return true;
+            }
+
+            void TimeDelay::OnTimeElapsed()
+            {
+                SignalOutput(TimeDelayProperty::GetOutSlotId(this));
+                StopTimer();
+            }
+
+            //////////////
             // TickDelay
-            ///////////////
+            //////////////
 
             TickDelay::TickDelay()
                 : Node()
                 , m_tickCounter(0)
                 , m_tickOrder(AZ::TICK_DEFAULT)
             {
+            }
+
+            void TickDelay::OnDeactivate()
+            {
+                AZ::TickBus::Handler::BusDisconnect();
+                AZ::SystemTickBus::Handler::BusDisconnect();
             }
 
             void TickDelay::OnInputSignal(const SlotId&)
@@ -105,6 +137,10 @@ namespace ScriptCanvas
                 return true;
             }
 
+            //////////////
+            // CountDown
+            //////////////
+
             Countdown::Countdown()
                 : Node()
                 , m_countdownSeconds(0.f)
@@ -113,7 +149,7 @@ namespace ScriptCanvas
                 , m_elapsedTime(0.f)
                 , m_holding(false)
                 , m_currentTime(0.)
-            {}
+            {}            
 
             void Countdown::OnInputSignal(const SlotId& slot)
             {

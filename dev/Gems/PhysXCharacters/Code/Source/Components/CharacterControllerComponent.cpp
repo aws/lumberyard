@@ -372,7 +372,7 @@ namespace PhysXCharacters
         }
     }
     
-    void CharacterControllerComponent::SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag)
+    void CharacterControllerComponent::SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag)
     {
         if (!m_controller)
         {
@@ -405,7 +405,7 @@ namespace PhysXCharacters
         return layerName;
     }
 
-    void CharacterControllerComponent::SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& colliderTag)
+    void CharacterControllerComponent::SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 colliderTag)
     {
         if (!m_controller)
         {
@@ -438,7 +438,7 @@ namespace PhysXCharacters
         return groupName;
     }
 
-    void CharacterControllerComponent::ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag, bool enabled)
+    void CharacterControllerComponent::ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled)
     {
         if (!m_controller)
         {
@@ -465,7 +465,10 @@ namespace PhysXCharacters
     {
         PhysX::ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [&character](PhysX::ColliderComponentRequests* handler)
         {
-            character.AttachShape(handler->GetShape());
+            for (auto& shape : handler->GetShapes())
+            {
+                character.AttachShape(shape);
+            }
             return true;
         });
     }

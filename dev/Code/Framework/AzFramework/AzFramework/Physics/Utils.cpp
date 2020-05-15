@@ -148,6 +148,7 @@ namespace Physics
             CollisionGroup::Reflect(context);
             CollisionLayers::Reflect(context);
             CollisionGroups::Reflect(context);
+            CollisionConfiguration::Reflect(context);
             WorldConfiguration::Reflect(context);
             MaterialConfiguration::Reflect(context);
             MaterialLibraryAsset::Reflect(context);
@@ -217,7 +218,7 @@ namespace Physics
             }
         }
 
-        bool FilterTag(const AZ::Crc32& tag, const AZ::Crc32& filterTag)
+        bool FilterTag(AZ::Crc32 tag, AZ::Crc32 filterTag)
         {
             // If the filter tag is empty, then ignore it
             return !filterTag || tag == filterTag;

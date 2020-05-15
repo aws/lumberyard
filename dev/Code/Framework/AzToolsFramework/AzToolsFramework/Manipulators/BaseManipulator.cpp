@@ -240,11 +240,6 @@ namespace AzToolsFramework
         }
     }
 
-    void BaseManipulator::AddEntityId(const AZ::EntityId entityId)
-    {
-        m_entityComponentIdPairs.insert(AZ::EntityComponentIdPair(entityId, AZ::ComponentId{}));
-    }
-
     void BaseManipulator::AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityIdComponentPair)
     {
         m_entityComponentIdPairs.insert(entityIdComponentPair);
@@ -365,14 +360,6 @@ namespace AzToolsFramework
         ProcessManipulators([](BaseManipulator* manipulator)
         {
             manipulator->SetBoundsDirty();
-        });
-    }
-
-    void Manipulators::AddEntityId(const AZ::EntityId entityId)
-    {
-        ProcessManipulators([entityId](BaseManipulator* manipulator)
-        {
-            manipulator->AddEntityId(entityId);
         });
     }
 

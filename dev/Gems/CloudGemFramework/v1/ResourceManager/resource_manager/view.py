@@ -10,12 +10,13 @@
 #
 # $Revision: #1 $
 
-import util
-import dateutil
-from errors import HandledError
-import textwrap
-from datetime import datetime
 import json
+from datetime import datetime
+import six
+from six.moves import input
+
+from . import util
+from .errors import HandledError
 
 
 def date_time_formatter(v):
@@ -28,6 +29,8 @@ class ViewContext(object):
 
     def __init__(self, context):
         self.context = context
+        self.__verbose = False
+        self.__args = {}
 
     def bootstrap(self, args):
         self.__verbose = args.verbose
@@ -37,7 +40,7 @@ class ViewContext(object):
         self.bootstrap(args)
 
     def _output(self, key, value):
-        print value
+        print(value)
 
     def _output_message(self, msg):
         self._output('message', msg)
@@ -216,7 +219,7 @@ class ViewContext(object):
 
         The resources parameter should be a dictionary as returned by StackContext.describe_resources.
         """
-        list = sorted(map(lambda e: '{} - {} ({})'.format(e[0], e[1]['ResourceType'], e[1].get('PhysicalResourceId', 'none')), resources.iteritems()))
+        list = sorted(map(lambda e: '{} - {} ({})'.format(e[0], e[1]['ResourceType'], e[1].get('PhysicalResourceId', 'none')), six.iteritems(resources)))
         if stack_description:
             prompt = 'The following resources will be deleted from the {} stack:\n\n\t{}'.format(stack_description, '\n\t'.join(list))
         else:
@@ -257,8 +260,8 @@ class ViewContext(object):
 
         else:
 
-            answer = raw_input('{}\n\n{} {}? '.format(prompt, confirm_string, options))
-            print ''
+            answer = input('{}\n\n{} {}? '.format(prompt, confirm_string, options))
+            print('')
 
             if answer.lower() not in yes_answers:
                 raise HandledError('Needed confirmation not provided.')
@@ -302,9 +305,6 @@ class ViewContext(object):
     def removing_parameter(self, template_path, parameter_name):
         self._output_message('Removing parameter {} from template {}.'.format(parameter_name, template_path))
 
-    def parameter_not_found(self, template_path, parameter_name):
-        self._output_message('WARNING: no {} parameter was found in the template {}.'.format(parameter_name, template_path))
-
     def resource_group_enabled(self, resource_group_name):
         self._output_message(
             '\n{} resource group has been enabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to create the resource group\'s resources in AWS.'.format(
@@ -332,9 +332,9 @@ class ViewContext(object):
         if self.__verbose:
             self._output_message('Retrieving resource descriptions for stack {}.'.format(util.get_stack_name_from_arn(stack_id)))
 
-    def describing_stack(self, stack_id):
+    def describing_stack(self, stack_id, identifier=None):
         if self.__verbose:
-            self._output_message('Retrieving description of stack {}.'.format(util.get_stack_name_from_arn(stack_id)))
+            self._output_message('Retrieving description of stack {}.{}'.format(util.get_stack_name_from_arn(stack_id), identifier))
 
     def mapping_list(self, deployment_name, mappings, protected):
         self._output_message('\nMapping Protected: {}'.format(protected))
@@ -345,6 +345,9 @@ class ViewContext(object):
                                 {'Field': 'ResourceType', 'Heading': 'Type'},
                                 {'Field': 'PhysicalResourceId', 'Heading': 'Id'}
                             ])
+
+    def deployment_updated(self, deployment_name):
+        self._output_message('\nFinished updating for deployment: {}'.format(deployment_name))
 
     def path_list(self, mappings):
         self._output_message('\nPath mappings for the Cloud Gem Framework:')
@@ -454,7 +457,7 @@ class ViewContext(object):
                 return ''
 
         resources_list = []
-        for key, resource in resources_map.iteritems():
+        for key, resource in six.iteritems(resources_map):
             resource['Name'] = key
             resource['Reason'] = self.__get_resource_reason(resource)
             resources_list.append(resource)
@@ -487,7 +490,7 @@ class ViewContext(object):
         else:
             self._output_message('\n(no changes detected)')
 
-        print ''
+        print('')
 
     def profile_list(self, profiles, credentials_file_path):
 
@@ -523,7 +526,8 @@ class ViewContext(object):
         self._output_message('\nRenamed profile {} to {}'.format(old_name, new_name))
 
     def default_profile(self, profile_name):
-        if profile_name is None: profile_name = '(none)'
+        if profile_name is None:
+            profile_name = '(none)'
         self._output_message('\nDefault Profile: {}'.format(profile_name))
 
     def getting_stack_template(self, stack_id):
@@ -608,6 +612,9 @@ class ViewContext(object):
     def no_such_resource_group_parameter_warning(self, name):
         self._output_message('\nWARNING: The {} resource group does not exist. A parameter value will still be set.\n'.format(name))
 
+    def parameter_not_found_in_template(self, template_path, parameter_name):
+        self._output_message('WARNING: no {} parameter was found in the template {}.'.format(parameter_name, template_path))
+
     def parameter_not_found(self, deployment_name, resource_group_name, parameter_name):
         if deployment_name and resource_group_name:
             self._output_message('\nWARNING: No {} parameter for the {} deployment and {} resource group was found.\n'.format(parameter_name, deployment_name,
@@ -659,6 +666,9 @@ class ViewContext(object):
             {'Field': 'Pattern', 'Heading': 'Abstract Role'},
             {'Field': 'Effect', 'Heading': 'Effect'}
         ], sort_column_count=3)
+
+    def updating_role(self, role):
+        self._output_message('Updating role {}.'.format(role))
 
     def permission_added(self, resource_group, resource, abstract_role):
         self._output_message(
@@ -736,7 +746,7 @@ class ViewContext(object):
         self._output_message('\nGem {} has been disabled.'.format(gem_name))
 
     def backing_up_file(self, original_file_path, backup_file_path):
-        self._output_message('Backing up {} to {}.'.format(original_file_path, backing_up_file))
+        self._output_message('Backing up {} to {}.'.format(original_file_path, backup_file_path))
 
     def using_deprecated_command(self, old, new):
         if isinstance(new, list):

@@ -39,7 +39,7 @@ namespace ScriptCanvas
                     {
                         SetDynamicGroup(slotId, AZ::Crc32("LerpGroup"));
                     }
-                }                
+                }
             }
             ////////
 
@@ -56,6 +56,12 @@ namespace ScriptCanvas
             ////////
         }
 
+        void LerpBetween::OnDeactivate()
+        {
+            AZ::SystemTickBus::Handler::BusDisconnect();
+            AZ::TickBus::Handler::BusDisconnect();
+        }
+
         void LerpBetween::OnConfigured()
         {
             SetupInternalSlotReferences();
@@ -64,7 +70,7 @@ namespace ScriptCanvas
         void LerpBetween::OnSystemTick()
         {
             // Ping pong between the system and the normal tick bus for a consistent starting point for the lerp
-            AZ::SystemTickBus::Handler::BusDisconnect();            
+            AZ::SystemTickBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusConnect();
         }
         
@@ -100,8 +106,8 @@ namespace ScriptCanvas
                 float speedOnlyTime = 0.0;
                 float maxDuration = 0.0;
                 
-                const Datum* durationDatum = GetInput(m_maximumTimeSlotId);
-                const Datum* speedDatum = GetInput(m_speedSlotId);                
+                const Datum* durationDatum = FindDatum(m_maximumTimeSlotId);
+                const Datum* speedDatum = FindDatum(m_speedSlotId);
                 
                 if (durationDatum)
                 {

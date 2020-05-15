@@ -9,14 +9,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib import Errors
-
-import unit_test
-import lumberyard
-
-import pytest
+# System Imports
 import json
 import os
+import pytest
+
+# waflib imports
+from waflib import Errors
+
+# lmbrwaflib imports
+from lmbrwaflib import unit_test
+from lmbrwaflib import lumberyard
+
 
 
 BASIC_ENGINE_JSON = {

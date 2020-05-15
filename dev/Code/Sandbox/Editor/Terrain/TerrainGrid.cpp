@@ -17,7 +17,7 @@
 #include "Terrain/Heightmap.h"
 #include "TerrainTexGen.h"
 
-#include <I3DEngine.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 CTerrainGrid::CTerrainGrid()
@@ -147,10 +147,9 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
     GetIEditor()->GetHeightmap()->AddModSector(sector.x(), sector.y());
     bTextureWasRecreated = false;
 
-    I3DEngine* p3Engine = GetIEditor()->Get3DEngine();
     IRenderer* pRenderer = GetIEditor()->GetRenderer();
 
-    // if the texture existis already - make sure the size fits
+    // if the texture exists already - make sure the size fits
     {
         ITexture* pTex = pRenderer->EF_GetTextureByID(st->textureId);
 
@@ -161,7 +160,8 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
                 pRenderer->RemoveTexture(st->textureId);
                 pTex = 0;
 
-                p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0, 0, 0);
+                LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
+                    , sector.y(), sector.x(), 0, 0, 0, true);
                 st->textureId = 0;
                 bTextureWasRecreated = true;
             }
@@ -173,8 +173,13 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
         st->textureId = pRenderer->DownLoadToVideoMemory(0, dwTextureResolution, dwTextureResolution,
                 eTF_B8G8R8A8, eTF_B8G8R8A8, 0, false, FILTER_LINEAR, 0, 0, FT_USAGE_ALLOWREADSRGB);
 
-        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), st->textureId, dwTextureResolution, dwTextureResolution);
     }
+
+    // Regardless of whether or not the texture was just created, tell the terrain system what the texture ID is.
+    // It's possible that the runtime terrain has been destroyed / recreated since the first time this texture was
+    // created.
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
+        , sector.y(), sector.x(), st->textureId, dwTextureResolution, dwTextureResolution, true);
 
     return st->textureId;
 }
@@ -184,7 +189,6 @@ void CTerrainGrid::UnlockSectorTexture(const QPoint& sector)
     CTerrainSector* st = GetSector(sector);
     assert(st);
 
-    I3DEngine* p3Engine = GetIEditor()->Get3DEngine();
     IRenderer* pRenderer = GetIEditor()->GetRenderer();
     ITexture* pTex = pRenderer->EF_GetTextureByID(st->textureId);
 
@@ -193,7 +197,9 @@ void CTerrainGrid::UnlockSectorTexture(const QPoint& sector)
         pRenderer->RemoveTexture(st->textureId);
         pTex = 0;
 
-        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0, 0, 0);
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
+            , sector.y(), sector.x(), 0, 0, 0, true);
+
         st->textureId = 0;
     }
 }

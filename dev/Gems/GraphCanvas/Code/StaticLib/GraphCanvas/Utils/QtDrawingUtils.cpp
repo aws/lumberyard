@@ -19,6 +19,33 @@ namespace GraphCanvas
     ///////////////////
     // QtDrawingUtils
     ///////////////////
+
+    void QtDrawingUtils::GenerateGradients(const AZStd::vector< const Styling::StyleHelper* >& colorPalettes, const QRectF& area, QLinearGradient& penGradient, QLinearGradient& fillGradient)
+    {
+        penGradient = QLinearGradient(area.topLeft(), area.bottomRight());
+        fillGradient = QLinearGradient(area.topLeft(), area.bottomRight());
+
+        penGradient.setColorAt(0, colorPalettes[0]->GetColor(Styling::Attribute::LineColor));
+        fillGradient.setColorAt(0, colorPalettes[0]->GetColor(Styling::Attribute::BackgroundColor));
+
+        double transition = 0.1 * (1.0 / colorPalettes.size());
+
+        for (size_t i = 1; i < colorPalettes.size(); ++i)
+        {
+            double transitionStart = AZStd::max(0.0, (double)i / colorPalettes.size() - (transition * 0.5));
+            double transitionEnd = AZStd::min(1.0, (double)i / colorPalettes.size() + (transition * 0.5));
+
+            penGradient.setColorAt(transitionStart, colorPalettes[i - 1]->GetColor(Styling::Attribute::LineColor));
+            penGradient.setColorAt(transitionEnd, colorPalettes[i]->GetColor(Styling::Attribute::LineColor));
+
+            fillGradient.setColorAt(transitionStart, colorPalettes[i - 1]->GetColor(Styling::Attribute::BackgroundColor));
+            fillGradient.setColorAt(transitionEnd, colorPalettes[i]->GetColor(Styling::Attribute::BackgroundColor));
+        }
+
+        penGradient.setColorAt(1, colorPalettes[colorPalettes.size() - 1]->GetColor(Styling::Attribute::LineColor));
+        fillGradient.setColorAt(1, colorPalettes[colorPalettes.size() - 1]->GetColor(Styling::Attribute::BackgroundColor));
+    }
+
     void QtDrawingUtils::FillArea(QPainter& painter, const QRectF& drawArea, const Styling::StyleHelper& styleHelper)
     {
         Styling::PaletteStyle paletteStyle = styleHelper.GetAttribute(Styling::Attribute::PaletteStyle, Styling::PaletteStyle::Solid);
@@ -40,8 +67,8 @@ namespace GraphCanvas
 
     void QtDrawingUtils::CandyStripeArea(QPainter& painter, const QRectF& drawArea, const CandyStripeConfiguration& candyStripeConfiguration)
     {
-        int width = drawArea.width();
-        int height = drawArea.height();
+        int width(aznumeric_cast<int>(drawArea.width()));
+        int height(aznumeric_cast<int>(drawArea.height()));
 
         int stripeSize = width / candyStripeConfiguration.m_minStripes;
 
@@ -52,7 +79,7 @@ namespace GraphCanvas
 
         int complimentAngle = abs(candyStripeConfiguration.m_stripeAngle);
 
-        int skewOffset = height * tan(AZ::DegToRad(complimentAngle));
+        int skewOffset(aznumeric_cast<int>(height * tan(AZ::DegToRad(aznumeric_cast<float>(complimentAngle)))));
 
         if (candyStripeConfiguration.m_stripeAngle < 0)
         {
@@ -66,12 +93,12 @@ namespace GraphCanvas
         QPointF forwardPointBottom = backPointBottom + QPointF(stripeSize, 0);
         QPointF forwardPointTop = backPointTop + QPointF(stripeSize, 0);
 
-        int totalStripeStep = forwardPointTop.x() - backPointBottom.x();
+        int totalStripeStep(aznumeric_cast<int>(forwardPointTop.x() - backPointBottom.x()));
 
         // Starting with an offset of -0.5 * totalStripeStep just to make it look reasonable
         // when it steps in(looks nice starting roughly in the middle, vs starting with an entire stripe
         // on the node title.
-        int initialOffset = -(totalStripeStep * 0.5f) + candyStripeConfiguration.m_initialOffset;
+        int initialOffset(aznumeric_cast<int>(-(totalStripeStep * 0.5f) + candyStripeConfiguration.m_initialOffset));
 
         QBrush stripeBrush(candyStripeConfiguration.m_stripeColor);
 
@@ -103,11 +130,11 @@ namespace GraphCanvas
     {
         int rowCount = 0;
 
-        int oddOffset = pattern.width() * patternFillConfiguration.m_oddRowOffsetPercent;
-        int evenOffset = pattern.width() * patternFillConfiguration.m_evenRowOffsetPercent;
+        int oddOffset(aznumeric_cast<int>(pattern.width() * patternFillConfiguration.m_oddRowOffsetPercent));
+        int evenOffset(aznumeric_cast<int>(pattern.width() * patternFillConfiguration.m_evenRowOffsetPercent));
 
-        int currentX = area.left() - evenOffset;
-        int currentY = area.top();
+        int currentX(aznumeric_cast<int>(area.left() - evenOffset));
+        int currentY(aznumeric_cast<int>(area.top()));
 
         int stepX = AZStd::max(pattern.width(), 1);
         int stepY = AZStd::max(pattern.height(), 1);
@@ -121,7 +148,7 @@ namespace GraphCanvas
             if (currentX > area.right())
             {
                 ++rowCount;
-                currentX = area.left();
+                currentX = aznumeric_cast<int>(area.left());
 
                 if (rowCount % 2 == 0)
                 {
@@ -143,11 +170,11 @@ namespace GraphCanvas
 
         if (patternFillConfiguration.m_minimumTileRepetitions > 1)
         {
-            int numRepeats = area.width() / pattern.width();
+            int numRepeats(aznumeric_cast<int>(area.width() / pattern.width()));
 
             if (numRepeats < patternFillConfiguration.m_minimumTileRepetitions)
             {
-                scaleFactor = std::ceil(pattern.width() / std::ceil((area.width()/patternFillConfiguration.m_minimumTileRepetitions)));
+                scaleFactor = aznumeric_cast<int>(std::ceil(pattern.width() / std::ceil((area.width()/patternFillConfiguration.m_minimumTileRepetitions))));
             }
         }
 
@@ -157,7 +184,7 @@ namespace GraphCanvas
         }
         else
         {
-            QPixmap scaledPattern = pattern.scaledToWidth(std::floor(pattern.width() / scaleFactor));
+            QPixmap scaledPattern = pattern.scaledToWidth(aznumeric_cast<int>(std::floor(pattern.width() / scaleFactor)));
             PatternFillHelper(painter, area, scaledPattern, patternFillConfiguration);
         }
     }

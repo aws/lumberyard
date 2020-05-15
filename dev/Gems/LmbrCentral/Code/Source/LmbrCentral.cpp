@@ -39,7 +39,6 @@
 #include "Bundling/BundlingSystemComponent.h"
 #include "Rendering/DecalComponent.h"
 #include "Rendering/StereoRendererComponent.h"
-#include "Scripting/FlowGraphComponent.h"
 #include "Rendering/LensFlareComponent.h"
 #include "Rendering/LightComponent.h"
 #include "Rendering/HighQualityShadowComponent.h"
@@ -121,7 +120,6 @@
 
 // Asset handlers
 #include <Rendering/LensFlareAssetHandler.h>
-#include <Rendering/MaterialAssetHandler.h>
 #include <Rendering/MeshAssetHandler.h>
 #include <Rendering/ParticleAssetHandler.h>
 #include <Ai/BehaviorTreeAssetHandler.h>
@@ -131,6 +129,7 @@
 
 // Shape components
 #include "Shape/SphereShapeComponent.h"
+#include "Shape/DiskShapeComponent.h"
 #include "Shape/BoxShapeComponent.h"
 #include "Shape/CylinderShapeComponent.h"
 #include "Shape/CapsuleShapeComponent.h"
@@ -257,7 +256,6 @@ namespace LmbrCentral
             BundlingSystemComponent::CreateDescriptor(),
             ConstraintComponent::CreateDescriptor(),
             DecalComponent::CreateDescriptor(),
-            FlowGraphComponent::CreateDescriptor(),
             LensFlareComponent::CreateDescriptor(),
             LightComponent::CreateDescriptor(),
             LmbrCentralAllocatorComponent::CreateDescriptor(),
@@ -287,6 +285,7 @@ namespace LmbrCentral
             MotionParameterSmoothingComponent::CreateDescriptor(),
             CharacterAnimationManagerComponent::CreateDescriptor(),
             SphereShapeComponent::CreateDescriptor(),
+            DiskShapeComponent::CreateDescriptor(),
             BoxShapeComponent::CreateDescriptor(),
             CylinderShapeComponent::CreateDescriptor(),
             CapsuleShapeComponent::CreateDescriptor(),
@@ -302,6 +301,7 @@ namespace LmbrCentral
             RandomTimedSpawnerComponent::CreateDescriptor(),
             GeometryCacheComponent::CreateDescriptor(),
             SphereShapeDebugDisplayComponent::CreateDescriptor(),
+            DiskShapeDebugDisplayComponent::CreateDescriptor(),
             BoxShapeDebugDisplayComponent::CreateDescriptor(),
             CapsuleShapeDebugDisplayComponent::CreateDescriptor(),
             CylinderShapeDebugDisplayComponent::CreateDescriptor(),
@@ -435,10 +435,6 @@ namespace LmbrCentral
         characterDefinitionAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(characterDefinitionAssetHandler);
 
-        auto materialAssetHandler = aznew MaterialAssetHandler();
-        materialAssetHandler->Register(); // registers self with AssetManager
-        m_assetHandlers.emplace_back(materialAssetHandler);
-
 
         auto particleAssetHandler = aznew ParticleAssetHandler;
         particleAssetHandler->Register(); // registers self with AssetManager
@@ -455,7 +451,6 @@ namespace LmbrCentral
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<LensFlareAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialAsset>::Uuid());
-            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialDataAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<DccMaterialAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid());

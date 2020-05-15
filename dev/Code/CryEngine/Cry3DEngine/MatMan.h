@@ -75,7 +75,7 @@ public:
     _smart_ptr<IMaterial> LoadCGFMaterial(CMaterialCGF* pMaterialCGF, const char* sCgfFilename, unsigned long nLoadingFlags = 0) override;
     virtual _smart_ptr<IMaterial> CloneMaterial(_smart_ptr<IMaterial> pMtl, int nSubMtl = -1);
     virtual _smart_ptr<IMaterial> CloneMultiMaterial(_smart_ptr<IMaterial> pMtl, const char* sSubMtlName = 0);
-    virtual void GetLoadedMaterials(std::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const;
+    virtual void GetLoadedMaterials(AZStd::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const;
 
     virtual bool SaveMaterial(XmlNodeRef mtlNode, _smart_ptr<IMaterial> pMtl);
     virtual void CopyMaterial(_smart_ptr<IMaterial> pMtlSrc, _smart_ptr<IMaterial> pMtlDest, EMaterialCopyFlags flags);

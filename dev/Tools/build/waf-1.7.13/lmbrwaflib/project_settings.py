@@ -10,15 +10,24 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf
-from waflib import Errors
-from waflib import Logs
-from cry_utils import split_comma_delimited_string, append_to_unique_list
+
+# System Imports
 import re
 import os
 
+# waflib imports
+from waflib import Errors
+from waflib import Logs
+from waflib.Configure import conf
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_to_unique_list, split_comma_delimited_string
+
+
 PROJECT_SETTINGS_FILE = 'project.json'
 PROJECT_NAME_FIELD = 'project_name'
+
+
 def _project_setting_entry(ctx, project, entry, required=True):
     """
     Util function to load an entry from the projects.json file
@@ -71,7 +80,7 @@ def game_projects(self):
 
     # Build list of game code folders
     projects = []
-    for key, value in projects_settings.items():
+    for key, value in list(projects_settings.items()):
         projects += [key]
 
     # do not filter this list down to only enabled projects!
@@ -82,7 +91,7 @@ def game_projects(self):
 def project_idx(self, project):
     projects_settings = self.get_project_settings_map()
     nIdx = 0
-    for key, value in projects_settings.items():
+    for key, value in list(projects_settings.items()):
         if key == project:
             return nIdx
         nIdx += 1
@@ -359,7 +368,7 @@ def project_and_platform_modules(self, project, platforms):
     supported_platforms = [];
 
     if platforms is None:
-        supported_platforms = [platform.name() for platform in self.get_enabled_target_platforms()]
+        supported_platforms = [platform.name() for platform in self.get_all_target_platforms()]
     elif not isinstance(platforms, list):
         supported_platforms.append(platforms)
     else:
@@ -457,9 +466,9 @@ def add_game_projects_to_specs(self):
 #############################################################################
 @conf
 def get_product_name(self, target, game_project):
-    if target.endswith('DedicatedLauncher') or target.endswith('ServerLauncher'):
+    if target.endswith('ServerLauncher'):
         return self.get_dedicated_server_product_name(game_project)
-    elif target.endswith('Launcher'):
+    elif target.endswith('ClientLauncher'):
         return self.get_launcher_product_name(game_project)
     else:
         return target 
@@ -480,7 +489,7 @@ def get_current_spec_list(ctx):
         if not hasattr(ctx, 'current_spec_list_map'):
             ctx.current_spec_list_map = {}
 
-    if ctx.cmd in ('configure', 'generate_module_def_files', 'generate_uber_files'):
+    if ctx.cmd in ('configure', 'generate_uber_files'):
         # If this is either the 'configure' command or the 'generate_module_def_files' command, then the spec list will be
         # all of the loaded specs
         spec_list = ctx.loaded_specs()
@@ -532,25 +541,27 @@ def get_enabled_game_project_list(ctx):
 
         project_settings_map = ctx.get_project_settings_map()
 
-        game_project_set = set()
+        game_project_set = list()
         for check_spec in check_spec_list:
             game_projects_for_spec = ctx.spec_game_projects(check_spec)
             if len(game_projects_for_spec) > 0:
                 for game_project_for_spec in game_projects_for_spec:
                     if game_project_for_spec not in project_settings_map:
-                        Logs.warn("[WARN] Game project '{}' defined in spec {} is not a valid game project.  Will ignore.".format(game_project, check_spec))
+                        Logs.warn("[WARN] Game project '{}' defined in spec {} is not a valid game project.  Will ignore.".format(game_project_for_spec, check_spec))
                     else:
                         Logs.debug("lumberyard: Adding game project '{}' from spec '{}'".format(game_project_for_spec, check_spec))
-                        game_project_set.add(game_project_for_spec)
+                        if game_project_for_spec not in game_project_set:
+                            game_project_set.append(game_project_for_spec)
 
         for default_enabled_game_project in default_enabled_game_projects:
             if default_enabled_game_project not in game_project_set:
                 if default_enabled_game_project not in project_settings_map:
                     ctx.fatal("[ERROR] Game project '{}' is invalid".format(default_enabled_game_project))
                 else:
-                    game_project_set.add(default_enabled_game_project)
+                    if default_enabled_game_project not in game_project_set:
+                        game_project_set.append(default_enabled_game_project)
 
-        return list(game_project_set)
+        return game_project_set
 
 
     try:
@@ -561,7 +572,7 @@ def get_enabled_game_project_list(ctx):
 
     # Start with the list of enabled game projects from the options (or command line)
     current_spec_list = ctx.get_current_spec_list()
-    if ctx.cmd in ('configure', 'generate_module_def_files', 'generate_uber_files'):
+    if ctx.cmd in ('configure', 'generate_uber_files'):
 
         # If this is a configure, take into consideration any game project that is defined in all the spec files
         enabled_game_list = _collect_override_game_projects(current_spec_list)
@@ -715,24 +726,25 @@ def get_project_settings_map(ctx):
     if os.path.exists(os.path.join(engine_node.abspath(), '_WAF_', 'projects.json')):
         Logs.warn('projects.json file is deprecated.  Please follow the migration step listed in the release notes.')
 
+    if ctx.is_engine_local():
+        project_node = engine_node
+    else:
+        project_node = ctx.get_launch_node()
+
     projects_settings = {}
-    projects_settings_node_list = engine_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
-    
-    # If the engine node is different from the ctx.path, then check the current ctx.path, which will be an external project base
-    if ctx.path.abspath() != engine_node.abspath():
-        projects_settings_node_list += ctx.path.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
+    projects_settings_node_list = project_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
 
     # Build update the map of project settings from the globbing for the project.json file
     for project_settings_node in projects_settings_node_list:
 
         Logs.debug('lumberyard: Parsing project file {}'.format(project_settings_node.abspath()))
         project_json = ctx.parse_json_file(project_settings_node)
-        project_name = project_json.get(PROJECT_NAME_FIELD, '').encode('ASCII', 'ignore')
+        project_name = project_json.get(PROJECT_NAME_FIELD, '')
         if not project_name:
             ctx.fatal("Project settings file '{}' missing attribute '{}'".format(project_settings_node.abspath(),
                                                                                  PROJECT_NAME_FIELD))
 
-        if projects_settings.has_key(project_name):
+        if project_name in projects_settings:
             ctx.fatal('Another project named "%s" has been detected:\n%s\n%s' % (
                 project_name,
                 project_settings_node.parent.abspath(),

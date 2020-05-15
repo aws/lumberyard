@@ -147,13 +147,20 @@ namespace AzQtComponents
                     {
                         case QEvent::HoverEnter:
                         {
-                            parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, true);
+                            if (parentScrollArea->cornerWidget())
+                            {
+                                parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, true);
+                            }
                         }
                         break;
                         case QEvent::HoverLeave:
                         {
-                            parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, false);
+                            if (parentScrollArea->cornerWidget())
+                            {
+                                parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, false);
+                            }
                         }
+                        break;
                     }
                 }
             }

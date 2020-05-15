@@ -1,6 +1,18 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from fastparquet import ParquetFile
 from fastparquet import write as pwrite
-from StringIO import StringIO
+from six import StringIO
 from keyparts import KeyParts
 import sensitivity
 import io
@@ -28,6 +40,7 @@ from s3 import S3
 from aws_lambda import Lambda
 from keyparts import KeyParts
 from datetime import date, timedelta
+from six import iteritems
 
 s3fsmap = {
     sensitivity.SENSITIVITY_TYPE.ENCRYPT.lower(): s3fs.S3FileSystem(config_kwargs={'signature_version': 's3v4'}, s3_additional_kwargs={'ServerSideEncryption': 'AES256'}),
@@ -44,7 +57,7 @@ def write(bucket, key, data, sep, object_encoding, append=False):
     data.drop_duplicates(inplace=True)        
     size_after_dup_drop = len(data)        
     if size_before_dup_drop - size_after_dup_drop > 0:
-        print "{} duplicates have been dropped".format(size_before_dup_drop - size_after_dup_drop) 
+        print("{} duplicates have been dropped".format(size_before_dup_drop - size_after_dup_drop))
     util.debug_print("Using object encoding {}".format(object_encoding))
     path='{}{}'.format(bucket,key)          
     pwrite(path, data, open_with=s3_open, compression='GZIP', append=append, has_nulls=True, object_encoding=object_encoding)        
@@ -65,7 +78,7 @@ def append(bucket, key1, key2, s3, output_filename):
 def save(context, metric_sets, partition, schema_hash):
     util.debug_print("\t{}:".format(partition))
     paths = []
-    for schema_hash, dict  in metric_sets[partition].iteritems():  
+    for schema_hash, dict  in iteritems(metric_sets[partition]):
         if util.time_remaining(context) <= (context[c.CW_ATTR_DELETE_DURATION] + 20):
             break
         columns = dict[c.KEY_SET_COLUMNS]        
@@ -86,7 +99,9 @@ def save(context, metric_sets, partition, schema_hash):
             context[c.KEY_SUCCEEDED_MSG_IDS] += dict[c.KEY_MSG_IDS]
             util.debug_print("Save complete to path '{}'".format(path))            
         except Exception as e:                        
-            print "[{}]An error occured writing to path '{}'.\nSet: {}\nError: \n{}".format(context[c.KEY_REQUEST_ID],path, set, traceback.format_exc())            
+            print("[{}]An error occured writing to path '{}'.\nSet: {}\nError: \n{}".format(context[c.KEY_REQUEST_ID],
+                                                                                            path, set,
+                                                                                            traceback.format_exc()))
             raise e
         finally:                        
             number_of_rows = len(values)           
@@ -101,7 +116,8 @@ def save(context, metric_sets, partition, schema_hash):
         util.debug_print("Adding amoeba message to SQS queue '{}'".format(context[c.KEY_SQS_AMOEBA].queue_url))        
         context[c.KEY_SQS_AMOEBA].send_generic_message(json.dumps({ "paths": paths }))
     except Exception as e:                        
-        print "[{}]An error occured writing messages to the Amoeba SQS queue. \nError: \n{}".format(context[c.KEY_REQUEST_ID], traceback.format_exc())            
+        print("[{}]An error occured writing messages to the Amoeba SQS queue. \nError: \n{}".format(
+            context[c.KEY_REQUEST_ID], traceback.format_exc()))
         raise e
 
 def handoff_event_to_emitter(context, bucket, key, events):   
@@ -184,7 +200,7 @@ def write_file(content, bucket, path, s3, path_with_filename, extension):
     if extension == "csv":
         df = pd.read_csv(StringIO(content),sep=",", encoding="utf-8") 
         target = "{}/{}.{}".format(bucket,path,"parquet")
-        print path, "--->", target
+        print(path, "--->", target)
         pwrite(target, df, open_with=s3.open, compression='GZIP', append=False, has_nulls=True)  
     elif extension == "json":
         obj = json.loads(content)    
@@ -199,7 +215,7 @@ def write_file(content, bucket, path, s3, path_with_filename, extension):
                 geometry["coordinates"] = feature["geometry"]["coordinates"]
                 data = json.dumps(geometry, separators=(',', ':'))
                 target = "{}/{}/p_iso3166={}/{}.json".format(bucket, parts[0], iso_code, filename)
-                print path, "--->", target
+                print(path, "--->", target)
                 with s3.open(target, 'wb') as f:
                     f.write(data)                
        
@@ -208,7 +224,7 @@ def write_file(content, bucket, path, s3, path_with_filename, extension):
             f.write(content)
     else:
         target = "{}/{}".format(bucket, path)
-        print path, "--->", target
+        print(path, "--->", target)
         with s3.open(target, 'wb') as f:
             f.write(content)
 

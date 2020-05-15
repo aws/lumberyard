@@ -53,7 +53,7 @@ GOTO :EOF
 
 :PYTHON_DIR_EXISTS
 
-SET PYTHON=%PYTHON_DIR%\python.cmd
+SET PYTHON=%PYTHON_DIR%\python3.cmd
 IF EXIST "%PYTHON%" GOTO PYTHON_EXISTS
 
 ECHO Could not find python.cmd in %PYTHON_DIR%
@@ -75,21 +75,21 @@ ECHO Detected binary folder at %BINFOLDERPATH%
 
 SET GAMENAME=%1
 SET SHADERFLAVOR=%2
-SET PLATFORM=%3
+SET ASSETPLATFORM=%3
 SET SOURCESHADERLIST=%4
 
 REM Trim the trailing \ from BASE_PATH, otherwise passing "%BASE_PATH%" with a trailing '\' causes the last " to be escaped and the arg processing for -s fails
 IF %BASE_PATH:~-1%==\ SET BASE_PATH=%BASE_PATH:~0,-1%
 
-SET ARGS=%GAMENAME% %PLATFORM% %SHADERFLAVOR% "%BINFOLDER%" -e "%BASE_PATH%"
+SET ARGS=%GAMENAME% %ASSETPLATFORM% %SHADERFLAVOR% -b "%BINFOLDER%" -e "%BASE_PATH%"
 IF NOT [%SOURCESHADERLIST%] == [] SET ARGS=%ARGS% -s %SOURCESHADERLIST%
 
 call "%PYTHON%" "%TOOLS_DIR%\PakShaders\gen_shaders.py" %ARGS%
 
 IF ERRORLEVEL 1 GOTO FAILED
 
-SET SOURCE="Cache\%GAMENAME%\%PLATFORM%\user\cache\shaders\cache"
-SET OUTPUT="build\%PLATFORM%\%GAMENAME%"
+SET SOURCE="Cache\%GAMENAME%\%ASSETPLATFORM%\user\cache\shaders\cache"
+SET OUTPUT="build\%ASSETPLATFORM%\%GAMENAME%"
 
 call "%PYTHON%" "%TOOLS_DIR%\PakShaders\pak_shaders.py" %OUTPUT% -r %SOURCE% -s %SHADERFLAVOR%
 

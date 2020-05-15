@@ -10,7 +10,7 @@
 *
 */
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <AzCore/PlatformDef.h>
 // The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.

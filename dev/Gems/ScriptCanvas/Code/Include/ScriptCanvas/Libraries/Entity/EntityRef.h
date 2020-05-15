@@ -51,18 +51,21 @@ namespace ScriptCanvas
                                 
                 AZ_INLINE void SetEntityRef(const AZ::EntityId& id)
                 {
-                    if (auto input = ModInput(GetSlotId(k_setThis)))
+                    ModifiableDatumView datumView;
+                    FindModifiableDatumView(GetSlotId(k_setThis), datumView);
+
+                    if (datumView.IsValid())
                     {
                         // only called on edit time creation, so no need to push out the data, consider cutting this function if possible
-                        input->Set(id);
-                        OnOutputChanged(*input);
+                        datumView.SetAs(id);
+                        OnOutputChanged((*datumView.GetDatum()));
                     }
                 }
 
                 AZ_INLINE AZ::EntityId GetEntityRef() const
                 {
                     AZ::EntityId retVal;
-                    if (auto input = GetInput(GetSlotId(k_setThis)))
+                    if (auto input = FindDatum(GetSlotId(k_setThis)))
                     {
                         const AZ::EntityId* inputId = input->GetAs<AZ::EntityId>();
 

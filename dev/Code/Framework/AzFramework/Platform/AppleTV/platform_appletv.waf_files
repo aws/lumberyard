@@ -54,6 +54,11 @@
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/Touch/InputDeviceTouch_Unimplemented.cpp"
         ],
+        "Input/User/Platform/AppleTV":
+        [
+            "AzFramework/Input/User/LocalUserId_Platform.h",
+            "../Common/Default/AzFramework/Input/User/LocalUserId_Default.h"
+        ],
         "Input/Devices/VirtualKeyboard/Platform/AppleTV":
         [
             "../Common/Apple/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Apple.mm"

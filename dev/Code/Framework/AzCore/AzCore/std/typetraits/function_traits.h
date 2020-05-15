@@ -130,9 +130,9 @@ namespace AZStd
 
         #define AZSTD_FUNCTION_TRAIT_NOARG
 
-        #define AZSTD_FUNCTION_TRAIT_HELPER(cv_ref_qualifier, qualifier_value) \
+        #define AZSTD_FUNCTION_TRAIT_HELPER(cv_ref_qualifier, qualifier_value, noexcept_qualifier) \
             template <typename C, typename R, typename... Args> \
-            struct pointer_to_member_function<R(C::*)(Args...) cv_ref_qualifier> \
+            struct pointer_to_member_function<R(C::*)(Args...) cv_ref_qualifier noexcept_qualifier> \
                 : default_traits<> \
             { \
                 static constexpr bool value = true; \
@@ -140,26 +140,26 @@ namespace AZStd
                 static constexpr size_t num_args = arity; \
                 static constexpr qualifier_flags qual_flags = qualifier_value; \
                 \
-                using type = R(C::*)(Args...) cv_ref_qualifier; \
+                using type = R(C::*)(Args...) cv_ref_qualifier noexcept_qualifier; \
                 using class_type = C; \
                 using return_type = R; \
                 using invoke_type = conditional_t<is_rvalue_reference_v<C cv_ref_qualifier>, C cv_ref_qualifier, add_lvalue_reference_t<C cv_ref_qualifier>>; \
                 using arg_types = Internal::pack_traits_arg_sequence<invoke_type, Args...>; \
                 using non_invoke_arg_types = Internal::pack_traits_arg_sequence<Args...>; \
-                using function_type = return_type(invoke_type, Args...); \
-                using function_object_signature = return_type(Args...); \
+                using function_type = return_type(invoke_type, Args...) noexcept_qualifier; \
+                using function_object_signature = return_type(Args...) noexcept_qualifier; \
                 template<template<class...> class Container> \
                 using expand_args = Container<Args...>; \
                 \
                 using class_fp_type = type; \
                 using result_type = return_type; \
-                using raw_fp_type = return_type(*)(Args...); \
+                using raw_fp_type = return_type(*)(Args...) noexcept_qualifier; \
                 template<size_t index> \
                 using get_arg_t = Internal::pack_traits_get_arg_t<index, Args...>; \
                 using arg_sequence = Internal::pack_traits_arg_sequence<Args...>; \
             }; \
             template <typename C, typename R, typename... Args> \
-            struct pointer_to_member_function<R(C::*)(Args..., ...) cv_ref_qualifier> \
+            struct pointer_to_member_function<R(C::*)(Args..., ...) cv_ref_qualifier noexcept_qualifier > \
                 : default_traits<> \
             { \
                 static constexpr bool value = true; \
@@ -167,38 +167,55 @@ namespace AZStd
                 static constexpr size_t num_args = arity; \
                 static constexpr qualifier_flags qual_flags = qualifier_value; \
                 \
-                using type = R(C::*)(Args..., ...) cv_ref_qualifier; \
+                using type = R(C::*)(Args..., ...) cv_ref_qualifier noexcept_qualifier; \
                 using class_type = C; \
                 using return_type = R; \
                 using invoke_type = conditional_t<is_rvalue_reference_v<C cv_ref_qualifier>, C cv_ref_qualifier, add_lvalue_reference_t<C cv_ref_qualifier>>; \
                 using arg_types = Internal::pack_traits_arg_sequence<invoke_type, Args...>; \
                 using non_invoke_arg_types = Internal::pack_traits_arg_sequence<Args...>; \
-                using function_type = return_type(invoke_type, Args..., ...); \
-                using function_object_signature = return_type(Args..., ...); \
+                using function_type = return_type(invoke_type, Args..., ...) noexcept_qualifier; \
+                using function_object_signature = return_type(Args..., ...) noexcept_qualifier; \
                 template<template<class...> class Container> \
                 using expand_args = Container<invoke_type, Args...>; \
                 \
                 using class_fp_type = type; \
                 using result_type = return_type; \
-                using raw_fp_type = return_type(*)(Args..., ...); \
+                using raw_fp_type = return_type(*)(Args..., ...) noexcept_qualifier; \
                 template<size_t index> \
                 using get_arg_t = Internal::pack_traits_get_arg_t<index, Args...>; \
                 using arg_sequence = Internal::pack_traits_arg_sequence<Args...>; \
             };
 
         // specializations for functions with const volatile ref qualifiers
-        AZSTD_FUNCTION_TRAIT_HELPER(AZSTD_FUNCTION_TRAIT_NOARG, qualifier_flags::default_);
-        AZSTD_FUNCTION_TRAIT_HELPER(const, qualifier_flags::const_);
-        AZSTD_FUNCTION_TRAIT_HELPER(volatile, qualifier_flags::volatile_);
-        AZSTD_FUNCTION_TRAIT_HELPER(const volatile, qualifier_flags::const_volatile);
-        AZSTD_FUNCTION_TRAIT_HELPER(&, qualifier_flags::lvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(const&, qualifier_flags::const_lvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(volatile&, qualifier_flags::volatile_lvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&, qualifier_flags::const_volatile_lvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(&&, qualifier_flags::rvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(const&&, qualifier_flags::const_rvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(volatile&&, qualifier_flags::volatile_rvalue_ref);
-        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&&, qualifier_flags::const_volatile_rvalue_ref);
+        AZSTD_FUNCTION_TRAIT_HELPER(AZSTD_FUNCTION_TRAIT_NOARG, qualifier_flags::default_,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const, qualifier_flags::const_,);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile, qualifier_flags::volatile_,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile, qualifier_flags::const_volatile,);
+        AZSTD_FUNCTION_TRAIT_HELPER(&, qualifier_flags::lvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&, qualifier_flags::const_lvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&, qualifier_flags::volatile_lvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&, qualifier_flags::const_volatile_lvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(&&, qualifier_flags::rvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&&, qualifier_flags::const_rvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&&, qualifier_flags::volatile_rvalue_ref,);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&&, qualifier_flags::const_volatile_rvalue_ref,);
+    #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must distinguished from non-noexcept overloads
+        // specializations for noexcept functions with const volatile and reference qualifers
+        AZSTD_FUNCTION_TRAIT_HELPER(AZSTD_FUNCTION_TRAIT_NOARG, qualifier_flags::default_, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const, qualifier_flags::const_, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile, qualifier_flags::volatile_, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile, qualifier_flags::const_volatile, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(&, qualifier_flags::lvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&, qualifier_flags::const_lvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&, qualifier_flags::volatile_lvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&, qualifier_flags::const_volatile_lvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(&&, qualifier_flags::rvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const&&, qualifier_flags::const_rvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(volatile&&, qualifier_flags::volatile_rvalue_ref, noexcept);
+        AZSTD_FUNCTION_TRAIT_HELPER(const volatile&&, qualifier_flags::const_volatile_rvalue_ref, noexcept);
+    #endif
         #undef AZSTD_FUNCTION_TRAIT_HELPER
         #undef AZSTD_FUNCTION_TRAIT_NOARG
 
@@ -253,6 +270,21 @@ namespace AZStd
             using get_arg_t = Internal::pack_traits_get_arg_t<index, Args...>;
             using arg_sequence = Internal::pack_traits_arg_sequence<Args...>;
         };
+        
+    #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must distinguished from non-noexcept overloads
+        // specializations for noexcept functions with const volatile and reference qualifers
+        template <typename R, typename ...Args>
+        struct raw_function<R(Args...) noexcept>
+            : raw_function<R(Args...)>
+        {
+            using type = R(Args...) noexcept;
+            using function_type = R(Args...) noexcept;
+
+            using raw_fp_type = R(*)(Args...) noexcept;
+        };
+    #endif
 
         template <typename R, typename ...Args>
         struct raw_function<R(Args..., ...)>
@@ -277,6 +309,21 @@ namespace AZStd
             using get_arg_t = Internal::pack_traits_get_arg_t<index, Args...>;
             using arg_sequence = Internal::pack_traits_arg_sequence<Args...>;
         };
+        
+    #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must distinguished from non-noexcept overloads
+        // specializations for noexcept functions with const volatile and reference qualifers
+        template <typename R, typename ...Args>
+        struct raw_function<R(Args..., ...) noexcept>
+            : raw_function<R(Args..., ...)>
+        {
+            using type = R(Args..., ...) noexcept;
+            using function_type = R(Args..., ...) noexcept;
+
+            using raw_fp_type = R(*)(Args..., ...) noexcept;
+        };
+    #endif
 
         template <typename R, typename ...Args>
         struct raw_function<R(*)(Args...)>
@@ -302,6 +349,21 @@ namespace AZStd
             using arg_sequence = Internal::pack_traits_arg_sequence<Args...>;
         };
 
+    #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must distinguished from non-noexcept overloads
+        // specializations for noexcept functions with const volatile and reference qualifers
+        template <typename R, typename ...Args>
+        struct raw_function<R(*)(Args...) noexcept>
+            : raw_function<R(*)(Args...)>
+        {
+            using type = R(*)(Args...) noexcept;
+            using function_type = R(Args...) noexcept;
+
+            using raw_fp_type = type;
+        };
+    #endif
+
         template <typename R, typename ...Args>
         struct raw_function<R(*)(Args..., ...)>
             : default_traits<>
@@ -325,6 +387,21 @@ namespace AZStd
             using get_arg_t = Internal::pack_traits_get_arg_t<index, Args...>;
             using arg_sequence = Internal::pack_traits_arg_sequence<Args...>;
         };
+
+    #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must distinguished from non-noexcept overloads
+        // specializations for noexcept functions with const volatile and reference qualifers
+        template <typename R, typename ...Args>
+        struct raw_function<R(*)(Args..., ...) noexcept>
+            : raw_function<R(*)(Args..., ...)>
+        {
+            using type = R(*)(Args..., ...) noexcept;
+            using function_type = R(Args..., ...) noexcept;
+
+            using raw_fp_type = type;
+        };
+    #endif
 
         template <typename T>
         struct raw_function<T&>

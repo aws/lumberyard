@@ -17,6 +17,7 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/chrono/clocks.h>
 #include <AzCore/std/bind/bind.h>
+#include <AzFramework/Application/Application.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #define FEATURE_TEST_LISTEN_PORT 12125
@@ -75,11 +76,10 @@ void AssetProcessorServerUnitTest::RunFirstPartOfUnitTestsForAssetProcessorServe
 
 void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool failNegotiation)
 {
-
     AZStd::string azAppRoot = AZStd::string(QDir::current().absolutePath().toUtf8().constData());
     AZStd::string azBranchToken;
-    AzFramework::StringFunc::AssetPath::CalculateBranchToken(azAppRoot, azBranchToken);
-
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::CalculateBranchTokenForAppRoot, azBranchToken);
+    
     QString branchToken(azBranchToken.c_str());
 
     if (failNegotiation)
@@ -88,15 +88,16 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
     }
 
     AZStd::atomic_int numberOfConnection(0);
+    AZStd::atomic_bool failureOccurred = false;
 
     enum : int { totalConnections = NUMBER_OF_CONNECTION * NUMBER_OF_TRIES };
 
-    AZStd::function<void(int)> StartConnection = [&branchToken, &numberOfConnection](int numTimeWait)
+    AZStd::function<void(int)> StartConnection = [this, &branchToken, &numberOfConnection, &failureOccurred, failNegotiation](int numTimeWait)
     {
         for (int idx = 0; idx < NUMBER_OF_TRIES; ++idx)
         {
             AzFramework::AssetSystem::AssetProcessorConnection connection;
-            connection.Configure(branchToken.toUtf8().data(), "pc", "UNITTEST"); // UNITTEST identifier will skip the processID validation during negotiation
+            connection.Configure(branchToken.toUtf8().data(), "pc", "UNITTEST", AssetUtilities::ComputeGameName().toUtf8().constData()); // UNITTEST identifier will skip the processID validation during negotiation
             connection.Connect("127.0.0.1", FEATURE_TEST_LISTEN_PORT);
             while (!connection.IsConnected() && !connection.NegotiationFailed())
             {
@@ -105,6 +106,13 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
 
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(numTimeWait + idx));
             numberOfConnection.fetch_sub(1);
+
+            if(connection.NegotiationFailed() != failNegotiation)
+            {
+                failureOccurred = true;
+            }
+
+            UNIT_TEST_CHECK(connection.NegotiationFailed() == failNegotiation);
         }
     };
 
@@ -125,11 +133,13 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
         };
 
         // We need to process all events, since AssetProcessorServer is also on the same thread
-        while (numberOfConnection.load())
+        while (numberOfConnection.load() && !failureOccurred)
         {
             QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
             QCoreApplication::processEvents();
         }
+
+        UNIT_TEST_CHECK(failureOccurred == false);
 
         for (int idx = 0; idx < NUMBER_OF_CONNECTION; ++idx)
         {

@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Builder": [
+            "Builder/ScriptEventsBuilderComponent.cpp",
+            "Builder/ScriptEventsBuilderComponent.h",
+            "Builder/ScriptEventsBuilderWorker.cpp",
+            "Builder/ScriptEventsBuilderWorker.h",
+            "Builder/BuilderSystemComponent.h"
+        ]
+    }
+}

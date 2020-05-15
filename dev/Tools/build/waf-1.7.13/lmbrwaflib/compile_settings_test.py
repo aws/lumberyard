@@ -8,7 +8,9 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from cry_utils import append_to_unique_list
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_to_unique_list
 
 
 def load_test_settings(ctx):

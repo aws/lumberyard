@@ -240,6 +240,11 @@ namespace AzToolsFramework
 
         virtual void DestroyGUI(QWidget* pTarget);
 
+        // If the control wants to modify or replace the display name of an attribute,
+        // it can be done in this function.
+        // Return true if any modifications were made to the nameLabelString.
+        virtual bool ModifyNameLabel(QWidget* /*widget*/, QString& /*nameLabelString*/) { return false; }
+
         // If the control wants to add anything to the tooltip of an attribute (like adding a range to a Spin Control),
         // it can be done in this function.
         // Return true if any modifications were made to the toolTipString.

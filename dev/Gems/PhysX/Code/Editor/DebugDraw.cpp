@@ -16,9 +16,11 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LyViewPaneNames.h>
 #include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
+#include <Source/Utils.h>
 
 namespace PhysX
 {
@@ -44,9 +46,8 @@ namespace PhysX
 
         bool IsGlobalColliderDebugCheck(PhysX::EditorConfiguration::GlobalCollisionDebugState requiredState)
         {
-            PhysX::Configuration configuration{};
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
-            return configuration.m_editorConfiguration.m_globalCollisionDebugDraw == requiredState;
+            const PhysX::PhysXConfiguration& physxConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
+            return physxConfiguration.m_editorConfiguration.m_globalCollisionDebugDraw == requiredState;
         }
 
         static void BuildAABBVerts(const AZ::Aabb& aabb,
@@ -398,10 +399,9 @@ namespace PhysX
 
             AZ::Color debugColor = AZ::Colors::White;
 
-            PhysX::Configuration globalConfiguration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(globalConfiguration, &ConfigurationRequests::GetConfiguration);
+            const PhysX::PhysXConfiguration& globalConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
             GlobalCollisionDebugColorMode debugDrawColorMode = globalConfiguration.m_editorConfiguration.m_globalCollisionDebugDrawColorMode;
-
+                        
             switch (debugDrawColorMode)
             {
             case GlobalCollisionDebugColorMode::MaterialColor:
@@ -444,47 +444,84 @@ namespace PhysX
         void Collider::DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay,
             const Physics::ColliderConfiguration& colliderConfig,
             const Physics::SphereShapeConfiguration& sphereShapeConfig,
-            const AZ::Vector3& transformScale) const
+            const AZ::Vector3& colliderScale) const
         {
-            const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(transformScale);
-            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig) * scaleMatrix);
+            const float scaledSphereRadius =
+                (Utils::GetNonUniformScale(m_entityId) * colliderScale).GetMaxElement() * sphereShapeConfig.m_radius;
+
+            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig, colliderScale));
             debugDisplay.SetColor(CalcDebugColor(colliderConfig));
-            debugDisplay.DrawBall(AZ::Vector3::CreateZero(), sphereShapeConfig.m_radius);
+            debugDisplay.DrawBall(AZ::Vector3::CreateZero(), scaledSphereRadius);
             debugDisplay.SetColor(WireframeColor);
-            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), sphereShapeConfig.m_radius);
+            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), scaledSphereRadius);
             debugDisplay.PopMatrix();
         }
 
         void Collider::DrawBox(AzFramework::DebugDisplayRequests& debugDisplay,
             const Physics::ColliderConfiguration& colliderConfig,
             const Physics::BoxShapeConfiguration& boxShapeConfig,
-            const AZ::Vector3& transformScale) const
+            const AZ::Vector3& colliderScale,
+            const bool forceUniformScaling) const
         {
-            const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(transformScale);
+            // The resulting scale is the product of the scale in the entity's transform and the collider scale.
+            const AZ::Vector3 resultantScale = Utils::GetNonUniformScale(m_entityId) * colliderScale;
+
+            // Scale the box parameters using the desired method (uniform or non-uniform).
+            AZ::Vector3 scaledBoxParameters = boxShapeConfig.m_dimensions * 0.5f;
+
+            if (forceUniformScaling)
+            {
+                scaledBoxParameters *= resultantScale.GetMaxElement();
+            }
+            else
+            {
+                scaledBoxParameters *= resultantScale;
+            }
+
             const AZ::Color& faceColor = CalcDebugColor(colliderConfig);
-            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig) * scaleMatrix);
+
+            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig, colliderScale));
             debugDisplay.SetColor(faceColor);
-            debugDisplay.DrawSolidBox(-boxShapeConfig.m_dimensions * 0.5f, boxShapeConfig.m_dimensions * 0.5f);
+            debugDisplay.DrawSolidBox(-scaledBoxParameters, scaledBoxParameters);
             debugDisplay.SetColor(WireframeColor);
-            debugDisplay.DrawWireBox(-boxShapeConfig.m_dimensions * 0.5f, boxShapeConfig.m_dimensions * 0.5f);
+            debugDisplay.DrawWireBox(-scaledBoxParameters, scaledBoxParameters);
             debugDisplay.PopMatrix();
         }
 
         void Collider::DrawCapsule(AzFramework::DebugDisplayRequests& debugDisplay,
             const Physics::ColliderConfiguration& colliderConfig,
             const Physics::CapsuleShapeConfiguration& capsuleShapeConfig,
-            const AZ::Vector3& transformScale) const
+            const AZ::Vector3& colliderScale,
+            const bool forceUniformScaling) const
         {
             AZStd::vector<AZ::Vector3> verts;
             AZStd::vector<AZ::Vector3> points;
             AZStd::vector<AZ::u32> indices;
 
-            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig));
+            // The resulting scale is the product of the scale in the entity's transform and the collider scale.
+            const AZ::Vector3 resultantScale = Utils::GetNonUniformScale(m_entityId) * colliderScale;
+
+            // Scale the capsule parameters using the desired method (uniform or non-uniform).
+            AZ::Vector2 scaledCapsuleParameters = AZ::Vector2(capsuleShapeConfig.m_radius, capsuleShapeConfig.m_height);
+
+            if (forceUniformScaling)
+            {
+                scaledCapsuleParameters *= resultantScale.GetMaxElement();
+            }
+            else
+            {
+                scaledCapsuleParameters *= AZ::Vector2(
+                    resultantScale.GetX().GetMax(resultantScale.GetY()),
+                    resultantScale.GetZ()
+                );
+            }
+
+            debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig, colliderScale));
 
             LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
                 &LmbrCentral::CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
-                capsuleShapeConfig.m_radius * transformScale.GetX(),
-                capsuleShapeConfig.m_height * transformScale.GetZ(),
+                scaledCapsuleParameters.GetX(),
+                scaledCapsuleParameters.GetY(),
                 16, 8, verts, indices, points);
 
             const AZ::Color& faceColor = CalcDebugColor(colliderConfig);
@@ -497,7 +534,7 @@ namespace PhysX
         void Collider::DrawMesh(AzFramework::DebugDisplayRequests& debugDisplay,
             const Physics::ColliderConfiguration& colliderConfig,
             const Physics::CookedMeshShapeConfiguration& meshConfig,
-            AZ::Vector3 meshScale, 
+            const AZ::Vector3& meshScale, 
             AZ::u32 geomIndex) const
         {
             if (geomIndex >= m_geometry.size())
@@ -509,7 +546,7 @@ namespace PhysX
 
             if (meshConfig.GetCachedNativeMesh())
             {
-                const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * meshScale);
+                const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(meshScale);
                 debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig) * scaleMatrix);
 
                 if (meshConfig.GetMeshType() == Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh)
@@ -526,7 +563,7 @@ namespace PhysX
         }
 
         void Collider::DrawTriangleMesh(AzFramework::DebugDisplayRequests& debugDisplay,
-            const Physics::ColliderConfiguration& colliderConfig, 
+            const Physics::ColliderConfiguration& colliderConfig,
             AZ::u32 geomIndex) const
         {
             AZ_Assert(geomIndex < m_geometry.size(), "DrawTriangleMesh: geomIndex is out of range");
@@ -589,22 +626,15 @@ namespace PhysX
             }
         }
 
-        AZ::Transform Collider::GetColliderLocalTransform(const Physics::ColliderConfiguration& colliderConfig) const
+        AZ::Transform Collider::GetColliderLocalTransform(const Physics::ColliderConfiguration& colliderConfig,
+            const AZ::Vector3& colliderScale) const
         {
+            // Apply entity world transform scale to collider offset
+            const AZ::Vector3 translation =
+                colliderConfig.m_position * Utils::GetNonUniformScale(m_entityId) * colliderScale;
+
             return AZ::Transform::CreateFromQuaternionAndTranslation(
-                colliderConfig.m_rotation, colliderConfig.m_position * GetNonUniformScale());
-        }
-
-        float Collider::GetUniformScale() const
-        {
-            return GetNonUniformScale().GetMaxElement();
-        }
-
-        AZ::Vector3 Collider::GetNonUniformScale() const
-        {
-            AZ::Vector3 scale = AZ::Vector3::CreateOne();
-            AZ::TransformBus::EventResult(scale, m_entityId, &AZ::TransformInterface::GetLocalScale);
-            return scale;
+                colliderConfig.m_rotation, translation);
         }
 
         const AZStd::vector<AZ::Vector3>& Collider::GetVerts(AZ::u32 geomIndex) const
@@ -648,9 +678,9 @@ namespace PhysX
             AZ::TransformBus::EventResult(entityWorldTransformWithoutScale, m_entityId, &AZ::TransformInterface::GetWorldTM);
             entityWorldTransformWithoutScale.ExtractScale();
 
-            PhysX::Configuration globalConfiguration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(globalConfiguration, &ConfigurationRequests::GetConfiguration);
-            PhysX::Settings::ColliderProximityVisualization& proximityVisualization =
+            const PhysX::PhysXConfiguration& globalConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
+
+            const PhysX::Settings::ColliderProximityVisualization& proximityVisualization =
                 globalConfiguration.m_settings.m_colliderProximityVisualization;
             const bool colliderIsInRange =
                 proximityVisualization.m_cameraPosition.GetDistanceSq(entityWorldTransformWithoutScale.GetPosition()) <

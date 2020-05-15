@@ -22,10 +22,12 @@
 
 namespace EditorUIPlugin
 {
+    AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     class EDITOR_QT_UI_API EditorLibraryUndoManager
         : public EditorLibraryUndoRequestsBus::Handler
         , public EditorUIPlugin::LibraryItemCacheRequests::Bus::Handler
     {
+    AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     public:
         AZ_CLASS_ALLOCATOR(EditorLibraryUndoManager, AZ::SystemAllocator, 0);
 

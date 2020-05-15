@@ -9,8 +9,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
+import six
 
-from types import *
 
 class ValidationError(Exception):
 
@@ -20,18 +20,19 @@ class ValidationError(Exception):
     def __str__(self):
         return self.message
 
+
 class _Properties(object):
 
     def __init__(self, src, schema, prefix=''):
 
         wildcard = None
-        for name, validator in schema.iteritems():
+        for name, validator in six.iteritems(schema):
             if name == '*':
                 wildcard = validator
             else:
                 setattr(self, name, validator(prefix + name, src.get(name, None)))
 
-        for name, value in src.iteritems():
+        for name, value in six.iteritems(src):
             if name not in schema and name != 'ServiceToken':
                 if wildcard:
                     setattr(self, name, wildcard(prefix + name, value))
@@ -41,7 +42,7 @@ class _Properties(object):
 
 class String(object):
 
-    def __init__(self, default = None):
+    def __init__(self, default=None):
         self.default = default
 
     def __call__(self, name, value):
@@ -52,7 +53,7 @@ class String(object):
         if value is None:
             raise ValidationError('A value for property {} must be provided.'.format(name))
 
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             raise ValidationError('The {} property value must be a string.'.format(name))
 
         return value
@@ -71,7 +72,7 @@ class StringOrListOfString(object):
         if value is None:
             raise ValidationError('A value for property {} must be provided.'.format(name))
 
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
 
             return [ value ]
 
@@ -81,7 +82,7 @@ class StringOrListOfString(object):
                 raise ValidationError('The {} property value must be a string or a list of strings.'.format(name))
 
             for entry in value:
-                if not isinstance(entry, basestring):
+                if not isinstance(entry, six.string_types):
                     raise ValidationError('The {} property must be a string or a list of strings.'.format(name))
 
             return value
@@ -122,7 +123,7 @@ class ObjectOrListOfObject(object):
             raise ValidationError('A value for property {} must be provided.'.format(name))
 
         if not isinstance(value, list):
-            value = [ value ]
+            value = [value]
 
         result = []
         for index, entry in enumerate(value):
@@ -166,7 +167,7 @@ class Boolean(object):
         # Cloud Formation doesn't support Boolean typed parameters. Check for
         # boolean strings so that string parameters can be used to initialize 
         # boolean properties.
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             lower_value = value.lower()
             if lower_value == 'true':
                 value = True
@@ -202,6 +203,7 @@ class Integer(object):
 
 def load(event, schema):
     return _Properties(event['ResourceProperties'], schema)
+
 
 def load_old(event, schema):
     return _Properties(event['OldResourceProperties'], schema)

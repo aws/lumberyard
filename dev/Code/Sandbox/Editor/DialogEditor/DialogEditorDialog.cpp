@@ -16,7 +16,6 @@
 #include "DialogEditorDialog.h"
 #include "DialogManager.h"
 
-#include <IAIAction.h>
 #include <IAISystem.h>
 #include <IAgent.h>
 

@@ -8,10 +8,14 @@
 
 "Process *.rc* files for C/C++: X{.rc -> [.res|.rc.o]}"
 
+# System Imports
 import re
-from waflib import Task, Logs, Utils
-from waflib.TaskGen import extension,feature, before_method
+
+# waflib imports
+from waflib import Logs, Task, Utils
 from waflib.Configure import conf
+from waflib.TaskGen import before_method, extension, feature
+
 
 @extension('.rc')
 def rc_file(self, node):
@@ -280,7 +284,7 @@ class create_rc_file(Task.Task):
 		'''
 		Use the generated file's contents in the task's signature.
 		'''
-		self.m.update(self.get_file_content())
+		self.m.update(self.get_file_content().encode('utf-8'))
 		return super(create_rc_file, self).sig_vars()
 
 @feature('generate_rc_file')

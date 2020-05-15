@@ -20,6 +20,7 @@ cached_root_directory_path = None
 cached_game_directory_path = None
 cached_gui_module = None
 
+
 def execute(command, args):
     
     global cached_root_directory_path, cached_game_directory_path, cached_gui_module
@@ -39,7 +40,7 @@ def execute(command, args):
             framework_directory_path = bootstrap.get_framework_directory_path(cached_root_directory_path, cached_game_directory_path)
             if framework_directory_path is None:
                 # Handle this error as a special case so that it doesn't get logged to the
-                # Editor console when a project that isn't using Cloud Canvas is lodaded.
+                # Editor console when a project that isn't using Cloud Canvas is loaded.
                 args['view_output_function'](request_id, 'framework-not-enabled-error', 'The gems.json file at {} does not contain an entry for the CloudGemFramework gem. You must enable this gem for your project. You can do that using the File, Project Settings, Configure Gems menu item.'.format(cached_game_directory_path))
                 return
 
@@ -50,7 +51,7 @@ def execute(command, args):
             if args_root_directory != cached_root_directory_path:
                 raise RuntimeError(
                     'The root directory path changed from {} to {}. You need to restart the Lumberyard Editor.'.format(
-                        root_directory_path,
+                        cached_root_directory_path,
                         args_root_directory
                     )
                 )
@@ -58,7 +59,7 @@ def execute(command, args):
             if args_game_directory != cached_game_directory_path:
                 raise RuntimeError(
                     'The game directory path changed from {} to {}. You need to restart the Lumberyard Editor.'.format(
-                        game_directory_path,
+                        cached_game_directory_path,
                         args_game_directory
                     )
                 )
@@ -66,6 +67,5 @@ def execute(command, args):
         cached_gui_module.execute(command, args)
 
     except RuntimeError as e:
-        args['view_output_function'](request_id, 'error', e.message)    
+        args['view_output_function'](request_id, 'error', str(e))
 
-    

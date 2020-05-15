@@ -24,6 +24,7 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMaterialData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ITransform.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexUVData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexTangentData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexBitangentData.h>
@@ -37,6 +38,7 @@
 
 #include <SceneAPIExt/Rules/MorphTargetRule.h>
 #include <SceneAPIExt/Rules/IMeshRule.h>
+#include <SceneAPIExt/Rules/MeshRule.h>
 #include <SceneAPIExt/Rules/ISkinRule.h>
 #include <SceneAPIExt/Rules/LodRule.h>
 #include <SceneAPIExt/Rules/IActorScaleRule.h>
@@ -87,12 +89,6 @@ namespace EMotionFX
                 coordSysConverter.ConvertScale(azTransform.RetrieveScaleExact()));
         }
 
-        using ClothLayerAndData = AZStd::tuple<
-            EMotionFX::MeshBuilderVertexAttributeLayerUInt32*, 
-            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData>>;
-
-        ClothLayerAndData ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
-            const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel);
 
         ActorBuilder::ActorBuilder()
         {
@@ -422,7 +418,7 @@ namespace EMotionFX
                     {
                         meshIndices.push_back(nodeIndex.AsNumber());
                     }
-                    ActorMorphBuilderContext actorMorphBuilderContext(context.m_scene, actorSettings.m_optimizeTriangleList, &meshIndices, context.m_group, context.m_actor, coordSysConverter, AZ::RC::Phase::Construction);
+                    ActorMorphBuilderContext actorMorphBuilderContext(context.m_scene, &meshIndices, context.m_group, context.m_actor, coordSysConverter, AZ::RC::Phase::Construction);
                     result += SceneEvents::Process(actorMorphBuilderContext);
                     result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Filling);
                     result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Finalizing);
@@ -432,7 +428,7 @@ namespace EMotionFX
             // Post create actor
             actor->SetUnitType(MCore::Distance::UNITTYPE_METERS);
             actor->SetFileUnitType(MCore::Distance::UNITTYPE_METERS);
-            actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/true, /*convertUnitType=*/false);
+            actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
             // Only enable joints that are used for skinning (and their parents).
             // On top of that, enable all joints marked as critical joints.
@@ -557,6 +553,20 @@ namespace EMotionFX
             }
         }
 
+        // Find vertex color data inside the mesh of a given node using a node name.
+        AZ::SceneAPI::DataTypes::IMeshVertexColorData* ActorBuilder::FindVertexColorData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZStd::string& colorNodeName)
+        {
+            auto vertexColorNode = graph.Find(nodeIndex, colorNodeName);
+            if (vertexColorNode.IsValid())
+            {
+                return azrtti_cast<AZ::SceneAPI::DataTypes::IMeshVertexColorData*>(graph.GetNodeContent(vertexColorNode).get());
+            }
+            else
+            {
+                return nullptr;
+            }
+        }
+
         // This method uses EMFX MeshBuilder class. This MeshBuilder class expects to be fed "Control points" in fbx parlance. However, as of the current (April 2017)
         // implementation of MeshData class and FbxMeshImporterUtilities.cpp, IMeshData does not provide a  way to get all of the original control points obtained
         // from the fbx resource. Specifically, IMeshData has information about only those control points which it uses, i.e., those of the original control points which
@@ -619,15 +629,36 @@ namespace EMotionFX
 
             // A Mesh can have multiple children that contain UV, tangent or bitangent data.
             SceneDataTypes::IMeshVertexUVData*                  meshUVDatas[2]      = { nullptr, nullptr };
+            SceneDataTypes::IMeshVertexColorData*               meshColorData       = nullptr;
             SceneDataTypes::IMeshVertexTangentData*             meshTangentData     = nullptr;
             SceneDataTypes::IMeshVertexBitangentData*           meshBitangentData   = nullptr;
             EMotionFX::MeshBuilderVertexAttributeLayerVector2*  uvLayers[2]         = { nullptr, nullptr };
             EMotionFX::MeshBuilderVertexAttributeLayerVector4*  tangentLayer        = nullptr;
             EMotionFX::MeshBuilderVertexAttributeLayerVector3*  bitangentLayer      = nullptr;
+            EMotionFX::MeshBuilderVertexAttributeLayerVector4*  colorLayer128       = nullptr;
+            EMotionFX::MeshBuilderVertexAttributeLayerUInt32*   colorLayer32        = nullptr;
 
             // Get the UV sets.
             meshUVDatas[0] = AZ::SceneAPI::SceneData::TangentsRule::FindUVData(graph, meshNodeIndex, 0);
             meshUVDatas[1] = AZ::SceneAPI::SceneData::TangentsRule::FindUVData(graph, meshNodeIndex, 1);
+
+            // Get the vertex color mode.
+            AZStd::shared_ptr<EMotionFX::Pipeline::Rule::MeshRule> meshRule = context.m_group.GetRuleContainerConst().FindFirstByType<EMotionFX::Pipeline::Rule::MeshRule>();
+            Rule::IMeshRule::VertexColorMode vertexColorMode = Rule::IMeshRule::VertexColorMode::Precision_32;
+            AZStd::string vertexColorStreamName;
+            bool vertexColorsEnabled = false;
+            if (meshRule)
+            {
+                vertexColorMode = meshRule->GetVertexColorMode();
+                vertexColorStreamName = meshRule->GetVertexColorStreamName();
+                vertexColorsEnabled = !meshRule->IsVertexColorsDisabled();
+            }
+
+            // Get the color sets.
+            if (vertexColorsEnabled)
+            {
+                meshColorData = FindVertexColorData(graph, meshNodeIndex, vertexColorStreamName);
+            }
 
             // If we selected a UV set other than the first one (so the second), but it doesn't exist, then let's give a warning
             if (!meshUVDatas[tangentUVSetIndex] && tangentUVSetIndex > 0 && tangentSpace != AZ::SceneAPI::DataTypes::TangentSpace::EMotionFX)
@@ -676,11 +707,26 @@ namespace EMotionFX
 
             // Extract cloth data from cloth modifiers
             EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
-            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData> meshColorData;
-            AZStd::tie(clothInverseMassesLayer, meshColorData) = ExtractClothInfo(graph, meshNodeIndex, context.m_group, numOrgVerts, lodLevel);
+            SceneDataTypes::IMeshVertexColorData* clothInverseMassData = nullptr;
+            AZStd::tie(clothInverseMassesLayer, clothInverseMassData) = ExtractClothInfo(graph, meshNodeIndex, context.m_group, numOrgVerts, lodLevel);
             if (clothInverseMassesLayer)
             {
                 meshBuilder->AddLayer(clothInverseMassesLayer);
+            }
+
+            // Create the color layers.
+            if (meshColorData && vertexColorsEnabled)
+            {
+                if (vertexColorMode == Rule::IMeshRule::VertexColorMode::Precision_128)
+                {
+                    colorLayer128 = EMotionFX::MeshBuilderVertexAttributeLayerVector4::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_COLORS128, false, false);
+                    meshBuilder->AddLayer(colorLayer128);
+                }
+                else if (vertexColorMode == Rule::IMeshRule::VertexColorMode::Precision_32)
+                {
+                    colorLayer32 = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_COLORS32, false, false);
+                    meshBuilder->AddLayer(colorLayer32);
+                }
             }
 
             // Inverse transpose for normal, tangent and bitangent.
@@ -696,6 +742,7 @@ namespace EMotionFX
             AZ::Vector3 bitangent;
             AZ::Vector4 newTangent;
             AZ::Vector3 bitangentVec;
+            AZ::Vector4 color;
 
             const AZ::u32 numTriangles = meshData->GetFaceCount();
             for (AZ::u32 i = 0; i < numTriangles; ++i)
@@ -768,6 +815,28 @@ namespace EMotionFX
                         uvLayers[e]->SetCurrentVertexValue(&uv);
                     }
 
+                    if (meshColorData && vertexColorsEnabled)
+                    {
+                        if (colorLayer128)
+                        {
+                            const AZ::SceneAPI::DataTypes::Color vertexColor = meshColorData->GetColor(vertexIndex);
+                            color.Set(vertexColor.red, vertexColor.green, vertexColor.blue, vertexColor.alpha);
+                            colorLayer128->SetCurrentVertexValue(&color);
+                        }
+                        else if (colorLayer32)
+                        {
+                            const AZ::SceneAPI::DataTypes::Color sceneApiColor = meshColorData->GetColor(vertexIndex);
+                            AZ::Color vertexColor;
+                            vertexColor.Set(
+                                AZ::GetClamp<float>(sceneApiColor.red, 0.0f, 1.0f), 
+                                AZ::GetClamp<float>(sceneApiColor.green, 0.0f, 1.0f),
+                                AZ::GetClamp<float>(sceneApiColor.blue, 0.0f, 1.0f),
+                                AZ::GetClamp<float>(sceneApiColor.alpha, 0.0f, 1.0f));
+                            AZ::u32 color32 = vertexColor.ToU32();
+                            colorLayer32->SetCurrentVertexValue(&color32);
+                        }
+                    }
+
                     // Feed the tangent.
                     if (meshTangentData)
                     {
@@ -807,9 +876,9 @@ namespace EMotionFX
                     if (clothInverseMassesLayer)
                     {
                         AZ::Color inverseMassColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        if (meshColorData)
+                        if (clothInverseMassData)
                         {
-                            const auto& color = meshColorData->GetColor(vertexIndex);
+                            const auto& color = clothInverseMassData->GetColor(vertexIndex);
                             inverseMassColor.Set(
                                 AZ::GetClamp<float>(color.red, 0.0f, 1.0f), 
                                 AZ::GetClamp<float>(color.green, 0.0f, 1.0f),
@@ -826,12 +895,6 @@ namespace EMotionFX
                 // End the triangle.
                 meshBuilder->EndPolygon();
             } // For all triangles.
-
-            // Cache optimize the index buffer list.
-            if (settings.m_optimizeTriangleList)
-            {
-                meshBuilder->OptimizeTriangleList();
-            }
 
             // Convert the mesh builder mesh to an EMFX mesh.
             EMotionFX::Mesh* emfxMesh = meshBuilder->ConvertToEMotionFXMesh();
@@ -946,17 +1009,9 @@ namespace EMotionFX
             deformerStack->AddDeformer(deformer);
         }
 
-
         void ActorBuilder::ExtractActorSettings(const Group::IActorGroup& actorGroup, ActorSettings& outSettings)
         {
             const AZ::SceneAPI::Containers::RuleContainer& rules = actorGroup.GetRuleContainerConst();
-
-            AZStd::shared_ptr<const Rule::IMeshRule> meshRule = rules.FindFirstByType<Rule::IMeshRule>();
-            if (meshRule)
-            {
-                outSettings.m_optimizeTriangleList = meshRule->GetOptimizeTriangleList();
-            }
-
             AZStd::shared_ptr<const Rule::ISkinRule> skinRule = rules.FindFirstByType<Rule::ISkinRule>();
             if (skinRule)
             {
@@ -1101,11 +1156,11 @@ namespace EMotionFX
             return lodName;
         }
 
-        ClothLayerAndData ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
+        ActorBuilder::ClothLayerAndData ActorBuilder::ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
             const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel)
         {
             EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
-            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData> meshColorData;
+            SceneDataTypes::IMeshVertexColorData* clothInverseMassData = nullptr;
 
             // Cloth meshes only created for LOD 0 (full mesh)
             if (lodLevel == 0)
@@ -1134,18 +1189,17 @@ namespace EMotionFX
                     }
 
                     // Create layer
-                    clothInverseMassesLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_COLORS32, false/*isScale*/, true/*isDeformable*/);
+                    clothInverseMassesLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES, false/*isScale*/, true/*isDeformable*/);
 
                     // Find the Vertex Color Data for the cloth
                     if (!clothRule->IsVertexColorStreamDisabled() &&
                         !clothRule->GetVertexColorStreamName().empty())
                     {
-                        auto vertexColorNodeIndex = graph.Find(meshNodeIndex, clothRule->GetVertexColorStreamName());
-                        meshColorData = azrtti_cast<const SceneDataTypes::IMeshVertexColorData*>(graph.GetNodeContent(vertexColorNodeIndex));
-                        if (!meshColorData)
+                        clothInverseMassData = FindVertexColorData(graph, meshNodeIndex, clothRule->GetVertexColorStreamName());
+                        if (!clothInverseMassData)
                         {
                             AZ_TracePrintf(SceneUtil::WarningWindow,
-                                "Vertex color stream '%s' not found for mesh node '%s'.",
+                                "Vertex color stream '%s' not found for mesh node '%s', used for cloth inverse mass values.",
                                 clothRule->GetVertexColorStreamName().c_str(),
                                 clothRule->GetMeshNodeName().c_str());
                         }
@@ -1153,7 +1207,7 @@ namespace EMotionFX
                 }
             }
 
-            return AZStd::make_tuple(clothInverseMassesLayer, meshColorData);
+            return AZStd::make_tuple(clothInverseMassesLayer, clothInverseMassData);
         }
     } // namespace Pipeline
 } // namespace EMotionFX

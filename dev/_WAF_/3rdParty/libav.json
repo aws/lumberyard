@@ -28,7 +28,7 @@
             "zlib1"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

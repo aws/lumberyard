@@ -126,8 +126,10 @@ namespace SliceBuilder
             return;
         }
 
+        AZStd::vector<AssetBuilderSDK::SourceFileDependency> sourceFileDependencies;
+
         // Asset filter always returns false to prevent parsing dependencies, but makes note of the slice dependencies
-        auto assetFilter = [&response](const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+        auto assetFilter = [&sourceFileDependencies](const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
             if (asset.GetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
             {
@@ -138,7 +140,7 @@ namespace SliceBuilder
                     AssetBuilderSDK::SourceFileDependency dependency;
                     dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
 
-                    response.m_sourceFileDependencyList.push_back(dependency);
+                    sourceFileDependencies.push_back(dependency);
                 }
             }
 
@@ -181,64 +183,66 @@ namespace SliceBuilder
         bool sliceWritable = AZ::IO::SystemFile::IsWritable(fullPath.c_str());
         bool createDynamicSlice = sourcePrefab->IsDynamic();
 
-        if (requiresUpgrade || createDynamicSlice)
+        AZ::SerializeContext* context;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        AzToolsFramework::Fingerprinting::TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
+
+        const char* compilerVersion = "9";
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
-            AZ::SerializeContext* context;
-            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            AzToolsFramework::Fingerprinting::TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
+            AssetBuilderSDK::JobDescriptor jobDescriptor;
+            jobDescriptor.m_priority = 0;
+            jobDescriptor.m_critical = true;
+            jobDescriptor.m_jobKey = "Process Slice";
 
-            const char* compilerVersion = "9";
-            for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
+            jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
+            jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
+                .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
+
+            for (const auto& sourceDependency : sourceFileDependencies)
             {
-                AssetBuilderSDK::JobDescriptor jobDescriptor;
-                jobDescriptor.m_priority = 0;
-                jobDescriptor.m_critical = true;
-                jobDescriptor.m_jobKey = "Process Slice";
+                jobDescriptor.m_jobDependencyList.emplace_back("Process Slice", info.m_identifier.c_str(), AssetBuilderSDK::JobDependencyType::Fingerprint, sourceDependency);
+            }
 
-                jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
-                jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
-                    .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
-
-                // Include the upgrade status of the slice in the fingerprint.
-                // There are 3 possible states:
-                // 1. The slice doesn't require an upgrade
-                // 2. The slice requires an upgrade but it can't be upgraded.
-                // 3. The slice requires and will receive an upgrade
-                if (!requiresUpgrade)
+            // Include the upgrade status of the slice in the fingerprint.
+            // There are 3 possible states:
+            // 1. The slice doesn't require an upgrade
+            // 2. The slice requires an upgrade but it can't be upgraded.
+            // 3. The slice requires and will receive an upgrade
+            if (!requiresUpgrade)
+            {
+                jobDescriptor.m_additionalFingerprintInfo.append("|NoUpgrade");
+            }
+            else
+            {
+                if (!sliceWritable || !m_settings.m_enableSliceConversion)
                 {
-                    jobDescriptor.m_additionalFingerprintInfo.append("|NoUpgrade");
+                    jobDescriptor.m_additionalFingerprintInfo.append("|NeedsUpgrade");
                 }
                 else
                 {
-                    if (!sliceWritable || !m_settings.m_enableSliceConversion)
-                    {
-                        jobDescriptor.m_additionalFingerprintInfo.append("|NeedsUpgrade");
-                    }
-                    else
-                    {
-                        jobDescriptor.m_additionalFingerprintInfo.append("|WillUpgrade");
-                    }
+                    jobDescriptor.m_additionalFingerprintInfo.append("|WillUpgrade");
                 }
-
-                if (!m_settingsWarning.empty())
-                {
-                    jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_SettingsFileWarning", 0xae8d98ac)), AZStd::string("Requires Re-save")));
-                }
-
-                if (requiresUpgrade)
-                {
-                    jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_UpgradeSlice", 0x4be52dd5)), AZStd::string("Requires Re-save")));
-
-                    // Source file changes are Platform Agnostic. Avoid extra work by only scheduling it once.
-                    requiresUpgrade = false;
-                }
-
-                if (createDynamicSlice)
-                {
-                    jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_MakeDynamicSlice", 0xa89310ab)), AZStd::string("Create Dynamic Slice")));
-                }
-                response.m_createJobOutputs.push_back(jobDescriptor);
             }
+
+            if (!m_settingsWarning.empty())
+            {
+                jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_SettingsFileWarning", 0xae8d98ac)), AZStd::string("Requires Re-save")));
+            }
+
+            if (requiresUpgrade)
+            {
+                jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_UpgradeSlice", 0x4be52dd5)), AZStd::string("Requires Re-save")));
+
+                // Source file changes are Platform Agnostic. Avoid extra work by only scheduling it once.
+                requiresUpgrade = false;
+            }
+
+            if (createDynamicSlice)
+            {
+                jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_MakeDynamicSlice", 0xa89310ab)), AZStd::string("Create Dynamic Slice")));
+            }
+            response.m_createJobOutputs.push_back(jobDescriptor);
         }
 
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
@@ -312,7 +316,7 @@ namespace SliceBuilder
 
                 AssetBuilderSDK::JobProduct jobProduct(dynamicSliceOutputPath);
                 jobProduct.m_productAssetType = azrtti_typeid<AZ::DynamicSliceAsset>();
-                jobProduct.m_productSubID = 2;
+                jobProduct.m_productSubID = AZ::DynamicSliceAsset::GetAssetSubId();
                 jobProduct.m_dependencies = AZStd::move(productDependencies);
                 jobProduct.m_pathDependencies = AZStd::move(productPathDependencySet);
                 response.m_outputProducts.push_back(AZStd::move(jobProduct));
@@ -331,7 +335,7 @@ namespace SliceBuilder
                 static const char* const s_OutOfDate = "This slice file is out of date: ";
                 static const char* const s_ToEnable = "To enable automatic upgrades:";
                 static const char* const s_FixSettings1 = "In the settings file ";
-                static const char* const s_FixSettings2 = ", Set EnableSliceUpgrades to true and restart the Asset Processor";
+                static const char* const s_FixSettings2 = ", Set 'EnableSliceConversion' to true and restart the Asset Processor";
                 static const char* const s_FixReadOnly = "Make sure the slice file isn't marked read-only. If using perforce, check out the slice file.";
 
                 // The Slice isn't marked as read only but Slice Upgrades aren't Enabled in the builder settings file

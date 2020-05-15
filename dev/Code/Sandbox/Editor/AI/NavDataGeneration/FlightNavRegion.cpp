@@ -28,6 +28,7 @@
 #include "ISerialize.h"
 #include "Navigation.h"         // NOTE Feb 22, 2008: <pvl> for SpecialArea declaration
 #include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #define BAI_FNAV_FILE_VERSION_READ 8
 #define BAI_FNAV_FILE_VERSION_WRITE 9
@@ -176,7 +177,14 @@ void CFlightNavRegion::Process(I3DEngine* p3DEngine, IPhysicalEntity** pObstacle
     float fStartTime = gEnv->pTimer->GetAsyncCurTime();
 
     // Process terrain
-    int terrainSize = p3DEngine->GetTerrainSize();
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
+
+    AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+    const int terrainUnitSize = static_cast<int>(gridResolution.GetX());
+
     int   sampledSize;
 
     while (true)
@@ -292,7 +300,7 @@ void CFlightNavRegion::Process(I3DEngine* p3DEngine, IPhysicalEntity** pObstacle
     AILogProgress("    - terrain size %d x %d.", terrainSize, terrainSize);
     AILogProgress("    - subdiv: %d  resample: %d.", m_childSubDiv, m_terrainDownSample);
 
-    int nDownSamplePrecision = max(gEnv->p3DEngine->GetHeightMapUnitSize(), 1);
+    int nDownSamplePrecision = max(terrainUnitSize, 1);
 
     idx = 0;
     for (int i = 0; i < terrainDimY; i++)
@@ -306,18 +314,32 @@ void CFlightNavRegion::Process(I3DEngine* p3DEngine, IPhysicalEntity** pObstacle
             float maxHeight = 0;
 
             // Find maximum value of a downsampled block.
-            for (int yy = 0; yy < m_terrainDownSample; yy += nDownSamplePrecision)
+            bool terrainExists = false;
+            auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
             {
-                for (int xx = 0; xx < m_terrainDownSample; xx += nDownSamplePrecision)
+                terrainExists = true;
+                for (int yy = 0; yy < m_terrainDownSample; yy += nDownSamplePrecision)
                 {
-                    if ((x + xx) < terrainSize && (y + yy) < terrainSize)
+                    for (int xx = 0; xx < m_terrainDownSample; xx += nDownSamplePrecision)
                     {
-                        float   terrainHeight = p3DEngine->GetTerrainZ(x + xx, y + yy);
-                        minHeight = min(minHeight, terrainHeight);
-                        maxHeight = max(maxHeight, terrainHeight);
+                        if ((x + xx) < terrainSize && (y + yy) < terrainSize)
+                        {
+                            float   terrainHeight = terrain->GetHeightFromFloats(x + xx, y + yy, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
+                            minHeight = min(minHeight, terrainHeight);
+                            maxHeight = max(maxHeight, terrainHeight);
+                        }
                     }
                 }
+                //We only care about the first handler.
+                return false;
+            };
+            AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
+            if (!terrainExists)
+            {
+                minHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                maxHeight = minHeight;
             }
+
             // Make sure the access in in range.
             AIAssert(idx < terrainDimX * terrainDimY);
 
@@ -2221,7 +2243,12 @@ Vec3 CFlightNavRegion::IsSpaceVoid(const Vec3& vPos, const Vec3& vForward, const
     Vec3    vCheckPoint;
     Vec3    vReturnVec(ZERO);
 
-    float   terrainHeight = GetISystem()->GetI3DEngine()->GetTerrainZ((int)vPos.x, (int)vPos.y);
+    float   terrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainHeight
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , vPos.x, vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP
+        , nullptr);
+
     float   waterHeight = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vPos) : GetISystem()->GetI3DEngine()->GetWaterLevel(&vPos);
     float   height =  max(terrainHeight, waterHeight) + 20.0f;
     float   heightAbove = height + 1000.0f;

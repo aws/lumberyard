@@ -53,7 +53,7 @@ class ConfigSet(object):
 		keys = set()
 		cur = self
 		while cur:
-			keys.update(cur.table.keys())
+			keys.update(list(cur.table.keys()))
 			cur = getattr(cur, 'parent', None)
 		keys = list(keys)
 		keys.sort()
@@ -61,7 +61,7 @@ class ConfigSet(object):
 
 	def __str__(self):
 		"""Text representation of the ConfigSet (for debugging purposes)"""
-		return "\n".join(["%r %r" % (x, self.__getitem__(x)) for x in self.keys()])
+		return "\n".join(["%r %r" % (x, self.__getitem__(x)) for x in list(self.keys())])
 
 	def __getitem__(self, key):
 		"""
@@ -163,7 +163,7 @@ class ConfigSet(object):
 		except AttributeError:
 			pass
 		else:
-			keys = tbl.keys()
+			keys = list(tbl.keys())
 			for x in keys:
 				tbl[x] = copy.deepcopy(tbl[x])
 			self.table = tbl
@@ -311,7 +311,7 @@ class ConfigSet(object):
 		:param d: object to use the value from
 		:type d: dict-like object
 		"""
-		for k, v in d.items():
+		for k, v in list(d.items()):
 			self[k] = v
 
 	def stash(self):
@@ -330,7 +330,7 @@ class ConfigSet(object):
 		"""
 		orig = self.table
 		tbl = self.table = self.table.copy()
-		for x in tbl.keys():
+		for x in list(tbl.keys()):
 			tbl[x] = copy.deepcopy(tbl[x])
 		self.undo_stack = self.undo_stack + [orig]
 

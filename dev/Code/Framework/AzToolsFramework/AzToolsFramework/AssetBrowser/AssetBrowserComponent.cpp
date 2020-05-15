@@ -107,6 +107,7 @@ namespace AzToolsFramework
             AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             AssetSystemBus::Handler::BusDisconnect();
+            m_assetBrowserModel.release();
             EntryCache::DestroyInstance();
         }
 

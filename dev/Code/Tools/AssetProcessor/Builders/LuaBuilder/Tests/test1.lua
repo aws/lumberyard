@@ -15,6 +15,9 @@ function SpawnerScriptSample:OnActivate()
         self.spawnerNotiBusHandler = SpawnerComponentNotificationBus.Connect(self, self.entityId)
     end
     local test2 = require("scripts.test2")
+    if self.requiresInit == true then
+        
+    end
 end
 
 -- This handler is called when we start spawning a slice.

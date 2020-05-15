@@ -30,8 +30,8 @@ _ENGINE_ROOT_IDENTIFIER = 'engineroot.txt'
 _USER_PREFERENCE_FILE_NAME = 'SetupAssistantUserPreferences.ini'
 _USER_PREFERENCE_3RD_PARTY_PATH_KEY_NAME = 'SDKSearchPath3rdParty'
 _SETUP_CONFIG_FILE_NAME = 'SetupAssistantConfig.json'
-_INTERESTING_ROLES = set([u'compileengine', u'compilegame', u'setuplinux'])
-_INTERESTING_HOST_OS = set([u'linux'])
+_INTERESTING_ROLES = set(['compileengine', 'compilegame', 'setuplinux', 'compilesandbox'])
+_INTERESTING_HOST_OS = set(['linux'])
 _PROJECT_NAME = 'MultiplayerSample'
 
 # A few force excludes to keep the file size in check.
@@ -94,6 +94,16 @@ _EXCLUDED_EXTENSIONS = set([
 
 _PRINTABLE_CHARS = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
 
+_KNOWN_EXECUTABLES = {
+    '2to3',
+    'python2.7',
+    'pydoc',
+    '2to3-3.7',
+    'python3.7',
+    'pydoc3.7'
+}
+
+
 _NON_EXECUTABLE_EXTENSIONS = set(['.0',
     '.1', '.2', '.20', '.21', '.22', '.23', '.3', '.5', '.56', '.6', '.7', '.7-32', '.7-config', '.8bf',
     '.a', '.abc', '.ac', '.actions', '.aif', '.aifc', '.aiff', '.am', '.animsettings', '.any', '.app', '.applescript',
@@ -133,7 +143,7 @@ _NON_EXECUTABLE_EXTENSIONS = set(['.0',
 
     '.p4ignore', '.pak', '.pandora', '.patch', '.pbm', '.pbxproj', '.pc', '.pck', '.pdb', '.pdf', '.pem', '.pgm',
     '.pickle', '.pl', '.plist', '.png', '.ppm', '.prf', '.pri', '.prj', '.prl', '.pro', '.properties', '.props',
-    '.psd', '.psp', '.pssl', '.pump', '.py', '.pyc', '.pyd', '.pyo', '.pyproj', '.pys', '.pyw',
+    '.psd', '.psp', '.pump', '.py', '.pyc', '.pyd', '.pyo', '.pyproj', '.pys', '.pyw',
 
     '.qm', '.qml', '.qmltypes', '.qph', '.qrc', '.qss',
 
@@ -249,8 +259,8 @@ def _build_3rdparty_sources_map(config_file_path, source_root, destination_root)
                     for symlink in sdk['symlinks'] if _is_interesting(sdk, symlink)]
 
     sources = {
-        _conform_path(os.path.join(source_root, dependency['source']).encode('utf-8')) :
-            _conform_path(os.path.join(destination_root, dependency['source']).encode('utf-8'))
+        _conform_path(os.path.join(source_root, dependency['source'])) :
+            _conform_path(os.path.join(destination_root, dependency['source']))
                 for dependency in dependencies
     }
 
@@ -267,6 +277,7 @@ def _build_dev_sources_map(source_root, destination_root):
         '_WAF_',
         'Cache/%s/pc' % _PROJECT_NAME,
         'Code',
+        'Editor',
         'Engine',
         'Gems',
         _PROJECT_NAME,
@@ -293,8 +304,8 @@ def _build_dev_sources_map(source_root, destination_root):
     ])
 
     return {
-        _conform_path(os.path.join(source_root, rel_path).encode('utf-8')) :
-            _conform_path(os.path.join(destination_root, rel_path).encode('utf-8'))
+        _conform_path(os.path.join(source_root, rel_path)) :
+            _conform_path(os.path.join(destination_root, rel_path))
                 for rel_path in relative_file_paths
     }
 
@@ -320,6 +331,7 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
         file should be included in the final tar ball or not.
         '''
         name = tarinfo.name[len(_PROJECT_NAME) + 1:].lower()
+        filename = os.path.basename(name)
 
         if tarinfo.isfile():
             # Exclude the file if its in exluded extensions
@@ -334,11 +346,13 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
             if type:
                 _file_mimetypes.add(type)
                 type = type.split('/')[0]
-
-            if (extension in _NON_EXECUTABLE_EXTENSIONS) or (type in set(['text', 'image', 'audio'])):
+                
+            if filename in _KNOWN_EXECUTABLES:
+                tarinfo.mode = tarinfo.mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            elif (extension in _NON_EXECUTABLE_EXTENSIONS) or (type in set(['text', 'image', 'audio'])):
                 pass # Do nothing!
             elif (extension in _EXECUTABLE_EXTENSIONS) or _is_executable(name, source_root_dev, source_root_3rdparty):
-                tarinfo.mode = tarinfo.mode | stat.S_IXUSR
+                tarinfo.mode = tarinfo.mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
         else:
             # Directories need to be marked as executables
             tarinfo.mode = tarinfo.mode | stat.S_IXUSR
@@ -356,9 +370,9 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    print('Creating tar file at ' + output_filepath)
+    print('Creating tar file at {}'.format(output_filepath))
     with tarfile.open(output_filepath, 'w') as ostrm:
-        for src, dst in sources_map.iteritems():
+        for src, dst in sources_map.items():
             print('Adding {0} => {1} ...'.format(src, dst))
             ostrm.add(src, dst, filter=_filter)
 
@@ -397,15 +411,16 @@ def main():
     destination_root_3rdparty = _get_3rdparty_destination_root()
 
     # Make sure the input/computed 3rd party path is valid
-    if not os.path.isfile(os.path.join(source_root_3rdparty, _3RDPARTY_ROOT_IDENTIFIER)):
-        raise RuntimeError('3rd party identifier file not found: ' + filepath)
+    check_3rd_party_path_id_file = os.path.join(source_root_3rdparty, _3RDPARTY_ROOT_IDENTIFIER)
+    if not os.path.isfile(check_3rd_party_path_id_file):
+        raise RuntimeError('3rd party identifier file not found: {}'.format(check_3rd_party_path_id_file))
 
     sources_map_3rdparty = _build_3rdparty_sources_map(
         setup_config_file_path, source_root_3rdparty, destination_root_3rdparty)
 
     # Combine the sources map and print it out for records
     sources_map = collections.OrderedDict(sources_map_3rdparty, **sources_map_dev)
-    pprint.pprint({ key: value for key, value in sources_map.iteritems() })
+    pprint.pprint({ key: value for key, value in sources_map.items() })
     print('\n')
 
     if not args.output:
@@ -414,7 +429,7 @@ def main():
 
     # Finally create the archive
     _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, args.output)
-    print('Uncompressed archive successfully generated at ' + args.output)
+    print('Uncompressed archive successfully generated at {}'.format(args.output))
     print('\n')
 
     if args.print_extensions:
@@ -435,7 +450,7 @@ def main():
 
     if args.compress:
         compressed_output_path = _compress_tarfile(args.output)
-        print('Compressed archive successfully generated at ' + compressed_output_path)
+        print('Compressed archive successfully generated at {}'.format(compressed_output_path))
         print('\n')
 
     print('Archive(s) successfully generated!!')

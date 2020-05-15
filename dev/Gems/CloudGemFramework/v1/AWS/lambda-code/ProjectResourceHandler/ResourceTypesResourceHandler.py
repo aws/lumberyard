@@ -31,22 +31,6 @@ iam_client = aws_utils.ClientWrapper(boto3.client("iam"))
 
 _inline_policy_name = "Default"
 
-_lambda_base_policy = {
-    'Version': "2012-10-17",
-    'Statement': [
-        {
-            'Sid': "WriteLogs",
-            'Effect': "Allow",
-            'Action': [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-            ],
-            'Resource': "arn:aws:logs:*:*:*"
-        }
-    ]
-}
-
 # Default custom resource lambda timeout in MB
 _default_lambda_memory = 128
 
@@ -69,15 +53,16 @@ _handler_schema = {
         'Sid': properties.String(""),
         'Action': properties.StringOrListOfString(),
         'Resource': properties.StringOrListOfString(default=[]),
-        'Effect': properties.String()
+        'Effect': properties.String(),
+        'Condition': properties.Dictionary(default={})
     })
 }
 
 # Schema for the CoreResourceTypes custom CloudFormation resources.
 # Note: LambdaConfiguration and LambdaTimeout are globally applied to all custom resource Lambdas.  To change Memory and Timeout for a given Lambda
-# use a HandlerFunctionConfiguration which overides the global lambda configs
+# use a HandlerFunctionConfiguration which overrides the global lambda configs
 #
-# Note: Need to define expected fields here to avoid "Property not supported" failures during definition validation
+# Note: Need to define expected fields here to avoid "Property is not supported" failures during definition validation
 _schema = {
     'LambdaConfiguration': properties.Dictionary(default={}),
     'LambdaTimeout': properties.Integer(default=_default_lambda_timeout),
@@ -121,6 +106,14 @@ def handler(event, context):
     lambda_client = _create_lambda_client(stack_arn)
     created_or_updated_lambdas = {}
     lambda_roles = []
+
+    # Set up tags for all resources created, must be project stack
+    # Note: IAM takes an array of [ {'Key':, 'Value':}] format, Lambda take a dict of {string: string} pairs
+    iam_tags = [
+        {'Key': constant.PROJECT_NAME_TAG, 'Value': stack.stack_name},
+        {'Key': constant.STACK_ID_TAG, 'Value': stack_arn}
+    ]
+    lambda_tags = {constant.PROJECT_NAME_TAG: stack.stack_name, constant.STACK_ID_TAG: stack_arn}
 
     # Build the file key as "<root directory>/<project stack>/<deployment stack>/<resource_stack>/<resource_name>.json"
     path_components = [x.stack_name for x in stack.ancestry]
@@ -188,7 +181,8 @@ def handler(event, context):
                     res = iam_client.create_role(
                         RoleName=role_name,
                         AssumeRolePolicyDocument=assume_role_policy_document,
-                        Path=role_path)
+                        Path=role_path,
+                        Tags=iam_tags)
                     role_arn = res['Role']['Arn']
                 except ClientError as e:
                     if e.response["Error"]["Code"] != 'EntityAlreadyExists':
@@ -197,7 +191,7 @@ def handler(event, context):
                     role_arn = res['Role']['Arn']
 
                 # Copy the base policy for the role and add any permissions that are specified by the type
-                role_policy = copy.deepcopy(_lambda_base_policy)
+                role_policy = copy.deepcopy(_create_base_lambda_policy())
                 role_policy['Statement'].extend(function_info.get('PolicyStatement', []))
                 iam_client.put_role_policy(RoleName=role_name, PolicyName=_inline_policy_name,
                                            PolicyDocument=json.dumps(role_policy))
@@ -210,14 +204,15 @@ def handler(event, context):
                     'type_info': type_info,
                     'lambda_function_name': lambda_function_name,
                     'handler': "resource_types." + function_handler,
-                    'description': description
+                    'description': description,
+                    'tags': lambda_tags
                 }
 
                 # Merge in any lambda specific configs overrides
                 if 'HandlerFunctionConfiguration' in function_info:
                     lambda_override = function_info['HandlerFunctionConfiguration']
                     if lambda_override:
-                        print "Found LambdaConfiguration override {}".format(lambda_override)
+                        print("Found LambdaConfiguration override {}".format(lambda_override))
                         lambda_info['lambda_config_overrides'] = lambda_override
 
                 lambdas_to_create.append(lambda_info)
@@ -238,6 +233,12 @@ def handler(event, context):
                 existing_lambdas=existing_lambdas
             )
             created_or_updated_lambdas[info['lambda_function_name']] = {'arn': arn, 'v': version}
+
+            # Finally add/update a role policy to give least privileges to the Lambdas to log events
+            policy_document = _generate_lambda_log_event_policy(arn)
+            iam_client.put_role_policy(RoleName=aws_utils.get_role_name_from_role_arn(info['role_arn']),
+                                       PolicyDocument=json.dumps(policy_document),
+                                       PolicyName='LambdaLoggingEventsPolicy')
 
         deleted_entries = set(definitions_dictionary.keys()) - set(definitions_src.keys())
 
@@ -285,6 +286,13 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
     lambda_config = copy.deepcopy(lambda_config_src)
 
     if lambda_name in existing_lambdas:
+        # Ensure resources are always tagged
+        tags = info['tags']
+        if len(tags) > 0:
+            response = lambda_client.get_function(FunctionName=lambda_name)
+            if 'Configuration' in response:
+                lambda_client.tag_resource(Resource=response['Configuration']['FunctionArn'], Tags=tags)
+
         # Just update the function code if it already exists
         src_config = lambda_config['Code']
         src_config['FunctionName'] = lambda_name
@@ -300,7 +308,8 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
                 'Handler': info['handler'],
                 'Timeout': timeout,
                 'Description': info['description'] % type_info.resource_type_name,
-                'Publish': True
+                'Publish': True,
+                'Tags': info['tags']
             }
         )
 
@@ -314,3 +323,74 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
         raise RuntimeError("Unable to create the lambda for type '{}' in resource '{}'".format(type_info.resource_type_name, type_info.source_resource_name))
 
     return arn, version
+
+
+def _create_base_lambda_policy():
+    """Generate base secure policy for handling logs
+
+    As the policy is created before Lambdas, do not put anything here that needs to be scoped to the Lambda.
+    Instead attach that policy associated with Lambda's execution role after creation, see _generate_lambda_log_event_policy
+
+    Note: CreateLogGroup can not be restricted by resource
+    https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatchlogs.html
+    """
+    return {
+        'Version': "2012-10-17",
+        'Statement': [
+            {
+                'Sid': "WriteLogs",
+                'Effect': "Allow",
+                'Action': [
+                    "logs:CreateLogGroup"
+                ],
+                'Resource': [
+                    "*"
+                ]
+            }
+        ]
+    }
+
+
+def _generate_lambda_log_event_policy(lambda_arn):
+    """Generate secure policy for handling logs.
+
+    :param string lambda_arn: The Lambda arn to associate the policy with, to ensure least privileges for logging events
+    :return A policy document suitable for attaching via PutRolePolicy
+
+    Note: This policy is attached to the Lambda's execution role after the Lambda is created
+    """
+    arn_parser = aws_utils.ArnParser(lambda_arn)
+    region = arn_parser.region
+    aws_account_id = arn_parser.account_id
+    lambda_function_name = arn_parser.resource_id
+
+    # Strip out information about version if present <lambda_name>:<version> will form the resource_id
+    if lambda_function_name.find(':') != -1:
+        lambda_function_name = lambda_function_name.rsplit(':', 1)[0]
+
+    log_group_arn = \
+        aws_utils.ArnParser.format_arn_with_resource_type(service="logs", region=region, account_id=aws_account_id, resource_type="log-group",
+                                                          resource_id="/aws/lambda/{}".format(lambda_function_name), separator=":")
+
+    log_stream_arn = \
+        aws_utils.ArnParser.format_arn_with_resource_type(service="logs", region=region, account_id=aws_account_id, resource_type="log-group",
+                                                          resource_id="/aws/lambda/{}:log-stream:*".format(lambda_function_name), separator=":")
+
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "WriteLogEvents",
+                "Effect": "Allow",
+                "Action": [
+                    "logs:PutLogEvents",
+                    "logs:CreateLogStream"
+                ],
+                "Resource": [
+                    log_group_arn,
+                    log_stream_arn
+                ]
+            }
+        ]
+    }
+

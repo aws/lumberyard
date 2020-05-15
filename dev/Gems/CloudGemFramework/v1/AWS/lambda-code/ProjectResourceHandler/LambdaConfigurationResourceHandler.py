@@ -11,26 +11,21 @@
 # $Revision: #1 $
 
 # Python
-import collections
 import copy
 import json
 import re
-import time
-from StringIO import StringIO
-from uuid import uuid4
 from zipfile import ZipFile, ZipInfo
+
+# Python 2.7/3.7 Compatibility
+from six import StringIO
+from six import iteritems
 
 # Boto3
 import boto3
-import botocore
-
-from botocore.exceptions import ClientError
-
-# ServiceDirectory
-from cgf_service_directory import ServiceDirectory
+import botocore.config as boto_config
 
 # ResourceManagerCommon
-from resource_manager_common import stack_info, service_interface
+from resource_manager_common import stack_info
 
 # Utils
 from cgf_utils import aws_utils
@@ -40,23 +35,33 @@ from cgf_utils import role_utils
 
 CLOUD_GEM_FRAMEWORK = 'CloudGemFramework'
 iam = aws_utils.ClientWrapper(boto3.client('iam'))
-cfg = botocore.config.Config(read_timeout=70, connect_timeout=70)
-s3 = aws_utils.ClientWrapper(boto3.client('s3', config=cfg), do_not_log_args = ['Body'])
+cfg = boto_config.Config(read_timeout=70, connect_timeout=70)
+s3 = aws_utils.ClientWrapper(boto3.client('s3', config=cfg), do_not_log_args=['Body'])
+
 
 def get_default_policy(project_service_lambda_arn):
+    """
+    Gets the default policy to associate with a a Lambda Configuration
+
+    To ensure least privileges we do not attach PutLogEvents, CreateLogStream permissions here. Instead
+    these are added as an inline policy on the Lambda's execution role once its created so they can be correctly scoped.
+
+    :param project_service_lambda_arn:
+    :return: The default policy document for the lambda
+    """
     policy = {
         "Version": "2012-10-17",
         "Id": "Default Lambda Execution Permissions",
         "Statement": [
             {
-                "Sid": "WriteLogs",
+                "Sid": "LambdaBasicWriteLogs",  # Taken from AWSLambdaBasicExecutionRole
                 "Effect": "Allow",
                 "Action": [
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
                     "logs:PutLogEvents"
                 ],
-                "Resource": "arn:aws:logs:*:*:*"
+                "Resource": "*"
             },
             {
                 "Sid": "RunInVPC",
@@ -70,6 +75,7 @@ def get_default_policy(project_service_lambda_arn):
             }
         ]
     }
+
     if project_service_lambda_arn:
         policy['Statement'].append({
             "Sid": "InvokeProjectServiceLambda",
@@ -79,6 +85,7 @@ def get_default_policy(project_service_lambda_arn):
             ],
             "Resource": project_service_lambda_arn
         })
+
     return json.dumps(policy)
 
 
@@ -86,24 +93,17 @@ PROPERTIES_SCHEMA = {
     'ConfigurationBucket': properties.String(),
     'ConfigurationKey': properties.String(),
     'FunctionName': properties.String(),
-    'Settings': properties.Object( default={},
-        schema={
-            '*': properties.String()
-        }
-    ),
+    'Settings': properties.Object(default={}, schema={'*': properties.String()}),
     'Runtime': properties.String(),
-    'Services': properties.ObjectOrListOfObject( default=[],
-        schema={
-            'InterfaceId': properties.String(),
-            'Optional': properties.Boolean(default = False)
-        }
-    ),
-    'IgnoreAppendingSettingsToZip': properties.Boolean(default = False)
+    'Services': properties.ObjectOrListOfObject(default=[], schema={
+        'InterfaceId': properties.String(),
+        'Optional': properties.Boolean(default=False)
+    }),
+    'IgnoreAppendingSettingsToZip': properties.Boolean(default=False)
 }
 
 
 def handler(event, context):
-
     props = properties.load(event, PROPERTIES_SCHEMA)
 
     request_type = event['RequestType']
@@ -114,7 +114,6 @@ def handler(event, context):
     id_data = aws_utils.get_data_from_custom_physical_resource_id(event.get('PhysicalResourceId', None))
 
     if request_type == 'Delete':
-
         role_utils.delete_access_control_role(
             id_data,
             logical_role_name)
@@ -122,7 +121,6 @@ def handler(event, context):
         response_data = {}
 
     else:
-
         stack = stack_manager.get_stack_info(stack_arn)
 
         if request_type == 'Create':
@@ -135,7 +133,7 @@ def handler(event, context):
                 stack_arn,
                 logical_role_name,
                 assume_role_service,
-                default_policy = get_default_policy(project_service_lambda_arn))
+                default_policy=get_default_policy(project_service_lambda_arn))
 
         elif request_type == 'Update':
 
@@ -145,6 +143,7 @@ def handler(event, context):
 
         else:
             raise RuntimeError('Unexpected request type: {}'.format(request_type))
+
         _add_built_in_settings(props.Settings.__dict__, stack)
         # Check if we have a folder just for this function, if not use the default
         output_key = input_key = _get_input_key(props)
@@ -153,9 +152,10 @@ def handler(event, context):
 
         cc_settings = copy.deepcopy(props.Settings.__dict__)
         # Remove "Services" from settings because they get injected into the python code package during _inject_settings
-        # TODO: move handling of project-level service interfaces to the same code as cross-gemm interfaces
+        # TODO: move handling of project-level service interfaces to the same code as cross-gem interfaces
         if "Services" in cc_settings:
             del cc_settings["Services"]
+
         response_data = {
             'ConfigurationBucket': props.ConfigurationBucket,
             'ConfigurationKey': output_key,
@@ -194,27 +194,28 @@ def _add_built_in_settings(settings, stack):
     if stack.project:
 
         # TODO: remove ServiceLambda and switch CloudGemPlayerAccount over to using service interfaces.
-        project_service_lambda = stack.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", optional = True)
+        project_service_lambda = stack.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", optional=True)
         if project_service_lambda:
             settings["CloudCanvasServiceLambda"] = project_service_lambda.physical_id
-            print 'Adding setting CloudCanvasServiceLambda = {}'.format(settings["CloudCanvasServiceLambda"])
+            print('Adding setting CloudCanvasServiceLambda = {}'.format(settings["CloudCanvasServiceLambda"]))
         else:
-            print 'Skipping setting CloudCanvasServiceLambda: resource not found.'
+            print('Skipping setting CloudCanvasServiceLambda: resource not found.')
 
     else:
-        print 'Skipping setting CloudCanvasServiceLambda: project stack not found.'
+        print('Skipping setting CloudCanvasServiceLambda: project stack not found.')
 
     if stack.deployment:
         settings["CloudCanvasDeploymentName"] = stack.deployment.deployment_name
-        print 'Adding setting CloudCanvasDeploymentName = {}'.format(settings["CloudCanvasDeploymentName"])
+        print('Adding setting CloudCanvasDeploymentName = {}'.format(settings["CloudCanvasDeploymentName"]))
     else:
-        print 'Skipping setting CloudCanvasDeploymentName: deployment stack not found.'
+        print('Skipping setting CloudCanvasDeploymentName: deployment stack not found.')
+
 
 def _get_project_service_lambda_arn(stack):
     if stack.project:
-        project_service_lambda = stack.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", optional = True)
+        project_service_lambda = stack.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", optional=True)
         if project_service_lambda:
-            return  project_service_lambda.resource_arn
+            return project_service_lambda.resource_arn
     return None
 
 
@@ -224,7 +225,7 @@ SERVICE_ACCESS_POLICY_DOCUMENT = {
     "Version": "2012-10-17",
     "Statement": [
         {
-           "Sid": "InvokeServiceApi",
+            "Sid": "InvokeServiceApi",
             "Effect": "Allow",
             "Action": "execute-api:Invoke",
             "Resource": []
@@ -234,33 +235,31 @@ SERVICE_ACCESS_POLICY_DOCUMENT = {
 
 
 def _inject_settings_python(zip_file, settings):
+    content = json.dumps(settings, indent=4, sort_keys=True)
 
-    content = json.dumps(settings, indent = 4, sort_keys = True)
-
-    print 'inserting settings', content
+    print('inserting settings {}'.format(content))
 
     info = ZipInfo('cgf_lambda_settings/settings.json')
-    info.external_attr = 0777 << 16L # give full access to included file
-    print 'writing the settings', settings
+    info.external_attr = 0o0777 << 16  # give full access to included file
+    print('writing the settings {}'.format(settings))
     zip_file.writestr(info, content)
-    print 'completed the write of the settings to the zip file'
+    print('completed the write of the settings to the zip file')
 
 
 def _inject_settings_nodejs(zip_file, settings):
-
     first = True
     content = 'module.exports = {'
-    for k, v in settings.iteritems():
+    for k, v in iteritems(settings):
         if not first:
             content += ','
         content += '\n    "{}": "{}"'.format(k, v)
         first = False
     content += '\n};'
 
-    print 'inserting settings', content
+    print('inserting settings {}'.format(content))
 
     info = ZipInfo('CloudCanvas/settings.js')
-    info.external_attr = 0777 << 16L # give full access to included file
+    info.external_attr = 0o0777 << 16  # give full access to included file
 
     zip_file.writestr(info, content)
 
@@ -272,35 +271,32 @@ _SETTINGS_INJECTORS = {
 
 
 def _inject_settings(settings, runtime, bucket, input_key, function_name):
-
     if len(settings) == 0:
         return input_key
 
-    if not "Services" in settings:
-        print 'No services found in settings, skipping settings injection to code zip in favor of using environment vars'
+    if "Services" not in settings:
+        print('No services found in settings, skipping settings injection to code zip in favor of using environment vars')
         return input_key
 
-    service_settings = {}
-    service_settings["Services"] = settings.get("Services", {})
+    service_settings = {"Services": settings.get("Services", {})}
     settings = service_settings
 
     output_key = input_key + '.' + function_name + '.configured'
 
     injector = _get_settings_injector(runtime)
 
-    print "Downloading the S3 file {}/{} to inject the settings property.".format(bucket, input_key)
+    print("Downloading the S3 file {}/{} to inject the settings property.".format(bucket, input_key))
     res = s3.get_object(Bucket=bucket, Key=input_key)
     zip_content = StringIO(res['Body'].read())
     zip_file = ZipFile(zip_content, mode='a')
     injector(zip_file, settings)
     zip_file.close()
-    print "Uploading the S3 file {}/{} to S3 file {}/{}.".format(bucket, input_key, bucket, output_key)
+    print("Uploading the S3 file {}/{} to S3 file {}/{}.".format(bucket, input_key, bucket, output_key))
     res = s3.put_object(Bucket=bucket, Key=output_key, Body=zip_content.getvalue())
-    print "Setting injection complete for {}".format(output_key)
+    print("Setting injection complete for {}. Saw etag {}".format(output_key, res['ETag']))
     zip_content.close()
 
     return output_key
-
 
 
 def _get_settings_injector(runtime):
@@ -311,5 +307,5 @@ def _get_settings_injector(runtime):
             versionless_runtime = runtime[:match.start()]
             injector = _SETTINGS_INJECTORS.get(versionless_runtime, None)
         if injector is None:
-            raise RuntimeError('No setting injector found for Labmda runtime {}'.format(runtime))
+            raise RuntimeError('No setting injector found for Lambda runtime {}'.format(runtime))
     return injector

@@ -463,6 +463,10 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
         #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
     #endif
+    #if defined(TOOLS_SUPPORT_SALEM)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
+        #include "Salem/CrySimpleJobCompile_cpp_salem.inl"
+    #endif
 #endif
 
     int64_t t0 = g_Timer.GetTime();

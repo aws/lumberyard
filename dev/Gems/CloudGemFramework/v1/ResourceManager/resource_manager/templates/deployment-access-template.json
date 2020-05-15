@@ -115,6 +115,14 @@
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectStack" }, "-AH-*" ]] }
                             ]
+                        },
+                        {
+                            "Sid": "CreateUpdateCognitoIdentity",
+                            "Effect": "Allow",
+                            "Action": ["cognito-identity:GetIdentityPoolRoles"],
+                            "Resource": [
+                              { "Fn::Sub": "arn:aws:cognito-identity:${AWS::Region}:${AWS::AccountId}:identitypool/${AWS::Region}*" }
+                            ]
                         }
                     ]
                 }
@@ -402,10 +410,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "unauthenticated"
+                                }
                             }
                         },
                         {
@@ -428,6 +441,7 @@
                 }
             }
         },
+
         "AuthenticatedPlayer": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -436,10 +450,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "authenticated"
+                                }
                             }
                         },
                         {
@@ -507,10 +526,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "unauthenticated"
+                                }
                             }
                         }
                     ]

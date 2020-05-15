@@ -77,7 +77,7 @@ namespace ScriptCanvas
         {
             auto slotId = GetSlotId(GetInputDataName());
 
-            if (auto setDatum = GetInput(slotId))
+            if (auto setDatum = FindDatum(slotId))
             {
                 OnInputChanged(*setDatum, slotId);
             }

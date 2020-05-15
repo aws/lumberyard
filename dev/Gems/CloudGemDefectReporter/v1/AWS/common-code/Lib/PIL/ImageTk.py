@@ -25,23 +25,10 @@
 # See the README file for information on usage and redistribution.
 #
 
-import sys
-
-if sys.version_info[0] > 2:
-    import tkinter
-else:
-    import Tkinter as tkinter
-
-# required for pypy, which always has cffi installed
-try:
-    from cffi import FFI
-    ffi = FFI()
-except ImportError:
-    pass
-
-from . import Image
+import tkinter
 from io import BytesIO
 
+from . import Image
 
 # --------------------------------------------------------------------
 # Check for Tkinter interface hooks
@@ -74,7 +61,8 @@ def _get_image_from_kw(kw):
 # --------------------------------------------------------------------
 # PhotoImage
 
-class PhotoImage(object):
+
+class PhotoImage:
     """
     A Tkinter-compatible photo image.  This can be used
     everywhere Tkinter expects an image object.  If the image is an RGBA
@@ -131,7 +119,7 @@ class PhotoImage(object):
         self.__photo.name = None
         try:
             self.__photo.tk.call("image", "delete", name)
-        except:
+        except Exception:
             pass  # ignore internal errors
 
     def __str__(self):
@@ -169,8 +157,8 @@ class PhotoImage(object):
                    mode does not match, the image is converted to the mode of
                    the bitmap image.
         :param box: A 4-tuple defining the left, upper, right, and lower pixel
-                    coordinate.  If None is given instead of a tuple, all of
-                    the image is assumed.
+                    coordinate. See :ref:`coordinate-system`. If None is given
+                    instead of a tuple, all of the image is assumed.
         """
 
         # convert to blittable
@@ -190,9 +178,15 @@ class PhotoImage(object):
             # activate Tkinter hook
             try:
                 from . import _imagingtk
+
                 try:
-                    if hasattr(tk, 'interp'):
-                        # Pypy is using a ffi cdata element
+                    if hasattr(tk, "interp"):
+                        # Required for PyPy, which always has CFFI installed
+                        from cffi import FFI
+
+                        ffi = FFI()
+
+                        # PyPy is using an FFI CDATA element
                         # (Pdb) self.tk.interp
                         #  <cdata 'Tcl_Interp *' 0x3061b50>
                         _imagingtk.tkinit(int(ffi.cast("uintptr_t", tk.interp)), 1)
@@ -204,11 +198,12 @@ class PhotoImage(object):
             except (ImportError, AttributeError, tkinter.TclError):
                 raise  # configuration problem; cannot attach to Tkinter
 
+
 # --------------------------------------------------------------------
 # BitmapImage
 
 
-class BitmapImage(object):
+class BitmapImage:
     """
     A Tkinter-compatible bitmap image.  This can be used everywhere Tkinter
     expects an image object.
@@ -246,7 +241,7 @@ class BitmapImage(object):
         self.__photo.name = None
         try:
             self.__photo.tk.call("image", "delete", name)
-        except:
+        except Exception:
             pass  # ignore internal errors
 
     def width(self):
@@ -277,10 +272,13 @@ class BitmapImage(object):
 
 
 def getimage(photo):
-    """ This function is unimplemented """
-    
     """Copies the contents of a PhotoImage to a PIL image memory."""
-    photo.tk.call("PyImagingPhotoGet", photo)
+    im = Image.new("RGBA", (photo.width(), photo.height()))
+    block = im.im
+
+    photo.tk.call("PyImagingPhotoGet", photo, block.id)
+
+    return im
 
 
 def _show(image, title):
@@ -292,11 +290,10 @@ def _show(image, title):
                 self.image = BitmapImage(im, foreground="white", master=master)
             else:
                 self.image = PhotoImage(im, master=master)
-            tkinter.Label.__init__(self, master, image=self.image,
-                                   bg="black", bd=0)
+            super().__init__(master, image=self.image, bg="black", bd=0)
 
     if not tkinter._default_root:
-        raise IOError("tkinter not initialized")
+        raise OSError("tkinter not initialized")
     top = tkinter.Toplevel()
     if title:
         top.title(title)

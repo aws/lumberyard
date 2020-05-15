@@ -43,7 +43,7 @@ namespace GradientSignal
         AZ::u32 ConfigurationChanged() override;
 
         AZ::EntityId GetGradientEntityId() const;
-        AZStd::function<float(float)> GetFilterFunc();
+        AZStd::function<float(float, const GradientSampleParams&)> GetFilterFunc();
         AZ::EntityId m_gradientEntityId;
     };
 }

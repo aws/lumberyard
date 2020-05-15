@@ -33,7 +33,7 @@ namespace ScriptCanvas
 
             AZStd::string BehaviorContextObjectNode::GetDebugName() const
             {
-                if (auto input = GetInput(GetSlotId(Internal::k_setThis)))
+                if (auto input = FindDatum(GetSlotId(Internal::k_setThis)))
                 {
                     return Data::GetName(input->GetType());
                 }
@@ -174,7 +174,7 @@ namespace ScriptCanvas
 
             void BehaviorContextObjectNode::OnInit()
             {
-                if (auto input = GetInput(GetSlotId(k_setThis)))
+                if (auto input = FindDatum(GetSlotId(k_setThis)))
                 {
                     if (!input->Empty())
                     {

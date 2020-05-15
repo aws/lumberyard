@@ -43,7 +43,7 @@ _UPDATE_CHANGED_PHYSICAL_ID_WARNING = "Warning: resource \"{}\" has updated phys
 def handler(event, context):
     """Main handler for custom resources, wired in via project-template.json as the ProjectResourceHandler"""
     try:
-        print 'Dispatching event {} with context {}.'.format(json.dumps(event, cls=json_utils.SafeEncoder), context)
+        print('Dispatching event {} with context {}.'.format(json.dumps(event, cls=json_utils.SafeEncoder), context))
 
         resource_type = event.get('ResourceType', None)
         if resource_type is None:
@@ -83,7 +83,7 @@ def handler(event, context):
                 if not hasattr(module, 'handler'):
                     raise RuntimeError('No handler function found for the {} resource type.'.format(resource_type))
 
-                print 'Using {}'.format(module)
+                print('Using {}'.format(module))
 
                 module.handler(event, context)
 
@@ -185,9 +185,10 @@ def handler(event, context):
     except ValidationError as e:
         custom_resource_response.fail(event, context, str(e))
     except Exception as e:
-        print 'Unexpected error occurred when processing event {} with context {}. {}'.format(event, context, traceback.format_exc())
-        custom_resource_response.fail(event, context, 'Unexpected {} error occurred: {}. Additional details can be found in the CloudWatch log group {} stream {}'.format(
-            type(e).__name__,
-            e.message,
-            context.log_group_name,
-            context.log_stream_name))
+        print('Unexpected error occurred when processing event {} with context {}. {}'.format(event, context, traceback.format_exc()))
+        custom_resource_response.fail(event, context,
+                                      'Unexpected {} error occurred: {}. Additional details can be found in the CloudWatch log group {} stream {}'.format(
+                                          type(e).__name__,
+                                          str(e),
+                                          context.log_group_name,
+                                          context.log_stream_name))

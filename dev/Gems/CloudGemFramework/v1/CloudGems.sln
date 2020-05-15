@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1082
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "ResourceManagerCommon", "AWS\common-code\ResourceManagerCommon\ResourceManagerCommon.pyproj", "{E72EA18E-CF7A-4E96-991C-CC5FEE9C0968}"
 EndProject
@@ -103,15 +103,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CloudGemMetric", "CloudGemM
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "CloudGemMetric", "..\..\CloudGemMetric\v1\AWS\CloudGemMetric.pyproj", "{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CloudGemLoadTest", "CloudGemLoadTest", "{21013757-DEB3-4766-AD34-ED7331B28965}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CloudGemInGameSurvey", "CloudGemInGameSurvey", "{C8487F44-7EE6-43AB-8EC8-E6A3EBDF12B3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CloudGemDefectReporter", "CloudGemDefectReporter", "{71CAE345-2CC7-4805-BBDF-490B93B677AA}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "CloudGemDefectReporter", "..\..\CloudGemDefectReporter\v1\AWS\CloudGemDefectReporter.pyproj", "{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}"
-EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "CloudGemLoadTest", "..\..\CloudGemLoadTest\CloudGemLoadTest.pyproj", "{EDD61446-8019-46B1-A1B7-B133EE7F92AC}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "CloudGemInGameSurvey", "..\..\CloudGemInGameSurvey\CloudGemInGameSurvey.pyproj", "{C1CB94CA-5FE7-49FF-B847-DDE7752B2546}"
 EndProject
@@ -195,8 +191,6 @@ Global
 		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EDD61446-8019-46B1-A1B7-B133EE7F92AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EDD61446-8019-46B1-A1B7-B133EE7F92AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1CB94CA-5FE7-49FF-B847-DDE7752B2546}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C1CB94CA-5FE7-49FF-B847-DDE7752B2546}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{44013907-2574-45A7-ADCD-C34CD3B08585}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -251,9 +245,11 @@ Global
 		{CE40C839-581F-460A-8E21-22C53C2B7CDB} = {32B81CA9-0A06-4092-9B7C-4EA9050D6017}
 		{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA} = {F2EE927E-AE5F-4175-A596-EFBA881F9CE5}
 		{2B63EB1B-A64B-4DC6-93CC-EA81FDAD435E} = {71CAE345-2CC7-4805-BBDF-490B93B677AA}
-		{EDD61446-8019-46B1-A1B7-B133EE7F92AC} = {21013757-DEB3-4766-AD34-ED7331B28965}
 		{C1CB94CA-5FE7-49FF-B847-DDE7752B2546} = {C8487F44-7EE6-43AB-8EC8-E6A3EBDF12B3}
 		{44013907-2574-45A7-ADCD-C34CD3B08585} = {1F1B0FB4-F3E4-4690-8C12-1F8E89122F41}
 		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7} = {7D296FE4-7BC8-48D8-B9D9-4EC2A6157AED}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FF14DD65-A6C6-4D7F-B1DE-341B8269E88F}
 	EndGlobalSection
 EndGlobal

@@ -16,8 +16,9 @@ INTERFACE_IMPLEMENTATION_OBJECT_NAME = 'x-cloud-gem-framework-interface-implemen
 INTERFACE_METADATA_OBJECT_NAME = 'x-cloud-gem-framework-interface-metadata'
 INTERFACE_PARAMETER_OBJECT_NAME = 'x-cloud-gem-framework-interface-parameter'
 
+
 def parse_interface_id(interface_id):
-    '''Returns a typle with three values: resource-group-name, interface-name, and interface-version'''
+    '''Returns a tuple with three values: resource-group-name, interface-name, and interface-version'''
     try:
         parts = interface_id.split('_')
         if len(parts) != 5:

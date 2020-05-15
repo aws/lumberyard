@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <GridMate/Session/Session.h>
 #include <GameLift/Session/GameLiftClientServiceEventsBus.h>
@@ -45,6 +45,7 @@ namespace GridMate
         GridMember* CreateLocalMember(bool isHost, bool isInvited, RemotePeerMode peerMode);
         GameLiftSessionReplica* OnSessionReplicaArrived();
         bool OnStateGameLiftInit(AZ::HSM& sm, const AZ::HSM::Event& e);
+        void SetGameLiftLocalParams();
 
         // GridSession
         bool OnStateStartup(AZ::HSM& sm, const AZ::HSM::Event& e) override;
@@ -68,7 +69,8 @@ namespace GridMate
         {
             SE_CLIENT_FAILED = GridSession::SE_LAST,
             SE_RECEIVED_GAMESESSION,
-            SE_RECEIVED_PLAYERSESSION
+            SE_RECEIVED_PLAYERSESSION,
+            SE_MATCHMAKING_JOIN
         };
 
         GameLiftSearchInfo m_searchInfo;

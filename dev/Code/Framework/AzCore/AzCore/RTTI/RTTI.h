@@ -71,7 +71,7 @@ namespace AZ
     static inline const char*       RTTI_TypeName() { return TYPEINFO_Name(); }                                                    \
     AZ_POP_DISABLE_OVERRIDE_WARNING
 
-    //#define AZ_RTTI_1(_1)           AZ_STATIC_ASSERT(false,"You must provide a valid classUuid!")
+    //#define AZ_RTTI_1(_1)           static_assert(false,"You must provide a valid classUuid!")
 
     /// AZ_RTTI()
     #define AZ_RTTI_1()             AZ_RTTI_COMMON()                                                                        \
@@ -467,11 +467,11 @@ namespace AZ
             {
                 callback(GetTypeId(), instance);
             }
-            TypeTraits GetTypeTraits() const
+            TypeTraits GetTypeTraits() const override
             {
                 return AzTypeInfo<T>::GetTypeTraits();
             }
-            size_t GetTypeSize() const
+            size_t GetTypeSize() const override
             {
                 return AzTypeInfo<T>::Size();
             }
@@ -539,11 +539,11 @@ namespace AZ
                 using dummy = bool[];
                 dummy{ true, (RttiHelper<TArgs>{}.EnumHierarchy(callback, instance), true)... };
             }
-            TypeTraits GetTypeTraits() const
+            TypeTraits GetTypeTraits() const override
             {
                 return AzTypeInfo<T>::GetTypeTraits();
             }
-            size_t GetTypeSize() const
+            size_t GetTypeSize() const override
             {
                 return AzTypeInfo<T>::Size();
             }
@@ -651,7 +651,7 @@ namespace AZ
         template<class T, class U>
         inline T        RttiCastHelper(U ptr, const AZStd::integral_constant<RttiKind, RttiKind::None>& /* !HasAZRtti<U> */)
         {
-            AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<U>::value, "AZ_TYPE_INFO is required to perform an azrtti_cast");
+            static_assert(Internal::HasAZTypeInfo<U>::value, "AZ_TYPE_INFO is required to perform an azrtti_cast");
             return RttiIsSameCast<T, U>::Cast(ptr);
         }
 
@@ -923,7 +923,7 @@ namespace AZ
         // We do support only pointer types, because we don't use exceptions. So
         // if we have a reference and we can't convert we can't really check if the returned
         // reference is correct.
-        AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
+        static_assert(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
         return Internal::RttiCastHelper<T>(ptr, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
     }
 
@@ -931,7 +931,7 @@ namespace AZ
     template <class T>
     inline T        RttiCast(AZStd::nullptr_t)
     {
-        AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
+        static_assert(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
         return nullptr;
     }
 
@@ -943,7 +943,7 @@ namespace AZ
         // We do support only pointer types, because we don't use exceptions. So
         // if we have a reference and we can't convert we can't really check if the returned
         // reference is correct.
-        AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
+        static_assert(AZStd::is_pointer<T>::value, "azrtti_cast supports only pointer types");
         T castPtr = Internal::RttiCastHelper<T>(ptr.get(), typename HasAZRtti<U>::kind_type());
         if (castPtr)
         {
@@ -962,7 +962,7 @@ namespace AZ
         // We do support only pointer types, because we don't use exceptions. So
         // if we have a reference and we can't convert we can't really check if the returned
         // reference is correct.
-        AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "rtti_cast supports only pointer types");
+        static_assert(AZStd::is_pointer<T>::value, "rtti_cast supports only pointer types");
         return Internal::RttiCastHelper<T>(ptr.get(), typename HasAZRtti<U>::kind_type());
     }
 
@@ -971,7 +971,7 @@ namespace AZ
     inline typename Internal::AddressTypeHelper<T>::type RttiAddressOf(T ptr, const AZ::TypeId& id)
     {
         // we can support references (as not exception is needed), but pointer should be sufficient when it comes to addresses!
-        AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "RttiAddressOf supports only pointer types");
+        static_assert(AZStd::is_pointer<T>::value, "RttiAddressOf supports only pointer types");
         return Internal::RttiAddressOfHelper(ptr, id, typename HasAZRtti<AZStd::remove_pointer_t<T>>::kind_type());
     }
 

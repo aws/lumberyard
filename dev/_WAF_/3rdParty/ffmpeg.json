@@ -24,7 +24,7 @@
             "swresample-2"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

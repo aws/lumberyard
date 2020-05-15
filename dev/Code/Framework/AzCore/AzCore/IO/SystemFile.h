@@ -49,7 +49,7 @@ namespace AZ
                 SF_SEEK_END,
             };
 
-            using SizeType = AZ::u64;
+            using SizeType = AZ::IO::Internal::SizeType;
             using FileHandleType = AZ::IO::Internal::FileHandleType;
 
             SystemFile();

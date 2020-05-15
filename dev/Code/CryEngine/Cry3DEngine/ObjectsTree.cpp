@@ -34,6 +34,8 @@
 #ifdef LY_TERRAIN_RUNTIME
 #include <Terrain/Bus/TerrainProviderBus.h>
 #endif
+#include <Terrain/ITerrainNode.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #define MAX_NODE_NUM 7
 
@@ -42,7 +44,7 @@ const float fObjectToNodeSizeRatio = 1.f / 8.f;
 const float fMinShadowCasterViewDist = 8.f;
 
 PodArray<COctreeNode*> COctreeNode::m_arrEmptyNodes;
-
+bool COctreeNode::m_removeVegetationCastersOneByOne = true;
 
 COctreeNode::~COctreeNode()
 {
@@ -1143,16 +1145,17 @@ void COctreeNode::GetMemoryUsage(ICrySizer* pSizer) const
     }
 }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-void COctreeNode::UpdateTerrainNodes(CTerrainNode* pParentNode)
+void COctreeNode::UpdateTerrainNodes(ITerrainNode* pParentNode)
 {
     if (pParentNode != 0)
     {
         SetTerrainNode(pParentNode->FindMinNodeContainingBox(GetNodeBox()));
     }
-    else if (m_nSID >= 0 && GetTerrain() != 0)
+    else if (m_nSID >= 0)
     {
-        SetTerrainNode(GetTerrain()->FindMinNodeContainingBox(GetNodeBox()));
+        ITerrainNode* terrainNode = nullptr;
+        LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(terrainNode, &LegacyTerrain::LegacyTerrainDataRequests::FindMinNodeContainingBox, GetNodeBox());
+        SetTerrainNode(terrainNode);
     }
     else
     {
@@ -1167,7 +1170,32 @@ void COctreeNode::UpdateTerrainNodes(CTerrainNode* pParentNode)
         }
     }
 }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
+
+void COctreeNode::PrepareForRemovalOfAllVegetationCasters()
+{
+    m_removeVegetationCastersOneByOne = false;
+}
+
+void COctreeNode::RemoveAllVegetationCasters()
+{
+    AZ_Assert(!m_removeVegetationCastersOneByOne, "This method should only be called when there was preparation to remove all vegetation casters.");
+
+    m_lstCasters.RemoveIf([](const SCasterInfo& caster) { return (caster.nRType == eERType_Vegetation) || (caster.nRType == eERType_MergedMesh); });
+
+    for (int i = 0; i < 8; i++)
+    {
+        if (m_arrChilds[i])
+        {
+            m_arrChilds[i]->RemoveAllVegetationCasters();
+        }
+    }
+
+    //Only the root node should clear the m_removeVegetationCastersOneByOne flag.
+    if (!m_pParent)
+    {
+        m_removeVegetationCastersOneByOne = true;
+    }
+}
 
 void C3DEngine::GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback)
 {

@@ -2,7 +2,7 @@
     "name": "amd_static",
     "source": "@3P:AMD_AGS@",
     "description": "AMD AGS Library (Static)",
-    "includes": [
+    "system_includes": [
         "inc"
     ],
     "lib_required": "True",

@@ -37,7 +37,9 @@ namespace AzQtComponents
 
     private:
         friend class TabWidget;
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QHash<QAction*, QPushButton*> m_actionButtons;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
         void removeWidgetFromLayout(QWidget* widget);
     };

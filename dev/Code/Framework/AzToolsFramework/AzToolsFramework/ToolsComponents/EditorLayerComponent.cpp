@@ -149,6 +149,10 @@ namespace AzToolsFramework
 
         void EditorLayerComponent::Activate()
         {
+            // We need to set the layer as static to stop the runtime complaining about static transforms
+            // with a non-static parent. Done here to catch old layers that aren't set.
+            AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetIsStaticTransform, true);
+
             AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
 
             // When an entity activates, it needs to know its visibility and lock state.
@@ -222,7 +226,7 @@ namespace AzToolsFramework
         {
             // LY uses AZ classes for serialization, but the color to display needs to be a Qt color.
             // Ignore the alpha channel, it's not represented visually.
-            return QColor::fromRgb(m_editableLayerProperties.m_color.GetR8(), m_editableLayerProperties.m_color.GetG8(), m_editableLayerProperties.m_color.GetB8());
+            return QColor::fromRgbF(m_editableLayerProperties.m_color.GetR(), m_editableLayerProperties.m_color.GetG(), m_editableLayerProperties.m_color.GetB());
         }
 
         AzToolsFramework::Layers::LayerProperties::SaveFormat EditorLayerComponent::GetSaveFormat()

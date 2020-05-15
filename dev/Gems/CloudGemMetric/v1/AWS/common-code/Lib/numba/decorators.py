@@ -6,45 +6,33 @@ from __future__ import print_function, division, absolute_import
 
 import sys
 import warnings
+import inspect
+import logging
 
 from . import config, sigutils
-from .errors import DeprecationError
+from .errors import DeprecationError, NumbaDeprecationWarning
 from .targets import registry
+from .stencil import stencil
 
+
+_logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
 # Decorators
 
-def autojit(*args, **kws):
-    """Deprecated.
-
-    Use jit instead.  Calls to jit internally.
-    """
-    warnings.warn("autojit is deprecated, use jit instead which now performs "
-                  "the same functionality", DeprecationWarning)
-    return jit(*args, **kws)
-
-
-class _DisableJitWrapper(object):
-    def __init__(self, py_func):
-        self.py_func = py_func
-
-    def __call__(self, *args, **kwargs):
-        return self.py_func(*args, **kwargs)
-
-
 _msg_deprecated_signature_arg = ("Deprecated keyword argument `{0}`. "
                                  "Signatures should be passed as the first "
                                  "positional argument.")
 
-def jit(signature_or_function=None, locals={}, target='cpu', cache=False, **options):
+def jit(signature_or_function=None, locals={}, target='cpu', cache=False,
+        pipeline_class=None, boundscheck=False, **options):
     """
     This decorator is used to compile a Python function into native code.
 
     Args
     -----
-    signature:
+    signature_or_function:
         The (optional) signature or list of signatures to be compiled.
         If not passed, required signatures will be compiled when the
         decorated function is called, depending on the argument values.
@@ -58,6 +46,9 @@ def jit(signature_or_function=None, locals={}, target='cpu', cache=False, **opti
     target: str
         Specifies the target platform to compile for. Valid targets are cpu,
         gpu, npyufunc, and cuda. Defaults to cpu.
+
+    pipeline_class: type numba.compiler.CompilerBase
+            The compiler pipeline type for customizing the compilation stages.
 
     options:
         For a cpu target, valid options are:
@@ -82,7 +73,28 @@ def jit(signature_or_function=None, locals={}, target='cpu', cache=False, **opti
                 The error-model affects divide-by-zero behavior.
                 Valid values are 'python' and 'numpy'. The 'python' model
                 raises exception.  The 'numpy' model sets the result to
-                *+/-inf* or *nan*.
+                *+/-inf* or *nan*. Default value is 'python'.
+
+            inline: str or callable
+                The inline option will determine whether a function is inlined
+                at into its caller if called. String options are 'never'
+                (default) which will never inline, and 'always', which will
+                always inline. If a callable is provided it will be called with
+                the call expression node that is requesting inlining, the
+                caller's IR and callee's IR as arguments, it is expected to
+                return Truthy as to whether to inline.
+                NOTE: This inlining is performed at the Numba IR level and is in
+                no way related to LLVM inlining.
+
+            boundscheck: bool
+                Set to True to enable bounds checking for array indices. Out
+                of bounds accesses will raise IndexError. The default is to
+                not do bounds checking. If bounds checking is disabled, out of
+                bounds accesses can produce garbage results or segfaults.
+                However, enabling bounds checking will slow down typical
+                functions, so it is recommended to only use this flag for
+                debugging. You can also set the NUMBA_BOUNDSCHECK environment
+                variable to 0 or 1 to globally override this flag.
 
     Returns
     --------
@@ -134,21 +146,7 @@ def jit(signature_or_function=None, locals={}, target='cpu', cache=False, **opti
     if 'restype' in options:
         raise DeprecationError(_msg_deprecated_signature_arg.format('restype'))
 
-    if options.get('parallel'):
-        uns1 = sys.platform.startswith('win32') and sys.version_info[:2] == (2, 7)
-        uns2 = sys.maxsize <= 2 ** 32
-        if uns1 or uns2:
-            msg = ("The 'parallel' target is not currently supported on "
-                   "Windows operating systems when using Python 2.7, or "
-                   "on 32 bit hardware.")
-            raise RuntimeError(msg)
-        if cache:
-            msg = ("Caching is not available when the 'parallel' target is in "
-                   "use. Caching is now being disabled to allow execution to "
-                   "continue.")
-            warnings.warn(msg, RuntimeWarning)
-            cache = False
-
+    options['boundscheck'] = boundscheck
 
     # Handle signature
     if signature_or_function is None:
@@ -168,8 +166,11 @@ def jit(signature_or_function=None, locals={}, target='cpu', cache=False, **opti
         pyfunc = signature_or_function
         sigs = None
 
+    dispatcher_args = {}
+    if pipeline_class is not None:
+        dispatcher_args['pipeline_class'] = pipeline_class
     wrapper = _jit(sigs, locals=locals, target=target, cache=cache,
-                   targetoptions=options)
+                   targetoptions=options, **dispatcher_args)
     if pyfunc is not None:
         return wrapper(pyfunc)
     else:
@@ -184,7 +185,7 @@ def _jit(sigs, locals, target, cache, targetoptions, **dispatcher_args):
             from . import cuda
             return cuda.jit(func)
         if config.DISABLE_JIT and not target == 'npyufunc':
-            return _DisableJitWrapper(func)
+            return func
         disp = dispatcher(py_func=func, locals=locals,
                           targetoptions=targetoptions,
                           **dispatcher_args)
@@ -203,15 +204,20 @@ def _jit(sigs, locals, target, cache, targetoptions, **dispatcher_args):
     return wrapper
 
 
-def generated_jit(function=None, target='cpu', cache=False, **options):
+def generated_jit(function=None, target='cpu', cache=False,
+                  pipeline_class=None, **options):
     """
     This decorator allows flexible type-based compilation
     of a jitted function.  It works as `@jit`, except that the decorated
     function is called at compile-time with the *types* of the arguments
     and should return an implementation function for those types.
     """
+    dispatcher_args = {}
+    if pipeline_class is not None:
+        dispatcher_args['pipeline_class'] = pipeline_class
     wrapper = _jit(sigs=None, locals={}, target=target, cache=cache,
-                   targetoptions=options, impl_kind='generated')
+                   targetoptions=options, impl_kind='generated',
+                   **dispatcher_args)
     if function is not None:
         return wrapper(function)
     else:
@@ -254,3 +260,27 @@ def cfunc(sig, locals={}, cache=False, **options):
         return res
 
     return wrapper
+
+
+def jit_module(**kwargs):
+    """ Automatically ``jit``-wraps functions defined in a Python module
+
+    Note that ``jit_module`` should only be called at the end of the module to
+    be jitted. In addition, only functions which are defined in the module
+    ``jit_module`` is called from are considered for automatic jit-wrapping.
+    See the Numba documentation for more information about what can/cannot be
+    jitted.
+
+    :param kwargs: Keyword arguments to pass to ``jit`` such as ``nopython``
+                   or ``error_model``.
+
+    """
+    # Get the module jit_module is being called from
+    frame = inspect.stack()[1]
+    module = inspect.getmodule(frame[0])
+    # Replace functions in module with jit-wrapped versions
+    for name, obj in module.__dict__.items():
+        if inspect.isfunction(obj) and inspect.getmodule(obj) == module:
+            _logger.debug("Auto decorating function {} from module {} with jit "
+                          "and options: {}".format(obj, module.__name__, kwargs))
+            module.__dict__[name] = jit(obj, **kwargs)

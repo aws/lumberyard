@@ -28,7 +28,7 @@ namespace PhysX
         
     private:
         // PxCpuDispatcher implementation
-        virtual void submitTask(physx::PxBaseTask& task);
+        void submitTask(physx::PxBaseTask& task) override;
         physx::PxU32 getWorkerCount() const override;
     };
 

@@ -57,8 +57,10 @@ namespace GraphCanvas
         return m_subMenuPath;
     }
 
-    ContextMenuAction::SceneReaction AddPresetMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction AddPresetMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         AZ::Entity* graphCanvasEntity = CreateEntityForPreset();
         
         AZ_Assert(graphCanvasEntity, "Unable to create GraphCanvas Preset Entity");
@@ -96,16 +98,14 @@ namespace GraphCanvas
     {
     }
 
-    void CreatePresetFromSelection::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
-    {
-        SceneRequestBus::EventResult(m_editorId, graphId, &SceneRequests::GetEditorId);
-
-        m_targetId = targetId;
-    }
-
-    ContextMenuAction::SceneReaction CreatePresetFromSelection::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction CreatePresetFromSelection::TriggerAction(const AZ::Vector2& scenePos)
     {
         bool acceptText = true;
+
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        EditorId editorId = GetEditorId();
 
         ViewId viewId;
         SceneRequestBus::EventResult(viewId, graphId, &SceneRequests::GetViewId);
@@ -141,11 +141,11 @@ namespace GraphCanvas
         }
 
         EditorConstructPresets* presets = nullptr;
-        AssetEditorSettingsRequestBus::EventResult(presets, m_editorId, &AssetEditorSettingsRequests::GetConstructPresets);
+        AssetEditorSettingsRequestBus::EventResult(presets, editorId, &AssetEditorSettingsRequests::GetConstructPresets);
 
         if (presets)
         {
-            presets->CreatePresetFrom(m_targetId, presetName.toUtf8().data());
+            presets->CreatePresetFrom(targetId, presetName.toUtf8().data());
         }
 
         return SceneReaction::Nothing;

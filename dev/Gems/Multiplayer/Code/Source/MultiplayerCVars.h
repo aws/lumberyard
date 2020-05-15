@@ -57,7 +57,7 @@ namespace Multiplayer
         //! Attempt to join an existing session (LAN).
         static void MPJoinLANCmd(IConsoleCmdArgs* args);
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         //! Attempt to host a session on GameLift and join it.
         static void MPHostGameLiftCmd(IConsoleCmdArgs* args);
 
@@ -65,6 +65,8 @@ namespace Multiplayer
         static void MPJoinGameLiftCmd(IConsoleCmdArgs* args);
 
         static void StopGameLiftClient(IConsoleCmdArgs* args);
+
+        static void MPMatchmakingGameLiftCmd(IConsoleCmdArgs* args);
 #endif
 
         //! Shut down current server or client session.
@@ -85,7 +87,7 @@ namespace Multiplayer
         bool m_autoJoin;
         GridMate::GridSearch* m_search;
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         MultiplayerGameLiftClient m_gameLift;
 #endif
 

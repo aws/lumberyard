@@ -286,6 +286,12 @@ namespace PhysX
                 dataElement.RemoveElementByName(AZ_CRC("LinkedRenderMeshAssetId", 0x466f4230));
             }
 
+            if (dataElement.GetVersion() <= 9)
+            {
+                // version 9 is just a version bump to force a recompile of dynamic slices because the runtime component
+                // serialization changed.
+            }
+
             return true;
         }
 

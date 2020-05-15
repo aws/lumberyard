@@ -25,42 +25,11 @@ class QEvent;
 namespace GraphCanvas
 {
     class GraphCanvasLabel;
-    class EntityIdNodePropertyDisplay;
-
-    class EntityIdGraphicsEventFilter
-        : public QGraphicsItem
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(EntityIdGraphicsEventFilter, AZ::SystemAllocator, 0);
-        EntityIdGraphicsEventFilter(EntityIdNodePropertyDisplay* propertyDisplay);
-
-        bool sceneEventFilter(QGraphicsItem* watched, QEvent* event);
-
-        // QGraphicsItem overrides
-        QRectF boundingRect() const override
-        {
-            return QRectF();
-        }
-
-        void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) override
-        {
-        }
-
-    private:
-        EntityIdNodePropertyDisplay* m_owner;
-    };
     
     class EntityIdNodePropertyDisplay
         : public NodePropertyDisplay
         , public AZ::EntityBus::Handler
     {
-        enum class DragState
-        {
-            Idle,
-            Valid,
-            Invalid
-        };
-
         friend class EntityIdGraphicsEventFilter;
 
     public:
@@ -81,19 +50,15 @@ namespace GraphCanvas
         void OnEntityNameChanged(const AZStd::string& name) override;
         ////
 
-        void dragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
-        void dragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
-        void dropEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragState) override;
+        ////
 
     protected:
 
         void ShowContextMenu(const QPoint&);
-
-        void OnIdSet() override;
     
     private:
-
-        void ResetDragState();
 
         void EditStart();
         void EditFinished();
@@ -102,14 +67,11 @@ namespace GraphCanvas
         void CleanupProxyWidget();
     
         EntityIdDataInterface*  m_dataInterface;
-        EntityIdGraphicsEventFilter* m_eventFilter;
     
         GraphCanvasLabel*                           m_disabledLabel;
         AzToolsFramework::PropertyEntityIdCtrl*     m_propertyEntityIdCtrl;
         AzToolsFramework::EntityIdQLabel            m_entityIdLabel;
         QGraphicsProxyWidget*                       m_proxyWidget;
         GraphCanvasLabel*                           m_displayLabel;
-
-        DragState                                   m_dragState;
     };
 }

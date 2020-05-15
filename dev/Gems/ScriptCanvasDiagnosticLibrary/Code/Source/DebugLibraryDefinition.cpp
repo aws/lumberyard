@@ -11,7 +11,7 @@
 */
 
 #include "precompiled.h"
-#include <Debug.h>
+#include "DebugLibraryDefinition.h"
 #include "Log.h"
 #include "DrawText.h"
 #include <ScriptCanvas/Libraries/Libraries.h>

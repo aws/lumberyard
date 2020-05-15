@@ -22,13 +22,11 @@
 
 #include "3dEngine.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#include "Terrain/Texture/MacroTextureImporter.h"
-#else
-#include <ITerrain.h>
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
+#include "Terrain/LegacyTerrainInstanceManager.h" 
 
+#include <MathConversion.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <Terrain/Bus/TerrainProviderBus.h>
 #include "VisAreas.h"
 #include "ObjMan.h"
@@ -102,12 +100,8 @@ ITimer* Cry3DEngineBase::m_pTimer = 0;
 ILog* Cry3DEngineBase::m_pLog = 0;
 IPhysicalWorld* Cry3DEngineBase::m_pPhysicalWorld = 0;
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-CTerrain* Cry3DEngineBase::m_pTerrain = nullptr;
-#endif
-
 COcean* Cry3DEngineBase::m_pOcean = nullptr;
-IObjManager* Cry3DEngineBase::m_pObjManager = 0;
+CObjManager* Cry3DEngineBase::m_pObjManager = 0;
 IConsole* Cry3DEngineBase::m_pConsole = 0;
 C3DEngine* Cry3DEngineBase::m_p3DEngine = 0;
 CVars* Cry3DEngineBase::m_pCVars = 0;
@@ -223,10 +217,7 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_nWaterBottomTexId = 0;
     m_vSunDir = Vec3(5.f, 5.f, DISTANCE_TO_THE_SUN);
     m_vSunDirRealtime = Vec3(5.f, 5.f, DISTANCE_TO_THE_SUN).GetNormalized();
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    m_pTerrain = 0;
-#endif
+    m_legacyTerrainInstanceManager = new LegacyTerrain::LegacyTerrainInstanceManager();
     m_vegetationPoolManager = nullptr;
 
     m_nBlackTexID = 0;
@@ -261,7 +252,7 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_bOcean = true;
     m_nOceanRenderFlags = 0;
 
-    m_bSunShadows = m_bShowTerrainSurface = true;
+    m_bSunShadows = true;
     m_nSunAdditionalCascades = 0;
     m_CachedShadowsBounds.Reset();
     m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eFullUpdate;
@@ -374,8 +365,6 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_volFogHeightDensity2 = Vec3(4000.0f, 0, 0);
     m_volFogGradientCtrl = Vec3(1, 1, 1);
 
-    m_terrainAabb = AZ::Aabb::CreateNull();
-
     m_vFogColor = Vec3(1.0f, 1.0f, 1.0f);
     m_vAmbGroundCol = Vec3(0.0f, 0.0f, 0.0f);
 
@@ -478,6 +467,9 @@ C3DEngine::~C3DEngine()
     delete m_pCVars;
 
     delete m_pDeferredPhysicsEventManager;
+
+    delete m_legacyTerrainInstanceManager;
+
 }
 
 bool C3DEngine::CheckMinSpec(uint32 nMinSpec)
@@ -636,13 +628,11 @@ unsigned char GetOceanSurfTypeCallback(int ix, int iy)
 
 bool C3DEngine::IsTerrainTextureStreamingInProgress() const
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        return m_pTerrain->IsTextureStreamingInProgress();
-    }
-#endif
-    return false;
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::IsTerrainTextureStreamingInProgress is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::IsTextureStreamingInProgress instead");
+    bool isTerrainTextureStreamingInProgress = false;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(isTerrainTextureStreamingInProgress
+        , &LegacyTerrain::LegacyTerrainDataRequests::IsTextureStreamingInProgress);
+    return isTerrainTextureStreamingInProgress;
 }
 
 void C3DEngine::Update()
@@ -822,8 +812,11 @@ void C3DEngine::ProcessCVarsChange()
     {
         UpdateStatInstGroups();
 
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        float terrainSize = AZ::GetMax(terrainAabb.GetWidth(), terrainAabb.GetHeight());
+
         // re-register every instance in level
-        float terrainSize = (float)GetTerrainSize();
         constexpr float UNREASONABLY_SMALL_TERRAIN_SIZE = 1.0f;
         constexpr float VERY_LARGE_TERRAIN_SIZE = 16.0f * 1024.0f;
         if (terrainSize < UNREASONABLY_SMALL_TERRAIN_SIZE)
@@ -835,13 +828,7 @@ void C3DEngine::ProcessCVarsChange()
             Vec3(-terrainSize, -terrainSize, -terrainSize),
             Vec3(terrainSize * 2.f, terrainSize * 2.f, terrainSize * 2.f));
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        // force recreation of terrain meshes
-        if (CTerrain* const pTerrain = GetTerrain())
-        {
-            pTerrain->ResetTerrainVertBuffers();
-        }
-#endif
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::ResetTerrainVertBuffers);
 
         // refresh vegetation properties
         UpdateStatInstGroups();
@@ -1730,118 +1717,69 @@ void C3DEngine::SetSSAOContrast(float fMul)
     }
 }
 
-
-bool C3DEngine::ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const
+bool C3DEngine::ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return MacroTextureImporter::ReadMacroTextureFile(filepath, configuration);
-#else
-    return false;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::ReadMacroTextureFile is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::ReadMacroTextureFile instead.");
+    bool success = false;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(success, &LegacyTerrain::LegacyTerrainDataRequests::ReadMacroTextureFile, filepath, configuration);
+    return success;
 }
-
 
 float C3DEngine::GetTerrainElevation(float x, float y, int nSID)
 {
-#ifdef LY_TERRAIN_RUNTIME
-    if (Terrain::TerrainProviderRequestBus::HasHandlers())
-    {
-        float elevation = 0.0f;
-        Terrain::TerrainProviderRequestBus::BroadcastResult(elevation, &Terrain::TerrainProviderRequestBus::Events::GetHeightAtWorldPosition, x, y);
-        return elevation;
-    }
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainElevation. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus instead");
 
-    float fZ = 0;
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        fZ = m_pTerrain->GetBilinearZ(x, y);
-    }
-#endif
-
-    return fZ;
-}
-
-float C3DEngine::GetTerrainElevation3D(Vec3 vPos)
-{
-#ifdef LY_TERRAIN_RUNTIME
-    if (Terrain::TerrainProviderRequestBus::HasHandlers())
-    {
-        float elevation = 0.0f;
-        Terrain::TerrainProviderRequestBus::BroadcastResult(elevation, &Terrain::TerrainProviderRequestBus::Events::GetHeightAtWorldPosition, vPos.x, vPos.y);
-        return elevation;
-    }
-#endif
-
-    float fZ = 0;
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        fZ = m_pTerrain->GetBilinearZ(vPos.x, vPos.y);
-    }
-#endif
-
-    return fZ;
+    float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , x, y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+    return elevation;
 }
 
 float C3DEngine::GetTerrainZ(int x, int y)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (x < 0 || y < 0 || x >= CTerrain::GetTerrainSize() || y >= CTerrain::GetTerrainSize())
-    {
-        return TERRAIN_BOTTOM_LEVEL;
-    }
-    return m_pTerrain ? m_pTerrain->GetZ(x, y) : 0;
-#else
-    return 0.0f;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainZ() is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetHeight(Sampler::CLAMP) instead");
+
+    float elevation = 0.0f;
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats, (float)x, (float)y,
+        AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP, nullptr);
+    return elevation;
 }
 
 float C3DEngine::GetTerrainSlope(int x, int y)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (x <= 0 || y <= 0 || x >= (CTerrain::GetTerrainSize() - 1) || y >= (CTerrain::GetTerrainSize() - 1))
-    {
-        return 0.0f;
-    }
-    return m_pTerrain ? m_pTerrain->GetSlope(x, y) : 0.0f;
-#else
-    return 0.0f;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSlope is deprecated and will be deleted. Use AzFramework::Terrain::TerrainDataRequestBus::GetNormal instead");
+    float slope = 0.0f;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(slope, &LegacyTerrain::LegacyTerrainDataRequests::GetSlope, x, y);
+    return slope;
 }
 
 int C3DEngine::GetTerrainSurfaceId(int x, int y)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (x < 0 || y < 0 || x >= CTerrain::GetTerrainSize() || y >= CTerrain::GetTerrainSize())
-    {
-        return TERRAIN_BOTTOM_LEVEL;
-    }
-    return m_pTerrain ? m_pTerrain->GetSurfaceWeight(x, y).PrimaryId() : 0;
-#else
-    return 0;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSurfaceId() is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSurfaceId() instead");
+    int surfaceId = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(surfaceId, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSurfaceId, x, y);
+    return surfaceId;
 }
 
 bool C3DEngine::GetTerrainHole(int x, int y)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return m_pTerrain ? m_pTerrain->IsHole(x, y) : false;
-#else
-    return true;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainHole. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetIsHoleFromFloats instead");
+    bool isHole = true;
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(isHole
+        , &AzFramework::Terrain::TerrainDataRequests::GetIsHoleFromFloats
+        , aznumeric_cast<float>(x), aznumeric_cast<float>(y)
+        , AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
+    return isHole;
 }
 
 int C3DEngine::GetHeightMapUnitSize()
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return CTerrain::GetHeightMapUnitSize();
-#else
-    return 1;
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetHeightMapUnitSize. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainGridResolution instead");
+    AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+    return static_cast<int>(gridResolution.GetX());
 }
 
 void C3DEngine::RemoveAllStaticObjects(int nSID)
@@ -1864,6 +1802,7 @@ void C3DEngine::RemoveAllStaticObjects(int nSID)
     const bool skipDynamicObjects = true;
 
     GetObjectTree()->MoveObjectsIntoList(&lstObjects, nullptr, removeObjectsFromOctree, skipDecals, skipERFNoDecalNodeDecals, skipDynamicObjects);
+    GetObjectTree()->PrepareForRemovalOfAllVegetationCasters();
 
     for (int i = 0; i < lstObjects.Count(); i++)
     {
@@ -1879,17 +1818,15 @@ void C3DEngine::RemoveAllStaticObjects(int nSID)
         }
     }
 
+    GetObjectTree()->RemoveAllVegetationCasters();
     Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::VegetationCleared);
 }
 
 void C3DEngine::SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        m_pTerrain->SetTerrainSectorTexture(nTexSectorX, nTexSectorY, textureId, textureSizeX, textureSizeY, true);
-    }
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::SetTerrainSectorTexture is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainSectorTexture instead");
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
+        , nTexSectorX, nTexSectorY, textureId, textureSizeX, textureSizeY, true);
 }
 
 void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
@@ -1898,18 +1835,30 @@ void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
     {
         PrintMessage("Debug: C3DEngine::OnExplosion: Pos=(%.1f,%.1f,%.1f) fRadius=%.2f", vPos.x, vPos.y, vPos.z, fRadius);
     }
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (vPos.x < 0 || vPos.x >= CTerrain::GetTerrainSize() || vPos.y < 0 || vPos.y >= CTerrain::GetTerrainSize() || fRadius <= 0)
+
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    if (!terrain)
+    {
+        return;
+    }
+
+    AZ::Aabb terrainAabb = terrain->GetTerrainAabb();
+    if (!terrainAabb.Contains(LYVec3ToAZVec3(vPos)) || fRadius <= 0)
     {
         return; // out of terrain
     }
+
+    const AZ::Vector2 terrainGridResolution = terrain->GetTerrainGridResolution();
+    const float unitSizeX = terrainGridResolution.GetX();
+    const float unitSizeY = terrainGridResolution.GetY();
+
     // do not create decals near the terrain holes
     {
-        for (int x = int(vPos.x - fRadius); x <= int(vPos.x + fRadius) + 1; x += CTerrain::GetHeightMapUnitSize())
+        for (float x = vPos.x - fRadius; x <= vPos.x + fRadius + 1.0f; x += unitSizeX)
         {
-            for (int y = int(vPos.y - fRadius); y <= int(vPos.y + fRadius) + 1; y += CTerrain::GetHeightMapUnitSize())
+            for (float y = vPos.y - fRadius; y <= vPos.y + fRadius + 1.0f; y += unitSizeY)
             {
-                if (m_pTerrain->IsHole(x, y))
+                if (terrain->GetIsHoleFromFloats(x, y))
                 {
                     return;
                 }
@@ -1921,7 +1870,8 @@ void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
     bool bGroundDeformationAllowed = RemoveObjectsInArea(vPos, fRadius) && bDeformTerrain && GetCVars()->e_TerrainDeformations;
 
     // reduce ground decals size depending on distance to the ground
-    float fExploHeight = vPos.z - m_pTerrain->GetBilinearZ(vPos.x, vPos.y);
+    float terrainHeight = terrain->GetHeightFromFloats(vPos.x, vPos.y);
+    float fExploHeight = vPos.z - terrainHeight;
 
     if (bGroundDeformationAllowed && (fExploHeight > -0.1f) && fExploHeight < fRadius && fRadius > 0.125f)
     {
@@ -1942,7 +1892,6 @@ void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
     Vec3 vRadius(fRadius, fRadius, fRadius);
     AABB areaBox(vPos - vRadius, vPos + vRadius);
     Get3DEngine()->DeleteDecalsInRange(&areaBox, NULL);
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 float C3DEngine::GetMaxViewDistance(bool bScaled)
@@ -2092,43 +2041,39 @@ float C3DEngine::GetDistanceToSectorWithWater()
     {
         distance = std::numeric_limits<float>::infinity();
     }
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    else if (!m_pTerrain || !m_pTerrain->GetRootNode())
+    else
     {
-        // if there is no terrain, or it is invalid, check if we still have an ocean
-        if (oceanActive && oceanEnabled)
+        auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+        if (!legacyTerrain)
         {
-            distance = camPosition.z - OceanRequest::GetOceanLevel();
+            // if there is no terrain, or it is invalid, check if we still have an ocean
+            if (oceanActive && oceanEnabled)
+            {
+                distance = camPosition.z - OceanRequest::GetOceanLevel();
+            }
+            else
+            {
+                distance = std::numeric_limits<float>::infinity();
+            }
         }
         else
         {
-            distance = std::numeric_limits<float>::infinity();
+            // if the camera is over terrain, try to use the terrain's stored distance to water
+            AZ::Aabb terrainBounds = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainBounds, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+            const AABB terrainBBox = AZAabbToLyAABB(terrainBounds);
+            bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPosition, terrainBBox);
+            const float terrainDistanceToSectorWithWater = legacyTerrain->GetDistanceToSectorWithWater();
+            if (bCameraInTerrainBounds && (terrainDistanceToSectorWithWater > minDistance))
+            {
+                distance = terrainDistanceToSectorWithWater;
+            }
+            else
+            {
+                distance = camPosition.z - (oceanActive ? OceanRequest::GetOceanLevel() : GetWaterLevel());
+            }
         }
     }
-    else
-    {
-        // if the camera is over terrain, try to use the terrain's stored distance to water
-        bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPosition, m_pTerrain->GetRootNode()->GetBBoxVirtual());
-        if (bCameraInTerrainBounds && (m_pTerrain->GetDistanceToSectorWithWater() > minDistance))
-        {
-            distance = m_pTerrain->GetDistanceToSectorWithWater();
-        }
-        else
-        {
-            distance = camPosition.z - (oceanActive ? OceanRequest::GetOceanLevel() : GetWaterLevel());
-        }
-    }
-#else
-    // if there is no terrain, or it is invalid, check if we still have an ocean
-    if (oceanActive && oceanEnabled)
-    {
-        distance = camPosition.z - OceanRequest::GetOceanLevel();
-    }
-    else
-    {
-        distance = std::numeric_limits<float>::infinity();
-    }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
     return max(distance, minDistance);
 }
@@ -2394,11 +2339,10 @@ bool C3DEngine::IsTerrainBurnedOut(int x, int y)
 
 int C3DEngine::GetTerrainSectorSize()
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return m_pTerrain ? m_pTerrain->GetSectorSize() : 0;
-#else
-    return 0;
-#endif
+    AZ_Warning("LegacyTerrain", false, "This API is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::GetTerrainSectorSize() instead.");
+    int sectorSize = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(sectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
+    return sectorSize;
 }
 
 void C3DEngine::ActivatePortal(const Vec3& vPos, bool bActivate, const char* szEntityName)
@@ -2482,9 +2426,9 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
     rGroup.nRotationRangeToTerrainNormal = siGroup.nRotationRangeToTerrainNormal;
     rGroup.nMaterialLayers = siGroup.nMaterialLayers;
 
-    rGroup.bUseTerrainColor = siGroup.bUseTerrainColor && Get3DEngine()->m_bShowTerrainSurface;
+    rGroup.bUseTerrainColor = siGroup.bUseTerrainColor;
     rGroup.bAllowIndoor = siGroup.bAllowIndoor;
-    rGroup.fAlignToTerrainCoefficient = Get3DEngine()->m_bShowTerrainSurface ? siGroup.fAlignToTerrainCoefficient : 0.f;
+    rGroup.fAlignToTerrainCoefficient = siGroup.fAlignToTerrainCoefficient;
 
     bool previousAutoMerged = rGroup.bAutoMerged;
     rGroup.bAutoMerged = siGroup.bAutoMerged;
@@ -2494,12 +2438,11 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
 
     rGroup.Update(GetCVars(), Get3DEngine()->GetGeomDetailScreenRes());
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (CTerrain* const pTerrain = GetTerrain())
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+    if (legacyTerrain)
     {
-        pTerrain->MarkAllSectorsAsUncompiled();
+        legacyTerrain->MarkAllSectorsAsUncompiled();
     }
-#endif
 
     // Refresh if we've enabled dynamic merged mesh generation and either the group material has changed, the mesh has changed, or our automerge setting has changed
     if (gEnv->IsEditor() && (pPreviousGroupMaterial != rGroup.pMaterial || pPreviousObject != rGroup.pStatObj))
@@ -2639,12 +2582,15 @@ void C3DEngine::GetMemoryUsage(class ICrySizer* pSizer) const
         pSizer->AddObject(m_pObjManager);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     {
         SIZER_COMPONENT_NAME(pSizer, "Terrain");
-        pSizer->AddObject(m_pTerrain);
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::GetMemoryUsage, pSizer);
     }
-#endif
+
+    {
+        SIZER_COMPONENT_NAME(pSizer, "Ocean");
+        pSizer->AddObject(m_pOcean);
+    }
 
     {
         SIZER_COMPONENT_NAME(pSizer, "LegacyProceduralVegetation");
@@ -2728,12 +2674,7 @@ void C3DEngine::GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& cstAABB)
     }
     //////////////////////////////////////////////////////////////////////////
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        m_pTerrain->GetResourceMemoryUsage(pSizer, cstAABB);
-    }
-#endif
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::GetResourceMemoryUsage, pSizer, cstAABB);
 }
 
 bool C3DEngine::IsUnderWater(const Vec3& vPos) const
@@ -2781,7 +2722,10 @@ float C3DEngine::GetBottomLevel(const Vec3& referencePos, float maxRelevantDepth
 {
     FUNCTION_PROFILER_3DENGINE;
 
-    const float terrainWorldZ = GetTerrainElevation(referencePos.x, referencePos.y);
+    float terrainWorldZ = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainWorldZ
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , referencePos.x, referencePos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
 
     const float padding = 0.2f;
     float rayLength;
@@ -3775,12 +3719,8 @@ void C3DEngine::CheckMemoryHeap()
 
 void C3DEngine::CloseTerrainTextureFile(int nSID)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        m_pTerrain->CloseTerrainTextureFile();
-    }
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::CloseTerrainTextureFile is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::CloseTerrainTextureFile");
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::CloseTerrainTextureFile);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3898,11 +3838,12 @@ void CLightEntity::ShadowMapInfo::Release(struct IRenderer* pRenderer)
 
 Vec3 C3DEngine::GetTerrainSurfaceNormal(Vec3 vPos)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    return m_pTerrain ? m_pTerrain->GetTerrainSurfaceNormal(vPos, 0.5f * GetHeightMapUnitSize()) : Vec3(0.f, 0.f, 1.f);
-#else
-    return Vec3(0.f, 0.f, 1.f);
-#endif
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSurfaceNormal is deprecated. Use AzFramework::Terrain::TerrainDataRequests::GetNormal*")
+    AZ::Vector3 terrainNormal = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainNormal();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainNormal
+        , &AzFramework::Terrain::TerrainDataRequests::GetNormalFromFloats
+        , vPos.x, vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+    return AZVec3ToLYVec3(terrainNormal);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4072,52 +4013,15 @@ void C3DEngine::ReleaseChunkFileWriter(ChunkFile::IChunkFileWriter* p) const
 
 int C3DEngine::GetTerrainTextureNodeSizeMeters()
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        return m_pTerrain->GetTerrainTextureNodeSizeMeters();
-    }
-#endif
-    return 0;
+    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainTextureNodeSizeMeters is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize instead.");
+    int sectorSize = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(sectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
+    return sectorSize;
 }
 
-bool C3DEngine::GetShowTerrainSurface()
+bool C3DEngine::IsTerrainActive()
 {
-    return m_bShowTerrainSurface;
-}
-
-const AZ::Aabb& C3DEngine::GetTerrainAabb() const
-{
-    return m_terrainAabb;
-}
-
-ITerrain* C3DEngine::CreateTerrain(const STerrainInfo& terrainInfo)
-{
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    CreateTerrainInternal(terrainInfo);
-    //The octree should be large enough to hold the terrain size.
-    DestroyOctree();
-    const bool octreeSuccess = CreateOctree(static_cast<float>(terrainInfo.TerrainSize()));
-    AZ_Assert(octreeSuccess, "Failed to create octree");
-    return (ITerrain*)m_pTerrain;
-#else
-    //The octree should be large enough to hold the terrain size.
-    //The reason this function recreates the octree is because historically CTerrain and the octree
-    //were tightly coupled. The terrain constructor would always create a new octree and the destructor
-    //always destroyed the octree. For cases when the legacy terrain runtime is disabled, it would be
-    //wise to have a new octree with the would-be size of the terrain.
-    DestroyOctree();
-    const bool octreeSuccess = CreateOctree(static_cast<float>(terrainInfo.TerrainSize()));
-    AZ_Assert(octreeSuccess, "Failed to create octree");
-    return nullptr;
-#endif 
-}
-
-void C3DEngine::DeleteTerrain()
-{
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    SAFE_DELETE(m_pTerrain);
-#endif
+    return AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
 }
 
 bool C3DEngine::CreateOcean(_smart_ptr<IMaterial> pTerrainWaterMat, float waterLevel)
@@ -6497,3 +6401,15 @@ void C3DEngine::GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynAr
         statInstGroupTable.clear();
     }
 }
+
+void C3DEngine::ClipTriangleHelper(const PodArray<vtx_idx>& lstInds, const Plane pPlanes[4], PodArray<Vec3>& posBuffer, PodArray<vtx_idx>& lstClippedInds) const
+{
+    CPolygonClipContext clipContext;
+
+    int indexCount = lstInds.Count();
+    for (int i = 0; i < indexCount; i += 3)
+    {
+        CRoadRenderNode::ClipTriangle(clipContext, posBuffer, lstInds, lstClippedInds, i, pPlanes);
+    }
+}
+

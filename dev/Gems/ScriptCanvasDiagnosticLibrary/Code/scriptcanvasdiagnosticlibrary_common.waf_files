@@ -16,8 +16,8 @@
         "Source/ScriptCanvasDiagnosticLibraryGem.cpp"
       ],
       "Source/Library": [
-        "Source/Debug.h",
-        "Source/Debug.cpp"
+        "Source/DebugLibraryDefinition.h",
+        "Source/DebugLibraryDefinition.cpp"
       ],
       "Source/Logging": [
         "Source/Log.h",

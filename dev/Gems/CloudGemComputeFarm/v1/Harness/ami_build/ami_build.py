@@ -22,7 +22,7 @@ import time
 class Config(object):
     def __init__(self, manifest_dict, args):
         self.manifest = manifest_dict
-        self.session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
+        self.session = boto3.Session(region_name=args.region, profile_name=args.profile) if args.profile else boto3.Session(region_name=args.region)
         self.s3_res = self.session.resource('s3')
         self.s3_client = self.session.client('s3')
         self.ec2_res = self.session.resource('ec2', region_name=args.region)  # parameterize

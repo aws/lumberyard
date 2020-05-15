@@ -119,20 +119,103 @@ namespace AssetBundler
 
     TEST_F(BasicApplicationManagerTest, ComputeComparisonTypeFromString_ValidString_Success)
     {
-        auto deltaResult = AssetBundler::ParseComparisonType(AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta)]);
+        using namespace AzToolsFramework;
+
+        auto deltaResult = AssetBundler::ParseComparisonType(AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::Delta)]);
         EXPECT_EQ(deltaResult.IsSuccess(), true);
-        EXPECT_EQ(deltaResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta);
-        auto unionResult = AssetBundler::ParseComparisonType(AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Union)]);
+        EXPECT_EQ(deltaResult.GetValue(), AssetFileInfoListComparison::ComparisonType::Delta);
+
+        auto unionResult = AssetBundler::ParseComparisonType(AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::Union)]);
         EXPECT_EQ(unionResult.IsSuccess(), true);
-        EXPECT_EQ(unionResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Union);
-        auto intersectionResult = AssetBundler::ParseComparisonType(AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Intersection)]);
+        EXPECT_EQ(unionResult.GetValue(), AssetFileInfoListComparison::ComparisonType::Union);
+
+        auto intersectionResult = AssetBundler::ParseComparisonType(AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::Intersection)]);
         EXPECT_EQ(intersectionResult.IsSuccess(), true);
-        EXPECT_EQ(intersectionResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Intersection);
-        auto complementResult = AssetBundler::ParseComparisonType(AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Complement)]);
+        EXPECT_EQ(intersectionResult.GetValue(), AssetFileInfoListComparison::ComparisonType::Intersection);
+
+        auto complementResult = AssetBundler::ParseComparisonType(AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::Complement)]);
         EXPECT_EQ(complementResult.IsSuccess(), true);
-        EXPECT_EQ(complementResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Complement);
-        auto filePatternResult = AssetBundler::ParseComparisonType(AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::FilePattern)]);
+        EXPECT_EQ(complementResult.GetValue(), AssetFileInfoListComparison::ComparisonType::Complement);
+
+        auto filePatternResult = AssetBundler::ParseComparisonType(AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::FilePattern)]);
         EXPECT_EQ(filePatternResult.IsSuccess(), true);
-        EXPECT_EQ(filePatternResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::FilePattern);
+        EXPECT_EQ(filePatternResult.GetValue(), AssetFileInfoListComparison::ComparisonType::FilePattern);
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeComparisonTypeFromInt_InvalidInt_Fails)
+    {
+        auto invalidResult = AssetBundler::ParseComparisonType("999");
+        EXPECT_EQ(invalidResult.IsSuccess(), false);
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeComparisonTypeFromInt_ValidInt_Success)
+    {
+        int unionIndex(aznumeric_cast<int>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Union));
+        auto unionResult = AssetBundler::ParseComparisonType(AZStd::string::format("%i", unionIndex));
+        EXPECT_TRUE(unionResult.IsSuccess());
+        EXPECT_EQ(unionResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Union);
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeFilePatternTypeFromString_InvalidString_Fails)
+    {
+        auto invalidResult = AssetBundler::ParseFilePatternType("notafilepatterntype");
+        EXPECT_EQ(invalidResult.IsSuccess(), false);
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeFilePatternTypeFromString_ValidString_Success)
+    {
+        using namespace AzToolsFramework;
+
+        auto wildcardResult = AssetBundler::ParseFilePatternType(AssetFileInfoListComparison::FilePatternTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::FilePatternType::Wildcard)]);
+        EXPECT_TRUE(wildcardResult.IsSuccess());
+        EXPECT_EQ(wildcardResult.GetValue(), AssetFileInfoListComparison::FilePatternType::Wildcard);
+
+        auto regexResult = AssetBundler::ParseFilePatternType(AssetFileInfoListComparison::FilePatternTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::FilePatternType::Regex)]);
+        EXPECT_TRUE(regexResult.IsSuccess());
+        EXPECT_EQ(regexResult.GetValue(), AssetFileInfoListComparison::FilePatternType::Regex);
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeFilePatternTypeFromInt_InvalidInt_Fails)
+    {
+        auto invalidResult = AssetBundler::ParseFilePatternType("555");
+        EXPECT_EQ(invalidResult.IsSuccess(), false);
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsTokenFile_Empty_ReturnsFalse)
+    {
+        EXPECT_FALSE(AzToolsFramework::AssetFileInfoListComparison::IsTokenFile(""));
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsTokenFile_NonToken_ReturnsFalse)
+    {
+        EXPECT_FALSE(AzToolsFramework::AssetFileInfoListComparison::IsTokenFile("Somefile"));
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsTokenFile_Token_ReturnsTrue)
+    {
+        EXPECT_TRUE(AzToolsFramework::AssetFileInfoListComparison::IsTokenFile("$SomeToken"));
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsOutputPath_Empty_ReturnsFalse)
+    {
+        EXPECT_FALSE(AzToolsFramework::AssetFileInfoListComparison::IsOutputPath(""));
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsOutputPath_NonToken_ReturnsTrue)
+    {
+        EXPECT_TRUE(AzToolsFramework::AssetFileInfoListComparison::IsOutputPath("Somefile"));
+    }
+
+    TEST_F(BasicApplicationManagerTest, IsOutputPath_Token_ReturnsFalse)
+    {
+        EXPECT_FALSE(AzToolsFramework::AssetFileInfoListComparison::IsOutputPath("$SomeToken"));
+    }
+
+    TEST_F(BasicApplicationManagerTest, ComputeFilePatternTypeFromInt_ValidInt_Success)
+    {
+        int regexIndex(aznumeric_cast<int>(AzToolsFramework::AssetFileInfoListComparison::FilePatternType::Regex));
+        auto regexResult = AssetBundler::ParseFilePatternType(AZStd::string::format("%i", regexIndex));
+        EXPECT_TRUE(regexResult.IsSuccess());
+        EXPECT_EQ(regexResult.GetValue(), AzToolsFramework::AssetFileInfoListComparison::FilePatternType::Regex);
     }
 }

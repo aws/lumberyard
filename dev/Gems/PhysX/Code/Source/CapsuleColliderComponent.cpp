@@ -11,9 +11,11 @@
 */
 
 #include <PhysX_precompiled.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <Source/CapsuleColliderComponent.h>
+#include <Source/Utils.h>
 
 namespace PhysX
 {
@@ -37,6 +39,6 @@ namespace PhysX
             return;
         }
 
-        m_shapeConfigList[0].second->m_scale = GetNonUniformScale();
+        m_shapeConfigList[0].second->m_scale = Utils::GetNonUniformScale(GetEntityId());
     }
 }

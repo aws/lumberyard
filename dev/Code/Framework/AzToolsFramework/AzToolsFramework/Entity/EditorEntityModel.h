@@ -92,7 +92,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorEntityContextNotificationBus::Handler
         //////////////////////////////////////////////////////////////////////////
-        void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
+        void OnEditorEntitiesPromotedToSlicedEntities(const AzToolsFramework::EntityIdList& promotedEntities) override;
         void OnEditorEntitiesSliceOwnershipChanged(const AzToolsFramework::EntityIdList& entityIdList) override;
         void PrepareForContextReset() override { m_preparingForContextReset = true; }
         void OnContextReset() override;
@@ -192,7 +192,7 @@ namespace AzToolsFramework
             void UpdateChildOrderInfo(bool forceAddToBack);
 
             void SetId(const AZ::EntityId& entityId);
-            void SetParent(AZ::EntityId parentId);
+            void SetParentId(AZ::EntityId parentId);
             void AddChild(AZ::EntityId childId);
             void RemoveChild(AZ::EntityId childId);
             bool HasChild(AZ::EntityId childId) const;
@@ -201,6 +201,10 @@ namespace AzToolsFramework
             // EditorEntityAPIRequests
             /////////////////////////////
             void SetName(AZStd::string name) override;
+            void SetParent(AZ::EntityId parentId) override;
+            void SetLockState(bool isLocked) override;
+            void SetVisibilityState(bool isVisible) override;
+            void SetStartStatus(EditorEntityStartStatus status) override;
 
             /////////////////////////////
             // EditorEntityInfoRequests
@@ -232,6 +236,7 @@ namespace AzToolsFramework
             bool IsLocked() const override;
             // Lock status can be overwritten if an entity is in a locked layer.
             // However, in some cases (like the outliner), this entity's specific state needs to be known.
+            EditorEntityStartStatus GetStartStatus() const override;
             bool IsJustThisEntityLocked() const override;
             bool IsConnected() const;
             void AddToCyclicDependencyList(const AZ::EntityId& entityId) override;
@@ -319,6 +324,8 @@ namespace AzToolsFramework
             bool DoesEntityHierarchyOverrideState(EntityInHierarchyConditionFunction stateCheckFunction) const;
             bool DoesEntityHierarchyOverrideVisibility() const;
             bool DoesEntityHierarchyOverrideLock() const;
+
+            void SetStartActiveStatus(bool isActive);
 
             AZ::EntityId m_entityId;
             AZ::EntityId m_parentId;

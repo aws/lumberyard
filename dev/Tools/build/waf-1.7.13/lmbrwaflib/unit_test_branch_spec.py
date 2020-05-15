@@ -9,21 +9,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
 import pytest
 
+# waflib imports
+from waflib import Context
+
+# misc imports
 from waf_branch_spec import BINTEMP_FOLDER
 
 
 class FakeGModule(object):
     pass
-
-
-from waflib import Context
-
 Context.g_module = FakeGModule
-
-
-import branch_spec
+from lmbrwaflib import branch_spec
 
 
 class FakeContextBranchSpec(object):
@@ -75,3 +74,82 @@ def test_get_bintemp_folder_node(fake_waf_context, fake_ctx_type):
     
     result = branch_spec.get_bintemp_folder_node(fake_waf_context)
     assert str(result) == BINTEMP_FOLDER
+
+def test_update_environment_from_bootstrap_params():
+    environment = {}
+    # test data is tuples of (input command line, expected output env dictionary)
+    test_data = [
+        ('', {}),
+        ('--enablecapability compilegame ', {}  # only compileandroid matters to android.
+        ), 
+        # now test each param on its own:
+        (
+            '--jdk="C:\\Program Files\\Java\\jdk1.8.0_231"', {
+            'LY_JDK' : 'C:\\Program Files\\Java\\jdk1.8.0_231' # with spaces in it
+            }
+        ),
+        (
+            '--android-sdk="C:\\A n d r o i d\\android-sdk"', {
+            'LY_ANDROID_SDK' : 'C:\\A n d r o i d\\android-sdk' # with spaces in it
+            }
+        ),
+        (
+            '--android-ndk="C:\\A n d r o i d\\android-ndk"', {
+            'LY_ANDROID_NDK' : 'C:\\A n d r o i d\\android-ndk' # with spaces in it
+            }
+        ),
+        #now without spaces and in other param forms
+        (
+            '--jdk="C:\\quotes_but_no_spaces\\jdk"', { # still with quotes but no spaces
+            'LY_JDK' : 'C:\\quotes_but_no_spaces\\jdk'
+            }
+        ),
+        (
+            # here we prove that we do not use unix backslash escaping rules
+            # normally, under unix rules you would need to double escape the slash (so \\\\)
+            # but for backward compat, we don't want to require that
+            '--jdk=C:\\no_quotes_no_spaces\\jdk', { # no quotes, no spaces 
+            'LY_JDK' : 'C:\\no_quotes_no_spaces\\jdk'
+            }
+        ),
+        (
+            # normally, under unix rules you would need to double escape the slash (so \\\\)
+            # but for backward compat, we don't want to require that
+            '--jdk C:\\nothing_special_no_equals\\jdk', { # no quotes, no spaces, no equals
+            'LY_JDK' : 'C:\\nothing_special_no_equals\\jdk'
+            }
+        ),
+        (
+            '--jdk "C:\\Program Files\\Java\\jdk1.8.0_231"', {
+            'LY_JDK' : 'C:\\Program Files\\Java\\jdk1.8.0_231' # with spaces in it but no equals
+            }
+        ),
+        # test android enabling
+        (
+            '--enablecapability compileandroid', {
+            'ENABLE_ANDROID' : 'True' # this is not a typo, the code expects a string value like 'True' or 'False'
+            }
+        ),
+        (
+            '--enablecapability whatever', {} # other capabilites do not set android to true
+        ),
+        #now test them all at once!
+        (
+            ' --enablecapability compileandroid --enablecapability compilegame' \
+            ' --jdk="C:\\Program Files\\Java\\jdk1.8.0_231"' \
+            ' --android-ndk="C:\\A n d r o i d\\android-ndk"' \
+            ' --android-sdk="C:\\A n d r o i d\\android-sdk"'
+            , 
+            {
+                'ENABLE_ANDROID' : 'True',
+                'LY_ANDROID_NDK' : 'C:\\A n d r o i d\\android-ndk',
+                'LY_ANDROID_SDK' : 'C:\\A n d r o i d\\android-sdk',
+                'LY_JDK' : 'C:\\Program Files\\Java\\jdk1.8.0_231',
+            }
+        ),
+    ]
+    
+    for input, expected_output in test_data:
+        actual_output = {}
+        branch_spec.update_android_environment_from_bootstrap_params(actual_output, input)
+        assert actual_output == expected_output

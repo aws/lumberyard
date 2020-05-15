@@ -13,6 +13,7 @@
 #pragma once
 
 #include "SystemComponentFixture.h"
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -26,7 +27,8 @@ namespace EMotionFX
     class AnimGraphObject;
     class MotionSet;
 
-    class AnimGraphTransitionConditionFixture : public SystemComponentFixture
+    class AnimGraphTransitionConditionFixture
+        : public SystemComponentFixture
     {
     public:
         void SetUp() override;
@@ -37,26 +39,25 @@ namespace EMotionFX
         {
         }
 
-        AnimGraph* GetAnimGraph() const
+        TwoMotionNodeAnimGraph* GetAnimGraph() const
         {
-            return mAnimGraph;
+            return m_animGraph.get();
         }
 
         AnimGraphInstance* GetAnimGraphInstance() const
         {
-            return mAnimGraphInstance;
+            return m_animGraphInstance;
         }
 
     protected:
-        AnimGraphStateMachine* mStateMachine = nullptr;
-        AnimGraphInstance* mAnimGraphInstance = nullptr;
-        AnimGraphMotionNode* mMotionNode0 = nullptr;
-        AnimGraphMotionNode* mMotionNode1 = nullptr;
-        AnimGraphStateTransition* mTransition = nullptr;
-        Actor* mActor = nullptr;
-        AnimGraph* mAnimGraph = nullptr;
-        MotionSet* mMotionSet = nullptr;
-        ActorInstance* mActorInstance = nullptr;
-
+        AnimGraphStateMachine* m_stateMachine = nullptr;
+        AnimGraphInstance* m_animGraphInstance = nullptr;
+        AnimGraphMotionNode* m_motionNodeA = nullptr;
+        AnimGraphMotionNode* m_motionNodeB = nullptr;
+        AnimGraphStateTransition* m_transition = nullptr;
+        AZStd::unique_ptr<Actor> m_actor;
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_animGraph;
+        MotionSet* m_motionSet = nullptr;
+        ActorInstance* m_actorInstance = nullptr;
     };
 }

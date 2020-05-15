@@ -143,7 +143,7 @@ namespace GridMate
     template <typename T>
     bool StreamSocketDriver::RingBuffer::Store(const T data)
     {
-        AZ_STATIC_ASSERT(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
+        static_assert(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
         return Store(reinterpret_cast<const char*>(&data), sizeof(T));
     }
 
@@ -162,7 +162,7 @@ namespace GridMate
     template <typename T>
     bool StreamSocketDriver::RingBuffer::Peek(T* data)
     {
-        AZ_STATIC_ASSERT(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
+        static_assert(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
         return Peek(reinterpret_cast<char*>(data), sizeof(T));
     }
 
@@ -197,7 +197,7 @@ namespace GridMate
     template <typename T>
     bool StreamSocketDriver::RingBuffer::Fetch(T* data)
     {
-        AZ_STATIC_ASSERT(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
+        static_assert(AZStd::is_fundamental<T>::value, "Should only be used for fundamental primitive types");
         return Fetch(reinterpret_cast<char*>(data), sizeof(T));
     }
 

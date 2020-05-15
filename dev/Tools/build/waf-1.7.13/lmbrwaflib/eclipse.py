@@ -15,20 +15,27 @@ def options(opt):
 $ waf configure eclipse
 """
 
-import sys, os
+# System Imports
+import sys
+import os
+from xml.dom.minidom import Document
+
+# waflib imports
 from waflib import Utils, Logs, Context, Options, Build, TaskGen, Scripting
 from waflib.TaskGen import feature
 from waflib.Configure import conf
-from xml.dom.minidom import Document
+
 
 oe_cdt = 'org.eclipse.cdt'
 cdt_mk = oe_cdt + '.make.core'
 cdt_core = oe_cdt + '.core'
 cdt_bld = oe_cdt + '.build.core'
 
+
 class eclipse(Build.BuildContext):
     cmd = 'eclipse'
     fun = Scripting.default_cmd
+    is_project_generator = True
 
     def execute(self):
         """
@@ -116,7 +123,7 @@ class eclipse(Build.BuildContext):
                 cdt_mk + '.enableCleanBuild': 'true',
                 cdt_mk + '.enableFullBuild': 'true',
                 }
-        for k, v in dictionaries.items():
+        for k, v in list(dictionaries.items()):
             self.addDictionary(doc, arguments, k, v)
 
         natures = self.add(doc, projectDescription, 'natures')
@@ -310,7 +317,7 @@ class eclipse(Build.BuildContext):
         return el
 
     def setAttributes(self, node, attrs):
-        for k, v in attrs.items():
+        for k, v in list(attrs.items()):
             node.setAttribute(k, v)
 
 

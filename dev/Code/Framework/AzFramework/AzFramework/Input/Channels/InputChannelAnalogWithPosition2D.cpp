@@ -38,6 +38,15 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelAnalogWithPosition2D::SimulateRawInputWithPosition2D(float rawValue,
+                                                                          float normalizedX,
+                                                                          float normalizedY)
+    {
+        const RawInputEvent rawValues(normalizedX, normalizedY, rawValue);
+        ProcessRawInputEvent(rawValues);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelAnalogWithPosition2D::ProcessRawInputEvent(const RawInputEvent& rawValues)
     {
         const AZ::Vector2 newPosition = AZ::Vector2(rawValues.m_normalizedX, rawValues.m_normalizedY);

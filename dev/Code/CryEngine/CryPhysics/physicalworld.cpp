@@ -1108,10 +1108,152 @@ void CPhysicalWorld::Shutdown(int bDeleteGeometries)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
+void CPhysicalWorld::RemoveFromAllColliders(CPhysicalEntity* pEntity)
+{
+    CPhysicalEntity* pent, * pent_next;
+    for (int i = 0; i < 8; i++)
+    {
+        for (pent = m_pTypedEnts[i]; pent; pent = pent_next)
+        {
+            pent_next = pent->m_next;
+            if (pent == pEntity)
+            {
+                continue;
+            }
+            pent->RemoveColliderMono(pEntity);
+        }
+    }
+    for (pent = m_pHiddenEnts; pent; pent = pent_next)
+    {
+        pent_next = pent->m_next;
+        if (pent == pEntity)
+        {
+            continue;
+        }
+        pent->RemoveColliderMono(pEntity);
+    }
+}
 
+void CPhysicalWorld::RemovePhysicalEntityFromRayCastEvent(CPhysicalEntity* pEntity, EventPhysRWIResult* pEventRWI)
+{
+    // You should know that the buffer pointed by "pEventRWI->pHits" is actually owned
+    // somewhere else by
+    // struct IPhysicalWorld
+    // {
+    //    struct SRWIParams
+    //    {
+    //       ray_hit* hits;
+    //    }
+    // }
+    int i = 0;
+    while (i < pEventRWI->nHits)
+    {
+        if (pEntity == pEventRWI->pHits[i].pCollider)
+        {
+            //Shift pHits. Doesn't need to be high performance, so brute force works ok.
+            int j = i;
+            int k = j+1;
+            while (k < pEventRWI->nHits)
+            {
+                pEventRWI->pHits[j] = pEventRWI->pHits[k];
+                j++;
+                k++;
+            }
+            pEventRWI->nHits--;
+        }
+        else
+        {
+            i++;
+        }
+    }
+}
+
+void CPhysicalWorld::RemoveFromAllEvents(CPhysicalEntity* pEntity)
+{
+    // Things you should know...
+    // Memory for events is allocated in the linked list that starts with m_pFirstEventChunk.
+    // The table that contains all available events is "EventPhys* m_pFreeEvents[EVENT_TYPES_NUM]".
+    // All valid events per frame (when PumpLoggedEvents() is called) are found in:
+    // EventPhys* m_pEventFirst, until the last event equals m_pEventLast.
+    // Our goal is to Hijack the sequence that starts with m_pEventFirst and skip all events
+    // that reference @pEntity.
+    WriteLock lock(m_lockEventsQueue);
+    EventPhys* pPrevEvent = nullptr;
+    EventPhys* pEvent = m_pEventFirst;
+    while (pEvent)
+    {
+        //Stereo Events hold reference to two physical entities
+        CPhysicalEntity* pEntity0 = nullptr;
+        CPhysicalEntity* pEntity1 = nullptr;
+        if (pEvent->idval <= EventPhysCollision::id) //Stereo Event
+        {
+            EventPhysStereo* pStereoEvent = (EventPhysStereo*)pEvent;
+            pEntity0 = (CPhysicalEntity*)pStereoEvent->pEntity[0];
+            pEntity1 = (CPhysicalEntity*)pStereoEvent->pEntity[1];
+        }
+        else //Mono Events hold reference to one physical entity
+        {
+            EventPhysMono* pMonoEvent = (EventPhysMono*)pEvent;
+            pEntity0 = (CPhysicalEntity*)pMonoEvent->pEntity;
+
+            if (pEvent->idval == EventPhysRWIResult::id)
+            {
+                RemovePhysicalEntityFromRayCastEvent(pEntity, (EventPhysRWIResult*)pEvent);
+            }
+        }
+
+        bool removeEvent = false;
+        if ((pEntity0 && (pEntity0 == pEntity)) ||
+            (pEntity1 && (pEntity1 == pEntity)))
+        {
+            removeEvent = true;
+        }
+
+        if (!removeEvent)
+        {
+            pPrevEvent = pEvent;
+            pEvent = pEvent->next;
+            continue;
+        }
+
+        if ((pEvent->idval == EventPhysCreateEntityPart::id) && (pEntity0->m_iDeletionTime))
+        {
+            DestroyPhysicalEntity(((EventPhysCreateEntityPart*)pEvent)->pEntNew, 0, 1);
+        }
+
+        if (pEvent == m_pEventFirst)
+        {
+            if (pEvent == m_pEventLast)
+            {
+                m_pEventLast = pEvent->next;
+            }
+            m_pEventFirst = pEvent->next;
+            pEvent = pEvent->next;
+            continue;
+        }
+
+        pPrevEvent->next = pEvent->next;
+
+        if (pEvent == m_pEventLast)
+        {
+            m_pEventLast = pPrevEvent;
+        }
+
+        pEvent = pEvent->next;
+    }
+}
 
 IPhysicalEntity* CPhysicalWorld::SetHeightfieldData(const heightfield* phf, int* pMatMapping, int nMats)
 {
+    //It is a good idea to stop background threads before removing or adding the terrain.
+    //The background threads will be recreated and restarted during game tick (CPhysicalWorld::TimeStep(...))
+    for (int i = m_nWorkerThreads - 1; i >= 0; i--)
+    {
+        m_threads[i]->bStop = 1, m_threadStart[i].Set(), m_threadDone[i].Wait();
+        GetISystem()->GetIThreadTaskManager()->UnregisterTask(m_threads[i]);
+        delete m_threads[i];
+    }
+
     int iCaller;
     CPhysicalEntity* pHF;
     if (!phf)
@@ -1129,6 +1271,13 @@ IPhysicalEntity* CPhysicalWorld::SetHeightfieldData(const heightfield* phf, int*
                 {
                     delete[] pHF->m_parts[0].pMatMapping;
                 }
+
+                //If there are other physical entities in the world, most likely they hold reference to
+                //the terrain as a collider or some other physics event. Before Deleting  the terrain physical entities it is important
+                //to make sure that its reference count is set to 0.
+                RemoveFromAllColliders(pHF);
+                RemoveFromAllEvents(pHF);
+
                 pHF->Delete();
             }
         }

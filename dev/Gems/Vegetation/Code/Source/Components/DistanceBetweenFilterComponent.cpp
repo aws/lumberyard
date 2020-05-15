@@ -197,7 +197,7 @@ namespace Vegetation
         if (m_configuration.m_allowOverrides || m_configuration.m_boundMode == BoundMode::MeshRadius || m_configuration.m_radiusMin > 0.0f)
         {
             const AZ::Aabb& instanceAabb = GetInstanceBounds(instanceData);
-            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::EnumerateInstancesInAabb,
+            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::EnumerateInstancesInOverlappingSectors,
                 instanceAabb,
                 [this, &intersects, &instanceAabb](const InstanceData& neighborData) {
                 const AZ::Aabb& neighborAabb = GetInstanceBounds(neighborData);

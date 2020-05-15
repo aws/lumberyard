@@ -21,6 +21,10 @@ namespace AzToolsFramework
 {
     namespace AssetDatabase
     {
+        class ProductDatabaseEntry;
+        class SourceDatabaseEntry;
+        typedef AZStd::vector<ProductDatabaseEntry> ProductDatabaseEntryContainer;
+
         /**
         * Bus used by the Tools Asset Database itself to talk to the running application environment
         * Functions on this bus could be implemented by different parts of the application
@@ -40,6 +44,27 @@ namespace AzToolsFramework
         };
 
         using AssetDatabaseRequestsBus = AZ::EBus<AssetDatabaseRequests>;
+
+        class AssetDatabaseNotifications
+            : public AZ::EBusTraits
+        {
+        public:
+            typedef AZStd::recursive_mutex MutexType;
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple; // multiple listeners
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+            virtual ~AssetDatabaseNotifications() = default;
+
+            virtual void OnSourceFileChanged(const SourceDatabaseEntry& /*entry*/) {}
+            virtual void OnSourceFileRemoved(AZ::s64 /*sourceId*/) {}
+
+            virtual void OnProductFileChanged(const ProductDatabaseEntry& /*entry*/) {}
+            virtual void OnProductFileRemoved(AZ::s64 /*productId*/) {}
+            virtual void OnProductFilesRemoved(const ProductDatabaseEntryContainer& /*products*/) {}
+            
+        };
+        using AssetDatabaseNotificationBus = AZ::EBus<AssetDatabaseNotifications>;
+
     } // namespace AssetDatabase
 } // namespace AzToolsFramework
 

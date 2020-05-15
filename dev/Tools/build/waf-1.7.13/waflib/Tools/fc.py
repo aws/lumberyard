@@ -126,7 +126,7 @@ class fc(Task.Task):
 						ins[id(node)].add(tsk)
 
 		# if the intersection matches, set the order
-		for k in ins.keys():
+		for k in list(ins.keys()):
 			for a in ins[k]:
 				a.run_after.update(outs[k])
 

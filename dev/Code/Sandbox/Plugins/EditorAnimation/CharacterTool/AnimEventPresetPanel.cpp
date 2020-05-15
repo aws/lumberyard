@@ -101,7 +101,7 @@ namespace CharacterTool
             AnimEventPreset preset;
             SerializeFromMemory(Serialization::SStruct(preset.event), item.userPayload);
 
-            preset.colorHue = QColor(item.color.r, item.color.g, item.color.b).hslHueF();
+            preset.colorHue = aznumeric_cast<float>(QColor(item.color.r, item.color.g, item.color.b).hslHueF());
             if (preset.colorHue < 0.0f)
             {
                 preset.colorHue = 0.0f;

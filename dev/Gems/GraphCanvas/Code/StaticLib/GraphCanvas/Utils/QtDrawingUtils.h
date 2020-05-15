@@ -29,6 +29,8 @@ namespace GraphCanvas
     class QtDrawingUtils
     {
     public:
+        static void GenerateGradients(const AZStd::vector< const Styling::StyleHelper* >& stylingHelpers, const QRectF& area, QLinearGradient& penGradient, QLinearGradient& fillGradient);
+
         static void FillArea(QPainter& painter, const QRectF& area, const Styling::StyleHelper& styleHelper);
 
         static void CandyStripeArea(QPainter& painter, const QRectF& area, const CandyStripeConfiguration& candyStripeConfiguration);

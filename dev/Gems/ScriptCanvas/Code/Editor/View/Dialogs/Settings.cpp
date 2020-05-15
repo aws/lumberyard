@@ -31,10 +31,10 @@ AZ_POP_DISABLE_WARNING
 
 namespace ScriptCanvasEditor
 {
-    SettingsDialog::SettingsDialog(const QString& title, AZ::EntityId graphId, QWidget* pParent /*=nullptr*/)
+    SettingsDialog::SettingsDialog(const QString& title, ScriptCanvas::ScriptCanvasId scriptCanvasId, QWidget* pParent /*=nullptr*/)
         : QDialog(pParent)
         , ui(new Ui::SettingsDialog)
-        , m_graphId(graphId)
+        , m_scriptCanvasId(scriptCanvasId)
     {
         ui->setupUi(this);
 
@@ -43,7 +43,7 @@ namespace ScriptCanvasEditor
         QObject::connect(ui->ok, &QPushButton::clicked, this, &SettingsDialog::OnOK);
         QObject::connect(ui->cancel, &QPushButton::clicked, this, &SettingsDialog::OnCancel);
 
-        if (m_graphId.IsValid())
+        if (m_scriptCanvasId.IsValid())
         {
             SetType(SettingsType::Graph);
         }
@@ -93,7 +93,7 @@ namespace ScriptCanvasEditor
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<Settings, AZ::UserSettings >()
+            serializeContext->Class<Settings>()
                 ->Version(0)
                 ->Field("EnableLogging", &Settings::m_enableLogging)
                 ;
@@ -172,10 +172,10 @@ namespace ScriptCanvasEditor
 
     void SettingsDialog::SetupGraphSettings(AZ::SerializeContext* context)
     {
-        if (m_graphId.IsValid())
+        if (m_scriptCanvasId.IsValid())
         {
             AZStd::intrusive_ptr<Settings> settings = 
-                AZ::UserSettings::CreateFind<Settings>(AZ::Crc32(m_graphId.ToString().c_str()),
+                AZ::UserSettings::CreateFind<Settings>(AZ::Crc32(m_scriptCanvasId.ToString().c_str()),
                     AZ::UserSettings::CT_LOCAL);
 
             // Store a copy to revert if needed.
@@ -185,7 +185,7 @@ namespace ScriptCanvasEditor
             ui->propertyEditor->Setup(context, nullptr, false, 210);
             ui->propertyEditor->AddInstance(settings.get(), settings->RTTI_GetType());
             ui->propertyEditor->setObjectName("ui->propertyEditor");
-            ui->propertyEditor->SetSavedStateKey(AZ::Crc32(m_graphId.ToString().c_str()));
+            ui->propertyEditor->SetSavedStateKey(AZ::Crc32(m_scriptCanvasId.ToString().c_str()));
             ConfigurePropertyEditor(ui->propertyEditor);
         }
         else
@@ -198,10 +198,10 @@ namespace ScriptCanvasEditor
     {
         if (m_settingsType == SettingsType::Graph || m_settingsType == SettingsType::All)
         {
-            if (m_graphId.IsValid())
+            if (m_scriptCanvasId.IsValid())
             {
                 AZStd::intrusive_ptr<Settings> settings =
-                    AZ::UserSettings::CreateFind<Settings>(AZ::Crc32(m_graphId.ToString().c_str()),
+                    AZ::UserSettings::CreateFind<Settings>(AZ::Crc32(m_scriptCanvasId.ToString().c_str()),
                         AZ::UserSettings::CT_LOCAL);
                 // Revert the stored copy, no changes will be stored.
                 *settings = m_originalSettings;

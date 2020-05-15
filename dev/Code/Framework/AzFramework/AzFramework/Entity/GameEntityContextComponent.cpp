@@ -60,9 +60,13 @@ namespace AzFramework
 
                 // Deprecated-renamed APIs. These will warn if used.
                 ->Event("ActivateGameEntityById", &GameEntityContextRequestBus::Events::ActivateGameEntityById)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DeactivateGameEntityById", &GameEntityContextRequestBus::Events::DeactivateGameEntityById)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DestroySliceByEntityId", &GameEntityContextRequestBus::Events::DestroySliceByEntityId)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DestroySliceByEntity", &GameEntityContextRequestBus::Events::DestroySliceByEntity)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ;
         }
     }

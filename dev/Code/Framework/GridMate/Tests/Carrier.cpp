@@ -94,6 +94,11 @@ public:
     {
     }
 
+    ~CarrierCallbacksHandler()
+    {
+        CarrierEventBus::Handler::BusDisconnect();
+    }
+
     void Activate(Carrier* carrier)
     {
         m_carrier = carrier;

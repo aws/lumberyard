@@ -34,7 +34,7 @@ namespace ScriptEventsTests
             AZ::ComponentTypeList components;
             components.insert(components.end(),
                 {
-                    azrtti_typeid<ScriptEvents::SystemComponent>(),
+                    azrtti_typeid<ScriptEvents::ScriptEventsSystemComponent>(),
                     azrtti_typeid<AZ::MemoryComponent>(),
                     azrtti_typeid<AZ::AssetManagerComponent>(),
                     azrtti_typeid<AzFramework::AssetCatalogComponent>(),
@@ -46,7 +46,7 @@ namespace ScriptEventsTests
         void CreateReflectionManager() override
         {
             SuperType::CreateReflectionManager();
-            RegisterComponentDescriptor(ScriptEvents::SystemComponent::CreateDescriptor());
+            RegisterComponentDescriptor(ScriptEvents::ScriptEventsSystemComponent::CreateDescriptor());
             RegisterComponentDescriptor(AZ::MemoryComponent::CreateDescriptor());
             RegisterComponentDescriptor(AZ::AssetManagerComponent::CreateDescriptor());
             RegisterComponentDescriptor(AzFramework::AssetCatalogComponent::CreateDescriptor());

@@ -18,7 +18,7 @@
 
 namespace Multiplayer
 {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
     class MultiplayerGameLiftClientRequests : public AZ::EBusTraits
     {
     public:
@@ -26,12 +26,13 @@ namespace Multiplayer
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        virtual ~MultiplayerGameLiftClientRequests() AZ_DEFAULT_METHOD;
+        virtual ~MultiplayerGameLiftClientRequests() = default;
 
         // Handler Interface
         virtual void HostGameLiftSession(const char* serverName, const char* mapName, const AZ::u32 maxPlayers) = 0;
         virtual void JoinGameLiftSession() = 0;
         virtual void StopGameLiftClientService() = 0;
+        virtual void StartGameLiftMatchmaking(const char* matchmakingConfigName) = 0;
     };
 
     using MultiplayerGameLiftClientBus = AZ::EBus<MultiplayerGameLiftClientRequests>;
@@ -49,6 +50,7 @@ namespace Multiplayer
         void HostGameLiftSession(const char* serverName, const char* mapName, const AZ::u32 maxPlayers) override;
         void JoinGameLiftSession() override;
         void StopGameLiftClientService() override;
+        void StartGameLiftMatchmaking(const char* matchmakingConfigName) override;
 
     private:
         enum class Mode
@@ -56,6 +58,7 @@ namespace Multiplayer
             None,
             Join,
             Host,
+            FlexMatch
         };
 
         enum class ServiceStatus
@@ -77,6 +80,7 @@ namespace Multiplayer
         void JoinGameLiftSessionInternal(const GridMate::GameLiftSearchInfo& searchInfo);
         void QueryGameLiftServers();
         void HandleGameLiftRequestByMode();
+        void StartGameLiftMatchmakingInternal();
 
         // GameLiftClientServiceEventsBus
         void OnGameLiftSessionServiceReady(GridMate::GameLiftClientService*) override;
@@ -95,6 +99,7 @@ namespace Multiplayer
         AZStd::string m_serverName;
         AZStd::string m_mapName;
         AZ::u32 m_maxPlayers;
+        AZStd::string m_matchmakingConfigName;
     };
 #endif
 }

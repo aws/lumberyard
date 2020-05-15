@@ -1728,11 +1728,11 @@ namespace CharacterTool {
             bool singleLine = l.animation.empty();
             if (!singleLine)
             {
-                renderer->Draw2dLabel(20, y, 1.5f, color, false, "%s", l.animation.c_str());
+                renderer->Draw2dLabel(20.f, aznumeric_cast<float>(y), 1.5f, color, false, "%s", l.animation.c_str());
                 y += 18;
             }
 
-            renderer->Draw2dLabel(singleLine ? 20 : 40, y, singleLine ? 1.5f : 1.2f, color, false, "%s", l.text.c_str());
+            renderer->Draw2dLabel(singleLine ? 20.f : 40.f, aznumeric_cast<float>(y), singleLine ? 1.5f : 1.2f, color, false, "%s", l.text.c_str());
             y += singleLine ? 18 : 16;
         }
     }

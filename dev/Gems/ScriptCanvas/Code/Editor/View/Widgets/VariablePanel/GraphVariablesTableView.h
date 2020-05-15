@@ -69,8 +69,8 @@ namespace ScriptCanvasEditor
         QMimeData* mimeData(const QModelIndexList &indexes) const override;
         ////
 
-        void SetActiveScene(const AZ::EntityId& scriptCanvasGraphId);
-        AZ::EntityId GetScriptCanvasGraphId() const;
+        void SetActiveScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const;
 
         // ScriptCanvas::GraphVariableManagerNotificationBus
         void OnVariableAddedToGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
@@ -78,11 +78,13 @@ namespace ScriptCanvasEditor
         void OnVariableNameChangedInGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
         ////
 
-        // ScriptCanvas::VariableNotificationBus
+        // ScriptCanvas::VariableRuntimeNotificationBus
         void OnVariableValueChanged() override;
         ////
 
         ScriptCanvas::VariableId FindVariableIdForIndex(const QModelIndex& index) const;
+        ScriptCanvas::GraphScopedVariableId FindScopedVariableIdForIndex(const QModelIndex& index) const;
+
         int FindRowForVariableId(const ScriptCanvas::VariableId& variableId) const;
 
     signals:
@@ -92,10 +94,10 @@ namespace ScriptCanvasEditor
 
         bool IsEditableType(ScriptCanvas::Data::Type scriptCanvasDataType) const;
 
-        void PopulateSceneVariables();
+        void PopulateSceneVariables();        
 
-        AZStd::vector<ScriptCanvas::VariableId> m_variableIds;
-        AZ::EntityId m_scriptCanvasGraphId;
+        AZStd::vector<ScriptCanvas::GraphScopedVariableId> m_variableIds;
+        ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
     };
 
     class GraphVariablesModelSortFilterProxyModel
@@ -122,13 +124,13 @@ namespace ScriptCanvasEditor
         Q_OBJECT
     public:
         static bool HasCopyVariableData();
-        static void CopyVariableToClipboard(const AZ::EntityId& scriptCanvasGraphId, const ScriptCanvas::VariableId& variableId);
-        static void HandleVariablePaste(const AZ::EntityId& scriptCanvasGraphId);
+        static void CopyVariableToClipboard(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const ScriptCanvas::VariableId& variableId);
+        static void HandleVariablePaste(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
 
         AZ_CLASS_ALLOCATOR(GraphVariablesTableView, AZ::SystemAllocator, 0);
         GraphVariablesTableView(QWidget* parent);
 
-        void SetActiveScene(const AZ::EntityId& scriptCanvasGraphId);
+        void SetActiveScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         void SetFilter(const QString& filterString);
 
         void EditVariableName(ScriptCanvas::VariableId variableId);
@@ -158,8 +160,8 @@ namespace ScriptCanvasEditor
         void OnDuplicate();
 
         void SetCycleTarget(ScriptCanvas::VariableId variableId);
-        void CycleToNextVariableNode();
-        void CycleToPreviousVariableNode();
+        void CycleToNextVariableReference();
+        void CycleToPreviousVariableReference();
 
     signals:
         void SelectionChanged(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds);
@@ -170,7 +172,7 @@ namespace ScriptCanvasEditor
         void ConfigureHelper();
 
         AZ::EntityId                             m_graphCanvasGraphId;
-        AZ::EntityId                             m_scriptCanvasGraphId;
+        ScriptCanvas::ScriptCanvasId             m_scriptCanvasId;
         GraphVariablesModelSortFilterProxyModel* m_proxyModel;
         GraphVariablesModel*                     m_model;
 

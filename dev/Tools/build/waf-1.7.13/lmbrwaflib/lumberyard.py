@@ -8,30 +8,32 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import os
-import sys
+# System Imports
 import argparse
 import inspect
-import random
-import zlib
 import json
+import os
+import random
 import re
-import traceback
 import runpy
+import sys
+import traceback
+import zlib
 
+# waflib imports
 from waflib import Logs, Options, Utils, Configure, ConfigSet, Node, Errors
-from waflib.TaskGen import taskgen_method
 from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
 from waflib.Build import BuildContext, CleanContext, Context
 
-from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, BINTEMP_MODULE_DEF, \
-                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_to_unique_list
+from lmbrwaflib.utils import parse_json_file, convert_roles_to_setup_assistant_description, write_json_file
+from lmbrwaflib.third_party import ThirdPartySettings
 
-from cry_utils import append_to_unique_list
-from utils import parse_json_file, convert_roles_to_setup_assistant_description, write_json_file
-from third_party import ThirdPartySettings
+# misc imports
+from waf_branch_spec import VERSION_NUMBER_PATTERN, BINTEMP_MODULE_DEF, \
+                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES, BINTEMP_FOLDER
 
-UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
 WAF_BASE_SCRIPT = os.path.normpath("{}/Tools/build/waf-1.7.13/lmbr_waf".format(LUMBERYARD_ENGINE_PATH))
 
@@ -48,20 +50,6 @@ CONFIGURE_FORCE_TIMESTAMP_FILES = ['generate_uber_files.timestamp', 'project_gen
 # The prefix for file aliasing 3rd party paths (ie @3P:foo@)
 FILE_ALIAS_3P_PREFIX = "3P:"
 
-# List of extra non-build (non project building) commands.
-NON_BUILD_COMMANDS = [
-    'generate_uber_files',
-    'generate_module_def_files',
-    'generate_module_dependency_files',
-    'generate_game_project',
-    'msvs',
-    'eclipse',
-    'android_studio',
-    'xcode_ios',
-    'xcode_appletv',
-    'xcode_mac',
-    'info'
-]
 
 REGEX_PATH_ALIAS = re.compile('@(.+)@')
 
@@ -119,7 +107,7 @@ LMBR_WAFLIB_MODULES = [
         'eclipse:linux',
 
         'gui_tasks:win32',
-        'gui_tasks:darwin',
+        # 'gui_tasks:darwin',   # './lmbr_waf.sh show_option_dialog' disabled for darwin (Mac) because of the Python 3.7.5's dependency on libtcl8.6.dylib.
 
         'qt5',
 
@@ -177,6 +165,7 @@ def load_lmbr_waf_modules(conf, module_table):
                 conf.fatal("[Error] Unable to load required module '{}.py: {}'".format(module, e))
 
 
+
 @conf
 def load_lmbr_general_modules(conf):
     """
@@ -191,7 +180,7 @@ def load_lmbr_general_modules(conf):
 def load_lmbr_data_driven_modules(conf):
     """
     Load all of the data driven waf lmbr modules
-    :param conf:    Configuration Context
+    :param conf:    Configuration Context, Or Options Context!
     """
     load_lmbr_waf_modules(conf, LMBR_WAFLIB_DATA_DRIVEN_MODULES)
 
@@ -201,6 +190,9 @@ def load_lmbr_data_driven_modules(conf):
     platforms_that_need_java = []
     all_platform_names = conf.get_all_platform_names()
     needs_java = False
+    
+    is_options_phase = isinstance(conf, Options.OptionsContext)
+    
     for platform_name in all_platform_names:
         platform_settings = conf.get_platform_settings(platform_name)
         if platform_settings.enabled and platform_settings.additional_modules:
@@ -221,7 +213,7 @@ def load_lmbr_data_driven_modules(conf):
                 append_to_unique_list(additional_java_modules_to_load, platform_settings.additional_modules)
 
     java_loaded = False
-    if needs_java and hasattr(conf, 'env'):
+    if needs_java and not is_options_phase: # the 'options' pass should not try to locate java.
         # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
         # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
         jdk_home = conf.get_env_file_var('LY_JDK', required=True, silent=True)
@@ -235,19 +227,36 @@ def load_lmbr_data_driven_modules(conf):
                            'Please re-run Setup Assistant with "Compile For Android" '
                            'enabled and run the configure command again.')
         else:
-            conf.env['JAVA_HOME'] = jdk_home
-            conf.load('javaw')
-            java_loaded = True
+            # make sure JAVA_HOME is part of the sub-process environment and pointing to
+            # the same JDK as what lumberyard is using
+            env_java_home = os.environ.get('JAVA_HOME', '')
+            if env_java_home != jdk_home:
+                Logs.debug('lumberyard: Updating JAVA_HOME environment variable')
+                os.environ['JAVA_HOME'] = jdk_home
+
+            try:
+                conf.env['JAVA_HOME'] = jdk_home
+                conf.load('javaw')
+                java_loaded = True
+            except:
+                conf.warn_once('JDK path previously detected from Setup Assistant ({}) '
+                               'is no longer valid. Please re-run Setup Assistant and select '
+                               '"Compile For Android" if you want to build for Android'.format(jdk_home))
+                java_loaded = False
             
     setattr(conf, 'javaw_loaded', java_loaded)
-
+    
+    # note that the env file contains a string, like 'True' or 'False', not a bool.
+    # also note that during OPTIONS phase we need all modules to load for this host platform
+    # since they are what actually declare what command lines actually exist in the first place.
+    enable_android = is_options_phase or conf.get_env_file_var('ENABLE_ANDROID', required=True, silent=True)
+    
     for additional_module_to_load in additional_modules_to_load:
-        if not java_loaded and needs_java and hasattr(conf, 'env') and additional_module_to_load in additional_java_modules_to_load:
+        if not is_options_phase and not java_loaded and needs_java and additional_module_to_load in additional_java_modules_to_load:
             # If we were not able to load java when needed, skip all modules that were tagged as needing java (only for non-Option passes)
             continue
 
         # Do not load android module if ENABLE_ANDROID is false in environment.json
-        enable_android = conf.get_env_file_var('ENABLE_ANDROID', required=True, silent=True)
         if enable_android == 'False' and 'android' in additional_module_to_load.lower():
             continue
 
@@ -389,21 +398,8 @@ def validate_build_command(bld):
         bld.fatal("[Error] Invalid build command: '{}'.  Type in '{} --help' for more information"
                   .format(bld.cmd if hasattr(bld, 'cmd') else str(bld), CURRENT_WAF_EXECUTABLE))
 
-    # If this is a build or clean command, see if this is an unsupported platform+config
-    if bld.cmd.startswith('build_'):
-        bld_clean_platform_config_key = bld.cmd[6:]
-    elif bld.cmd.startswith('clean_'):
-        bld_clean_platform_config_key = bld.cmd[5:]
-    else:
-        bld_clean_platform_config_key = None
-
-    if bld_clean_platform_config_key is not None:
-        if bld_clean_platform_config_key in UNSUPPORTED_PLATFORM_CONFIGURATIONS:
-            # This is not a supported build_ or  clean_ operation for a platform + configuration
-            raise conf.fatal("[Error] This is an unsupported platform and configuration")
-
     # Check if a valid spec is defined for build commands
-    if bld.cmd not in NON_BUILD_COMMANDS:
+    if not getattr(bld, 'is_project_generator', False):
 
         # project spec is a mandatory parameter for build commands that perform monolithic builds
         if bld.is_build_monolithic():
@@ -422,9 +418,13 @@ def validate_build_command(bld):
         elif bld.is_option_true('show_disassembly') and bld.options.file_filter == "":
             bld.fatal('--show-disassembly can only be used in conjunction with --file-filter')
 
-    # android armv8 api level validation
-    if ('android_armv8' in bld.cmd) and (not bld.is_android_armv8_api_valid()):
-        bld.fatal('[ERROR] Attempting to build Android ARMv8 against an API that is lower than the min spec: API 21.')
+        platform, _ = bld.get_platform_and_configuration()
+        if not bld.is_target_platform_enabled(platform):
+            raise Errors.WafError("[ERROR] Platform '{}' is not enabled or supported. Make sure it is properly configured for this host.".format(platform))
+
+        # android armv8 api level validation
+        if ('android_armv8' in bld.cmd) and (not bld.is_android_armv8_api_valid()):
+            bld.fatal('[ERROR] Attempting to build Android ARMv8 against an API that is lower than the min spec: API 21.')
 
     # Validate the game project version
     if VERSION_NUMBER_PATTERN.match(bld.options.version) is None:
@@ -464,10 +464,10 @@ def prepare_build_environment(bld):
     :param bld: The BuildContext
     """
 
-    if bld.cmd in NON_BUILD_COMMANDS:
+    if getattr(bld, 'is_project_generator', False):
         bld.env['PLATFORM'] = 'project_generator'
         bld.env['CONFIGURATION'] = 'project_generator'
-    else:
+    elif bld.env['PLATFORM'] != 'project_generator':
         if not bld.variant:
             bld.fatal("[ERROR] Invalid build variant.  Please use a valid build configuration. "
                       "Type in '{} --help' for more information".format(CURRENT_WAF_EXECUTABLE))
@@ -479,13 +479,6 @@ def prepare_build_environment(bld):
         # Inspect the details of the current platform
         if not bld.is_target_platform_enabled(platform):
             bld.fatal("[ERROR] Target platform '{}' not supported. [on host platform: {}]".format(platform, Utils.unversioned_sys_platform()))
-            
-        # make sure the android launchers are included in the build
-        if bld.check_platform_explicit_boolean_attribute(platform, 'is_android'):
-            android_path = os.path.join(bld.path.abspath(), bld.get_android_project_relative_path(), 'wscript')
-            if not os.path.exists(android_path):
-                bld.fatal('[ERROR] Android launchers not correctly configured. Run \'configure\' again')
-            SUBFOLDERS.append(bld.get_android_project_absolute_path())
 
         # If a spec was supplied, check for platform limitations
         if bld.options.project_spec:
@@ -548,7 +541,7 @@ def setup_game_projects(bld):
     if bld.env['CONFIGURATION'] == 'project_generator' or not bld.spec_disable_games():
         # If this bld command is to generate the use maps, then recurse all of the game projects, otherwise
         # only recurse the enabled game project
-        game_project_list = bld.game_projects() if bld.cmd in ('generate_module_def_files', 'generate_module_dependency_files') \
+        game_project_list = bld.game_projects() if bld.cmd in ('generate_module_dependency_files') \
             else bld.get_enabled_game_project_list()
         for project in game_project_list:
 
@@ -612,7 +605,7 @@ def is_engine_local(conf):
     :return: True if we are running from the engine folder, False if not
     """
     current_dir = os.path.normcase(os.path.abspath(os.path.curdir))
-    engine_dir = os.path.normcase(os.path.abspath(conf.engine_path))
+    engine_dir = os.path.normcase(os.path.abspath(conf.get_engine_node().abspath()))
     return current_dir == engine_dir
 
 
@@ -742,7 +735,7 @@ def find_unique_target_uid():
 
     if random_retry == 0:
         raise Errors.WafError("Unable to generate a unique target id.  Current ids are : {}".format(
-            ",".join(UID_MAP_TO_TARGET.keys())))
+            ",".join(list(UID_MAP_TO_TARGET.keys()))))
     return random_unique_id
 
 
@@ -788,17 +781,25 @@ def validate_override_target_uid(target_name, override_target_uid):
 @conf
 def process_additional_code_folders(ctx):
     additional_code_folders = ctx.get_additional_code_folders_from_spec()
-    if len(additional_code_folders)>0:
+    if len(additional_code_folders) > 0:
         ctx.recurse(additional_code_folders)
     
-    supported_platforms = ctx.get_current_platform_list(include_alias=False)
-    if any(platform for platform in supported_platforms if ctx.is_android_platform(platform)):
+    enabled_platforms = ctx.get_all_target_platforms()
 
+    is_android_platform_enabled = False
+    for enabled_platform in enabled_platforms:
+        if 'android' in enabled_platform.aliases:
+            is_android_platform_enabled = True
+            break
+    if is_android_platform_enabled:
         process_android_func = getattr(ctx, 'process_android_projects', None)
         if not process_android_func:
             ctx.fatal('[ERROR] Failed to find required Android process function - process_android_projects')
 
-        process_android_func()
+        try:
+            process_android_func()
+        except: 
+            ctx.fatal('[ERROR] Android projects not correctly configured. Run \'configure\' again')
 
 
 @conf
@@ -866,6 +867,11 @@ def PreprocessFilePath(ctx, input, alias_invalid_callback, alias_not_enabled_cal
         if alias_key == "ENGINE":
             # Apply the @ENGINE@ Alias
             processed_path = os.path.normpath(input_path.replace('@{}@'.format(alias_key), ctx.engine_node.abspath()))
+            return processed_path
+
+        elif alias_key == "PROJECT":
+            # Apply the @PROJECT@ Alias
+            processed_path = os.path.normpath(input_path.replace('@{}@'.format(alias_key), Context.launch_dir))
             return processed_path
 
         elif alias_key.startswith(FILE_ALIAS_3P_PREFIX):
@@ -977,7 +983,7 @@ def find_unique_target_uid():
 
     if random_retry == 0:
         raise Errors.WafError("Unable to generate a unique target id.  Current ids are : {}".format(
-            ",".join(UID_MAP_TO_TARGET.keys())))
+            ",".join(list(UID_MAP_TO_TARGET.keys()))))
     return random_unique_id
 
 
@@ -991,7 +997,7 @@ def derive_target_uid(target_name):
     global UID_MAP_TO_TARGET
 
     # Calculate a deterministic UID to this target initially based on the CRC32 value of the target name
-    uid = apply_target_uid_range(zlib.crc32(target_name))
+    uid = apply_target_uid_range(zlib.crc32(target_name.encode('utf-8')))
     if uid in UID_MAP_TO_TARGET and UID_MAP_TO_TARGET[uid] != target_name:
         raise Errors.WafError(
             "[ERROR] Unable to generate a unique target id for target '{}' due to collision with target '{}'. "
@@ -1103,7 +1109,7 @@ def update_module_definition(ctx, module_type, build_type, kw):
         'configurations': sorted(configurations),
         'uses': sorted(uses)
     }
-    module_def_folder = ctx.get_module_def_folder_node().abspath()
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
     if not ctx.cached_does_path_exist(module_def_folder):
         os.makedirs(module_def_folder)
         ctx.cached_does_path_exist(module_def_folder, True)
@@ -1130,14 +1136,13 @@ def _get_module_def_map(ctx):
 
 
 def _has_module_def(ctx, target):
-    module_def_folder = ctx.get_module_def_folder_node().abspath()
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
     module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
     return os.path.isfile(module_def_file)
 
 
 def _read_module_def_file(ctx, target):
-
-    module_def_folder = ctx.get_module_def_folder_node().abspath()
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
     module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
     if not os.path.exists(module_def_file):
         raise Errors.WafError("Invalid target '{}'. Missing module definition file. Make sure that the target exists".format(target))
@@ -1393,6 +1398,21 @@ def validate_monolithic_specified_targets(bld):
 
 
 @conf
+def get_launch_node(ctx):
+    # attempt to use the build context launch node function first
+    if hasattr(ctx, 'launch_node'):
+        return ctx.launch_node()
+
+    try:
+        return ctx.ly_launch_node
+    except AttributeError:
+        pass
+
+    ctx.ly_launch_node = ctx.root.make_node(Context.launch_dir)
+
+    return ctx.ly_launch_node
+
+@conf
 def get_engine_node(ctx):
     """
     Determine the engine root path from SetupAssistantUserPreferences. if it exists
@@ -1438,7 +1458,7 @@ def get_engine_node(ctx):
     return ctx.engine_node
 
 @conf
-def add_platform_root(ctx, kw, root, export):
+def add_platform_root(ctx, kw, root, export, is_gem_module_platform_root):
     """
     Preprocess/update a project definition's keywords (kw) to include platform-specific settings
     
@@ -1447,6 +1467,8 @@ def add_platform_root(ctx, kw, root, export):
     :param root:    The root folder where the platform subfolders will reside. This folder is relative to the current
                     project folder.
     :param export:  Flag to include the include paths as an export_includes to add to any dependent project
+
+    :param is_gem_module_platform_root: Is the provided platform root for a named Gem module?
     """
     
     if not os.path.isabs(root):
@@ -1458,9 +1480,17 @@ def add_platform_root(ctx, kw, root, export):
         Logs.warn("[WARN] platform root '{}' is not a valid folder.".format(platform_base_path))
         return
     
-        # Get the current list of platforms
-    target_platforms = ctx.get_all_target_platforms(False)
-    
+    # Get the current list of platforms
+    target_platforms = ctx.get_all_target_platforms()
+
+    gem_module_name = None
+    if is_gem_module_platform_root:
+        gem_module_name = kw['target']
+        if '.' in gem_module_name:
+            gem_module_name = gem_module_name.split('.')[-1].lower()
+        else:
+            raise Errors.WafError("'platform_gem_module_roots' used on the default gem module '{}'. 'platform_gem_module_roots' is only for named gem modules in gems.json, instead use 'platform_roots'".format(gem_module_name))
+
     for target_platform in target_platforms:
         platform_folder = target_platform.attributes.get('platform_folder', None)
         if not platform_folder:
@@ -1472,8 +1502,9 @@ def add_platform_root(ctx, kw, root, export):
             continue
 
         directory = os.path.join(platform_base_path, platform_folder)
+        platform_name_suffix = '{}_{}'.format(gem_module_name, platform_keyword) if is_gem_module_platform_root else platform_keyword
 
-        waf_file_list = os.path.join(directory, 'platform_{}.waf_files'.format(platform_keyword))
+        waf_file_list = os.path.join(directory, 'platform_{}.waf_files'.format(platform_name_suffix))
         if os.path.isfile(waf_file_list):
             waf_files_relative_path = os.path.relpath(waf_file_list, ctx.path.abspath())
             # the platform file list can be a list or a string, since append_to_unique_list expects a list, we convert to a list if it is not
@@ -1483,7 +1514,7 @@ def add_platform_root(ctx, kw, root, export):
             append_to_unique_list(file_list, waf_files_relative_path)
         else:
             # The platform_<platform>.waf_files file list is REQUIRED for every platform subfolder under the platform root.
-            raise Errors.WafError("Missing required 'platform_{}.waf_files' from path '{}'.".format(platform_keyword, directory))
+            raise Errors.WafError("Missing required 'platform_{}.waf_files' from path '{}'.".format(platform_name_suffix, directory))
 
         append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform),[]),
                               directory)
@@ -1491,7 +1522,7 @@ def add_platform_root(ctx, kw, root, export):
             append_to_unique_list(kw.setdefault('{}_export_includes'.format(target_platform.platform), []),
                                   directory)
 
-        platform_wscript = os.path.join(directory, 'wscript_{}'.format(platform_keyword))
+        platform_wscript = os.path.join(directory, 'wscript_{}'.format(platform_name_suffix))
         if os.path.isfile(platform_wscript):
             platform_script = runpy.run_path(platform_wscript)
             if 'update_platform_parameters' not in platform_script:
@@ -1536,7 +1567,7 @@ def merge_kw_dictionaries(ctx, kw_target, kw_src, unique=True):
     :param kw_src:      The source kw dictionary to merge from
     :param unique:      Apply values uniquely
     """
-    for key_src_key, key_src_value in kw_src.items():
+    for key_src_key, key_src_value in list(kw_src.items()):
         ctx.append_kw_value(kw_dict=kw_target,
                             key=key_src_key,
                             value=key_src_value,
@@ -1545,7 +1576,11 @@ def merge_kw_dictionaries(ctx, kw_target, kw_src, unique=True):
 
 @conf
 def PlatformRoot(self, root, export_includes=False):
-    return {'root': root, 'export_includes': export_includes}
+    if root.startswith('@ENGINE@'):
+        resolved_root = '{}{}'.format(self.get_engine_node().abspath(), root[len('@ENGINE@'):])
+    else:
+        resolved_root = root
+    return {'root': resolved_root, 'export_includes': export_includes}
 
 
 @conf

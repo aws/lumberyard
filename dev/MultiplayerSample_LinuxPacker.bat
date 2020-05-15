@@ -11,4 +11,4 @@ REM remove or modify any license notices. This file is distributed on an "AS IS"
 REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM
 
-Tools\Python\2.7.12\windows\python.exe Tools\LmbrSetup\Linux\archiver.py %*
+Tools\Python\python3 Tools\LmbrSetup\Linux\archiver.py %*

@@ -1019,13 +1019,21 @@ void CRGBLayer::Serialize(XmlNodeRef& node, bool bLoading)
     }
 }
 
-void CRGBLayer::AllocateTiles(const uint32 dwTileCountX, const uint32 dwTileCountY, const uint32 dwTileResolution)
+void CRGBLayer::AllocateTiles(const uint32 dwTileCountX, const uint32 dwTileCountY, const uint32 dwTileResolution, bool saveIfDirty)
 {
     assert(dwTileCountX);
     assert(dwTileCountY);
 
     // free
-    FreeData();
+    if (saveIfDirty)
+    {
+        SaveAndFreeMemory();
+    }
+    else
+    {
+        FreeData();
+    }
+
     m_TerrainTextureTiles.resize(dwTileCountX * dwTileCountY);
 
     m_dwTileCountX = dwTileCountX;

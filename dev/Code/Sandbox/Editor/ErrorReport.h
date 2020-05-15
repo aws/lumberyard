@@ -98,8 +98,8 @@ public:
     CErrorReport();
 
     //! If enabled errors are reported immidiatly and not stored.
-    void SetImmidiateMode(bool bEnable);
-    bool IsImmidiateMode() const { return m_bImmidiateMode; };
+    void SetImmediateMode(bool bEnable);
+    bool IsImmediateMode() const { return m_bImmediateMode; };
 
     void SetShowErrors(bool bShowErrors = true) { m_bShowErrors = bShowErrors; };
 
@@ -134,7 +134,7 @@ public:
 private:
     //! Array of all error records added to report.
     std::vector<CErrorRecord> m_errors;
-    bool m_bImmidiateMode;
+    bool m_bImmediateMode;
     bool m_bShowErrors;
     _smart_ptr<CBaseObject> m_pObject;
     _smart_ptr<CBaseLibraryItem> m_pItem;

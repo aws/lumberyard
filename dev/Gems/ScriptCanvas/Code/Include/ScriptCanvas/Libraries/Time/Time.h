@@ -18,3 +18,4 @@
 #include "Countdown.h"
 #include "Duration.h"
 #include "Timer.h"
+#include "HeartBeat.h"

@@ -16,9 +16,6 @@
         "Source/DataCache": [
             "Source/DataCache.h",
             "Source/DataCache.cpp"
-        ],
-        "Source/FlowGraph": [
-            "Source/FlowMetastream.cpp"
         ]
     }
 }

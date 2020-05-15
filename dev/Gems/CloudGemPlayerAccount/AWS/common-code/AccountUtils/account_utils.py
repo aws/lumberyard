@@ -18,6 +18,7 @@ from datetime import datetime
 from dateutil import tz
 import errors
 import json
+from six import iteritems # Python 2.7/3.7 Compatibility
 import types
 
 IDP_COGNITO = 'Cognito'
@@ -107,7 +108,7 @@ def get_account_for_identity(cognitoIdentityId):
     if len(items) == 1:
         return items[0]
     if len(items) > 1:
-        print 'Warning: More than one account found for {}'.format(cognitoIdentityId)
+        print('Warning: More than one account found for {}'.format(cognitoIdentityId))
         return items[0]
     return None
 
@@ -122,7 +123,7 @@ def get_account_for_user_name(username):
     if len(items) == 1:
         return items[0]
     if len(items) > 1:
-        print 'Warning: More than one account found for {}'.format(username)
+        print('Warning: More than one account found for {}'.format(username))
         return items[0]
     return None
 
@@ -139,10 +140,10 @@ def get_user(username):
         raise
 
 def convert_account_from_dynamo_to_player_model(item):
-    return {k:v for k,v in item.iteritems() if k in ACCOUNT_FIELDS_RETURNED_FOR_PLAYERS}
+    return {k:v for k,v in iteritems(item) if k in ACCOUNT_FIELDS_RETURNED_FOR_PLAYERS}
 
 def convert_account_from_dynamo_to_admin_model(item):
-    return {k:v for k,v in item.iteritems() if k in ACCOUNT_FIELDS_RETURNED_FOR_ADMINS}
+    return {k:v for k,v in iteritems(item) if k in ACCOUNT_FIELDS_RETURNED_FOR_ADMINS}
 
 def convert_user_from_cognito_to_model(user, accountId=None):
     result = {
@@ -173,7 +174,7 @@ def create_account(item):
         Item=item,
         ConditionExpression='attribute_not_exists(AccountId)'
     )
-    print 'Added account {}'.format(item['AccountId'])
+    print('Added account {}'.format(item['AccountId']))
 
 def update_account(item, delete_keys=set(), existing_account=None):
     # Reads are cheaper than writes, check if a write is actually needed.
@@ -181,7 +182,7 @@ def update_account(item, delete_keys=set(), existing_account=None):
 
     if not existing_account:
         get_account_response = get_account_table().get_item(Key=account_key, ConsistentRead=False)
-        print 'Existing account row: ', get_account_response
+        print('Existing account row: {}'.format(get_account_response))
 
         if 'Item' not in get_account_response:
             raise errors.ClientError('Account {} does not exist.'.format(item['AccountId']))
@@ -190,7 +191,7 @@ def update_account(item, delete_keys=set(), existing_account=None):
 
     updates = {}
     updated_item = existing_account.copy()
-    for key, value in item.iteritems():
+    for key, value in iteritems(item):
         if key not in existing_account or existing_account[key] != value:
             updates[key] =  {'Value': value, 'Action': 'PUT'}
             updated_item[key] = value
@@ -199,20 +200,20 @@ def update_account(item, delete_keys=set(), existing_account=None):
         del updated_item[key]
 
     if not updates:
-        print 'The account table is up to date.'
+        print('The account table is up to date.')
         return existing_account
 
     get_account_table().update_item(
         Key=account_key,
         AttributeUpdates=updates
     )
-    print 'Updated the account table: ', updates
+    print('Updated the account table: {}'.format(updates))
     return updated_item
 
 def create_or_update_account(item, deleteKeys=set()):
     account_key = { 'AccountId': item['AccountId'] }
     get_account_response = get_account_table().get_item(Key=account_key, ConsistentRead=False)
-    print 'Existing account row: ', get_account_response
+    print('Existing account row: {}'.format(get_account_response))
 
     if 'Item' not in get_account_response:
         # Account doesn't exist. Create a new one.
@@ -220,13 +221,13 @@ def create_or_update_account(item, deleteKeys=set()):
             Item=item,
             ConditionExpression='attribute_not_exists(AccountId)'
         )
-        print 'Added account.'
+        print('Added account.')
         return item
 
     existing_item = get_account_response['Item']
     updates = {}
     updated_item = existing_item.copy()
-    for key, value in item.iteritems():
+    for key, value in iteritems(item):
         if key not in existing_item or existing_item[key] != value:
             updates[key] =  {'Value': value, 'Action': 'PUT'}
             updated_item[key] = value
@@ -235,14 +236,14 @@ def create_or_update_account(item, deleteKeys=set()):
         del updated_item[key]
 
     if not updates:
-        print 'The account table is up to date.'
+        print('The account table is up to date.')
         return existing_item
 
     get_account_table().update_item(
         Key=account_key,
         AttributeUpdates=updates
     )
-    print 'Updated the account table: ', updates
+    print('Updated the account table: {}'.format(updates))
     return updated_item
 
 def logging_filter(value_to_filter):
@@ -251,23 +252,23 @@ def logging_filter(value_to_filter):
     return result
 
 def apply_logging_filter(value_to_update):
-    if type(value_to_update) == types.DictType:
+    if type(value_to_update) == dict:
         if 'email' in value_to_update:
             value_to_update['email'] = '<redacted>'
         if 'Email' in value_to_update:
             value_to_update['Email'] = '<redacted>'
         if value_to_update.get('Name') == 'email':
             value_to_update['Value'] = '<redacted>'
-        for key,value in value_to_update.iteritems():
+        for key,value in iteritems(value_to_update):
             apply_logging_filter(value)
-    if type(value_to_update) == types.ListType:
+    if type(value_to_update) == list:
         for value in value_to_update:
             apply_logging_filter(value)
 
 def validate_account_update_request(account):
     if len(account.get('PlayerName', '')) > MAX_PLAYER_NAME_LENGTH:
         raise errors.ClientError('PlayerName is longer than {} characters'.format(MAX_PLAYER_NAME_LENGTH))
-    for key,value in account.get('IdentityProviders', {}).get(IDP_COGNITO, {}).iteritems():
+    for key,value in iteritems(account.get('IdentityProviders', {}).get(IDP_COGNITO, {})):
         if len(value) > MAX_COGNITO_ATTRIBUTE_LENGTH:
             raise errors.ClientError('{} is longer than {} characters'.format(key, MAX_COGNITO_ATTRIBUTE_LENGTH))
 
@@ -295,3 +296,7 @@ def compare_accounts(a, b):
 
     # Tie break by account id.
     return cmp(a.get('AccountId', ''), b.get('AccountId', ''))
+
+# cmp doesn't exist in Python 3
+def cmp(a, b):
+    return (a > b) - (a < b)

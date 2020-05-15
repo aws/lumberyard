@@ -128,7 +128,7 @@ namespace ScriptCanvas
             source.SetElement(AZ::GetClamp(aznumeric_cast<int>(index), 0, 2), ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromElement, "Math/Vector3", "{D10C2172-CB42-44E3-9C16-FA51F8A5A235}", "returns a vector with the element corresponding to the index (0 -> x) (1 -> y) (2 -> z) set to the value", "Source", "Index", "Value");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromElement, "Math/Vector3", "{C35B5119-40B4-48ED-93B1-D70446985A51}", "returns a vector with the element corresponding to the index (0 -> x) (1 -> y) (2 -> z) set to the value", "Source", "Index", "Value");
 
         AZ_INLINE Vector3Type FromLength(Vector3Type source, const NumberType length)
         {
@@ -298,7 +298,7 @@ namespace ScriptCanvas
             source.GetSinCos(sin, cos);
             return std::make_tuple(sin, cos);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE(SineCosine, "Math/Vector3", "{556C428F-BE98-418D-9FE7-E9CBD30C0BDB}", "returns a vector from the sine of each element from the source, and from the cosine of each element from the source", "Source", "Sine", "Cosine");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE(SineCosine, "Math/Vector3", "{04EE253D-680D-4F95-A451-837EAE104E88}", "returns a vector from the sine of each element from the source, and from the cosine of each element from the source", "Source", "Sine", "Cosine");
         
         AZ_INLINE Vector3Type Slerp(const Vector3Type from, const Vector3Type to, const NumberType t)
         {

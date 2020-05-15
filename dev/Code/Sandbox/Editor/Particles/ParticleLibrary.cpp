@@ -145,7 +145,6 @@ bool CParticleLibrary::SetFilename(const QString& filename, bool checkForUnique 
             return false;
         }
     }
-    m_filename = filename;
-    m_filename.toLower();
+    m_filename = filename.toLower();
     return true;
 }

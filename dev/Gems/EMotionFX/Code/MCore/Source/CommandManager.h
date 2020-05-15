@@ -92,6 +92,7 @@ namespace MCore
         bool ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult);
         bool ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult);
+        bool ExecuteCommandInsideCommand(Command* command, AZStd::string& outCommandResult);
 
         bool ExecuteCommandOrAddToGroup(const AZStd::string& command, MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
 

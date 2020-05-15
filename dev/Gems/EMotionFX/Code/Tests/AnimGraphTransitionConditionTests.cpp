@@ -70,18 +70,18 @@ namespace EMotionFX
     template<class ConditionType>
     struct ConditionFixtureParams
     {
-        using ConditionSetUpFn = void(*)(ConditionType*);
+        using ConditionSetUpFunc = void(*)(ConditionType*);
 
         ConditionFixtureParams(
-            const ConditionSetUpFn& fn,
+            const ConditionSetUpFunc& func,
             const ActiveNodesMap& activeNodesMap,
-            const FrameCallback& frameCallback = [](AnimGraphInstance*, int) {}
-        ) : m_setUpFn(fn), activeNodes(activeNodesMap), callback(frameCallback)
+            const FrameCallback& frameCallback = [] (AnimGraphInstance*, int) {}
+        ) : m_setUpFunction(func), activeNodes(activeNodesMap), callback(frameCallback)
         {
         }
 
         // Function to set up the condition's parameters
-        const ConditionSetUpFn m_setUpFn;
+        const ConditionSetUpFunc m_setUpFunction;
 
         // List of nodes that are active on each frame
         const ActiveNodesMap activeNodes;
@@ -111,7 +111,7 @@ namespace EMotionFX
             ParameterType* parameter = aznew ParameterType();
             parameter->SetName(name);
             parameter->SetDefaultValue(defaultValue);
-            mAnimGraph->AddParameter(parameter);
+            m_animGraph->AddParameter(parameter);
         }
 
         void AddNodesToAnimGraph() override
@@ -124,12 +124,12 @@ namespace EMotionFX
             // Create the appropriate condition type from this test's
             // parameters
             ConditionType* condition = aznew ConditionType();
-            mTransition->AddCondition(condition);
-            condition->SetAnimGraph(mAnimGraph);
+            m_transition->AddCondition(condition);
+            condition->SetAnimGraph(m_animGraph.get());
 
-            this->GetParam().m_setUpFn(condition);
+            this->GetParam().m_setUpFunction(condition);
 
-            mTransition->SetBlendTime(0.5f);
+            m_transition->SetBlendTime(0.5f);
         }
 
     protected:
@@ -139,13 +139,13 @@ namespace EMotionFX
             const FrameCallback& callback = this->GetParam().callback;
 
             // Allow tests to set starting values for parameters
-            callback(mAnimGraphInstance, -1);
+            callback(m_animGraphInstance, -1);
 
             // Run the EMotionFX update loop for 3 seconds at 60 fps
             for (int frameNum = 0; frameNum < numUpdates; ++frameNum)
             {
                 // Allow for test-data defined updates to the graph state
-                callback(mAnimGraphInstance, frameNum);
+                callback(m_animGraphInstance, frameNum);
 
                 if (frameNum == 0)
                 {
@@ -168,24 +168,24 @@ namespace EMotionFX
                     AZStd::vector<AnimGraphNode*> expectedActiveNodes;
                     for (const char* name : activeNodes.at(frameNum))
                     {
-                        expectedActiveNodes.push_back(mAnimGraph->RecursiveFindNodeByName(name));
+                        expectedActiveNodes.push_back(m_animGraph->RecursiveFindNodeByName(name));
                     }
 
-                    const AZStd::vector<AnimGraphNode*>& gotActiveNodes = mStateMachine->GetActiveStates(mAnimGraphInstance);
-                    
+                    const AZStd::vector<AnimGraphNode*>& gotActiveNodes = m_stateMachine->GetActiveStates(m_animGraphInstance);
+
                     EXPECT_EQ(gotActiveNodes, expectedActiveNodes) << "on frame " << frameNum << ", time " << frameNum * updateInterval;
                 }
             }
             {
                 // Ensure that we reached the target state after 3 seconds
-                const AZStd::vector<AnimGraphNode*>& activeStates = mStateMachine->GetActiveStates(mAnimGraphInstance);
+                const AZStd::vector<AnimGraphNode*>& activeStates = m_stateMachine->GetActiveStates(m_animGraphInstance);
                 const size_t numActiveStates = activeStates.size();
 
                 EXPECT_EQ(numActiveStates, 1) << numActiveStates << " active state detected. Only one state should be active.";
 
                 if (numActiveStates > 0)
                 {
-                    EXPECT_EQ(activeStates[0], mMotionNode1) << "MotionNode1 is not the single active node";
+                    EXPECT_EQ(activeStates[0], m_motionNodeB) << "MotionNode1 is not the single active node";
                 }
             }
         }
@@ -253,34 +253,35 @@ namespace EMotionFX
             motion0ToChildStateCondition->SetCountDownTime(0.5f);
 
             AnimGraphStateTransition* motion0ToChildStateTransition = aznew AnimGraphStateTransition();
-            motion0ToChildStateTransition->SetSourceNode(mMotionNode0);
+            motion0ToChildStateTransition->SetSourceNode(m_motionNodeA);
             motion0ToChildStateTransition->SetTargetNode(mChildState);
             motion0ToChildStateTransition->SetBlendTime(0.5f);
             motion0ToChildStateTransition->AddCondition(motion0ToChildStateCondition);
 
             AnimGraphStateTransition* childStateToMotion1Transition = aznew AnimGraphStateTransition();
             childStateToMotion1Transition->SetSourceNode(mChildState);
-            childStateToMotion1Transition->SetTargetNode(mMotionNode1);
+            childStateToMotion1Transition->SetTargetNode(m_motionNodeB);
             childStateToMotion1Transition->SetBlendTime(0.5f);
 
-            mStateMachine->AddChildNode(mChildState);
-            mStateMachine->AddTransition(motion0ToChildStateTransition);
-            mStateMachine->AddTransition(childStateToMotion1Transition);
+            m_stateMachine->AddChildNode(mChildState);
+            m_stateMachine->AddTransition(motion0ToChildStateTransition);
+            m_stateMachine->AddTransition(childStateToMotion1Transition);
 
             // Create the appropriate condition type from this test's
             // parameters
             AnimGraphStateCondition* condition = aznew AnimGraphStateCondition();
-            condition->SetAnimGraph(mAnimGraph);
+            condition->SetAnimGraph(m_animGraph.get());
             childStateToMotion1Transition->AddCondition(condition);
 
-            this->GetParam().m_setUpFn(condition);
+            this->GetParam().m_setUpFunction(condition);
         }
 
     protected:
         AnimGraphStateMachine* mChildState;
     };
 
-    class RangedMotionEventConditionFixture : public TransitionConditionFixtureP<AnimGraphMotionCondition>
+    class RangedMotionEventConditionFixture
+        : public TransitionConditionFixtureP<AnimGraphMotionCondition>
     {
     public:
         void AddNodesToAnimGraph() override
@@ -289,12 +290,12 @@ namespace EMotionFX
 
             AnimGraphMotionCondition* rangeMotionCondition = aznew AnimGraphMotionCondition();
             rangeMotionCondition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_EVENT);
-            rangeMotionCondition->SetMotionNodeId(mMotionNode0->GetId());
+            rangeMotionCondition->SetMotionNodeId(m_motionNodeA->GetId());
             const AZStd::shared_ptr<const EventData> eventData = GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestRangeEvent", "TestParameter");
             rangeMotionCondition->SetEventDatas({eventData});
 
-            this->mTransition->AddCondition(rangeMotionCondition);
-            rangeMotionCondition->SetAnimGraph(mAnimGraph);
+            this->m_transition->AddCondition(rangeMotionCondition);
+            rangeMotionCondition->SetAnimGraph(m_animGraph.get());
         }
     };
 

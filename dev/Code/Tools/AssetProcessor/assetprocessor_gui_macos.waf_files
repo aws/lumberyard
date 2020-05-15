@@ -9,7 +9,9 @@
         ],
         "utilities": [
             "native/utilities/MacDockIconHandler.mm",
-            "native/utilities/MacDockIconHandler.h"
+            "native/utilities/MacDockIconHandler.h",
+            "native/utilities/Utils_UnixLike.cpp",
+            "native/utilities/Utils_UnixLike.h"
         ]
     }
 }

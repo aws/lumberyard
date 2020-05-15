@@ -38,7 +38,7 @@ public:
         m_nextHandle = LocalHandleStartValue;
     }
 
-    ~TestFileIOBase()
+    ~TestFileIOBase() override
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
         while (!m_openFiles.empty())
@@ -51,7 +51,7 @@ public:
     }
 
 
-    AZ::IO::Result Open(const char* filePath, AZ::IO::OpenMode mode, AZ::IO::HandleType& fileHandle)
+    AZ::IO::Result Open(const char* filePath, AZ::IO::OpenMode mode, AZ::IO::HandleType& fileHandle) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
         ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
@@ -129,7 +129,7 @@ public:
         }
     }
 
-    AZ::IO::Result Close(AZ::IO::HandleType fileHandle)
+    AZ::IO::Result Close(AZ::IO::HandleType fileHandle) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -146,7 +146,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Read(AZ::IO::HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead, AZ::u64* bytesRead)
+    AZ::IO::Result Read(AZ::IO::HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead, AZ::u64* bytesRead) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -175,7 +175,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Write(AZ::IO::HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten)
+    AZ::IO::Result Write(AZ::IO::HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -198,7 +198,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Flush(AZ::IO::HandleType fileHandle)
+    AZ::IO::Result Flush(AZ::IO::HandleType fileHandle) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -211,7 +211,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Tell(AZ::IO::HandleType fileHandle, AZ::u64& offset)
+    AZ::IO::Result Tell(AZ::IO::HandleType fileHandle, AZ::u64& offset) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -224,7 +224,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Seek(AZ::IO::HandleType fileHandle, AZ::s64 offset, AZ::IO::SeekType type)
+    AZ::IO::Result Seek(AZ::IO::HandleType fileHandle, AZ::s64 offset, AZ::IO::SeekType type) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -247,7 +247,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Size(AZ::IO::HandleType fileHandle, AZ::u64& size)
+    AZ::IO::Result Size(AZ::IO::HandleType fileHandle, AZ::u64& size) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -259,7 +259,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    AZ::IO::Result Size(const char* filePath, AZ::u64& size)
+    AZ::IO::Result Size(const char* filePath, AZ::u64& size) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
         ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
@@ -273,7 +273,7 @@ public:
         return AZ::IO::ResultCode::Success;
     }
 
-    bool IsReadOnly(const char* filePath)
+    bool IsReadOnly(const char* filePath) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
         ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
@@ -281,7 +281,7 @@ public:
         return !AZ::IO::SystemFile::IsWritable(resolvedPath);
     }
 
-    bool Eof(AZ::IO::HandleType fileHandle)
+    bool Eof(AZ::IO::HandleType fileHandle) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -292,7 +292,7 @@ public:
         return filePointer->Eof();
     }
 
-    AZ::u64 ModificationTime(const char* filePath)
+    AZ::u64 ModificationTime(const char* filePath) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
         ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
@@ -300,7 +300,7 @@ public:
         return AZ::IO::SystemFile::ModificationTime(resolvedPath);
     }
 
-    AZ::u64 ModificationTime(AZ::IO::HandleType fileHandle)
+    AZ::u64 ModificationTime(AZ::IO::HandleType fileHandle) override
     {
         auto filePointer = GetFilePointerFromHandle(fileHandle);
         if (!filePointer)
@@ -311,7 +311,7 @@ public:
         return filePointer->ModificationTime();
     }
 
-    bool Exists(const char* filePath)
+    bool Exists(const char* filePath) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
         ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
@@ -319,7 +319,7 @@ public:
         return AZ::IO::SystemFile::Exists(resolvedPath);
     }
 
-    AZ::IO::Result Remove(const char* filePath)
+    AZ::IO::Result Remove(const char* filePath) override
     {
         char resolvedPath[AZ_MAX_PATH_LEN];
 
@@ -333,7 +333,7 @@ public:
         return AZ::IO::SystemFile::Delete(resolvedPath) ? AZ::IO::ResultCode::Success : AZ::IO::ResultCode::Error;
     }
 
-    AZ::IO::Result Rename(const char* originalFilePath, const char* newFilePath)
+    AZ::IO::Result Rename(const char* originalFilePath, const char* newFilePath) override
     {
         char resolvedOldPath[AZ_MAX_PATH_LEN];
         char resolvedNewPath[AZ_MAX_PATH_LEN];
@@ -368,12 +368,12 @@ public:
     }
 
 
-    AZ::IO::Result DestroyPath(const char* )
+    AZ::IO::Result DestroyPath(const char* ) override
     {
         return AZ::IO::ResultCode::Error;        
     }
 
-    bool ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize)
+    bool ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize) override
     {
         using namespace testing::internal;
 
@@ -405,24 +405,24 @@ public:
         return true;
     }
 
-    void SetAlias(const char*, const char*)
+    void SetAlias(const char*, const char*) override
     {
     }
 
-    const char* GetAlias(const char*)
+    const char* GetAlias(const char*) override
     {
         return nullptr;
     }
 
-    void ClearAlias(const char* ) { }
+    void ClearAlias(const char* ) override { }
 
-    AZ::u64 ConvertToAlias(char* inOutBuffer, AZ::u64) const
+    AZ::u64 ConvertToAlias(char* inOutBuffer, AZ::u64) const override
     {
         return strlen(inOutBuffer);
     }
 
 
-    bool GetFilename(AZ::IO::HandleType fileHandle, char* filename, AZ::u64 filenameSize) const
+    bool GetFilename(AZ::IO::HandleType fileHandle, char* filename, AZ::u64 filenameSize) const override
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
         auto fileIt = m_openFiles.find(fileHandle);
@@ -436,8 +436,8 @@ public:
 
     bool IsDirectory(const char*) override { return false; };
     AZ::IO::Result CreatePath(const char*) override { return AZ::IO::ResultCode::Error; };
-    AZ::IO::Result Copy(const char*, const char*) { return AZ::IO::ResultCode::Error; };
-    AZ::IO::Result FindFiles(const char*, const char*, AZ::IO::FileIOBase::FindFilesCallbackType ) { return AZ::IO::ResultCode::Error; };
+    AZ::IO::Result Copy(const char*, const char*) override { return AZ::IO::ResultCode::Error; };
+    AZ::IO::Result FindFiles(const char*, const char*, AZ::IO::FileIOBase::FindFilesCallbackType ) override { return AZ::IO::ResultCode::Error; };
 };
 
 class SetRestoreFileIOBaseRAII

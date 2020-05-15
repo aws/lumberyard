@@ -14,8 +14,6 @@
 
 #include <IEntityClass.h>
 
-#include <FlowSystem/Nodes/FlowBaseNode.h>
-
 #include "LightningGem.h"
 #include "LightningArc.h"
 #include "LightningGameEffectCry.h"
@@ -115,10 +113,6 @@ namespace Lightning
         case ESYSTEM_EVENT_GAME_POST_INIT:
             IComponentFactoryRegistry::RegisterAllComponentFactoryNodes(*gEnv->pEntitySystem->GetComponentFactoryRegistry());
             GameEffectSystemNotificationBus::Handler::BusConnect();
-            break;
-
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            RegisterExternalFlowNodes();
             break;
 
             // Called on ESYSTEM_EVENT_GAME_POST_INIT_DONE instead of ESYSTEM_EVENT_GAME_POST_INIT because the GameEffectSystem Gem

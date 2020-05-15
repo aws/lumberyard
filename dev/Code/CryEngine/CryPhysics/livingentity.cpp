@@ -1621,14 +1621,17 @@ void CLivingEntity::RegisterContact(const Vec3& posSelf, const Vec3& pt, const V
         epc.n = n;
         if (bLegsContact)
         {
+            const float MinimumMagnitude = 3.f;
+            const float MaxEntityVolumeMultiplier = 8.f;
             if (!(pCollider->m_parts[ipart].flags & geom_manually_breakable))
             {
-                if (!((v - m_vel - m_velGround).len2() > 3 && pbody->V < m_size.GetVolume() * 8))
+                Vec3 vRel = v - m_vel - m_velGround;
+                if (vRel.len2() <= MinimumMagnitude || pbody->V >= m_size.GetVolume() * MaxEntityVolumeMultiplier || m_mass < 0 || pbody->Minv < 0)
                 {
                     return;
                 }
-                epc.n = v.normalized();
-                imp = (epc.n * (v - m_vel - m_velGround)) * (m_mass * (m_mass * pbody->Minv + 1.0f));
+                epc.n = vRel.normalized();
+                imp = (epc.n * vRel) * (m_mass / (m_mass * pbody->Minv + 1.0f));
             }
         }
         epc.pt = pt;

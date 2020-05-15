@@ -17,6 +17,8 @@
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzCore/Outcome/Outcome.h>
 
+#include <ImageProcessing/ImageProcessingBus.h>
+
 namespace ImageProcessing
 {
     //! Builder to process images 
@@ -48,6 +50,7 @@ namespace ImageProcessing
     //! BuilderPluginComponent is to handle the lifecycle of ImageBuilder module.
     class BuilderPluginComponent
         : public AZ::Component
+        , protected ImageProcessingRequestBus::Handler
     {
     public:
         AZ_COMPONENT(BuilderPluginComponent, "{2F12E1BE-D8F6-47A4-AC3E-6C5527C55840}")
@@ -65,6 +68,12 @@ namespace ImageProcessing
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         //////////////////////////////////////////////////////////////////////////
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////
+        // ImageProcessingRequestBus interface implementation
+        IImageObject* LoadImage(const AZStd::string& filePath) override;
+        ////////////////////////////////////////////////////////////////////////
 
     private:
         ImageBuilderWorker m_imageBuilder;

@@ -45,6 +45,7 @@ AZ_POP_DISABLE_WARNING
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
+#include <ScriptCanvas/Variable/GraphVariable.h>
 
 #include <Editor/View/Widgets/VariablePanel/VariablePaletteTableView.h>
 #include <Editor/View/Widgets/VariablePanel/GraphVariablesTableView.h>
@@ -62,7 +63,7 @@ namespace ScriptCanvasEditor
 {
     class VariablePropertiesComponent
         : public GraphCanvas::GraphCanvasPropertyComponent
-        , protected ScriptCanvas::VariableNotificationBus::Handler
+        , protected ScriptCanvas::VariableNotificationBus::Handler        
     {
     public:
         AZ_COMPONENT(VariablePropertiesComponent, "{885F276B-9633-42F7-85BD-10869E606873}", GraphCanvasPropertyComponent);
@@ -75,24 +76,23 @@ namespace ScriptCanvasEditor
 
         const char* GetTitle();
 
-        void SetVariable(const ScriptCanvas::VariableId& variableId);
-        void SetScriptCanvasGraphId(AZ::EntityId scriptCanvasGraphId);
+        void SetVariable(ScriptCanvas::GraphVariable* variable);
 
     private:
         void OnNameChanged();
 
         // VariableNotificationBus::Handler
         void OnVariableRemoved() override;
-        void OnVariableRenamed(AZStd::string_view variableName) override;
-        void OnVariableValueChanged() override;
+        void OnVariableRenamed(AZStd::string_view variableName) override;        
         void OnVariableExposureChanged() override;
         void OnVariableExposureGroupChanged() override;
+
+        void OnVariableValueChanged() override;
         ////
 
-        ScriptCanvas::VariableId m_variableId;
         AZStd::string m_variableName;
-        ScriptCanvas::VariableDatum* m_variableDatum;
-        AZ::EntityId m_scriptCanvasGraphId;
+        ScriptCanvas::GraphVariable* m_variable;
+        ScriptCanvas::ScriptCanvasId m_scriptCanvasGraphId;
 
         AZStd::string m_componentTitle;
     };
@@ -103,7 +103,7 @@ namespace ScriptCanvasEditor
         : public QMenu
     {
     public:
-        VariablePanelContextMenu(VariableDockWidget* contextMenu, const AZ::EntityId& scriptCanvasGraphId, ScriptCanvas::VariableId varId);
+        VariablePanelContextMenu(VariableDockWidget* contextMenu, const ScriptCanvas::ScriptCanvasId& scriptCanvasExecutionId, ScriptCanvas::VariableId varId);
     };
 
     class VariableDockWidget
@@ -117,7 +117,7 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(VariableDockWidget, AZ::SystemAllocator, 0);
 
         static AZStd::string ConstructDefaultVariableName(AZ::u32 variableCounter);
-        static AZStd::string FindDefaultVariableName(const AZ::EntityId& scriptCanvasGraphId);
+        static AZStd::string FindDefaultVariableName(const ScriptCanvas::ScriptCanvasId& scriptCanvasGraphId);
 
         VariableDockWidget(QWidget* parent = nullptr);
         ~VariableDockWidget();
@@ -136,7 +136,7 @@ namespace ScriptCanvasEditor
         void focusOutEvent(QFocusEvent* focusEvent) override;
         ////
 
-        const AZ::EntityId& GetActiveScriptCanvasGraphId() const;
+        const ScriptCanvas::ScriptCanvasId& GetActiveScriptCanvasId() const;
 
     public slots:
         void OnCreateVariable(ScriptCanvas::Data::Type varType);
@@ -174,10 +174,19 @@ namespace ScriptCanvasEditor
 
         bool CanDeleteVariable(const ScriptCanvas::VariableId& variableId);
 
+        VariablePropertiesComponent* AllocateComponent(const ScriptCanvas::VariableId& variableId);
+        void ReleaseComponent(const ScriptCanvas::VariableId& variableId);
+        void ResetPool();
+
         bool m_manipulatingSelection;
 
-        AZStd::unordered_map<ScriptCanvas::VariableId, AZStd::unique_ptr<AZ::Entity>> m_propertyHelpersMap;
-        AZ::EntityId m_scriptCanvasGraphId;
+        AZStd::unordered_map< ScriptCanvas::VariableId, VariablePropertiesComponent* > m_usedElements;
+        AZStd::vector< VariablePropertiesComponent* > m_unusedPool;
+
+        AZStd::vector< AZStd::unique_ptr<AZ::Entity> > m_propertyHelpers;
+
+        ScriptCanvas::ScriptCanvasId  m_scriptCanvasId;
+
         AZ::EntityId m_graphCanvasGraphId;
 
         AZStd::unique_ptr<Ui::VariableDockWidget> ui;

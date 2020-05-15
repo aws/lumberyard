@@ -75,6 +75,10 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
         ////
     
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragState) override;
+        ////
+
     private:
 
         void EditStart();
@@ -82,6 +86,8 @@ namespace GraphCanvas
         void EditFinished();
         void SetupProxyWidget();
         void CleanupProxyWidget();
+
+        void ResizeToContents();
     
         StringDataInterface*   m_dataInterface;
     
@@ -89,5 +95,8 @@ namespace GraphCanvas
         GraphCanvasLabel*               m_displayLabel;
         Internal::FocusableLineEdit*    m_lineEdit;
         QGraphicsProxyWidget*           m_proxyWidget;
+
+        bool m_valueDirty;
+        bool m_isNudging;
     };
 }

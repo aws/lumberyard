@@ -13,6 +13,7 @@
 // include required headers
 #include "NodeMap.h"
 #include "Actor.h"
+#include <EMotionFX/Source/ActorManager.h>
 #include "EMotionFXManager.h"
 #include "Importer/Importer.h"
 #include "Importer/NodeMapFileFormat.h"
@@ -30,19 +31,7 @@ namespace EMotionFX
     NodeMap::NodeMap()
         : BaseObject()
     {
-        mAutoDeleteSourceActor  = true;
         mSourceActor            = nullptr;
-    }
-
-
-    // destructor
-    NodeMap::~NodeMap()
-    {
-        // get rid of the source actor if we should and if there is even one
-        if (mAutoDeleteSourceActor && mSourceActor)
-        {
-            mSourceActor->Destroy();
-        }
     }
 
 
@@ -181,7 +170,7 @@ namespace EMotionFX
         MCORE_ASSERT(f);
 
         // convert endian and write the number of characters that follow
-        if (textToSave.size() == 0)
+        if (textToSave.empty())
         {
             uint32 numCharacters = 0;
             MCore::Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
@@ -250,7 +239,7 @@ namespace EMotionFX
         }
 
         // try to write the file header
-        FileFormat::NodeMap_Header header;
+        FileFormat::NodeMap_Header header{};
         header.mFourCC[0] = 'N';
         header.mFourCC[1] = 'O';
         header.mFourCC[2] = 'M';
@@ -265,7 +254,7 @@ namespace EMotionFX
         }
 
         // write the chunk header
-        FileFormat::FileChunk chunkHeader;
+        FileFormat::FileChunk chunkHeader{};
         chunkHeader.mChunkID        = FileFormat::CHUNK_NODEMAP;
         chunkHeader.mVersion        = 1;
         chunkHeader.mSizeInBytes    = CalcFileChunkSize();// calculate the chunk size
@@ -279,7 +268,7 @@ namespace EMotionFX
         }
 
         // the main info
-        FileFormat::NodeMapChunk nodeMapChunk;
+        FileFormat::NodeMapChunk nodeMapChunk{};
         nodeMapChunk.mNumEntries = mEntries.GetLength();
         MCore::Endian::ConvertUnsignedInt32To(&nodeMapChunk.mNumEntries, targetEndianType);
         if (f.Write(&nodeMapChunk, sizeof(FileFormat::NodeMapChunk)) == 0)
@@ -288,10 +277,11 @@ namespace EMotionFX
             return false;
         }
 
-        // write the source actor string
-        if (WriteFileString(&f, mSourceActorFileName, targetEndianType) == false)
+        // fill in the source actor string placeholder. This field was
+        // deprecated but kept for backwards compatibility of loading old
+        // files.
+        if (WriteFileString(&f, "", targetEndianType) == false)
         {
-            MCore::LogError("NodeMap::Save() - Cannot write the source actor filename string '%s' to node map file.", mSourceActorFileName.c_str());
             return false;
         }
 
@@ -319,21 +309,9 @@ namespace EMotionFX
     }
 
 
-    // set the source actor filename used
-    void NodeMap::SetSourceActorFileName(const char* fileName)
-    {
-        mSourceActorFileName = fileName;
-    }
-
-
     // update the source actor pointer
-    void NodeMap::SetSourceActor(Actor* actor, bool deleteExisting)
+    void NodeMap::SetSourceActor(Actor* actor)
     {
-        if (deleteExisting && mSourceActor)
-        {
-            mSourceActor->Destroy();
-        }
-
         mSourceActor = actor;
     }
 
@@ -342,67 +320,6 @@ namespace EMotionFX
     Actor* NodeMap::GetSourceActor() const
     {
         return mSourceActor;
-    }
-
-
-    // enable or disable auto deletion of the source actor on destruct of the node map
-    void NodeMap::SetAutoDeleteSourceActor(bool autoDelete)
-    {
-        mAutoDeleteSourceActor = autoDelete;
-    }
-
-
-    // check whether we auto delete the source actor on the node map destruct or not
-    bool NodeMap::GetAutoDeleteSourceActor() const
-    {
-        return mAutoDeleteSourceActor;
-    }
-
-
-    // get the source actor filename
-    const char* NodeMap::GetSourceActorFileName() const
-    {
-        return mSourceActorFileName.c_str();
-    }
-
-
-    // get the source actor filename as string object
-    const AZStd::string& NodeMap::GetSourceActorFileNameString() const
-    {
-        return mSourceActorFileName;
-    }
-
-
-    // try to load the source actor based on the source actor string
-    bool NodeMap::LoadSourceActor()
-    {
-        // check if the source actor filename has been set
-        if (mSourceActorFileName.empty())
-        {
-            MCore::LogInfo("EMotionFX::NodeMap::LoadSourceActor() - The source actor filename is not set, so there is nothing to load for nodemap '%s'...", mFileName.c_str());
-            return true;
-        }
-
-        // get rid of any existing one
-        if (mSourceActor)
-        {
-            mSourceActor->Destroy();
-            mSourceActor = nullptr;
-        }
-
-        // try to load the source actor, in a minimal way so we just have the hierarchy available
-        Importer::ActorSettings settings;
-        settings.mLoadGeometryLODs          = false;
-        settings.mLoadMeshes                = false;
-        settings.mLoadMorphTargets          = false;
-        settings.mLoadStandardMaterialLayers= false;
-        settings.mLoadSkinningInfo          = false;
-        settings.mLoadCollisionMeshes       = false;
-
-        // Build the filename and load the actor.
-        AZStd::string filename = GetEMotionFX().ConstructAbsoluteFilename(mSourceActorFileName.c_str());
-        mSourceActor = GetImporter().LoadActor(filename.c_str(), &settings);
-        return (mSourceActor != nullptr);
     }
 
 

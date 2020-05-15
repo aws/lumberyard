@@ -8,6 +8,7 @@ import service
 import errors
 from botocore.exceptions import ClientError
 from cgf_utils import custom_resource_utils, aws_utils
+from six import iteritems
 
 # import errors
 #
@@ -29,7 +30,7 @@ def _process_data(d):
     if type == 'L':
         result = [_process_data(item) for item in data]
     elif type == 'M':
-        result = {k: _process_data(v) for k, v in data.iteritems()}
+        result = {k: _process_data(v) for k, v in iteritems(data)}
     elif type == 'N':
         result = int(data)
     elif type != 'NULL':

@@ -42,9 +42,11 @@ public:
 
 private:
     QString m_filter;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QStringList m_filterParts;
     typedef std::map<std::pair<QModelIndex, int>, bool> TAcceptCache;
     mutable TAcceptCache m_acceptCache;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITORCOMMON_DEEPFILTERPROXYMODEL_H

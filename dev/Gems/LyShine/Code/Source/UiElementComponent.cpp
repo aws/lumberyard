@@ -344,43 +344,21 @@ AZ::Entity* UiElementComponent::CreateChildElement(const LyShine::NameType& name
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::DestroyElement()
 {
-    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-    EBUS_EVENT_ID_RESULT(contextId, GetEntityId(), AzFramework::EntityIdContextQueryBus, GetOwningContextId);
+    PrepareElementForDestroy();
 
-    // destroy child elements, this is complicated by the fact that the child elements
-    // will attempt to remove themselves from the m_childEntityIdOrder list in their DestroyElement method.
-    // But, if the entities are not initialized yet the child parent pointer will be null.
-    // So the child may or may not remove itself from the list.
-    // So make a local copy of the list and iterate on that
-    if (AreChildPointersValid())
+    DestroyElementEntity(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::DestroyElementOnFrameEnd()
+{
+    PrepareElementForDestroy();
+
+    if (m_canvas)
     {
-        auto childElementComponents = m_childElementComponents;
-        for (auto child : childElementComponents)
-        {
-            // destroy the child
-            child->DestroyElement();
-        }
+        // Delay deletion of elements to ensure a script canvas can safely destroy its parent
+        m_canvas->ScheduleElementDestroy(GetEntityId());
     }
-    else
-    {
-        auto children = m_childEntityIdOrder;   // need a copy
-        for (auto& child : children)
-        {
-            // destroy the child
-            EBUS_EVENT_ID(child.m_entityId, UiElementBus, DestroyElement);
-        }
-    }
-
-    // remove this element from parent
-    if (m_parent)
-    {
-        GetParentElementComponent()->RemoveChild(GetEntity());
-    }
-
-    // Notify listeners that the element is being destroyed
-    EBUS_EVENT_ID(GetEntityId(), UiElementNotificationBus, OnUiElementBeingDestroyed);
-
-    EBUS_EVENT_ID(contextId, UiEntityContextRequestBus, DestroyUiEntity, GetEntityId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1413,7 +1391,7 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetChild", &UiElementBus::Events::GetChildEntityId)
             ->Event("GetIndexOfChildByEntityId", &UiElementBus::Events::GetIndexOfChildByEntityId)
             ->Event("GetChildren", &UiElementBus::Events::GetChildEntityIds)
-            ->Event("DestroyElement", &UiElementBus::Events::DestroyElement)
+            ->Event("DestroyElement", &UiElementBus::Events::DestroyElementOnFrameEnd)
             ->Event("Reparent", &UiElementBus::Events::ReparentByEntityId)
             ->Event("FindChildByName", &UiElementBus::Events::FindChildEntityIdByName)
             ->Event("FindDescendantByName", &UiElementBus::Events::FindDescendantEntityIdByName)
@@ -1873,6 +1851,43 @@ void UiElementComponent::ResetChildEntityIdSortOrders()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::PrepareElementForDestroy()
+{
+    // destroy child elements, this is complicated by the fact that the child elements
+    // will attempt to remove themselves from the m_childEntityIdOrder list in their DestroyElement method.
+    // But, if the entities are not initialized yet the child parent pointer will be null.
+    // So the child may or may not remove itself from the list.
+    // So make a local copy of the list and iterate on that
+    if (AreChildPointersValid())
+    {
+        auto childElementComponents = m_childElementComponents;
+        for (auto child : childElementComponents)
+        {
+            // destroy the child
+            child->DestroyElement();
+        }
+    }
+    else
+    {
+        auto children = m_childEntityIdOrder;   // need a copy
+        for (auto& child : children)
+        {
+            // destroy the child
+            UiElementBus::Event(child.m_entityId, &UiElementBus::Events::DestroyElement);
+        }
+    }
+
+    // remove this element from parent
+    if (m_parent)
+    {
+        GetParentElementComponent()->RemoveChild(GetEntity());
+    }
+
+    // Notify listeners that the element is being destroyed
+    UiElementNotificationBus::Event(GetEntityId(), &UiElementNotificationBus::Events::OnUiElementBeingDestroyed);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1933,4 +1948,13 @@ bool UiElementComponent::VersionConverter(AZ::SerializeContext& context,
     }
 
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::DestroyElementEntity(AZ::EntityId entityId)
+{
+    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+    AzFramework::EntityIdContextQueryBus::EventResult(contextId, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+
+    UiEntityContextRequestBus::Event(contextId, &UiEntityContextRequestBus::Events::DestroyUiEntity, entityId);
 }

@@ -80,6 +80,13 @@ namespace Metastream
         virtual bool StartHTTPServer() override;
         virtual void StopHTTPServer() override;
 
+    protected:
+        // Unit test methods to get at m_cache and status
+        bool IsServerEnabled() const;
+        std::string GetDatabasesJSON() const;
+        std::string GetTableKeysJSON(const std::string& tableName) const;
+        bool ClearCache();
+
     private:
         // Console commands
         static void StartHTTPServerCmd(IConsoleCmdArgs* args);

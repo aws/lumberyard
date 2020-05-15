@@ -18,9 +18,10 @@
 # A file object that provides read access to a part of an existing
 # file (for example a TAR file).
 
+import io
 
-class ContainerIO(object):
 
+class ContainerIO:
     def __init__(self, file, offset, length):
         """
         Create file object.
@@ -39,9 +40,9 @@ class ContainerIO(object):
     # Always false.
 
     def isatty(self):
-        return 0
+        return False
 
-    def seek(self, offset, mode=0):
+    def seek(self, offset, mode=io.SEEK_SET):
         """
         Move file pointer.
 
@@ -81,7 +82,7 @@ class ContainerIO(object):
         else:
             n = self.length - self.pos
         if not n:  # EOF
-            return ""
+            return b"" if "b" in self.fh.mode else ""
         self.pos = self.pos + n
         return self.fh.read(n)
 
@@ -91,13 +92,14 @@ class ContainerIO(object):
 
         :returns: An 8-bit string.
         """
-        s = ""
+        s = b"" if "b" in self.fh.mode else ""
+        newline_character = b"\n" if "b" in self.fh.mode else "\n"
         while True:
             c = self.read(1)
             if not c:
                 break
             s = s + c
-            if c == "\n":
+            if c == newline_character:
                 break
         return s
 
@@ -107,10 +109,10 @@ class ContainerIO(object):
 
         :returns: A list of 8-bit strings.
         """
-        l = []
+        lines = []
         while True:
             s = self.readline()
             if not s:
                 break
-            l.append(s)
-        return l
+            lines.append(s)
+        return lines

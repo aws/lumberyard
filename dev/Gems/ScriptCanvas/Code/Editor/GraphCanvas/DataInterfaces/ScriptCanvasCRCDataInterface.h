@@ -38,10 +38,10 @@ namespace ScriptCanvasEditor
 
             const ScriptCanvas::Datum* object = GetSlotObject();
 
-            if (object && object->GetAs<AZ::Crc32>())
+            if (object && object->IS_A<AZ::Crc32>())
             {
                 AZ::Crc32 crcValue = (*object->GetAs<AZ::Crc32>());
-                EditorGraphRequestBus::EventResult(retVal, GetScriptCanvasGraphEntityId(), &EditorGraphRequests::DecodeCrc, crcValue);
+                EditorGraphRequestBus::EventResult(retVal, GetScriptCanvasId(), &EditorGraphRequests::DecodeCrc, crcValue);
 
                 if (retVal.empty() && crcValue != AZ::Crc32())
                 {
@@ -55,19 +55,20 @@ namespace ScriptCanvasEditor
         
         void SetString(const AZStd::string& value) override
         {
-            ScriptCanvas::Datum* object = GetSlotObject();
+            ScriptCanvas::ModifiableDatumView datumView;            
+            ModifySlotObject(datumView);
 
-            if (object)
+            if (datumView.IsValid())
             {
                 AZ::Crc32 newCrc = AZ::Crc32(value.c_str());
-                AZ::Crc32 oldCrc = (*object->GetAs<AZ::Crc32>());
+                AZ::Crc32 oldCrc = (*datumView.GetAs<AZ::Crc32>());
 
                 if (oldCrc != newCrc)
                 {
-                    EditorGraphRequestBus::Event(GetScriptCanvasGraphEntityId(), &EditorGraphRequests::RemoveCrcCache, oldCrc);
-                    EditorGraphRequestBus::Event(GetScriptCanvasGraphEntityId(), &EditorGraphRequests::AddCrcCache, newCrc, value);
+                    EditorGraphRequestBus::Event(GetScriptCanvasId(), &EditorGraphRequests::RemoveCrcCache, oldCrc);
+                    EditorGraphRequestBus::Event(GetScriptCanvasId(), &EditorGraphRequests::AddCrcCache, newCrc, value);
 
-                    object->Set(newCrc);
+                    datumView.SetAs<ScriptCanvas::Data::CRCType>(newCrc);
 
                     PostUndoPoint();
                     PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);

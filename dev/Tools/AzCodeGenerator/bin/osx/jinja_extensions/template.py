@@ -40,12 +40,12 @@ def asStringIdentifier(s):
     """
     Substitute for jinja filter combination: |replace("/", "_")|replace(":","_")|replace(".","_")
     """
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     return re.sub(r'[/:.]', '_', s)
 
 
 def stripConstAndRef(s):
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     if s.startswith('const '):
         s = s[len('const '):]
     while s.endswith('&'):
@@ -54,24 +54,24 @@ def stripConstAndRef(s):
 
 
 def capitalizeFirst(s):
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     return s[0].upper() + s[1:]
 
 
 def openNamespacesOf(s):
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     return '\n'.join('namespace {} {{'.format(n)
                      for n in s.split('::')[:-1])
 
 
 def closeNamespacesOf(s):
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     return '\n'.join('}} // namespace {}'.format(n)
                      for n in s.split('::')[:-1])
 
 
 def stripNamespaces(s):
-    assert isinstance(s, basestring)
+    assert isinstance(s, str)
     return s.split('::')[-1]
 
 
@@ -84,7 +84,7 @@ def registerExtensions(jinjaEnv):
 
     def reg(f):
         assert isinstance(f, types.FunctionType)
-        jinjaEnv.globals[f.func_name] = f
+        jinjaEnv.globals[f.__name__] = f
 
     reg(toUuid)
     reg(asArray)

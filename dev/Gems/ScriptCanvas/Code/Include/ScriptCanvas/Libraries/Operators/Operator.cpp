@@ -410,7 +410,7 @@ namespace ScriptCanvas
                 const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
 
                 bool isInBatchAdd = false;
-                GraphRequestBus::EventResult(isInBatchAdd, GetGraphEntityId(), &GraphRequests::IsBatchAddingGraphData);
+                GraphRequestBus::EventResult(isInBatchAdd, GetOwningScriptCanvasId(), &GraphRequests::IsBatchAddingGraphData);
                 
                 if (IsSourceSlotId(currentSlotId))
                 {

@@ -13,6 +13,7 @@
 
 #include <PxPhysicsAPI.h>
 #include <AzFramework/Physics/TouchBendingBus.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace Physics
 {
@@ -87,6 +88,7 @@ namespace TouchBending
                     return;
                 }
                 AZ_Assert(m_aggregate, "This method was called with no aggregated data.  Most likely, BuildFromArchetype() was never called.");
+                PHYSX_SCENE_WRITE_LOCK(scene);
                 scene.addAggregate(*m_aggregate);
                 m_isPresentInTheScene = true;
             }
@@ -98,6 +100,7 @@ namespace TouchBending
                     return;
                 }
                 AZ_Assert(m_aggregate, "This method was called with no aggregated data.  Most likely, BuildFromArchetype() was never called.");
+                PHYSX_SCENE_WRITE_LOCK(scene);
                 scene.removeAggregate(*m_aggregate);
                 m_isPresentInTheScene = false;
             }
@@ -122,6 +125,8 @@ namespace TouchBending
 
             Physics::TouchBendingTriggerHandle* GetTriggerHandle() { return m_triggerHandle; }
             void SetTriggerHandle(Physics::TouchBendingTriggerHandle* triggerHandle) { m_triggerHandle = triggerHandle; }
+
+            physx::PxScene* GetScene() { return m_aggregate ? m_aggregate->getScene() : nullptr; }
 
         private:
             physx::PxAggregate* m_aggregate;

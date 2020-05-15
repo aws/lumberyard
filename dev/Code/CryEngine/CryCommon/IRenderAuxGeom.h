@@ -168,6 +168,16 @@ struct IRenderAuxGeom
     //   col        - Color of the sphere.
     //   drawShaded - True if you want to draw the sphere shaded, false otherwise.
     virtual void DrawSphere(const Vec3& pos, float radius, const ColorB& col, bool drawShaded = true) = 0;
+
+    // Summary:
+    //   Draws a disk.
+    // Arguments:
+    //   pos        - Center of the disk.
+    //   radius     - Radius of the disk.
+    //   col        - Color of the disk.
+    //   drawShaded - True if you want to draw the disk shaded, false otherwise.
+    virtual void DrawDisk(const Vec3& pos, const Vec3& dir, float radius, const ColorB& col, bool drawShaded = true) = 0;
+
     // Summary:
     //   Draws a cone.
     // Arguments:

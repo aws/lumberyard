@@ -171,7 +171,6 @@ namespace AZStd
                 base_type::insert(*first);
             }
         }
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE unordered_map(const std::initializer_list<value_type>& list, const hasher& hash = hasher(), const key_eq& keyEqual = key_eq(), const allocator_type& allocator = allocator_type())
             : base_type(hash, keyEqual, allocator)
         {
@@ -181,7 +180,6 @@ namespace AZStd
                 base_type::insert(i);
             }
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         AZ_FORCE_INLINE unordered_map(this_type&& rhs)
             : base_type(AZStd::move(rhs))
@@ -395,7 +393,6 @@ namespace AZStd
                 base_type::insert(*first);
             }
         }
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE unordered_multimap(const std::initializer_list<value_type>& list, const hasher& hash = hasher(), const key_eq& keyEqual = key_eq(), const allocator_type& allocator = allocator_type())
             : base_type(hash, keyEqual, allocator)
         {
@@ -405,7 +402,6 @@ namespace AZStd
                 base_type::insert(i);
             }
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         AZ_FORCE_INLINE unordered_multimap(this_type&& rhs)
             : base_type(AZStd::move(rhs))

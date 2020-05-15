@@ -145,3 +145,9 @@ class DiscoveryThrottlingException(operationError.operationError):
 class DiscoveryFailure(operationError.operationError):
     def __init__(self, message):
         self.message = message
+
+
+# Client Error
+class ClientError(Exception):
+    def __init__(self, message):
+        self.message = message

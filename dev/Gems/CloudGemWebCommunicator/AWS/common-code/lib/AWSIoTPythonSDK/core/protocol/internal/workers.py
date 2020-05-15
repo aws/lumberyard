@@ -187,11 +187,11 @@ class EventConsumer(object):
         if subscriptions and not self._has_user_disconnect_request():
             self._logger.debug("Start resubscribing")
             self._client_status.set_status(ClientStatus.RESUBSCRIBE)
-            for topic, (qos, message_callback) in subscriptions:
+            for topic, (qos, message_callback, ack_callback) in subscriptions:
                 if self._has_user_disconnect_request():
                     self._logger.debug("User disconnect detected")
                     break
-                self._internal_async_client.subscribe(topic, qos)
+                self._internal_async_client.subscribe(topic, qos, ack_callback)
 
     def _handle_draining(self):
         if self._offline_requests_manager.has_more() and not self._has_user_disconnect_request():
@@ -232,7 +232,7 @@ class EventConsumer(object):
         self._logger.debug("Dispatching [message] event")
         subscriptions = self._subscription_manager.list_records()
         if subscriptions:
-            for topic, (qos, message_callback) in subscriptions:
+            for topic, (qos, message_callback, _) in subscriptions:
                 if topic_matches_sub(topic, message.topic) and message_callback:
                     message_callback(None, None, message)  # message_callback(client, userdata, message)
 
@@ -242,15 +242,15 @@ class EventConsumer(object):
         self._logger.debug("Processed offline publish request")
 
     def _handle_offline_subscribe(self, request):
-        topic, qos, message_callback = request.data
-        self._subscription_manager.add_record(topic, qos, message_callback)
-        self._internal_async_client.subscribe(topic, qos)
+        topic, qos, message_callback, ack_callback = request.data
+        self._subscription_manager.add_record(topic, qos, message_callback, ack_callback)
+        self._internal_async_client.subscribe(topic, qos, ack_callback)
         self._logger.debug("Processed offline subscribe request")
 
     def _handle_offline_unsubscribe(self, request):
-        topic = request.data
+        topic, ack_callback = request.data
         self._subscription_manager.remove_record(topic)
-        self._internal_async_client.unsubscribe(topic)
+        self._internal_async_client.unsubscribe(topic, ack_callback)
         self._logger.debug("Processed offline unsubscribe request")
 
 
@@ -261,9 +261,9 @@ class SubscriptionManager(object):
     def __init__(self):
         self._subscription_map = dict()
 
-    def add_record(self, topic, qos, message_callback):
+    def add_record(self, topic, qos, message_callback, ack_callback):
         self._logger.debug("Adding a new subscription record: %s qos: %d", topic, qos)
-        self._subscription_map[topic] = qos, message_callback  # message_callback could be None
+        self._subscription_map[topic] = qos, message_callback, ack_callback  # message_callback and/or ack_callback could be None
 
     def remove_record(self, topic):
         self._logger.debug("Removing subscription record: %s", topic)

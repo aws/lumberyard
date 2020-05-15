@@ -32,6 +32,7 @@ namespace AzFramework
             NegotiationInfo_ProcessId,
             NegotiationInfo_Platform,
             NegotiationInfo_BranchIndentifier,
+            NegotiationInfo_ProjectName,
         };
 
         const unsigned int DEFAULT_SERIAL = 0;

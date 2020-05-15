@@ -18,8 +18,14 @@ def options(opt):
 def configure(conf):
     conf.load('android')
 """
-import imghdr, os, shutil, stat, string, time
-
+# System Imports
+import imghdr
+import os
+import shutil
+import stat
+import string
+import sys
+import time
 import xml.etree.ElementTree as ET
 
 from contextlib import contextmanager
@@ -27,21 +33,22 @@ from datetime import datetime
 from subprocess import call, check_output, STDOUT
 from types import MethodType
 
-from cry_utils import append_to_unique_list, get_command_line_limit
-from settings_manager import LUMBERYARD_SETTINGS
-from utils import junction_directory, remove_junction, write_auto_gen_header
-
+# waflib imports
 from waflib import Context, TaskGen, Build, Utils, Node, Logs, Options, Errors
 from waflib.Build import POST_LAZY, POST_AT_ONCE
 from waflib.Configure import conf, conf_event, ConfigurationContext
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.TaskGen import feature, before, before_method, after_method, taskgen_method
-
 from waflib.Tools import ccroot
+
 ccroot.USELIB_VARS['android'] = set([ 'AAPT', 'AAPT_RESOURCES', 'AAPT_INCLUDES', 'AAPT_PACKAGE_FLAGS' ])
 
-import packaging
-import lumberyard
+# lmbrwaflib imports
+from lmbrwaflib import packaging
+from lmbrwaflib import lumberyard
+from lmbrwaflib.cry_utils import append_to_unique_list, get_command_line_limit
+from lmbrwaflib.settings_manager import LUMBERYARD_SETTINGS
+from lmbrwaflib.utils import junction_directory, remove_junction, write_auto_gen_header
 
 
 ################################################################
@@ -298,6 +305,36 @@ def configure(conf):
 
         conf.fatal('[ERROR] Missing paths from Setup Assistant detected for: {}.  {}'.format(_lst_to_str(missing_paths), RESOLUTION_MESSAGE))
 
+    # initial check to verify the SDK isn't missing components
+    missing_components = []
+
+    core_components_map = {
+        'build-tools': 'Android SDK Build-Tools',
+        'platforms': 'Android SDK Platforms ({})'.format(_lst_to_str(SUPPORTED_SDK_VERSIONS)),
+        'platform-tools': 'Android SDK Platform-Tools',
+        'tools': 'Android SDK Tools',
+    }
+    for folder, component in core_components_map.items():
+        component_path = os.path.join(sdk_root, folder)
+        if not os.path.exists(component_path) or not os.listdir(component_path):
+            missing_components.append(component)
+
+    google_extras = []
+    google_extras_dir = os.path.join(sdk_root, 'extras', 'google')
+    if os.path.exists(google_extras_dir):
+        google_extras = os.listdir(google_extras_dir)
+
+    if not any([lib_folder for lib_folder in ('market_apk_expansion', 'play_apk_expansion') if lib_folder in google_extras]):
+        missing_components.append('Google Play APK Expansion Library')
+
+    if not any([lib_folder for lib_folder in ('market_licensing', 'play_licensing') if lib_folder in google_extras]):
+        missing_components.append('Google Play Licensing Library')
+
+    if missing_components:
+        conf.fatal('[ERROR] The Android SDK installed to {} appears to be incomplete.  '
+                    'Please use the Android SDK Manager to ensure the following components are installed and run the configure command again.\n'
+                    '\t-> Required SDK components: {}'.format(sdk_root, _lst_to_str(missing_components)))
+
     env['ANDROID_SDK_HOME'] = sdk_root
     env['ANDROID_NDK_HOME'] = ndk_root
 
@@ -382,7 +419,7 @@ def configure(conf):
             conf.fatal('[ERROR] Failed to find platforms file in path {}.'.format(platforms_file.abspath()))
 
         platform_aliases = json_data['aliases']
-        installed_ndk_platforms = set(['android-{}'.format(platform_number) for platform_number in platform_aliases.values()])
+        installed_ndk_platforms = set(['android-{}'.format(platform_number) for platform_number in list(platform_aliases.values())])
     else:
         installed_ndk_platforms = os.listdir(os.path.join(ndk_root, 'platforms'))
 
@@ -533,7 +570,7 @@ def process_json(conf, json_data, curr_node, root_node, template, copied_files):
 
         if isinstance(json_data, dict):
             # resolve name overrides for the copy, if specified
-            if isinstance(json_data[elem], unicode) or isinstance(json_data[elem], str):
+            if isinstance(json_data[elem], str) or isinstance(json_data[elem], str):
                 target_curr = curr_node.make_node(json_data[elem])
 
             # otherwise continue processing the tree
@@ -591,7 +628,7 @@ def copy_and_patch_android_libraries(conf, source_node, android_root):
 
     # Collect the libraries that need to be patched
     libs_to_patch = []
-    for libName, value in json_data.iteritems():
+    for libName, value in json_data.items():
         # The library is in different places depending on the revision, so we must check multiple paths.
         srcDir = None
         for path in value['srcDir']:
@@ -624,11 +661,11 @@ def copy_and_patch_android_libraries(conf, source_node, android_root):
                 lib_to_patch.add_file_to_patch(file_to_patch)
             libs_to_patch.append(lib_to_patch)
 
+    dest_root = os.path.join(Context.launch_dir, conf.get_android_patched_libraries_relative_path())
+
     # Patch the libraries
     for lib in libs_to_patch:
-        cur_path = conf.path.abspath()
-        rel_path = conf.get_android_patched_libraries_relative_path()
-        dest_path = os.path.join(cur_path, rel_path, lib.name)
+        dest_path = os.path.join(dest_root, lib.name)
         shutil.rmtree(dest_path, ignore_errors=True, onerror=remove_readonly)
         shutil.copytree(lib.path, dest_path)
         for file in lib.patch_files:
@@ -639,7 +676,7 @@ def copy_and_patch_android_libraries(conf, source_node, android_root):
 
             with open(outputFilePath, 'w') as outFile:
                 for replace in file.changes:
-                    lines[replace.line] = string.replace(lines[replace.line], replace.old, (replace.new if replace.new else ""), 1)
+                    lines[replace.line] = str.replace(lines[replace.line], replace.old, (replace.new if replace.new else ""), 1)
 
                 outFile.write(''.join([line for line in lines if line]))
 
@@ -744,13 +781,14 @@ def create_base_android_projects(conf):
     and include the new android launcher(s) in the build path.
     So no Android Studio gradle files will be generated.
     """
-    android_root = conf.path.make_node(conf.get_android_project_relative_path())
+    launch_node = conf.get_launch_node()
+    engine_node = conf.get_engine_node()
+
+    android_root = launch_node.make_node(conf.get_android_project_relative_path())
     android_root.mkdir()
 
-    if conf.is_engine_local():
-        source_node = conf.path.make_node(BUILDER_DIR)
-    else:
-        source_node = conf.root.make_node(os.path.abspath(os.path.join(conf.engine_path,BUILDER_DIR)))
+    source_node = engine_node.make_node(BUILDER_DIR)
+
     builder_file_src = source_node.make_node(BUILDER_FILES)
     builder_file_dest = conf.path.get_bld().make_node(BUILDER_DIR)
 
@@ -905,7 +943,7 @@ def create_base_android_projects(conf):
         if splash_overrides:
             drawable_path_prefix = 'drawable-'
 
-            for orientation_flag, orientation_key in ORIENTATION_FLAG_TO_KEY_MAP.iteritems():
+            for orientation_flag, orientation_key in ORIENTATION_FLAG_TO_KEY_MAP.items():
                 orientation_path_prefix = drawable_path_prefix + orientation_key
 
                 oriented_splashes = splash_overrides.get(orientation_key, {})
@@ -990,8 +1028,8 @@ def create_base_android_projects(conf):
             Logs.debug('android: Clearing the landscape assets from %s' % project)
             clear_splash_assets(resource_node, 'drawable-land')
 
-        # delete all files from the destination folder that were not copied by the script
-        all_files = proj_root.ant_glob("**", excl=['wscript', 'build.gradle', '*.iml', 'assets_for_apk/*'])
+        # delete all files from the destination folder that were not copied by the script or part of the android studio project
+        all_files = proj_root.ant_glob("**", excl=['build.gradle', 'CMakeLists.txt', '*.iml'])
         files_to_delete = [path for path in all_files if path.abspath() not in copied_files]
 
         for file in files_to_delete:
@@ -1020,7 +1058,8 @@ def create_base_android_projects(conf):
 
 @conf
 def process_android_projects(conf):
-    conf.recurse(conf.get_android_project_relative_path())
+    projects_path = os.path.join(Context.launch_dir, conf.get_android_project_relative_path())
+    conf.recurse(projects_path)
 
 
 ################################################################
@@ -1036,8 +1075,9 @@ def is_module_for_game_project(self, module_name, game_project, project_name):
     enabled_game_projects = self.get_enabled_game_project_list()
 
     if self.is_gem(module_name):
-        gem_name_list = [gem.name for gem in self.get_game_gems(game_project)]
-        return (True if module_name in gem_name_list else False)
+        for gem in self.get_game_gems(game_project):
+            if module_name in [gem_module.target_name for gem_module in gem.modules]:
+                return True;
 
     elif module_name == game_project or game_project == project_name:
         return True
@@ -1457,6 +1497,18 @@ def android_natives_processing(self):
             self.create_debug_strip_task(artifact, builder_node)
 
 
+    external_artifacts = getattr(self.env, 'COPY_DEPENDENT_FILES_{}'.format(self.target.upper()), [])
+    for artifact in external_artifacts:
+        _, ext = os.path.splitext(artifact)
+        # Only care about shared libraries
+        if ext != '.so':
+            continue
+
+        for builder_node in game_project_builder_nodes:
+            src_node = self.bld.root.make_node(artifact)
+            tgt_node = builder_node.make_node(src_node.name)
+            self.create_task('copy_outputs', src = src_node, tgt = tgt_node)
+ 
 ################################################################
 ################################################################
 @feature('wrapped_copy_outputs')
@@ -1496,7 +1548,7 @@ def AndroidAPK(ctx, *k, **kw):
     platform = env['PLATFORM']
     configuration = env['CONFIGURATION']
 
-    if ctx.cmd in ('configure', 'generate_uber_files', 'generate_module_def_files', 'msvs'):
+    if ctx.cmd in ('configure', 'generate_uber_files', 'msvs'):
         return
     if not (ctx.is_android_platform(platform) or platform =='project_generator'):
         return
@@ -1628,7 +1680,7 @@ def AndroidAPK(ctx, *k, **kw):
     java_libs_json = ctx.root.make_node(kw['android_java_libs'])
     json_data = ctx.parse_json_file(java_libs_json)
     if json_data:
-        for libName, value in json_data.iteritems():
+        for libName, value in json_data.items():
             if 'libs' in value:
                 # Collect any java lib that is needed so we can add it to the classpath.
                 for java_lib in value['libs']:
@@ -2215,7 +2267,7 @@ def adb_call(*cmd_args, **keywords):
 
     try:
         output = check_output(cmdline, stderr = STDOUT, shell = True)
-        stripped_output = output.rstrip()
+        stripped_output = str(output.decode(sys.stdout.encoding or 'iso8859-1', 'replace')).rstrip()
 
         # don't need to dump the output of 'push' or 'install' commands
         if not any(cmd for cmd in ('push', 'install') if cmd in cmd_args):
@@ -2444,6 +2496,11 @@ def construct_assets_path_for_game_project(ctx, game_project):
 
 
 def build_shaders(ctx, game, assets_type, layout_node, assets_cache, generate_pak):
+    try:
+        packaging.get_shader_list(ctx, game, assets_type, 'GLES3')
+    except Exception as e:
+        Logs.info('[INFO] No updated shader list')
+        pass
 
     if not generate_pak:
         packaging.generate_shaders(ctx, game, assets_type, 'GLES3')
@@ -3073,7 +3130,7 @@ def deploy_android(tsk_gen):
                     if not local_node:
                         bld.fatal('[ERROR] Failed to locate file {} in path {}'.format(os.path.normpath(file), layout_node.abspath()))
 
-                    target_file = '{}/{}'.format(output_target, string.replace(local_node.path_from(layout_node), '\\', '/'))
+                    target_file = '{}/{}'.format(output_target, str.replace(local_node.path_from(layout_node), '\\', '/'))
                     tsk_gen.adb_copy_task(android_device, local_node, target_file)
 
             else:
@@ -3104,7 +3161,7 @@ def deploy_android(tsk_gen):
                     for src_file in layout_files:
                         # Faster to check if we should copy now rather than in the copy_task
                         if should_copy_file(src_file, target_time):
-                            final_target_dir = '{}/{}'.format(output_target, string.replace(src_file.path_from(layout_node), '\\', '/'))
+                            final_target_dir = '{}/{}'.format(output_target, str.replace(src_file.path_from(layout_node), '\\', '/'))
                             tsk_gen.adb_copy_task(android_device, src_file, final_target_dir)
 
                 update_device_file_timestamp(device_timestamp_file, android_device)
@@ -3115,7 +3172,7 @@ def deploy_android(tsk_gen):
         bld.fatal('[ERROR] Failed to deploy the build to any connected devices.')
 
 
-@conf_event(after_methods=['update_valid_configurations_file'],
+@conf_event(after_methods=['load_compile_rules_for_enabled_platforms'],
             after_events=['inject_generate_uber_command', 'inject_generate_module_def_command', 'inject_msvs_command'])
 def inject_android_studio_command(conf):
     """
@@ -3125,7 +3182,7 @@ def inject_android_studio_command(conf):
         return
     
     # Android target platform commands
-    enabled_platform_names = [platform.name() for platform in conf.get_enabled_target_platforms()]
+    enabled_platform_names = [platform.name() for platform in conf.get_all_target_platforms()]
     if any(platform for platform in enabled_platform_names if conf.is_android_platform(platform)):
 
         # build the base Android projects required for generating their respective APKs

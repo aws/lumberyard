@@ -241,6 +241,7 @@ struct Color_tpl
     ILINE unsigned int pack_argb8888() const;
     inline Vec4 toVec4() const { return Vec4(r, g, b, a); }
     inline Vec3 toVec3() const { return Vec3(r, g, b); }
+    inline void toFloat4(f32* out) const;
 
     inline void toHSV(f32& h, f32& s, f32& v) const;
     inline void fromHSV(f32 h, f32 s, f32 v);
@@ -517,6 +518,23 @@ ILINE Color_tpl<uint8>::Color_tpl(const Vec4& c)
     a = (uint8)(c.w * 255);
 }
 
+template<>
+inline void Color_tpl<uint8>::toFloat4(f32* out) const
+{
+    out[0] = r / 255.0f;
+    out[1] = g / 255.0f;
+    out[2] = b / 255.0f;
+    out[3] = a / 255.0f;
+}
+
+template<>
+inline void Color_tpl<f32>::toFloat4(f32* out) const
+{
+    out[0] = r;
+    out[1] = g;
+    out[2] = b;
+    out[3] = a;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // functions implementation

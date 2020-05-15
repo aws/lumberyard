@@ -11,8 +11,10 @@
 */
 #include "precompiled.h"
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QPainter>
-#include <qstyleoption.h>
+#include <QStyleOption>
+AZ_POP_DISABLE_WARNING
 
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
 
@@ -21,6 +23,7 @@
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
+
 
 namespace GraphCanvas
 {

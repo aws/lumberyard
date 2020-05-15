@@ -11,5 +11,5 @@
 */
 #pragma once
 
-#define AZ_SAVEDATA_TEST_USER_ID 9
+#define AZ_TRAIT_SAVEDATA_TEST_USER_ID 9
 

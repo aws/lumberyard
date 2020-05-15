@@ -15,7 +15,7 @@
 #include <BuilderSettings/ImageProcessingDefines.h>
 #include <BuilderSettings/PresetSettings.h>
 #include <BuilderSettings/TextureSettings.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <AzCore/Jobs/Job.h>
 
 namespace ImageProcessing

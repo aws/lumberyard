@@ -68,7 +68,7 @@ namespace ScriptCanvas
                 }
 
                 Datum result;
-                const Datum* operand = GetInput(OperatorLengthProperty::GetSourceSlotId(this));                
+                const Datum* operand = FindDatum(OperatorLengthProperty::GetSourceSlotId(this));
 
                 switch (type.GetType())
                 {

@@ -51,12 +51,9 @@ namespace ScriptCanvas
 
                 // Node
                 void OnInit() override;
+                void ConfigureVisualExtensions() override;
 
                 void OnInputSignal(const SlotId& slot) override;
-
-                bool IsNodeExtendable() const override;
-                int GetNumberOfExtensions() const override;
-                ExtendableSlotConfiguration GetExtensionConfiguration(int extensionIndex) const override;
 
                 SlotId HandleExtension(AZ::Crc32 extensionId) override;
 

@@ -29,6 +29,7 @@
             "Include/ScriptCanvas/Core/ExecutionNotificationsBus.h",
             "Include/ScriptCanvas/Core/GraphBus.h",
             "Include/ScriptCanvas/Core/NodeBus.h",
+            "Include/ScriptCanvas/Core/EBusNodeBus.h",
             "Include/ScriptCanvas/Core/SignalBus.h",
             "Include/ScriptCanvas/Core/ContractBus.h"
         ],
@@ -51,6 +52,9 @@
             "Include/ScriptCanvas/Core/Graph.h",
             "Include/ScriptCanvas/Core/GraphData.h",
             "Include/ScriptCanvas/Core/GraphData.cpp",
+            "Include/ScriptCanvas/Core/GraphScopedTypes.h",
+            "Include/ScriptCanvas/Core/ModifiableDatumView.cpp",
+            "Include/ScriptCanvas/Core/ModifiableDatumView.h",
             "Include/ScriptCanvas/Core/NativeDatumNode.h",
             "Include/ScriptCanvas/Core/Node.cpp",
             "Include/ScriptCanvas/Core/Node.h",
@@ -110,6 +114,14 @@
             "Include/ScriptCanvas/Data/DataRegistry.h",
             "Include/ScriptCanvas/Data/NumericData.h"
         ],
+        "Include/ScriptCanvas/Deprecated": [
+          "Include/ScriptCanvas/Deprecated/VariableDatumBase.h",
+          "Include/ScriptCanvas/Deprecated/VariableDatumBase.cpp",
+          "Include/ScriptCanvas/Deprecated/VariableDatum.h",
+          "Include/ScriptCanvas/Deprecated/VariableDatum.cpp",
+          "Include/ScriptCanvas/Deprecated/VariableHelpers.h",
+          "Include/ScriptCanvas/Deprecated/VariableHelpers.cpp"
+        ],
         "Include/ScriptCanvas/Execution": [
             "Include/ScriptCanvas/Execution/ErrorBus.h",
             "Include/ScriptCanvas/Execution/ExecutionContext.cpp",
@@ -124,6 +136,10 @@
             "Include/ScriptCanvas/Execution/RuntimeComponent.h"
         ],
         "Include/ScriptCanvas/Internal": [
+            "Include/ScriptCanvas/Internal/Nodes/BaseTimerNode.cpp",
+            "Include/ScriptCanvas/Internal/Nodes/BaseTimerNode.h",
+            "Include/ScriptCanvas/Internal/Nodes/ExpressionNodeBase.cpp",
+            "Include/ScriptCanvas/Internal/Nodes/ExpressionNodeBase.h",
             "Include/ScriptCanvas/Internal/Nodes/StringFormatted.cpp",
             "Include/ScriptCanvas/Internal/Nodes/StringFormatted.h"
         ],
@@ -140,8 +156,9 @@
             "Include/ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.h",
             "Include/ScriptCanvas/Libraries/Core/BinaryOperator.cpp",
             "Include/ScriptCanvas/Libraries/Core/BinaryOperator.h",
-            "Include/ScriptCanvas/Libraries/Core/Core.cpp",
-            "Include/ScriptCanvas/Libraries/Core/Core.h",
+            "Include/ScriptCanvas/Libraries/Core/CoreNodes.cpp",
+            "Include/ScriptCanvas/Libraries/Core/CoreNodes.h",
+            "Include/ScriptCanvas/Libraries/Core/ContainerTypeReflection.h",
             "Include/ScriptCanvas/Libraries/Core/EBusEventHandler.cpp",
             "Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h",
             "Include/ScriptCanvas/Libraries/Core/ExtractProperty.cpp",
@@ -189,6 +206,8 @@
             "Include/ScriptCanvas/Libraries/Logic/Any.h",            
             "Include/ScriptCanvas/Libraries/Logic/Any.cpp",
             "Include/ScriptCanvas/Libraries/Logic/Boolean.h",
+            "Include/ScriptCanvas/Libraries/Logic/Cycle.cpp",
+            "Include/ScriptCanvas/Libraries/Logic/Cycle.h",
             "Include/ScriptCanvas/Libraries/Logic/Gate.cpp",
             "Include/ScriptCanvas/Libraries/Logic/Gate.h",
             "Include/ScriptCanvas/Libraries/Logic/Indexer.cpp",
@@ -208,7 +227,7 @@
             "Include/ScriptCanvas/Libraries/Logic/Sequencer.cpp",
             "Include/ScriptCanvas/Libraries/Logic/Sequencer.h",
             "Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.cpp",
-            "Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.h",            
+            "Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.h",
             "Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.cpp",
             "Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.h"
         ],
@@ -223,6 +242,8 @@
             "Include/ScriptCanvas/Libraries/Math/Divide.h",
             "Include/ScriptCanvas/Libraries/Math/Math.cpp",
             "Include/ScriptCanvas/Libraries/Math/Math.h",
+            "Include/ScriptCanvas/Libraries/Math/MathExpression.cpp",
+            "Include/ScriptCanvas/Libraries/Math/MathExpression.h",
             "Include/ScriptCanvas/Libraries/Math/MathNodeUtilities.cpp",
             "Include/ScriptCanvas/Libraries/Math/MathNodeUtilities.h",
             "Include/ScriptCanvas/Libraries/Math/MathGenerics.h",
@@ -269,6 +290,8 @@
             "Include/ScriptCanvas/Libraries/Time/Countdown.cpp",
             "Include/ScriptCanvas/Libraries/Time/Duration.h",
             "Include/ScriptCanvas/Libraries/Time/Duration.cpp",
+            "Include/ScriptCanvas/Libraries/Time/HeartBeat.h",
+            "Include/ScriptCanvas/Libraries/Time/HeartBeat.cpp",
             "Include/ScriptCanvas/Libraries/Time/Timer.h",
             "Include/ScriptCanvas/Libraries/Time/Timer.cpp"
         ],
@@ -384,18 +407,22 @@
         ],
         "Include/ScriptCanvas/Variable": [
           "Include/ScriptCanvas/Variable/VariableBus.h",
+          "Include/ScriptCanvas/Variable/GraphVariable.h",
+          "Include/ScriptCanvas/Variable/GraphVariable.cpp",
           "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.h",
           "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.cpp",
+          "Include/ScriptCanvas/Variable/GraphVariableNetBindings.h",
+          "Include/ScriptCanvas/Variable/GraphVariableNetBindings.cpp",
+          "Include/ScriptCanvas/Variable/GraphVariableMarshal.h",
+          "Include/ScriptCanvas/Variable/GraphVariableMarshal.cpp",
           "Include/ScriptCanvas/Variable/VariableCore.h",
           "Include/ScriptCanvas/Variable/VariableCore.cpp",
           "Include/ScriptCanvas/Variable/VariableData.h",
-          "Include/ScriptCanvas/Variable/VariableData.cpp",
-          "Include/ScriptCanvas/Variable/VariableDatumBase.h",
-          "Include/ScriptCanvas/Variable/VariableDatumBase.cpp",
-          "Include/ScriptCanvas/Variable/VariableDatum.h",
-          "Include/ScriptCanvas/Variable/VariableDatum.cpp"
+          "Include/ScriptCanvas/Variable/VariableData.cpp"
         ],
         "Include/ScriptCanvas/Utils": [
+          "Include/ScriptCanvas/Utils/DataUtils.h",
+          "Include/ScriptCanvas/Utils/DataUtils.cpp",
           "Include/ScriptCanvas/Utils/NodeUtils.h",
           "Include/ScriptCanvas/Utils/NodeUtils.cpp",
           "Include/ScriptCanvas/Utils/SerializationUtils.h"

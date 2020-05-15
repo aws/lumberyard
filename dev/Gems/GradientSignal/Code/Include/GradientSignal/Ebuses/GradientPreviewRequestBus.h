@@ -31,7 +31,7 @@ namespace GradientSignal
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~GradientPreviewRequests() AZ_DEFAULT_METHOD;
+        virtual ~GradientPreviewRequests() = default;
 
         virtual void Refresh() = 0;
         virtual void CancelRefresh() = 0;

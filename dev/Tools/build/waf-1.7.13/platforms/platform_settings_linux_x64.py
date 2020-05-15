@@ -11,8 +11,11 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
+# waflib imports
 from waflib.Configure import conf
-import lumberyard
+
+# lmbrwaflib imports
+from lmbrwaflib import lumberyard
 
 
 PLATFORM = 'linux_x64'

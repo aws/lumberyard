@@ -23,6 +23,8 @@
 #include <QtGui/QDoubleValidator>
 #include <QApplication>
 
+#include <AzCore/Casting/numeric_cast.h>
+
 
 namespace MysticQt
 {
@@ -562,9 +564,10 @@ namespace MysticQt
 
         bool inputFormatError = false;
         // check if the text is an invalid value
-        float newValue;
+        double newValue;
+        float newValueFloat;
         int newValueInt;
-        if ( !AzFramework::StringFunc::LooksLikeFloat(mTemp.c_str(), &newValue) )
+        if ( !AzFramework::StringFunc::LooksLikeFloat(mTemp.c_str(), &newValueFloat) )
         {
             if (!AzFramework::StringFunc::LooksLikeInt(mTemp.c_str(), &newValueInt))
             {
@@ -572,8 +575,12 @@ namespace MysticQt
             }
             else
             {
-                newValue = static_cast<float>(newValueInt);
+                newValue = aznumeric_cast<double>(newValueInt);
             }
+        }
+        else
+        {
+            newValue = newValueFloat;
         }
 
         if (inputFormatError)

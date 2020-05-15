@@ -511,7 +511,7 @@ struct SBrushEdge3D
             return false;
         }
         Vec3_tpl<T1> P = pos - m_v[0];
-        outPos = (P.Dot(Q) / QLen2) * Q + m_v[0];
+        outPos = aznumeric_cast<float>(P.Dot(Q) / QLen2) * Q + m_v[0];
 
         bInEdge = true;
 

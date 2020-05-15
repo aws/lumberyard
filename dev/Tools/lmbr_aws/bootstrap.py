@@ -10,21 +10,33 @@
 #
 # $Revision: #20 $
 
-import ConfigParser
 import importlib
 import json
 import os
 import sys
 
-from StringIO import StringIO
+# Python 2.7/3.7 Compatibility
+from six.moves import configparser
+from six import StringIO
 
 CLOUD_GEM_FRAMEWORK_UUID = '6fc787a982184217a5a553ca24676cfa'
 
-AWS_PYTHON_SDK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'AWSPythonSDK', '1.5.8'))
+
+def import_cleanup_module(root_directory_path, module_name):
+    """
+    Loads the cleanup module from the specified root directory.
+    """
+    cleanup_directory_path = get_cleanup_directory_path(root_directory_path)
+
+    new_sys_path = [root_directory_path]
+    new_sys_path.extend(sys.path)
+    sys.path = new_sys_path
+
+    return importlib.import_module(module_name)
 
 
 def load_resource_manager_module(framework_directory_path, module_name):
-    '''Loads a module from the ResourceManager subdirectory of the specified CloudGemFramework directory.'''
+    """Loads a module from the ResourceManager subdirectory of the specified CloudGemFramework directory."""
     
     framework_common_code_directory_path = get_framework_common_code_directory_path(framework_directory_path)
     resource_manager_directory_path = get_resource_manager_directory_path(framework_directory_path)
@@ -34,7 +46,6 @@ def load_resource_manager_module(framework_directory_path, module_name):
     new_sys_path = [resource_manager_directory_path]
     new_sys_path.extend(imported_paths)
     new_sys_path.append(lib_directory_path)
-    new_sys_path.append(AWS_PYTHON_SDK_PATH)
     new_sys_path.extend(sys.path)
     sys.path = new_sys_path
 
@@ -53,8 +64,8 @@ def get_game_directory_path(root_directory_path):
     ini_str = '[default]\n' + open(bootstrap_file_path, 'r').read()
     ini_str = ini_str.replace('\n--', '\n#')
     ini_fp = StringIO(ini_str)
-    config = ConfigParser.RawConfigParser()
-    config.readfp(ini_fp)
+    config = configparser.RawConfigParser()
+    config.read_file(ini_fp)
 
     game_directory_name = config.get('default', 'sys_game_folder')
     game_directory_path = os.path.join(root_directory_path, game_directory_name)
@@ -74,7 +85,7 @@ def get_framework_directory_path(root_directory_path, game_directory_path):
         with open(gems_file_path, 'r') as gems_file:
             gems_file_object = json.load(gems_file)
     except Exception as e:
-        raise RuntimeError('Cannot determine enabled CloudGemFramework version because the gems.json file at {} cloud not be read: {}'.format(gems_file_path, e.message))
+        raise RuntimeError('Cannot determine enabled CloudGemFramework version because the gems.json file at {} cloud not be read: {}'.format(gems_file_path, e))
         
     format_version = gems_file_object.get('GemListFormatVersion', 'UNKNOWN')
     if format_version != 2:
@@ -90,6 +101,17 @@ def get_framework_directory_path(root_directory_path, game_directory_path):
             return framework_directory_path
             
     return None
+
+
+def get_cleanup_directory_path(root_directory_path):
+    """
+    Determines the path to the cleanup.py module
+    """
+    cleanup_directory_path = os.path.join(root_directory_path, 'Tools', 'lmbr_aws')
+    if not os.path.isdir(cleanup_directory_path):
+        raise RuntimeError('The lmbr_aws tool does not contain a test directory: {}'.format(cleanup_directory_path))
+    return cleanup_directory_path
+
 
 def get_resource_manager_directory_path(framework_directory_path):
 
@@ -108,16 +130,17 @@ def get_framework_common_code_directory_path(framework_directory_path):
                 
     return path
 
-# There is also a simular function in resource_manager\common_code.py, but it works for gems other
+
+# There is also a similar function in resource_manager\common_code.py, but it works for gems other
 # than CloudGemFramework, which isn't easy or needed here.
-def resolve_imports(framework_common_code_directory_path, target_directory_path, imported_paths = None):
-    '''Determines the paths identified by an .import file in a specified path.
+def resolve_imports(framework_common_code_directory_path, target_directory_path, imported_paths=None):
+    """Determines the paths identified by an .import file in a specified path.
 
     The .import file should contain one import name per line. An import name has
     the format CloudGemFramework.{common-code-subdirectory-name}.
 
-    Imports are resolved recursivly in an arbitary order. 
-    
+    Imports are resolved recursively in an arbitrary order.
+
     Arguments:
 
         framework_common_code_directory_path: the path to the common-code directory
@@ -127,13 +150,13 @@ def resolve_imports(framework_common_code_directory_path, target_directory_path,
 
         imported_paths (optional): a set of paths that have already been imported.
 
-    Returns a set of full paths to imported directories. All the directories will 
+    Returns a set of full paths to imported directories. All the directories will
     have been verified to exist.
 
     Raises a HandledError if the .import file contents are malformed, identify a gem
-    that does not exist or is not enabled, or identifies an common-code directory 
+    that does not exist or is not enabled, or identifies an common-code directory
     that does not exist.
-    '''
+    """
 
     if imported_paths is None:
         imported_paths = set()
@@ -165,11 +188,8 @@ def resolve_imports(framework_common_code_directory_path, target_directory_path,
 
             # add it to the set and recurse
 
-            if path not in imported_paths: # avoid infinte loops and extra work
+            if path not in imported_paths:  # avoid infinite loops and extra work
                 imported_paths.add(path)
                 resolve_imports(framework_common_code_directory_path, path, imported_paths)
 
     return imported_paths
-
-    
-            

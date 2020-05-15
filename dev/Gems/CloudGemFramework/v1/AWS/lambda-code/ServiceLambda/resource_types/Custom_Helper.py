@@ -10,14 +10,22 @@
 #
 # $Revision: #3 $
 
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
+# Python 2.7/3.7 Compatibility
+import six
+
 from cgf_utils import properties
 from cgf_utils import custom_resource_response
 from cgf_utils import aws_utils
 
 from cgf_utils.properties import ValidationError
 
+
 def handler(event, context):
-    
+    """Entry point for the Custom::Helper resource handler."""
+
     props = properties.load(event, {
         'Input': properties.Dictionary(),
     })
@@ -31,17 +39,15 @@ def handler(event, context):
 
 
 def _process_dict(input):
-
     output = {}
 
-    for key, value in input.iteritems():
+    for key, value in six.iteritems(input):
         output[key] = _process_value(value)
 
     return output
 
 
 def _process_value(input):
-
     if _is_function(input):
         return _process_function(input)
 
@@ -55,7 +61,6 @@ def _process_value(input):
 
 
 def _process_list(input):
-
     output = []
 
     for value in input:
@@ -65,7 +70,6 @@ def _process_list(input):
 
 
 def _is_function(value):
-    
     if not isinstance(value, dict):
         return False
 
@@ -80,7 +84,6 @@ def _is_function(value):
 
 
 def _process_function(input):
-
     [(key, value)] = input.items()
 
     handler = _function_handlers.get(key, None)
@@ -91,12 +94,10 @@ def _process_function(input):
 
 
 def _lower_case(input):
-
-    if not isinstance(input, basestring):
+    if not isinstance(input, six.string_types):
         raise ValidationError('HelperFn::LowerCase value must be a string: {}'.format(input))
 
     return input.lower()
-
 
 
 _function_handlers = {

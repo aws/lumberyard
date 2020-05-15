@@ -490,8 +490,8 @@ class Task(TaskBase):
 			m = Utils.md5()
 			up = m.update
 			up(self.__class__.__name__.encode())
-			deplist = [k.abspath().encode() for k in self.inputs + self.outputs]
-			dep_bld_sigs_str = "".join(deplist)
+			deplist = [k.abspath().encode('utf-8') for k in self.inputs + self.outputs]
+			dep_bld_sigs_str = b"".join(deplist)
 			up(dep_bld_sigs_str)
 			self.uid_ = m.digest()
 			return self.uid_
@@ -684,7 +684,7 @@ class Task(TaskBase):
 						exp_output += '{} {}\n'.format(v_name, hexlify(v))
 					bld_sigs.append(v)
 
-		dep_bld_sigs_str = "".join(bld_sigs)
+		dep_bld_sigs_str = b"".join(bld_sigs)
 
 		m = Utils.md5()
 		m.update(dep_bld_sigs_str)
@@ -856,7 +856,7 @@ class Task(TaskBase):
 					Logs.warn('Missing signature for node %r (dependency will not be tracked)' % k)
 				continue	# skip adding the signature to the calculation, but continue adding other dependencies
 			bld_sigs.append(bld_sig)
-		dep_bld_sigs_str = "".join(bld_sigs)
+		dep_bld_sigs_str = b"".join(bld_sigs)
 
 		m = Utils.md5()
 		m.update(dep_bld_sigs_str)
@@ -1049,7 +1049,7 @@ def set_file_constraints(tasks):
 		for a in getattr(x, 'outputs', []):
 			outs[id(a)].add(x)
 
-	links = set(ins.keys()).intersection(outs.keys())
+	links = set(ins.keys()).intersection(list(outs.keys()))
 	for k in links:
 		for a in ins[k]:
 			a.run_after.update(outs[k])

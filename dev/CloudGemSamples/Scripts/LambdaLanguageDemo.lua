@@ -6,7 +6,7 @@ function lambdalanguagedemo:OnActivate()
     self.textOutput = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "Output")
     self.lambdaHandler = AWSLambdaHandler.Connect(self, self.entityId)
     self.index = 0
-    self.lambdas = {"DotnetLambda", "GoLambda", "JavaJarLambda", "NodeLambda"}
+    self.lambdas = {"DotnetLambda", "GoLambda", "JavaJarLambda", "NodeLambda", "PythonLambda"}
     self:CallNextlambda()
 end
 
@@ -49,7 +49,7 @@ function lambdalanguagedemo:RecordSuccess(body)
 end
 
 function lambdalanguagedemo:RecordError(body)
-    Debug.Log("AWS Lambda error")
+    Debug.Warning("AWS Lambda error")
     self:UIAppendText(self.testingLambda.. " error")
     if body ~= nil then
         Debug.Log("Response body = "..body)

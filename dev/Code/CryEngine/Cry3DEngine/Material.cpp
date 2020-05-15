@@ -15,6 +15,7 @@
 #include "MatMan.h"
 #include <IRenderer.h>
 #include "VisAreas.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 DEFINE_INTRUSIVE_LINKED_LIST(CMatInfo)
 
@@ -261,20 +262,12 @@ void CMatInfo::UpdateFlags()
 
         // Make sure to refresh sectors
         static int nLastUpdateFrameId = 0;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (gEnv->IsEditing() && GetTerrain() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
-        {
-            GetTerrain()->MarkAllSectorsAsUncompiled();
-            GetVisAreaManager()->MarkAllSectorsAsUncompiled();
-            nLastUpdateFrameId = GetRenderer()->GetFrameID();
-        }
-#else
         if (gEnv->IsEditing() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
         {
+            LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::MarkAllSectorsAsUncompiled);
             GetVisAreaManager()->MarkAllSectorsAsUncompiled();
             nLastUpdateFrameId = GetRenderer()->GetFrameID();
         }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

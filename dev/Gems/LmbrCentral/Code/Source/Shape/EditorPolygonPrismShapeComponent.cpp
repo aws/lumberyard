@@ -32,6 +32,7 @@ namespace LmbrCentral
         provided.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
         provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
         provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
+        provided.push_back(AZ_CRC("AreaLightShapeService", 0x68ea78dc));
     }
 
     void EditorPolygonPrismShapeComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
@@ -39,6 +40,7 @@ namespace LmbrCentral
         EditorBaseShapeComponent::GetIncompatibleServices(incompatible);
         incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
         incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
+        incompatible.push_back(AZ_CRC("AreaLightShapeService", 0x68ea78dc));
     }
 
     void EditorPolygonPrismShapeComponent::Init()

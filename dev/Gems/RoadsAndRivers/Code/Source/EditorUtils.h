@@ -35,5 +35,10 @@ namespace RoadsAndRivers
          * Aligns heightmap so it maches spline geometry elevation
          */
         void AlignHeightMap(const SplineGeometry& splineGeometry, AlignHeightmapParams params);
+
+        /**
+         * Detects whether or not terrain currently exists
+         */
+        bool TerrainExists();
     }
 }

@@ -80,7 +80,7 @@ namespace EMotionFX
         {
             AZ_Assert(m_actorAsset, "Invalid asset data");
 
-            EMotionFX::Actor* actor = m_actorAsset->GetActor().get();
+            EMotionFX::Actor* actor = m_actorAsset->GetActor();
             EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
             const uint32 numNodes = actor->GetNumNodes();
             const uint32 numLODs = actor->GetNumLODLevels();
@@ -138,7 +138,7 @@ namespace EMotionFX
                     hasUVs  = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0) != nullptr);
                     hasUVs2 = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1) != nullptr);
                     hasTangents = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS) != nullptr);
-                    hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32) != nullptr); // NOTE: Using ATTRIB_COLORS32 for cloth inverse masses
+                    hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES) != nullptr);
 
                     const AZ::Vector3* sourcePositions = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
                     const AZ::Vector3* sourceNormals = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
@@ -147,6 +147,8 @@ namespace EMotionFX
                     const AZ::Vector3* sourceBitangents = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
                     const AZ::Vector2* sourceUVs = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));
                     const AZ::Vector2* sourceUVs2 = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1));
+                    const AZ::u32* sourceColors32 = static_cast<AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32, 0));
+                    const AZ::Vector4* sourceColors128 = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS128, 0));
                     EMotionFX::SkinningInfoVertexAttributeLayer* sourceSkinningInfo = static_cast<EMotionFX::SkinningInfoVertexAttributeLayer*>(mesh->FindSharedVertexAttributeLayer(EMotionFX::SkinningInfoVertexAttributeLayer::TYPE_ID));
 
                     // For each sub-mesh within each mesh, we want to create a separate sub-piece.
@@ -188,6 +190,11 @@ namespace EMotionFX
                             primitive.m_mesh->ReallocStream(CMesh::TEXCOORDS, 1, subMesh->GetNumVertices());
                         }
 
+                        if (sourceColors128 || sourceColors32)
+                        {
+                            primitive.m_mesh->ReallocStream(CMesh::COLORS, 0, subMesh->GetNumVertices());
+                        }
+
                         primitive.m_mesh->m_pBoneMapping = primitive.m_vertexBoneMappings.data();
 
                         // Pointers to the destination
@@ -197,6 +204,7 @@ namespace EMotionFX
                         SMeshTexCoord* destTexCoords = primitive.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS);
                         SMeshTexCoord* destTexCoords2 = primitive.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS, 1);
                         SMeshTangents* destTangents = primitive.m_mesh->GetStreamPtr<SMeshTangents>(CMesh::TANGENTS);
+                        SMeshColor* destColors = primitive.m_mesh->GetStreamPtr<SMeshColor>(CMesh::COLORS);
                         SMeshBoneMapping_uint16* destBoneMapping = primitive.m_vertexBoneMappings.data();
 
                         primitive.m_mesh->m_subsets.push_back();
@@ -325,6 +333,35 @@ namespace EMotionFX
                             }
                         }
 
+                        // Pass vertex colors to the renderer.
+                        if (sourceColors128 && destColors) // 128 bit colors
+                        {
+                            const AZ::Vector4* subMeshColors = &sourceColors128[subMeshStartVertex];
+                            for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
+                            {
+                                const AZ::Vector4& colorVector = subMeshColors[vertexIndex];
+                                const AZ::Color color(
+                                    AZ::GetClamp(static_cast<float>(colorVector.GetX()), 0.0f, 1.0f),
+                                    AZ::GetClamp(static_cast<float>(colorVector.GetY()), 0.0f, 1.0f),
+                                    AZ::GetClamp(static_cast<float>(colorVector.GetZ()), 0.0f, 1.0f),
+                                    AZ::GetClamp(static_cast<float>(colorVector.GetW()), 0.0f, 1.0f) );
+
+                                *destColors = SMeshColor(color.GetR8(), color.GetG8(), color.GetB8(), color.GetA8());
+                                ++destColors;
+                            }
+                        }
+                        else if (sourceColors32 && destColors) // 32 bit colors
+                        {
+                            AZ::Color color;
+                            const AZ::u32* subMeshColors = &sourceColors32[subMeshStartVertex];
+                            for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
+                            {
+                                color.FromU32(subMeshColors[vertexIndex]);
+                                *destColors = SMeshColor(color.GetR8(), color.GetG8(), color.GetB8(), color.GetA8());
+                                ++destColors;
+                            }
+                        }
+
                         // Process AABB
                         AABB localAabb(AABB::RESET);
                         for (uint32 vertexIndex = 0; vertexIndex < numSubMeshVertices; ++vertexIndex)
@@ -413,7 +450,7 @@ namespace EMotionFX
             AZStd::string assetPath;
             EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, m_actorAsset->GetId());
 
-            EMotionFX::Actor* actor = m_actorAsset->GetActor().get();
+            EMotionFX::Actor* actor = m_actorAsset->GetActor();
             const AZ::u32 numLODs = actor->GetNumLODLevels();
 
             // Process all LODs from the EMotionFX actor data.
@@ -427,8 +464,10 @@ namespace EMotionFX
                     primitive.m_renderMesh = gEnv->pRenderer->CreateRenderMesh("EMotion FX Actor", assetPath.c_str(), nullptr, eRMT_Dynamic);
 
                     const AZ::u32 renderMeshFlags = FSM_ENABLE_NORMALSTREAM | FSM_VERTEX_VELOCITY;
-                    primitive.m_renderMesh->SetMesh(*primitive.m_mesh, 0, renderMeshFlags, false);
-
+                    if (primitive.m_mesh)
+                    {
+                        primitive.m_renderMesh->SetMesh(*primitive.m_mesh, 0, renderMeshFlags, false);
+                    }
                     // Free temporary load objects & buffers.
                     primitive.m_vertexBoneMappings.resize(0);
                 }

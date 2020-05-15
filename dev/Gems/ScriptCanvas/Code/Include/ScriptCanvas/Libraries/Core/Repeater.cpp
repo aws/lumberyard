@@ -13,6 +13,7 @@
 #include <ScriptCanvas/Libraries/Core/Repeater.h>
 
 #include <Libraries/Core/MethodUtility.h>
+#include <ScriptCanvas/Utils/SerializationUtils.h>
 
 namespace ScriptCanvas
 {
@@ -22,220 +23,122 @@ namespace ScriptCanvas
         {
             namespace
             {
-                AZStd::string StringifyUnits(Repeater::DelayUnits delayUnits)
+                AZStd::string StringifyUnits(Internal::BaseTimerNode::TimeUnits timeUnits)
                 {
-                    switch (delayUnits)
+                    switch (timeUnits)
                     {
-                    case Repeater::DelayUnits::Seconds:
+                    case Internal::BaseTimerNode::TimeUnits::Seconds:
                         return "Seconds";
-                    case Repeater::DelayUnits::Ticks:
+                    case Internal::BaseTimerNode::TimeUnits::Ticks:
                         return "Ticks";
                     default:
                         break;
                     }
-                    
+
                     return "???";
                 }
-
-                AZStd::string GetDelaySlotName(Repeater::DelayUnits delayUnits)
-                {
-                    AZStd::string stringifiedUnits = StringifyUnits(delayUnits).c_str();
-                    return AZStd::string::format("Delay (%s)", stringifiedUnits);
-                }
             }
-            
-            void Repeater::OnSystemTick()
+
+            /////////////
+            // Repeater
+            /////////////
+
+            bool Repeater::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode & classElement)
             {
-                AZ::SystemTickBus::Handler::BusDisconnect();
-                
-                if (!AZ::TickBus::Handler::BusIsConnected())
+                /*
+                // Old units enum. Here for reference in version conversion
+                enum DelayUnits
                 {
-                    AZ::TickBus::Handler::BusConnect();
-                }                
-            }
-            
-            void Repeater::OnTick(float delta, AZ::ScriptTimePoint timePoint)
-            {
-                switch (m_delayUnits)
+                    Unknown = -1,
+                    Seconds,
+                    Ticks
+                };
+                */
+
+                bool convertedElement = true;
+
+                if (classElement.GetVersion() < 2)
                 {
-                case DelayUnits::Seconds:
-                    m_delayTimer += delta;
-                    break;
-                case DelayUnits::Ticks:
-                    m_delayTimer += 1;
-                    break;
+                    if (SerializationUtils::InsertNewBaseClass<Internal::BaseTimerNode>(context, classElement))
+                    {
+                        int delayUnits = 0;
+                        classElement.GetChildData(AZ_CRC("m_delayUnits", 0x41accf72), delayUnits);
+
+                        Internal::BaseTimerNode::TimeUnits timeUnit = Internal::BaseTimerNode::TimeUnits::Unknown;
+
+                        if (delayUnits == 0)
+                        {
+                            timeUnit = Internal::BaseTimerNode::TimeUnits::Seconds;
+                        }
+                        else
+                        {
+                            timeUnit = Internal::BaseTimerNode::TimeUnits::Ticks;
+                        }
+
+                        AZ::SerializeContext::DataElementNode* baseTimerNode = classElement.FindSubElement(AZ_CRC("BaseClass1", 0xd4925735));
+
+                        if (baseTimerNode)
+                        {
+                            baseTimerNode->AddElementWithData<int>(context, "m_timeUnits", static_cast<int>(timeUnit));
+                        }
+
+                        classElement.RemoveElementByName(AZ_CRC("m_delayUnits", 0x41accf72));
+                    }
+                    else
+                    {
+                        convertedElement = false;
+                    }
                 }
 
-                TriggerOutput();
+                return convertedElement;
             }
 
             void Repeater::OnInit()
             {
-                AZStd::string slotName = GetDelaySlotName(static_cast<DelayUnits>(m_delayUnits));
+                Internal::BaseTimerNode::OnInit();
+
+                AZStd::string slotName = GetTimeSlotName();
 
                 Slot* slot = GetSlotByName(slotName);
 
-                if (slot)
-                {
-                    m_timeSlotId = slot->GetId();
-                }
-                else
+                if (slot == nullptr)
                 {
                     // Handle older versions and improperly updated names
-                    for (DelayUnits testUnit : { DelayUnits::Seconds, DelayUnits::Ticks})
+                    for (auto testUnit : { Internal::BaseTimerNode::Seconds, Internal::BaseTimerNode::Ticks})
                     {
-                        AZStd::string legacyName = StringifyUnits(static_cast<DelayUnits>(testUnit));
+                        AZStd::string legacyName = StringifyUnits(testUnit);
 
                         slot = GetSlotByName(legacyName);
 
                         if (slot)
                         {
-                            m_timeSlotId = slot->GetId();
                             slot->Rename(slotName);
+                            m_timeSlotId = slot->GetId();
                             break;
                         }
                     }
                 }
             }
 
-            void Repeater::OnDeactivate()
-            {
-                AZ::TickBus::Handler::BusDisconnect();
-                AZ::SystemTickBus::Handler::BusDisconnect();
-            }
-            
-            void Repeater::OnConfigured()
-            {
-                AZStd::string slotName = GetDelaySlotName(static_cast<DelayUnits>(m_delayUnits));
-
-                Slot* slot = GetSlotByName("Delay");
-
-                if (slot)
-                {
-                    slot->Rename(slotName);
-                    m_timeSlotId = slot->GetId();
-                }
-                else if (!m_timeSlotId.IsValid())
-                {
-                    DataSlotConfiguration slotConfiguration;
-
-                    slotConfiguration.m_name = slotName;
-                    slotConfiguration.m_toolTip = "The amount of delay to insert in between each firing.";
-
-                    slotConfiguration.SetConnectionType(ConnectionType::Input);
-                    slotConfiguration.SetDefaultValue(0.0);
-
-                    m_timeSlotId = AddSlot(slotConfiguration);
-                }
-            }
-
             void Repeater::OnInputSignal(const SlotId& slotId)
             {
-                if (slotId == SlotId())
-                {
-                    TriggerOutput();
-                }
-
-                if (slotId != RepeaterProperty::GetInSlotId(this))
-                {
-                    return;
-                }
-
-                const ScriptCanvas::Datum* datum = GetInput(m_timeSlotId);
-
-                if (!datum)
-                {
-                    return;
-                }
-
-                if (AZ::TickBus::Handler::BusIsConnected())
-                {
-                    AZ::TickBus::Handler::BusDisconnect();
-                }
-
-                if (AZ::SystemTickBus::Handler::BusIsConnected())
-                {
-                    AZ::SystemTickBus::Handler::BusDisconnect();
-                }
-
                 m_repetionCount = aznumeric_cast<int>(RepeaterProperty::GetRepetitions(this));
 
-                const Data::NumberType* delayAmount = datum->GetAs<Data::NumberType>();
-
-                if (delayAmount)
+                if (m_repetionCount > 0)
                 {
-                    m_delayAmount = (*delayAmount);
-                    m_delayTimer = 0;
-
-                    if (m_delayUnits == DelayUnits::Ticks)
-                    {
-                        // Remove all of the floating points
-                        m_delayTimer = aznumeric_cast<float>(aznumeric_cast<int>(m_delayTimer));
-                    }
+                    StartTimer();
                 }
+            }
 
-                if (m_repetionCount >= 0)
+            void Repeater::OnTimeElapsed()
+            {
+                m_repetionCount--;
+                SignalOutput(RepeaterProperty::GetActionSlotId(this), ScriptCanvas::ExecuteMode::UntilNodeIsFoundInStack);
+
+                if (m_repetionCount == 0)
                 {
-                    if (!AZ::IsClose(m_delayAmount, 0.0, 0.0001))
-                    {
-                        AZ::SystemTickBus::Handler::BusConnect();
-                    }
-                    else
-                    {
-                        TriggerOutput();
-                    }
-                }
-                else
-                {
+                    StopTimer();
                     SignalOutput(RepeaterProperty::GetCompleteSlotId(this));
-                }
-            }
-
-            AZStd::vector<AZStd::pair<int, AZStd::string>> Repeater::GetDelayUnits() const
-            {
-                AZStd::vector<AZStd::pair<int, AZStd::string>> comboBoxDisplay;
-
-                for (auto delayUnit : { DelayUnits::Seconds, DelayUnits::Ticks })
-                {
-                    comboBoxDisplay.emplace_back(static_cast<int>(delayUnit), StringifyUnits(delayUnit));
-                }
-
-                return comboBoxDisplay;
-            }
-
-            void Repeater::OnDelayUnitsChanged(const int&)
-            {
-                UpdateTimeName();
-            }
-
-            void Repeater::UpdateTimeName()
-            {
-                Slot* slot = GetSlot(m_timeSlotId);
-
-                if (slot)
-                {
-                    slot->Rename(GetDelaySlotName(static_cast<DelayUnits>(m_delayUnits)));
-                }
-            }
-
-            void Repeater::TriggerOutput()
-            {
-                if (m_repetionCount <= 0)
-                {
-                    if (AZ::TickBus::Handler::BusIsConnected())
-                    {
-                        AZ::TickBus::Handler::BusDisconnect();
-                    }
-
-                    SignalOutput(RepeaterProperty::GetCompleteSlotId(this));
-                }
-                else if (m_delayTimer >= m_delayAmount)
-                {
-                    m_delayTimer -= m_delayAmount;
-
-                    --m_repetionCount;
-                    ExecutionRequestBus::Event(GetGraphId(), &ExecutionRequests::AddToExecutionStack, *this, SlotId{});
-                    SignalOutput(RepeaterProperty::GetActionSlotId(this));
                 }
             }
         }

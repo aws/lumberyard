@@ -55,7 +55,7 @@ namespace ScriptCanvas
 
                 if (inputSlot && outputSlot)
                 {
-                    const Datum* containerDatum = GetInput(inputSlot->GetId());
+                    const Datum* containerDatum = FindDatum(inputSlot->GetId());
 
                     if (Datum::IsValidDatum(containerDatum))
                     {
@@ -80,7 +80,7 @@ namespace ScriptCanvas
 
                             // Value to push
                             behaviorParameter = method->GetArgument(1);
-                            const Datum* inputDatum = GetInput(*inputSlotIterator);
+                            const Datum* inputDatum = FindDatum(*inputSlotIterator);
                             AZ_Assert(inputDatum, "Unable to GetInput for Input slot Id");
                             if (inputDatum)
                             {

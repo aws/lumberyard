@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "${GemId}",
+    "Name": "${Name}",
+    "DisplayName": "${Name}",
+    "Version": "${Version}",
+    "LinkType": "NoCode",
+    "Summary": "${Summary}",
+    "Tags": ["Asset"],
+    "IconPath": "preview.png"
+}

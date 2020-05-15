@@ -1,7 +1,21 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+# System Imports
 from common import utils
 import os
 import pkgutil
 import sys
+import importlib
 
 
 def run(conf):
@@ -20,5 +34,11 @@ def run(conf):
         has_init_py = os.path.isfile(os.path.join(package_folder_path, '__init__.py'))
 
         if has_init_py and full_package_name not in sys.modules:
-            module = importer.find_module(package_name).load_module(full_package_name)
+            
+            module_spec = importer.find_spec(package_name)
+
+            module = importlib.util.module_from_spec(module_spec)
+
+            module_spec.loader.exec_module(module)
+
             module.run(conf)

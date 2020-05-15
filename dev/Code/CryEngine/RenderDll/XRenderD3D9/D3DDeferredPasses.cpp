@@ -482,6 +482,11 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
 
     PROFILE_LABEL_SCOPE("DEFERRED_RAIN_GBUFFER");
 
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
+
     static const int numOfDeferredStencilRainTechniques = 2;
     static CCryNameTSCRC tech[numOfDeferredStencilRainTechniques] = {CCryNameTSCRC("DeferredRainGBufferStencil"), CCryNameTSCRC("DeferredRainGBufferNoDiscard")};
     static CCryNameTSCRC techDiscard = "DeferredRainGBuffer";
@@ -691,6 +696,11 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
     }
 
     PROFILE_LABEL_SCOPE("DEFERRED_SNOW_ACCUMULATION");
+
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // needed RTs already in GMEM
     {

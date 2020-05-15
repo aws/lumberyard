@@ -18,13 +18,11 @@
 from . import Image, ImageFile
 from ._binary import i8
 
-__version__ = "0.1"
-
-
 ##
 # Image plugin for PhotoCD images.  This plugin only reads the 768x512
 # image from the file; higher resolutions are encoded in a proprietary
 # encoding.
+
 
 class PcdImageFile(ImageFile.ImageFile):
 
@@ -48,14 +46,14 @@ class PcdImageFile(ImageFile.ImageFile):
             self.tile_post_rotate = -90
 
         self.mode = "RGB"
-        self.size = 768, 512  # FIXME: not correct for rotated images!
-        self.tile = [("pcd", (0, 0)+self.size, 96*2048, None)]
+        self._size = 768, 512  # FIXME: not correct for rotated images!
+        self.tile = [("pcd", (0, 0) + self.size, 96 * 2048, None)]
 
     def load_end(self):
         if self.tile_post_rotate:
             # Handle rotated PCDs
             self.im = self.im.rotate(self.tile_post_rotate)
-            self.size = self.im.size
+            self._size = self.im.size
 
 
 #

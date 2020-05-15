@@ -82,6 +82,16 @@ namespace ScriptEvents
         const AZStd::string& name = GetName();
         const AZ::Uuid& addressType = GetAddressType();
 
+        AZ::BehaviorContext* behaviorContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
+        AZ_Assert(behaviorContext, "A valid Behavior Context is expected");
+
+        if (m_version == 0 && behaviorContext->m_ebuses.find(name.c_str()) != behaviorContext->m_ebuses.end())
+        {
+            // An EBus with the same name already is registered, this is not allowed.
+            return AZ::Failure(AZStd::string::format("A Script Event with the name \"%s\" already exist, consider renaming this Script Event as duplicate names are not supported", name.c_str()));
+        }
+
         // Validate address type
         if (!Types::ValidateAddressType(addressType))
         {

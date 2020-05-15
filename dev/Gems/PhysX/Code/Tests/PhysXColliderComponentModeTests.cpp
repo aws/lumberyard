@@ -28,8 +28,6 @@ namespace UnitTest
         
         void SetUp() override
         {
-            using namespace AzToolsFramework;
-
             ComponentModeTestFixture::SetUp();
 
             m_app.RegisterComponentDescriptor(TestColliderComponentMode::CreateDescriptor());
@@ -44,14 +42,12 @@ namespace UnitTest
 
         void SetupInteractionHandler()
         {
-            using namespace AzToolsFramework;
-
             const auto viewportHandlerBuilder =
                 [this](const AzToolsFramework::EditorVisibleEntityDataCache* entityDataCache)
             {
                 // create the default viewport (handles ComponentMode)
-                AZStd::unique_ptr<EditorDefaultSelection> defaultSelection =
-                    AZStd::make_unique<EditorDefaultSelection>(entityDataCache);
+                AZStd::unique_ptr<AzToolsFramework::EditorDefaultSelection> defaultSelection =
+                    AZStd::make_unique<AzToolsFramework::EditorDefaultSelection>(entityDataCache);
 
                 // override the phantom widget so we can use our custom test widget
                 defaultSelection->SetOverridePhantomWidget(&m_editorActions.m_testWidget);
@@ -60,9 +56,9 @@ namespace UnitTest
             };
 
             // setup default editor interaction model with the phantom widget overridden
-            EditorInteractionSystemViewportSelectionRequestBus::Event(
-                GetEntityContextId(), &EditorInteractionSystemViewportSelection::SetHandler, viewportHandlerBuilder);
-
+            AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::Event(
+                AzToolsFramework::GetEntityContextId(),
+                &AzToolsFramework::EditorInteractionSystemViewportSelection::SetHandler, viewportHandlerBuilder);
         }
 
         EntityPtr CreateColliderComponent()
@@ -87,22 +83,20 @@ namespace UnitTest
 
     TEST_F(PhysXColliderComponentModeTest, MouseWheelUpShouldSetNextMode)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequests::SubMode subMode = ColliderComponentModeRequests::SubMode::NumModes;
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequests::SubMode subMode = PhysX::ColliderComponentModeRequests::SubMode::NumModes;
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
 
         // When the mouse wheel is scrolled while holding ctrl
-        ViewportInteraction::MouseInteractionEvent interactionEvent(ViewportInteraction::MouseInteraction(), 1.0f);
-        interactionEvent.m_mouseEvent = ViewportInteraction::MouseEvent::Wheel;
-        interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers = static_cast<AZ::u32>(ViewportInteraction::KeyboardModifier::Ctrl);
+        AzToolsFramework::ViewportInteraction::MouseInteractionEvent
+            interactionEvent(AzToolsFramework::ViewportInteraction::MouseInteraction(), 1.0f);
+        interactionEvent.m_mouseEvent = AzToolsFramework::ViewportInteraction::MouseEvent::Wheel;
+        interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers =
+            static_cast<AZ::u32>(AzToolsFramework::ViewportInteraction::KeyboardModifier::Ctrl);
 
         bool handled = false;
         AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
@@ -110,29 +104,27 @@ namespace UnitTest
             interactionEvent);
 
         // Then the component mode is cycled.
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
         EXPECT_TRUE(handled);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Offset, subMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Offset, subMode);
     }
 
     TEST_F(PhysXColliderComponentModeTest, MouseWheelDownShouldSetPreviousMode)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequests::SubMode subMode = ColliderComponentModeRequests::SubMode::NumModes;
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequests::SubMode subMode = PhysX::ColliderComponentModeRequests::SubMode::NumModes;
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
 
         // When the mouse wheel is scrolled while holding ctrl
-        ViewportInteraction::MouseInteractionEvent interactionEvent(ViewportInteraction::MouseInteraction(), -1.0f);
-        interactionEvent.m_mouseEvent = ViewportInteraction::MouseEvent::Wheel;
-        interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers = static_cast<AZ::u32>(ViewportInteraction::KeyboardModifier::Ctrl);
+        AzToolsFramework::ViewportInteraction::MouseInteractionEvent
+            interactionEvent(AzToolsFramework::ViewportInteraction::MouseInteraction(), -1.0f);
+        interactionEvent.m_mouseEvent = AzToolsFramework::ViewportInteraction::MouseEvent::Wheel;
+        interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers =
+            static_cast<AZ::u32>(AzToolsFramework::ViewportInteraction::KeyboardModifier::Ctrl);
 
         bool handled = false;
         AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
@@ -140,85 +132,69 @@ namespace UnitTest
             interactionEvent);
 
         // Then the component mode is cycled.
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
         EXPECT_TRUE(handled);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Rotation, subMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Rotation, subMode);
     }
 
     TEST_F(PhysXColliderComponentModeTest, PressingKey1ShouldSetSizeMode)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequests::SubMode subMode = ColliderComponentModeRequests::SubMode::NumModes;
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequests::SubMode subMode = PhysX::ColliderComponentModeRequests::SubMode::NumModes;
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
 
         // When the '1' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_1);
 
         // Then the component mode is set to Size.
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
     }
 
     TEST_F(PhysXColliderComponentModeTest, PressingKey2ShouldSetSizeMode)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequests::SubMode subMode = ColliderComponentModeRequests::SubMode::NumModes;
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequests::SubMode subMode = PhysX::ColliderComponentModeRequests::SubMode::NumModes;
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
 
         // When the '2' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_2);
 
         // Then the component mode is set to Offset.
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Offset, subMode);
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Offset, subMode);
     }
 
     TEST_F(PhysXColliderComponentModeTest, PressingKey3ShouldSetSizeMode)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequests::SubMode subMode = ColliderComponentModeRequests::SubMode::NumModes;
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Dimensions, subMode);
+        PhysX::ColliderComponentModeRequests::SubMode subMode = PhysX::ColliderComponentModeRequests::SubMode::NumModes;
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Dimensions, subMode);
 
         // When the '3' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_3);
 
         // Then the component mode is set to Rotation.
-        ColliderComponentModeRequestBus::BroadcastResult(subMode, &ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_EQ(ColliderComponentModeRequests::SubMode::Rotation, subMode);
+        PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
+        EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Rotation, subMode);
     }
 
     TEST_F(PhysXColliderComponentModeTest, PressingKeyRShouldResetSphereRadius)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a sphere collider in component mode.
         auto colliderEntity = CreateColliderComponent();
         float radius = 5.0f;
@@ -228,7 +204,8 @@ namespace UnitTest
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequestBus::Broadcast(&ColliderComponentModeRequests::SetCurrentMode, ColliderComponentModeRequests::SubMode::Dimensions);
+        PhysX::ColliderComponentModeRequestBus::Broadcast(&PhysX::ColliderComponentModeRequests::SetCurrentMode,
+            PhysX::ColliderComponentModeRequests::SubMode::Dimensions);
 
         // When the 'R' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_R);
@@ -240,10 +217,6 @@ namespace UnitTest
 
     TEST_F(PhysXColliderComponentModeTest, PressingKeyRShouldResetCapsuleSize)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a capsule collider in component mode.
         auto colliderEntity = CreateColliderComponent();
         float height = 10.0f;
@@ -255,7 +228,8 @@ namespace UnitTest
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequestBus::Broadcast(&ColliderComponentModeRequests::SetCurrentMode, ColliderComponentModeRequests::SubMode::Dimensions);
+        PhysX::ColliderComponentModeRequestBus::Broadcast(&PhysX::ColliderComponentModeRequests::SetCurrentMode,
+            PhysX::ColliderComponentModeRequests::SubMode::Dimensions);
 
         // When the 'R' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_R);
@@ -269,10 +243,6 @@ namespace UnitTest
 
     TEST_F(PhysXColliderComponentModeTest, PressingKeyRShouldResetAssetScale)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a sphere collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         AZ::Vector3 assetScale(10.0f, 10.0f, 10.0f);
@@ -282,7 +252,8 @@ namespace UnitTest
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequestBus::Broadcast(&ColliderComponentModeRequests::SetCurrentMode, ColliderComponentModeRequests::SubMode::Dimensions);
+        PhysX::ColliderComponentModeRequestBus::Broadcast(&PhysX::ColliderComponentModeRequests::SetCurrentMode,
+            PhysX::ColliderComponentModeRequests::SubMode::Dimensions);
 
         // When the 'R' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_R);
@@ -294,10 +265,6 @@ namespace UnitTest
 
     TEST_F(PhysXColliderComponentModeTest, PressingKeyRShouldResetOffset)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a sphere collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         AZ::Vector3 offset(5.0f, 6.0f, 7.0f);
@@ -305,7 +272,8 @@ namespace UnitTest
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequestBus::Broadcast(&ColliderComponentModeRequests::SetCurrentMode, ColliderComponentModeRequests::SubMode::Offset);
+        PhysX::ColliderComponentModeRequestBus::Broadcast(&PhysX::ColliderComponentModeRequests::SetCurrentMode,
+            PhysX::ColliderComponentModeRequests::SubMode::Offset);
 
         // When the 'R' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_R);
@@ -317,10 +285,6 @@ namespace UnitTest
 
     TEST_F(PhysXColliderComponentModeTest, PressingKeyRShouldResetRotation)
     {
-        using namespace PhysX;
-        using namespace AzToolsFramework;
-        using namespace ComponentModeFramework;
-
         // Given there is a sphere collider component in component mode.
         auto colliderEntity = CreateColliderComponent();
         AZ::Quaternion rotation = AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisZ(), 45.0f);
@@ -328,7 +292,8 @@ namespace UnitTest
         SelectEntities({ colliderEntity->GetId() });
         EnterComponentMode<TestColliderComponentMode>();
 
-        ColliderComponentModeRequestBus::Broadcast(&ColliderComponentModeRequests::SetCurrentMode, ColliderComponentModeRequests::SubMode::Rotation);
+        PhysX::ColliderComponentModeRequestBus::Broadcast(&PhysX::ColliderComponentModeRequests::SetCurrentMode,
+            PhysX::ColliderComponentModeRequests::SubMode::Rotation);
 
         // When the 'R' key is pressed
         QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_R);

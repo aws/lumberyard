@@ -23,9 +23,7 @@ namespace ImageProcessing
     // color chart in cry engine is a special image data, with size 78x66, you may see in game screenshot which is defined by a rectangle
     // area with a yellow-black dash line boarder
     // Create color chart function is to read that block of image data and convert it to a color table then save it to another image
-    // with size 256x16. 
-    // This is very specific user case and I am not big fan of the idea and implementation. But to keep compatibility, the implementation 
-    // got carried over from ResourceCompilerImage
+    // with size 256x16.
     
     class C3dLutColorChart
     {

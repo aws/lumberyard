@@ -13,6 +13,8 @@
 #pragma once
 
 #include "SystemComponentFixture.h"
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -24,7 +26,8 @@ namespace EMotionFX
     class AnimGraphStateMachine;
     class MotionSet;
 
-    class AnimGraphTransitionFixture : public SystemComponentFixture
+    class AnimGraphTransitionFixture
+        : public SystemComponentFixture
     {
     public:
         void SetUp() override;
@@ -32,13 +35,13 @@ namespace EMotionFX
         void TearDown() override;
 
     protected:
-        AnimGraphStateMachine* mStateMachine = nullptr;
-        AnimGraphInstance* mAnimGraphInstance = nullptr;
-        AnimGraphMotionNode* mMotionNode0 = nullptr;
-        AnimGraphMotionNode* mMotionNode1 = nullptr;
-        Actor* mActor = nullptr;
-        AnimGraph* mAnimGraph = nullptr;
-        MotionSet* mMotionSet = nullptr;
-        ActorInstance* mActorInstance = nullptr;
+        AnimGraphStateMachine* m_stateMachine = nullptr;
+        AnimGraphInstance* m_animGraphInstance = nullptr;
+        AnimGraphMotionNode* m_motionNodeA = nullptr;
+        AnimGraphMotionNode* m_motionNodeB = nullptr;
+        AZStd::unique_ptr<Actor> m_actor;
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_animGraph;
+        MotionSet* m_motionSet = nullptr;
+        ActorInstance* m_actorInstance = nullptr;
     };
 }

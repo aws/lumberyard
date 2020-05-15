@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
+#pragma once
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
 
@@ -26,6 +26,8 @@ namespace UnitTest
 
     public:
         AZ_RTTI(TestDataA, "{3B7949D0-07BF-408E-8101-264466AEC403}");
+        
+        virtual ~TestDataA() = default;
 
         static void Reflect(AZ::ReflectContext* reflection)
         {
@@ -77,6 +79,8 @@ namespace UnitTest
 
     public:
         AZ_RTTI(NewTestDataA, "{2CEC8357-5156-4C8C-B664-501EA19213CB}");
+        
+        virtual ~NewTestDataA() = default;
 
         static void Reflect(AZ::ReflectContext* reflection)
         {
@@ -146,6 +150,9 @@ namespace UnitTest
             : m_persistentId(++PersistentIdCounter)
             , m_data(data)
         {}
+        
+        virtual ~TestDataB_V0() = default;
+        
 
         static void Reflect(AZ::ReflectContext* reflection)
         {
@@ -174,6 +181,8 @@ namespace UnitTest
             : m_persistentId(++TestDataB_V0::PersistentIdCounter)
             , m_info(0)
         {}
+        
+        virtual ~TestDataB_V1() = default;
 
         static float TestDataB_V0_V1(int in)
         {

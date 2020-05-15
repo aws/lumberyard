@@ -14,8 +14,13 @@
 
 #include "MacroTexture.h"
 
+namespace LegacyTerrain
+{
+    struct MacroTextureConfiguration;
+}
+
 namespace MacroTextureImporter
 {
     MacroTexture::UniquePtr Import(const char* filepath, uint32 maxElementCountPerPool);
-    bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration);
+    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration);
 };

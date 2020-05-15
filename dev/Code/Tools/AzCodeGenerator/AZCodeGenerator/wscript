@@ -22,20 +22,22 @@ def build(bld):
     darwin_x64_cxxflags = ['-w', '-pthread', '-Wno-register']
     darwin_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_COMPILER_CLANG',
                           'AZCG_PLATFORM_DARWIN']
-    darwin_x64_lib = ['python2.7', 'z', 'ncurses']
+    darwin_x64_lib = ['python3.7m', 'z']
+    darwin_x64_rpath = '@loader_path'
 
-    linux_x64_cxxflags = ['-w', '-stdlib=libstdc++', '-pthread', '-Wno-register']
+    linux_x64_cxxflags = ['-w', '-stdlib=libstdc++', '-pthread', '-Wno-register', '-fno-rtti']
     linux_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_PLATFORM_LINUX']
-    linux_x64_lib = ['python2.7', 'z', 'util', 'ncurses', 'dl']
+    linux_x64_lib = ['python3.7m', 'z', 'util', 'dl']
     linux_x64_linkflags = list(linux_x64_cxxflags) # ['-pthread', '-stdlib=libstdc++']
-    linux_x64_rpath = bld.Path('Tools/Python/2.7.12/linux_x64/lib')
 
     platform, configuration = bld.get_platform_and_configuration()
     pydll = None
     if platform.startswith('win_') or platform == 'project_generator':
-        pydll = 'Tools/Python/2.7.12/windows/python27.dll'
+        pydll = 'Tools/Python/3.7.5/windows/python37.dll'
     elif platform.startswith('linux_'):
-        pydll = 'Tools/Python/2.7.12/linux_x64/lib/libpython2.7.so'
+        pydll = 'Tools/Python/3.7.5/linux_x64/lib/libpython3.7m.so'
+    elif platform.startswith('darwin_'):
+        pydll = 'Tools/Python/3.7.5/mac/lib/libpython3.7m.dylib'
 
     source_artifacts = [ pydll ] if pydll else []
     source_artifacts += [
@@ -77,10 +79,11 @@ def build(bld):
         darwin_x64_lib=darwin_x64_lib,
         linux_x64_lib=linux_x64_lib,
 
-        linux_x64_libpath=[bld.Path('Tools/Python/2.7.12/linux_x64/lib')],
+        linux_x64_libpath=[bld.Path('Tools/Python/3.7.5/linux_x64/lib')],
+        darwin_x64_libpath=[bld.Path('Tools/Python/3.7.5/mac/lib')],
 
         linux_x64_linkflags=linux_x64_linkflags,
-        linux_x64_rpath=linux_x64_rpath,
+        darwin_x64_rpath=darwin_x64_rpath,
 
         win_x64_output_folder=output_folder_windows,
         darwin_x64_output_folder=output_folder_darwin,
@@ -88,4 +91,7 @@ def build(bld):
 
         ndebug_output_file_name='AzCodeGenerator',
         debug_output_file_name='AzCodeGeneratorD',
+
+        # running "lmbr_waf clean_win_x64_*" should not remove AzCodeGenerator as there would be no way to re-build from a package
+        exclude_from_clean=True
     )

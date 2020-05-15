@@ -22,22 +22,30 @@ namespace AZ
 
 namespace LmbrCentral
 {
-    /// Services provided by the Editor Shape Component
+    //! Services provided by the Editor Shape Component
     class EditorShapeComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        /// @brief Sets the shape color
-        /// @param solidColor the color to be used for drawing solid shapes
+        //! @brief Sets the shape color
+        //! @param solidColor the color to be used for drawing solid shapes
         virtual void SetShapeColor(const AZ::Color& solidColor) = 0;
 
-        /// @brief Sets the wireframe shape color
-        /// @param wireColor the color to be used for drawing shapes in wireframe
+        //! @brief Sets the wireframe shape color
+        //! @param wireColor the color to be used for drawing shapes in wireframe
         virtual void SetShapeWireframeColor(const AZ::Color& wireColor)  = 0;
 
-        /// @brief Sets if the shape should be visible in the editor when the object is deselected
-        /// @param visible true if the shape should be visible when deselected
+        //! @brief Sets if the shape should be visible in the editor when the object is deselected
+        //! @param visible true if the shape should be visible when deselected
         virtual void SetVisibleInEditor(bool visible) = 0;
+
+        //! @brief Sets if the shape color can be set by the user in the editor. This is useful for
+        //!   components that need to control the shape's color directly.
+        //! @param editable true if the shape color should be editable
+        virtual void SetShapeColorIsEditable(bool editable) = 0;
+
+        //! @brief Returns true if the shape color can be set by the user in the editor.
+        virtual bool GetShapeColorIsEditable() = 0;
     };
 
     // Bus to service the Shape component requests event group

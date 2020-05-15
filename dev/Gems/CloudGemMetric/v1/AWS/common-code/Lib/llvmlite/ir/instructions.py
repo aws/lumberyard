@@ -6,7 +6,7 @@ from __future__ import print_function, absolute_import
 
 from . import types
 from .values import (Block, Function, Value, NamedValue, Constant,
-                     MetaDataArgument, MetaDataString, AttributeSet)
+                     MetaDataArgument, MetaDataString, AttributeSet, Undefined)
 from ._utils import _HasMetadata
 
 
@@ -44,6 +44,7 @@ class Instruction(NamedValue, _HasMetadata):
             for op in self.operands:
                 ops.append(new if op is old else op)
             self.operands = tuple(ops)
+            self._clear_string_cache()
 
     def __repr__(self):
         return "<ir.%s %r of type '%s', opname %r, operands %r>" % (
@@ -56,7 +57,7 @@ class CallInstrAttributes(AttributeSet):
 
 
 class FastMathFlags(AttributeSet):
-    _known = frozenset(['fast', 'nnan', 'ninf', 'nsz', 'arcp'])
+    _known = frozenset(['fast', 'nnan', 'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'])
 
 
 class CallInstr(Instruction):
@@ -310,7 +311,11 @@ class CompareInstr(Instruction):
             if flag not in self.VALID_FLAG:
                 raise ValueError("invalid flag %r for %s" % (flag, self.OPNAME))
         opname = self.OPNAME
-        super(CompareInstr, self).__init__(parent, types.IntType(1),
+        if isinstance(lhs.type, types.VectorType):
+            typ = types.VectorType(types.IntType(1), lhs.type.count)
+        else:
+            typ = types.IntType(1)
+        super(CompareInstr, self).__init__(parent, typ,
                                            opname, [lhs, rhs], flags=flags,
                                            name=name)
         self.op = op
@@ -364,7 +369,7 @@ class FCMPInstr(CompareInstr):
         'uno': 'unordered (either nans)',
         'true': 'no comparison, always returns true',
     }
-    VALID_FLAG = {'nnan', 'ninf', 'nsz', 'arcp', 'fast'}
+    VALID_FLAG = {'nnan', 'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc', 'fast'}
 
 
 class CastInstr(Instruction):
@@ -420,6 +425,45 @@ class StoreInstr(Instruction):
             ptr.type,
             ptr.get_reference(),
             align,
+            self._stringify_metadata(leading_comma=True),
+            ))
+
+
+class LoadAtomicInstr(Instruction):
+    def __init__(self, parent, ptr, ordering, align, name=''):
+        super(LoadAtomicInstr, self).__init__(parent, ptr.type.pointee, "load atomic",
+                                              [ptr], name=name)
+        self.ordering = ordering
+        self.align = align
+
+    def descr(self, buf):
+        [val] = self.operands
+        buf.append("load atomic {0}, {1} {2} {3}, align {4}{5}\n".format(
+            val.type.pointee,
+            val.type,
+            val.get_reference(),
+            self.ordering,
+            self.align,
+            self._stringify_metadata(leading_comma=True),
+            ))
+
+
+class StoreAtomicInstr(Instruction):
+    def __init__(self, parent, val, ptr, ordering, align):
+        super(StoreAtomicInstr, self).__init__(parent, types.VoidType(), "store atomic",
+                                               [val, ptr])
+        self.ordering = ordering
+        self.align = align
+
+    def descr(self, buf):
+        val, ptr = self.operands
+        buf.append("store atomic {0} {1}, {2} {3} {4}, align {5}{6}\n".format(
+            val.type,
+            val.get_reference(),
+            ptr.type,
+            ptr.get_reference(),
+            self.ordering,
+            self.align,
             self._stringify_metadata(leading_comma=True),
             ))
 
@@ -502,6 +546,70 @@ class PhiInstr(Instruction):
         self.incomings = [((new if val is old else val), blk)
                           for (val, blk) in self.incomings]
 
+class ExtractElement(Instruction):
+    def __init__(self, parent, vector, index, name=''):
+        if not isinstance(vector.type, types.VectorType):
+            raise TypeError("vector needs to be of VectorType.")
+        if not isinstance(index.type, types.IntType):
+            raise TypeError("index needs to be of IntType.")
+        typ = vector.type.element
+        super(ExtractElement, self).__init__(parent, typ, "extractelement",
+                                           [vector, index], name=name)
+
+    def descr(self, buf):
+        operands = ", ".join("{0} {1}".format(
+                   op.type, op.get_reference()) for op in self.operands)
+        buf.append("{opname} {operands}\n".format(
+                   opname = self.opname, operands = operands))
+
+class InsertElement(Instruction):
+    def __init__(self, parent, vector, value, index, name=''):
+        if not isinstance(vector.type, types.VectorType):
+            raise TypeError("vector needs to be of VectorType.")
+        if not value.type == vector.type.element:
+            raise TypeError("value needs to be of type % not %."
+                            % (vector.type.element, value.type))
+        if not isinstance(index.type, types.IntType):
+            raise TypeError("index needs to be of IntType.")
+        typ = vector.type
+        super(InsertElement, self).__init__(parent, typ, "insertelement",
+                                           [vector, value, index], name=name)
+
+    def descr(self, buf):
+        operands = ", ".join("{0} {1}".format(
+                   op.type, op.get_reference()) for op in self.operands)
+        buf.append("{opname} {operands}\n".format(
+                   opname = self.opname, operands = operands))
+
+class ShuffleVector(Instruction):
+    def __init__(self, parent, vector1, vector2, mask, name=''):
+        if not isinstance(vector1.type, types.VectorType):
+            raise TypeError("vector1 needs to be of VectorType.")
+        if vector2 != Undefined:
+            if vector2.type != vector1.type:
+                raise TypeError("vector2 needs to be " +
+                                "Undefined or of the same type as vector1.")
+        if (not isinstance(mask, Constant) or
+            not isinstance(mask.type, types.VectorType) or
+            mask.type.element != types.IntType(32)):
+            raise TypeError("mask needs to be a constant i32 vector.")
+        typ = types.VectorType(vector1.type.element, mask.type.count)
+        index_range = range(vector1.type.count
+                            if vector2 == Undefined
+                            else 2 * vector1.type.count)
+        if not all(ii.constant in index_range for ii in mask.constant):
+            raise IndexError(
+                "mask values need to be in {0}".format(index_range),
+            )
+        super(ShuffleVector, self).__init__(parent, typ, "shufflevector",
+                                           [vector1, vector2, mask], name=name)
+
+    def descr(self, buf):
+        buf.append("shufflevector {0} {1}\n".format(
+                   ", ".join("{0} {1}".format(op.type, op.get_reference())
+                             for op in self.operands),
+                   self._stringify_metadata(leading_comma=True),
+                   ))
 
 class ExtractValue(Instruction):
     def __init__(self, parent, agg, indices, name=''):
@@ -676,3 +784,34 @@ class LandingPadInstr(Instruction):
                               clauses=''.join(["\n      {0}".format(clause)
                                                for clause in self.clauses]),
                               ))
+
+class Fence(Instruction):
+    """
+    The `fence` instruction.
+
+    As of LLVM 5.0.1:
+
+    fence [syncscope("<target-scope>")] <ordering>  ; yields void
+    """
+
+    VALID_FENCE_ORDERINGS = {"acquire", "release", "acq_rel", "seq_cst"}
+
+    def __init__(self, parent, ordering, targetscope=None, name=''):
+        super(Fence, self).__init__(parent, types.VoidType(), "fence", (), name=name)
+        if ordering not in self.VALID_FENCE_ORDERINGS:
+            raise ValueError("Invalid fence ordering \"{0}\"! Should be one of {1}."
+                             .format(ordering, ", ".join(self.VALID_FENCE_ORDERINGS)))
+        self.ordering = ordering
+        self.targetscope = targetscope
+
+    def descr(self, buf):
+        if self.targetscope is None:
+            syncscope = ""
+        else:
+            syncscope = 'syncscope("{0}") '.format(self.targetscope)
+
+        fmt = "fence {syncscope}{ordering}\n"
+        buf.append(fmt.format(syncscope=syncscope,
+                              ordering=self.ordering,
+                              ))
+

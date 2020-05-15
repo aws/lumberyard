@@ -477,7 +477,7 @@ namespace AZ
     EditContext::EnumBuilder
     EditContext::Enum(const char* displayName, const char* description)
     {
-        AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPE_INFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
+        static_assert(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPE_INFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
         const AZ::Uuid& enumId = azrtti_typeid<E>();
         if (m_serializeContext.IsRemovingReflection())
         {
@@ -781,7 +781,7 @@ namespace AZ
             return this;
         }
 
-        AZ_STATIC_ASSERT(AZStd::is_enum<T>::value, "Type passed to EnumAttribute is not an enum.");
+        static_assert(AZStd::is_enum<T>::value, "Type passed to EnumAttribute is not an enum.");
         // If the name of the element is the same as the class name, then this is the global reflection (see EditContext::Enum<E>())
         const bool isReflectedGlobally = m_editElement->m_serializeClassElement && m_editElement->m_elementId == Internal::UuidToCrc32(m_editElement->m_serializeClassElement->m_typeId);
         AZ_Error("EditContext", !isReflectedGlobally, "You cannot add enum values to an enum which is globally reflected (while reflecting %s %s)", AzTypeInfo<T>::Name(), m_editElement->m_name);
@@ -884,8 +884,8 @@ namespace AZ
         {
             return this;
         }
-        AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "Only values that are part of an enum are valid as value attributes");
-        AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPEINFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
+        static_assert(AZStd::is_enum<E>::value, "Only values that are part of an enum are valid as value attributes");
+        static_assert(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPEINFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
         AZ_Assert(m_elementData, "Attempted to add a value attribute (%s) to a non-existent enum element data", name);
         const Edit::EnumConstant<E> internalValue(value, name);
         using ContainerType = Edit::AttributeData<Edit::EnumConstant<E>>;

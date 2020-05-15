@@ -9,24 +9,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from unittest.mock import MagicMock
+
+
 class MockProjectInfo(object):
     MOCK_PROJECT_NAME = 'TestProject'
+
     def __init__(self):
         self.project_name = self.MOCK_PROJECT_NAME
 
 
 class MockDeploymentInfo(object):
-
     MOCK_DEPLOYMENT_NAME = 'TestDeployment'
     MOCK_STACK_NAME = 'MockDeploymentStack'
     MOCK_REGION = 'MockRegion'
     MOCK_ACCOUNT = 'MockAccount'
     MOCK_UUID = 'MockUUID'
     MOCK_STACK_ARN = 'arn:aws:cloudformation:{region}:{account}:stack/{name}/{uuid}'.format(
-        region = MOCK_REGION,
-        account = MOCK_ACCOUNT,
-        name = MOCK_STACK_NAME,
-        uuid = MOCK_UUID)
+        region=MOCK_REGION,
+        account=MOCK_ACCOUNT,
+        name=MOCK_STACK_NAME,
+        uuid=MOCK_UUID)
 
     def __init__(self):
         self.deployment_name = self.MOCK_DEPLOYMENT_NAME
@@ -37,19 +40,19 @@ class MockDeploymentInfo(object):
 
 
 class MockResourceGroupInfo(object):
-
     MOCK_CLOUD_CANVAS_STACK = 'Deployment'
     MOCK_RESOURCE_GROUP_NAME = 'TestResourceGroup'
+    MOCK_PROJECT_NAME = 'MockResourceGroupStack'
     MOCK_STACK_NAME = 'MockResourceGroupStack'
     MOCK_REGION = 'MockRegion'
     MOCK_ACCOUNT = 'MockAccount'
     MOCK_UUID = 'MockUUID'
     MOCK_STACK_TYPE = 'ResourceGroup'
     MOCK_STACK_ARN = 'arn:aws:cloudformation:{region}:{account}:stack/{name}/{uuid}'.format(
-        region = MOCK_REGION,
-        account = MOCK_ACCOUNT,
-        name = MOCK_STACK_NAME,
-        uuid = MOCK_UUID)
+        region=MOCK_REGION,
+        account=MOCK_ACCOUNT,
+        name=MOCK_STACK_NAME,
+        uuid=MOCK_UUID)
 
     def __init__(self):
         self.resource_group_name = self.MOCK_RESOURCE_GROUP_NAME
@@ -59,3 +62,5 @@ class MockResourceGroupInfo(object):
         self.deployment = MockDeploymentInfo()
         self.parameters = {'CloudCanvasStack': self.MOCK_CLOUD_CANVAS_STACK}
         self.stack_type = self.MOCK_STACK_TYPE
+        self.project_stack = MagicMock()
+        self.project_stack.project_name = self.MOCK_STACK_NAME

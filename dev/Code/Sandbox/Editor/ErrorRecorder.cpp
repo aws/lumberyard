@@ -18,7 +18,7 @@
 //////////////////////////////////////////////////////////////////////////
 CErrorsRecorder::CErrorsRecorder(bool showErrors)
 {
-    GetIEditor()->GetErrorReport()->SetImmidiateMode(false);
+    GetIEditor()->GetErrorReport()->SetImmediateMode(false);
     GetIEditor()->GetErrorReport()->SetShowErrors(showErrors);
 }
 

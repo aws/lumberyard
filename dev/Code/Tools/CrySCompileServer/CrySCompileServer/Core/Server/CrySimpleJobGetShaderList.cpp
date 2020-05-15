@@ -44,7 +44,10 @@ bool CCrySimpleJobGetShaderList::Execute(const TiXmlElement* pElement)
     FILE* pFile = fopen(shaderListFilename.c_str(), "rb");
     if (!pFile)
     {
-        return false;
+        // Fake a good result. We can't be sure if this file name is bad or if it doesn't exist *yet*, so we'll just assume the latter.
+        m_pRVec->resize(4, '\0');
+        State(ECSJS_DONE);
+        return true;
     }
 
     fseek(pFile, 0, SEEK_END);

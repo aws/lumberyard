@@ -57,6 +57,9 @@ public: // member functions
     //! Start a sequence
     virtual void StartSequence(const AZStd::string& sequenceName) = 0;
 
+    //! Play a sequence from startTime to endTime
+    virtual void PlaySequenceRange(const AZStd::string& sequenceName, float startTime, float endTime) = 0;
+
     //! Stop a sequence
     virtual void StopSequence(const AZStd::string& sequenceName) = 0;
 
@@ -83,7 +86,13 @@ public: // member functions
 
     //! Get whether a sequence is currently playing
     virtual bool IsSequencePlaying(const AZStd::string& sequenceName) = 0;
+    
+    //! Get the length of a sequence in seconds
+    virtual float GetSequenceLength(const AZStd::string& sequenceName) = 0;
 
+    //! Set the behavior a sequence will exhibit when it stops playing
+    virtual void SetSequenceStopBehavior(IUiAnimationSystem::ESequenceStopBehavior stopBehavior) = 0;
+    
 public: // static member data
 
     //! Only one component on a entity can implement the events

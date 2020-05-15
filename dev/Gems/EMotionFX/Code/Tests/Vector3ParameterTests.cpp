@@ -32,11 +32,11 @@ namespace EMotionFX
         {
             AnimGraphFixture::ConstructGraph();
             m_param = GetParam();
-            AddParameter<Vector3Parameter, AZ::Vector3>("vec3Test", m_param);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            AddParameter<Vector3Parameter, AZ::Vector3>("vec3Test", m_param);
 
             /*
             +------------+
@@ -61,6 +61,14 @@ namespace EMotionFX
 
             m_twoLinkIKNode->AddConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeTwoLinkIKNode::PORTID_INPUT_POSE);
             finalNode->AddConnection(m_twoLinkIKNode, BlendTreeTwoLinkIKNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            m_blendTreeAnimGraph->InitAfterLoading();
+        }
+
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
         }
 
         template <class paramType, class inputType>
@@ -73,6 +81,7 @@ namespace EMotionFX
         }
 
     protected:
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTree* m_blendTree = nullptr;
         BlendTreeParameterNode* m_paramNode = nullptr;
         BlendTreeTwoLinkIKNode* m_twoLinkIKNode = nullptr;
@@ -85,7 +94,7 @@ namespace EMotionFX
             ParameterType* parameter = aznew ParameterType();
             parameter->SetName(name);
             parameter->SetDefaultValue(defaultValue);
-            m_animGraph->AddParameter(parameter);
+            m_blendTreeAnimGraph->AddParameter(parameter);
         }
     };
 

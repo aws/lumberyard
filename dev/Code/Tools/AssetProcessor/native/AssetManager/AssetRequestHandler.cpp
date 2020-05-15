@@ -30,10 +30,11 @@ namespace
     static const uint32_t s_assetPath = AssetUtilities::ComputeCRC32Lowercase("assetPath");
 }
 
-AssetRequestHandler::AssetRequestLine::AssetRequestLine(QString platform, QString searchTerm, bool isStatusRequest)
+AssetRequestHandler::AssetRequestLine::AssetRequestLine(QString platform, QString searchTerm, const AZ::Data::AssetId& assetId, bool isStatusRequest)
     : m_platform(platform)
     , m_searchTerm(searchTerm)
     , m_isStatusRequest(isStatusRequest)
+    , m_assetId(assetId)
 {
 }
 
@@ -48,6 +49,20 @@ QString AssetRequestHandler::AssetRequestLine::GetPlatform() const
 }
 QString AssetRequestHandler::AssetRequestLine::GetSearchTerm() const
 {
+    return m_searchTerm;
+}
+
+const AZ::Data::AssetId& AssetRequestHandler::AssetRequestLine::GetAssetId() const
+{
+    return m_assetId;
+}
+
+QString AssetRequestHandler::AssetRequestLine::GetDisplayString() const
+{
+    if (m_assetId.IsValid())
+    {
+        return QString::fromUtf8(m_assetId.ToString<AZStd::string>().c_str());
+    }
     return m_searchTerm;
 }
 
@@ -67,7 +82,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         GetFullSourcePathFromRelativeProductPathRequest* request = azrtti_cast<GetFullSourcePathFromRelativeProductPathRequest*>(message);
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.Incoming message type is %d.\n", GetFullSourcePathFromRelativeProductPathRequest::MessageType(), message->GetMessageType());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected GetFullSourcePathFromRelativeProductPathRequest(%d) but incoming message type is %d.\n", GetFullSourcePathFromRelativeProductPathRequest::MessageType(), message->GetMessageType());
             return true;
         }
 
@@ -77,7 +92,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
 
         if (!fullPathfound)
         {
-            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not find full source path from the relative product path (%s).", request->m_relativeProductPath.c_str());
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not find full source path from the relative product path (%s).\n", request->m_relativeProductPath.c_str());
         }
 
         GetFullSourcePathFromRelativeProductPathResponse response(fullPathfound, fullSourcePath);
@@ -89,7 +104,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         GetRelativeProductPathFromFullSourceOrProductPathRequest* request = azrtti_cast<GetRelativeProductPathFromFullSourceOrProductPathRequest*>(message);
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.Incoming message type is %d.\n", GetRelativeProductPathFromFullSourceOrProductPathRequest::MessageType(), message->GetMessageType());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected GetRelativeProductPathFromFullSourceOrProductPathRequest(%d) but incoming message type is %d.\n", GetRelativeProductPathFromFullSourceOrProductPathRequest::MessageType(), message->GetMessageType());
             return true;
         }
 
@@ -112,7 +127,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", SourceAssetInfoRequest::MessageType(), message->GetMessageType());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected SourceAssetInfoRequest(%d) but incoming message type is %d.\n", SourceAssetInfoRequest::MessageType(), message->GetMessageType());
             return true;
         }
 
@@ -182,7 +197,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         AzToolsFramework::AssetSystem::GetScanFoldersRequest* request = azrtti_cast<AzToolsFramework::AssetSystem::GetScanFoldersRequest*>(message);
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.Incoming message type is %d.\n", 
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected GetScanFoldersRequest(%d) but incoming message type is %d.\n", 
                 AzToolsFramework::AssetSystem::GetScanFoldersRequest::MessageType(), message->GetMessageType());
             return true;
         }
@@ -230,7 +245,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", RegisterSourceAssetRequest::MessageType(), message->GetMessageType());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected RegisterSourceAssetRequest(%d) but incoming message type is %d.\n", RegisterSourceAssetRequest::MessageType(), message->GetMessageType());
             return true;
         }
 
@@ -244,11 +259,39 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
 
         if (!request)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", UnregisterSourceAssetRequest::MessageType(), message->GetMessageType());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected UnregisterSourceAssetRequest(%d) but incoming message type is %d.\n", UnregisterSourceAssetRequest::MessageType(), message->GetMessageType());
             return true;
         }
 
         AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, request->m_assetType);
+
+        return true;
+    }
+    else if (message->GetMessageType() == RequestEscalateAsset::MessageType())
+    {
+        RequestEscalateAsset* request = azrtti_cast<RequestEscalateAsset*>(message);
+
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Expected RequestEscalateAsset(%d) but incoming message type is %d.\n", RequestEscalateAsset::MessageType(), message->GetMessageType());
+            // returning true here means to delete the message.
+            return true;
+        }
+
+        if (!request->m_assetUuid.IsNull())
+        {
+            // search by UUID is preferred.
+            Q_EMIT RequestEscalateAssetByUuid(platform, request->m_assetUuid);
+        }
+        else if (!request->m_searchTerm.empty())
+        {
+            // fall back to search term.
+            Q_EMIT RequestEscalateAssetBySearchTerm(platform, QString::fromUtf8(request->m_searchTerm.c_str()));
+        }
+        else
+        {
+            AZ_Warning(AssetProcessor::DebugChannel, false,"Invalid RequestEscalateAsset.  Both the search term and uuid are empty/null\n");
+        }
 
         return true;
     }
@@ -266,10 +309,9 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
 
         if (request->m_assetId.IsValid())
         {
-            AZ::Data::AssetInfo assetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, request->m_assetId);
-            response.m_assetInfo = assetInfo;
-            response.m_found = !assetInfo.m_relativePath.empty() && assetInfo.m_assetType != AZ::Data::s_invalidAssetType && assetInfo.m_assetId.IsValid();
+            AZStd::string rootFilePath;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystemRequestBus::Events::GetAssetInfoById, request->m_assetId, request->m_assetType, response.m_assetInfo, rootFilePath);
+            response.m_rootFolder = rootFilePath;
         }
         else if (!request->m_assetPath.empty())
         {
@@ -305,19 +347,19 @@ void AssetRequestHandler::ProcessAssetRequest(NetworkRequestID networkRequestId,
         AZ_TracePrintf(AssetProcessor::DebugChannel, "ProcessAssetRequest: Message is not of type %d.Incoming message type is %d.\n", RequestAssetStatus::MessageType(), message->GetMessageType());
         return;
     }
-
-    QString assetPath = stat->m_searchTerm.c_str();
-    bool isStatusRequest = stat->m_isStatusRequest;
-    if (assetPath.isEmpty())
+        
+    if ((stat->m_searchTerm.empty())&&(!stat->m_assetId.IsValid()))
     {
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Failed to decode incoming request for asset status or compilation.\n");
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Failed to decode incoming RequestAssetStatus - both path and uuid is empty\n");
         SendAssetStatus(networkRequestId, RequestAssetStatus::MessageType(), AssetStatus::AssetStatus_Unknown);
         return;
     }
+    AssetRequestHandler::AssetRequestLine newLine(platform, QString::fromUtf8(stat->m_searchTerm.c_str()), stat->m_assetId, stat->m_isStatusRequest);
+    AZ_TracePrintf(AssetProcessor::DebugChannel, "GetAssetStatus/CompileAssetSync: %s.\n", newLine.GetDisplayString().toUtf8().constData());
 
-    AZ_TracePrintf(AssetProcessor::DebugChannel, "Compile Group Requested: %s.\n", assetPath.toUtf8().data());
-    m_pendingAssetRequests.insert(networkRequestId, AssetRequestHandler::AssetRequestLine(platform, assetPath, isStatusRequest));
-    Q_EMIT RequestCompileGroup(networkRequestId, platform, assetPath, isStatusRequest);
+    QString assetPath = QString::fromUtf8(stat->m_searchTerm.c_str());  // utf8-decode just once here, reuse below
+    m_pendingAssetRequests.insert(networkRequestId, newLine);
+    Q_EMIT RequestCompileGroup(networkRequestId, platform, assetPath, stat->m_assetId, stat->m_isStatusRequest);
 }
 
 void AssetRequestHandler::OnCompileGroupCreated(NetworkRequestID groupID, AssetStatus status)
@@ -331,33 +373,25 @@ void AssetRequestHandler::OnCompileGroupCreated(NetworkRequestID groupID, AssetS
         return;
     }
 
-    // If the RCController doesn't know about the file, then we should look again in the asset database
-    // since in that case its either complete already or never existed in the first case
     if (status == AssetStatus_Unknown)
     {
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "No assets in queue exist for compile group, checking on disk %s.\n ", located.value().GetSearchTerm().toUtf8().data());
-        // the RC controller has no idea what this search term might equate to
-        // ask whether it exists or not...
-        Q_EMIT RequestAssetExists(groupID, located.value().GetPlatform(), located.value().GetSearchTerm());
+        // if this happens it means we made an async request and got a response from the build queue that no such thing
+        // exists in the queue.  It might still be a valid asset - for example, it may have already finished compiling and thus
+        // won't be in the queue.  To cover this we also make a request to the asset manager here (its also async)
+        Q_EMIT RequestAssetExists(groupID, located.value().GetPlatform(), located.value().GetSearchTerm(), located.value().GetAssetId());
     }
     else
     {
+        // if its a status request, return it immediately and then remove it.
         if (located.value().IsStatusRequest())
         {
-            // if its a status request, return it immediately and then remove it.
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Sending back status request for %s.\n", located.value().GetSearchTerm().toUtf8().data());
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "GetAssetStatus: Responding with status of: %s\n", located.value().GetDisplayString().toUtf8().constData());
             SendAssetStatus(groupID, RequestAssetStatus::MessageType(), status);
             m_pendingAssetRequests.erase(located);
         }
-        else
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Compile Group created for %s.  Waiting for all assets to be done.\n", located.value().GetSearchTerm().toUtf8().data());
-        }
-
         // if its not a status request then we'll wait for OnCompileGroupFinished before responding.
     }
 }
-
 
 void AssetRequestHandler::OnCompileGroupFinished(NetworkRequestID groupID, AssetStatus status)
 {
@@ -369,10 +403,18 @@ void AssetRequestHandler::OnCompileGroupFinished(NetworkRequestID groupID, Asset
         return;
     }
 
-    AZ_TracePrintf(AssetProcessor::DebugChannel, "Compile Group finished: %s.\n", located.value().GetSearchTerm().toUtf8().data());
-    SendAssetStatus(groupID, AzFramework::AssetSystem::RequestAssetStatus::MessageType(), status);
-
-    m_pendingAssetRequests.erase(located);
+    // if the compile group finished, but the request was for a SPECIFIC asset, we have to take an extra step since
+    // the compile group being finished just means the source file has compiled, doesn't necessarly mean that specific asset is emitted.
+    if (located.value().GetAssetId().IsValid())
+    {
+        Q_EMIT RequestAssetExists(groupID, located.value().GetPlatform(), located.value().GetSearchTerm(), located.value().GetAssetId());
+    }
+    else
+    {
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Compile Group finished: %s.\n", located.value().GetDisplayString().toUtf8().constData());
+        SendAssetStatus(groupID, AzFramework::AssetSystem::RequestAssetStatus::MessageType(), status);
+        m_pendingAssetRequests.erase(located);
+    }
 }
 
 //! Called from the outside in response to a RequestAssetExists.
@@ -386,11 +428,12 @@ void AssetRequestHandler::OnRequestAssetExistsResponse(NetworkRequestID groupID,
         AZ_TracePrintf(AssetProcessor::DebugChannel, "OnRequestAssetExistsResponse: No such compile group found, ignoring.\n");
         return;
     }
+    
+    AZ_TracePrintf(AssetProcessor::DebugChannel, "GetAssetStatus / CompileAssetSync: Asset %s is %s.\n", 
+        located.value().GetDisplayString().toUtf8().constData(), 
+        exists ? "compiled already" : "missing" );
 
-    AZ_TracePrintf(AssetProcessor::DebugChannel, "Compile Group Asset Exists response for %s.\n", located.value().GetSearchTerm().toUtf8().data());
-
-    AssetStatus stat = exists ? AssetStatus_Compiled : AssetStatus_Missing;
-    SendAssetStatus(groupID, RequestAssetStatus::MessageType(), stat);
+    SendAssetStatus(groupID, RequestAssetStatus::MessageType(), exists ? AssetStatus_Compiled : AssetStatus_Missing);
 
     m_pendingAssetRequests.erase(located);
 }

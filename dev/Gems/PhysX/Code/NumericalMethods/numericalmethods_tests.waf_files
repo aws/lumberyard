@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/Environment.cpp",
+            "Tests/Environment.h",
+            "Tests/CommonTest.cpp",
+            "Tests/OptimizationTest.cpp",
+            "Tests/EigenanalysisTest.cpp"
+        ]
+    }
+}

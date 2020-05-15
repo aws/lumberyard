@@ -9,11 +9,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #4 $
-
-import mock
 import unittest
+from unittest import mock
 
 import cgf_service_client
+
 
 class UnitTest_CloudGemFramework_ServiceClient_service_client(unittest.TestCase):
 

@@ -103,7 +103,7 @@ namespace EMotionFX
         SpringSolver();
 
         bool Init(const InitSettings& initSettings);
-        void Update(const Pose& inputPose, Pose& pose, float timePassedInSeconds, float weight);
+        void Update(const Pose& inputPose, Pose& pose, float timePassedInSeconds);
         void DebugRender(const Pose& pose, bool renderColliders, bool renderLimits, const AZ::Color& color) const;
         void Stabilize();
         void Log();
@@ -159,7 +159,7 @@ namespace EMotionFX
         void CalcForces(const Pose& pose, float scaleFactor);
         void SatisfyConstraints(const Pose& inputPose, Pose& outPose, size_t numIterations, float scaleFactor);
         void Simulate(float deltaTime, const Pose& inputPose, Pose& outPose, float scaleFactor);
-        void UpdateJointTransforms(Pose& pose, float weight);
+        void UpdateJointTransforms(Pose& pose);
         size_t AddParticle(const SimulatedJoint* joint);
         bool CollideWithSphere(AZ::Vector3& pos, const AZ::Vector3& center, float radius);
         bool CollideWithCapsule(AZ::Vector3& pos, const AZ::Vector3& lineStart, const AZ::Vector3& lineEnd, float radius);

@@ -9,6 +9,7 @@
             "Mocks/ICryPakMock.h",
             "Mocks/ILogMock.h",
             "Mocks/IMaterialManagerMock.h",
+            "Mocks/IMemoryManagerMock.h",
             "Mocks/ISystemMock.h",
             "Mocks/ITimerMock.h",
             "Mocks/ICVarMock.h",

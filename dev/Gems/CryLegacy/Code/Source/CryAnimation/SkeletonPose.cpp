@@ -153,10 +153,10 @@ void CSkeletonPose::SetDefaultPosePerInstance(bool bDataPoseForceWriteable)
     m_bInstanceVisible = 0;
     m_bFullSkeletonUpdate = 0;
 
-    PoseModifier::CRecoil* pRecoil = static_cast<PoseModifier::CRecoil*>(m_recoil.get());
+    ::PoseModifier::CRecoil* pRecoil = static_cast<::PoseModifier::CRecoil*>(m_recoil.get());
     if (pRecoil)
     {
-        pRecoil->SetState(PoseModifier::CRecoil::State());
+        pRecoil->SetState(::PoseModifier::CRecoil::State());
     }
 
     CPoseBlenderLook* pPBLook = static_cast<CPoseBlenderLook*>(m_PoseBlenderLook.get());
@@ -324,15 +324,15 @@ void CSkeletonPose::ApplyRecoilAnimation(f32 fDuration, f32 fKinematicImpact, f3
         return;
     }
 
-    PoseModifier::CRecoil* pRecoil = static_cast<PoseModifier::CRecoil*>(m_recoil.get());
+    ::PoseModifier::CRecoil* pRecoil = static_cast<::PoseModifier::CRecoil*>(m_recoil.get());
     if (!pRecoil)
     {
         ::CryCreateClassInstance<IAnimationPoseModifier>("AnimationPoseModifier_Recoil", m_recoil);
-        pRecoil = static_cast<PoseModifier::CRecoil*>(m_recoil.get());
+        pRecoil = static_cast<::PoseModifier::CRecoil*>(m_recoil.get());
         CRY_ASSERT(pRecoil);
     }
 
-    PoseModifier::CRecoil::State state;
+    ::PoseModifier::CRecoil::State state;
     state.time = 0.0f;
     state.duration = fDuration;
     state.strengh = fKinematicImpact; //recoil in cm

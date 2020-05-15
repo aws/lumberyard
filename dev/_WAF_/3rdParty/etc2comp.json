@@ -4,7 +4,7 @@
     "description": "Etc2comp Libraries",
     "defines": [],
     "lib_required": "False",
-    "includes": [
+    "system_includes": [
         "EtcLib/Etc",
         "EtcLib/EtcCodec"
     ]

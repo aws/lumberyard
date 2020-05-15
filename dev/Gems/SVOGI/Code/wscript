@@ -16,9 +16,7 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         includes    = ['.',
-                       bld.ThirdPartyPath('boost'),
                        bld.Path('Code/CryEngine/CryCommon'),
-                       bld.Path('Code/CryEngine/CryAction'),
                        bld.Path('Gems/LmbrCentral/Code/include')
                       ],
         # Platform Roots

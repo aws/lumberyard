@@ -19,6 +19,7 @@
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/parallel/mutex.h>
 
 class CBootProfilerRecord;
 class CBootProfilerSession;
@@ -47,6 +48,7 @@ public:
 protected:
     // === ISystemEventListener
     virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
+    void SetFrameCount(int frameCount);
 
 private:
     CBootProfilerSession* m_pCurrentSession;
@@ -56,7 +58,7 @@ private:
     static int                      CV_sys_bp_frames;
     static float                    CV_sys_bp_time_threshold;
     CBootProfilerRecord*    m_pFrameRecord;
-
+    AZStd::recursive_mutex            m_recordMutex;
     int m_levelLoadAdditionalFrames;
 };
 

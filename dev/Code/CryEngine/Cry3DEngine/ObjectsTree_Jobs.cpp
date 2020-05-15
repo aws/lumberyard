@@ -18,12 +18,6 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain_sector.h"
-#include "terrain.h"
-#endif
-
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "IndexedMesh.h"
@@ -31,6 +25,8 @@
 #include "Vegetation.h"
 #include "ObjectsTree.h"
 #include "ICryAnimation.h"
+#include <Terrain/ITerrainNode.h>
+#include <Terrain/Bus/LegacyTerrainBus.h> 
 
 #include "DecalRenderNode.h"
 #include "Brush.h"
@@ -58,9 +54,15 @@ namespace LegacyInternal
 
 //////////////////////////////////////////////////////////////////////////
 COctreeNode::COctreeNode(int nSID, const AABB& box, CVisArea* pVisArea, COctreeNode* pParent)
+    : m_nOccludedFrameId(0), m_renderFlags(0), m_errTypesBitField(0), m_fObjectsMaxViewDist(0.0f), m_nLastVisFrameId(0)
+    , nFillShadowCastersSkipFrameId(0), m_fNodeDistance(0.0f), m_nManageVegetationsFrameId(0)
+    , m_bHasLights(0), m_bHasRoads(0), m_bNodeCompletelyInFrustum(0)
 {
+    memset(m_arrChilds, 0, sizeof(m_arrChilds));
+    memset(m_arrObjects, 0, sizeof(m_arrObjects));
+    memset(&m_lstCasters, 0, sizeof(m_lstCasters));
+
     m_pRNTmpData = NULL;
-    memset(this, 0, sizeof(*this));
     m_nSID = nSID;
     m_vNodeCenter = box.GetCenter();
     m_vNodeAxisRadius = box.GetSize() * 0.5f;
@@ -79,9 +81,16 @@ COctreeNode::COctreeNode(int nSID, const AABB& box, CVisArea* pVisArea, COctreeN
     }
 #endif
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    SetTerrainNode(m_nSID >= 0 && GetTerrain() ? GetTerrain()->FindMinNodeContainingBox(box) : NULL);
-#endif
+    if (m_nSID >= 0)
+    {
+        ITerrainNode* terrainNode = nullptr;
+        LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(terrainNode, &LegacyTerrain::LegacyTerrainDataRequests::FindMinNodeContainingBox, box);
+        SetTerrainNode(terrainNode);
+    }
+    else
+    {
+        SetTerrainNode(nullptr);
+    }
 
     m_pVisArea = pVisArea;
     m_pParent = pParent;
@@ -140,6 +149,12 @@ void COctreeNode::RenderContent(int nRenderMask, const SRenderingPassInfo& passI
 //////////////////////////////////////////////////////////////////////////
 void COctreeNode::Shutdown()
 {
+    WaitForContentJobCompletion();
+}
+
+void COctreeNode::WaitForContentJobCompletion()
+{
+    //Deleting it calls WaitForCompletion(), and the next call to RenderContent() will create a new instance
     delete LegacyInternal::s_renderContentJobExecutor;
     LegacyInternal::s_renderContentJobExecutor = nullptr;
 }
@@ -520,12 +535,15 @@ bool COctreeNode::DeleteObject(IRenderNode* pObj)
 
     UnlinkObject(pObj);
 
-    for (int i = 0; i < m_lstCasters.Count(); i++)
+    if (m_removeVegetationCastersOneByOne)
     {
-        if (m_lstCasters[i].pNode == pObj)
+        for (int i = 0; i < m_lstCasters.Count(); i++)
         {
-            m_lstCasters.Delete(i);
-            break;
+            if (m_lstCasters[i].pNode == pObj)
+            {
+                m_lstCasters.Delete(i);
+                break;
+            }
         }
     }
 
@@ -1055,36 +1073,37 @@ void CObjManager::RenderObjectDebugInfo(IRenderNode* pEnt, float fEntDistance,  
 //////////////////////////////////////////////////////////////////////////
 void CObjManager::FillTerrainTexInfo(IOctreeNode* pOcNode, float fEntDistance, struct SSectorTextureSet*& pTerrainTexInfo, const AABB& objBox)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     IVisArea* pVisArea = pOcNode->m_pVisArea;
-    CTerrainNode* pTerrainNode = pOcNode->GetTerrainNode();
+    ITerrainNode* pTerrainNode = pOcNode->GetTerrainNode();
 
     if ((!pVisArea || pVisArea->IsAffectedByOutLights()) && pTerrainNode)
     { // provide terrain texture info
         AABB boxCenter;
         boxCenter.min = boxCenter.max = objBox.GetCenter();
 
-        if (CTerrainNode* pTerNode = pTerrainNode)
+        if (ITerrainNode* pTerNode = pTerrainNode)
         {
             if (pTerNode = pTerNode->FindMinNodeContainingBox(boxCenter))
             {
-                SSectorTextureSet* terrainInfo = &pTerNode->m_TextureSet;
-                float terrainNodeSize = pTerNode->m_LocalAABB.max.x - pTerNode->m_LocalAABB.min.x;
-                while (fEntDistance * 2.f * 8.f > terrainNodeSize && pTerNode->m_Parent)
+                SSectorTextureSet* terrainInfo = pTerNode->GetTextureSet();
+                const AABB& localAABB = pTerNode->GetLocalAABB();
+                float terrainNodeSize = localAABB.max.x - localAABB.min.x;
+                while (fEntDistance * 2.f * 8.f > terrainNodeSize && pTerNode->GetParent())
                 {
-                    if (pTerNode->m_TextureSet.nTex0)
+                    SSectorTextureSet* textureSet = pTerNode->GetTextureSet();
+                    if (textureSet->nTex0)
                     {
-                        terrainInfo = &pTerNode->m_TextureSet;
+                        terrainInfo = textureSet;
                     }
-                    pTerNode = pTerNode->m_Parent;
-                    terrainNodeSize = pTerNode->m_LocalAABB.max.x - pTerNode->m_LocalAABB.min.x;
+                    pTerNode = pTerNode->GetParent();
+                    const AABB& parentLocalAABB = pTerNode->GetLocalAABB();
+                    terrainNodeSize = parentLocalAABB.max.x - parentLocalAABB.min.x;
                 }
 
                 pTerrainTexInfo = terrainInfo;
             }
         }
     }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1229,6 +1248,11 @@ void CObjManager::PushIntoCullQueue(const SCheckOcclusionJobData& rCheckOcclusio
             m_CheckOcclusionQueue.BufferSize());
     }
 
+}
+
+void CObjManager::PushTerrainJobDataIntoCullQueue(ITerrainNode* pTerrainNode, const AABB& nodebox, float distanceToCamera)
+{
+    PushIntoCullQueue(SCheckOcclusionJobData::CreateTerrainJobData(pTerrainNode, nodebox, distanceToCamera));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1984,15 +2008,6 @@ _smart_ptr<IMaterial> CMergedMeshRenderNode::GetMaterial(Vec3* pHitPos)
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-EERType CTerrainNode::GetRenderNodeType()
-{
-    return eERType_NotRenderNode;
-}
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 #if !defined(EXCLUDE_DOCUMENTATION_PURPOSE)
 #include "PrismRenderNode.h"
 
@@ -2094,12 +2109,3 @@ _smart_ptr<IMaterial> CCloudRenderNode::GetMaterial(Vec3* pHitPos)
 {
     return m_pMaterial;
 }
-
-
-///////////////////////////////////////////////////////////////////////////////
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-void CTerrainNode::FillBBox(AABB& aabb)
-{
-    aabb = GetBBox();
-}
-#endif

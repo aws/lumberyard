@@ -14,6 +14,7 @@
 
 #include "CloudGemMetric/MetricsSettings.h"
 #include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace CloudGemMetric
 {
@@ -87,20 +88,21 @@ namespace CloudGemMetric
 
     void MetricsSettings::InitFromBackend(const CloudGemMetric::ServiceAPI::ClientContext& context)
     {
-        if (!ValidateSettings(context.file_max_size_in_mb,
+        if (!ValidateSettings(
+            aznumeric_caster(context.file_max_size_in_mb),
             context.buffer_flush_to_file_interval_sec,
             context.buffer_flush_to_file_max_in_bytes,
-            context.file_max_metrics_to_send_in_batch_in_mb,
+            aznumeric_caster(context.file_max_metrics_to_send_in_batch_in_mb),
             context.file_send_metrics_interval_in_seconds))
         {
             AZ_Warning("MetricsSettings", false, "Rejecting invalid settings from backend");
             return;
         }
 
-        m_maxLocalFileSizeInBytes = context.file_max_size_in_mb * 1024*1024;
+        m_maxLocalFileSizeInBytes = aznumeric_caster(context.file_max_size_in_mb * 1024*1024);
         m_gameBufferFlushPeriodInSeconds = context.buffer_flush_to_file_interval_sec;
         m_maxGameBufferSizeInBytes = context.buffer_flush_to_file_max_in_bytes;
-        m_maxMetricsSizeToSendInBatchInBytes = context.file_max_metrics_to_send_in_batch_in_mb * 1024*1024;
+        m_maxMetricsSizeToSendInBatchInBytes = aznumeric_caster(context.file_max_metrics_to_send_in_batch_in_mb * 1024*1024);
         m_sendMetricsIntervalInSeconds = context.file_send_metrics_interval_in_seconds;
         m_fileThresholdToPrioritizeInPercent = context.file_threshold_to_prioritize_in_perc;
     }

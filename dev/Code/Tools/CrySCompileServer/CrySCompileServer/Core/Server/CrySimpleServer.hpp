@@ -82,6 +82,9 @@ public:
 #if defined(TOOLS_SUPPORT_XENIA)
 #include "Xenia/CrySimpleServer_hpp_xenia.inl"
 #endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#include "Salem/CrySimpleServer_hpp_salem.inl"
+#endif
 
     static void Create();
     static void Destroy();

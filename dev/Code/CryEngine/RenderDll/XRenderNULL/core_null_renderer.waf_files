@@ -133,6 +133,10 @@
             "../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.cpp",
             "../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.h"
         ],
+        "Common/RendElements/TerrainUtils/Debug": [
+            "../Common/RendElements/TerrainUtils/Debug/TerrainProfiler.cpp",
+            "../Common/RendElements/TerrainUtils/Debug/TerrainProfiler.h"
+        ],
 		"Common/PostProcess":
 		[
 			"../Common/PostProcess/PostEffects.cpp",

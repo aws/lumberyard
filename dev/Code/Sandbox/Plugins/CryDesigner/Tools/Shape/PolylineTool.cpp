@@ -550,7 +550,7 @@ void PolylineTool::Display(DisplayContext& dc)
 {
     ShapeTool::Display(dc);
 
-    int oldThickness = dc.GetLineWidth();
+    float oldThickness = dc.GetLineWidth();
     dc.SetFillMode(e_FillModeSolid);
     DrawCurrentSpot(dc, GetWorldTM());
 

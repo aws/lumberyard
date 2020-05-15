@@ -86,42 +86,44 @@ namespace SurfaceData
 
     void SurfaceDataShapeComponent::Activate()
     {
-        SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = m_shapeBounds;
-        registryEntry.m_tags = m_configuration.m_providerTags;
-
         m_providerHandle = InvalidSurfaceDataRegistryHandle;
-        SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
-        SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
-
-        registryEntry.m_tags = m_configuration.m_modifierTags;
-
         m_modifierHandle = InvalidSurfaceDataRegistryHandle;
-        SurfaceDataSystemRequestBus::BroadcastResult(m_modifierHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, registryEntry);
-        SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
+        m_refresh = false;
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
 
+        // Update the cached shape data and bounds, then register the surface data provider / modifier
         UpdateShapeData();
-        m_refresh = false;
     }
 
     void SurfaceDataShapeComponent::Deactivate()
     {
+        if (m_providerHandle != InvalidSurfaceDataRegistryHandle)
+        {
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+        }
+        if (m_modifierHandle != InvalidSurfaceDataRegistryHandle)
+        {
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataModifier, m_modifierHandle);
+            m_modifierHandle = InvalidSurfaceDataRegistryHandle;
+
+        }
+
         m_refresh = false;
         AZ::TickBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
-
         SurfaceDataProviderRequestBus::Handler::BusDisconnect();
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
-        m_providerHandle = InvalidSurfaceDataRegistryHandle;
-
         SurfaceDataModifierRequestBus::Handler::BusDisconnect();
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataModifier, m_modifierHandle);
-        m_modifierHandle = InvalidSurfaceDataRegistryHandle;
+
+        // Clear the cached shape data
+        {
+            AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
+            m_shapeBounds = AZ::Aabb::CreateNull();
+            m_shapeBoundsIsValid = false;
+        }
     }
 
     bool SurfaceDataShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -226,40 +228,68 @@ namespace SurfaceData
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        AZ::Aabb dirtyVolume = AZ::Aabb::CreateNull();
+        bool shapeValidBeforeUpdate = false;
+        bool shapeValidAfterUpdate = false;
 
         {
             AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
 
-            // To make sure we update our surface data even if our surface shrinks or grows, keep track of a bounding box
-            // that contains the old surface volume.  At the end, we'll add in our new surface volume.
-            if (m_shapeBoundsIsValid)
-            {
-                dirtyVolume.AddAabb(m_shapeBounds);
-            }
-
-            m_shapeWorldTM = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(m_shapeWorldTM, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+            shapeValidBeforeUpdate = m_shapeBoundsIsValid;
 
             m_shapeBounds = AZ::Aabb::CreateNull();
             LmbrCentral::ShapeComponentRequestsBus::EventResult(m_shapeBounds, GetEntityId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GetEncompassingAabb);
             m_shapeBoundsIsValid = m_shapeBounds.IsValid();
 
-            // Add our new surface volume to our dirty volume, so that we have a bounding box that encompasses everything that's been added / changed / removed
-            if (m_shapeBoundsIsValid)
-            {
-                dirtyVolume.AddAabb(m_shapeBounds);
-            }
+            shapeValidAfterUpdate = m_shapeBoundsIsValid;
         }
 
-        SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = m_shapeBounds;
-        registryEntry.m_tags = m_configuration.m_providerTags;
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, dirtyVolume);
+        SurfaceDataRegistryEntry providerRegistryEntry;
+        providerRegistryEntry.m_entityId = GetEntityId();
+        providerRegistryEntry.m_bounds = m_shapeBounds;
+        providerRegistryEntry.m_tags = m_configuration.m_providerTags;
 
-        registryEntry.m_tags = m_configuration.m_modifierTags;
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry, dirtyVolume);
+        SurfaceDataRegistryEntry modifierRegistryEntry(providerRegistryEntry);
+        modifierRegistryEntry.m_tags = m_configuration.m_modifierTags;
+
+        if (shapeValidBeforeUpdate && shapeValidAfterUpdate)
+        {
+            // Our shape was valid before and after, it just changed in some way, so update our registry entries
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            AZ_Assert((m_modifierHandle != InvalidSurfaceDataRegistryHandle), "Invalid modifier data handle");
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, providerRegistryEntry);
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, modifierRegistryEntry);
+        }
+        else if (!shapeValidBeforeUpdate && shapeValidAfterUpdate)
+        {
+            // Our shape has become valid, so register as a provider and save off the registry handles
+            AZ_Assert((m_providerHandle == InvalidSurfaceDataRegistryHandle), "Surface Provider data handle is initialized before our shape became valid");
+            AZ_Assert((m_modifierHandle == InvalidSurfaceDataRegistryHandle), "Surface Modifier data handle is initialized before our shape became valid");
+            SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, providerRegistryEntry);
+            SurfaceDataSystemRequestBus::BroadcastResult(m_modifierHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, modifierRegistryEntry);
+
+            // Start listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            AZ_Assert((m_modifierHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+            SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
+        }
+        else if (shapeValidBeforeUpdate && !shapeValidAfterUpdate)
+        {
+            // Our shape has stopped being valid, so unregister and stop listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            AZ_Assert((m_modifierHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataModifier, m_modifierHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+            m_modifierHandle = InvalidSurfaceDataRegistryHandle;
+
+            SurfaceDataProviderRequestBus::Handler::BusDisconnect();
+            SurfaceDataModifierRequestBus::Handler::BusDisconnect();
+        }
+        else
+        {
+            // We didn't have a valid shape before or after running this, so do nothing.
+        }
     }
 
     const float SurfaceDataShapeComponent::s_rayAABBHeightPadding = 0.1f;

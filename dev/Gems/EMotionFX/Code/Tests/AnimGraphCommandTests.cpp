@@ -78,8 +78,8 @@ namespace EMotionFX
 
         AnimGraphInstance* newInstance = m_actorInstance->GetAnimGraphInstance();
         EXPECT_TRUE(newInstance != nullptr);
-        EXPECT_TRUE(newInstance->GetAnimGraph() == m_animGraph);
-        CheckStateMachinesAreInEntryStates(m_animGraph, newInstance);
+        EXPECT_TRUE(newInstance->GetAnimGraph() == m_animGraph.get());
+        CheckStateMachinesAreInEntryStates(m_animGraph.get(), newInstance);
     }
 
     TEST_F(ActivateAnimGraphCommandFixture, ActivateAnimGraph_InvalidParameters)
@@ -102,7 +102,6 @@ namespace EMotionFX
     }
 
     ///////////////////////////////////////////////////////////////////////////
-
     class LoadAnimGraphCommandTests
         : public AnimGraphFixture
     {

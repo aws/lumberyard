@@ -9,8 +9,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import importlib
-import registration_shared
+from . import registration_shared
 
 def register_websocket(request, cgp = False):
     cognitoId = request.event.get('cognitoIdentityId')
@@ -18,13 +19,13 @@ def register_websocket(request, cgp = False):
 
     responseObject = {}
 
-    print 'Attempting websocket registration for cognitoId {} PoolId {}'.format(cognitoId, cognitoIdentityPoolId)
+    print('Attempting websocket registration for cognitoId {} PoolId {}'.format(cognitoId, cognitoIdentityPoolId))
 
     client_info = registration_shared.get_user_entry(cognitoId)
 
     registration_status = client_info.get('RegistrationStatus')
 
-    print 'User status for {} returns {}'.format(cognitoId, registration_status)
+    print('User status for {} returns {}'.format(cognitoId, registration_status))
 
     if registration_status == 'BANNED':
         responseObject['Result'] = 'DENIED'
@@ -32,7 +33,7 @@ def register_websocket(request, cgp = False):
     elif registration_status in ['NEW_USER', None]:
         registration_shared.create_user_entry(cognitoId, 'REGISTERED', cgp)
     elif registration_status == 'UNKNOWN':
-        print 'Re-registering user with unknown status {}'.format(cognitoId)
+        print('Re-registering user with unknown status {}'.format(cognitoId))
         registration_shared.create_user_entry(cognitoId, 'REGISTERED', cgp)
 
     if cgp:

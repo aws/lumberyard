@@ -15,8 +15,10 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/containers/unordered_map.h>
 
+#include <ScriptCanvas/Execution/ExecutionBus.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 #include <ScriptCanvas/Variable/VariableData.h>
+#include <ScriptCanvas/Core/GraphBus.h>
 
 namespace ScriptCanvas
 {
@@ -27,7 +29,8 @@ namespace ScriptCanvas
     // In addition at Editor time the VariableGraphRequestBus can be address using the EntityId that this component is attached.
     class GraphVariableManagerComponent
         : public AZ::Component
-        , protected GraphVariableManagerRequestBus::MultiHandler
+        , protected GraphConfigurationNotificationBus::Handler
+        , protected GraphVariableManagerRequestBus::Handler
         , protected VariableRequestBus::MultiHandler
     {
     public:
@@ -36,26 +39,30 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* context);
 
         GraphVariableManagerComponent();
-        GraphVariableManagerComponent(AZ::EntityId graphUniqueId);
+        GraphVariableManagerComponent(ScriptCanvasId scriptCanvasId);
         ~GraphVariableManagerComponent() override;
 
-        void Activate() override;
-        void Deactivate() override;
         void Init() override;
+        void Activate() override;
+        void Deactivate() override;        
 
-        void SetUniqueId(AZ::EntityId uniqueId);
-        AZ::EntityId GetUniqueId() const { return m_graphUniqueId; }
+        // GraphConfigurationNotificationBus
+        void ConfigureScriptCanvasId(const ScriptCanvasId& scriptCanvasId) override;
+        ////
+
+        ScriptCanvasId GetScriptCanvasId() const { return m_scriptCanvasId; }
 
         //// VariableRequestBus
-        VariableDatum* GetVariableDatum() override;
-        const VariableDatum* GetVariableDatumConst() const override { return const_cast<GraphVariableManagerComponent*>(this)->GetVariableDatum(); }
+        GraphVariable* GetVariable() override;
+        const GraphVariable* GetVariableConst() const override { return const_cast<GraphVariableManagerComponent*>(this)->GetVariable(); }
+
         Data::Type GetType() const override;
         AZStd::string_view GetName() const override;
         AZ::Outcome<void, AZStd::string> RenameVariable(AZStd::string_view newVarName) override;
 
-        /// GraphVariableManagerRequestBus
-        AZ::Outcome<VariableId, AZStd::string> CloneVariable(const VariableNameValuePair& variableConfiguration) override;
-        AZ::Outcome<VariableId, AZStd::string> RemapVariable(const VariableNameValuePair& variableConfiguration) override;
+        //// GraphVariableManagerRequestBus
+        AZ::Outcome<VariableId, AZStd::string> CloneVariable(const GraphVariable& variableConfiguration) override;
+        AZ::Outcome<VariableId, AZStd::string> RemapVariable(const GraphVariable& variableConfiguration) override;
         AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view name, const Datum& value) override;
         AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& nameValuePair) override;
 
@@ -64,15 +71,18 @@ namespace ScriptCanvas
         bool RemoveVariable(const VariableId& variableId) override;
         AZStd::size_t RemoveVariableByName(AZStd::string_view variableName) override;
 
-        VariableDatum* FindVariable(AZStd::string_view propName) override;
+        GraphVariable* FindVariable(AZStd::string_view propName) override;
+        GraphVariable* FindVariableById(const VariableId& variableId) override;
+        GraphVariable* FindFirstVariableWithType(const Data::Type& dataType, const AZStd::unordered_set< ScriptCanvas::VariableId >& blacklistId) override;
 
         Data::Type GetVariableType(const VariableId& variableId) override;
-        VariableNameValuePair* FindVariableById(const VariableId& variableId) override;
-        const AZStd::unordered_map<VariableId, VariableNameValuePair>* GetVariables() const override;
-        AZStd::unordered_map<VariableId, VariableNameValuePair>* GetVariables();
+        
+        const GraphVariableMapping* GetVariables() const override;        
         AZStd::string_view GetVariableName(const VariableId&) const override;
         AZ::Outcome<void, AZStd::string> RenameVariable(const VariableId&, AZStd::string_view) override;
-        ///
+        ////
+
+        GraphVariableMapping* GetVariables();
 
         const VariableData* GetVariableDataConst() const override { return &m_variableData; }
         VariableData* GetVariableData() override { return &m_variableData; }
@@ -93,7 +103,7 @@ namespace ScriptCanvas
 
         VariableData m_variableData;
     private:
-        AZ::EntityId m_graphUniqueId;
+        ScriptCanvasId m_scriptCanvasId;
 
         AZStd::unordered_map< VariableId, VariableId > m_copiedVariableRemapping;
     };

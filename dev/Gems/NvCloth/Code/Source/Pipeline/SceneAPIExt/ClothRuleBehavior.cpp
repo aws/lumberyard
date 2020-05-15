@@ -137,9 +137,11 @@ namespace NvCloth
                     }
                 }
 
-                for (size_t index : rulesToRemove)
-                {
-                    groupRules.RemoveRule(index);
+                // Remove in reversed order, as otherwise the indices will be wrong. For example if we remove index 3, then index 6 would really be 5 afterwards.
+                // By doing this in reversed order we remove items at the end of the list first so it won't impact the indices of previous ones.
+                for (AZStd::vector<size_t>::reverse_iterator it = rulesToRemove.rbegin(); it != rulesToRemove.rend(); ++it)
+                { 
+                    groupRules.RemoveRule(*it);
                 }
             }
 

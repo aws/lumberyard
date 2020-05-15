@@ -26,7 +26,7 @@ namespace ScriptCanvas
         {
         public:
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-            using BusIdType = AZ::EntityId;
+            using BusIdType = ScriptCanvasId;
 
             virtual void AddFailure(const Report& report) = 0;
             

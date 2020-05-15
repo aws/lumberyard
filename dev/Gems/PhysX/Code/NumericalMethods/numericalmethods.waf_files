@@ -1,0 +1,34 @@
+{
+    "none": {
+        "Source": [
+            "Source/NumericalMethods_precompiled.cpp",
+            "Source/NumericalMethods_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/NumericalMethods/Optimization.h",
+            "Include/NumericalMethods/Eigenanalysis.h"
+        ],
+        "Source/Optimization": [
+            "Source/Optimization/Constants.h",
+            "Source/Optimization/LineSearch.cpp",
+            "Source/Optimization/LineSearch.h",
+            "Source/Optimization/SolverBFGS.cpp",
+            "Source/Optimization/SolverBFGS.h",
+            "Source/Optimization/Utilities.cpp",
+            "Source/Optimization/Utilities.h"
+        ],
+        "Source/Eigenanalysis": [
+            "Source/Eigenanalysis/Solver3x3.cpp",
+            "Source/Eigenanalysis/Solver3x3.h",
+            "Source/Eigenanalysis/Utilities.cpp",
+            "Source/Eigenanalysis/Utilities.h"
+        ],
+        "Source": [
+            "Source/NumericalMethods.cpp",
+            "Source/LinearAlgebra.cpp",
+            "Source/LinearAlgebra.h"
+        ]
+    }
+}

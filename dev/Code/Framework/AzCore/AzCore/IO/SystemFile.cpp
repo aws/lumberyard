@@ -20,7 +20,8 @@
 
 #include <stdio.h>
 
-using namespace AZ::IO; 
+namespace AZ::IO
+{
 
 namespace Platform
 {
@@ -338,3 +339,5 @@ bool SystemFile::DeleteDir(const char* dirName)
 
     return Platform::DeleteDir(dirName);
 }
+
+} // namespace AZ::IO

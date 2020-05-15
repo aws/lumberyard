@@ -897,10 +897,11 @@ namespace EMStudio
             CommandSystem::CreateNodeConnection(&commandGroup, node, newConnection.get());
         }
 
-        // execute the command group
+        // Execute the command group
         AZStd::string commandResult;
-        const bool shouldAddToHistory = !GetCommandManager()->IsExecuting();
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, shouldAddToHistory) == false)
+        // Typically determine saving history based on if we're already inside an executing cmd, but in this case we also don't want it 
+        // in the action history either, because while undo in the action history will undo this command, it doesn't undo the UI changes.
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, false/*shouldAddToHistory*/))
         {
             if (commandResult.empty() == false)
             {
@@ -1002,10 +1003,11 @@ namespace EMStudio
             CommandSystem::CreateNodeConnection(&commandGroup, newConnection.second, newConnection.first.get());
         }
 
-        // execute the command group
+        // Execute the command group
         AZStd::string commandResult;
-        const bool shouldAddToHistory = !GetCommandManager()->IsExecuting();
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, shouldAddToHistory) == false)
+        // Typically determine saving history based on if we're already inside an executing cmd, but in this case we also don't want it 
+        // in the action history either, because while undo in the action history will undo this command, it doesn't undo the UI changes.
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, false/*shouldAddToHistory*/))
         {
             if (commandResult.empty() == false)
             {
@@ -1158,6 +1160,7 @@ namespace EMStudio
     void AnimGraphPlugin::OnFileOpen()
     {
         AZStd::string filename = GetMainWindow()->GetFileManager()->LoadAnimGraphFileDialog(mViewWidget);
+        GetMainWindow()->activateWindow();
         if (filename.empty())
         {
             return;

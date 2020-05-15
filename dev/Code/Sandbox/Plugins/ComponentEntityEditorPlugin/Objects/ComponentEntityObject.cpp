@@ -1027,14 +1027,6 @@ void CComponentEntityObject::Display(DisplayContext& dc)
         {
             const AzFramework::DisplayContextRequestGuard displayContextGuard(dc);
 
-            AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-            // @deprecated DisplayEntity call
-            bool displayHandled = false;
-            AzFramework::EntityDebugDisplayEventBus::Event(
-                m_entityId, &AzFramework::EntityDebugDisplayEvents::DisplayEntity,
-                displayHandled);
-            AZ_POP_DISABLE_WARNING
-
             AzFramework::DebugDisplayRequestBus::BusPtr debugDisplayBus;
             AzFramework::DebugDisplayRequestBus::Bind(
                 debugDisplayBus, AzToolsFramework::ViewportInteraction::g_mainViewportEntityDebugDisplayId);

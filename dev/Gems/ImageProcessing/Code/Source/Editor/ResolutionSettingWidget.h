@@ -12,9 +12,7 @@
 
 #pragma once
 
-
 #include <QWidget>
-#include <QListWidget>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <Source/Editor/ResolutionSettingItemWidget.h>
 

@@ -11,15 +11,18 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
+# System Imports
+import os
+import re
+import subprocess
+import sys
+
+# waflib imports
 from waflib import Logs, Utils
 from waflib.Configure import conf
-from waflib.TaskGen import feature, after_method
-from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.Errors import WafError
-
-import subprocess
-import re
-import os
+from waflib.TaskGen import after_method, feature
+from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 
 
 @conf
@@ -167,7 +170,7 @@ class update_to_use_rpath(Task):
             return self.lib_dependencies[lib_path_node.name]
 
         otool_command = "otool -L '%s' | cut -d ' ' -f 1 | grep .*dylib$" % (lib_path_node.abspath()) 
-        output = subprocess.check_output(otool_command, shell=True)
+        output = subprocess.check_output(otool_command, shell=True).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
         dependent_libs = re.split("\s+", output.strip())
 
         self.lib_dependencies[lib_path_node.name] = dependent_libs
@@ -176,11 +179,11 @@ class update_to_use_rpath(Task):
 
     def update_lib_to_reference_dependent_by_rpath(self, source_lib, dependent):
         install_name_command = "install_name_tool -change %s @rpath/%s '%s'" % (dependent, dependent, source_lib.abspath())
-        output = subprocess.check_output(install_name_command, shell=True)
+        output = subprocess.check_output(install_name_command, shell=True).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 
     def update_lib_id_to_use_rpath(self, source_lib):
         install_name_command = "install_name_tool -id @rpath/%s '%s'" % (source_lib.name, source_lib.abspath())
-        subprocess.check_output(install_name_command, shell=True)
+        subprocess.check_output(install_name_command, shell=True).decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 
 
 @feature('c', 'cxx')

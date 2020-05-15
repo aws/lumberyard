@@ -127,9 +127,11 @@ namespace AzFramework
             static unsigned int MessageType();
             explicit RequestAssetStatus(bool requireFencing = true);
             RequestAssetStatus(const char* sourceData, bool isStatusRequest, bool requireFencing = true);
+            RequestAssetStatus(const AZ::Data::AssetId& assetId, bool isStatusRequest, bool requireFencing = true);
             unsigned int GetMessageType() const override;
             
-            AZ::OSString m_searchTerm; // the name of an asset
+            AZ::OSString m_searchTerm; // some generic search term - can be parts of a name, or full name, of source file or product
+            AZ::Data::AssetId m_assetId; 
             bool m_isStatusRequest = false; // if this is true, it will only query status.  if false it will actually compile it.
         };
         
@@ -146,6 +148,32 @@ namespace AzFramework
             ResponseAssetStatus() = default;
             int m_assetStatus = AssetStatus_Unknown;
         };
+
+        /**
+        * Used to ask the AP to move any jobs related to an asset to the front of the queue.
+        * There is no response to this request, nor does it fence, so it is "fire-and-forget"
+        * and thus doesn't need to introduce a lot of latency
+        */
+        class RequestEscalateAsset
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(RequestEscalateAsset, AZ::OSAllocator, 0);
+            AZ_RTTI(RequestAssetStatus, "{E95C5422-5F00-478B-A984-C041DE70484F}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            RequestEscalateAsset() = default;
+            ~RequestEscalateAsset() override = default;
+            explicit RequestEscalateAsset(const char* searchTerm);
+            explicit RequestEscalateAsset(const AZ::Uuid& assetUuid);
+            unsigned int GetMessageType() const override;
+
+            // either of the following must be filled in.  If uuid is filled in, search term is ignored.
+            AZ::Uuid m_assetUuid; // the uuid of the asset (which also uniquely identifies a source file).
+            AZ::OSString m_searchTerm; // the name of a source file, or a heuristic
+        };
+
 
         //////////////////////////////////////////////////////////////////////////
         //! Request the status of the asset processor
@@ -179,6 +207,48 @@ namespace AzFramework
             bool m_isAssetProcessorReady = false;
         };
         
+        //////////////////////////////////////////////////////////////////////////
+        struct GetUnresolvedDependencyCountsRequest
+            : BaseAssetProcessorMessage
+        {
+            AZ_CLASS_ALLOCATOR(GetUnresolvedDependencyCountsRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetUnresolvedDependencyCountsRequest, "{DE432E6F-72D8-48A7-857C-51D1D41EB880}", BaseAssetProcessorMessage);
+
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            GetUnresolvedDependencyCountsRequest() = default;
+            explicit GetUnresolvedDependencyCountsRequest(AZ::Data::AssetId assetId)
+                : m_assetId(AZStd::move(assetId))
+            {
+            }
+
+            unsigned int GetMessageType() const override;
+
+            AZ::Data::AssetId m_assetId;
+        };
+
+        struct GetUnresolvedDependencyCountsResponse
+            : BaseAssetProcessorMessage
+        {
+            AZ_CLASS_ALLOCATOR(GetUnresolvedDependencyCountsResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetUnresolvedDependencyCountsResponse, "{6FC67F5D-4941-41B9-92C5-7778CB853F94}", BaseAssetProcessorMessage);
+
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            GetUnresolvedDependencyCountsResponse() = default;
+            GetUnresolvedDependencyCountsResponse(AZ::u32 unresolvedAssetIdReferences, AZ::u32 unresolvedPathReferences)
+                : m_unresolvedAssetIdReferences(unresolvedAssetIdReferences), m_unresolvedPathReferences(unresolvedPathReferences)
+            {
+            }
+
+            unsigned int GetMessageType() const override;
+
+            AZ::u32 m_unresolvedAssetIdReferences = 0;
+            AZ::u32 m_unresolvedPathReferences = 0;
+        };
+
         //////////////////////////////////////////////////////////////////////////
         class GetRelativeProductPathFromFullSourceOrProductPathRequest
             : public BaseAssetProcessorMessage
@@ -261,8 +331,6 @@ namespace AzFramework
             /**
             * Gets information about an asset, given the assetId.
             * @param assetType This parameter is optional but could help detect problems with incorrect asset types being assigned to products.
-            * Note that this will return the source asset instead of the product for any types registered as "source asset types" during asset compilation.
-            * The rest of the time, the asset's path, id, and returned type will behave identical to an Asset Catalog lookup.).
             */
             explicit SourceAssetInfoRequest(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType = AZ::Data::s_invalidAssetType);
             
@@ -309,6 +377,8 @@ namespace AzFramework
 
             /**
             * Gets information about an asset, given the assetId.
+            * Note that this will return the source asset instead of the product for any types registered as "source asset types" during asset compilation.
+            * The rest of the time, the asset's path, id, and returned type will behave identical to an Asset Catalog lookup.).
             */
             explicit AssetInfoRequest(const AZ::Data::AssetId& assetId);
 
@@ -319,6 +389,7 @@ namespace AzFramework
 
             AZ::OSString m_assetPath; ///< At least one of AssetPath or AssetId must be non-empty.
             AZ::Data::AssetId m_assetId;
+            AZ::Data::AssetType m_assetType = AZ::Data::s_invalidAssetType;
         };
 
         class AssetInfoResponse
@@ -336,6 +407,7 @@ namespace AzFramework
 
             bool m_found = false;
             AZ::Data::AssetInfo m_assetInfo; ///< This contains defaults such as relative path from watched folder, size, Uuid.
+            AZ::OSString m_rootFolder; ///< This is the folder it was found in (the watched/scanned folder, such as gems /assets/ folder)
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -434,10 +506,11 @@ namespace AzFramework
             static unsigned int MessageType();
 
             AssetNotificationMessage() = default;
-            AssetNotificationMessage(const AZ::OSString& data, NotificationType type, const AZ::Data::AssetType& assetType);
+            AssetNotificationMessage(const AZ::OSString& data, NotificationType type, const AZ::Data::AssetType& assetType, const AZ::OSString& platform);
             unsigned int GetMessageType() const override;
 
             AZ::OSString m_data;
+            AZ::OSString m_platform;
             NotificationType m_type;
             AZ::u64 m_sizeBytes = 0;
             AZ::Data::AssetId m_assetId = AZ::Data::AssetId();

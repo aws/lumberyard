@@ -105,7 +105,10 @@ namespace EMStudio
 
     void NavigationLinkWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
-        if (newFocusParent != oldFocusParent)
+        AZ_UNUSED(newFocusIndex);
+        AZ_UNUSED(oldFocusIndex);
+
+        if (!newFocusParent.isValid() || newFocusParent != oldFocusParent)
         {
             // TODO: we could do better and remove from the right, if we hit the newFocusParent then we can stop and not recreate the whole list
             // However, the arrow in between makes it tricky 
@@ -118,8 +121,11 @@ namespace EMStudio
                 delete item;
                 item = layout()->takeAt(0);
             }
+        }
 
-            // Add all the hierarchy 
+        if (newFocusParent != oldFocusParent)
+        {
+            // If we are focusing on a new parent, add all the hierarchy 
             if (newFocusParent.isValid())
             {
                 AddToNavigation(newFocusParent, true);

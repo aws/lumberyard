@@ -16,13 +16,16 @@
 #include <AzCore/EBus/EBus.h>
 #include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 
+#include <ScriptCanvas/Core/Core.h>
+
 namespace ScriptCanvas
 {
     class Node;
     struct SlotId;
     
-    GraphInfo CreateGraphInfo(AZ::EntityId uniqueExecutionId, const GraphIdentifier& graphIdentifier);
-    DatumValue CreateDatumValue(AZ::EntityId uniqueExecutionId, const VariableDatumBase& variable);
+    GraphInfo CreateGraphInfo(ScriptCanvasId executionId, const GraphIdentifier& graphIdentifier);
+    DatumValue CreateVariableDatumValue(ScriptCanvasId scriptCanvasId, const GraphVariable& graphVariable);
+    DatumValue CreateVariableDatumValue(ScriptCanvasId scriptCanvasId, const Datum& variableDatum, const VariableId& variableId);
 
     //! Execution Request Bus that triggers graph Execution and supports adding nodes
     //! to the execution stack
@@ -33,7 +36,7 @@ namespace ScriptCanvas
         //! BusIdType represents a unique id for the execution component
         //! Because multiple Script Canvas graphs can execute on the same entity
         //! this is not an "EntityId" in the sense that it uniquely identifies an entity.
-        using BusIdType = AZ::EntityId; 
+        using BusIdType = ScriptCanvasId;
 
         // Adds the node to the Execution stack where the slotId represents the slot that triggered the execution
         virtual void AddToExecutionStack(Node& node, const SlotId& slotId) = 0;

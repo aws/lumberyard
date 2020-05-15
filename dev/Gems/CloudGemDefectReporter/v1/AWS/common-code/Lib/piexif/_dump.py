@@ -338,7 +338,7 @@ def _dict_to_bytes(ifd_dict, ifd, ifd_offset):
         except ValueError:
             raise ValueError(
                 '"dump" got wrong type of exif value.\n' +
-                '{0} in {1} IFD. Got as {2}.'.format(key, ifd, type(ifd_dict[key]))
+                '{} in {} IFD. Got as {}.'.format(key, ifd, type(ifd_dict[key]))
             )
 
         entries += key_str + type_str + length_str + value_str

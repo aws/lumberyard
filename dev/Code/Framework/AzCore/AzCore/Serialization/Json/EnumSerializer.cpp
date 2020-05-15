@@ -62,7 +62,16 @@ namespace AZ
                     path);
             }
 
-            JsonSerializationResult::Result textToValueResult = SerializerInternal::TextToValue(&outputValue.m_value, enumString.data(), path, settings);
+            // Replace the reporting callback with an empty function as the SerializeInternal::TextToValue function is allowed to fail in this case.
+            // As the enum value can be either an int or a string, there should not be an error reporting that the string was unable to be converted
+            // to an int.
+            JsonDeserializerSettings convertStringToIntSettings{ settings.m_serializeContext, settings.m_registrationContext,
+                [](AZStd::string_view, JsonSerializationResult::ResultCode resultCode, AZStd::string_view) -> JsonSerializationResult::ResultCode
+                {
+                    return resultCode;
+                }
+            };
+            JsonSerializationResult::Result textToValueResult = SerializerInternal::TextToValue(&outputValue.m_value, enumString.data(), path, convertStringToIntSettings);
             if (textToValueResult.GetResultCode().GetOutcome() == JsonSerializationResult::Outcomes::Success)
             {
                 return textToValueResult;

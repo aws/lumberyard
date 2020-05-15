@@ -26,11 +26,10 @@ namespace GraphCanvas
     // BooleanNodePropertyDisplay
     ///////////////////////////////
     BooleanNodePropertyDisplay::BooleanNodePropertyDisplay(BooleanDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_dataInterface(dataInterface)
         , m_checkBox(nullptr)
     {
-        m_dataInterface->RegisterDisplay(this);
-        
         m_disabledLabel = aznew GraphCanvasLabel();
         m_checkBox = aznew GraphCanvasCheckBox();
         

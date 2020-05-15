@@ -12,8 +12,6 @@
 #include "Rain_precompiled.h"
 #include <platform_impl.h>
 
-#include <FlowSystem/Nodes/FlowBaseNode.h>
-
 #include "RainGem.h"
 #include "Rain.h"
 
@@ -60,10 +58,6 @@ void RainGem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam
 {
     switch (event)
     {
-    case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-        RegisterExternalFlowNodes();
-        break;
-
     case ESYSTEM_EVENT_GAME_POST_INIT:
         IComponentFactoryRegistry::RegisterAllComponentFactoryNodes(*gEnv->pEntitySystem->GetComponentFactoryRegistry());
         PostGameInit();

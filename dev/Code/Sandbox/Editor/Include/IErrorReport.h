@@ -35,9 +35,9 @@ struct IErrorReport
     virtual ~IErrorReport(){}
 
     //! If enabled errors are reported immediately and not stored.
-    virtual void SetImmidiateMode(bool bEnable) = 0;
+    virtual void SetImmediateMode(bool bEnable) = 0;
 
-    virtual bool IsImmidiateMode() const = 0;
+    virtual bool IsImmediateMode() const = 0;
 
     virtual void SetShowErrors(bool bShowErrors = true) = 0;
 

@@ -17,16 +17,8 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class T, class Allocator = SysContAlloc>
     using list = AZStd::list<T, Allocator>;
-#else
-    template<typename T>
-    struct list
-        : public AZStd::list<T, SysContAlloc>
-    {
-    };
-#endif
 }
 
 #endif // GM_CONTAINERS_LIST_H

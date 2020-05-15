@@ -17,9 +17,6 @@ def build(bld):
     bld.DefineGem(
         ## Runtime build configuration
         includes =  [
-            '.',
-            bld.ThirdPartyPath('boost'),
-            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine'),
             bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/Cry3DEngine'),
@@ -56,9 +53,6 @@ def build(bld):
             platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5'],
             includes    = [
-                '.',
-                bld.ThirdPartyPath('boost'),
-                bld.Path('Code/CryEngine/CryCommon'),
                 'Source',
                 bld.Path('Code/CryEngine'),
                 bld.Path('Code/CryEngine/CryCommon'),

@@ -57,6 +57,9 @@ namespace ScriptCanvas
                     int m_numExpectedArguments = {};
                     bool m_resultEvaluated = {};
 
+                    bool m_shouldHandleEvent = false;
+                    bool m_isHandlingEvent = false;
+
                     static void Reflect(AZ::ReflectContext* context);
                 };
 
@@ -75,7 +78,7 @@ namespace ScriptCanvas
                         ScriptCanvas_Node::Name("Script Event", "Base class for Script Events.")
                         ScriptCanvas_Node::Category("Internal")
                         ScriptCanvas_Node::Uuid("{B6614CEC-4788-476C-A19A-BA0A8B490C73}")
-                        ScriptCanvas_Node::Version(4)
+                        ScriptCanvas_Node::Version(5)
                         ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                     );
 
@@ -83,12 +86,12 @@ namespace ScriptCanvas
                     ScriptCanvas_SerializeProperty(EventMap, m_eventMap);
                     ScriptCanvas_SerializeProperty(SlotIdMapping, m_eventSlotMapping)
                     ScriptCanvas_SerializeProperty(AZ::Data::AssetId, m_scriptEventAssetId);
+                    ScriptCanvas_SerializeProperty(ScriptEvents::ScriptEventsAssetPtr, m_asset);
 
                     ScriptEventBase();
-                    virtual ~ScriptEventBase() = default;
+                    ~ScriptEventBase() override;
 
                     void OnInit() override;
-                    void OnActivate() override;
                     void OnDeactivate() override;
 
                     AZ::u32 GetVersion() const { return m_version; }
@@ -96,8 +99,7 @@ namespace ScriptCanvas
                     const AZ::Data::AssetId GetAssetId() const { return m_scriptEventAssetId; }
                     ScriptEvents::ScriptEventsAssetRef& GetAssetRef() { return m_scriptEventAsset; }
                     const ScriptEvents::ScriptEvent& GetScriptEvent() const { return m_definition; }
-
-                    AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> GetAsset() const;
+                    ScriptEvents::ScriptEventsAssetPtr GetAsset() const { return m_asset; }
 
                     virtual void UpdateScriptEventAsset() { AZ_Error("ScriptCanvas", false, "Unimplemented update function for ScriptEvent Node"); };
 
@@ -119,7 +121,6 @@ namespace ScriptCanvas
                     ScriptEvents::ScriptEvent m_definition; // Don't serialize.
 
                     AZ::BehaviorEBus* m_ebus = nullptr;
-
                 };
 
             } // namespace Internal

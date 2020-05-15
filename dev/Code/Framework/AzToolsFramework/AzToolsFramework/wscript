@@ -45,8 +45,8 @@ def build(bld):
                                'AzQtComponents',
                                'AzToolsFrameworkTestCommon',
                                'AzTestShared',
-                               'SQLITE'],
-        uselib              = ['QT5CORE',
+                               'SQLITE',
+                               'QT5CORE',
                                'QT5GUI',
                                'QT5WIDGETS'],
         includes            = ['..',
@@ -66,6 +66,7 @@ def build(bld):
         # Platform specific
         win_file_list       = ['aztoolsframework_win.waf_files'],
         win_features        = ['crcfix'],
+        win_enable_rtti     = True,
 
         darwin_file_list    = ['aztoolsframework_osx.waf_files'],
         darwin_enable_rtti  = True,

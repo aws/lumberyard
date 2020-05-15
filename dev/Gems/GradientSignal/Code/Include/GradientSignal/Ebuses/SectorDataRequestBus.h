@@ -31,7 +31,7 @@ namespace GradientSignal
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~SectorDataRequests() AZ_DEFAULT_METHOD;
+        virtual ~SectorDataRequests() = default;
 
         // configured data
         virtual void GetPointsPerMeter(float& value) const = 0;

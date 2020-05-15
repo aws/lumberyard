@@ -207,7 +207,7 @@ void CurveTool::PrepareBeizerSpots(CViewport* view, UINT nFlags, const QPoint& p
 
 void CurveTool::Display(DisplayContext& dc)
 {
-    int oldThickness = dc.GetLineWidth();
+    float oldThickness = dc.GetLineWidth();
 
     if (m_ArcState == eArcState_ChooseFirstPoint || m_ArcState == eArcState_ChooseLastPoint)
     {

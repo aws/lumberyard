@@ -188,7 +188,9 @@ namespace LmbrCentral
 
             behaviorContext->EBus<SplineComponentRequestBus>("SplineComponentRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Shape")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Edit::Attributes::Category, "Shape")
+                ->Attribute(AZ::Script::Attributes::Module, "shape")
                 ->Event("GetSpline", &SplineComponentRequestBus::Events::GetSpline)
                 ->Event("SetClosed", &SplineComponentRequestBus::Events::SetClosed)
                 ->Event("AddVertex", &SplineComponentRequestBus::Events::AddVertex)

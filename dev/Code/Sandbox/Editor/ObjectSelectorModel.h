@@ -15,7 +15,6 @@
 
 
 #include "StdAfx.h"
-#include <HyperGraph/IHyperGraph.h>
 #include <QAbstractTableModel>
 #include <vector>
 
@@ -43,7 +42,6 @@ public:
         BreakabilityColumn,
         SmartObjectColumn,
         TrackViewColumn,
-        FlowGraphColumn,
         GeometryColumn,
         InstancesInLevel,
         LODsColumn,
@@ -104,15 +102,11 @@ public:
     static int GetAIGroupID(CBaseObject* obj);
     static QString GetObjectName(CBaseObject* pObject);
     static TGeometryCountMap m_mGeomCountMap;
-    static ObjToStrMap s_flowGraphMap;
     static ObjToStrMap s_trackViewMap;
 
     void EmitDataChanged(const QModelIndex& index);
     void EmitDataChanged(CBaseObject* obj);
     void EmitDataChanged();
-    void UpdateFlowGraphInMaps(REFGUID guid);
-    void OnHyperGraphManagerEvent(EHyperGraphEvent event, IHyperGraph* pGraph, IHyperNode* pINode);
-    void UpdateFlowGraphs();
     void SetTrackViewModified(bool modified);
     bool IsTrackViewModified() const;
     void BuildMaps();
@@ -143,7 +137,6 @@ private:
     bool m_bSearchInsideObjects = false;
     bool m_treeModeEnabled = false;
     bool m_bTrackViewModified = false;
-    std::vector<GUID> m_modifiedFlowGraphObjects;
 };
 
 #endif

@@ -65,7 +65,7 @@ namespace EMStudio
         void SetTargetPort(NodePort* port)             { mTargetPort = port; }
         NodePort* GetTargetPort()                      { return mTargetPort; }
         float GetDashOffset() const                    { return mDashOffset; }
-        QColor GetErrorBlinkColor() const              { int32 red = 160 + ((0.5f + 0.5f * MCore::Math::Cos(mErrorBlinkOffset)) * 96); red = MCore::Clamp<int32>(red, 0, 255); return QColor(red, 0, 0); }
+        QColor GetErrorBlinkColor() const              { int32 red = aznumeric_cast<int32>(160 + ((0.5f + 0.5f * MCore::Math::Cos(mErrorBlinkOffset)) * 96)); red = MCore::Clamp<int32>(red, 0, 255); return QColor(red, 0, 0); }
 
         bool GetIsRepositioningTransitionHead() const               { return (mReplaceTransitionHead); }
         bool GetIsRepositioningTransitionTail() const               { return (mReplaceTransitionTail); }
@@ -149,7 +149,6 @@ namespace EMStudio
         void OnRowsAboutToBeRemoved(const QModelIndexList& modelIndexes);
         void OnRowsInserted(const QModelIndexList& modelIndexes);
         void OnDataChanged(const QModelIndex& modelIndex, const QVector<int>& roles);
-        void OnSelectionModelChanged(const QModelIndexList& selected, const QModelIndexList& deselected);
 
         void Reinit();
 
@@ -163,6 +162,8 @@ namespace EMStudio
         static bool CheckIfIsRelinkConnectionValid(NodeConnection* connection, GraphNode* newTargetNode, uint32 newTargetPortNr, bool isTargetInput);
 
         void RecursiveSetOpacity(EMotionFX::AnimGraphNode* startNode, float opacity);
+
+        AnimGraphModel& GetAnimGraphModel() const;
 
     protected:
         void RenderNodeGroups(QPainter& painter);

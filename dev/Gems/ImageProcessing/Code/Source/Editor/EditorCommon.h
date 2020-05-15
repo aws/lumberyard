@@ -16,7 +16,7 @@
 #include <BuilderSettings/TextureSettings.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <Processing/PixelFormatInfo.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 #include <QImage>

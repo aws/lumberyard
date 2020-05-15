@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -451,6 +451,12 @@ namespace Audio
 #endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
         oInitSettings.uPrepareEventMemoryPoolID = nPrepareMemPoolID;
         oInitSettings.bEnableGameSyncPreparation = false;//TODO: ???
+
+#if AZ_TRAIT_AUDIOENGINEWWISE_DEFAULT_SPEAKER_CONFIGURATION
+        oInitSettings.settingsMainOutput.channelConfig.SetStandardOrAnonymous(
+            AK::ChannelMaskToNumChannels(AZ_TRAIT_AUDIOENGINEWWISE_DEFAULT_SPEAKER_CONFIGURATION),
+            AZ_TRAIT_AUDIOENGINEWWISE_DEFAULT_SPEAKER_CONFIGURATION);
+#endif
 
         AkPlatformInitSettings oPlatformInitSettings;
         AK::SoundEngine::GetDefaultPlatformInitSettings(oPlatformInitSettings);

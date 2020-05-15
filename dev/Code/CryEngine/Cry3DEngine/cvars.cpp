@@ -22,10 +22,6 @@
 
 #include "Environment/OceanEnvironmentBus.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "TerrainProfiler.h"
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 void OnTimeOfDayVarChange(ICVar* pArgs)
 {
@@ -113,6 +109,24 @@ void OnTerrainPerformanceSecondsChanged(ICVar* pArgs)
 }
 #endif
 
+void OnDebugDrawChange(ICVar* pArgs)
+{
+    static bool collectingDrawCalls = false;
+
+    int e_debugDraw = pArgs->GetIVal();
+    if (e_debugDraw >= 24 && e_debugDraw <= 25)
+    {
+        gEnv->pRenderer->CollectDrawCallsInfo(true);
+        gEnv->pRenderer->CollectDrawCallsInfoPerNode(true);
+        collectingDrawCalls = true;
+    }
+    else if (collectingDrawCalls)
+    {
+        gEnv->pRenderer->CollectDrawCallsInfo(false);
+        gEnv->pRenderer->CollectDrawCallsInfoPerNode(false);
+        collectingDrawCalls = false;
+    }
+}
 
 void CVars::Init()
 {
@@ -150,6 +164,9 @@ void CVars::Init()
     DefineConstIntCVar(e_DebugDrawShowOnlyLod, -1, VF_NULL,
         "e_DebugDraw shows only objects showing lod X");
 
+#ifdef CONSOLE_CONST_CVAR_MODE
+    // in console release builds the const cvars work differently (see ISystem.h where CONSOLE_CONST_CVAR_MODE is defined), 
+    // so revert to the version of e_debugdraw that doesn't support mode 24 & 25 which require the OnDebugDrawChange callback
     DefineConstIntCVar(e_DebugDraw, 0, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK,
         "Draw helpers with information for each object (same number negative hides the text)\n"
         " 1: Name of the used cgf, polycount, used LOD\n"
@@ -174,12 +191,53 @@ void CVars::Init()
         "21: Display animated object distance to camera\n"
         "22: Display object's current LOD vertex count\n"
         "23: Display shadow casters in red\n"
+        "24: Disabled\n"
+        "25: Disabled\n"
         "----------------debug draw list values. Any of them enable 2d on-screen listing type info debug. Specific values define the list sorting-----------\n"
         " 100: tri count\n"
         " 101: verts count\n"
         " 102: draw calls\n"
         " 103: texture memory\n"
-        " 104: mesh memory");
+        " 104: mesh memory"
+        );
+#else
+    REGISTER_CVAR_CB(e_DebugDraw, 0, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK | CONST_CVAR_FLAGS,
+        "Draw helpers with information for each object (same number negative hides the text)\n"
+        " 1: Name of the used cgf, polycount, used LOD\n"
+        " 2: Color coded polygon count\n"
+        " 3: Show color coded LODs count, flashing color indicates no Lod\n"
+        " 4: Display object texture memory usage\n"
+        " 5: Display color coded number of render materials\n"
+        " 6: Display ambient color\n"
+        " 7: Display tri count, number of render materials, texture memory\n"
+        " 8: Free slot\n"
+        " 9: Free slot\n"
+        "10: Render geometry with simple lines and triangles\n"
+        "11: Free slot\n"
+        "12: Free slot\n"
+        "13: Display occlusion amount (used during AO computations). Warning: can take a long time to calculate, depending on level size! \n"
+        "15: Display helpers\n"
+        "16: Display debug gun\n"
+        "17: Streaming info (buffer sizes)\n"
+        "18: Free slot\n"
+        "19: Physics proxy triangle count\n"
+        "20: Display Character attachments texture memory usage\n"
+        "21: Display animated object distance to camera\n"
+        "22: Display object's current LOD vertex count\n"
+        "23: Display shadow casters in red\n"
+        "24: Display meshes with no LODs\n"
+        "25: Display meshes with no LODs, meshes with not enough LODs\n"
+        "----------------debug draw list values. Any of them enable 2d on-screen listing type info debug. Specific values define the list sorting-----------\n"
+        " 100: tri count\n"
+        " 101: verts count\n"
+        " 102: draw calls\n"
+        " 103: texture memory\n"
+        " 104: mesh memory",
+        OnDebugDrawChange);
+#endif
+
+    REGISTER_CVAR(e_DebugDrawLodMinTriangles, 200, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK | CONST_CVAR_FLAGS,
+        "Minimum number of triangles (lod 0) to show in LOD debug draw");
 
 #ifndef _RELEASE
     DefineConstIntCVar(e_DebugDrawListSize, 24, VF_DEV_ONLY,    "num objects in the list for e_DebugDraw list infodebug");
@@ -208,12 +266,6 @@ void CVars::Init()
 
     REGISTER_CVAR(e_TerrainDetailMaterials, 1, VF_CHEAT | VF_CHEAT_ALWAYS_CHECK,
         "Activates drawing of detail materials on terrain ground");
-    DefineConstIntCVar(e_TerrainDetailMaterialsDebug, 0, VF_CHEAT,
-        "Shows number of materials in use per terrain sector");
-    DefineConstFloatCVar(e_TerrainDetailMaterialsViewDistZ, VF_NULL,
-        "Max view distance of terrain Z materials");
-    DefineConstFloatCVar(e_TerrainDetailMaterialsViewDistXY, VF_NULL,
-        "Max view distance of terrain XY materials");
     DefineConstFloatCVar(e_SunAngleSnapSec, VF_NULL,
         "Sun dir snap control");
     DefineConstFloatCVar(e_SunAngleSnapDot, VF_NULL,
@@ -475,8 +527,6 @@ void CVars::Init()
         "Force auto pre-cache of CGF render meshes. 1=pre-cache all meshes around camera. 2=pre-cache only important ones (twice faster)");
     REGISTER_CVAR(e_AutoPrecacheCgfMaxTasks, 8, VF_NULL,
         "Maximum number of parallel streaming tasks during pre-caching");
-    DefineConstIntCVar(e_TerrainBBoxes, 0, VF_CHEAT,
-        "Show terrain nodes bboxes");
     DefineConstIntCVar(e_TerrainOcclusionCulling, 1, VF_CHEAT,
         "heightmap occlusion culling with time coherency 0=off, 1=on");
     DefineConstFloatCVar(e_TerrainOcclusionCullingStepSizeDelta, VF_CHEAT,
@@ -501,33 +551,15 @@ void CVars::Init()
         "Max number of tests per ray (for version 0)");
     DefineConstIntCVar(e_TerrainOcclusionCullingStepSize, 4, VF_CHEAT,
         "Initial size of single step (in heightmap units)");
-    DefineConstIntCVar(e_TerrainTextureDebug, 0, VF_CHEAT,
-        "Debug");
     DefineConstIntCVar(e_TerrainTextureStreamingDebug, 0, VF_CHEAT,
         "Debug");
-    REGISTER_CVAR(e_TerrainTextureStreamingPoolItemsNum, 64, VF_REQUIRE_LEVEL_RELOAD,
-        "Specifies number of textures in terrain base texture streaming pool");
-    DefineConstIntCVar(e_TerrainLog, 0, VF_CHEAT,
-        "Debug");
-    DefineConstIntCVar(e_TerrainDrawThisSectorOnly, 0, VF_CHEAT,
-        "1 - render only sector where camera is and objects registered in sector 00\n"
-        "2 - render only sector where camera is");
     DefineConstFloatCVar(e_TerrainOcclusionCullingPrecision, VF_CHEAT,
         "Density of rays");
     DefineConstFloatCVar(e_TerrainOcclusionCullingPrecisionDistRatio, VF_CHEAT,
         "Controls density of rays depending on distance to the object");
-    REGISTER_CVAR(e_TerrainLodRatio, 1.f, VF_NULL,
-        "Set heightmap LOD, this value is combined with sector error metrics and distance to camera");
-    REGISTER_CVAR(e_TerrainLodDistRatio, 1.f, VF_NULL,
-        "Set heightmap LOD, this value is combined only with sector distance to camera and ignores sector error metrics");
-    DefineConstFloatCVar(e_TerrainLodRatioHolesMin, VF_NULL,
-        "Rises LOD for distant terrain sectors with holes, prevents too strong distortions of holes on distance ");
 
     REGISTER_CVAR(e_OcclusionCullingViewDistRatio, 0.5f, VF_NULL,
         "Skip per object occlusion test for very far objects - culling on tree level will handle it");
-
-    DefineConstFloatCVar(e_TerrainTextureLodRatio, VF_NULL,
-        "Adjust terrain base texture resolution on distance");
 
     REGISTER_CVAR(e_Sun, 1, VF_CHEAT,
         "Activates sun light source");
@@ -538,8 +570,6 @@ void CVars::Init()
     DefineConstIntCVar(e_CoverageBufferCullIndividualBrushesMaxNodeSize, 0, VF_CHEAT,
         "128 - cull only nodes of scene tree and very big brushes\n"
         "0 - cull all brushes individually");
-    DefineConstIntCVar(e_CoverageBufferTerrain, 0, VF_NULL,
-        "Activates usage of coverage buffer for terrain");
     DefineConstIntCVar(e_CoverageBufferTerrainLodShift, 2, VF_NULL,
         "Controls tessellation of terrain mesh");
     /*  REGISTER_CVAR(e_CoverageBufferTerrainMaxDistance, 512.f, VF_NULL,
@@ -1243,8 +1273,7 @@ void CVars::Init()
 
     DefineConstIntCVar(e_MemoryProfiling, 0, VF_DEV_ONLY, "Toggle displaying memory usage statistics");
 #ifndef _RELEASE
-    REGISTER_CVAR_CB(e_TerrainPerformanceSecondsPerLog, 0.0, VF_DEV_ONLY, "How frequently the Terrain Profiler dumps performance statistics to the game log. Default: 0.0 (OFF)", 
-                     OnTerrainPerformanceSecondsChanged);
+    REGISTER_CVAR(e_TerrainPerformanceSecondsPerLog, 0.0, VF_DEV_ONLY, "How frequently the Terrain Profiler dumps performance statistics to the game log. Default: 0.0 (OFF)");
     REGISTER_CVAR(e_TerrainPerformanceCollectMemoryStats, 0, VF_DEV_ONLY, "Enable or disable collection of CTerrain memory usage per frame. Default: 0 (OFF)\n");
 #endif
 }

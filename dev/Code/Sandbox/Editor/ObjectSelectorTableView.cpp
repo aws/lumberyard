@@ -163,7 +163,7 @@ void ObjectSelectorTableView::SaveColumnsVisibility()
 
 void ObjectSelectorTableView::InitializeColumnWidths()
 {
-    static const int widths[] = { 100, 60, 60, 100, 80, 80, 80, 80, 80, 120, 250, 80, 80, 50, 80 };
+    static const int widths[] = { 100, 60, 60, 100, 80, 80, 80, 80, 120, 250, 80, 80, 50, 80 };
     static_assert(sizeof(widths) / sizeof(int) == ObjectSelectorModel::NumberOfColumns, "Wrong array size");
 
     for (int c = 0; c < ObjectSelectorModel::NumberOfColumns; ++c)

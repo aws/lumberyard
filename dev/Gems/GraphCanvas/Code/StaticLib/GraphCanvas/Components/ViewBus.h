@@ -139,6 +139,9 @@ namespace GraphCanvas
         //! Pans the display scene to the specificed point in the specified time.
         virtual void PanSceneTo(QPointF scenePoint, AZStd::chrono::milliseconds duration) = 0;
 
+        //! Refreshes the entire display to clear up any caching artifacts
+        virtual void RefreshView() = 0;
+
         //! Toast Notifications
         virtual void HideToastNotification(const ToastId& toastId) = 0;
 

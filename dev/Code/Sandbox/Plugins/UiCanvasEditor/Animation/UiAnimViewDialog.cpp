@@ -38,7 +38,6 @@
 #include "UiAnimViewTrack.h"
 #include "UiAnimViewSequence.h"
 #include "UiAnimViewSequenceManager.h"
-//#include "SequenceBatchRenderDialog.h"
 #include "UiAVCustomizeTrackColorsDlg.h"
 #include "QtUtilWin.h"
 #include <AzQtComponents/Components/StyledDockWidget.h>
@@ -59,8 +58,6 @@
 #include "UiEditorAnimationBus.h"
 
 #include "EditorCommon.h"
-
-//#include "Util/BoostPythonHelpers.h"
 
 #include "../../../Plugins/EditorCommon/QtViewPane.h"
 #include <QSplitter>

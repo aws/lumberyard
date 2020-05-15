@@ -97,7 +97,13 @@ namespace Vegetation
         // AreaNotificationBus
         void OnCompositionChanged() override;
 
+
     protected:
+        //////////////////////////////////////////////////////////////////////////
+        // AreaComponentBase
+        void OnRegisterArea() override;
+        void OnUnregisterArea() override;
+
         //////////////////////////////////////////////////////////////////////////
         // SpawnerRequestBus
 

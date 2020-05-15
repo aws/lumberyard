@@ -36,7 +36,7 @@
 
 
 static bool const c_EnableParticleEditorMenuEntry = true;
-const char* CParticleEditorPlugin::m_RegisteredQtViewPaneName = "Particle Editor";
+const char* CParticleEditorPlugin::m_RegisteredQtViewPaneName = LyViewPane::ParticleEditor;
 
 namespace PluginInfo
 {
@@ -47,7 +47,7 @@ namespace PluginInfo
 
 CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
 {
-    if (c_EnableParticleEditorMenuEntry)
+    if (c_EnableParticleEditorMenuEntry && gEnv->pRenderer->GetRenderType() != eRT_Other)
     {
         AzToolsFramework::ViewPaneOptions options;
         options.canHaveMultipleInstances = true;

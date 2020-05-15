@@ -10,6 +10,7 @@
 *
 */
 
+#include <Asset/AssetDebugInfo.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/Asset/AssetSeedManager.h>
 #include <AzFramework/Asset/AssetRegistry.h>
@@ -29,6 +30,8 @@ namespace // anonymous
     const char* s_catalogFile = "AssetCatalog.xml";
 
     AZ::Data::AssetId assets[s_totalAssets];
+    const char TestSliceAssetPath[] = "test.slice";
+    const char TestDynamicSliceAssetPath[] = "test.dynamicslice";
 
     bool Search(const AzToolsFramework::AssetFileInfoList& assetList, const AZ::Data::AssetId& assetId)
     {
@@ -95,6 +98,24 @@ namespace UnitTest
                 }
                 ++platformCount;
             }
+
+            AZ::Uuid sourceUUid = AZ::Uuid::CreateRandom();
+            AZ::Data::AssetId testSliceAsset = AZ::Data::AssetId(sourceUUid, 0);
+            AZ::Data::AssetId testDynamicSliceAsset = AZ::Data::AssetId(sourceUUid, 1);
+
+            AZ::Data::AssetInfo dynamicSliceAssetInfo;
+            dynamicSliceAssetInfo.m_relativePath = TestDynamicSliceAssetPath;
+            dynamicSliceAssetInfo.m_assetId = testDynamicSliceAsset;
+            m_assetRegistry->RegisterAsset(testDynamicSliceAsset, dynamicSliceAssetInfo);
+
+            AZ::IO::FileIOStream dynamicSliceFileIOStream(TestDynamicSliceAssetPath, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText);
+
+            AZ::Data::AssetInfo sliceAssetInfo;
+            sliceAssetInfo.m_relativePath = TestSliceAssetPath;
+            sliceAssetInfo.m_assetId = testSliceAsset;
+            m_assetRegistry->RegisterAsset(testSliceAsset, sliceAssetInfo);
+
+            AZ::IO::FileIOStream sliceFileIOStream(TestSliceAssetPath, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText);
 
             // asset0 -> asset1 -> asset2 -> asset4
             //                 --> asset3
@@ -172,6 +193,16 @@ namespace UnitTest
                 ++platformCount;
             }
 
+            if (fileIO->Exists(TestSliceAssetPath))
+            {
+                fileIO->Remove(TestSliceAssetPath);
+            }
+
+            if (fileIO->Exists(TestDynamicSliceAssetPath))
+            {
+                fileIO->Remove(TestDynamicSliceAssetPath);
+            }
+
             auto pcCatalogFile = AzToolsFramework::PlatformAddressedAssetCatalog::GetCatalogRegistryPathForPlatform(AzFramework::PlatformId::PC);
             auto es3CatalogFile = AzToolsFramework::PlatformAddressedAssetCatalog::GetCatalogRegistryPathForPlatform(AzFramework::PlatformId::ES3);
             if (fileIO->Exists(pcCatalogFile.c_str()))
@@ -232,14 +263,17 @@ namespace UnitTest
             AZStd::string filePath;
             AzFramework::StringFunc::Path::ConstructFull(AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@"), fileName, "assetlist", filePath);
 
+            // Add a single asset - empty asset list files don't save
+            m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
+
             // Create the file
-            EXPECT_TRUE(m_assetSeedManager->SaveAssetFileInfo(filePath, AzFramework::PlatformFlags::Platform_PC));
+            EXPECT_TRUE(m_assetSeedManager->SaveAssetFileInfo(filePath, AzFramework::PlatformFlags::Platform_PC, {}));
 
             // Mark the file Read-Only
             AZ::IO::SystemFile::SetWritable(filePath.c_str(), false);
 
             // Attempt to save to the same file. Should not be allowed.
-            EXPECT_FALSE(m_assetSeedManager->SaveAssetFileInfo(filePath, AzFramework::PlatformFlags::Platform_PC));
+            EXPECT_FALSE(m_assetSeedManager->SaveAssetFileInfo(filePath, AzFramework::PlatformFlags::Platform_PC, {}));
 
             // Clean up the test environment
             AZ::IO::SystemFile::SetWritable(filePath.c_str(), true);
@@ -693,6 +727,16 @@ namespace UnitTest
             EXPECT_EQ(seedList.size(), 0);
         }
 
+        void AddSourceAsset_AddRuntimeAsset_Valid()
+        {
+            m_assetSeedManager->AddSeedAsset(TestSliceAssetPath, AzFramework::PlatformFlags::Platform_PC);
+
+            const AzFramework::AssetSeedList& seedList = m_assetSeedManager->GetAssetSeedList();
+
+            EXPECT_EQ(seedList.size(), 1);
+            EXPECT_EQ(seedList[0].m_assetRelativePath, TestDynamicSliceAssetPath);
+        }
+
         AzToolsFramework::AssetSeedManager* m_assetSeedManager;
         AzFramework::AssetRegistry* m_assetRegistry;
         AzToolsFramework::ToolsApplication* m_application;
@@ -804,5 +848,52 @@ namespace UnitTest
     TEST_F(AssetSeedManagerTest, RemoveSeed_ByAssetHint_Valid)
     {
         RemoveSeed_ByAssetHint_Valid();
+    }
+
+    TEST_F(AssetSeedManagerTest, AddSourceAsset_AddRuntimeAsset_Valid)
+    {
+        AddSourceAsset_AddRuntimeAsset_Valid();
+    }
+
+    TEST_F(AssetSeedManagerTest, GetDependencyList_ExcludeAsset_IncludesOnlyExpected)
+    {
+        m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
+
+        AzToolsFramework::AssetFileInfoList assetList = m_assetSeedManager->GetDependencyList(AzFramework::PlatformId::PC, {assets[1]});
+
+        ASSERT_EQ(assetList.m_fileInfoList.size(), 1);
+        EXPECT_TRUE(Search(assetList, assets[0]));
+    }
+
+    TEST_F(AssetSeedManagerTest, GetDependencyList_ExcludeAssetDebugList_IncludesOnlyExpected)
+    {
+        m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
+
+        AzToolsFramework::AssetFileDebugInfoList debugList;
+
+        AzToolsFramework::AssetFileInfoList assetList = m_assetSeedManager->GetDependencyList(AzFramework::PlatformId::PC, { assets[1] }, &debugList);
+
+        ASSERT_EQ(assetList.m_fileInfoList.size(), 1);
+        EXPECT_TRUE(Search(assetList, assets[0]));
+    }
+
+    TEST_F(AssetSeedManagerTest, GetDependencyList_ExcludeSeed_ExcludesEverything)
+    {
+        m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
+
+        AzToolsFramework::AssetFileInfoList assetList = m_assetSeedManager->GetDependencyList(AzFramework::PlatformId::PC, { assets[0] });
+
+        ASSERT_EQ(assetList.m_fileInfoList.size(), 0);
+    }
+
+    TEST_F(AssetSeedManagerTest, GetDependencyList_ExcludeSeedDebugList_ExcludesEverything)
+    {
+        m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
+
+        AzToolsFramework::AssetFileDebugInfoList debugList;
+
+        AzToolsFramework::AssetFileInfoList assetList = m_assetSeedManager->GetDependencyList(AzFramework::PlatformId::PC, { assets[0] }, &debugList);
+
+        ASSERT_EQ(assetList.m_fileInfoList.size(), 0);
     }
 }

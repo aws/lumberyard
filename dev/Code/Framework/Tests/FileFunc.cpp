@@ -83,6 +83,7 @@ TEST_F(FileFuncTest, UpdateCfgContents_ValidInput_Success)
     updateRules.push_back(AZStd::string("Foo/two=2"));
     updateRules.push_back(AZStd::string("three=3"));
     auto result = AzFramework::FileFunc::Internal::UpdateCfgContents(cfgContents, updateRules);
+    EXPECT_TRUE(result.IsSuccess());
 
     AZStd::string compareCfgContents =
         "[Foo]\n"
@@ -95,10 +96,9 @@ TEST_F(FileFuncTest, UpdateCfgContents_ValidInput_Success)
         "five=3\n"
         "six=3\n"
         "eight=3\n";
+
     bool equals = cfgContents.compare(compareCfgContents) == 0;
     ASSERT_TRUE(equals);
-
-
 }
 
 TEST_F(FileFuncTest, UpdateCfgContents_ValidInputNewEntrySameHeader_Success)
@@ -113,13 +113,15 @@ TEST_F(FileFuncTest, UpdateCfgContents_ValidInputNewEntrySameHeader_Success)
     AZStd::string key("four");
     AZStd::string value("4");
     auto result = AzFramework::FileFunc::Internal::UpdateCfgContents(cfgContents, header, key, value);
+    EXPECT_TRUE(result.IsSuccess());
 
     AZStd::string compareCfgContents =
         "[Foo]\n"
-        "four = 4\n"
+        "four=4\n"
         "one =2 \n"
         "two= 3\n"
         "three = 4\n";
+
     bool equals = cfgContents.compare(compareCfgContents) == 0;
     ASSERT_TRUE(equals);
 }
@@ -139,15 +141,18 @@ TEST_F(FileFuncTest, UpdateCfgContents_ValidInputNewEntryDifferentHeader_Success
     AZStd::string key("four");
     AZStd::string value("4");
     auto result = AzFramework::FileFunc::Internal::UpdateCfgContents(cfgContents, header, key, value);
+    EXPECT_TRUE(result.IsSuccess());
 
     AZStd::string compareCfgContents =
-        "[Bar]\n"
-        "four = 4\n"
         ";Sample Data\n"
         "[Foo]\n"
         "one =2 \n"
         "two= 3\n"
-        "three = 4\n";
+        "three = 4\n"
+        "\n"
+        "[Bar]\n"
+        "four=4\n";
+
     bool equals = cfgContents.compare(compareCfgContents) == 0;
     ASSERT_TRUE(equals);
 }

@@ -1,3 +1,16 @@
+"""
+All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+its licensors.
+
+For complete copyright and license terms please see the LICENSE at the root of this
+distribution (the "License"). All use of this software is governed by the License,
+or, if provided, by the license below or the license accompanying this file. Do not
+remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+Config file for pytest & PythonTestTools. Warns user if the packaged Python is not
+being used.
+"""
 import json
 import os
 import zipfile
@@ -19,7 +32,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser.set_defaults(func=import_zip)
 
 def import_zip(context, args):
-    print "extracting zip at {} into {} project assets".format(args.download_path, context.config.get_game_directory_name())
+    print("extracting zip at {} into {} project assets".format(args.download_path, context.config.get_game_directory_name()))
     # make sure we have a zip
     if not os.path.exists(args.download_path):
         raise HandledError("Provided path does not exist")
@@ -76,7 +89,7 @@ def extract_as_wav(download_path, out_path):
             write_wav_from_pcm(zip_file, archive_file, out_path)
 
 def write_wav_from_pcm(zip, file_name, out_path):
-    print "converting {}".format(file_name)
+    print("converting {}".format(file_name))
 
     wav_name = file_name.replace(".pcm", ".wav")
     out_path = os.path.join(out_path, wav_name)

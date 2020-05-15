@@ -323,7 +323,7 @@ AZ::u32 CReflectedVarGenericProperty::handler()
         return AZ_CRC("ePropertyEquip", 0x66ffd290);
     case ePropertyReverbPreset:
         return AZ_CRC("ePropertyReverbPreset", 0x51469f38);
-    case ePropertyCustomAction:
+    case ePropertyDeprecated0:
         return AZ_CRC("ePropertyCustomAction", 0x4ffa5ba5);
     case ePropertyGameToken:
         return AZ_CRC("ePropertyGameToken", 0x34855b6f);

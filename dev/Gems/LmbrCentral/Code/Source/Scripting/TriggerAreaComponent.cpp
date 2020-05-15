@@ -252,13 +252,15 @@ namespace LmbrCentral
 
             // Create an entry in the proximity trigger system.
             EBUS_EVENT_RESULT(m_proximityTrigger, ProximityTriggerSystemRequestBus, CreateTrigger, AZStd::bind(&TriggerAreaComponent::NarrowPassCheck, this, AZStd::placeholders::_1));
-            AZ_Assert(m_proximityTrigger, "Failed to create proximity trigger.");
-            m_proximityTrigger->id = GetEntityId();
+            if (m_proximityTrigger != nullptr)
+            {
+                m_proximityTrigger->id = GetEntityId();
 
-            UpdateTriggerArea();
+                UpdateTriggerArea();
 
-            ProximityTriggerEventBus::Handler::BusConnect(GetEntityId());
-            ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
+                ProximityTriggerEventBus::Handler::BusConnect(GetEntityId());
+                ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
+            }
         }
     }
 

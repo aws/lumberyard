@@ -71,7 +71,7 @@ namespace LmbrCentral
         void LoadBundles(const char* baseFolder, const char* fileExtension) override;
         void UnloadBundles() override;
 
-        void BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle) override;
+        void BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle, AZStd::shared_ptr<AzFramework::AssetRegistry> bundleCatalog) override;
         void BundleClosed(const char* bundleName) override;
 
         // CrySystemEventBus

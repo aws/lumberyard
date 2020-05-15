@@ -25,6 +25,7 @@
 #include "IRenderAuxGeom.h"
 #include "AICollision.h"
 #include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 static const float BIN_WIDTH = 3.0f;
 
@@ -924,7 +925,8 @@ void CAIShape::DebugDraw(struct IRenderer* pRenderer)
 float CAIShape::GetDrawZ(float x, float y)
 {
     I3DEngine* pEngine = gEnv->p3DEngine;
-    float terrainZ = pEngine->GetTerrainElevation(x, y);
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    float terrainZ = terrain ? terrain->GetHeightFromFloats(x, y) : AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
     Vec3 pt(x, y, 0);
     float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : pEngine->GetWaterLevel(&pt);
     return max(terrainZ, waterZ);

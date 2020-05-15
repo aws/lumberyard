@@ -17,61 +17,69 @@
 
 namespace ScriptCanvas
 {
-    class VariableDatumBase
+    namespace Deprecated
     {
-    public:
-        AZ_TYPE_INFO(VariableDatumBase, "{93D2BD2B-1559-4968-B055-77736E06D3F2}");
-        AZ_CLASS_ALLOCATOR(VariableDatumBase, AZ::SystemAllocator, 0);
-        static void Reflect(AZ::ReflectContext* context);
-
-        VariableDatumBase() = default;
-        explicit VariableDatumBase(const Datum& variableData);
-        explicit VariableDatumBase(Datum&& variableData);
-        VariableDatumBase(const Datum& value, VariableId id);
-        
-        bool operator==(const VariableDatumBase& rhs) const;
-        bool operator!=(const VariableDatumBase& rhs) const;
-
-        const VariableId& GetId() const { return m_id; }
-        const Datum& GetData() const { return m_data; }
-        Datum& GetData() { return m_data; }
-
-        template<typename DatumType, typename ValueType>
-        bool SetValueAs(ValueType&& value)
+        class VariableDatumBase
         {
-            if (auto dataValueType = m_data.ModAs<DatumType>())
+        public:
+            AZ_TYPE_INFO(VariableDatumBase, "{93D2BD2B-1559-4968-B055-77736E06D3F2}");
+            AZ_CLASS_ALLOCATOR(VariableDatumBase, AZ::SystemAllocator, 0);
+            static void Reflect(AZ::ReflectContext* context);
+
+            VariableDatumBase() = default;
+            explicit VariableDatumBase(const Datum& variableData);
+            explicit VariableDatumBase(Datum&& variableData);
+            VariableDatumBase(const Datum& value, VariableId id);
+            
+            bool operator==(const VariableDatumBase& rhs) const;
+            bool operator!=(const VariableDatumBase& rhs) const;
+
+            const VariableId& GetId() const { return m_id; }
+            const Datum& GetData() const { return m_data; }
+            Datum& GetData() { return m_data; }
+
+            template<typename DatumType, typename ValueType>
+            bool SetValueAs(ValueType&& value)
             {
-                (*dataValueType) = AZStd::forward<ValueType>(value);
-                OnValueChanged();
-                return true;
+                if (auto dataValueType = m_data.ModAs<DatumType>())
+                {
+                    (*dataValueType) = AZStd::forward<ValueType>(value);
+                    OnValueChanged();
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
+            void SetAllowSignalOnChange(bool allowSignalChange)
+            {
+                m_signalValueChanges = allowSignalChange;
+            }
 
-        void SetAllowSignalOnChange(bool allowSignalChange)
-        {
-            m_signalValueChanges = allowSignalChange;
-        }
+            bool AllowsSignalOnChange() const
+            {
+                return m_signalValueChanges;
+            }
 
-    protected:
-        void OnValueChanged();
+        protected:
+            void OnValueChanged();
 
-        Datum m_data;
-        VariableId m_id;
+            Datum m_data;
+            VariableId m_id;
 
-        // Certain editor functions do not need to be notified of value changes (e.g. exposed properties)
-        bool m_signalValueChanges = true;
+            // Certain editor functions do not need to be notified of value changes (e.g. exposed properties)
+            bool m_signalValueChanges = true;
 
-    };
+        };
+    }
 }
 
 namespace AZStd
 {
     template<>
-    struct hash<ScriptCanvas::VariableDatumBase>
+    struct hash<ScriptCanvas::Deprecated::VariableDatumBase>
     {
-        size_t operator()(const ScriptCanvas::VariableDatumBase& key) const
+        size_t operator()(const ScriptCanvas::Deprecated::VariableDatumBase& key) const
         {
             return hash<ScriptCanvas::VariableId>()(key.GetId());
         }

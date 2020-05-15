@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <ScriptCanvas/Core/Endpoint.h>
+#include <ScriptEvents/ScriptEventsAsset.h>
 
 namespace AZ
 {
@@ -42,11 +43,14 @@ namespace ScriptCanvas
 
         using NodeContainer = AZStd::unordered_set<AZ::Entity*>;
         using ConnectionContainer = AZStd::vector<AZ::Entity*>;
-        using DependentAssets = AZStd::unordered_map<AZ::Data::AssetId, AZStd::pair<AZ::EntityId, AZ::Data::AssetType>>;
+        using DependentScriptEvent = AZStd::vector<AZStd::pair<AZ::EntityId, ScriptEvents::ScriptEventsAssetPtr>>;
 
         NodeContainer m_nodes;
         ConnectionContainer m_connections;
-        DependentAssets m_dependentAssets;
+        DependentScriptEvent m_scriptEventAssets;
+
+        using DependentAssets = AZStd::unordered_map<AZ::Data::AssetId, AZStd::pair<AZ::EntityId, AZ::Data::AssetType>>; // DEPRECATED
+        DependentAssets m_dependentAssets; // DEPRECATED
 
         // An endpoint(NodeId, SlotId Pair) is represents one end of a potential connection
         // The endpoint map is lookup table for all endpoints connected on the opposite end of the key value endpoint

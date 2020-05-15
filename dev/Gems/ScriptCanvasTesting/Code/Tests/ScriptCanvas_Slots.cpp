@@ -229,7 +229,7 @@ TEST_F(ScriptCanvasTestFixture, SlotCreation_DataSlotCreation)
             EXPECT_TRUE(dataInSlot->IsInput());
             EXPECT_FALSE(dataInSlot->IsOutput());
             
-            Datum* datum = emptyNode->FindDatum(dataInSlot->GetId());
+            const Datum* datum = emptyNode->FindDatum(dataInSlot->GetId());
 
             EXPECT_TRUE(datum != nullptr);
 
@@ -266,7 +266,7 @@ TEST_F(ScriptCanvasTestFixture, SlotCreation_DataSlotCreation)
             EXPECT_FALSE(dataOutSlot->IsInput());
             EXPECT_TRUE(dataOutSlot->IsOutput());
 
-            Datum* datum = emptyNode->FindDatum(dataOutSlot->GetId());
+            const Datum* datum = emptyNode->FindDatum(dataOutSlot->GetId());
 
             EXPECT_TRUE(datum == nullptr);
         }

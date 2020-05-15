@@ -10,13 +10,19 @@
 #
 # $Revision: #3 $
 
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
 from cgf_utils import custom_resource_response
 from cgf_utils import aws_utils
 from cgf_utils import reference_type_utils
 from cgf_utils import properties
 from resource_manager_common import stack_info
 
+
 def handler(event, context):
+    """Entry point for the Custom::ExternalResourceReference resource handler."""
+
     stack_arn = event['StackId']
     stack = stack_info.StackInfoManager().get_stack_info(stack_arn)
     props = properties.load(event, {
@@ -33,9 +39,11 @@ def handler(event, context):
             'PhysicalId': _get_reference_physical_id(stack, props.ReferenceName)
         }
 
-    physical_resource_id = aws_utils.construct_custom_physical_resource_id_with_data(stack_arn, event['LogicalResourceId'], {'ReferenceName': props.ReferenceName})
+    physical_resource_id = aws_utils.construct_custom_physical_resource_id_with_data(stack_arn, event['LogicalResourceId'],
+                                                                                     {'ReferenceName': props.ReferenceName})
 
     return custom_resource_response.success_response(data, physical_resource_id)
+
 
 def arn_handler(event, context):
     stack = stack_info.StackInfoManager().get_stack_info(event['StackId'])
@@ -47,9 +55,11 @@ def arn_handler(event, context):
 
     return result
 
+
 def _get_reference_arn(stack, reference_name):
     reference_metadata = reference_type_utils.get_reference_metadata(stack.project_stack.configuration_bucket, stack.project_stack.project_name, reference_name)
     return reference_metadata.get('Arn')
+
 
 def _get_reference_physical_id(stack, reference_name):
     reference_metadata = reference_type_utils.get_reference_metadata(stack.project_stack.configuration_bucket, stack.project_stack.project_name, reference_name)

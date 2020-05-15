@@ -58,7 +58,6 @@
 #include "UI/QComponentEntityEditorMainWindow.h"
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
-#include <LmbrCentral/Scripting/FlowGraphSerialization.h>
 #include <LmbrCentral/Scripting/TagComponentBus.h>
 #include <LmbrCentral/Scripting/EditorTagComponentBus.h>
 
@@ -75,15 +74,9 @@
 #include <Editor/Settings.h>
 #include <Editor/StringDlg.h>
 #include <Editor/QtViewPaneManager.h>
-#include <Editor/HyperGraph/FlowGraphModuleDlgs.h>
-#include <Editor/HyperGraph/FlowGraphManager.h>
-#include <Editor/HyperGraph/FlowGraph.h>
-#include <Editor/HyperGraph/FlowGraphNode.h>
 #include <IResourceSelectorHost.h>
 #include <Editor/AI/AIManager.h>
 #include "CryEdit.h"
-
-#include <CryCommon/FlowGraphInformation.h>
 
 #include <QMenu>
 #include <QAction>
@@ -175,10 +168,6 @@ void SandboxIntegrationManager::Setup()
 
     AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
-    AzToolsFramework::HyperGraphRequestBus::Handler::BusConnect();
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    AzFramework::EntityDebugDisplayRequestBus::Handler::BusConnect();
-    AZ_POP_DISABLE_WARNING
     AzFramework::DebugDisplayRequestBus::Handler::BusConnect(
         AzToolsFramework::ViewportInteraction::g_mainViewportEntityDebugDisplayId);
     AzFramework::DisplayContextRequestBus::Handler::BusConnect();
@@ -365,10 +354,6 @@ void SandboxIntegrationManager::Teardown()
     AZ::LegacyConversion::LegacyConversionRequestBus::Handler::BusDisconnect();
     AzFramework::DisplayContextRequestBus::Handler::BusDisconnect();
     AzFramework::DebugDisplayRequestBus::Handler::BusDisconnect();
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    AzFramework::EntityDebugDisplayRequestBus::Handler::BusDisconnect();
-    AZ_POP_DISABLE_WARNING
-    AzToolsFramework::HyperGraphRequestBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 
@@ -661,8 +646,6 @@ void SandboxIntegrationManager::PopulateEditorGlobalContextMenu(QMenu* menu, con
     }
 
     menu->addSeparator();
-    SetupFlowGraphContextMenu(menu);
-    menu->addSeparator();
 
     if (selected.size() > 0)
     {
@@ -811,6 +794,7 @@ void SandboxIntegrationManager::SetupLayerContextMenu(QMenu* menu)
 
 void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     AzToolsFramework::EntityIdList selectedEntities;
     GetSelectedOrHighlightedEntities(selectedEntities);
 
@@ -911,6 +895,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
 
 void SandboxIntegrationManager::SetupSliceContextMenu_Modify(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     using namespace AzToolsFramework;
 
     // Gather the set of relevant entities from the selected entities and all descendants
@@ -949,74 +934,6 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Modify(QMenu* menu, const 
     });
 
     revertAction->setEnabled(canRevert);
-}
-
-void SandboxIntegrationManager::SetupFlowGraphContextMenu(QMenu* menu)
-{
-    AzToolsFramework::EntityIdList selectedEntities;
-    GetSelectedOrHighlightedEntities(selectedEntities);
-
-    if (!selectedEntities.empty())
-    {
-        // Separate entities into those that already have flowgraph components and those that do not.
-        AzToolsFramework::EntityIdList entitiesWithFlowgraphComponent;
-        for (const AZ::EntityId& entityId : selectedEntities)
-        {
-            if (entityId.IsValid())
-            {
-                AZ::Entity* foundEntity = nullptr;
-                EBUS_EVENT_RESULT(foundEntity, AZ::ComponentApplicationBus, FindEntity, entityId);
-
-                if (FlowGraphEditorRequestsBus::FindFirstHandler(FlowEntityId(entityId)))
-                {
-                    entitiesWithFlowgraphComponent.push_back(entityId);
-                }
-            }
-        }
-
-        QMenu* flowgraphMenu = nullptr;
-        QAction* action = nullptr;
-
-        // For entities with flowgraph component, create a context menu to open any existing flowgraphs within each selected entity.
-        for (const AZ::EntityId& entityId : entitiesWithFlowgraphComponent)
-        {
-            AZStd::vector<AZStd::pair<AZStd::string, IFlowGraph*> > flowgraphs;
-            EBUS_EVENT_ID(FlowEntityId(entityId), FlowGraphEditorRequestsBus, GetFlowGraphs, flowgraphs);
-
-            if (!flowgraphMenu)
-            {
-                menu->addSeparator();
-                flowgraphMenu = menu->addMenu(QObject::tr("Flow Graph"));
-                menu->addSeparator();
-            }
-
-            AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
-
-            QMenu* entityMenu = flowgraphMenu;
-            if (selectedEntities.size() > 1)
-            {
-                entityMenu = flowgraphMenu->addMenu(entity->GetName().c_str());
-            }
-
-            action = entityMenu->addAction("Add");
-            QObject::connect(action, &QAction::triggered, action, [this, entityId] { ContextMenu_AddFlowGraph(entityId); });
-
-            if (!flowgraphs.empty())
-            {
-                QMenu* openMenu = entityMenu->addMenu(QObject::tr("Open"));
-                QMenu* removeMenu = entityMenu->addMenu(QObject::tr("Remove"));
-                for (auto& flowgraph : flowgraphs)
-                {
-                    action = openMenu->addAction(flowgraph.first.c_str());
-                    auto flowGraph = flowgraph.second;
-                    QObject::connect(action, &QAction::triggered, action, [this, entityId, flowGraph] { ContextMenu_OpenFlowGraph(entityId, flowGraph); });
-                    action = removeMenu->addAction(flowgraph.first.c_str());
-                    QObject::connect(action, &QAction::triggered, action, [this, entityId, flowGraph] { ContextMenu_RemoveFlowGraph(entityId, flowGraph); });
-                }
-            }
-        }
-    }
 }
 
 void SandboxIntegrationManager::HandleObjectModeSelection(const AZ::Vector2& point, int flags, bool& handled)
@@ -1398,7 +1315,7 @@ void SandboxIntegrationManager::SetEditTool(const char* tool)
 
 void SandboxIntegrationManager::LaunchLuaEditor(const char* files)
 {
-    GetIEditor()->ExecuteCommand(QStringLiteral("general.launch_lua_editor \'%1\'").arg(files));
+    CCryEditApp::instance()->OpenLUAEditor(files);
 }
 
 bool SandboxIntegrationManager::IsLevelDocumentOpen()
@@ -1548,77 +1465,6 @@ void SandboxIntegrationManager::OnSliceInstantiated(const AZ::Data::AssetId& /*s
         m_unsavedEntities.insert(sliceInstantEntityIdPair.second);
     }
 
-}
-
-AZStd::string SandboxIntegrationManager::GetHyperGraphName(IFlowGraph* runtimeGraphPtr)
-{
-    CHyperGraph* hyperGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (hyperGraph)
-    {
-        return hyperGraph->GetName().toUtf8().data();
-    }
-
-    return AZStd::string();
-}
-
-void SandboxIntegrationManager::RegisterHyperGraphEntityListener(IFlowGraph* runtimeGraphPtr, IEntityObjectListener* listener)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph && flowGraph->GetEntity())
-    {
-        flowGraph->GetEntity()->RegisterListener(listener);
-    }
-}
-
-void SandboxIntegrationManager::UnregisterHyperGraphEntityListener(IFlowGraph* runtimeGraphPtr, IEntityObjectListener* listener)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph && flowGraph->GetEntity())
-    {
-        flowGraph->GetEntity()->UnregisterListener(listener);
-    }
-}
-
-void SandboxIntegrationManager::SetHyperGraphEntity(IFlowGraph* runtimeGraphPtr, const AZ::EntityId& id)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph)
-    {
-        flowGraph->SetEntity(id);
-    }
-}
-
-void SandboxIntegrationManager::OpenHyperGraphView(IFlowGraph* runtimeGraphPtr)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph)
-    {
-        GetIEditor()->GetFlowGraphManager()->OpenView(flowGraph);
-    }
-}
-
-void SandboxIntegrationManager::ReleaseHyperGraph(IFlowGraph* runtimeGraphPtr)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    SAFE_RELEASE(flowGraph);
-}
-
-void SandboxIntegrationManager::SetHyperGraphGroupName(IFlowGraph* runtimeGraphPtr, const char* name)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph)
-    {
-        flowGraph->SetGroupName(name);
-    }
-}
-
-void SandboxIntegrationManager::SetHyperGraphName(IFlowGraph* runtimeGraphPtr, const char* name)
-{
-    CFlowGraph* flowGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
-    if (flowGraph)
-    {
-        flowGraph->SetName(name);
-    }
 }
 
 void SandboxIntegrationManager::ContextMenu_NewEntity()
@@ -1921,244 +1767,6 @@ void SandboxIntegrationManager::GoToEntitiesInViewports(const AzToolsFramework::
     }
 }
 
-void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, LmbrCentral::SerializedFlowGraph& graphData)
-{
-    using namespace LmbrCentral;
-
-    graphData = SerializedFlowGraph();
-
-    if (!flowGraph)
-    {
-        return;
-    }
-
-    CFlowGraph* hyperGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(flowGraph);
-    if (!hyperGraph)
-    {
-        return;
-    }
-
-    graphData.m_name = hyperGraph->GetName().toUtf8().constData();
-    graphData.m_description = hyperGraph->GetDescription().toUtf8().constData();
-    graphData.m_group = hyperGraph->GetGroupName().toUtf8().constData();
-    graphData.m_isEnabled = hyperGraph->IsEnabled();
-    graphData.m_persistentId = AZ::Crc32(graphData.m_name.c_str());
-    graphData.m_hypergraphId = hyperGraph->GetHyperGraphId();
-
-    switch (hyperGraph->GetMPType())
-    {
-    case CFlowGraph::eMPT_ServerOnly:
-    {
-        graphData.m_networkType = FlowGraphNetworkType::ServerOnly;
-    }
-    break;
-    case CFlowGraph::eMPT_ClientOnly:
-    {
-        graphData.m_networkType = FlowGraphNetworkType::ClientOnly;
-    }
-    break;
-    case CFlowGraph::eMPT_ClientServer:
-    {
-        graphData.m_networkType = FlowGraphNetworkType::ServerOnly;
-    }
-    break;
-    }
-
-    IHyperGraphEnumerator* nodeIter = hyperGraph->GetNodesEnumerator();
-    for (IHyperNode* hyperNodeInterface = nodeIter->GetFirst(); hyperNodeInterface; hyperNodeInterface = nodeIter->GetNext())
-    {
-        CHyperNode* hyperNode = static_cast<CHyperNode*>(hyperNodeInterface);
-
-        graphData.m_nodes.push_back();
-        SerializedFlowGraph::Node& nodeData = graphData.m_nodes.back();
-
-        nodeData.m_name = hyperNode->GetName().toUtf8().constData();
-        nodeData.m_class = hyperNode->GetClassName().toUtf8().constData();
-        nodeData.m_position.Set(hyperNode->GetPos().x(), hyperNode->GetPos().y());
-        nodeData.m_flags = hyperNode->GetFlags();
-
-        const QRectF& sizeRect(hyperNode->GetRect());
-        nodeData.m_size.Set(sizeRect.right() - sizeRect.left(), sizeRect.bottom() - sizeRect.top());
-
-        const QRectF* borderRect = hyperNode->GetResizeBorderRect();
-        if (borderRect)
-        {
-            nodeData.m_borderRect.Set(borderRect->right() - borderRect->left(), borderRect->bottom() - borderRect->top());
-        }
-
-        const HyperNodeID nodeId = hyperNode->GetId();
-        const HyperNodeID flowNodeId = hyperNode->GetFlowNodeId();
-        IFlowNodeData* flowData = flowNodeId != InvalidFlowNodeId ? flowGraph->GetNodeData(flowNodeId) : nullptr;
-
-        nodeData.m_id = nodeId;
-        nodeData.m_isGraphEntity = hyperNode->CheckFlag(EHYPER_NODE_GRAPH_ENTITY);
-        nodeData.m_entityId = flowData ? AZ::EntityId(flowData->GetEntityId().GetId()) : AZ::EntityId();
-        if (static_cast<AZ::u64>(nodeData.m_entityId) == 0)
-        {
-            nodeData.m_entityId.SetInvalid();
-        }
-
-        const CHyperNode::Ports* inputPorts = hyperNode->GetInputs();
-        if (inputPorts)
-        {
-            for (size_t inputIndex = 0, inputCount = inputPorts->size(); inputIndex < inputCount; ++inputIndex)
-            {
-                const CHyperNodePort& port = (*inputPorts)[inputIndex];
-
-                if (!port.bVisible)
-                {
-                    nodeData.m_inputHideMask |= (1 << inputIndex);
-                }
-
-                if (port.pVar)
-                {
-                    const IVariable::EType type = port.pVar->GetType();
-                    switch (type)
-                    {
-                    case IVariable::UNKNOWN:
-                    case IVariable::FLOW_CUSTOM_DATA:
-                    {
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Unknown,
-                            aznew SerializedFlowGraph::InputValueVoid());
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::INT:
-                    {
-                        auto* value = aznew SerializedFlowGraph::InputValueInt();
-                        port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Int, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::BOOL:
-                    {
-                        auto* value = aznew SerializedFlowGraph::InputValueBool();
-                        port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Bool, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::FLOAT:
-                    {
-                        auto* value = aznew SerializedFlowGraph::InputValueFloat();
-                        port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Float, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::VECTOR2:
-                    {
-                        Vec2 temp;
-                        port.pVar->Get(temp);
-                        auto* value = aznew SerializedFlowGraph::InputValueVec2(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector2, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::VECTOR:
-                    {
-                        Vec3 temp;
-                        port.pVar->Get(temp);
-                        auto* value = aznew SerializedFlowGraph::InputValueVec3(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector3, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::VECTOR4:
-                    {
-                        Vec4 temp;
-                        port.pVar->Get(temp);
-                        auto* value = aznew SerializedFlowGraph::InputValueVec4(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector4, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::QUAT:
-                    {
-                        Quat temp;
-                        port.pVar->Get(temp);
-                        auto* value = aznew SerializedFlowGraph::InputValueQuat(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Quat, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::STRING:
-                    {
-                        auto* value = aznew SerializedFlowGraph::InputValueString();
-                        QString temp;
-                        port.pVar->Get(temp);
-                        value->m_value = temp.toUtf8().data();
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::String, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    case IVariable::DOUBLE:
-                    {
-                        auto* value = aznew SerializedFlowGraph::InputValueDouble();
-                        port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Double, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
-                    }
-                    break;
-                    }
-                }
-            }
-        }
-
-        const CHyperNode::Ports* outputPorts = hyperNode->GetOutputs();
-        if (outputPorts)
-        {
-            for (size_t outputIndex = 0, outputCount = outputPorts->size(); outputIndex < outputCount; ++outputIndex)
-            {
-                const CHyperNodePort& port = (*outputPorts)[outputIndex];
-
-                if (!port.bVisible)
-                {
-                    nodeData.m_outputHideMask |= (1 << outputIndex);
-                }
-            }
-        }
-    }
-
-    std::vector<CHyperEdge*> edges;
-    edges.reserve(4096);
-    hyperGraph->GetAllEdges(edges);
-
-    for (CHyperEdge* edge : edges)
-    {
-        graphData.m_edges.push_back();
-        SerializedFlowGraph::Edge& edgeData = graphData.m_edges.back();
-
-        edgeData.m_nodeIn = edge->nodeIn;
-        edgeData.m_nodeOut = edge->nodeOut;
-        edgeData.m_portIn = edge->portIn.toUtf8().constData();
-        edgeData.m_portOut = edge->portOut.toUtf8().constData();
-        edgeData.m_isEnabled = edge->enabled;
-
-        AZ::Crc32 hash;
-        hash.Add(&edgeData.m_nodeIn, sizeof(edgeData.m_nodeIn));
-        hash.Add(&edgeData.m_nodeOut, sizeof(edgeData.m_nodeIn));
-        hash.Add(edgeData.m_portIn.c_str());
-        hash.Add(edgeData.m_portOut.c_str());
-        edgeData.m_persistentId = hash;
-    }
-
-    edges.resize(0);
-
-    for (size_t tokenIndex = 0, tokenCount = flowGraph->GetGraphTokenCount(); tokenIndex < tokenCount; ++tokenIndex)
-    {
-        graphData.m_graphTokens.push_back();
-        SerializedFlowGraph::GraphToken& tokenData = graphData.m_graphTokens.back();
-
-        const IFlowGraph::SGraphToken* token = flowGraph->GetGraphToken(tokenIndex);
-        AZ_Assert(token, "Failed to retrieve graph token at index %zu", tokenIndex);
-        tokenData.m_name = token->name.c_str();
-        tokenData.m_type = token->type;
-        tokenData.m_persistentId = AZ::Crc32(tokenData.m_name.c_str());
-    }
-}
-
 void SandboxIntegrationManager::ContextMenu_SelectSlice()
 {
     AzToolsFramework::EntityIdList selectedEntities;
@@ -2221,65 +1829,6 @@ void SandboxIntegrationManager::ContextMenu_DeleteSelected()
 void SandboxIntegrationManager::ContextMenu_ResetToSliceDefaults(AzToolsFramework::EntityIdList entities)
 {
     AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::ResetEntitiesToSliceDefaults, entities);
-}
-
-bool SandboxIntegrationManager::CreateFlowGraphNameDialog(AZ::EntityId entityId, AZStd::string& flowGraphName)
-{
-    AZ::Entity* entity = nullptr;
-    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
-
-    if (entity)
-    {
-        QString title = QString("Enter Flow Graph Name (") + QString(entity->GetName().c_str()) + QString(")");
-
-        CFlowGraphNewDlg newFlowGraphDialog(title, "Default");
-        if (newFlowGraphDialog.exec() == QDialog::Accepted)
-        {
-            flowGraphName = newFlowGraphDialog.GetText().toStdString().c_str();
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void SandboxIntegrationManager::ContextMenu_NewFlowGraph(AzToolsFramework::EntityIdList entities)
-{
-    // This is the Uuid of the EditorFlowGraphComponent.
-    // #TODO LY-21846: Add "FlowGraphService" to entity, rather than specific component-type.
-    AzToolsFramework::EntityCompositionRequestBus::Broadcast(&AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, entities, AZ::ComponentTypeList{ AZ::Uuid("{400972DE-DD1F-4407-8F53-7E514C5767CA}") });
-
-    for (auto entityId : entities)
-    {
-        ContextMenu_AddFlowGraph(entityId);
-    }
-}
-
-void SandboxIntegrationManager::ContextMenu_OpenFlowGraph(AZ::EntityId entityId, IFlowGraph* flowgraph)
-{
-    // Launch FG editor with specified flowgraph selected.
-    EBUS_EVENT_ID(FlowEntityId(entityId), FlowGraphEditorRequestsBus, OpenFlowGraphView, flowgraph);
-}
-
-void SandboxIntegrationManager::ContextMenu_RemoveFlowGraph(AZ::EntityId entityId, IFlowGraph* flowgraph)
-{
-    AzToolsFramework::ScopedUndoBatch undo("Remove Flow Graph");
-
-    EBUS_EVENT_ID(FlowEntityId(entityId), FlowGraphEditorRequestsBus, RemoveFlowGraph, flowgraph, true);
-}
-
-void SandboxIntegrationManager::ContextMenu_AddFlowGraph(AZ::EntityId entityId)
-{
-    AZStd::string flowGraphName;
-    if (CreateFlowGraphNameDialog(entityId, flowGraphName))
-    {
-        const AZStd::string undoName = AZStd::string::format("Add Flow Graph: %s", flowGraphName.c_str());
-        AzToolsFramework::ScopedUndoBatch undo(undoName.c_str());
-
-        IFlowGraph* flowGraph = nullptr;
-        EBUS_EVENT_ID_RESULT(flowGraph, FlowEntityId(entityId), FlowGraphEditorRequestsBus, AddFlowGraph, flowGraphName);
-        ContextMenu_OpenFlowGraph(entityId, flowGraph);
-    }
 }
 
 void SandboxIntegrationManager::GetSelectedEntities(AzToolsFramework::EntityIdList& entities)
@@ -2393,15 +1942,20 @@ AZStd::string SandboxIntegrationManager::GetComponentIconPath(const AZ::Uuid& co
                     }
                 }
             }
-
-            // use absolute path if possible
-            AZStd::string iconFullPath;
-            bool pathFound = false;
-            using AssetSysReqBus = AzToolsFramework::AssetSystemRequestBus;
-            AssetSysReqBus::BroadcastResult(pathFound, &AssetSysReqBus::Events::GetFullSourcePathFromRelativeProductPath, iconPath, iconFullPath);
-            if (pathFound)
+            // If Qt doesn't know where the relative path is we have to use the more expensive full path
+            if (!QFile::exists(QString(iconPath.c_str())))
             {
-                iconPath = AZStd::move(iconFullPath);
+                // use absolute path if possible
+                AZStd::string iconFullPath;
+                bool pathFound = false;
+                using AssetSysReqBus = AzToolsFramework::AssetSystemRequestBus;
+                AssetSysReqBus::BroadcastResult(
+                    pathFound, &AssetSysReqBus::Events::GetFullSourcePathFromRelativeProductPath,
+                    iconPath, iconFullPath);
+                if (pathFound)
+                {
+                    iconPath = AZStd::move(iconFullPath);
+                }
             }
         }
     }
@@ -2980,11 +2534,33 @@ void SandboxIntegrationManager::DrawWireSphere(const AZ::Vector3& pos, const AZ:
     }
 }
 
+void SandboxIntegrationManager::DrawWireDisk(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius)
+{
+    if (m_dc)
+    {
+        m_dc->DrawWireDisk(
+            AZVec3ToLYVec3(pos),
+            AZVec3ToLYVec3(dir),
+            radius);
+    }
+}
+
 void SandboxIntegrationManager::DrawBall(const AZ::Vector3& pos, float radius, bool drawShaded)
 {
     if (m_dc)
     {
         m_dc->DrawBall(AZVec3ToLYVec3(pos), radius, drawShaded);
+    }
+}
+
+void SandboxIntegrationManager::DrawDisk(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius)
+{
+    if (m_dc)
+    {
+        m_dc->DrawDisk(
+            AZVec3ToLYVec3(pos),
+            AZVec3ToLYVec3(dir),
+            radius);
     }
 }
 

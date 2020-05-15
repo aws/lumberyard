@@ -14,13 +14,10 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <GraphicsReflectContext/GraphicsReflectContextBus.h>
-
 namespace GraphicsReflectContext
 {
     class GraphicsReflectContextSystemComponent
         : public AZ::Component
-        , protected GraphicsReflectContextRequestBus::Handler
     {
     public:
         AZ_COMPONENT(GraphicsReflectContextSystemComponent, "{35FC3992-8EA4-456B-B53D-A235EED51E3E}");
@@ -33,11 +30,6 @@ namespace GraphicsReflectContext
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
     protected:
-        ////////////////////////////////////////////////////////////////////////
-        // GraphicsReflectContextRequestBus interface implementation
-
-        ////////////////////////////////////////////////////////////////////////
-
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Init() override;

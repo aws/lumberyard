@@ -35,7 +35,7 @@ def open(request):
                               "System.import('{}')".format(get_presigned_url(s3_client, PROJECT_CGP_DEPENDENCY_FILE)))
     content = content.replace(get_match_group(APP_REGEX_PATTERN, content),
                               "System.import('{}')".format(get_presigned_url(s3_client, PROJECT_CGP_APP_FILE)))
-    print content
+    print(content)
     return content
 
 
@@ -44,8 +44,8 @@ def get_index(s3_client):
     try:
         s3_index_obj_request = s3_client.get_object(Bucket=BUCKET_ID, Key=PROJECT_CGP_ROOT_FILE)
     except ClientError as e:
-        print e
-        raise errors.ClientError("Could not read from the key '{}' in the S3 bucket '{}'. Failed with: {}".format(PROJECT_CGP_ROOT_FILE, BUCKET_ID, e.message))
+        print('ERROR: {}'.format(e))
+        raise errors.ClientError("Could not read from the key '{}' in the S3 bucket '{}'. Failed with: {}".format(PROJECT_CGP_ROOT_FILE, BUCKET_ID, str(e)))
 
     # Does the lambda have access to it?
     if s3_index_obj_request['ResponseMetadata']['HTTPStatusCode'] != 200:

@@ -49,7 +49,7 @@
 // see Trace::Assert for implementation
 #if defined(USE_AZ_ASSERT)
 #undef assert
-#define assert(condition) AZ_Assert(condition, "")
+#define assert(condition) AZ_Assert(condition, "%s", #condition)
 #endif //defined(USE_AZ_ASSERT)
 
 //-----------------------------------------------------------------------------------------------------

@@ -33,35 +33,40 @@ namespace GraphCanvas
     {
     }
 
-    void RemoveSlotMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
-    {
-        m_targetId = targetId;
-
+    void RemoveSlotMenuAction::RefreshAction()
+    {        
         bool enableAction = false;
 
-        if (GraphUtils::IsSlot(m_targetId))
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        if (GraphUtils::IsSlot(targetId))
         {
-            NodeId nodeId;
-            SlotRequestBus::EventResult(nodeId, m_targetId, &SlotRequests::GetNode);
+            if (!GraphUtils::IsSlotType(targetId, SlotTypes::ExtenderSlot)
+                && !GraphUtils::IsSlotType(targetId, SlotTypes::PropertySlot))
+            {
+                Endpoint endpoint;
+                SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
 
-            GraphId graphId;
-            SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
-
-            GraphModelRequestBus::EventResult(enableAction, graphId, &GraphModelRequests::IsSlotRemovable, nodeId, m_targetId);
+                GraphModelRequestBus::EventResult(enableAction, graphId, &GraphModelRequests::IsSlotRemovable, endpoint);
+            }
         }
 
         setEnabled(enableAction);
     }
 
-    ContextMenuAction::SceneReaction RemoveSlotMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction RemoveSlotMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        if (GraphUtils::IsSlot(m_targetId))
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+        
+        if (GraphUtils::IsSlot(targetId))
         {
             bool hasConnections = false;
-            SlotRequestBus::EventResult(hasConnections, m_targetId, &SlotRequests::HasConnections);
+            SlotRequestBus::EventResult(hasConnections, targetId, &SlotRequests::HasConnections);
 
             NodeId nodeId;
-            SlotRequestBus::EventResult(nodeId, m_targetId, &SlotRequests::GetNode);
+            SlotRequestBus::EventResult(nodeId, targetId, &SlotRequests::GetNode);
 
             GraphId graphId;
             SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
@@ -85,7 +90,7 @@ namespace GraphCanvas
                 }
             }
 
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RemoveSlot, nodeId, m_targetId);
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RemoveSlot, Endpoint(nodeId, targetId));
 
             return SceneReaction::PostUndo;
         }
@@ -102,25 +107,29 @@ namespace GraphCanvas
     {
     }
     
-    void ClearConnectionsMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
+    void ClearConnectionsMenuAction::RefreshAction()
     {
-        m_targetId = targetId;
-
         bool enableAction = false;
+
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
         
-        if (GraphUtils::IsSlot(m_targetId))
+        if (GraphUtils::IsSlot(targetId))
         {
-            SlotRequestBus::EventResult(enableAction, m_targetId, &SlotRequests::HasConnections);
+            SlotRequestBus::EventResult(enableAction, targetId, &SlotRequests::HasConnections);
         }
         
         setEnabled(enableAction);
     }
 
-    ContextMenuAction::SceneReaction ClearConnectionsMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction ClearConnectionsMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        if (GraphUtils::IsSlot(m_targetId))
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+        
+        if (GraphUtils::IsSlot(targetId))
         {
-            SlotRequestBus::Event(m_targetId, &SlotRequests::ClearConnections);
+            SlotRequestBus::Event(targetId, &SlotRequests::ClearConnections);
             return SceneReaction::PostUndo;
         }
 
@@ -137,35 +146,222 @@ namespace GraphCanvas
 
     }
 
-    void ResetToDefaultValueMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
+    void ResetToDefaultValueMenuAction::RefreshAction()
     {
-        m_targetId = targetId;
-
         bool enableAction = false;
 
-        if (GraphUtils::IsSlot(m_targetId))
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        if (GraphUtils::IsSlot(targetId))
         {
             bool isDataSlot = false;
             SlotType slotType = SlotTypes::Invalid;
-            SlotRequestBus::EventResult(slotType, m_targetId, &SlotRequests::GetSlotType);
+            SlotRequestBus::EventResult(slotType, targetId, &SlotRequests::GetSlotType);
 
-            if (slotType == SlotTypes::PropertySlot
-                || slotType == SlotTypes::DataSlot)
+            if (slotType == SlotTypes::DataSlot)
             {
-                enableAction = true;                
+                enableAction = true;
+
+                Endpoint endpoint;
+                SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
+
+                GraphModelRequestBus::EventResult(enableAction, graphId, &GraphModelRequests::AllowReset, endpoint);
+
+                DataSlotType slotType = DataSlotType::Unknown;
+                DataSlotRequestBus::EventResult(slotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+                if (slotType == DataSlotType::Reference)
+                {
+                    setText("Reset Reference");
+                }
+                else
+                {
+                    setText("Reset Value");
+                }
+            }
+            else
+            {
+                setText("Reset Value");
             }
         }
 
         setEnabled(enableAction);
     }
 
-    ContextMenuAction::SceneReaction ResetToDefaultValueMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction ResetToDefaultValueMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        NodeId nodeId;
-        SlotRequestBus::EventResult(nodeId, m_targetId, &SlotRequests::GetNode);
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+        
+        Endpoint endpoint;
+        SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
 
-        GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetSlotToDefaultValue, nodeId, m_targetId);
+        DataSlotType slotType = DataSlotType::Unknown;
+        DataSlotRequestBus::EventResult(slotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+        if (slotType == DataSlotType::Value)
+        {
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetSlotToDefaultValue, endpoint);
+        }
+        else
+        {
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetReference, endpoint);
+        }
 
         return SceneReaction::PostUndo;
+    }
+
+    ///////////////////////////////
+    // ToggleReferenceStateAction
+    ///////////////////////////////
+
+    ToggleReferenceStateAction::ToggleReferenceStateAction(QObject* parent)
+        : GraphCanvas::SlotContextMenuAction("Toggle Reference", parent)
+    {
+
+    }
+
+    void ToggleReferenceStateAction::RefreshAction()
+    {
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        if (GraphUtils::IsSlot(targetId))
+        {
+            SlotType slotType = SlotTypes::Invalid;
+            SlotRequestBus::EventResult(slotType, targetId, &SlotRequests::GetSlotType);
+
+            if (slotType == SlotTypes::DataSlot)
+            {
+                DataSlotType dataSlotType = DataSlotType::Unknown;
+                DataSlotRequestBus::EventResult(dataSlotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+                bool canToggleState = false;
+
+                if (DataSlotUtils::IsValueDataSlotType(dataSlotType))
+                {
+                    setText("Convert to Reference");
+                    DataSlotRequestBus::EventResult(canToggleState, targetId, &DataSlotRequests::CanConvertToReference);
+                }
+                else
+                {
+                    setText("Convert to Value");
+                    DataSlotRequestBus::EventResult(canToggleState, targetId, &DataSlotRequests::CanConvertToValue);
+                }
+                
+
+                setEnabled(canToggleState);
+            }
+            else
+            {
+                setEnabled(false);
+            }
+        }
+        else
+        {
+            setEnabled(false);
+        }
+    }
+
+    ContextMenuAction::SceneReaction ToggleReferenceStateAction::TriggerAction(const AZ::Vector2& scenePos)
+    {        
+        bool toggledState = false;
+
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        DataSlotType dataSlotType = DataSlotType::Unknown;
+        DataSlotRequestBus::EventResult(dataSlotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+        if (DataSlotUtils::IsValueDataSlotType(dataSlotType))
+        {
+            DataSlotRequestBus::EventResult(toggledState, targetId, &DataSlotRequests::ConvertToReference);
+        }
+        else
+        {
+            DataSlotRequestBus::EventResult(toggledState, targetId, &DataSlotRequests::ConvertToValue);
+        }        
+
+        if (toggledState)
+        {
+            return SceneReaction::PostUndo;
+        }
+        else
+        {
+            return SceneReaction::Nothing;
+        }
+    }
+
+    ////////////////////////////
+    // PromoteToVariableAction
+    ////////////////////////////
+
+    PromoteToVariableAction::PromoteToVariableAction(QObject* parent)
+        : GraphCanvas::SlotContextMenuAction("Promote to Variable", parent)
+    {
+
+    }
+
+    void PromoteToVariableAction::RefreshAction()
+    {
+        bool enableAction = false;
+
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+
+        if (GraphUtils::IsSlot(targetId))
+        {
+            SlotType slotType = SlotTypes::Invalid;
+            SlotRequestBus::EventResult(slotType, targetId, &SlotRequests::GetSlotType);
+
+            if (slotType == SlotTypes::DataSlot)
+            {
+                ConnectionType connectionType = CT_Invalid;
+                SlotRequestBus::EventResult(connectionType, targetId, &SlotRequests::GetConnectionType);
+
+                if (connectionType == CT_Input)
+                {
+                    DataSlotType dataSlotType = DataSlotType::Unknown;
+                    DataSlotRequestBus::EventResult(dataSlotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+                    if (DataSlotUtils::IsValueDataSlotType(dataSlotType))
+                    {
+                        DataSlotRequestBus::EventResult(enableAction, targetId, &DataSlotRequests::CanConvertToReference);
+
+                        if (enableAction)
+                        {
+                            Endpoint endpoint;
+                            SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
+
+                            GraphModelRequestBus::EventResult(enableAction, graphId, &GraphModelRequests::CanPromoteToVariable, endpoint);
+                        }
+                    }
+                }
+            }
+        }
+
+        setEnabled(enableAction);
+    }
+
+    GraphCanvas::ContextMenuAction::SceneReaction PromoteToVariableAction::TriggerAction(const AZ::Vector2& scenePos)
+    {
+        const AZ::EntityId& targetId = GetTargetId();
+        const GraphId& graphId = GetGraphId();
+        
+        Endpoint endpoint;
+        SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
+
+        bool promotedElement = false;
+        GraphModelRequestBus::EventResult(promotedElement, graphId, &GraphModelRequests::PromoteToVariableAction, endpoint);
+
+        if (promotedElement)
+        {
+            return SceneReaction::PostUndo;
+        }
+        else
+        {
+            return SceneReaction::Nothing;
+        }
     }
 }

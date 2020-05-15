@@ -220,7 +220,7 @@ namespace AZ
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below 
         va_end(mark);
 
         EBUS_EVENT(TraceMessageDrillerBus, OnPreAssert, fileName, line, funcName, message);
@@ -323,7 +323,7 @@ namespace AZ
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(message, g_maxMessageLength-1, format, mark); // -1 to make room for the "/n" that will be appended below 
         va_end(mark);
 
         EBUS_EVENT(TraceMessageDrillerBus, OnPreError, window, fileName, line, funcName, message);
@@ -365,7 +365,7 @@ namespace AZ
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below 
         va_end(mark);
 
         EBUS_EVENT(TraceMessageDrillerBus, OnPreWarning, window, fileName, line, funcName, message);

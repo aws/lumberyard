@@ -3,16 +3,19 @@
         "Root": [
             "Main.cpp"
         ],
-        "AzCore" : [
+        "AzCore": [
             "AssetCommon.cpp",
+            "AssetJsonSerializerTests.cpp",
             "AssetManager.cpp",
             "BehaviorContext.cpp",
             "BehaviorContextFixture.h",
             "Components.cpp",
+            "Console.cpp",
             "Debug.cpp",
             "DLL.cpp",
             "Driller.cpp",
             "EBus.cpp",
+            "EventTests.cpp",
             "EntityIdTests.cpp",
             "EntityTests.cpp",
             "FileIOBaseTestTypes.h",
@@ -38,6 +41,7 @@
             "Slice.cpp",
             "State.cpp",
             "StreamerTests.cpp",
+            "StringFunc.cpp",
             "SystemFile.cpp",
             "TickBusTest.cpp",
             "UUIDTests.cpp",
@@ -45,6 +49,10 @@
         ],
         "AzCore/Debug": [
             "Debug/AssetTracking.cpp"
+        ],
+        "AzCore/Name": [
+            "Name/NameJsonSerializerTests.cpp",
+            "Name/NameTests.cpp"
         ],
         "AzCore/Streamer": [
             "Streamer/BlockCacheTests.cpp",
@@ -83,6 +91,8 @@
             "Serialization/Json/UuidSerializerTests.cpp"
         ],
         "AzCore/Math": [
+            "Math/CrcTestsCompileTimeLiterals.h",
+            "Math/CrcTests.cpp",
             "Math/QuaternionTests.cpp"
         ],
         "AzCore/Memory": [

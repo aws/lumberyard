@@ -2,7 +2,7 @@
     "name": "tiffstatic",
     "source": "@3P:tiff@",
     "description": "Tiff Library (static runtime)",
-    "includes": [
+    "system_includes": [
         "include/libtiff"
     ],
     "defines": [],

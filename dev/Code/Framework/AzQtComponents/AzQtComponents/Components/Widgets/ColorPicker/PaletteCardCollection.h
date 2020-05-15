@@ -75,11 +75,13 @@ namespace AzQtComponents
         QUndoStack* m_undoStack;
 
         QVBoxLayout* m_layout;
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QVector<QSharedPointer<PaletteCard>> m_paletteCards;
         QSize m_swatchSize;
         bool m_gammaEnabled = false;
         qreal m_gamma = 1.0;
 
         QSet<QObject*> m_registeredPaletteCards;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     };
 } // namespace AzQtComponents

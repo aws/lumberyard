@@ -11,11 +11,6 @@
     "Tags": ["Cloud Canvas"],	
     "Dependencies": [
         {
-            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
-            "VersionConstraints": [ "~>0.1" ],
-            "_comment": "AWS"
-        },
-        {
             "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
             "VersionConstraints": [ "~>0.1" ],
             "_comment": "Dynamic Content"

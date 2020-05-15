@@ -87,7 +87,7 @@ namespace EMotionFX
                     ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
                     ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SimulatedJoint::m_pinned, "Pinned", "Pinned joints follow the original joint, so in a way they are pinned to a given skeletal joint. Unpinned joints can move freely away from the joint they are linked to. Root joints are always pinned.")
-                    ->Attribute(AZ::Edit::Attributes::ReadOnly, &SimulatedJoint::IsRootJoint)
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &SimulatedJoint::GetPinnedOptionVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SimulatedJoint::m_autoExcludeGeometric, "Geometric auto exclude", "When enabled we will check whether the joint is inside the collider that is tested for automatic exclusion from collision detection. If not, we just use the list of colliders that are relevant.")
                     ->DataElement(AZ_CRC("SimulatedJointColliderExclusionTags", 0x27b61cea), &SimulatedJoint::m_colliderExclusionTags, "Collider exclusions", "Ignore collision detection with the colliders inside this list.")
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
@@ -289,6 +289,12 @@ namespace EMotionFX
 
         return false;
     }
+
+    AZ::Crc32 SimulatedJoint::GetPinnedOptionVisibility() const
+    {
+        return IsRootJoint() ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::Show;
+    }
+
     //-------------------------------------------------------------------------
 
     bool compare_simulated_joints(const SimulatedJoint* a, const SimulatedJoint* b)

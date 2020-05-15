@@ -42,4 +42,4 @@ def transplant(exif_src, image, new_file=None):
         with open(image, "wb+") as f:
             f.write(new_data)
     else:
-        raise ValueError("Give a 3rd argment to 'transplant' to output file")
+        raise ValueError("Give a 3rd argument to 'transplant' to output file")

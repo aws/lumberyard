@@ -2,7 +2,7 @@
     "name": "nvapi",
     "source": "@3P:nvapi@",
     "description": "NVAPI",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "lib_required": "True",

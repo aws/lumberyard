@@ -14,7 +14,7 @@
 # See the README file for information on usage and redistribution.
 #
 #
-# See https://github.com/GNOME/gimp/blob/master/devel-docs/gbr.txt for
+# See https://github.com/GNOME/gimp/blob/mainline/devel-docs/gbr.txt for
 # format documentation.
 #
 # This code Interprets version 1 and 2 .gbr files.
@@ -34,6 +34,7 @@ def _accept(prefix):
 
 ##
 # Image plugin for the GIMP brush format.
+
 
 class GbrImageFile(ImageFile.ImageFile):
 
@@ -57,22 +58,22 @@ class GbrImageFile(ImageFile.ImageFile):
             raise SyntaxError("Unsupported GIMP brush color depth: %s" % color_depth)
 
         if version == 1:
-            comment_length = header_size-20
+            comment_length = header_size - 20
         else:
-            comment_length = header_size-28
+            comment_length = header_size - 28
             magic_number = self.fp.read(4)
-            if magic_number != b'GIMP':
+            if magic_number != b"GIMP":
                 raise SyntaxError("not a GIMP brush, bad magic number")
-            self.info['spacing'] = i32(self.fp.read(4))
+            self.info["spacing"] = i32(self.fp.read(4))
 
         comment = self.fp.read(comment_length)[:-1]
 
         if color_depth == 1:
             self.mode = "L"
         else:
-            self.mode = 'RGBA'
+            self.mode = "RGBA"
 
-        self.size = width, height
+        self._size = width, height
 
         self.info["comment"] = comment
 
@@ -86,8 +87,10 @@ class GbrImageFile(ImageFile.ImageFile):
         self.im = Image.core.new(self.mode, self.size)
         self.frombytes(self.fp.read(self._data_size))
 
+
 #
 # registry
+
 
 Image.register_open(GbrImageFile.format, GbrImageFile, _accept)
 Image.register_extension(GbrImageFile.format, ".gbr")

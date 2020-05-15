@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/string/regex.h>
 
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/Node.h>
@@ -29,12 +30,14 @@ namespace ScriptCanvas
             //! of generating slots based on curly bracket formatted text to produce input slots.
             class StringFormatted
                 : public Node
+                , public NodePropertyInterfaceListener
             {
             public:
                 ScriptCanvas_Node(StringFormatted,
                     ScriptCanvas_Node::Name("StringFormatted", "Base class for any nodes that use string formatting capabilities.")
                     ScriptCanvas_Node::Uuid("{0B1577E0-339D-4573-93D1-6C311AD12A13}")
                     ScriptCanvas_Node::Category("Internal")
+                    ScriptCanvas_Node::DynamicSlotOrdering(true)
                     ScriptCanvas_Node::Version(1)
                 );
 
@@ -48,7 +51,7 @@ namespace ScriptCanvas
 
                 ScriptCanvas_EditPropertyWithDefaults(AZStd::string, m_format, "{Value}",
                     EditProperty::Name("String", "The format string; any word within {} will create a data pin on the node.")
-                    EditProperty::EditAttributes(AZ::Edit::Attributes::ChangeNotify(&StringFormatted::OnFormatChanged)
+                    EditProperty::EditAttributes(AZ::Edit::Attributes::StringLineEditingCompleteNotify(&StringFormatted::OnFormatChanged)
                     )
                 );
 
@@ -69,17 +72,51 @@ namespace ScriptCanvas
                 using NamedSlotIdMap = AZStd::map<AZStd::string, SlotId>;
                 ScriptCanvas_SerializeProperty(NamedSlotIdMap, m_formatSlotMap);
 
+                // Node
                 void OnInit() override;
+                void OnConfigured() override;
+                void ConfigureVisualExtensions() override;
+
+                bool CanDeleteSlot(const SlotId& slotId) const override;
+
+                SlotId HandleExtension(AZ::Crc32 extensionId) override;
+                NodePropertyInterface* GetPropertyInterface(AZ::Crc32 propertyId) override;
+
+                void OnSlotRemoved(const SlotId& slotId) override;
+                ////                
 
                 // Parses the format field to produce the intermediate data for strings that use curly brackets to produce slots.
                 void ParseFormat();
 
+                void RelayoutNode();
+
                 // Called when a change to the format string is detected.
-                AZ::u32 OnFormatChanged();
+                void OnFormatChanged();
 
                 //! Parses the user specified format and resolves the data from the appropriate slots.
                 //! \return AZStd::string The fully formatted and resolved string ready for output.
                 AZStd::string ProcessFormat();
+
+                AZStd::string GetDisplayGroup() const { return "PrintDisplayGroup"; }
+                AZ::Crc32 GetDisplayGroupId() const { return AZ_CRC("PrintDisplayGroup", 0x3c802873); }
+
+                AZ::Crc32 GetExtensionId() const { return AZ_CRC("AddPrintOperand", 0x7aec4eae); }
+                AZ::Crc32 GetPropertyId() const { return AZ_CRC("FormatStringProperty", 0x2c587efa); }
+
+                const AZStd::regex& GetRegex() const
+                {
+                    static AZStd::regex formatRegex(R"(\{(\w+)\})");
+                    return formatRegex;
+                }
+
+            private:
+
+                // NodePropertyInterface
+                void OnPropertyChanged() override;
+                ////
+
+                TypedNodePropertyInterface<ScriptCanvas::Data::StringType> m_stringInterface;
+                bool m_parsingFormat = false;
             };
         }
     }

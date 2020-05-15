@@ -72,7 +72,6 @@ namespace AZ
 
         void SceneProcessingConfigSystemComponent::Activate()
         {
-            SceneProcessingConfig::GraphTypeSelector::Register();
             SceneProcessingConfigRequestBus::Handler::BusConnect();
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
         }
@@ -81,7 +80,6 @@ namespace AZ
         {
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
             SceneProcessingConfigRequestBus::Handler::BusDisconnect();
-            SceneProcessingConfig::GraphTypeSelector::Unregister();
         }
 
         SceneProcessingConfigSystemComponent::~SceneProcessingConfigSystemComponent()

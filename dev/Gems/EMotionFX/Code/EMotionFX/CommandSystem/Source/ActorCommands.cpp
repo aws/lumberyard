@@ -24,6 +24,7 @@
 #include <MCore/Source/FileSystem.h>
 #include "ActorCommands.h"
 #include "CommandManager.h"
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <AzFramework/API/ApplicationAPI.h>
 
 
@@ -735,7 +736,7 @@ namespace CommandSystem
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
 
         // get rid of the actor
-        actor->Destroy();
+        EMotionFX::GetActorManager().UnregisterActor(EMotionFX::GetActorManager().FindSharedActorByID(actor->GetID()));
 
         // mark the workspace as dirty
         GetCommandManager()->SetWorkspaceDirtyFlag(true);

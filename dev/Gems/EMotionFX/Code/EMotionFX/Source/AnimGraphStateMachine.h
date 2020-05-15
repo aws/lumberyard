@@ -70,7 +70,7 @@ namespace EMotionFX
         };
 
         AnimGraphStateMachine();
-        ~AnimGraphStateMachine();
+        ~AnimGraphStateMachine() override;
 
         void RecursiveReinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
@@ -184,7 +184,7 @@ namespace EMotionFX
         /**
          * Get the latest active transition. The latest active transition is the one that got started most recently, is still transitioning
          * and defines where the state machine is actually going. All other transitions on the transition stack got interrupted.
-         * @param[in] uniqueData The instance data for the state machine to check.
+         * @param[in] animGraphInstance The instance for the state machine to check.
          * @result The latest active transition.
          */
         AnimGraphStateTransition* GetLatestActiveTransition(const AnimGraphInstance* animGraphInstance) const;
@@ -298,6 +298,8 @@ namespace EMotionFX
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Output(AnimGraphInstance* animGraphInstance) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        void SkipPostUpdate(AnimGraphInstance* animGraphInstance) override;
+        void SkipOutput(AnimGraphInstance* animGraphInstance) override;
 
         void LogTransitionStack(const char* stateDescription, AnimGraphInstance* animGraphInstance, const UniqueData* uniqueData) const;
 

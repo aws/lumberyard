@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <AzCore/Component/Component.h>
+
 class CHeightmap;
 class CLayer;
 
@@ -131,5 +133,25 @@ private:
 
     friend class CUndoTexturePainter;
 };
+
+//////////////////////////////////////////////////////////////////////////
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class TerrainPainterPythonFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TerrainPainterPythonFuncsHandler, "{681CF98F-C6DB-43DA-B6B8-0C76B8C5507D}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+} // namespace AzToolsFramework
+
 
 #endif // CRYINCLUDE_EDITOR_TERRAINTEXTUREPAINTER_H

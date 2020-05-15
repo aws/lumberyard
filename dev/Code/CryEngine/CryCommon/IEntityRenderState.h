@@ -33,10 +33,7 @@ struct SRendItemSorter;
 struct SFrameLodInfo;
 struct pe_params_area;
 struct pe_articgeomparams;
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-class CTerrainNode;
-#endif
+struct ITerrainNode;
 
 // @NOTE: When removing an item from this enum, replace it with a dummy - ID's from this enum are stored in data and should not change.
 enum EERType
@@ -151,15 +148,27 @@ struct IShadowCaster
     uint8 m_cStaticShadowLod;
 };
 
+// Optional filter function for octree queries to perform custom filtering of the results.
+// return true to keep the render node, false to filter it out.
+using ObjectTreeQueryFilterCallback = AZStd::function<bool(IRenderNode*, EERType)>;
+
 struct IOctreeNode
 {
 public:
-    CTerrainNode* GetTerrainNode() const { return (CTerrainNode*) (m_pTerrainNode & ~0x1); }
-    void SetTerrainNode(CTerrainNode* node) { m_pTerrainNode = (m_pTerrainNode & 0x1) | ((INT_PTR) node); }
+    virtual ~IOctreeNode() {};
+
+    ITerrainNode* GetTerrainNode() const { return (ITerrainNode*) (m_pTerrainNode & ~0x1); }
+    void SetTerrainNode(ITerrainNode* node) { m_pTerrainNode = (m_pTerrainNode & 0x1) | ((INT_PTR) node); }
 
     // If true - this node needs to be recompiled for example update nodes max view distance.
     bool IsCompiled() const { return (bool) (m_pTerrainNode & 0x1); }
     void SetCompiled(bool compiled) { m_pTerrainNode = ((int) compiled) | (m_pTerrainNode & ~0x1); }
+
+    virtual void MarkAsUncompiled(const IRenderNode* pRenderNode = NULL) = 0;
+
+    virtual void UpdateTerrainNodes(ITerrainNode* pParentNode = 0) = 0;
+
+    virtual void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr) = 0;
 
     struct CVisArea* m_pVisArea;
 
@@ -446,7 +455,7 @@ struct IRenderNode
 
     // Returns:
     //   Current VisArea or null if in outdoors or entity was not registered in 3dengine.
-    CTerrainNode* GetEntityTerrainNode() const { return (m_pOcNode && !m_pOcNode->m_pVisArea) ? m_pOcNode->GetTerrainNode() : NULL; }
+    ITerrainNode* GetEntityTerrainNode() const { return (m_pOcNode && !m_pOcNode->m_pVisArea) ? m_pOcNode->GetTerrainNode() : NULL; }
 
     // Summary:
     //   Makes object visible at any distance.
@@ -644,6 +653,7 @@ struct IRoadRenderNode
     virtual void SetPhysicalize(bool bVal) = 0;
     virtual void GetClipPlanes(Plane* pPlanes, int nPlanesNum, int nVertId = 0) = 0;
     virtual void GetTexCoordInfo(float* pTexCoordInfo) = 0;
+    virtual void OnTerrainChanged() = 0;
     // </interfuscator:shuffle>
 
     // This flag is used to account for legacy entities which used to serialize the node without parent objects.

@@ -12,6 +12,8 @@
 
 #include <AzCore/UnitTest/TestTypes.h>
 
+AZ_PUSH_DISABLE_WARNING(, "-Wdelete-non-virtual-dtor")
+
 #include <FrameworkApplicationFixture.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
@@ -340,3 +342,5 @@ namespace SceneUnitTest
         EXPECT_EQ(nullptr, scene->GetSubsystem<Foo1>());
     }
 } // UnitTest
+
+AZ_POP_DISABLE_WARNING

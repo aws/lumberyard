@@ -102,7 +102,7 @@ namespace AzFramework
             bool NegotiationFailed() { return m_negotiationFailed; } //hold whether the last connection attempt failed negotiation or not
 
             // Setup Connection Options
-            void Configure(const char* branchToken, const char* platform, const char* identifier);
+            void Configure(const char* branchToken, const char* platform, const char* identifier, const char* projectName);
 
             bool m_unitTesting; //set to true when unit testing
 
@@ -157,7 +157,8 @@ namespace AzFramework
 
             AZ::OSString m_connectAddr;//if initiating the connection, holds the address
             AZ::u16 m_port;//the port to connect to or listen on
-            AZStd::string m_branchToken;//transmitted to ensure the ap is the one for our branch/project
+            AZStd::string m_branchToken;//transmitted to ensure the ap is the one for our branch
+            AZStd::string m_projectName;//transmitted to ensure the ap is the one for our project
             AZStd::string m_assetPlatform;//which platforms assets we want
             AZStd::string m_identifier;
             bool m_negotiationFailed = false;//holds if the last negotiation attempt failed or not

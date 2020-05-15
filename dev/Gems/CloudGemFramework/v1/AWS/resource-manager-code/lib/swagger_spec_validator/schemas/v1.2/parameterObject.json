@@ -1,36 +1,73 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
     "allOf": [
-        { "$ref": "dataTypeBase.json#" },
         {
-            "required": [ "paramType", "name" ],
+            "$ref": "dataTypeBase.json#"
+        },
+        {
             "properties": {
-                "paramType": {
-                    "enum": [ "path", "query", "body", "header", "form" ]
+                "allowMultiple": {
+                    "type": "boolean"
                 },
-                "name": { "type": "string" },
-                "description": { "type": "string" },
-                "required": { "type": "boolean" },
-                "allowMultiple": { "type": "boolean" }
-            }
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "paramType": {
+                    "enum": [
+                        "path",
+                        "query",
+                        "body",
+                        "header",
+                        "form"
+                    ]
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "paramType",
+                "name"
+            ]
         },
         {
             "description": "type File requires special paramType and consumes",
             "oneOf": [
                 {
                     "properties": {
-                        "type": { "not": { "enum": [ "File" ] } }
+                        "type": {
+                            "not": {
+                                "enum": [
+                                    "File"
+                                ]
+                            }
+                        }
                     }
                 },
                 {
                     "properties": {
-                        "type": { "enum": [ "File" ] },
-                        "paramType": { "enum": [ "form" ] },
-                        "consumes": { "enum": [ "multipart/form-data" ] }
+                        "consumes": {
+                            "enum": [
+                                "multipart/form-data"
+                            ]
+                        },
+                        "paramType": {
+                            "enum": [
+                                "form"
+                            ]
+                        },
+                        "type": {
+                            "enum": [
+                                "File"
+                            ]
+                        }
                     }
                 }
             ]
         }
-    ]
+    ],
+    "type": "object"
 }

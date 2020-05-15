@@ -21,7 +21,9 @@
 #include <GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/SceneContextMenu.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/ConnectionContextMenu.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/SlotContextMenu.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/SceneMenuActions/SceneContextMenuAction.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/SlotMenuActions/SlotContextMenuAction.h>
 
 namespace ScriptCanvasEditor
 {
@@ -31,6 +33,10 @@ namespace ScriptCanvasEditor
     {
         class NodePaletteDockWidget;
     }
+
+    //////////////////
+    // CustomActions
+    //////////////////
 
     class AddSelectedEntitiesAction
         : public GraphCanvas::ContextMenuAction
@@ -79,6 +85,63 @@ namespace ScriptCanvasEditor
         void RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId) override;
         GraphCanvas::ContextMenuAction::SceneReaction TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos) override;
     };
+
+    class ConvertVariableNodeToReferenceAction
+        : public GraphCanvas::ContextMenuAction
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(ConvertVariableNodeToReferenceAction, AZ::SystemAllocator, 0);
+
+        ConvertVariableNodeToReferenceAction(QObject* parent);
+        virtual ~ConvertVariableNodeToReferenceAction() = default;
+
+        GraphCanvas::ActionGroupId GetActionGroupId() const override;
+
+        void RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId) override;
+        GraphCanvas::ContextMenuAction::SceneReaction TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos) override;
+
+    private:
+
+        AZ::EntityId m_targetId;
+    };
+
+    class SlotManipulationMenuAction
+        : public GraphCanvas::ContextMenuAction
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(SlotManipulationMenuAction, AZ::SystemAllocator, 0);
+
+        SlotManipulationMenuAction(AZStd::string_view actionName, QObject* parent);
+
+    protected:
+        ScriptCanvas::Slot* GetScriptCanvasSlot(const GraphCanvas::Endpoint& endpoint) const;
+    };
+
+    class ConvertReferenceToVariableNodeAction
+        : public SlotManipulationMenuAction
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(ConvertReferenceToVariableNodeAction, AZ::SystemAllocator, 0);
+
+        ConvertReferenceToVariableNodeAction(QObject* parent);
+        virtual ~ConvertReferenceToVariableNodeAction() = default;
+
+        GraphCanvas::ActionGroupId GetActionGroupId() const override;
+
+        void RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId) override;
+        GraphCanvas::ContextMenuAction::SceneReaction TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos) override;
+
+    private:
+
+        AZ::EntityId m_targetId;
+    };
+
+    /////////////////
+    // ContextMenus
+    /////////////////
 
     class SceneContextMenu
         : public GraphCanvas::SceneContextMenu
@@ -138,5 +201,13 @@ namespace ScriptCanvasEditor
 
         AZ::EntityId                      m_connectionId;
         Widget::NodePaletteDockWidget*    m_palette;
+    };
+
+    class SlotContextMenu
+        : public GraphCanvas::SlotContextMenu
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(SlotContextMenu, AZ::SystemAllocator, 0);
     };
 }

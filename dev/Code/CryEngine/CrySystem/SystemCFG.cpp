@@ -430,7 +430,10 @@ bool CSystemConfiguration::ParseSystemConfig()
                 !(file.Open(string("@assets@/config/spec/") + filename, "rb", flags))
                 )
             {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Config file %s not found!", filename.c_str());
+                if (m_warnIfMissing)
+                {
+                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Config file %s not found!", filename.c_str());
+                }
                 return false;
             }
         }

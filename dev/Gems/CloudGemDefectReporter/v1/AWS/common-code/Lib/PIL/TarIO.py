@@ -14,15 +14,16 @@
 # See the README file for information on usage and redistribution.
 #
 
-from . import ContainerIO
+import io
 
+from . import ContainerIO
 
 ##
 # A file object that provides read access to a given member of a TAR
 # file.
 
-class TarIO(ContainerIO.ContainerIO):
 
+class TarIO(ContainerIO.ContainerIO):
     def __init__(self, tarfile, file):
         """
         Create file object.
@@ -30,18 +31,18 @@ class TarIO(ContainerIO.ContainerIO):
         :param tarfile: Name of TAR file.
         :param file: Name of member file.
         """
-        fh = open(tarfile, "rb")
+        self.fh = open(tarfile, "rb")
 
         while True:
 
-            s = fh.read(512)
+            s = self.fh.read(512)
             if len(s) != 512:
-                raise IOError("unexpected end of tar file")
+                raise OSError("unexpected end of tar file")
 
-            name = s[:100].decode('utf-8')
-            i = name.find('\0')
+            name = s[:100].decode("utf-8")
+            i = name.find("\0")
             if i == 0:
-                raise IOError("cannot find subfile")
+                raise OSError("cannot find subfile")
             if i > 0:
                 name = name[:i]
 
@@ -50,7 +51,17 @@ class TarIO(ContainerIO.ContainerIO):
             if file == name:
                 break
 
-            fh.seek((size + 511) & (~511), 1)
+            self.fh.seek((size + 511) & (~511), io.SEEK_CUR)
 
         # Open region
-        ContainerIO.ContainerIO.__init__(self, fh, fh.tell(), size)
+        super().__init__(self.fh, self.fh.tell(), size)
+
+    # Context manager support
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        self.fh.close()

@@ -21,6 +21,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 // Dependencies
+#include <Terrain/Bus/LegacyTerrainBus.h>
 #include "Terrain/Heightmap.h"
 #include "DocMultiArchive.h"
 
@@ -33,6 +34,7 @@ class CSurfaceType;
 //////////////////////////////////////////////////////////////////////////
 // Class
 class CTerrainManager
+    : public LegacyTerrain::LegacyTerrainEditorDataRequestBus::Handler
 {
 public:
     CTerrainManager();
@@ -117,6 +119,14 @@ public:
     void GetTerrainMemoryUsage(ICrySizer* pSizer);
 
     QString GenerateUniqueLayerName(const QString& name) const;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // LegacyTerrain::LegacyTerrainEditorDataRequestBus
+    //////////////////////////////////////////////////////////////////////////
+    bool CreateTerrainSystemFromEditorData() override;
+    void DestroyTerrainSystem() override;
+    void RefreshEngineMacroTexture() override;
     //////////////////////////////////////////////////////////////////////////
 
 protected:

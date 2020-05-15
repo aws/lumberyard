@@ -23,6 +23,7 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Types/ComponentSaveDataInterface.h>
 
 namespace GraphCanvas
 {
@@ -34,6 +35,7 @@ namespace GraphCanvas
         , public SceneNotificationBus::Handler
         , public AZ::EntityBus::Handler
         , public SlotNotificationBus::MultiHandler
+        , public ComponentSaveDataInterface<NodeSaveData>
     {
         friend class NodeSerializer;
     public:
@@ -101,6 +103,9 @@ namespace GraphCanvas
 
         // SceneNotificationsBus
         void OnStylesChanged() override;
+        void OnGraphLoadComplete() override;
+
+        void OnPasteEnd() override;
         ////
 
         // NodeRequestBus
@@ -130,9 +135,15 @@ namespace GraphCanvas
         void SignalBatchedConnectionManipulationEnd() override;
 
         RootGraphicsItemEnabledState UpdateEnabledState() override;
+
+        bool IsHidingUnusedSlots() override;
+        void ShowAllSlots() override;
+        void HideUnusedSlots() override;
         ////
 
     protected:
+
+        void HideUnusedSlotsImpl();        
 
         //! The ID of the scene this node belongs to.
         AZ::EntityId m_sceneId;
@@ -148,5 +159,7 @@ namespace GraphCanvas
 
         //! Stores custom user data for this node
         AZStd::any m_userData;
+
+        bool m_updateSlotState = false;
     };
 }

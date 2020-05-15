@@ -15,9 +15,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Quaternion.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 
 namespace Physics
 {

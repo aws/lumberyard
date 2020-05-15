@@ -39,8 +39,6 @@ namespace CommandSystem
         EMotionFX::Motion* LoadMotion(EMotionFX::MotionSet::MotionEntry* entry) override;
     };
 
-
-
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Main motion set commands
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,8 +87,10 @@ namespace CommandSystem
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     MCORE_DEFINECOMMAND_START(CommandLoadMotionSet, "Load motion set", true)
     public:
-        uint32          mOldMotionSetID;
-        bool            mOldWorkspaceDirtyFlag;
+        using RelocateFilenameFunction = AZStd::function<void(AZStd::string&)>;
+        RelocateFilenameFunction m_relocateFilenameFunction;
+        uint32 mOldMotionSetID;
+        bool mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////

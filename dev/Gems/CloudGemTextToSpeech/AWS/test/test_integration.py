@@ -1,3 +1,16 @@
+"""
+All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+its licensors.
+
+For complete copyright and license terms please see the LICENSE at the root of this
+distribution (the "License"). All use of this software is governed by the License,
+or, if provided, by the license below or the license accompanying this file. Do not
+remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+Config file for pytest & PythonTestTools. Warns user if the packaged Python is not
+being used.
+"""
 import resource_manager_common.constant as constant
 import boto3
 from botocore.exceptions import ClientError
@@ -29,7 +42,7 @@ class IntegrationTest_CloudGemTextToSpeech_APISecurity(base_stack_test.BaseStack
 
     ''' TESTS '''
     def __000_create_stacks(self):
-        self.setup_base_stack()                
+        self.setup_base_stack()
 
     def __010_get_anonymous_aws_credentials(self):        
         self.context['identity_pool_id'] = custom_resource_utils.get_embedded_physical_id(self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'PlayerAccessIdentityPool'))
@@ -82,7 +95,7 @@ class IntegrationTest_CloudGemTextToSpeech_APISecurity(base_stack_test.BaseStack
 
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
-        self.assertEquals(response.status_code, expected_status_code,
+        self.assertEqual(response.status_code, expected_status_code,
             'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:

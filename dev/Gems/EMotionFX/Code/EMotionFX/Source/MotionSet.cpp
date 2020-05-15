@@ -846,12 +846,12 @@ namespace EMotionFX
     }
 
 
-    MotionSet* MotionSet::LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context)
+    MotionSet* MotionSet::LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& loadFilter)
     {
         AZ::Debug::Timer loadTimer;
         loadTimer.Stamp();
 
-        MotionSet* result = AZ::Utils::LoadObjectFromFile<MotionSet>(filename, context);
+        MotionSet* result = AZ::Utils::LoadObjectFromFile<MotionSet>(filename, context, loadFilter);
         if (result)
         {
             result->InitAfterLoading();

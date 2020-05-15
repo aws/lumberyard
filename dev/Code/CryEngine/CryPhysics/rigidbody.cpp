@@ -1319,7 +1319,7 @@ got_solver_results:
         unsigned int iClass;
         int cgiter, bStateChanged, n1dofContacts, n2dofContacts, nAngContacts, nFric0Contacts, nFricInfContacts,
             nContacts, nRopes, iSortedContacts[7], flags, bNoImprovement;
-        real a, b, r2, r2new, pAp;
+        real a, b, r2, r2new = 0, pAp;
         body_helper* hbody0, * hbody1;
         float vmax = 0;
         Vec3 vreq;

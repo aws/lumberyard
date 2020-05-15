@@ -18,6 +18,7 @@
 #include <AWS/ServiceAPI/CloudGemDynamicContentClientComponent.h>
 
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/time.h>
 
 #include <platform.h>
 #include <ICryPak.h>
@@ -258,6 +259,7 @@ namespace CloudCanvas
             SetFileSize(fileSize);
             SetBucketHash(resultData.Hash);
             SetRequestURL(resultData.PresignedURL);
+            SetUrlCreationTimestamp(AZStd::GetTimeUTCMilliSecond());
             SetSignature(resultData.Signature);
         }
 

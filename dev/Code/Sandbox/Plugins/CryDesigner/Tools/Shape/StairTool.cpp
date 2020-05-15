@@ -289,9 +289,9 @@ void StairTool::CreateRectangle(CViewport* view, UINT nFlags, const QPoint& poin
 
     m_bXDirection = std::abs(m_fBoxWidth) >= std::abs(m_fBoxDepth);
 
-    m_StairParameter.m_Width = std::abs(m_fBoxWidth);
+    m_StairParameter.m_Width = aznumeric_cast<float>(std::abs(m_fBoxWidth));
     m_StairParameter.m_Height = 0;
-    m_StairParameter.m_Depth = std::abs(m_fBoxDepth);
+    m_StairParameter.m_Depth = aznumeric_cast<float>(std::abs(m_fBoxDepth));
 
     GetPanel()->Update();
 }
@@ -323,12 +323,12 @@ void StairTool::CreateBox(CViewport* view, UINT nFlags, const QPoint& point)
         }
     }
 
-    BrushVec3 vNormal = m_fBoxHeight * GetPlane().Normal();
+    BrushVec3 vNormal = aznumeric_cast<float>(m_fBoxHeight) * GetPlane().Normal();
     GetRectangleVertices(m_BottomVertices[0], m_BottomVertices[1], m_BottomVertices[2], m_BottomVertices[3]);
 
-    m_StairParameter.m_Width = std::abs(m_fBoxWidth);
-    m_StairParameter.m_Height = m_fBoxHeight;
-    m_StairParameter.m_Depth = std::abs(m_fBoxDepth);
+    m_StairParameter.m_Width = aznumeric_cast<float>(std::abs(m_fBoxWidth));
+    m_StairParameter.m_Height = aznumeric_cast<float>(m_fBoxHeight);
+    m_StairParameter.m_Depth = aznumeric_cast<float>(std::abs(m_fBoxDepth));
 
     GetPanel()->Update();
 
@@ -569,7 +569,7 @@ void StairTool::UpdateStair()
         return;
     }
 
-    BrushFloat fStepRise = m_StairParameter.m_StepRise;
+    float fStepRise = m_StairParameter.m_StepRise;
     bool bXDirection = m_bXDirection;
     bool bMirrored = m_StairParameter.m_bMirror;
     bool bRotationBy90Degree = m_StairParameter.m_bRotation90Degree;

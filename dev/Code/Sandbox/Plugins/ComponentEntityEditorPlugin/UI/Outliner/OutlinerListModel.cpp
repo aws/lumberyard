@@ -13,8 +13,6 @@
 
 #include "OutlinerListModel.hxx"
 
-// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtCore/QMimeData>
 #include <QFontMetrics>
 #include <QtGui/QPainter>
@@ -25,7 +23,6 @@ AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QGuiApplication>
 #include <QStyleOptionButton>
 #include <QTimer>
-AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -92,10 +89,12 @@ OutlinerListModel::~OutlinerListModel()
     AzToolsFramework::ToolsApplicationEvents::Bus::Handler::BusDisconnect();
     AzToolsFramework::EntityCompositionNotificationBus::Handler::BusDisconnect();
     AZ::EntitySystemBus::Handler::BusDisconnect();
+    AzToolsFramework::EditorEntityRuntimeActivationChangeNotificationBus::Handler::BusDisconnect();
 }
 
 void OutlinerListModel::Initialize()
 {
+    AzToolsFramework::EditorEntityRuntimeActivationChangeNotificationBus::Handler::BusConnect();
     AzToolsFramework::ToolsApplicationEvents::Bus::Handler::BusConnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
     AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
@@ -105,13 +104,6 @@ void OutlinerListModel::Initialize()
 
 int OutlinerListModel::rowCount(const QModelIndex& parent) const
 {
-    if (parent.column() > 0)
-    {
-        // only the main tree column has parents.
-        // note that this > 0 is intentional (as opposed to 'not equal') due to
-        // the "root" invalid parent having children (all the root elements)
-        return 0;
-    }
     auto parentId = GetEntityFromIndex(parent);
 
     AZStd::size_t childCount = 0;
@@ -627,8 +619,8 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
 
 QModelIndex OutlinerListModel::parent(const QModelIndex& index) const
 {
-    // invalid indices have no parent.  Column 0 is the only one with a parent (ie, the tree part)
-    if ((!index.isValid())||(index.column() != 0))
+    // invalid indices have no parent
+    if (!index.isValid())
     {
         return QModelIndex();
     }
@@ -1186,11 +1178,13 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
             if (oldParentId != newParentId
                 && AzToolsFramework::SliceUtilities::IsReparentNonTrivial(entityId, newParentId))
             {
-                entityId = AzToolsFramework::SliceUtilities::ReparentNonTrivialEntityHierarchy(entityId, newParentId);
+                AzToolsFramework::SliceUtilities::ReparentNonTrivialSliceInstanceHierarchy(entityId, newParentId);
             }
-
-            //  Guarding this to prevent the entity from being marked dirty when the parent doesn't change.
-            EBUS_EVENT_ID(entityId, AZ::TransformBus, SetParent, newParentId);
+            else
+            {
+                //  Guarding this to prevent the entity from being marked dirty when the parent doesn't change.
+                EBUS_EVENT_ID(entityId, AZ::TransformBus, SetParent, newParentId);
+            }
 
             // Allow for metrics collection
             EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, UpdateTransformParentEntity, entityId, newParentId, oldParentId);
@@ -1392,7 +1386,7 @@ void OutlinerListModel::ProcessEntityUpdates()
         if (firstChangeIndex.isValid())
         {
             // expand to cover all columns:
-            lastChangeIndex = createIndex(lastChangeIndex.row(), columnCount(QModelIndex()) - 1, lastChangeIndex.internalPointer());
+            lastChangeIndex = createIndex(lastChangeIndex.row(), VisibleColumnCount - 1, lastChangeIndex.internalPointer());
             emit dataChanged(firstChangeIndex, lastChangeIndex);
         }
         
@@ -1471,6 +1465,12 @@ void OutlinerListModel::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId parentId, AZ
     m_isFilterDirty = true;
     QueueAncestorUpdate(childId);
     emit EnableSelectionUpdates(true);
+}
+
+void OutlinerListModel::OnEntityRuntimeActivationChanged(AZ::EntityId entityId, bool activeOnStart)
+{
+    AZ_UNUSED(activeOnStart);
+    QueueEntityUpdate(entityId);
 }
 
 void OutlinerListModel::OnEntityInfoUpdatedRemoveChildBegin(AZ::EntityId parentId, AZ::EntityId childId)
@@ -1719,16 +1719,6 @@ void OutlinerListModel::InvalidateFilter()
     m_isFilterDirty = false;
 }
 
-void OutlinerListModel::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
-{
-    //the original entity was destroyed by now but the replacement may need to be refreshed
-    for (const auto& replacedPair : replacedEntitiesMap)
-    {
-        auto expansionIter = m_entityExpansionState.find(replacedPair.first);
-        QueueEntityToExpand(replacedPair.second, expansionIter != m_entityExpansionState.end() && expansionIter->second);
-    }
-}
-
 void OutlinerListModel::OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity)
 {
     AZStd::list_iterator<AZStd::pair<AZ::EntityId, bool>> expansionIter = m_entityExpansionState.find(oldEntity);
@@ -1796,7 +1786,8 @@ bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId)
         AZStd::string name;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
 
-        if (AzFramework::StringFunc::Find(name.c_str(), m_filterString.c_str()) == AZStd::string::npos)
+        if (AzFramework::StringFunc::Find(name.c_str(), m_filterString.c_str()) == AZStd::string::npos
+            && AZStd::to_string(static_cast<AZ::u64>(entityId)) != m_filterString)
         {
             isFilterMatch = false;
         }

@@ -243,10 +243,10 @@ class DerivedClass
 public:
     DerivedClass()
         : BaseClass("Base of Derived") { m_somemember[0] = 1.2345; }
-    virtual ~DerivedClass() {}
+    ~DerivedClass() override {}
     void SimpleDerivedFunction(int num, char* str) { global_int = num + 6; (void)str;  }
     virtual void AnotherUnusedVirtualFunction(int num, char* str) { global_int = num + 7; (void)str; }
-    virtual void TrickyVirtualFunction(int num, char* str) { global_int = num + 8; (void)str; }
+    void TrickyVirtualFunction(int num, char* str) override { global_int = num + 8; (void)str; }
 };
 
 namespace UnitTest

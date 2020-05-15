@@ -32,7 +32,7 @@ namespace ScriptCanvas
         }
         else if (auto receiveScriptEventNode = azrtti_cast<const Nodes::Core::ReceiveScriptEvent*>(scriptCanvasNode))
         {
-            return ConstructReceiveScriptIdentifier(receiveScriptEventNode->GetBusId());
+            return ConstructScriptEventIdentifier(receiveScriptEventNode->GetBusId());
         }
         else if (auto methodNode = azrtti_cast<const Nodes::Core::Method*>(scriptCanvasNode))
         {
@@ -59,7 +59,7 @@ namespace ScriptCanvas
             return ConstructSetVariableNodeIdentifier(setVariableNode->GetId());
         }
         else
-        {            
+        {
             return ConstructCustomNodeIdentifier(scriptCanvasNode->RTTI_GetType());
         }
 
@@ -96,10 +96,12 @@ namespace ScriptCanvas
         return resultHash;
     }
 
-    NodeTypeIdentifier NodeUtils::ConstructReceiveScriptIdentifier(const ScriptCanvas::EBusBusId& busId)
+    NodeTypeIdentifier NodeUtils::ConstructScriptEventIdentifier(const ScriptCanvas::EBusBusId& busId)
     {
         NodeTypeIdentifier resultHash = 0;
 
+        // Just going to use the ReceiveNode to isolate this out. This can be used for both the send and the receiver as it
+        // generically identifies the ScriptEvent.
         AZStd::hash_combine(resultHash, AZStd::hash<AZ::Uuid>()(azrtti_typeid<ScriptCanvas::Nodes::Core::ReceiveScriptEvent>()));
         AZStd::hash_combine(resultHash, AZStd::hash<ScriptCanvas::EBusBusId>()(busId));
 
@@ -113,6 +115,15 @@ namespace ScriptCanvas
         AZStd::hash_combine(resultHash, AZStd::hash<AZ::Uuid>()(azrtti_typeid<ScriptCanvas::Nodes::Core::SendScriptEvent>()));
         AZStd::hash_combine(resultHash, AZStd::hash<ScriptCanvas::EBusBusId>()(ebusIdentifier));
         AZStd::hash_combine(resultHash, AZStd::hash<ScriptCanvas::EBusEventId>()(eventId));
+
+        return resultHash;
+    }
+
+    NodeTypeIdentifier NodeUtils::ConstructScriptEventReceiverIdentifier(const AZ::Crc32& ebusIdentifier, const EBusEventId& eventId)
+    {
+        NodeTypeIdentifier resultHash = ConstructScriptEventIdentifier(ebusIdentifier);
+
+        AZStd::hash_combine(resultHash, AZStd::hash<EBusEventId>()(eventId));
 
         return resultHash;
     }

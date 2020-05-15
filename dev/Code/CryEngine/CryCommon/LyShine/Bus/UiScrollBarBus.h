@@ -40,6 +40,24 @@ public: // member functions
     //! Set the handle entity
     virtual void SetHandleEntity(AZ::EntityId entityId) = 0;
 
+    //! Get auto fade
+    virtual bool IsAutoFadeEnabled() = 0;
+
+    //! Set auto fade
+    virtual void SetAutoFadeEnabled(bool isAutoFadeEnabled) = 0;
+
+    //! Get the delay in seconds before the scrollbar will fade if unused
+    virtual float GetAutoFadeDelay() = 0;
+
+    //! Set the fade delay in seconds
+    virtual void SetAutoFadeDelay(float delay) = 0;
+
+    //! Get the speed in seconds that it will take for the scrollbar to fade to transparent
+    virtual float GetAutoFadeSpeed() = 0;
+
+    //! Set the fade speed in seconds
+    virtual void SetAutoFadeSpeed(float speed) = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

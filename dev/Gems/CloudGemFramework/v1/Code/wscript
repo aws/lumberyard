@@ -84,7 +84,7 @@ def build(bld):
         gem_appletv_lib += ['curl']
         gem_ios_framework += [ 'security' ]
         gem_appletv_framework += [ 'security' ]
-        for p,script in restricted_scripts.iteritems():
+        for p,script in restricted_scripts.items():
             if 'support_aws_native_sdk' in script:
                 script['support_aws_native_sdk'](p, gem_restricted_libs)
 
@@ -99,6 +99,7 @@ def build(bld):
         use = ['CloudGemFramework.StaticLibrary','AzFramework'],
         test_all_uselib = gem_test_uselib,
         uselib = ['AWS_CPP_SDK_COGNITO_IDENTITY', 'AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_CPP_SDK_LAMBDA', 'AWS_CPP_SDK_STS', 'AWS_CPP_SDK_CORE', 'BOOST'],
+        win_uselib = ['BOOSTPYTHON'],
         darwin_lib = gem_darwin_lib,
         linux_lib = gem_linux_lib,
         ios_lib = gem_ios_lib,

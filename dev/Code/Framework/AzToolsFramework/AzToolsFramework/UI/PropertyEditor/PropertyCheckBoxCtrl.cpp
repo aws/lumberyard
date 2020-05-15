@@ -10,130 +10,169 @@
 *
 */
 #include "StdAfx.h"
-#include "PropertyBoolCheckBoxCtrl.hxx"
+#include "PropertyCheckBoxCtrl.hxx"
 #include "PropertyQTConstants.h"
-#include <QtWidgets/QCheckBox>
+
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
 AZ_POP_DISABLE_WARNING
 
-//just a test to see how it would work to pop a dialog
+
 
 namespace AzToolsFramework
 {
-    PropertyBoolCheckBoxCtrl::PropertyBoolCheckBoxCtrl(QWidget* pParent)
-        : QWidget(pParent)
+    PropertyCheckBoxCtrl::PropertyCheckBoxCtrl(QWidget* parent)
+        : QWidget(parent)
     {
-        // create the gui, it consists of a layout, and in that layout, a text field for the value
-        // and then a slider for the value.
-        QHBoxLayout* pLayout = new QHBoxLayout(this);
-        m_pCheckBox = new QCheckBox(this);
+        // create the gui, it consists of a layout, and checkbox in that layout
+        QHBoxLayout* layout = new QHBoxLayout(this);
+        m_checkBox = new QCheckBox(this);
 
-        pLayout->setContentsMargins(0, 0, 0, 0);
+        layout->setContentsMargins(0, 0, 0, 0);
 
-        pLayout->addWidget(m_pCheckBox);
+        layout->addWidget(m_checkBox);
 
-        m_pCheckBox->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        m_pCheckBox->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_pCheckBox->setFixedHeight(PropertyQTConstant_DefaultHeight);
+        m_checkBox->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        m_checkBox->setMinimumWidth(PropertyQTConstant_MinimumWidth);
+        m_checkBox->setFixedHeight(PropertyQTConstant_DefaultHeight);
 
-        m_pCheckBox->setFocusPolicy(Qt::StrongFocus);
+        m_checkBox->setFocusPolicy(Qt::StrongFocus);
 
-        setLayout(pLayout);
-        setFocusProxy(m_pCheckBox);
-        setFocusPolicy(m_pCheckBox->focusPolicy());
+        setLayout(layout);
+        setFocusProxy(m_checkBox);
+        setFocusPolicy(m_checkBox->focusPolicy());
 
-        connect(m_pCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
+        connect(m_checkBox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
     };
 
-    void PropertyBoolCheckBoxCtrl::setValue(bool value)
+    void PropertyCheckBoxCtrl::setValue(bool value)
     {
-        m_pCheckBox->blockSignals(true);
-        m_pCheckBox->setCheckState(value ? Qt::Checked : Qt::Unchecked);
-        m_pCheckBox->blockSignals(false);
+        m_checkBox->blockSignals(true);
+        m_checkBox->setCheckState(value ? Qt::Checked : Qt::Unchecked);
+        m_checkBox->blockSignals(false);
     }
 
-    bool PropertyBoolCheckBoxCtrl::value() const
+    bool PropertyCheckBoxCtrl::value() const
     {
-        return m_pCheckBox->checkState() == Qt::Checked;
+        return m_checkBox->checkState() == Qt::Checked;
     }
 
-    void PropertyBoolCheckBoxCtrl::onStateChanged(int newValue)
+    void PropertyCheckBoxCtrl::onStateChanged(int newValue)
     {
         emit valueChanged(newValue == Qt::Unchecked ? false : true);
     }
 
-    PropertyBoolCheckBoxCtrl::~PropertyBoolCheckBoxCtrl()
+    QWidget* PropertyCheckBoxCtrl::GetFirstInTabOrder()
     {
+        return m_checkBox;
+    }
+    QWidget* PropertyCheckBoxCtrl::GetLastInTabOrder()
+    {
+        return m_checkBox;
     }
 
-    QWidget* PropertyBoolCheckBoxCtrl::GetFirstInTabOrder()
-    {
-        return m_pCheckBox;
-    }
-    QWidget* PropertyBoolCheckBoxCtrl::GetLastInTabOrder()
-    {
-        return m_pCheckBox;
-    }
-
-    void PropertyBoolCheckBoxCtrl::UpdateTabOrder()
+    void PropertyCheckBoxCtrl::UpdateTabOrder()
     {
         // There's only one QT widget on this property.
     }
 
-    void PropertyBoolCheckBoxCtrl::SetCheckBoxToolTip(const char* description)
+    void PropertyCheckBoxCtrl::SetCheckBoxToolTip(const char* description)
     {
-        m_pCheckBox->setToolTip(QString::fromUtf8(description));
+        m_checkBox->setToolTip(QString::fromUtf8(description));
     }
 
-    template<class ValueType>
-    void PropertyCheckBoxHandlerCommon<ValueType>::ConsumeAttribute(PropertyBoolCheckBoxCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
+    QWidget* CheckBoxHandlerCommon::CreateGUICommon(QWidget* parent)
     {
-        Q_UNUSED(debugName);
+        PropertyCheckBoxCtrl* newCtrl = aznew PropertyCheckBoxCtrl(parent);
+        connect(newCtrl, &PropertyCheckBoxCtrl::valueChanged, this, [newCtrl]()
+            {
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+                    &PropertyEditorGUIMessages::RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+                    &PropertyEditorGUIMessages::OnEditingFinished, newCtrl);
+            });
+        return newCtrl;
+    }
 
+    void CheckBoxHandlerCommon::ConsumeAttributeCommon(
+        PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* /*debugName*/)
+    {
         if (attrib == AZ::Edit::Attributes::CheckboxTooltip)
         {
             AZStd::string tooltip;
             attrValue->Read<AZStd::string>(tooltip);
             if (!tooltip.empty())
             {
-                GUI->SetCheckBoxToolTip(tooltip.c_str());
+                widget->SetCheckBoxToolTip(tooltip.c_str());
+            }
+        }
+        else if (attrib == AZ::Edit::Attributes::CheckboxDefaultValue)
+        {
+            bool value = false;
+            if (attrValue->Read<bool>(value))
+            {
+                widget->setValue(value);
             }
         }
     }
 
-    QWidget* BoolPropertyCheckBoxHandler::CreateGUI(QWidget* pParent)
+    template<class ValueType>
+    void PropertyCheckBoxHandlerCommon<ValueType>::ConsumeAttribute(
+        PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        PropertyBoolCheckBoxCtrl* newCtrl = aznew PropertyBoolCheckBoxCtrl(pParent);
-        connect(newCtrl, &PropertyBoolCheckBoxCtrl::valueChanged, this, [newCtrl]()
-            {
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-            });
-        return newCtrl;
+        ConsumeAttributeCommon(widget, attrib, attrValue, debugName);
     }
 
-    void BoolPropertyCheckBoxHandler::WriteGUIValuesIntoProperty(size_t index, PropertyBoolCheckBoxCtrl* GUI, property_t& instance, InstanceDataNode* node)
+    QWidget* BoolPropertyCheckBoxHandler::CreateGUI(QWidget* parent)
     {
-        (int)index;
-        (void)node;
-        bool val = GUI->value();
+        return CreateGUICommon(parent);
+    }
+
+    void BoolPropertyCheckBoxHandler::WriteGUIValuesIntoProperty(
+        size_t /*index*/, PropertyCheckBoxCtrl* widget, property_t& instance, InstanceDataNode* /*node*/)
+    {
+        bool val = widget->value();
         instance = static_cast<property_t>(val);
     }
 
-    bool BoolPropertyCheckBoxHandler::ReadValuesIntoGUI(size_t index, PropertyBoolCheckBoxCtrl* GUI, const property_t& instance, InstanceDataNode* node)
+    bool BoolPropertyCheckBoxHandler::ReadValuesIntoGUI(
+        size_t /*index*/, PropertyCheckBoxCtrl* widget, const property_t& instance, InstanceDataNode* /*node*/)
     {
-        (int)index;
-        (void)node;
         bool val = instance;
-        GUI->setValue(val);
+        widget->setValue(val);
         return false;
     }
 
-    void RegisterBoolCheckBoxHandler()
+    QWidget* CheckBoxGenericHandler::CreateGUI(QWidget* parent)
     {
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew BoolPropertyCheckBoxHandler());
+        return CreateGUICommon(parent);
+    }
+
+    void CheckBoxGenericHandler::ConsumeAttribute(
+        PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
+    {
+        ConsumeAttributeCommon(widget, attrib, attrValue, debugName);
+    }
+
+    void CheckBoxGenericHandler::WriteGUIValuesIntoProperty(
+        size_t /*index*/, PropertyCheckBoxCtrl* /*widget*/, void* /*value*/, const AZ::Uuid& /*propertyType*/)
+    {}
+
+    bool CheckBoxGenericHandler::ReadValueIntoGUI(
+        size_t /*index*/, PropertyCheckBoxCtrl* /*widget*/, void* /*value*/, const AZ::Uuid& /*propertyType*/)
+    {
+        return false;
+    }
+
+    void RegisterCheckBoxHandlers()
+    {
+        PropertyTypeRegistrationMessages::Bus::Broadcast(
+            &PropertyTypeRegistrationMessages::RegisterPropertyType, aznew BoolPropertyCheckBoxHandler());
+
+        PropertyTypeRegistrationMessages::Bus::Broadcast(
+            &PropertyTypeRegistrationMessages::RegisterPropertyType, aznew CheckBoxGenericHandler());
     }
 }
 
-#include <UI/PropertyEditor/PropertyBoolCheckBoxCtrl.moc>
+#include <UI/PropertyEditor/PropertyCheckBoxCtrl.moc>

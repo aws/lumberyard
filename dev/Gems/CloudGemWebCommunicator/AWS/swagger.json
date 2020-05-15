@@ -53,7 +53,8 @@
                         "name": "registration_type",
                         "description": "Type of connection the client will be using: OPENSSL or WEBSOCKET",
                         "in": "path",
-                        "type": "string"
+                        "type": "string",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -79,7 +80,8 @@
                         "name": "registration_type",
                         "description": "Type of connection the client will be using: OPENSSL or WEBSOCKET",
                         "in": "path",
-                        "type": "string"
+                        "type": "string",
+                        "required": true
                     }
                 ],
                 "responses": {

@@ -184,7 +184,7 @@ namespace CommandSystem
             for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
             {
                 EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
-                affectedObjectByParameterChanges->ParameterAdded(parameterIndex.GetValue());
+                affectedObjectByParameterChanges->ParameterAdded(name);
             }
         }
 
@@ -561,7 +561,7 @@ namespace CommandSystem
                 {
                     EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
                     affectedObjectByParameterChanges->ParameterRemoved(mOldName);
-                    affectedObjectByParameterChanges->ParameterAdded(valueParameterIndex.GetValue());
+                    affectedObjectByParameterChanges->ParameterAdded(newName);
                 }
             }
 
@@ -978,7 +978,22 @@ namespace CommandSystem
         // 1. Remove all connections linked to parameter nodes inside blend trees for the parameters about to be removed back to front.
         RemoveConnectionsForParameters(animGraph, parameterNamesToRemove, *usedCommandGroup);
 
-        // 2. Remove the actual parameters.
+        // 2. Inform all objects affected that we are going to remove a parameter and let them make sure to add all necessary commands to prepare for it.
+        AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+        animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+        EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+        for (EMotionFX::AnimGraphObject* object : affectedObjects)
+        {
+            EMotionFX::ObjectAffectedByParameterChanges* affectedObject = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(object);
+            AZ_Assert(affectedObject != nullptr, "Can't cast object. Object must be inherited from ObjectAffectedByParameterChanges.");
+
+            for (const AZStd::string& parameterName : parameterNamesToRemove)
+            {
+                affectedObject->BuildParameterRemovedCommands(*usedCommandGroup, parameterName);
+            }
+        }
+
+        // 3. Remove the actual parameters.
         for (const AZStd::string& parameterName : parameterNamesToRemove)
         {
             commandString = AZStd::string::format("AnimGraphRemoveParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), parameterName.c_str());

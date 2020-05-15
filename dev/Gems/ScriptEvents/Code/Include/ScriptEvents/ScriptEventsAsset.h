@@ -77,29 +77,70 @@ namespace ScriptEvents
         ScriptEvents::ScriptEvent m_definition;
     };
 
-    class ScriptEventAssetHandler : public AzFramework::GenericAssetHandler<ScriptEventsAsset>
+    class ScriptEventsAssetPtr
+        : public AZ::Data::Asset<ScriptEventsAsset>
+    {
+        using BaseType = AZ::Data::Asset<ScriptEventsAsset>;
+
+    public:
+
+        AZ_RTTI(ScriptEventsAssetPtr, "{CE2C30CB-709B-4BC0-BAEE-3D192D33367D}", BaseType);
+        AZ_CLASS_ALLOCATOR(ScriptEventsAssetPtr, AZ::SystemAllocator, 0);
+
+        ScriptEventsAssetPtr(AZ::Data::AssetLoadBehavior loadBehavior = AZ::Data::AssetLoadBehavior::QueueLoad)
+            : AZ::Data::Asset<ScriptEventsAsset>(loadBehavior)
+        {}
+
+        ScriptEventsAssetPtr(const BaseType& scriptEventsAsset)
+            : BaseType(scriptEventsAsset)
+        {}
+
+        virtual ~ScriptEventsAssetPtr() = default;
+
+        using BaseType::BaseType;
+        using BaseType::operator=;
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::SerializeContext * serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<ScriptEventsAssetPtr>()
+                    ;
+            }
+        }
+    };
+
+    // This is the Script Event asset handler used by the builder (and at runtime)
+    class ScriptEventAssetRuntimeHandler : public AzFramework::GenericAssetHandler<ScriptEventsAsset>
     {
     public:
-        AZ_RTTI(ScriptEventAssetHandler, "{002E913D-339A-4238-BCCD-ED077BBD72C5}", AzFramework::GenericAssetHandler<ScriptEventsAsset>);
+        AZ_RTTI(ScriptEventAssetRuntimeHandler, "{002E913D-339A-4238-BCCD-ED077BBD72C5}", AzFramework::GenericAssetHandler<ScriptEventsAsset>);
 
-        ScriptEventAssetHandler(const char* displayName, const char* group, const char* extension, const AZ::Uuid& componentTypeId = AZ::Uuid::CreateNull(), AZ::SerializeContext* serializeContext = nullptr)
+        ScriptEventAssetRuntimeHandler(const char* displayName, const char* group, const char* extension, const AZ::Uuid& componentTypeId = AZ::Uuid::CreateNull(), AZ::SerializeContext* serializeContext = nullptr)
             : AzFramework::GenericAssetHandler<ScriptEventsAsset>(displayName, group, extension, componentTypeId, serializeContext)
         {
+        }
+
+        using AzFramework::GenericAssetHandler<ScriptEventsAsset>::LoadAssetData;
+
+        bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
+        {
+            return AzFramework::GenericAssetHandler<ScriptEventsAsset>::LoadAssetData(asset, assetPath, assetLoadFilterCB);
         }
 
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
         {
             if (AzFramework::GenericAssetHandler<ScriptEventsAsset>::LoadAssetData(asset, stream, assetLoadFilterCB))
             {
-                // Now register it.
                 const ScriptEvents::ScriptEvent& definition = asset.GetAs<ScriptEventsAsset>()->m_definition;
                 AZStd::intrusive_ptr<Internal::ScriptEvent> scriptEvent;
                 ScriptEvents::ScriptEventBus::BroadcastResult(scriptEvent, &ScriptEvents::ScriptEventRequests::RegisterScriptEvent, asset.GetId(), definition.GetVersion());
-                
+
                 return true;
             }
             return false;
         }
+
     };
 
 }

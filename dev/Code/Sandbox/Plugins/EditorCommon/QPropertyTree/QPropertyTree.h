@@ -449,6 +449,7 @@ protected:
 	void updateAttachedPropertyTree(bool revert);
 	void drawFilteredString(QPainter& p, const wchar_t* text, RowFilter::Type type, const QFont* font, const QRect& rect, const QColor& color, bool pathEllipsis, bool center) const;
 
+	AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
 	QScopedPointer<PropertyTreeModel> model_;
 	int cursorX_;
 
@@ -499,6 +500,7 @@ protected:
 
 	PropertyTreeConfig config_;
 	QScopedPointer<QPropertyTreeStyle> style_;
+	AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 	int defaultRowHeight_;
 
 	int applyTime_;

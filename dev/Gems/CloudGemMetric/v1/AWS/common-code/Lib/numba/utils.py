@@ -11,17 +11,19 @@ import timeit
 import math
 import sys
 import traceback
+import weakref
 from types import ModuleType
 import numpy as np
 
 from .six import *
+from .errors import UnsupportedError
 try:
     # preferred over pure-python StringIO due to threadsafety
     # note: parallel write to StringIO could cause data to go missing
     from cStringIO import StringIO
 except ImportError:
     from io import StringIO
-from numba.config import PYVERSION, MACHINE_BITS
+from numba.config import PYVERSION, MACHINE_BITS, DEVELOPER_MODE
 
 
 IS_PY3 = PYVERSION >= (3, 0)
@@ -73,9 +75,50 @@ else:
 
 try:
     from inspect import signature as pysignature
+    from inspect import Signature as pySignature
+    from inspect import Parameter as pyParameter
 except ImportError:
     try:
-        from funcsigs import signature as pysignature
+        from funcsigs import signature as _pysignature
+        from funcsigs import Signature as pySignature
+        from funcsigs import Parameter as pyParameter
+        from funcsigs import BoundArguments
+
+        def pysignature(*args, **kwargs):
+            try:
+                return _pysignature(*args, **kwargs)
+            except ValueError as e:
+                msg = ("Cannot obtain a signature for: %s. The error message "
+                       "from funcsigs was: '%s'." % (args,  e.message))
+                raise UnsupportedError(msg)
+
+        # monkey patch `apply_defaults` onto `BoundArguments` cf inspect in py3
+        # This patch is from https://github.com/aliles/funcsigs/pull/30/files
+        # with minor modifications, and thanks!
+        # See LICENSES.third-party.
+        def apply_defaults(self):
+            arguments = self.arguments
+
+            # Creating a new one and not modifying in-place for thread safety.
+            new_arguments = []
+
+            for name, param in self._signature.parameters.items():
+                try:
+                    new_arguments.append((name, arguments[name]))
+                except KeyError:
+                    if param.default is not param.empty:
+                        val = param.default
+                    elif param.kind is _VAR_POSITIONAL:
+                        val = ()
+                    elif param.kind is _VAR_KEYWORD:
+                        val = {}
+                    else:
+                        # BoundArguments was likely created by bind_partial
+                        continue
+                    new_arguments.append((name, val))
+
+            self.arguments = collections.OrderedDict(new_arguments)
+        BoundArguments.apply_defaults = apply_defaults
     except ImportError:
         raise ImportError("please install the 'funcsigs' package "
                           "('pip install funcsigs')")
@@ -125,44 +168,107 @@ except ImportError:
 # Mapping between operator module functions and the corresponding built-in
 # operators.
 
-operator_map = [
-    # Binary
-    ('add', 'iadd', '+'),
-    ('sub', 'isub', '-'),
-    ('mul', 'imul', '*'),
-    ('floordiv', 'ifloordiv', '//'),
-    ('truediv', 'itruediv', '/'),
-    ('mod', 'imod', '%'),
-    ('pow', 'ipow', '**'),
-    ('and_', 'iand', '&'),
-    ('or_', 'ior', '|'),
-    ('xor', 'ixor', '^'),
-    ('lshift', 'ilshift', '<<'),
-    ('rshift', 'irshift', '>>'),
-    ('eq', '', '=='),
-    ('ne', '', '!='),
-    ('lt', '', '<'),
-    ('le', '', '<='),
-    ('gt', '', '>'),
-    ('ge', '', '>='),
+BINOPS_TO_OPERATORS = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '//': operator.floordiv,
+    '/': operator.truediv,
+    '%': operator.mod,
+    '**': operator.pow,
+    '&': operator.and_,
+    '|': operator.or_,
+    '^': operator.xor,
+    '<<': operator.lshift,
+    '>>': operator.rshift,
+    '==': operator.eq,
+    '!=': operator.ne,
+    '<': operator.lt,
+    '<=': operator.le,
+    '>': operator.gt,
+    '>=': operator.ge,
+    'is': operator.is_,
+    'is not': operator.is_not,
     # This one has its args reversed!
-    ('contains', '', 'in'),
+    'in': operator.contains
+}
+
+INPLACE_BINOPS_TO_OPERATORS = {
+    '+=': operator.iadd,
+    '-=': operator.isub,
+    '*=': operator.imul,
+    '//=': operator.ifloordiv,
+    '/=': operator.itruediv,
+    '%=': operator.imod,
+    '**=': operator.ipow,
+    '&=': operator.iand,
+    '|=': operator.ior,
+    '^=': operator.ixor,
+    '<<=': operator.ilshift,
+    '>>=': operator.irshift,
+}
+
+UNARY_BUITINS_TO_OPERATORS = {
+    '+': operator.pos,
+    '-': operator.neg,
+    '~': operator.invert,
+    'not': operator.not_,
+    'is_true': operator.truth
+}
+
+OPERATORS_TO_BUILTINS = {
+    operator.add: '+',
+    operator.iadd: '+=',
+    operator.sub: '-',
+    operator.isub: '-=',
+    operator.mul: '*',
+    operator.imul: '*=',
+    operator.floordiv: '//',
+    operator.ifloordiv: '//=',
+    operator.truediv: '/',
+    operator.itruediv: '/=',
+    operator.mod: '%',
+    operator.imod: '%=',
+    operator.pow: '**',
+    operator.ipow: '**=',
+    operator.and_: '&',
+    operator.iand: '&=',
+    operator.or_: '|',
+    operator.ior: '|=',
+    operator.xor: '^',
+    operator.ixor: '^=',
+    operator.lshift: '<<',
+    operator.ilshift: '<<=',
+    operator.rshift: '>>',
+    operator.irshift: '>>=',
+    operator.eq: '==',
+    operator.ne: '!=',
+    operator.lt: '<',
+    operator.le: '<=',
+    operator.gt: '>',
+    operator.ge: '>=',
+    operator.is_: 'is',
+    operator.is_not: 'is not',
+    # This one has its args reversed!
+    operator.contains: 'in',
     # Unary
-    ('pos', '', '+'),
-    ('neg', '', '-'),
-    ('invert', '', '~'),
-    ('not_', '', 'not'),
-    ]
+    operator.pos: '+',
+    operator.neg: '-',
+    operator.invert: '~',
+    operator.not_: 'not',
+    operator.truth: 'is_true',
+}
+
+HAS_MATMUL_OPERATOR = sys.version_info >= (3, 5)
 
 if not IS_PY3:
-    operator_map.append(('div', 'idiv', '/?'))
-if sys.version_info >= (3, 5):
-    operator_map.append(('matmul', 'imatmul', '@'))
-
-# Map of known in-place operators to their corresponding copying operators
-inplace_map = dict((op + '=', op)
-                   for (_bin, _inp, op) in operator_map
-                   if _inp)
+    BINOPS_TO_OPERATORS['/?'] = operator.div
+    INPLACE_BINOPS_TO_OPERATORS['/?='] = operator.idiv
+    OPERATORS_TO_BUILTINS[operator.div] = '/?'
+    OPERATORS_TO_BUILTINS[operator.idiv] = '/?'
+if HAS_MATMUL_OPERATOR:
+    BINOPS_TO_OPERATORS['@'] = operator.matmul
+    INPLACE_BINOPS_TO_OPERATORS['@='] = operator.imatmul
 
 
 _shutting_down = False
@@ -182,6 +288,16 @@ def shutting_down(globals=globals):
     # At shutdown, the attribute may have been cleared or set to None.
     v = globals().get('_shutting_down')
     return v is True or v is None
+
+
+# weakref.finalize registers an exit function that runs all finalizers for
+# which atexit is True. Some of these finalizers may call shutting_down() to
+# check whether the interpreter is shutting down. For this to behave correctly,
+# we need to make sure that _at_shutdown is called before the finalizer exit
+# function. Since atexit operates as a LIFO stack, we first contruct a dummy
+# finalizer then register atexit to ensure this ordering.
+weakref.finalize(lambda: None, lambda: None)
+atexit.register(_at_shutdown)
 
 
 class ConfigOptions(object):
@@ -233,7 +349,7 @@ class ConfigOptions(object):
         return hash(tuple(sorted(self._values.items())))
 
 
-class SortedMap(collections.Mapping):
+class SortedMap(Mapping):
     """Immutable
     """
 
@@ -382,116 +498,6 @@ if PYVERSION < (3, 0):
         pass
 
 
-# Backported from Python 3.4: functools.total_ordering()
-
-def _not_op(op, other):
-    # "not a < b" handles "a >= b"
-    # "not a <= b" handles "a > b"
-    # "not a >= b" handles "a < b"
-    # "not a > b" handles "a <= b"
-    op_result = op(other)
-    if op_result is NotImplemented:
-        return NotImplemented
-    return not op_result
-
-
-def _op_or_eq(op, self, other):
-    # "a < b or a == b" handles "a <= b"
-    # "a > b or a == b" handles "a >= b"
-    op_result = op(other)
-    if op_result is NotImplemented:
-        return NotImplemented
-    return op_result or self == other
-
-
-def _not_op_and_not_eq(op, self, other):
-    # "not (a < b or a == b)" handles "a > b"
-    # "not a < b and a != b" is equivalent
-    # "not (a > b or a == b)" handles "a < b"
-    # "not a > b and a != b" is equivalent
-    op_result = op(other)
-    if op_result is NotImplemented:
-        return NotImplemented
-    return not op_result and self != other
-
-
-def _not_op_or_eq(op, self, other):
-    # "not a <= b or a == b" handles "a >= b"
-    # "not a >= b or a == b" handles "a <= b"
-    op_result = op(other)
-    if op_result is NotImplemented:
-        return NotImplemented
-    return not op_result or self == other
-
-
-def _op_and_not_eq(op, self, other):
-    # "a <= b and not a == b" handles "a < b"
-    # "a >= b and not a == b" handles "a > b"
-    op_result = op(other)
-    if op_result is NotImplemented:
-        return NotImplemented
-    return op_result and self != other
-
-
-def _is_inherited_from_object(cls, op):
-    """
-    Whether operator *op* on *cls* is inherited from the root object type.
-    """
-    if PYVERSION >= (3,):
-        object_op = getattr(object, op)
-        cls_op = getattr(cls, op)
-        return object_op is cls_op
-    else:
-        # In 2.x, the inherited operator gets a new descriptor, so identity
-        # doesn't work.  OTOH, dir() doesn't list methods inherited from
-        # object (which it does in 3.x).
-        return op not in dir(cls)
-
-
-def total_ordering(cls):
-    """Class decorator that fills in missing ordering methods"""
-    convert = {
-        '__lt__': [('__gt__',
-                    lambda self, other: _not_op_and_not_eq(self.__lt__, self,
-                                                           other)),
-                   ('__le__',
-                    lambda self, other: _op_or_eq(self.__lt__, self, other)),
-                   ('__ge__', lambda self, other: _not_op(self.__lt__, other))],
-        '__le__': [('__ge__',
-                    lambda self, other: _not_op_or_eq(self.__le__, self,
-                                                      other)),
-                   ('__lt__',
-                    lambda self, other: _op_and_not_eq(self.__le__, self,
-                                                       other)),
-                   ('__gt__', lambda self, other: _not_op(self.__le__, other))],
-        '__gt__': [('__lt__',
-                    lambda self, other: _not_op_and_not_eq(self.__gt__, self,
-                                                           other)),
-                   ('__ge__',
-                    lambda self, other: _op_or_eq(self.__gt__, self, other)),
-                   ('__le__', lambda self, other: _not_op(self.__gt__, other))],
-        '__ge__': [('__le__',
-                    lambda self, other: _not_op_or_eq(self.__ge__, self,
-                                                      other)),
-                   ('__gt__',
-                    lambda self, other: _op_and_not_eq(self.__ge__, self,
-                                                       other)),
-                   ('__lt__', lambda self, other: _not_op(self.__ge__, other))]
-    }
-    # Find user-defined comparisons (not those inherited from object).
-    roots = [op for op in convert if not _is_inherited_from_object(cls, op)]
-    if not roots:
-        raise ValueError(
-            'must define at least one ordering operation: < > <= >=')
-    root = max(roots)       # prefer __lt__ to __le__ to __gt__ to __ge__
-    for opname, opfunc in convert[root]:
-        if opname not in roots:
-            opfunc.__name__ = opname
-            opfunc.__doc__ = getattr(int, opname).__doc__
-            setattr(cls, opname, opfunc)
-    return cls
-
-
 def logger_hasHandlers(logger):
     # Backport from python3.5 logging implementation of `.hasHandlers()`
     c = logger
@@ -513,148 +519,10 @@ _dynamic_module = ModuleType(_dynamic_modname)
 _dynamic_module.__builtins__ = moves.builtins
 
 
-# Backported from Python 3.4: weakref.finalize()
-
-from weakref import ref
-
-class finalize:
-    """Class for finalization of weakrefable objects
-
-    finalize(obj, func, *args, **kwargs) returns a callable finalizer
-    object which will be called when obj is garbage collected. The
-    first time the finalizer is called it evaluates func(*arg, **kwargs)
-    and returns the result. After this the finalizer is dead, and
-    calling it just returns None.
-
-    When the program exits any remaining finalizers for which the
-    atexit attribute is true will be run in reverse order of creation.
-    By default atexit is true.
+def chain_exception(new_exc, old_exc):
+    """Set the __cause__ attribute on *new_exc* for explicit exception
+    chaining.  Returns the inplace modified *new_exc*.
     """
-
-    # Finalizer objects don't have any state of their own.  They are
-    # just used as keys to lookup _Info objects in the registry.  This
-    # ensures that they cannot be part of a ref-cycle.
-
-    __slots__ = ()
-    _registry = {}
-    _shutdown = False
-    _index_iter = itertools.count()
-    _dirty = False
-    _registered_with_atexit = False
-
-    class _Info:
-        __slots__ = ("weakref", "func", "args", "kwargs", "atexit", "index")
-
-    def __init__(self, obj, func, *args, **kwargs):
-        if not self._registered_with_atexit:
-            # We may register the exit function more than once because
-            # of a thread race, but that is harmless
-            import atexit
-            atexit.register(self._exitfunc)
-            finalize._registered_with_atexit = True
-            atexit.register(_at_shutdown)
-        info = self._Info()
-        info.weakref = ref(obj, self)
-        info.func = func
-        info.args = args
-        info.kwargs = kwargs or None
-        info.atexit = True
-        info.index = next(self._index_iter)
-        self._registry[self] = info
-        finalize._dirty = True
-
-    def __call__(self, _=None):
-        """If alive then mark as dead and return func(*args, **kwargs);
-        otherwise return None"""
-        info = self._registry.pop(self, None)
-        if info and not self._shutdown:
-            return info.func(*info.args, **(info.kwargs or {}))
-
-    def detach(self):
-        """If alive then mark as dead and return (obj, func, args, kwargs);
-        otherwise return None"""
-        info = self._registry.get(self)
-        obj = info and info.weakref()
-        if obj is not None and self._registry.pop(self, None):
-            return (obj, info.func, info.args, info.kwargs or {})
-
-    def peek(self):
-        """If alive then return (obj, func, args, kwargs);
-        otherwise return None"""
-        info = self._registry.get(self)
-        obj = info and info.weakref()
-        if obj is not None:
-            return (obj, info.func, info.args, info.kwargs or {})
-
-    @property
-    def alive(self):
-        """Whether finalizer is alive"""
-        return self in self._registry
-
-    @property
-    def atexit(self):
-        """Whether finalizer should be called at exit"""
-        info = self._registry.get(self)
-        return bool(info) and info.atexit
-
-    @atexit.setter
-    def atexit(self, value):
-        info = self._registry.get(self)
-        if info:
-            info.atexit = bool(value)
-
-    def __repr__(self):
-        info = self._registry.get(self)
-        obj = info and info.weakref()
-        if obj is None:
-            return '<%s object at %#x; dead>' % (type(self).__name__, id(self))
-        else:
-            return '<%s object at %#x; for %r at %#x>' % \
-                (type(self).__name__, id(self), type(obj).__name__, id(obj))
-
-    @classmethod
-    def _select_for_exit(cls):
-        # Return live finalizers marked for exit, oldest first
-        L = [(f,i) for (f,i) in cls._registry.items() if i.atexit]
-        L.sort(key=lambda item:item[1].index)
-        return [f for (f,i) in L]
-
-    @classmethod
-    def _exitfunc(cls):
-        # At shutdown invoke finalizers for which atexit is true.
-        # This is called once all other non-daemonic threads have been
-        # joined.
-        reenable_gc = False
-        try:
-            if cls._registry:
-                import gc
-                if gc.isenabled():
-                    reenable_gc = True
-                    gc.disable()
-                pending = None
-                while True:
-                    if pending is None or finalize._dirty:
-                        pending = cls._select_for_exit()
-                        finalize._dirty = False
-                    if not pending:
-                        break
-                    f = pending.pop()
-                    try:
-                        # gc is disabled, so (assuming no daemonic
-                        # threads) the following is the only line in
-                        # this function which might trigger creation
-                        # of a new finalizer
-                        f()
-                    except Exception:
-                        sys.excepthook(*sys.exc_info())
-                    assert f not in cls._registry
-        finally:
-            # prevent any more finalizers from executing during shutdown
-            finalize._shutdown = True
-            if reenable_gc:
-                gc.enable()
-
-
-# dummy invocation to force _at_shutdown() to be registered
-finalize(lambda: None, lambda: None)
-assert finalize._registered_with_atexit
+    if DEVELOPER_MODE:
+        new_exc.__cause__ = old_exc
+    return new_exc

@@ -14,6 +14,8 @@
 #include "StdAfx.h"
 #include "BreezeGenerator.h"
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 namespace
 {
     static inline Vec3 RandomPosition(const Vec3& centre, const Vec3& wind_speed, float life_time, float radius, float extents)
@@ -142,6 +144,9 @@ void CBreezeGenerator::Update()
     pe_params_pos pp;
     const float frame_time = GetTimer()->GetFrameTime();
     const Vec3 centre = Get3DEngine()->GetRenderingCamera().GetPosition();
+
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
     for (uint32 i = 0; i < m_count; ++i)
     {
         SBreeze& breeze = m_breezes[i];
@@ -155,7 +160,8 @@ void CBreezeGenerator::Update()
             }
             else
             {
-                pos.z = Get3DEngine()->GetTerrainElevation(pos.x, pos.y) - m_radius * 0.5f;
+                const float terrainHeight = terrain ? terrain->GetHeightFromFloats(pos.x, pos.y) : defaultTerrainHeight;
+                pos.z = terrainHeight - m_radius * 0.5f;
             }
             breeze.position = pp.pos = pos;
             buoyancy.waterFlow  = breeze.direction = RandomDirection(m_wind_speed, m_spread) * cry_random(0.0f, m_strength);
@@ -172,7 +178,8 @@ void CBreezeGenerator::Update()
             }
             else
             {
-                pp.pos.z = Get3DEngine()->GetTerrainElevation(pp.pos.x, pp.pos.y) - m_radius * 0.5f;
+                const float terrainHeight = terrain ? terrain->GetHeightFromFloats(pp.pos.x, pp.pos.y) : defaultTerrainHeight;
+                pp.pos.z = terrainHeight - m_radius * 0.5f;
             }
             breeze.wind_area->SetParams(&pp);
         }

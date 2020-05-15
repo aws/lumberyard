@@ -12,6 +12,7 @@
 #include "precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/any.h>
 
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 
@@ -172,6 +173,13 @@ namespace ScriptCanvasEditor
         }
     }
 
+    void DynamicSlotComponent::ConfigureGraphCanvasSlot(const ScriptCanvas::Slot* slot, const GraphCanvas::SlotId& graphCanvasSlotId)
+    {
+        // By default no further configuration is necessary
+        AZ_UNUSED(slot);
+        AZ_UNUSED(graphCanvasSlotId);
+    }
+
     void DynamicSlotComponent::HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint)
     {
         AZ::EntityId graphCanvasNodeId;
@@ -196,7 +204,9 @@ namespace ScriptCanvasEditor
 
         if (slot != nullptr)
         {
-            Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*slot), m_slotGroup);
+            AZ::EntityId graphCanvasSlotId = Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*slot), m_slotGroup);
+
+            ConfigureGraphCanvasSlot(slot, graphCanvasSlotId);
         }
     }
 }

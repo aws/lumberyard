@@ -10,6 +10,7 @@
 *
 */
 
+#include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Importer/Importer.h>
@@ -24,23 +25,21 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_IMPL(ActorAsset, EMotionFXAllocator, 0)
         AZ_CLASS_ALLOCATOR_IMPL(ActorAssetHandler, EMotionFXAllocator, 0)
 
-        ActorAsset::ActorAsset()
-        {
-        }
-
-        ActorAsset::~ActorAsset()
-        {
-        }
-
         ActorAsset::ActorInstancePtr ActorAsset::CreateInstance(AZ::Entity* entity)
         {
-            AZ_Assert(m_emfxActor, "Anim graph asset is not loaded");
+            AZ_Assert(m_emfxActor, "Actor asset is not loaded");
             ActorInstancePtr actorInstance = ActorInstancePtr::MakeFromNew(EMotionFX::ActorInstance::Create(m_emfxActor.get(), entity));
             if (actorInstance)
             {
                 actorInstance->SetIsOwnedByRuntime(true);
             }
             return actorInstance;
+        }
+
+        void ActorAsset::SetData(AZStd::shared_ptr<Actor> actor)
+        {
+            m_emfxActor = AZStd::move(actor);
+            m_status = static_cast<int>(AZ::Data::AssetData::AssetStatus::Ready);
         }
 
         bool ActorAssetHandler::OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
@@ -53,11 +52,11 @@ namespace EMotionFX
                 actorSettings.mOptimizeForServer = true;
             }
 
-            assetData->m_emfxActor = EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::GetImporter().LoadActor(
+            assetData->m_emfxActor = EMotionFX::GetImporter().LoadActor(
                 assetData->m_emfxNativeData.data(),
                 assetData->m_emfxNativeData.size(),
                 &actorSettings,
-                ""));
+                "");
 
             if (!assetData->m_emfxActor)
             {
@@ -70,7 +69,7 @@ namespace EMotionFX
             RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();
             assetData->m_renderActor.reset(renderBackend->CreateActor(assetData));
 
-            return (assetData->m_emfxActor);
+            return static_cast<bool>(assetData->m_emfxActor);
         }
 
         AZ::Data::AssetType ActorAssetHandler::GetAssetType() const

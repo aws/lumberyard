@@ -17,25 +17,11 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class Key, class Compare = AZStd::less<Key>, class Allocator = SysContAlloc>
     using set = AZStd::set<Key, Compare, Allocator>;
 
     template<class Key, class Compare = AZStd::less<Key>, class Allocator = SysContAlloc>
     using multiset = AZStd::multiset<Key, Compare, Allocator>;
-#else
-    template<class Key, class Compare = AZStd::less<Key>, class Allocator = SysContAlloc>
-    class set
-        : public AZStd::set<Key, Compare, Allocator>
-    {
-    };
-
-    template<class Key, class Compare = AZStd::less<Key>, class Allocator = SysContAlloc>
-    class multiset
-        : AZStd::multiset<Key, Compare, Allocator>
-    {
-    };
-#endif
 }
 
 #endif // GM_CONTAINERS_SET_H

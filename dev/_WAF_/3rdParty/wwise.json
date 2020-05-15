@@ -2,7 +2,7 @@
     "name": "wwise",
     "source": "@3P:wwise@",
     "description": "Wwise Audio Middleware",
-    "includes": [
+    "system_includes": [
         "SDK/include"
     ],
     "aliases": {
@@ -108,6 +108,9 @@
         "provo_libs": [
             "AkMotionSink",
             "${izotope_libs}"
+        ],
+        "salem_libs": [
+            "AkMotionSink"
         ],
         "tvos_libs": [
             "AkAACDecoder"

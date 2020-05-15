@@ -2227,11 +2227,11 @@ namespace EMotionFX
         file->Read(buffer, meshLOD.mSizeInBytes);
 
         // load the lod model from memory and add it to the main actor
-        Actor* lodModel = GetImporter().LoadActor(buffer, meshLOD.mSizeInBytes, &actorSettings);
+        AZStd::unique_ptr<Actor> lodModel = GetImporter().LoadActor(buffer, meshLOD.mSizeInBytes, &actorSettings);
         if (lodModel)
         {
             actor->AddLODLevel(false);
-            actor->CopyLODLevel(lodModel, 0, actor->GetNumLODLevels() - 1, false);
+            actor->CopyLODLevel(lodModel.get(), 0, actor->GetNumLODLevels() - 1, false);
         }
         else
         {
@@ -4736,16 +4736,14 @@ namespace EMotionFX
         // convert endian
         MCore::Endian::ConvertUnsignedInt32(&nodeMapChunk.mNumEntries, endianType);
 
-        // load the source actor filename string
-        AZStd::string sourceActorFileName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        importParams.mNodeMap->SetSourceActorFileName(sourceActorFileName.c_str());
+        // load the source actor filename string, but discard it
+        SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
 
         // log some info
         if (GetLogging())
         {
             MCore::LogDetailedInfo("- Node Map:");
             MCore::LogDetailedInfo("  + Num entries = %d", nodeMapChunk.mNumEntries);
-            MCore::LogDetailedInfo("  + Source actor filename = '%s'", sourceActorFileName.c_str());
         }
 
         // for all entries

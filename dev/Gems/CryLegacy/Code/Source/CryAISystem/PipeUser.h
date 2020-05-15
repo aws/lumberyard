@@ -304,9 +304,6 @@ public:
     inline virtual EAITargetThreat GetAttentionTargetThreat() const { return m_AttTargetThreat; }
     inline virtual EAITargetType GetAttentionTargetType() const { return m_AttTargetType; }
 
-    //Last finished AIAction sets status as succeed or failed
-    virtual void SetLastActionStatus(bool bSucceed);
-
     void ClearInvalidatedSOLinks();
     void InvalidateSOLink(CSmartObject* pObject, SmartObjectHelper* pFromHelper, SmartObjectHelper* pToHelper) const;
     bool IsSOLinkInvalidated(CSmartObject* pObject, SmartObjectHelper* pFromHelper, SmartObjectHelper* pToHelper) const;

@@ -68,7 +68,10 @@
             "AzCore/Memory/OSAllocator_Platform.h",
             "AzCore/Memory/OverrunDetectionAllocator_Platform.h"
         ],
-
+        "Module/Internal/Platform/Android":
+        [
+            "../Common/Default/AzCore/Module/Internal/ModuleManagerSearchPathTool_Default.cpp"
+        ],
         "Math/Internal/Platform/Android":
         [
             "AzCore/Math/Internal/MathTypes_Android.h",

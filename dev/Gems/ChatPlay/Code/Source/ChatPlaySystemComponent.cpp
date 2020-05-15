@@ -71,7 +71,7 @@ namespace ChatPlay
                 ec->Class<ChatPlaySystemComponent>("ChatPlaySystemComponent", "System Component necessary for using Twitch ChatPlay features")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         // ->Attribute(AZ::Edit::Attributes::Category, "") Set a category
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Twitch"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }

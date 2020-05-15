@@ -17,5 +17,6 @@
     "Summary": "EMotion FX is a character animation system used to set up animated controllable characters inside your project.\n",
     "Tags": ["Animation"],
     "IconPath": "EMotionFX.png",
-    "EditorModule" : true
+    "EditorModule" : true,
+    "DisableGemAutoUselib": true
 }

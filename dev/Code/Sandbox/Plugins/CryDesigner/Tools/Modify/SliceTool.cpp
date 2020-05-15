@@ -20,6 +20,8 @@
 #include "Objects/DesignerObject.h"
 #include "Objects/AreaSolidObject.h"
 
+#include <AzCore/Casting/numeric_cast.h>
+
 void SliceTool::Enter()
 {
     BaseTool::Enter();
@@ -292,7 +294,7 @@ void SliceTool::UpdateRestTraverseLineSet()
     BrushPlane planeWithZeroDistance(m_SlicePlane.Normal(), 0);
     for (int i = 0, iSize(sizeof(apexes) / sizeof(apexes[0])); i < iSize; ++i)
     {
-        float fDistance = planeWithZeroDistance.Distance(apexes[i]);
+        float fDistance = aznumeric_cast<float>(planeWithZeroDistance.Distance(apexes[i]));
         if (fDistance >= 0)
         {
             if (fDistance > fFarthestFrontDistance)

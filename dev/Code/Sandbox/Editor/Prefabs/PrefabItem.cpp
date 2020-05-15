@@ -16,14 +16,10 @@
 
 #include "PrefabLibrary.h"
 #include "PrefabManager.h"
-#include "Prefabs/PrefabEvents.h"
 #include "BaseLibraryManager.h"
 
 #include "Grid.h"
 #include "Cry_Math.h"
-
-#include "HyperGraph/FlowGraph.h"
-#include "HyperGraph/FlowGraphManager.h"
 
 #include "Objects/PrefabObject.h"
 #include "Objects/SelectionGroup.h"
@@ -330,10 +326,6 @@ void CPrefabItem::UpdateFromPrefabObject(CPrefabObject* pPrefabObject, const SOb
     CBaseObjectsArray allInstancedPrefabs;
     GetIEditor()->GetObjectManager()->FindObjectsOfType(&CPrefabObject::staticMetaObject, allInstancedPrefabs);
 
-    // While modifying the instances we don't want the FG manager to send events since they can call into GUI components and cause a crash
-    // e.g. we are modifying one FG but in fact we are working on multiple instances of this FG the MFC code does not cope well with this
-    GetIEditor()->GetFlowGraphManager()->DisableNotifyListeners(true);
-
     {
         //////////////////////////////////////////////////////////////////////////
         // Save all objects in flat selection to XML.
@@ -351,7 +343,6 @@ void CPrefabItem::UpdateFromPrefabObject(CPrefabObject* pPrefabObject, const SOb
 
         if (context.m_operation == eOCOT_ModifyTransformInLibOnly)
         {
-            GetIEditor()->GetFlowGraphManager()->DisableNotifyListeners(false);
             pPrefabObject->SetModifyInProgress(false);
             return;
         }
@@ -366,7 +357,6 @@ void CPrefabItem::UpdateFromPrefabObject(CPrefabObject* pPrefabObject, const SOb
 
         // Now change all the rest instances of this prefab in the level (skipping this one, since it is already been modified)
         pPrefabManager->SetSelectedItem(this);
-        GetIEditor()->GetFlowGraphManager()->SetGUIControlsProcessEvents(false, false);
 
         {
             CScopedSuspendUndo suspendUndo;
@@ -393,11 +383,7 @@ void CPrefabItem::UpdateFromPrefabObject(CPrefabObject* pPrefabObject, const SOb
                 }
             }
         } // ~CScopedSuspendUndo suspendUndo;
-
-        GetIEditor()->GetFlowGraphManager()->SetGUIControlsProcessEvents(true, true);
     }
-
-    GetIEditor()->GetFlowGraphManager()->DisableNotifyListeners(false);
 
     pPrefabObject->SetModifyInProgress(false);
 }
@@ -544,8 +530,6 @@ void CPrefabItem::ModifyInstancedPrefab(CSelectionGroup& objectsInPrefabAsFlatSe
                 CBaseObject* pClone = loadAr.LoadObject(changedObject);
                 loadAr.ResolveObjects();
 
-                RegisterPrefabEventFlowNodes(pClone);
-
                 pPrefabObject->SetObjectPrefabFlagAndLayer(pClone);
 
                 if (!pClone->GetParent())
@@ -588,8 +572,6 @@ void CPrefabItem::ModifyInstancedPrefab(CSelectionGroup& objectsInPrefabAsFlatSe
 
                 // Load the object
                 pObj->Serialize(loadAr);
-
-                RegisterPrefabEventFlowNodes(pObj);
 
                 pPrefabObject->SetObjectPrefabFlagAndLayer(pObj);
 
@@ -739,26 +721,17 @@ GUID CPrefabItem::ResolveID(const TObjectIdMapping& prefabIdToGuidMapping, GUID 
 void CPrefabItem::RemapIDsInNodeAndChildren(XmlNodeRef objectNode, const TObjectIdMapping& mapping, bool prefabIdToGuidDirection)
 {
     std::queue<XmlNodeRef> objects;
-    const char* kFlowGraphTag = "FlowGraph";
 
-    if (!objectNode->isTag(kFlowGraphTag))
-    {
-        RemapIDsInNode(objectNode, mapping, prefabIdToGuidDirection);
-    }
+    RemapIDsInNode(objectNode, mapping, prefabIdToGuidDirection);
 
     for (int i = 0; i < objectNode->getChildCount(); ++i)
     {
         objects.push(objectNode->getChild(i));
-        // Recursively traverse all objects and exclude flowgraph parts
+
+        // Recursively traverse all objects
         while (!objects.empty())
         {
             XmlNodeRef object = objects.front();
-            // Skip flowgraph
-            if (object->isTag(kFlowGraphTag))
-            {
-                objects.pop();
-                continue;
-            }
 
             RemapIDsInNode(object, mapping, prefabIdToGuidDirection);
             objects.pop();
@@ -766,11 +739,6 @@ void CPrefabItem::RemapIDsInNodeAndChildren(XmlNodeRef objectNode, const TObject
             for (int j = 0, childCount = object->getChildCount(); j < childCount; ++j)
             {
                 XmlNodeRef child = object->getChild(j);
-                if (child->isTag(kFlowGraphTag))
-                {
-                    continue;
-                }
-
                 RemapIDsInNode(child, mapping, prefabIdToGuidDirection);
 
                 if (child->getChildCount())
@@ -838,22 +806,3 @@ void CPrefabItem::RemoveAllChildsOf(GUID guid)
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CPrefabItem::RegisterPrefabEventFlowNodes(CBaseObject* const pEntityObj)
-{
-    if (qobject_cast<CEntityObject*>(pEntityObj))
-    {
-        CEntityObject* pEntity = static_cast<CEntityObject*>(pEntityObj);
-        if (CFlowGraph* pFG = pEntity->GetFlowGraph())
-        {
-            IHyperGraphEnumerator* pEnumerator = pFG->GetNodesEnumerator();
-            IHyperNode* pNode = pEnumerator->GetFirst();
-            while (pNode)
-            {
-                GetIEditor()->GetPrefabManager()->GetPrefabEvents()->OnHyperGraphManagerEvent(EHG_NODE_ADD, pNode->GetGraph(), pNode);
-                pNode = pEnumerator->GetNext();
-            }
-            pEnumerator->Release();
-        }
-    }
-}

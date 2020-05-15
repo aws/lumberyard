@@ -36,6 +36,11 @@ BUILD_METRICS_SUPPORTED=False
 METRICS_NAMESPACE=None
 try:
     if '--enable-build-metrics' in sys.argv:
+        
+        # Inject the 'build_metrics' subpath into the sys.path so that the imported modules from build_metrics can do a relative import within itself
+        build_metrics_folder_absolute_path = os.path.normpath(os.path.join(os.path.dirname(sys.argv[0]), 'build_metrics'))
+        sys.path.insert(0, build_metrics_folder_absolute_path)
+
         from build_metrics import build_metrics_reporter, build_metrics_overrides
 
         if not build_metrics_reporter.metric_reporter.parse_command_line(sys.argv):
@@ -46,18 +51,21 @@ try:
 
             build_metrics_reporter.start_metric_reporter()
 
+        sys.path.remove(build_metrics_folder_absolute_path)
+
+
 except Exception:
     import traceback
-    print traceback.print_exc()
+    print(traceback.print_exc())
 
 # Load globals from branch spec file if we must
-from waf_branch_spec import SUBFOLDERS, LUMBERYARD_ENGINE_PATH
+from waf_branch_spec import ADDITIONAL_SEARCH_PATHS, LUMBERYARD_ENGINE_PATH
 
 ###############################################################################
 Configure.autoconfig = True
 
 ###############################################################################
-CRY_WAF_TOOL_DIR = os.path.normpath('{}/Tools/build/waf-1.7.13/lmbrwaflib'.format(LUMBERYARD_ENGINE_PATH))
+LMBR_WAF_TOOL_DIR = os.path.normpath('{}/Tools/build/waf-1.7.13/lmbrwaflib'.format(LUMBERYARD_ENGINE_PATH))
 
 ###############################################################################
 CURRENT_WAF_EXECUTABLE = '"{}" {}/Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable, LUMBERYARD_ENGINE_PATH)
@@ -68,22 +76,21 @@ if LUMBERYARD_ENGINE_PATH != '.':
     Context.waf_dir = os.path.normpath('{}/Tools/build/waf-1.7.13'.format(LUMBERYARD_ENGINE_PATH))
 
 
-def recurse_subfolders(ctx):
-    recurse_subfolders = []
-    for subfolder in SUBFOLDERS:
-        if os.path.isabs(subfolder):
-            recurse_subfolders.append(subfolder)
-        else:
-            recurse_subfolders.append(os.path.join(ctx.engine_path,subfolder))
+ENGINE_FOLDERS = [
+    '@ENGINE@/Code',
+    '@ENGINE@/Engine'
+]
 
-    ctx.recurse(dirs=recurse_subfolders)
+def recurse_subfolders(ctx):
+    recurse_paths = [ctx.Path(path) for path in ENGINE_FOLDERS + ADDITIONAL_SEARCH_PATHS]
+    ctx.recurse(dirs=recurse_paths)
 
 
 # Configure Options for WAF
 def options(opt):
 
     # Load the lmbr waf modules
-    opt.load('lumberyard', tooldir=[CRY_WAF_TOOL_DIR])
+    opt.load('lumberyard', tooldir=[LMBR_WAF_TOOL_DIR])
     opt.load_lmbr_general_modules()
 
     # Add additional options
@@ -126,26 +133,16 @@ def configure(conf):
 
     conf.load_compile_rules_for_enabled_platforms()
 
-    # Recurse into sub-folders for auto conf when any wscript changes
-    recurse_subfolders = []
-    for subfolder in SUBFOLDERS:
-        if os.path.isabs(subfolder):
-            recurse_subfolders.append(subfolder)
-        else:
-            recurse_subfolders.append(os.path.join(conf.engine_path,subfolder))
-
     configure_timer = Utils.Timer()
     Logs.info("[WAF] 'Configure Projects' starting...")
 
-    conf.recurse(dirs=recurse_subfolders)
+    recurse_subfolders(conf)
 
     conf.configure_game_projects()
 
     conf.process_additional_code_folders()
 
     conf.process_gems()
-
-    conf.configure_game_projects()
 
     Logs.info("[WAF] 'Configure Projects' successful ({})".format(str(configure_timer)))
 
@@ -204,7 +201,7 @@ def build(bld):
 
     bld.initialize_third_party_settings()
 
-    bld.load('artifacts_cache', tooldir=[CRY_WAF_TOOL_DIR])
+    bld.load('artifacts_cache', tooldir=[LMBR_WAF_TOOL_DIR])
 
     bld.options.project_spec = bld.options.project_spec.strip()  # remove spaces
 
@@ -253,7 +250,6 @@ def build(bld):
     bld.process_gems()
 
     if bld.env['CONFIGURATION'] != 'project_generator':
-        # Only attempt to bootstrap Qt if the host is not linux
         bld.qtlib_bootstrap(bld.env['PLATFORM'], bld.env['CONFIGURATION'])
 
     bld.setup_game_projects()

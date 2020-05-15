@@ -63,7 +63,7 @@ PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
     // Add Preset buttons.
     {
         AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
-        AZ::Vector4 controlValue(elements[0]->GetValue(), elements[1]->GetValue(), elements[2]->GetValue(), elements[3]->GetValue());
+        AZ::Vector4 controlValue(aznumeric_cast<float>(elements[0]->GetValue()), aznumeric_cast<float>(elements[1]->GetValue()), aznumeric_cast<float>(elements[2]->GetValue()), aznumeric_cast<float>(elements[3]->GetValue()));
 
         m_anchorPresetsWidget = new AnchorPresetsWidget(AnchorPresets::AnchorToPresetIndex(controlValue),
                 [this](int presetIndex)
@@ -229,10 +229,10 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
     {
         // Update anchors and adjust pivot and offsets based on the selected preset
 
-        UiTransform2dInterface::Anchors newAnchors(elements[0]->GetValue() / 100.0f,
-            elements[1]->GetValue() / 100.0f,
-            elements[2]->GetValue() / 100.0f,
-            elements[3]->GetValue() / 100.0f);
+        UiTransform2dInterface::Anchors newAnchors(aznumeric_cast<float>(elements[0]->GetValue() / 100.0f),
+            aznumeric_cast<float>(elements[1]->GetValue() / 100.0f),
+            aznumeric_cast<float>(elements[2]->GetValue() / 100.0f),
+            aznumeric_cast<float>(elements[3]->GetValue() / 100.0f));
 
         // Old width is preserved if new anchor left equals right, old height is preserved if new anchor top equals bottom
         float width = -1.0f;
@@ -322,7 +322,7 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
 
         if (elements[0]->WasValueEditedByUser())
         {
-            newAnchors.m_left = elements[0]->GetValue() / 100.0f;
+            newAnchors.m_left = aznumeric_cast<float>(elements[0]->GetValue() / 100.0f);
             if (horizontalFit)
             {
                 newAnchors.m_right = newAnchors.m_left;
@@ -330,7 +330,7 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
         }
         if (elements[1]->WasValueEditedByUser())
         {
-            newAnchors.m_top = elements[1]->GetValue() / 100.0;
+            newAnchors.m_top = aznumeric_cast<float>(elements[1]->GetValue() / 100.0);
             if (verticalFit)
             {
                 newAnchors.m_bottom = newAnchors.m_top;
@@ -338,7 +338,7 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
         }
         if (elements[2]->WasValueEditedByUser())
         {
-            newAnchors.m_right = elements[2]->GetValue() / 100.0;
+            newAnchors.m_right = aznumeric_cast<float>(elements[2]->GetValue() / 100.0);
             if (horizontalFit)
             {
                 newAnchors.m_left = newAnchors.m_right;
@@ -346,7 +346,7 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
         }
         if (elements[3]->WasValueEditedByUser())
         {
-            newAnchors.m_bottom = elements[3]->GetValue() / 100.0;
+            newAnchors.m_bottom = aznumeric_cast<float>(elements[3]->GetValue() / 100.0);
             if (verticalFit)
             {
                 newAnchors.m_top = newAnchors.m_bottom;

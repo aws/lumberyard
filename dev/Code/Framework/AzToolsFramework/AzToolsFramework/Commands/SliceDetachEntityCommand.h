@@ -15,10 +15,9 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Component/ComponentBus.h>
-#include <AzCore/Slice/SliceComponent.h>
 
-#include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Commands/BaseSliceCommand.h>
 
 namespace AzToolsFramework
 {
@@ -26,7 +25,7 @@ namespace AzToolsFramework
     * Stores information about Entities that are being detached from their slice
     */
     class SliceDetachEntityCommand
-        : public UndoSystem::URSequencePoint
+        : public BaseSliceCommand
     {
     public:
         AZ_CLASS_ALLOCATOR(SliceDetachEntityCommand, AZ::SystemAllocator, 0);
@@ -39,11 +38,7 @@ namespace AzToolsFramework
         void Undo() override;
         void Redo() override;
 
-        bool Changed() const override { return m_changed; }
-
     protected:
         AzToolsFramework::EntityIdList m_entityIds; // Used for redo when no information is known other than a selected entity list
-        AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>> m_entityRestoreInfoArray; // An array of entity restore information to be used for undo actions.
-        bool m_changed = false;
     };
 } // namespace AzToolsFramework

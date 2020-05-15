@@ -1,12 +1,25 @@
-import unittest
-import mock
-from cgf_utils.test import mock_aws
-from cgf_utils import role_utils
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+# $Revision: #1 $
 import time
-from resource_manager_common import stack_info
-from resource_manager_common.stack_info import StackInfo
 
 from botocore.exceptions import ClientError
+
+import unittest
+from unittest import mock
+from cgf_utils.test import mock_aws
+from cgf_utils import role_utils
+
+from resource_manager_common import stack_info
+from resource_manager_common.stack_info import StackInfo
 
 _STACK_INFO_MANAGER = stack_info.StackInfoManager()
 
@@ -92,18 +105,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_create_access
     def test_default(self, mock_get_stack_info, mock_get_access_control_role_name, mock_create_role):
         id_data = {}
         role_utils.PROPAGATION_DELAY_SECONDS = 2
-        start_time = time.clock()
+        start_time = time.time()
         created_role_arn = role_utils.create_access_control_role(
             _STACK_INFO_MANAGER,
             id_data,
             self.stack_arn,
             self.logical_role_name,
             self.assume_role_service)
-        stop_time = time.clock()
+        stop_time = time.time()
         delay_time = stop_time - start_time
         self.assertAlmostEqual(delay_time, role_utils.PROPAGATION_DELAY_SECONDS, delta=0.1)
         self.assertEqual(created_role_arn, self.role_arn)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_get_access_control_role_name.assert_called_once_with(self.stack_arn, self.logical_role_name)
         mock_create_role.assert_called_once_with(RoleName=self.role_name,
                                                  AssumeRolePolicyDocument=self.assume_role_policy_document_matcher,
@@ -117,7 +130,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_create_access
                                               mock_create_role):
         id_data = {}
         role_utils.PROPAGATION_DELAY_SECONDS = 2
-        start_time = time.clock()
+        start_time = time.time()
         created_role_arn = role_utils.create_access_control_role(
             _STACK_INFO_MANAGER,
             id_data,
@@ -125,11 +138,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_create_access
             self.logical_role_name,
             self.assume_role_service,
             delay_for_propagation=False)
-        stop_time = time.clock()
+        stop_time = time.time()
         delay_time = stop_time - start_time
         self.assertAlmostEqual(delay_time, 0, delta=0.1)
         self.assertEqual(created_role_arn, self.role_arn)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_get_access_control_role_name.assert_called_once_with(self.stack_arn, self.logical_role_name)
         mock_create_role.assert_called_once_with(RoleName=self.role_name,
                                                  AssumeRolePolicyDocument=self.assume_role_policy_document_matcher,
@@ -152,7 +165,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_create_access
             delay_for_propagation=False,
             default_policy=self.default_policy)
         self.assertEqual(created_role_arn, self.role_arn)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_get_access_control_role_name.assert_called_once_with(self.stack_arn, self.logical_role_name)
         mock_create_role.assert_called_once_with(RoleName=self.role_name,
                                                  AssumeRolePolicyDocument=self.assume_role_policy_document_matcher,
@@ -207,7 +220,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
     def test_with_no_errors(self, mock_delete_role, mock_delete_role_policy, mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
@@ -221,7 +234,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                           mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role.assert_called_once_with(RoleName=self.role_name)
 
@@ -233,7 +246,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                          mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role.assert_called_once_with(RoleName=self.role_name)
 
@@ -246,7 +259,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         with self.assertRaisesRegexp(ClientError, self.unknown_error_code):
             role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
 
     @mock_aws.patch_client('iam', 'list_role_policies', return_value=list_role_policies_response, reload=role_utils)
@@ -257,7 +270,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                           mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
@@ -271,7 +284,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                          mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
@@ -283,11 +296,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
     @mock_aws.patch_client('iam', 'delete_role', return_value=delete_role_response)
     def test_with_delete_role_policy_other_error(self, mock_list_role_policies, mock_delete_role_policy,
                                                  mock_delete_role):
-        print '===', mock_list_role_policies, mock_delete_role, mock_delete_role_policy
+        print('=== {} {} {}'.format(mock_list_role_policies, mock_delete_role, mock_delete_role_policy))
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         with self.assertRaisesRegexp(ClientError, self.unknown_error_code):
             role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
 
@@ -298,7 +311,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                    mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
@@ -311,7 +324,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
                                                   mock_list_role_policies):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {}})
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
@@ -324,7 +337,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_delete_access
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         with self.assertRaisesRegexp(ClientError, self.unknown_error_code):
             role_utils.delete_access_control_role(id_data, self.logical_role_name)
-        self.assertEquals(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
+        self.assertEqual(id_data, {'AbstractRoleMappings': {self.logical_role_name: self.role_name}})
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_1)
         mock_delete_role_policy.assert_any_call(RoleName=self.role_name, PolicyName=self.policy_name_2)
         mock_list_role_policies.assert_called_once_with(RoleName=self.role_name)
@@ -348,7 +361,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_role_utils_get_access_co
     def test_default(self, mock_get_role):
         id_data = {'AbstractRoleMappings': {self.logical_role_name: self.role_name}}
         actual_role_arn = role_utils.get_access_control_role_arn(id_data, self.logical_role_name)
-        self.assertEquals(actual_role_arn, self.role_arn)
+        self.assertEqual(actual_role_arn, self.role_arn)
         mock_get_role.assert_called_once_with(RoleName=self.role_name)
 
 

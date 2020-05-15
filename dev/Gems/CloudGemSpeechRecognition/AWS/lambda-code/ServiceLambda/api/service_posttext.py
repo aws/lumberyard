@@ -37,13 +37,16 @@ def post(request, post_text):
     if len(input_stream) < 1 or len(input_stream) > 1024:
         return {'dialog_state' : "INPUT STREAM TOO LONG"}
 
-    response = client.post_text(
-        botName = name,
-        botAlias = bot_alias,
-        userId = user_id,
-        sessionAttributes = session_attributes,
-        inputText = input_stream
-    )
+    try:
+        response = client.post_text(
+            botName = name,
+            botAlias = bot_alias,
+            userId = user_id,
+            sessionAttributes = session_attributes,
+            inputText = input_stream
+        )
+    except Exception as e:
+        raise Exception(str(e))
 
     response_session_attributes = response.get('sessionAttributes', '')
     if response_session_attributes != '':

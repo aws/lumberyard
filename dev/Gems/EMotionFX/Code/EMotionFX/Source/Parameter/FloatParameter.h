@@ -29,6 +29,11 @@ namespace EMotionFX
         {
         }
 
+        explicit FloatParameter(AZStd::string name, AZStd::string description = {})
+            : BaseType(0.0f, 0.0f, 1.0f, true, true, AZStd::move(name), AZStd::move(description))
+        {
+        }
+
         static void Reflect(AZ::ReflectContext* context);
 
         MCore::Attribute* ConstructDefaultValueAsAttribute() const override;

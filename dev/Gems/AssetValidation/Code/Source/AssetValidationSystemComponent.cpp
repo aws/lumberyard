@@ -93,15 +93,15 @@ namespace AssetValidation
         AssetValidationRequestBus::Broadcast(&AssetValidationRequestBus::Events::SeedMode);
     }
 
-    void AssetValidationSystemComponent::ConsoleCommandTogglePrintBlacklisted(IConsoleCmdArgs* pCmdArgs)
+    void AssetValidationSystemComponent::ConsoleCommandTogglePrintExcluded(IConsoleCmdArgs* pCmdArgs)
     {
-        AssetValidationRequestBus::Broadcast(&AssetValidationRequestBus::Events::TogglePrintBlacklisted);
+        AssetValidationRequestBus::Broadcast(&AssetValidationRequestBus::Events::TogglePrintExcluded);
     }
 
-    void AssetValidationSystemComponent::TogglePrintBlacklisted()
+    void AssetValidationSystemComponent::TogglePrintExcluded()
     {
-        m_printBlacklisted = !m_printBlacklisted;
-        if (m_printBlacklisted)
+        m_printExcluded = !m_printExcluded;
+        if (m_printExcluded)
         {
             AZ_TracePrintf("AssetValidation", "Asset Validation is now on");
         }
@@ -116,9 +116,9 @@ namespace AssetValidation
         m_seedMode = !m_seedMode;
         if (m_seedMode)
         {
-            // adding blacklist tags
-            m_blacklistFileTags.emplace_back(AzFramework::FileTag::FileTags[static_cast<unsigned int>(AzFramework::FileTag::FileTagsIndex::Ignore)]);
-            m_blacklistFileTags.emplace_back(AzFramework::FileTag::FileTags[static_cast<unsigned int>(AzFramework::FileTag::FileTagsIndex::ProductDependency)]);
+            // adding excluded tags
+            m_excludedFileTags.emplace_back(AzFramework::FileTag::FileTags[static_cast<unsigned int>(AzFramework::FileTag::FileTagsIndex::Ignore)]);
+            m_excludedFileTags.emplace_back(AzFramework::FileTag::FileTags[static_cast<unsigned int>(AzFramework::FileTag::FileTagsIndex::ProductDependency)]);
             CryPak::CryPakNotificationBus::Handler::BusConnect();
             BuildAssetList();
             AZ_TracePrintf("AssetValidation", "Asset Validation is now on");
@@ -126,7 +126,7 @@ namespace AssetValidation
         else
         {
             CryPak::CryPakNotificationBus::Handler::BusDisconnect();
-            m_blacklistFileTags.clear();
+            m_excludedFileTags.clear();
             AZ_TracePrintf("AssetValidation", "Asset Validation is now off");
         }
         AssetValidationNotificationBus::Broadcast(&AssetValidationNotificationBus::Events::SetSeedMode, m_seedMode);
@@ -142,7 +142,7 @@ namespace AssetValidation
         system.GetIConsole()->AddCommand("listknownassets", ConsoleCommandKnownAssets);
         system.GetIConsole()->AddCommand("addseedlist", ConsoleCommandAddSeedList);
         system.GetIConsole()->AddCommand("removeseedlist", ConsoleCommandRemoveSeedList);
-        system.GetIConsole()->AddCommand("printblacklisted", ConsoleCommandTogglePrintBlacklisted);
+        system.GetIConsole()->AddCommand("printexcluded", ConsoleCommandTogglePrintExcluded);
     }       
 
     bool AssetValidationSystemComponent::IsKnownAsset(const char* assetPath)
@@ -170,12 +170,12 @@ namespace AssetValidation
         {
             using namespace AzFramework::FileTag;
             bool shouldIgnore = false;
-            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::BlackList, &QueryFileTagsEventBus::Events::Match, assetPath, m_blacklistFileTags);
+            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude, &QueryFileTagsEventBus::Events::Match, assetPath, m_excludedFileTags);
             if (shouldIgnore)
             {
-                if (m_printBlacklisted)
+                if (m_printExcluded)
                 {
-                    AZ_TracePrintf("AssetValidation", "Asset ( %s ) is blacklisted. \n", assetPath);
+                    AZ_TracePrintf("AssetValidation", "Asset ( %s ) is excluded. \n", assetPath);
                 }
                 return true;
             }

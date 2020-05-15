@@ -9,20 +9,19 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "FileFunc.h"
-
+#include <AzFramework/FileFunc/FileFunc.h>
 #include <regex>
 
-#include <AzCore/std/string/string.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/TextStreamWriters.h>
 #include <AzCore/JSON/document.h>
-#include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/error/error.h>
 #include <AzCore/JSON/error/en.h>
 #include <AzCore/JSON/prettywriter.h>
+#include <AzCore/JSON/rapidjson.h>
 #include <AzCore/std/containers/deque.h>
+#include <AzCore/std/string/string.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -44,14 +43,14 @@ namespace AzFramework
             if (!fileIo->Open(jsonFilePath.c_str(), AZ::IO::OpenMode::ModeRead, fileHandle))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string("Failed to open."));
+                return AZ::Failure(AZStd::string::format("Failed to open file %s.", jsonFilePath.c_str()));
             }
 
             AZ::u64 fileSize = 0;
             if (!fileIo->Size(fileHandle, fileSize))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string::format("Failed to read size of file."));
+                return AZ::Failure(AZStd::string::format("Failed to read size of file %s.", jsonFilePath.c_str()));
             }
 
             AZStd::string jsonText;
@@ -59,7 +58,7 @@ namespace AzFramework
             if (!fileIo->Read(fileHandle, jsonText.data(), fileSize, true))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string::format("Failed to read file."));
+                return AZ::Failure(AZStd::string::format("Failed to read file %s.", jsonFilePath.c_str()));
             }
             fileIo->Close(fileHandle);
 
@@ -166,7 +165,7 @@ namespace AzFramework
             *      becomes
             *      enabled_game_projects = newProject
             * Cases to handle:
-            *      1. key exists, value is identical -> do nothing
+            *      1. Key exists, value is identical -> do nothing
             *          This can occur if a user modifies a config file while the tooling is open.
             *          Example:
             *              1) Load Project Configurator.
@@ -174,9 +173,9 @@ namespace AzFramework
             *              3) Tell Project Configurator to set your project to the project you set in #2.
             *      2. Key exists, value is missing -> stomps over key with new key value pair.
             *      3. Key exists, value is different -> stomps over key with new key value pair. Ignores previous values.
-            *      4. Key does not exist, header is not required -> insert "key = value" at the beginning of file.
-            *      5. Key does not exist, required header does not exist -> insert header + a newline to begining of file.
-            *      6. Key does not exist, required header does exist -> insert "key = value" after first newline after header.
+            *      4. Key does not exist, header is not required -> insert "key=value" at the end of file.
+            *      5. Key does not exist, required header does not exist -> insert "\nHeader\n" at end of file and continue to #6.
+            *      6. Key does not exist, required header does exist -> insert "key=value" at next line under the header.
             *          The header will always exist at this point, it was created in the previous check if it was missing.
             */
             AZ::Outcome<void, AZStd::string> UpdateCfgContents(AZStd::string& cfgContents, const AZStd::string& header, const AZStd::string& key, const AZStd::string& value)
@@ -193,15 +192,15 @@ namespace AzFramework
                 std::string settingsFileContentsStdStr = cfgContents.c_str();
                 bool matchFound = std::regex_search(settingsFileContentsStdStr, matchResults, sysGameRegex);
 
-                // Case 1, 2, and 3 - Key value pair exists, stomp over the key with a new value pair.
                 std::string result;
                 if (matchFound)
                 {
+                    // Case 1, 2, and 3 - Key value pair exists, stomp over the key with a new value pair.
                     result = std::regex_replace(cfgContents.c_str(), sysGameRegex, gameFolderAssignment.c_str());
                 }
-                // Cases 4 through 6 - the key does not exist.
-                if (!matchFound)
+                else
                 {
+                    // Cases 4 through 6 - the key does not exist.
                     result = cfgContents.c_str();
                     std::size_t insertLocation = 0;
                     // Case 5 & 6 - key does not exist, header is required
@@ -218,19 +217,16 @@ namespace AzFramework
                         //      Insert the header at the top of the file, set the key insertion point after the header.
                         else
                         {
-                            AZStd::string headerAndCr = header + "\n";
-                            result.insert(0, headerAndCr.c_str());
-                            insertLocation = header.length();
+                            AZStd::string headerAndCr = AZStd::string::format("\n%s\n", header.c_str());
+                            result.insert(result.length(), headerAndCr.c_str());
+                            insertLocation = result.length() - 1;
                         }
                     }
                     // Case 4 - key does not exist, header is not required.
                     // Case 5 & 6 - the header has been added.
                     //  Insert the key at the tracked insertion point
-                    std::string newConfigData = std::string("\n") +
-                        std::string(key.c_str()) +
-                        std::string(" = ") +
-                        std::string(value.c_str());
-                    result.insert(insertLocation, newConfigData);
+                    AZStd::string newConfigData = AZStd::string::format("\n%s=%s", key.c_str(), value.c_str());
+                    result.insert(insertLocation, newConfigData.c_str());
                 }
                 cfgContents = result.c_str();
                 return AZ::Success();

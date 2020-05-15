@@ -405,7 +405,7 @@ namespace Audio
                     if (pMat)
                     {
                         IPhysicalEntity* pCollider = pRayInfo->aHits[i].pCollider;
-                        IEntity* pEntity = (pCollider ? gEnv->pEntitySystem->GetEntityFromPhysics(pCollider) : nullptr);
+                        IEntity* pEntity = (pCollider && gEnv->pEntitySystem ? gEnv->pEntitySystem->GetEntityFromPhysics(pCollider) : nullptr);
 
                         const ISurfaceType::SPhysicalParams& physParams = pMat->GetPhyscalParams();
                         fTotalOcclusion += physParams.sound_obstruction * (pEntity ? pEntity->GetObstructionMultiplier() : 1.f);// not clamping b/w 0 and 1 for performance reasons

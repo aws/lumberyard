@@ -40,8 +40,6 @@ def build(bld):
         win_defines     = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
         darwin_defines  = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
         includes        = [ '.',
-                            bld.ThirdPartyPath('boost'),
-                            bld.Path('Code/CryEngine/CryCommon'),
                             '..',
                             'Include',
                             'Source',

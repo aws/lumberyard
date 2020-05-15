@@ -28,6 +28,11 @@
 
 #include <LmbrCentral/Animation/AttachmentComponentBus.h>
 
+namespace LmbrCentral
+{
+    class MaterialOwnerRequestBusHandlerImpl;
+}
+
 namespace EMotionFX
 {
     namespace Integration
@@ -142,11 +147,14 @@ namespace EMotionFX
 
             static void Reflect(AZ::ReflectContext* context);
 
-        private:
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
+            // Physics::WorldNotificationBus::Handler
+            bool IsWorldNotificationBusConnected(AZ::Crc32 worldId) const;
+
+        private:
             // AZ::TransformNotificationBus::MultiHandler
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 

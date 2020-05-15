@@ -12,84 +12,70 @@
 
 #include "LyShine_precompiled.h"
 
-#include <AzTest/AzTest.h>
-#include <AzCore/Component/ComponentApplication.h>
+#include "LyShineTest.h"
 #include <Mocks/ISystemMock.h>
 #include <Mocks/IRendererMock.h>
 #include <Mocks/ITextureMock.h>
 #include <I3DEngine.h> // needed for SRenderingPassInfo
-#include <LyShineModule.h>
 #include <Sprite.h>
 
-namespace
+namespace UnitTest
 {
-    using ::testing::NiceMock;
-    using ::testing::Return;
-    using ::testing::_;
-
-    class LyShineTest
-        : public ::testing::Test
+    class LyShineSpriteTest
+        : public LyShineTest
     {
     protected:
-        LyShineTest()
-            : m_application()
-            , m_systemEntity(nullptr)
+
+        void SetupApplication() override
         {
-        }
-
-        void SetUp() override
-        {
-            m_priorEnv = gEnv;
-
-            m_data = AZStd::make_unique<DataMembers>();
-            memset(&m_data->m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
-            m_data->m_stubEnv.pRenderer = &m_data->m_renderer;
-            gEnv = &m_data->m_stubEnv;
-
             AZ::ComponentApplication::Descriptor appDesc;
             appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
             appDesc.m_recordingMode = AZ::Debug::AllocationRecords::RECORD_FULL;
             appDesc.m_stackRecordLevels = 20;
 
             AZ::ComponentApplication::StartupParameters appStartup;
+            // Module needs to be created this way to create CryString allocator for test
             appStartup.m_createStaticModulesCallback =
                 [](AZStd::vector<AZ::Module*>& modules)
-                {
-                    modules.emplace_back(new LyShine::LyShineModule);
-                };
+            {
+                modules.emplace_back(new LyShine::LyShineModule);
+            };
 
             m_systemEntity = m_application.Create(appDesc, appStartup);
             m_systemEntity->Init();
             m_systemEntity->Activate();
         }
 
-        void TearDown() override
+        void SetupEnvironment() override
         {
-            m_application.Destroy();
-            m_data.reset();
-            gEnv = m_priorEnv;
+            LyShineTest::SetupEnvironment();
+
+            m_data = AZStd::make_unique<DataMembers>();
+            m_env->m_stubEnv.pRenderer = &m_data->m_renderer;
         }
 
-        AZ::ComponentApplication m_application;
-        AZ::Entity* m_systemEntity;
+        void TearDown() override
+        {
+            m_data.reset();
+
+            LyShineTest::TearDown();
+        }
 
         struct DataMembers
         {
-            SSystemGlobalEnvironment m_stubEnv;
-            NiceMock<IRendererMock> m_renderer;
+            testing::NiceMock<IRendererMock> m_renderer;
         };
 
         AZStd::unique_ptr<DataMembers> m_data;
-        SSystemGlobalEnvironment* m_priorEnv = nullptr;
     };
 
-    TEST_F(LyShineTest, Sprite_CanAcquireRenderTarget)
+    TEST_F(LyShineSpriteTest, Sprite_CanAcquireRenderTarget)
     {
         // initialize to create the static sprite cache
         CSprite::Initialize();
 
         const char* renderTargetName = "$test";
-        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(_, _)).WillRepeatedly(Return(nullptr));
+        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(testing::_, testing::_)).WillRepeatedly(testing::Return(nullptr));
 
         CSprite* sprite = CSprite::CreateSprite(renderTargetName);
         ASSERT_NE(sprite, nullptr);
@@ -97,17 +83,17 @@ namespace
         ITexture* texture = sprite->GetTexture();
         EXPECT_EQ(texture, nullptr);
 
-        ITextureMock* mockTexture = new NiceMock<ITextureMock>;
+        ITextureMock* mockTexture = new testing::NiceMock<ITextureMock>;
 
         // expect the sprite acquires the texture and increments the reference count
-        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(_, _)).WillOnce(Return(mockTexture));
+        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(testing::_, testing::_)).WillOnce(testing::Return(mockTexture));
         EXPECT_CALL(*mockTexture, AddRef()).Times(1);
 
         texture = sprite->GetTexture();
         EXPECT_EQ(texture, mockTexture);
 
         // the sprite should attempt to release the texture by calling ReleaseResourceAsync
-        EXPECT_CALL(m_data->m_renderer, ReleaseResourceAsync(_)).Times(1);
+        EXPECT_CALL(m_data->m_renderer, ReleaseResourceAsync(testing::_)).Times(1);
 
         delete sprite;
         sprite = nullptr;
@@ -116,15 +102,15 @@ namespace
         delete mockTexture;
     }
 
-    TEST_F(LyShineTest, Sprite_CanCreateWithExistingRenderTarget)
+    TEST_F(LyShineSpriteTest, Sprite_CanCreateWithExistingRenderTarget)
     {
         // initialize to create the static sprite cache
         CSprite::Initialize();
 
-        ITextureMock* mockTexture = new NiceMock<ITextureMock>;
+        ITextureMock* mockTexture = new testing::NiceMock<ITextureMock>;
 
         const char* renderTargetName = "$test";
-        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(_, _)).WillRepeatedly(Return(mockTexture));
+        EXPECT_CALL(m_data->m_renderer, EF_GetTextureByName(testing::_, testing::_)).WillRepeatedly(testing::Return(mockTexture));
 
         // the sprite should increment the ref count on the texture
         EXPECT_CALL(*mockTexture, AddRef()).Times(1);
@@ -136,7 +122,7 @@ namespace
         EXPECT_EQ(texture, mockTexture);
 
         // the sprite should attempt to release the texture by calling ReleaseResourceAsync
-        EXPECT_CALL(m_data->m_renderer, ReleaseResourceAsync(_)).Times(1);
+        EXPECT_CALL(m_data->m_renderer, ReleaseResourceAsync(testing::_)).Times(1);
 
         delete sprite;
         sprite = nullptr;
@@ -144,6 +130,6 @@ namespace
         CSprite::Shutdown();
         delete mockTexture;
     }
-}
+} //namespace UnitTest
 
 AZ_UNIT_TEST_HOOK();

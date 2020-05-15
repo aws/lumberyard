@@ -206,6 +206,11 @@ public:
     {
         return (sizeof(*this) + sizeof(T) * m_elements.capacity()) + overAllocBytes;
     }
+
+    ILINE void RemoveIf(AZStd::function<bool(const T&)> testFunc)
+    {
+        m_elements.erase(AZStd::remove_if(m_elements.begin(), m_elements.end(), testFunc), m_elements.end());
+    }
 };
 
 #endif // CRYINCLUDE_CRYCOMMON_CRYPODARRAY_H

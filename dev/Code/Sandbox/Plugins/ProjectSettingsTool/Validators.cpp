@@ -26,7 +26,7 @@ namespace
     static const int noMaxLength = -1;
     static const int maxIosVersionLength = 18;
     static const int androidPublicAppKeyLength = 392;
-    static const char* xmlRelativePath = "Bin64/rc/";
+    static const char* xmlRelativePath = "Code/Tools/RC/Config/rc/";
     static const char* xmlMimeType = "application/xml";
     static const char* stringEmpty = "String is empty";
 

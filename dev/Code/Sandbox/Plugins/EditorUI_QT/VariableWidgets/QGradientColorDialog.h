@@ -114,8 +114,10 @@ protected:
     QColor selectedColor;
     QGridLayout layout;
     QPushButton okButton, cancelButton;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::function<void(SCurveEditorContent)> callback_content_changed;
     std::function<void(QGradientStops)> callback_gradient_changed;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QGradientSelectorWidget* gradientSelectorWidget;
     QCurveSelectorWidget* curveSelectorWidget;
     QGradientColorPickerWidget* gradientPickerWidget;

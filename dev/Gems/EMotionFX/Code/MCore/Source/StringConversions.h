@@ -69,19 +69,3 @@ namespace AZStd
     inline AZStd::string to_string(const AZ::Matrix4x4& val) { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(const AZ::Transform& val) { AZStd::string str; to_string(str, val); return str; }
 }
-
-namespace AzFramework
-{
-    namespace StringFunc
-    {
-        bool LooksLikeVector2(const char* in, AZ::Vector2* outVector = nullptr);
-        AZ::Vector2 ToVector2(const char* in);
-
-        bool LooksLikeVector3(const char* in, AZ::Vector3* outVector = nullptr);
-        AZ::Vector3 ToVector3(const char* in);
-
-        bool LooksLikeVector4(const char* in, AZ::Vector4* outVector = nullptr);
-        AZ::Vector4 ToVector4(const char* in);
-    }
-    
-}

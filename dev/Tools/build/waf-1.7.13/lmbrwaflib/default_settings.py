@@ -10,26 +10,24 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf, deprecated
+
+# System Imports
+import os
+from collections import Counter
+
+# waflib imports
 from waflib import Context
 from waflib import Logs
-from waflib import Scripting
-from waflib import Options
 from waflib import Utils
+from waflib.Configure import conf, deprecated
 
-from collections import Counter
-from incredibuild import internal_validate_incredibuild_registry_settings,\
-                         internal_use_incredibuild,\
-                         internal_verify_incredibuild_license
-from msvc_helper import find_valid_wsdk_version
-from settings_manager import LUMBERYARD_SETTINGS
+# lmbrwaflib imports
+from lmbrwaflib.incredibuild import internal_validate_incredibuild_registry_settings,\
+                                    internal_use_incredibuild,\
+                                    internal_verify_incredibuild_license
+from lmbrwaflib.msvc_helper import find_valid_wsdk_version
+from lmbrwaflib.settings_manager import LUMBERYARD_SETTINGS
 
-
-import sys
-import os
-import re
-import multiprocessing
-import hashlib
 
 ATTRIBUTE_CALLBACKS = {}
 """ Global Registry of callbacks for options which requires special processing """
@@ -93,7 +91,7 @@ def _get_string_value(ctx, msg, value):
         msg += ' '
     msg += '['+value+']: '
     
-    user_input = raw_input(msg)
+    user_input = input(msg)
     if user_input == '':    # No input -> return default
         return value
     return user_input
@@ -107,7 +105,7 @@ def _get_boolean_value(ctx, msg, value):
     msg += '['+value+']: '
     
     while True:
-        user_input = raw_input(msg)
+        user_input = input(msg)
         
         # No input -> return default
         if user_input == '':    

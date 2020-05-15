@@ -48,7 +48,47 @@ int32 m_cSizeVF[eVF_Max] =
     sizeof(SVF_P3F_C4B_T2S),
 
     sizeof(SVF_P2F_C4B_T2F_F4B),    
-    sizeof(SVF_P3F_C4B)
+    sizeof(SVF_P3F_C4B),
+
+    sizeof(SVF_P3F_C4F_T2F),  //format number 23 (for testing verification)
+    sizeof(SVF_P3F_C4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F),  //30
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F),
+    sizeof(SVF_P4F_T2F_C4F_T4F_T4F),  //35
+    sizeof(SVF_P3F_C4F_T2F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T4F),  //40
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F),  //45
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F),
+    sizeof(SVF_P4F_T2F_C4F_T4F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T4F_T4F),  //50
+    sizeof(SVF_P3F_C4F_T2F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F),  //55
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F),  //60
+    sizeof(SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F),
 };
 
 // Legacy table copied from RenderMesh.cpp
@@ -76,7 +116,7 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {      //eVF_P3S_C4B_T2S
         OOFS(SVF_P3S_C4B_T2S, st),
         OOFS(SVF_P3S_C4B_T2S, color.dcolor),
-        -1
+-1
     },
 
     {      //eVF_P3S_C4B_T2S_T2S
@@ -142,8 +182,8 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {   // eVF_P2F_T4F_T4F_C4F
         OOFS(SVF_P2F_T4F_T4F_C4F, st),
         OOFS(SVF_P2F_T4F_T4F_C4F, color),
-        -1 
-    }, 
+        -1
+    },
     {     // eVF_P2S_N4B_C4B_T1F
         OOFS(SVF_P2S_N4B_C4B_T1F, z),
         OOFS(SVF_P2S_N4B_C4B_T1F, color.dcolor),
@@ -162,6 +202,201 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4B
         -1,
         OOFS(SVF_P3F_C4B, color.dcolor),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F
+        OOFS(SVF_P3F_C4F_T2F, st),
+        OOFS(SVF_P3F_C4F_T2F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F
+        OOFS(SVF_P3F_C4F_T2F_T1F, st),
+        OOFS(SVF_P3F_C4F_T2F_T1F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F
+        OOFS(SVF_P3F_C4F_T4F_T2F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P4F_T2F_C4F_T4F_T4F
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F, st0),
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P4F_T2F_C4F_T4F_T4F_T4F
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F_T4F, st0),
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F, st0),
+        OOFS(SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F, color),
         -1
     },
 };
@@ -279,6 +514,19 @@ AZStd::vector<D3D11_INPUT_ELEMENT_DESC> Legacy_InitBaseStreamD3DVertexDeclaratio
         elemColorF.SemanticIndex = 0;
         decl.push_back(elemColorF);
     }
+
+    //handle cases where 2D texture comes before 4F Color
+    if (nFormat == eVF_P4F_T2F_C4F_T4F_T4F || nFormat == eVF_P4F_T2F_C4F_T4F_T4F_T4F || nFormat == eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F)
+    {
+        elemTC2.AlignedByteOffset = (int)offsetof(SVF_P4F_T2F_C4F_T4F_T4F, st0);
+        elemTC2.SemanticIndex = 0;
+        decl.push_back(elemTC2);
+
+        elemColorF.AlignedByteOffset = (int)offsetof(SVF_P4F_T2F_C4F_T4F_T4F, color);
+        elemColorF.SemanticIndex = 0;
+        decl.push_back(elemColorF);
+    }
+
     if (hasTexCoord)
     {
         elemTC0.AlignedByteOffset = texCoordOffset;
@@ -474,6 +722,17 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     EVertexFormat eVF = (EVertexFormat)GetParam();
     AZStd::vector<D3D11_INPUT_ELEMENT_DESC> expected = Legacy_InitBaseStreamD3DVertexDeclaration(eVF);
     bool matchesLegacy = true;
+
+    //the new vertex definitions aren't legacy and never were a part of the legacy system in any way, and should be ignored for this test
+    //new definitions occur after entry number 22;
+    const unsigned int ignoredFormatsStart = aznumeric_cast<unsigned int>(eVF_P3F_C4F_T2F);  //23
+    const unsigned int ignoredFormatsEnd = aznumeric_cast<unsigned int>(eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F);  //61
+    if (aznumeric_cast<unsigned int>(eVF) >= ignoredFormatsStart && aznumeric_cast<unsigned int>(eVF) <= ignoredFormatsEnd)
+    {
+        EXPECT_TRUE(matchesLegacy);
+        return;
+    }
+
     // The legacy result of EF_InitD3DVertexDeclarations for the following formats are flat out wrong (it defaults to one D3D11_INPUT_ELEMENT_DESC that is a position, which is clearly not the case for any of these)
     // eVF_W4B_I4S is really blendweights + indices
     // eVF_C4B_C4B is really two spherical harmonic coefficients
@@ -482,7 +741,7 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     // ignore these cases
     // Also ignore eVF_P2S_N4B_C4B_T1F: the T1F attribute has a POSITION semantic name in the legacy declaration, even though both the engine and shader treat it as a TEXCOORD (despite the fact that it is eventually used for a position)
     // eVF_P3F_C4B_T2F_T2F, eVF_P3S_C4B_T2S_T2S, and eVF_P2F_C4B_T2F_F4B are all new
-    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B && eVF != eVF_P3F_C4B_T2F_T2F && eVF != eVF_P3S_C4B_T2S_T2S)
+    else if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B && eVF != eVF_P3F_C4B_T2F_T2F && eVF != eVF_P3S_C4B_T2S_T2S)
     {
         AZStd::vector<D3D11_INPUT_ELEMENT_DESC> actual = GetD3D11Declaration(AZ::Vertex::Format(eVF));
         matchesLegacy = DeclarationsAreEqual(actual, expected);

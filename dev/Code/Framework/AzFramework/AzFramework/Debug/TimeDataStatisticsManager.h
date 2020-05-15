@@ -12,7 +12,7 @@
 #pragma once
 
 #include <AzCore/Debug/Profiler.h>
-#include "RunningStatisticsManager.h"
+#include <AzFramework/Statistics/StatisticsManager.h>
 
 namespace AzFramework
 {
@@ -28,14 +28,11 @@ namespace AzFramework
          *
          * 
          */
-        class TimeDataStatisticsManager : public RunningStatisticsManager
+        class TimeDataStatisticsManager : public StatisticsManager<>
         {
         public:
             TimeDataStatisticsManager() = default;
             virtual ~TimeDataStatisticsManager() = default;
-
-            //From RunningStatisticsManager
-            void RemoveStatistic(const AZStd::string& name) override;
 
             /**
              * @brief Adds one sample data to a specific running stat by name.
@@ -52,7 +49,7 @@ namespace AzFramework
             ///We store here the previous value from the previous timer frame data.
             ///This is necessary because AZ_PROFILER_TIMER is cumulative
             ///and we need the time spent for each call.
-            AZStd::vector<AZ::Debug::ProfilerRegister::TimeData> m_previousTimeData;
+            AZStd::unordered_map<AZStd::string, AZ::Debug::ProfilerRegister::TimeData> m_previousTimeData;
         };
     } //namespace Statistics
 } //namespace AzFramework

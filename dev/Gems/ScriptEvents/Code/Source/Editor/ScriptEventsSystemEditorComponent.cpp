@@ -20,6 +20,12 @@
 #include <ScriptEvents/ScriptEventDefinition.h>
 
 #include <ScriptEvents/ScriptEvent.h>
+#include <AzCore/Component/TickBus.h>
+#include <ScriptEvents/ScriptEventsBus.h>
+
+#include <ScriptEvents/ScriptEventSystem.h>
+
+#if defined(SCRIPTEVENTS_EDITOR)
 
 namespace ScriptEventsEditor
 {
@@ -44,7 +50,6 @@ namespace ScriptEventsEditor
         AZ_Assert(id.IsValid(), "Script Event asset must have a valid ID to be created.");
         if (!AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::MultiHandler::BusIsConnectedId(id))
         {
-            AZ_TracePrintf("ScriptEvent", "Creating Asset with ID: %s - SCRIPTEVENT\n", id.ToString<AZStd::string>().c_str());
             AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::MultiHandler::BusConnect(id);
         }
 
@@ -80,14 +85,21 @@ namespace ScriptEventsEditor
 
                 if (registerBus)
                 {
-                    if (ScriptEvents::Internal::Utils::ConstructAndRegisterScriptEventBehaviorEBus(assetData->m_definition))
+                    // LoadAssetData is being called from an Asset system thread,
+                    // we need to complete registering with the BehaviorContext in the main thread
+                    auto registerBusFn = [this, assetData, asset]()
                     {
-                        PreviousNameSettings previousSettings;
-                        previousSettings.m_previousName = assetData->m_definition.GetName().c_str();
-                        previousSettings.m_version = assetData->m_definition.GetVersion();
+                        if (ScriptEvents::Internal::Utils::ConstructAndRegisterScriptEventBehaviorEBus(assetData->m_definition))
+                        {
+                            PreviousNameSettings previousSettings;
+                            previousSettings.m_previousName = assetData->m_definition.GetName().c_str();
+                            previousSettings.m_version = assetData->m_definition.GetVersion();
 
-                        m_previousEbusNames[asset.GetId()] = previousSettings;                        
-                    }
+                            m_previousEbusNames[asset.GetId()] = previousSettings;                        
+                        }
+                    };
+                    AZ::TickBus::QueueFunction(registerBusFn);
+
                 }
             }
         }
@@ -110,7 +122,17 @@ namespace ScriptEventsEditor
             return false;
         }
 
-        return AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>::SaveAssetData(asset, stream);
+        ScriptEvents::ScriptEventsAsset* assetData = asset.GetAs<ScriptEvents::ScriptEventsAsset>();
+        AZ_Assert(assetData, "Asset is of the wrong type.");
+        if (assetData && m_serializeContext)
+        {
+            return AZ::Utils::SaveObjectToStream<ScriptEvents::ScriptEventsAsset>(*stream,
+                m_saveAsBinary ? AZ::ObjectStream::ST_BINARY : AZ::ObjectStream::ST_XML,
+                assetData,
+                m_serializeContext);
+        }
+
+        return false;
     }
 
     AZ::Outcome<bool, AZStd::string> ScriptEventAssetHandler::IsAssetDataValid(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
@@ -153,28 +175,71 @@ namespace ScriptEventsEditor
         }
     }
 
+    void ScriptEventEditorSystemComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serialize->Class<ScriptEventEditorSystemComponent>()
+                ->Version(3)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
+            ;
+        }
+
+        using namespace ScriptEvents;
+
+        ScriptEventData::VersionedProperty::Reflect(context);
+        Parameter::Reflect(context);
+        Method::Reflect(context);
+        ScriptEvent::Reflect(context);
+
+        ScriptEventsAsset::Reflect(context);
+        ScriptEventsAssetRef::Reflect(context);
+        ScriptEventsAssetPtr::Reflect(context);
+    }
+
+    void ScriptEventEditorSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("ScriptEventsService", 0x6897c23b));
+    }
+
+    void ScriptEventEditorSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("ScriptEventsService", 0x6897c23b));
+    }
+
     ////////////////////
     // SystemComponent
     ////////////////////
-    void SystemComponent::Activate()
+    void ScriptEventEditorSystemComponent::Activate()
     {
-        ScriptEvents::SystemComponent::Activate();
+        using namespace ScriptEvents;
+
+        ScriptEventsSystemComponentImpl* moduleConfiguration = nullptr;
+        ScriptEventModuleConfigurationRequestBus::BroadcastResult(moduleConfiguration, &ScriptEventModuleConfigurationRequests::GetSystemComponentImpl);
+        if (moduleConfiguration)
+        {
+            moduleConfiguration->RegisterAssetHandler();
+        }
 
         m_propertyHandlers.emplace_back(AzToolsFramework::RegisterGenericComboBoxHandler<ScriptEventData::VersionedProperty>());
     }
 
-    void SystemComponent::Deactivate()
+    void ScriptEventEditorSystemComponent::Deactivate()
     {
-        ScriptEvents::SystemComponent::Deactivate();
-
         for (auto&& propertyHandler : m_propertyHandlers)
         {
             AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, propertyHandler.get());
         }
         m_propertyHandlers.clear();
         
-        m_editorAssetHandler->Unregister();
-        m_editorAssetHandler.reset();
+        using namespace ScriptEvents;
+        ScriptEventsSystemComponentImpl* moduleConfiguration = nullptr;
+        ScriptEventModuleConfigurationRequestBus::BroadcastResult(moduleConfiguration, &ScriptEventModuleConfigurationRequests::GetSystemComponentImpl);
+        if (moduleConfiguration)
+        {
+            moduleConfiguration->UnregisterAssetHandler();
+        }
     }
 }
 
+#endif

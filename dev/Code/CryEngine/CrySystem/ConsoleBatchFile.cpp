@@ -22,6 +22,7 @@
 #include <CryPath.h>
 #include <stdio.h>
 #include "System.h"
+#include <AzCore/IO/FileIO.h>
 
 IConsole* CConsoleBatchFile::m_pConsole = NULL;
 
@@ -64,7 +65,17 @@ bool CConsoleBatchFile::ExecuteConfigFile(const char* sFilename)
 
     if (sFilename[0] != '@') // console config files are actually by default in @root@ instead of @assets@
     {
-        filename = PathUtil::Make("@root@", PathUtil::GetFile(sFilename));
+        // However, if we've passed in a relative or absolute path that matches an existing file name,
+        // don't change it.  Only change it to "@root@/filename" and strip off any relative paths
+        // if the given pattern *didn't* match a file.
+        if (AZ::IO::FileIOBase::GetDirectInstance()->Exists(sFilename))
+        {
+            filename = sFilename;
+        }
+        else
+        {
+            filename = PathUtil::Make("@root@", PathUtil::GetFile(sFilename));
+        }
     }
     else
     {

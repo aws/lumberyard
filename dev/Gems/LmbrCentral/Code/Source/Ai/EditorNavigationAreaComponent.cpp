@@ -180,8 +180,14 @@ namespace LmbrCentral
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-        AZ::ConstPolygonPrismPtr polygonPrismPtr;
+        AZ::ConstPolygonPrismPtr polygonPrismPtr = nullptr;
         PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
+
+        if (!polygonPrismPtr)
+        {
+            AZ_Error("EditorNavigationAreaComponent", false, "Polygon prism does not exist for navigation area.");
+            return;
+        }
 
         const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
         if (IAISystem* aiSystem = gEnv->pAISystem)

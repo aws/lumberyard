@@ -39,17 +39,6 @@ namespace AzToolsFramework
             Default = NoBoundingBox, ///< Default - Do not show the bounding box of editor selection.
         };
 
-        AZ_DEPRECATED(,
-            "GetEditorSelectionBounds() has been deprecated - Please use "
-            "GetEditorSelectionBoundsViewport(const AzFramework::ViewportInfo& /*viewportInfo*/)")
-        virtual AZ::Aabb GetEditorSelectionBounds()
-        {
-            AZ_Assert(false,
-                "GetEditorSelectionBounds() has been deprecated - Please use "
-                "GetEditorSelectionBoundsViewport(const AzFramework::ViewportInfo& /*viewportInfo*/)");
-            return AZ::Aabb::CreateNull();
-        }
-
         /// @brief Returns an AABB that encompasses the object.
         /// @return AABB that encompasses the object.
         /// @note ViewportInfo may be necessary if the all or part of the object
@@ -62,21 +51,6 @@ namespace AzToolsFramework
                 "has not been implemented in the derived class");
 
             return AZ::Aabb::CreateNull();
-        }
-
-        AZ_DEPRECATED(, "EditorSelectionIntersectRay(const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, "
-            "AZ::VectorFloat& /*distance*/) has been deprecated - Please use "
-            "EditorSelectionIntersectRayViewport(const AzFramework::ViewportInfo& /*viewportInfo*/, "
-            "const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, AZ::VectorFloat& /*distance*/)")
-        virtual bool EditorSelectionIntersectRay(
-            const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, AZ::VectorFloat& /*distance*/)
-        {
-            AZ_Assert(false,
-                "EditorSelectionIntersectRay(const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, "
-                "AZ::VectorFloat& /*distance*/) has been deprecated - Please use "
-                "EditorSelectionIntersectRayViewport(const AzFramework::ViewportInfo& /*viewportInfo*/, "
-                "const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, AZ::VectorFloat& /*distance*/)");
-            return false;
         }
 
         /// @brief Returns true if editor selection ray intersects with the handler.

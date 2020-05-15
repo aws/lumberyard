@@ -32,6 +32,14 @@
 #include <SVOGI_Traits_Platform.h>
 
 
+namespace AzFramework
+{
+    namespace Terrain
+    {
+        class TerrainDataRequests;
+    }
+}
+
 /*
  This structure represents the brick in the parlance of brickmaps.  With brick maps each voxel
  represents a brick of data. The brick subdivides the voxel into a denser sampling region while
@@ -209,6 +217,10 @@ namespace SVOGI
         void    FreeBrickData();
         void    FreeTriangleData();
         void    ClearTriangleData();
+
+        //! Does the real work on behalf of ExtractTerrainTriangles() but @terrain is a thread safe
+        //! EBus interface.
+        void    ExtractTerrainTrianglesLocked(AzFramework::Terrain::TerrainDataRequests* terrain);
     };
 
 }

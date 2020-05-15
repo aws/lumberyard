@@ -41,11 +41,15 @@ namespace AzToolsFramework
 
         /// LUMBERYARD_DEPRECATED(LY-102920)
         /// ATTN: Do not use SetCurrentVisibility, instead use SetEntityVisibility in EditorEntityHelpers.h/cpp.
-        virtual void SetCurrentVisibility(bool visibility) = 0;
+        AZ_DEPRECATED(
+            virtual void SetCurrentVisibility(bool visibility) = 0;,
+            "Do not use SetCurrentVisibility, instead use SetEntityVisibility in EditorEntityHelpers.h/cpp.")
 
         /// LUMBERYARD_DEPRECATED(LY-102920)
-        /// ATTN: Do not GetCurrentVisibility, instead use EditorEntityInfoRequests::IsVisible.
-        virtual bool GetCurrentVisibility() = 0;
+        /// ATTN: Do not use GetCurrentVisibility, instead use EditorEntityInfoRequests::IsVisible.
+        AZ_DEPRECATED(
+            virtual bool GetCurrentVisibility() = 0;,
+            "Do not use GetCurrentVisibility, instead use EditorEntityInfoRequests::IsVisible.")
     };
 
     /// \ref EditorVisibilityRequests

@@ -618,7 +618,7 @@ struct SInputSymbol
         , user(user_)
         , deviceIndex(0)
         , screenPosition(ZERO)
-        , crc(name)
+        , crc(name.c_str())
     {
     }
 

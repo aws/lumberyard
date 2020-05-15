@@ -28,9 +28,9 @@
     "attributes": {
         "default_folder_name"       : "BinAndroidArmv8Clang",
         "msvs": {
-            "msvs_ver"          : "14",
+            "msvs_ver"          : ["15", "16"],
             "prefix"            : "android",
-            "compat_toolsets"   : ["v120", "v140"],
+            "compat_toolsets"   : ["v141", "v142"],
             "toolset_name"      : "ARM"
         }
     },

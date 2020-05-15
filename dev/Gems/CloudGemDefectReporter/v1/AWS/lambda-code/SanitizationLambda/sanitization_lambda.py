@@ -16,7 +16,6 @@ from collections import namedtuple
 import magic
 from PIL import Image
 Image.warnings.simplefilter('error', Image.DecompressionBombWarning)
-from hurry.filesize import size
 import piexif
 import CloudCanvas
 import defect_reporter_constants as constants

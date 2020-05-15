@@ -539,10 +539,14 @@ bool CStatObj::RenderDebugInfo(CRenderObject* pObj, const SRenderingPassInfo& pa
                 pObj->m_ObjFlags |= FOB_SELECTED;
             }
 
-            if (pObj && nNumLods > 1 && !bNoText)
+            // Don't skip objects with single lod (as they should flash)
+            if (pObj && !bNoText)
             {
-                const int nLod0 = GetMinUsableLod();
-                const int maxLod = GetMaxUsableLod();
+                const int nLod0 = nNumLods > 1 ? GetMinUsableLod() : 0;     // Always 0 if one lod
+                const int maxLod = nNumLods > 1 ? GetMaxUsableLod() : 0;    // Always 0 if one lod
+
+                clr.toFloat4(color);    // Actually use the colours calculated already to indicate lod
+
                 const bool bRenderNodeValid(pObj && pObj->m_pRenderNode && ((UINT_PTR)(void*)(pObj->m_pRenderNode) > 0));
                 IRenderNode* pRN = (IRenderNode*)pObj->m_pRenderNode;
                 pRend->DrawLabelEx(pos, 1.3f, color, true, true, "%d [%d;%d] (%d/%.1f)",
@@ -812,6 +816,54 @@ bool CStatObj::RenderDebugInfo(CRenderObject* pObj, const SRenderingPassInfo& pa
             }
             return false;
         }
+        case 24:
+        case 25:
+        {
+            // display a label for this render node if the triangle count equals or exceeds 
+            // e_DebugDrawLodMinTriangles and the object has no lods, or has too few lods
+            int minTriangleCount = GetCVars()->e_DebugDrawLodMinTriangles;
+            if (m_nLoadedTrisCount >= minTriangleCount)
+            {
+                IRenderNode* pRN = (IRenderNode*)pObj->m_pRenderNode;
+                const char* shortName = "";
+
+                if (!m_szGeomName.empty())
+                {
+                    shortName = m_szGeomName.c_str();
+                }
+                else
+                {
+                    shortName = PathUtil::GetFile(m_szFileName.c_str());
+                }
+
+                if (nNumLods == 1)
+                {
+                    color[1] = color[2] = 0.0f;
+
+                    IRenderer::RNDrawcallsMapNode& drawCallsPerNode = pRend->GetDrawCallsInfoPerNodePreviousFrame();
+                    auto iter = drawCallsPerNode.find(pRN);
+                    if (iter != drawCallsPerNode.end())
+                    {
+                        pRend->DrawLabelEx(pos, 1.3f, color, true, true, "%s (%d)\n%d/%d/%d/%d/%d", shortName, m_nLoadedTrisCount, iter->second.nZpass, iter->second.nGeneral, iter->second.nTransparent, iter->second.nShadows, iter->second.nMisc);
+                    }
+                    else
+                    {
+                        pRend->DrawLabelEx(pos, 1.3f, color, true, true, "%s (%d)", shortName, m_nLoadedTrisCount);
+                    }
+                }
+                else if (e_DebugDraw == 25 && nNumLods < MAX_STATOBJ_LODS_NUM)   // 25 adds in drawing of objects that should be at a lower lod than exists
+                {
+                    float lodDistance = sqrt(m_fGeometricMeanFaceArea);
+                    float nextLodDistance = lodDistance * (nNumLods) / (pRN->GetLodRatioNormalized() * gEnv->p3DEngine->GetFrameLodInfo().fTargetSize);
+                    if (pObj->m_fDistance > nextLodDistance)
+                    {
+                        color[0] = color[1] = 0.0f;
+                        pRend->DrawLabelEx(pos, 1.3f, color, true, true, "%s (%d)", shortName, m_nLoadedTrisCount);
+                    }
+                }
+            }
+        }
+        break;
         }
     }
 

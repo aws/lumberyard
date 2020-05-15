@@ -16,6 +16,7 @@
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 
+#include <ScriptCanvas/Core/Endpoint.h>
 #include <ScriptCanvas/Core/NodeBus.h>
 #include <ScriptCanvas/GraphCanvas/DynamicSlotBus.h>
 
@@ -41,7 +42,7 @@ namespace ScriptCanvasEditor
         void Deactivate();
         ////
 
-        // GraphCanvas::NodeNotificationBus
+        // GraphCanvas::SceneMemberNotificationBus
         void OnSceneSet(const AZ::EntityId& sceneId) override;
         ////
         
@@ -57,9 +58,13 @@ namespace ScriptCanvasEditor
         void StopQueueSlotUpdates() override;
         ////
 
+    protected:
+
+        virtual void ConfigureGraphCanvasSlot(const ScriptCanvas::Slot* slot, const GraphCanvas::SlotId& graphCanvasSlotId);
+
     private:
 
-        void HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint);
+        void HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint);       
 
         GraphCanvas::SlotGroup m_slotGroup;
 

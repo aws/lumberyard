@@ -77,7 +77,6 @@ namespace EMotionFX
 
     // constructor
     Actor::Actor(const char* name)
-        : BaseObject()
     {
         SetName(name);
 
@@ -119,7 +118,6 @@ namespace EMotionFX
         mMaterials[0].SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
         mMorphSetups.Add(nullptr);
 
-        GetActorManager().RegisterActor(this);
         GetEventManager().OnCreateActor(this);
     }
 
@@ -146,25 +144,14 @@ namespace EMotionFX
 
         // destroy the skeleton
         MCore::Destroy(mSkeleton);
-
-        // unregister the actor
-        GetActorManager().UnregisterActor(this);
     }
-
-
-    // create method
-    Actor* Actor::Create(const char* name)
-    {
-        return aznew Actor(name);
-    }
-
 
     // creates a clone of the actor (a copy).
     // does NOT copy the motions and motion tree
-    Actor* Actor::Clone()
+    AZStd::unique_ptr<Actor> Actor::Clone() const
     {
         // create the new actor and set the name and filename
-        Actor* result = Actor::Create(GetName());
+        AZStd::unique_ptr<Actor> result = AZStd::make_unique<Actor>(GetName());
         result->SetFileName(GetFileName());
 
         // copy the actor attributes
@@ -246,9 +233,9 @@ namespace EMotionFX
 
         result->mNodeMirrorInfos = mNodeMirrorInfos;
         result->m_physicsSetup = m_physicsSetup;
-        result->SetSimulatedObjectSetup(m_simulatedObjectSetup->Clone(result));
+        result->SetSimulatedObjectSetup(m_simulatedObjectSetup->Clone(result.get()));
 
-        GetEMotionFX().GetEventManager()->OnPostCreateActor(result);
+        GetEMotionFX().GetEventManager()->OnPostCreateActor(result.get());
 
         return result;
     }
@@ -357,7 +344,7 @@ namespace EMotionFX
         // copy data from the previous LOD level if wanted
         if (copyFromLastLODLevel && numLODs > 0)
         {
-            CopyLODLevel(this, lodIndex - 1, numLODs - 1, true, false);
+            CopyLODLevel(this, lodIndex - 1, numLODs - 1, true);
         }
     }
 
@@ -390,7 +377,7 @@ namespace EMotionFX
 
 
     // replace existing LOD level with the current actor
-    void Actor::CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem)
+    void Actor::CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags)
     {
         const LODLevel& sourceLOD = copyActor->mLODs[copyLODLevel];
         LODLevel& targetLOD = mLODs[replaceLODLevel];
@@ -464,12 +451,6 @@ namespace EMotionFX
         else
         {
             mMorphSetups[replaceLODLevel] = nullptr;
-        }
-
-        // remove the actor from memory if desired
-        if (delLODActorFromMem)
-        {
-            copyActor->Destroy();
         }
     }
 
@@ -1068,7 +1049,7 @@ namespace EMotionFX
 
 
     // recursively add dependencies
-    void Actor::RecursiveAddDependencies(Actor* actor)
+    void Actor::RecursiveAddDependencies(const Actor* actor)
     {
         // process all dependencies of the given actor
         const uint32 numDependencies = actor->GetNumDependencies();
@@ -1800,7 +1781,7 @@ namespace EMotionFX
 
 
     // copy transforms from another actor
-    void Actor::CopyTransformsFrom(Actor* other)
+    void Actor::CopyTransformsFrom(const Actor* other)
     {
         MCORE_ASSERT(other->GetNumNodes() == mSkeleton->GetNumNodes());
         ResizeTransformData();
@@ -1838,9 +1819,24 @@ namespace EMotionFX
         }
 
         mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
-        Transform identTransform;
-        identTransform.Identity();
-        mSkeleton->GetBindPose()->SetLocalSpaceTransform(mSkeleton->GetNumNodes() - 1, identTransform);
+        mSkeleton->GetBindPose()->SetLocalSpaceTransform(mSkeleton->GetNumNodes() - 1, {});
+    }
+
+    Node* Actor::AddNode(uint32 nodeIndex, const char* name, uint32 parentIndex)
+    {
+        Node* node = Node::Create(name, GetSkeleton());
+        node->SetNodeIndex(nodeIndex);
+        node->SetParentIndex(parentIndex);
+        AddNode(node);
+        if (parentIndex == MCORE_INVALIDINDEX32)
+        {
+            GetSkeleton()->AddRootNode(node->GetNodeIndex());
+        }
+        else
+        {
+            node->GetParentNode()->AddChild(nodeIndex);
+        }
+        return node;
     }
 
 

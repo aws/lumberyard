@@ -304,7 +304,7 @@ namespace AZ
                 return false;
             }
 
-            bool ConvertFromType(void*& convertibleTypePtr, const TypeId& convertibleTypeId, void* classPtr, const SerializeContext::ClassData& classData, SerializeContext& serializeContext)
+            bool ConvertFromType(void*& convertibleTypePtr, const TypeId& convertibleTypeId, void* classPtr, const SerializeContext::ClassData& classData, SerializeContext& serializeContext) override
             {
                 /* Set the convertible address to the class address if the type exactly matches VariantType
                  * This is for the case if the VariantType has been serialized out with the selected alternative as a child
@@ -471,7 +471,7 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {

@@ -225,11 +225,12 @@ TEST_F(ScriptCanvasTestFixture, FixtureSanity)
 //////////////////////////////////////////////////////////////////////////
 // if these tests do not pass, our SC unit test framework is broken, and such tests are meaningless
 //////////////////////////////////////////////////////////////////////////
+
 TEST_F(ScriptCanvasTestFixture, AddFailure)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_AddFailure");
     
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -253,7 +254,7 @@ TEST_F(ScriptCanvasTestFixture, AddSuccess)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_AddSuccess");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -277,7 +278,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectTrueFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectTrueFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -292,7 +293,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectTrueSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectTrueSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -307,7 +308,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectEqualFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectEqualFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -324,7 +325,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectEqualSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectEqualSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -341,7 +342,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectNotEqualFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectNotEqualFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -358,7 +359,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectNotEqualSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectNotEqualSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -375,7 +376,7 @@ TEST_F(ScriptCanvasTestFixture, MarkCompleteFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_MarkCompleteFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -391,7 +392,7 @@ TEST_F(ScriptCanvasTestFixture, MarkCompleteSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_MarkCompleteSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -407,7 +408,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectGreaterThanFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectGreaterThanFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -424,7 +425,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectGreaterThanSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectGreaterThanSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -441,7 +442,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectGreaterThanEqualFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectGreaterThanEqualFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -458,7 +459,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectGreaterThanEqualSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectGreaterThanEqualSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -475,7 +476,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectLessThanFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectLessThanFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -492,7 +493,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectLessThanSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectLessThanSucceed");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -509,7 +510,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectLessThanEqualFail)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectLessThanEqualFail");
 
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;
@@ -526,7 +527,7 @@ TEST_F(ScriptCanvasTestFixture, ExpectLessThanEqualSucceed)
 {
     MetaReporter reporter = MetaRunUnitTestGraph("LY_SC_UnitTest_Meta_ExpectLessThanEqualSucceed");
     
-    if (!reporter.GetGraphId().IsValid())
+    if (!reporter.GetScriptCanvasId().IsValid())
     {
         ADD_FAILURE() << "Graph is not valid";
         return;

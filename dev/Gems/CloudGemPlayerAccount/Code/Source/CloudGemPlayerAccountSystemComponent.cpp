@@ -166,7 +166,7 @@ namespace CloudGemPlayerAccount
                 ec->Class<CloudGemPlayerAccountSystemComponent>(COMPONENT_DISPLAY_NAME, COMPONENT_DESCRIPTION)
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, COMPONENT_CATEGORY)
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC(COMPONENT_CATEGORY))
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &CloudGemPlayerAccountSystemComponent::m_userPoolLogicalName, "Logical user pool name",
                         "The logical name of the user pool resource")

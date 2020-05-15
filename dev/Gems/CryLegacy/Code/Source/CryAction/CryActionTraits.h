@@ -22,7 +22,6 @@
         #include "Salem/CryActionTraits_h_salem.inl"
     #endif
 #else
-    #define AZ_LEGACY_CRYACTION_TRAIT_SCREENSHOT_EXTENSION "tif"
     #define AZ_LEGACY_CRYACTION_TRAIT_SET_COMPRESSOR_THREAD_PRIORITY 0
     #if defined(WIN32) || defined(LINUX) || defined(APPLE)
         #define AZ_LEGACY_CRYACTION_TRAIT_USE_ZLIB_COMPRESSOR_THREAD 1

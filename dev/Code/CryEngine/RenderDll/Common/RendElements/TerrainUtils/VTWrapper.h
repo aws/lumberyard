@@ -217,6 +217,9 @@ namespace Terrain
         // If the virtual tile does not exist in the cache, then we queue a request
         bool RequestTile(int x, int y, int mipLevel);
 
+        // Remove the virtual tile from the cache if it exists
+        bool ClearTile(int x, int y, int mipLevel);
+
         ///////////////////////////////
         // Update pump
 

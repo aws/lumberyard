@@ -480,6 +480,38 @@ namespace Physics
         EXPECT_NEAR(rigidBody->GetPosition().GetZ(), 95.0f, 0.5f);
     }
 
+    TEST_F(GenericPhysicsInterfaceTest, World_SplitSimulation_BodyFallsTheSameInBothWorlds)
+    {
+        auto worldA = CreateTestWorld();
+        auto worldB = CreateTestWorld();
+
+        AZ::Vector3 initialPosition(0.0f, 0.0f, 100.0f);
+
+        auto rigidBodyA = AddUnitBoxToWorld(worldA.get(), initialPosition);
+        auto rigidBodyB = AddUnitBoxToWorld(worldB.get(), initialPosition);
+
+        Physics::WorldConfiguration worldConfiguration;
+        float deltaTime = worldConfiguration.m_fixedTimeStep;
+
+        AZ::u32 numSteps = 60;
+
+        UpdateWorld(worldA.get(), deltaTime, numSteps);
+        UpdateWorldSplitSim(worldB.get(), deltaTime, numSteps);
+
+        // expect velocity to be -gt and distance fallen to be 1/2gt^2, but allow quite a lot of tolerance
+        // due to potential differences in back end integration schemes etc.
+        EXPECT_NEAR(rigidBodyA->GetLinearVelocity().GetZ(), -10.0f, 0.5f);
+        EXPECT_NEAR(rigidBodyA->GetTransform().GetPosition().GetZ(), 95.0f, 0.5f);
+        EXPECT_NEAR(rigidBodyA->GetCenterOfMassWorld().GetZ(), 95.0f, 0.5f);
+        EXPECT_NEAR(rigidBodyA->GetPosition().GetZ(), 95.0f, 0.5f);
+
+        // Verify simulation results are the same
+        EXPECT_TRUE(rigidBodyA->GetLinearVelocity().IsClose(rigidBodyB->GetLinearVelocity()));
+        EXPECT_TRUE(rigidBodyA->GetTransform().GetPosition().IsClose(rigidBodyB->GetTransform().GetPosition()));
+        EXPECT_TRUE(rigidBodyA->GetCenterOfMassWorld().IsClose(rigidBodyB->GetCenterOfMassWorld()));
+        EXPECT_TRUE(rigidBodyA->GetPosition().IsClose(rigidBodyB->GetPosition()));
+    }
+
     TEST_F(GenericPhysicsInterfaceTest, IncreaseMass_StaggeredTowerOfBoxes_TowerOverbalances)
     {
         auto world = CreateTestWorld();

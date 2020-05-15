@@ -11,8 +11,6 @@
             "Source/CryAction/Tests/CryMathPrinters.h",
             "Source/CryAction/Tests/CryMathTestAux.cpp",
             "Source/CryAction/Tests/CryMathTestAux.h",
-            "Source/CryAction/Tests/FlowNodeTestHarness.cpp",
-            "Source/CryAction/Tests/FlowNodeTestHarness.h",
             "Source/CryAction/Tests/CryVehicleTest.cpp",
             "Source/CryAction/Tests/GameObjectSystemTest.cpp"
         ],
@@ -24,12 +22,6 @@
         "Source/CryAction/UnitTests":
         [
             "Source/CryAction/UnitTests/CrossModuleComponents.cpp"
-        ],
-        "Source/CryAction/FlowSystem/Tests":
-        [
-            "Source/CryAction/FlowSystem/Tests/SanityTest.cpp",
-            "Source/CryAction/FlowSystem/Tests/MathRoundTest.cpp",
-            "Source/CryAction/FlowSystem/Tests/MathAddTest.cpp"
         ],
         "Source/CryAISystem/Tests":
         [

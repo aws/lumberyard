@@ -2,6 +2,7 @@
     "none": {
         "Tests": [
             "Tests/MultiplayerTest.cpp",
+            "Tests/MultiplayerLobbyComponentTest.cpp",
             "Tests/MultiplayerMocks.h"
         ]
     }

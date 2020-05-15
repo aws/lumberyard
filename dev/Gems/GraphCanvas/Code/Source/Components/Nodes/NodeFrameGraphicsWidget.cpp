@@ -85,14 +85,14 @@ namespace GraphCanvas
         return isSelected();
     }
 
-    void NodeFrameGraphicsWidget::SetZValue(int zValue)
+    void NodeFrameGraphicsWidget::SetZValue(qreal zValue)
     {
         setZValue(zValue);
     }
 
-    int NodeFrameGraphicsWidget::GetZValue() const
+    qreal NodeFrameGraphicsWidget::GetZValue() const
     {
-        return zValue();
+        return aznumeric_cast<int>(zValue());
     }
 
     void NodeFrameGraphicsWidget::OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position)
@@ -177,7 +177,7 @@ namespace GraphCanvas
 
         AZ::Vector2 position;
         GeometryRequestBus::EventResult(position, GetEntityId(), &GeometryRequests::GetPosition);
-        setPos(QPointF(position.GetX(), position.GetY()));
+        setPos(ConversionUtils::AZToQPoint(position));
     }
 
     void NodeFrameGraphicsWidget::OnNodeWrapped(const AZ::EntityId& wrappingNode)
@@ -191,7 +191,14 @@ namespace GraphCanvas
 
     void NodeFrameGraphicsWidget::AdjustSize()
     {
+        QRectF originalSize = boundingRect();
         adjustSize();
+        QRectF newSize = boundingRect();
+
+        if (originalSize != newSize)
+        {
+            GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SignalBoundsChanged);
+        }
     }
 
     void NodeFrameGraphicsWidget::SetSnapToGrid(bool snapToGrid)

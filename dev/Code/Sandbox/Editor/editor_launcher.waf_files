@@ -1,0 +1,8 @@
+{
+    "none": {
+        "Source Files": [
+           "@ENGINE@/Code/Tools/ToolsLauncher/ToolLauncher.h",
+           "@ENGINE@/Code/Tools/ToolsLauncher/ToolLauncher.cpp"
+       ]
+    }
+}

@@ -37,7 +37,7 @@ namespace AZ
         /**
         * Fills out the provided container with all of the IDs of entities associated with this metadata entity.
         */
-        virtual void GetAssociatedEntities(AZStd::unordered_set<EntityId>& /*associatedEntityIds*/) = 0;
+        virtual void GetAssociatedEntities(AZStd::set<EntityId>& /*associatedEntityIds*/) = 0;
 
         /**
         * Retrieve the Id of the parent
@@ -89,7 +89,7 @@ namespace AZ
         /**
         * Fills out the provided container with all of the IDs of entities associated with this metadata entity.
         */
-        virtual void GetAssociatedEntities(AZStd::unordered_set<EntityId>& /*associatedEntityIds*/) = 0;
+        virtual void GetAssociatedEntities(AZStd::set<EntityId>& /*associatedEntityIds*/) = 0;
 
         /**
         * Remove an entity from the association list.

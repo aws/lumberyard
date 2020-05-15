@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import boto3
 import json
 import CloudCanvas
@@ -56,7 +57,7 @@ def _get_channel_table():
     return _get_channel_table.channel_table
 
 def __build_channel_list():
-    print 'Listing channel info'
+    print('Listing channel info')
     resultData = []
 
     tableinfo = _get_channel_table()
@@ -88,19 +89,19 @@ def __build_channel_list():
                         elif channel_communication_type == 'PRIVATE':
                             if len(parsed_subscription) > 3 and parsed_subscription[3] == 'client':
                                 this_result['Subscription'] = this_subscription
-                                
-            print 'Appending Channel Item {}'.format(this_result)
+
+            print('Appending Channel Item {}'.format(this_result))
             resultData.append(this_result)
 
     for item_data in table_data['Items']:
-        print 'Found item {}'.format(item_data)
+        print('Found item {}'.format(item_data))
         append_channel_data(item_data)
 
     while table_data.get('LastEvaluatedKey', None) != None:
         table_data = tableinfo.scan(ExclusiveStartKey=table_data.get('LastEvaluatedKey'))
 
         for item_data in table_data['Items']:
-            print 'Found item {}'.format(item_data)
+            print('Found item {}'.format(item_data))
             append_channel_data(item_data)
 
     return resultData

@@ -42,6 +42,32 @@ namespace GraphCanvas
             }
         }
         
+        virtual bool EnableDropHandling() const
+        {
+            return false;
+        }
+        
+        // Outcome signifies whether or not the data is recognized and could be handled.
+        // The DragDropState determines how the recognized data is handled for visual feedback.
+        virtual AZ::Outcome<DragDropState> ShouldAcceptMimeData(const QMimeData* mimeData)
+        {
+            AZ_UNUSED(mimeData);
+            return AZ::Failure();
+        }
+
+        virtual bool HandleMimeData(const QMimeData* mimeData)
+        {
+            AZ_UNUSED(mimeData);
+            return false;
+        }
+
+    protected:
+
+        const NodePropertyDisplay* GetDisplay() const
+        {
+            return m_display;
+        }
+        
     private:
     
         NodePropertyDisplay*  m_display;

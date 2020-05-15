@@ -38,6 +38,7 @@ namespace UnitTest
         bool m_myBool = true;
         float m_myFloat = 42.0f;
         AZStd::string m_myString = "StringValue";
+        AZStd::string m_myGroupedString = "GroupedStringValue";
 
         struct PropertyTreeEditorNestedTester
         {
@@ -60,6 +61,7 @@ namespace UnitTest
                     ->Field("myString", &PropertyTreeEditorTester::m_myString)
                     ->Field("NestedTester", &PropertyTreeEditorTester::m_nestedTester)
                     ->Field("myNewInt", &PropertyTreeEditorTester::m_myNewInt)
+                    ->Field("myGroupedString", &PropertyTreeEditorTester::m_myGroupedString)
                     ;
 
                 serializeContext->Class<PropertyTreeEditorNestedTester>()
@@ -78,6 +80,8 @@ namespace UnitTest
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myString, "My String", "A test string.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_nestedTester, "Nested", "A nested class.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myNewInt, "My New Int", "A test int.", "My Old Int")
+                        ->ClassElement(AZ::Edit::ClassElements::Group, "Grouped")
+                            ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myGroupedString, "My Grouped String", "A test grouped string.")
                         ;
 
                     editContext->Class<PropertyTreeEditorNestedTester>(
@@ -150,6 +154,12 @@ namespace UnitTest
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(nestedOutcome.GetValue()).data(), propertyTreeEditorTester.m_nestedTester.m_myNestedString.data());
         }
 
+        {
+            PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.GetProperty("Grouped|My Grouped String");
+            EXPECT_TRUE(groupedOutcome.IsSuccess());
+            EXPECT_STREQ(AZStd::any_cast<AZStd::string>(groupedOutcome.GetValue()).data(), propertyTreeEditorTester.m_myGroupedString.data());
+        }
+
 
         // Test non-existing properties
 
@@ -161,6 +171,12 @@ namespace UnitTest
         {
             PropertyTreeEditor::PropertyAccessOutcome nestedOutcome = propertyTree.GetProperty("Nested|Wrong Nested Property");
             EXPECT_FALSE(nestedOutcome.IsSuccess());
+        }
+
+        {
+            // Addressing the grouped property by name directly without the group should fail
+            PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.GetProperty("My Grouped String");
+            EXPECT_FALSE(groupedOutcome.IsSuccess());
         }
 
     }
@@ -222,6 +238,15 @@ namespace UnitTest
             EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcomeSet.GetValue()).data(), AZStd::any_cast<AZStd::string>(stringOutcomeGet.GetValue()).data());
         }
 
+        {
+            PropertyTreeEditor::PropertyAccessOutcome stringOutcomeSet = propertyTree.SetProperty("Grouped|My Grouped String", AZStd::make_any<AZStd::string>("New Grouped Value"));
+            EXPECT_TRUE(stringOutcomeSet.IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome stringOutcomeGet = propertyTree.GetProperty("Grouped|My Grouped String");
+            EXPECT_TRUE(stringOutcomeGet.IsSuccess());
+            EXPECT_STREQ(AZStd::any_cast<AZStd::string>(stringOutcomeSet.GetValue()).data(), AZStd::any_cast<AZStd::string>(stringOutcomeGet.GetValue()).data());
+        }
+
 
         // Test non-existing properties
 
@@ -235,6 +260,17 @@ namespace UnitTest
             EXPECT_FALSE(nestedOutcome.IsSuccess());
         }
 
+        {
+            PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.SetProperty("Grouped|Wrong Grouped Property", AZStd::make_any<AZStd::string>("Some Value"));
+            EXPECT_FALSE(groupedOutcome.IsSuccess());
+        }
+
+        {
+            // Addressing the grouped property by name directly without the group should fail
+            PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.SetProperty("My Grouped String", AZStd::make_any<AZStd::string>("Some Value"));
+            EXPECT_FALSE(groupedOutcome.IsSuccess());
+        }
+
 
         // Test existing properties with wrong type
 
@@ -246,6 +282,11 @@ namespace UnitTest
         {
             PropertyTreeEditor::PropertyAccessOutcome nestedOutcome = propertyTree.SetProperty("Nested|My Nested String", AZStd::any(42.0f));
             EXPECT_FALSE(nestedOutcome.IsSuccess());
+        }
+
+        {
+            PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.SetProperty("Grouped|My Grouped String", AZStd::any(42.0f));
+            EXPECT_FALSE(groupedOutcome.IsSuccess());
         }
     }
 

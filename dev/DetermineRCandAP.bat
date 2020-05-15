@@ -29,6 +29,13 @@ IF [%1]==[SILENT] (
     SET VERBOSE=0
 )
 
+REM Initialize the BINFOLDER_HINT from the 3rd parameter
+IF NOT "%~2"=="" (
+    SET BINFOLDER_HINT=%~2
+) ELSE (
+    SET BINFOLDER_HINT=
+)
+
 SET BINFOLDER=
 
 REM Highest Priorty: Determine registry key 'HKCU\Software\Amazon\Lumberyard\Settings'
@@ -69,13 +76,29 @@ IF NOT [%BINFOLDER%]==[] (
     )
 )
 
+REM Next search using the %BINFOLDER_HINT% as a directory if it is non-empty
+IF NOT "%BINFOLDER_HINT%"=="" (
+    IF EXIST "%MYBATCHFILEDIRECTORY%\%BINFOLDER_HINT%\AssetProcessorBatch.exe" (
+        IF EXIST "%MYBATCHFILEDIRECTORY%\%BINFOLDER_HINT%\rc\rc.exe" (
+            SET BINFOLDER=%BINFOLDER_HINT%
+            GOTO BinFolderFound
+        )
+    )
+)
 REM There was an error determining the folder from the registry, try from the most recent to oldest vc version
+IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc142\AssetProcessorBatch.exe" (
+    IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc142\rc\rc.exe" (
+        SET BINFOLDER=Bin64vc142
+        GOTO BinFolderFound
+    )
+)
 IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc141\AssetProcessorBatch.exe" (
     IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc141\rc\rc.exe" (
         SET BINFOLDER=Bin64vc141
         GOTO BinFolderFound
     )
 )
+
 
 REM Unable to determine or find a binfolder/AssetProcessorBatch.exe
 IF %SILENTMODE%==0 echo unable to locate AssetProcessorBatch.exe.  Make sure it is available or re-build it from the source

@@ -155,7 +155,7 @@
 											<Class name="AZStd::string" field="AssetPath" value="materials/projectile/projectile.mtl" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
-									<Class name="MeshRenderOptions" field="Render Options" version="4" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
+									<Class name="MeshRenderOptions" field="Render Options" version="5" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="8000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -182,7 +182,7 @@
 								</Class>
 								<Class name="bool" field="IsEditorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="EditorColliderComponent" field="element" version="4" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
+							<Class name="EditorColliderComponent" field="element" version="9" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="18183684939705768563" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -232,21 +232,26 @@
 										<Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									</Class>
-									<Class name="PhysicsAssetShapeConfiguration" field="PhysicsAsset" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="EditorProxyAssetShapeConfig" field="PhysicsAsset" version="1" type="{C1B46450-C2A3-4115-A2FB-E5FF3BAAAD15}">
+										<Class name="Asset" field="Asset" value="id={00000000-0000-0000-0000-000000000000}:0,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+										<Class name="PhysicsAssetShapeConfiguration" field="Configuration" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
+											<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+												<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											</Class>
+											<Class name="Asset" field="PhysicsAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={AF3F7D32-1536-422A-89F3-A11E1F5B5A9C},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+											<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											<Class name="bool" field="UseMaterialsFromAsset" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										</Class>
-										<Class name="Asset" field="PhysicsAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={AF3F7D32-1536-422A-89F3-A11E1F5B5A9C},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-										<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									</Class>
 								</Class>
-								<Class name="Asset" field="MeshAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								<Class name="Collider" field="DebugDrawSettings" version="1" type="{7DE9CA01-DF1E-4D72-BBF4-76C9136BE6A2}">
+									<Class name="bool" field="LocallyEnabled" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="GlobalButtonState" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								</Class>
 								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
 									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
-								<Class name="bool" field="DebugDraw" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-								<Class name="bool" field="DebugDrawButtonState" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
 							<Class name="EditorRigidBodyComponent" field="element" version="1" type="{F2478E6B-001A-4006-9D7E-DCB5A6B041DD}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">

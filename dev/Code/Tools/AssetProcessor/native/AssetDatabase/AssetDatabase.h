@@ -87,6 +87,7 @@ namespace AssetProcessor
         bool GetSourceBySourceGuid(AZ::Uuid sourceGuid, AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry);
 
         bool GetSourceBySourceID(AZ::s64 sourceID, AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry);
+        bool GetSourceBySourceName(QString exactSourceName, AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry);
         bool GetSourcesBySourceName(QString exactSourceName, AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer& source);
         bool GetSourcesBySourceNameScanFolderId(QString exactSourceName, AZ::s64 scanFolderID, AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer& source);
         bool GetSourcesLikeSourceName(QString likeSourceName, LikeType likeType, AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer& container);
@@ -129,6 +130,7 @@ namespace AssetProcessor
         bool GetProductsByJobID(AZ::s64 jobID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         // note that the pair of (JobID, SubID) uniquely identifies a single job, and thus the result is always only one entry:
         bool GetProductByJobIDSubId(AZ::s64 jobID, AZ::u32 subID, AzToolsFramework::AssetDatabase::ProductDatabaseEntry& result);
+        bool GetProductBySourceGuidSubId(AZ::Uuid sourceGuid, AZ::u32 subId, AzToolsFramework::AssetDatabase::ProductDatabaseEntry& result);
         
         bool GetProductByProductID(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntry& entry);
         bool GetProductsByProductName(QString exactProductName, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container, AZ::Uuid builderGuid = AZ::Uuid::CreateNull(), QString jobKey = QString(), QString platform = QString(), AzToolsFramework::AssetSystem::JobStatus status = AzToolsFramework::AssetSystem::JobStatus::Any);
@@ -188,6 +190,7 @@ namespace AssetProcessor
         bool GetProductDependencyByProductDependencyID(AZ::s64 productDependencyID, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& productDependencyEntry);
         bool GetProductDependenciesByProductID(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
         bool GetDirectProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
+        bool GetDirectReverseProductDependenciesBySourceGuidSubId(AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubId, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         bool GetAllProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         bool GetUnresolvedProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
         bool SetProductDependency(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);

@@ -91,7 +91,7 @@ namespace ExporterLib
 
 
     // actor
-    bool Exporter::SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    bool Exporter::SaveActor(MCore::MemoryFile* file, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
     {
         ResetMemoryFile(file);
         ExporterLib::SaveActor(file, actor, targetEndianType);
@@ -99,7 +99,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveActor(AZStd::string filenameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    bool Exporter::SaveActor(AZStd::string filenameWithoutExtension, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
     {
         PREPARE_DISKFILE_SAVE(GetActorExtension);
         if (SaveActor(&memoryFile, actor, targetEndianType) == false)

@@ -8,22 +8,25 @@
 # Nicolas Mercier, 2009
 # Matt Clarkson, 2012
 
-import os, sys, re, tempfile, subprocess, hashlib
+# System Imports
+import os
+import sys
+import tempfile
+
+winreg_available = True
+try:
+    import winreg
+except ImportError:
+    winreg_available = False
+    pass
+
+# waflib imports
 from waflib import Utils, Task, Logs, Options, Errors
 from waflib.Logs import debug, warn
 from waflib.Tools import c_preproc, ccroot, c, cxx, ar
 from waflib.Configure import conf
 from waflib.TaskGen import feature, after, after_method, before_method
 import waflib.Node
-from utils import parse_json_file, write_json_file
-from waf_branch_spec import LMBR_WAF_VERSION_TAG, BINTEMP_CACHE_TOOLS
-
-winreg_available = True
-try:
-    import _winreg
-except ImportError:
-    winreg_available = False
-    pass
 
 # The compiler will issue a warning if some flags are specified more than once.
 # The command is constructed from subsets that may have conflicting flags
@@ -203,6 +206,9 @@ def exec_command_msvc(self, *k, **kw):
         if self.generator.name not in excluded_modules and (not included_modules or self.generator.name in included_modules):
             if k[0][0] == self.env['CXX'] or k[0][0] == self.env['CC']:
                 k = ([self.env['BULL_COVC'], '--file', self.env['BULL_COV_FILE']] + k[0],)
+                # Bullseye has problems with external include directories, so strip out the external flag if it appears. 
+                # Disable warnings as errors since we are not using external include directories, and so 3rd party will generate warnings.
+                k = tuple([[element.replace("/external:I", "/I") for element in k[0] if element != '/WX']]) + k[1:]
 
     # We must link with bullseye regardless of which way the project is set (with or without coverage) to avoid link errors with included libraries.
     if 'BULL_COVLINK' in self.env and (k[0][0] == self.env['LINK'] or k[0][0] == self.env['LINK_CXX'] or k[0][0] == self.env['LINK_CC']):
@@ -213,7 +219,7 @@ def exec_command_msvc(self, *k, **kw):
     if isinstance(k[0], list):
         lst = []
         carry = ''
-        join_with_next_list_item = ['/Fo', '/doc', '/Fi', '/Fa']    
+        join_with_next_list_item = ['/Fo', '/doc', '/Fi', '/Fa']
         for a in k[0]:
             if a in  join_with_next_list_item or a[-1] == ':':
                 carry = a
@@ -222,7 +228,7 @@ def exec_command_msvc(self, *k, **kw):
                 carry = ''
 
         k = [lst]
-        
+
     bld = self.generator.bld
     try:
         if not kw.get('cwd', None):
@@ -344,7 +350,16 @@ def add_pch_msvc(self):
     pch_task.env.append_value('PCH_NAME', self.pch_header_name)
     pch_task.env.append_value('PCH_FILE', '/Fp' + self.pch_file.abspath())
     pch_task.env.append_value('PCH_OBJ', self.pch_object.abspath())
-
+    # Pre-compiled headers retains pragma(warning) during compilation of the actual pch file
+    # therefore any warnings that occur during that compilation is unable to be suppressed.
+    # In this case warning C4251 is suppressed for MSVC compilers which is a warning that 
+    # class that performs a dllexport needs to have it's data members to have a dll-interface as well
+    # https://docs.microsoft.com/en-us/cpp/build/creating-precompiled-header-files?view=vs-2019#pragma-consistency
+    # The warning can still trigger in code that uses the precompiled header, just not in the compiled file itself
+    if not pch_task.env['CXXFLAGS'] or not isinstance(pch_task.env['CXXFLAGS'], list):
+        pch_task.env['CXXFLAGS'] = ['/wd4251']
+    else:
+        pch_task.env['CXXFLAGS'].append('/wd4251')
 
 @feature('cxx')
 @after_method('apply_incpaths')
@@ -387,7 +402,7 @@ def add_pch_to_dependencies(self):
 
 
 class pch_msvc(waflib.Task.Task):
-    run_str = '${CXX} ${PCH_CREATE_ST:PCH_NAME} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} ${CXX_TGT_F}${PCH_OBJ} ${PCH_FILE}'
+    run_str = '${CXX} ${PCH_CREATE_ST:PCH_NAME} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${SYSTEM_CPPPATH_ST:SYSTEM_INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} ${CXX_TGT_F}${PCH_OBJ} ${PCH_FILE}'
     scan    = c_preproc.scan
     color   = 'BLUE'
     
@@ -453,517 +468,6 @@ def verify_compiler_options_msvc(self):
 # Code for auto-recognition of Visual Studio Compiler and Windows SDK Path
 # Taken from the original WAF code
 #############################################################################
-all_msvc_platforms = [ ('x64', 'amd64')]
-"""List of msvc platforms"""
-
-TOOL_CACHE_ATTR_USE_CACHE_FLAG = 'use_tool_environment_cache'
-
-TOOL_CACHE_ATTR_READ_DICTIONARY = 'tool_environment_cache_read_dict'
-
-@conf
-def auto_detect_msvc_compiler(conf, version, target, windows_kit):
-    conf.env['MSVC_VERSIONS'] = [version]
-    conf.env['MSVC_TARGETS'] = [target]
-    vs_version = version.replace('msvc', '').strip()
-
-    # Normalize the input winkit by ensuring its ascii and it has no leading or trailing spaces
-    ascii_winkit = windows_kit.encode('utf-8') if isinstance(windows_kit, unicode) else windows_kit
-    ascii_winkit = ascii_winkit.strip()
-
-    try:
-        # By default use the tool environment cache
-        setattr(conf, TOOL_CACHE_ATTR_USE_CACHE_FLAG, True)
-        conf.autodetect(ascii_winkit, True)
-        conf.find_msvc()
-    except:
-        cache_read_dict = getattr(conf, TOOL_CACHE_ATTR_READ_DICTIONARY, {})
-        if cache_read_dict.get(vs_version, False):
-            # If an error occurred trying to detect the compiler and the compiler info was read from the cache, then
-            # invalidate the running installed version, turn off the use of the cache, and re-run it
-            setattr(conf, TOOL_CACHE_ATTR_USE_CACHE_FLAG, False)
-            setattr(conf, TOOL_CACHE_ATTR_READ_DICTIONARY, {})
-            global MSVC_INSTALLED_VERSIONS
-            MSVC_INSTALLED_VERSIONS[ascii_winkit] = ''
-
-            conf.autodetect(ascii_winkit, True)
-            conf.find_msvc()
-        else:
-            # If the error occurred without using cached information, then just error out, no need to try again
-            raise
-
-    
-@conf
-def autodetect(conf, windows_kit, arch = False):
-    v = conf.env
-    
-    if arch:
-        compiler, version, path, includes, libdirs, arch = conf.detect_msvc(windows_kit, True)
-        v['DEST_CPU'] = arch
-    else:
-        compiler, version, path, includes, libdirs = conf.detect_msvc(windows_kit)
-    
-    v['PATH'] = path
-    v['INCLUDES'] = includes
-    v['LIBPATH'] = libdirs
-    v['MSVC_COMPILER'] = compiler
-    try:
-        v['MSVC_VERSION'] = float(version)
-    except Exception:
-        v['MSVC_VERSION'] = float(version[:-3]) 
-
-@conf
-def detect_msvc(conf, windows_kit, arch = False):
-    versions = get_msvc_versions(conf, windows_kit)
-    return setup_msvc(conf, versions, arch) 
-    
-def setup_msvc(conf, versions, arch = False):
-    platforms = getattr(Options.options, 'msvc_targets', '').split(',')
-    if platforms == ['']:
-        platforms=Utils.to_list(conf.env['MSVC_TARGETS']) or [i for i,j in all_msvc_platforms]
-    desired_versions = getattr(Options.options, 'msvc_version', '').split(',')
-    if desired_versions == ['']:
-        desired_versions = conf.env['MSVC_VERSIONS'] or [v for v,_ in versions][::-1]
-    versiondict = dict(versions)
-
-    for version in desired_versions:
-        try:
-            targets = dict(versiondict [version])
-            for target in platforms:
-                try:
-                    arch,(p1,p2,p3) = targets[target]
-                    compiler,revision = version.rsplit(' ', 1)
-                    if arch:
-                        return compiler,revision,p1,p2,p3,arch
-                    else:
-                        return compiler,revision,p1,p2,p3
-                except KeyError: continue
-        except KeyError: continue
-    conf.fatal('msvc: Could not find a valid Visual Studio installation for building.')
-
-    
-MSVC_INSTALLED_VERSIONS = {}
-@conf
-def get_msvc_versions(conf, windows_kit):
-    """
-    :return: list of compilers installed
-    :rtype: list of string
-    """
-    global MSVC_INSTALLED_VERSIONS
-    if not windows_kit in MSVC_INSTALLED_VERSIONS:
-        MSVC_INSTALLED_VERSIONS[windows_kit] = ''
-    if len(MSVC_INSTALLED_VERSIONS[windows_kit]) == 0:
-        lst = []
-        conf.gather_wsdk_versions(windows_kit, lst)
-        gather_msvc_2015_versions(conf, windows_kit, lst)
-        gather_msvc_2017_versions(conf, windows_kit, lst)
-        MSVC_INSTALLED_VERSIONS[windows_kit] = lst
-    return MSVC_INSTALLED_VERSIONS[windows_kit]
-
-def gather_msvc_2015_detected_versions():
-    #Detected MSVC versions!
-    version_pattern = re.compile('^(\d\d?\.\d\d?)(Exp)?$')
-    detected_versions = []
-    for vcver,vcvar in [('VCExpress','Exp'), ('VisualStudio','')]:
-        try:
-            prefix = 'SOFTWARE\\Wow6432node\\Microsoft\\'+vcver
-            all_versions = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, prefix)
-        except WindowsError:
-            try:
-                prefix = 'SOFTWARE\\Microsoft\\'+vcver
-                all_versions = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, prefix)
-            except WindowsError:
-                continue
-
-        index = 0
-        while 1:
-            try:
-                version = Utils.winreg.EnumKey(all_versions, index)
-            except WindowsError:
-                break
-            index = index + 1
-            match = version_pattern.match(version)
-            if not match:
-                continue
-            else:
-                versionnumber = float(match.group(1))
-            detected_versions.append((versionnumber, version+vcvar, prefix+"\\"+version))
-    def fun(tup):
-        return tup[0]
-
-    detected_versions.sort(key = fun)
-    return detected_versions
-
-CACHED_TOOL_ENVIRONMENT_FILE = 'tool_environment.json'
-
-
-def _make_vsversion_winkit_key(version, winkit):
-    return '{}_{}'.format(str(version), winkit)
-
-
-def restore_vs_version_from_cached_path(conf, vs_version, windows_kit, fingerprint, versions):
-    """
-    Attempt to restore the versions array (used for setting up the paths needed for visual studio) from the
-    cached value from environment.json if possible.  If it is not set, or the file does not exist, or the
-    fingerprint has changed, then return False without returning any cached value.
-
-    :param conf:        Configuration Context
-    :param vs_version:  The visual studio version the cache is being lookup up for
-    :param windows_kit: The windows kit version the cache is being looked up for
-    :param fingerprint: The current input fingerprint to compare against any cached fingerprint if any
-    :param versions:    The result array of version tuples to populate if a cached version is found
-    :return: True if a cached version of versions is restored, False otherwise
-    """
-
-    try:
-        if not getattr(conf, TOOL_CACHE_ATTR_USE_CACHE_FLAG, False):
-            return False
-        environment_json_path = os.path.join(conf.bldnode.abspath(), BINTEMP_CACHE_TOOLS, CACHED_TOOL_ENVIRONMENT_FILE)
-        if not os.path.exists(environment_json_path):
-            return False
-
-        environment_json = parse_json_file(environment_json_path)
-        if 'vs_compilers' not in environment_json:
-            return False
-
-        vs_compilers_node = environment_json.get('vs_compilers')
-        ver_winkit_key = _make_vsversion_winkit_key(vs_version, windows_kit)
-        if str(ver_winkit_key) not in vs_compilers_node:
-            return False
-
-        compiler_settings = vs_compilers_node.get(ver_winkit_key)
-        previous_fingerprint = compiler_settings.get('fingerprint', '')
-        if previous_fingerprint != fingerprint:
-            return False
-
-        cached_versions = compiler_settings.get('versions')
-        for cached_version in cached_versions:
-            versions.append(cached_version)
-
-        # Mark the current vs_version as information that was read from a cache file (in case of error during tool detection)
-        cache_read_dict = getattr(conf, TOOL_CACHE_ATTR_READ_DICTIONARY, {})
-        cache_read_dict[vs_version] = True
-        setattr(conf, TOOL_CACHE_ATTR_READ_DICTIONARY, cache_read_dict)
-
-        return True
-
-    except Exception as err:
-        conf.warn_once('Unable to use visual studio environment cache.  Will run msvc tool detection scripts. ({})'.format(err.message or err.msg))
-        return False
-
-
-def store_vs_version_to_cache(conf, vs_version, windows_kit, fingerprint, versions):
-    """
-    Store the version tuples for a visual studio environment to the environment.json file
-
-    :param conf:        Configuration Context
-    :param vs_version:  The visual studio version the cache is being lookup up for
-    :param windows_kit: The windows kit value to store to the cache
-    :param fingerprint: The current input fingerprint to compare against any cached fingerprint if any
-    :param versions:    The result array of version tuples to populate if a cached version is found
-    """
-    try:
-        cache_path = os.path.join(conf.bldnode.abspath(), BINTEMP_CACHE_TOOLS)
-        if not os.path.isdir(cache_path):
-            os.makedirs(cache_path)
-
-        environment_json_path = os.path.join(cache_path, CACHED_TOOL_ENVIRONMENT_FILE)
-        if os.path.exists(environment_json_path):
-            environment_json = parse_json_file(environment_json_path)
-        else:
-            environment_json = {}
-
-        if 'vs_compilers' not in environment_json:
-            vs_compilers = {}
-            environment_json['vs_compilers'] = vs_compilers
-        else:
-            vs_compilers = environment_json.get('vs_compilers')
-
-        ver_winkit_key = _make_vsversion_winkit_key(vs_version, windows_kit)
-        if not ver_winkit_key in vs_compilers:
-            vs_compiler_setting = {}
-            vs_compilers[ver_winkit_key] = vs_compiler_setting
-        else:
-            vs_compiler_setting = vs_compilers.get(ver_winkit_key)
-
-        vs_compiler_setting['fingerprint'] = fingerprint
-        vs_compiler_setting['versions'] = versions
-
-        write_json_file(environment_json, environment_json_path)
-
-    except Exception as err:
-        conf.warn_once('Unable to use visual studio environment cache.  Will run msvc tool detection scripts. ({})'.format(err.message or err.msg))
-
-
-def gather_msvc_2015_versions(conf, windows_kit, versions):
-
-    # Prepare a hashing object to construct an md5 fingerprint of the collected vc_paths that was read from the
-    # registry.  If the hash changes, we will force a read-read of the VCVARS.BAT environment variablkes
-    hasher = hashlib.md5()
-    hasher.update(LMBR_WAF_VERSION_TAG)     # Include to force a re-cache if this changes
-
-    vc_paths = []
-    for (v, version, reg) in gather_msvc_2015_detected_versions():
-        try:
-            try:
-                msvc_version = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, reg + "\\Setup\\VC")
-            except WindowsError:
-                msvc_version = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, reg + "\\Setup\\Microsoft Visual C++")
-
-            path, _ = Utils.winreg.QueryValueEx(msvc_version, 'ProductDir')
-
-            abs_path = os.path.abspath(str(path))
-            vc_paths.append((version, abs_path))
-
-            hasher.update('{}/{}'.format(version, abs_path))
-        except WindowsError:
-            continue
-
-    paths_hash = hasher.hexdigest()
-
-    # Gather all the version information independent of the input winkit
-    all_versions = []
-    for version, vc_path in vc_paths:
-
-        # Special case: VS 2012/2013 does not handle winkit versions, so do not force any desired winkit into the detection
-        apply_windows_kit = '' if version in ('11.0', '12.0') else windows_kit
-        
-        # Populate the version list
-        gather_msvc_2015_targets(conf, paths_hash, all_versions, version, apply_windows_kit, vc_path)
-        
-    # From the entire windows kit independent version lists, filter out the versions based on the winkit
-    for check_version in all_versions:
-        # The winkit is embedded in the first item of the tuple, split by the '/' character
-        version_and_winkit = check_version[0].split('/')
-        version_lst = check_version[1]
-        if windows_kit == version_and_winkit[1]:
-            # Rebuild the tuple with only the msvc version string and the version list information
-            versions.append([version_and_winkit[0], version_lst])
-
-
-def gather_msvc_2015_targets(conf, paths_hash, versions, version, windows_kit, vc_path):
-
-    # Attempt to restore the versions from a cache environment if possible
-    if restore_vs_version_from_cached_path(conf, version, windows_kit, paths_hash, versions):
-        return
-
-    # Looking for normal MSVC compilers!
-    targets = []
-    if os.path.isfile(os.path.join(vc_path, 'vcvarsall.bat')):
-        for target,realtarget in all_msvc_platforms[::-1]:
-            try:
-                targets.append((target, (realtarget, conf.get_msvc_version('msvc', version, target, windows_kit, os.path.join(vc_path, 'vcvarsall.bat')))))
-            except conf.errors.ConfigurationError:
-                pass
-    elif os.path.isfile(os.path.join(vc_path, 'Common7', 'Tools', 'vsvars32.bat')):
-        try:
-            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, 'x86', windows_kit, os.path.join(vc_path, 'Common7', 'Tools', 'vsvars32.bat')))))
-        except conf.errors.ConfigurationError:
-            pass
-    elif os.path.isfile(os.path.join(vc_path, 'Bin', 'vcvars32.bat')):
-        try:
-            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, '', windows_kit, os.path.join(vc_path, 'Bin', 'vcvars32.bat')))))
-        except conf.errors.ConfigurationError:
-            pass
-    if targets:
-        versions.append(('msvc {}/{}'.format(version, windows_kit), targets))
-
-    # Cache the versions tuples for the current vs version and environment so we can cut the cost of conf.get_msvc_version
-    store_vs_version_to_cache(conf, version, windows_kit, paths_hash, versions)
-
-def find_vswhere():
-    vs_path = os.environ['ProgramFiles(x86)']
-    vswhere_exe = os.path.join(vs_path, 'Microsoft Visual Studio\\Installer\\vswhere.exe')
-    if not os.path.isfile(vswhere_exe):
-        vswhere_exe = ''
-    return vswhere_exe
-
-
-def gather_msvc_2017_versions(conf, windows_kit, versions):
-
-    # Prepare a hashing object to construct an md5 fingerprint of the collected vc_paths that was read from the
-    # registry.  If the hash changes, we will force a read-read of the VCVARS.BAT environment variablkes
-    hasher = hashlib.md5()
-    hasher.update(LMBR_WAF_VERSION_TAG) # Include to force a re-cache if this changes
-
-    vc_paths = []
-
-    vswhere_exe = find_vswhere()
-    if not vswhere_exe == '':
-        version_string = ''
-        path_string = ''
-        try:
-            vs_where_args = conf.options.win_vs2017_vswhere_args.lower().split()
-            vs_where_args_buildtools = vs_where_args[:]
-            vs_where_args_buildtools.append('-products')
-            vs_where_args_buildtools.append('Microsoft.VisualStudio.Product.BuildTools')
-            version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
-            if not version_string:
-                version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args_buildtools)
-
-            if not version_string:
-                try:
-                    version_arg_index = vs_where_args.index('-version')
-                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
-                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-
-                    # We could not find a min version of vs2017 based on the vswhere args for vswhere, so try to find any version of 2017
-                    vs_where_args = ['-version', '[15.0,16.0)']
-                    vs_where_args_buildtools = vs_where_args[:]
-                    vs_where_args_buildtools.append('-products')
-                    vs_where_args_buildtools.append('Microsoft.VisualStudio.Product.BuildTools')
-
-                    version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
-                    if not version_string:
-                        version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args_buildtools)
-                except ValueError:
-                    pass
-
-            version_parts = version_string.split('.')
-            version_string = version_parts[0]
-            path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs_where_args)
-            if not path_string:
-                path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs_where_args_buildtools)
-
-            path_string = path_string[:len(path_string)-2]
-            vc_paths.append((version_string, path_string))
-
-            hasher.update('{}/{}'.format(version_string, path_string))
-        except:
-            pass
-
-    paths_hash = hasher.hexdigest()
-
-    # Gather all the version information independent of the input winkit
-    all_versions = []
-    for version, vc_path in vc_paths:
-        Logs.info_once('[INFO] Using Visual Studio version {} installed at: {}'.format(version_string, path_string))
-        conf.gather_msvc_2017_targets(paths_hash, all_versions, version, windows_kit, vc_path)
-
-    # Populate the version list
-    for check_version in all_versions:
-        # The winkit is embedded in the first item of the tuple, split by the '/' character
-        version_and_winkit = check_version[0].split('/')
-        version_lst = check_version[1]
-        if windows_kit == version_and_winkit[1]:
-            # Rebuild the tuple with only the msvc version string and the version list information
-            versions.append([version_and_winkit[0], version_lst])
-
-@conf
-def gather_msvc_2017_targets(conf, paths_hash, versions, version, windows_kit, vc_path):
-
-    # Attempt to restore the versions from a cache environment if possible
-    if restore_vs_version_from_cached_path(conf, version, windows_kit, paths_hash, versions):
-        return
-
-    # Looking for normal MSVC compilers!
-    targets = []
-    vcvarsall_bat = os.path.join(vc_path, 'VC', 'Auxiliary', 'Build', 'vcvarsall.bat')
-    if os.path.isfile(vcvarsall_bat):
-        try:
-            targets.append(('x64', ('x64', conf.get_msvc_version('msvc', version, 'x64', windows_kit, vcvarsall_bat))))
-        except conf.errors.ConfigurationError:
-            pass
-    if targets:
-        versions.append(('msvc {}/{}'.format(version, windows_kit), targets))
-
-    # Cache the versions tuples for the current vs version and environment so we can cut the cost of conf.get_msvc_version
-    store_vs_version_to_cache(conf, version, windows_kit, paths_hash, versions)
-
-
-def _get_prog_names(conf, compiler):
-    if compiler=='intel':
-        compiler_name = 'ICL'
-        linker_name = 'XILINK'
-        lib_name = 'XILIB'
-    else:
-        # assumes CL.exe
-        compiler_name = 'CL'
-        linker_name = 'LINK'
-        lib_name = 'LIB'
-    return compiler_name, linker_name, lib_name
-    
-@conf
-def get_msvc_version(conf, compiler, version, target, windows_kit, vcvars):
-    """
-    Create a bat file to obtain the location of the libraries
-
-    :param compiler: ?
-    :param version: ?
-    :target: ?
-    :vcvars: ?
-    :return: the location of msvc, the location of include dirs, and the library paths
-    :rtype: tuple of strings
-    """
-    debug('msvc: get_msvc_version: %r %r %r %r', compiler, version, target, windows_kit)
-    batfile = conf.bldnode.make_node('waf-print-msvc.bat')
-    batfile.write("""@echo off
-set INCLUDE=
-set LIB=
-call "%s" %s %s
-echo PATH=%%PATH%%
-echo INCLUDE=%%INCLUDE%%
-echo LIB=%%LIB%%;%%LIBPATH%%
-""" % (vcvars,target,windows_kit))
-    sout = conf.cmd_and_log(['cmd', '/E:on', '/V:on', '/C', batfile.abspath()])
-    lines = sout.splitlines()
-    
-    if not lines[0]:
-        lines.pop(0)
-    
-    MSVC_PATH = MSVC_INCDIR = MSVC_LIBDIR = None
-    for line in lines:
-        if line.startswith('PATH='):
-            path = line[5:]
-            MSVC_PATH = path.split(';')
-        elif line.startswith('INCLUDE='):
-            MSVC_INCDIR = [i for i in line[8:].split(';') if i]
-        elif line.startswith('LIB='):
-            MSVC_LIBDIR = [i for i in line[4:].split(';') if i]
-    if not MSVC_PATH or not MSVC_INCDIR or not MSVC_LIBDIR:
-        conf.fatal('msvc: Could not find a valid architecture for building (get_msvc_version_3)')
-    
-    # Check if the compiler is usable at all.
-    # The detection may return 64-bit versions even on 32-bit systems, and these would fail to run.
-    env = dict(os.environ)
-    env.update(PATH = path)
-    compiler_name, linker_name, lib_name = _get_prog_names(conf, compiler)
-    cxx = conf.find_program(compiler_name, path_list=MSVC_PATH, silent_output=True)
-    cxx = conf.cmd_to_list(cxx)
-    
-    # delete CL if exists. because it could contain parameters wich can change cl's behaviour rather catastrophically.
-    if 'CL' in env:
-        del(env['CL'])
-    
-    try:
-        try:
-            conf.cmd_and_log(cxx + ['/help'], env=env)
-        except Exception as e:
-            debug('msvc: get_msvc_version: %r %r %r %r -> failure' % (compiler, version, target, windows_kit))
-            debug(str(e))
-            conf.fatal('msvc: cannot run the compiler (in get_msvc_version)')
-        else:
-            debug('msvc: get_msvc_version: %r %r %r %r -> OK', compiler, version, target, windows_kit)
-    finally:
-        conf.env[compiler_name] = ''
-
-    # vcvarsall does not always resolve the windows sdk path with VS2015 + Win10, but we know where it is
-    winsdk_path = _get_win_sdk_path(windows_kit, target)
-    if winsdk_path:
-        MSVC_PATH.append(winsdk_path)
-    
-    return (MSVC_PATH, MSVC_INCDIR, MSVC_LIBDIR)
-
-def _get_win_sdk_path(windows_kit, arch):
-    path = _find_win_sdk_root(windows_kit)
-    if path:
-        is_valid, version, bin_path = _is_valid_win_sdk(path, windows_kit.startswith('10'), windows_kit)
-        if is_valid:
-            if version == windows_kit:
-                return str(os.path.join(bin_path, arch))
-            else:
-                Logs.debug('winsdk: Found a working windows SDK (%s), but it does not match the requested version (%s)' % (version, windows_kit))
-
-    return ''
 
 def _is_valid_win_sdk(path, is_universal_versioning, desired_version=''):
     # Successfully installed windows kits have rc.exe. This file is a downstream dependency of vcvarsall.bat.
@@ -1044,137 +548,6 @@ def find_valid_wsdk_version():
 
     return ''
 
-    
-@conf
-def gather_wsdk_versions(conf, windows_kit, versions):
-    """
-    Use winreg to add the msvc versions to the input list
-
-    :param versions: list to modify
-    :type versions: list
-    """
-    version_pattern = re.compile('^v..?.?\...?.?')
-    try:
-        all_versions = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Wow6432node\\Microsoft\\Microsoft SDKs\\Windows')
-    except WindowsError:
-        try:
-            all_versions = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows')
-        except WindowsError:
-            return
-    index = 0
-    while 1:
-        try:
-            version = Utils.winreg.EnumKey(all_versions, index)
-        except WindowsError:
-            break
-        index = index + 1
-        if not version_pattern.match(version):
-            continue
-        try:
-            msvc_version = Utils.winreg.OpenKey(all_versions, version)
-            path,type = Utils.winreg.QueryValueEx(msvc_version,'InstallationFolder')
-        except WindowsError:
-            continue
-        if os.path.isfile(os.path.join(path, 'bin', 'SetEnv.cmd')):
-            targets = []
-            for target,arch in all_msvc_platforms:
-                try:
-                    targets.append((target, (arch, conf.get_msvc_version('wsdk', version, '/'+target, windows_kit, os.path.join(path, 'bin', 'SetEnv.cmd')))))
-                except conf.errors.ConfigurationError:
-                    pass
-            versions.append(('wsdk ' + version[1:], targets))
-    pass
-
-@conf
-def find_msvc(conf):
-    """Due to path format limitations, limit operation only to native Win32. Yeah it sucks."""
-    if sys.platform == 'cygwin':
-        conf.fatal('MSVC module does not work under cygwin Python!')
-
-    # the autodetection is supposed to be performed before entering in this method
-    v = conf.env
-    path = v['PATH']
-    compiler = v['MSVC_COMPILER']
-    version = v['MSVC_VERSION']
-
-    compiler_name, linker_name, lib_name = _get_prog_names(conf, compiler)
-    if v.MSVC_MANIFEST or v.MSVC_MANIFEST == True:
-        v.MSVC_MANIFEST = (compiler == 'msvc' and version >= 8) or (compiler == 'wsdk' and version >= 6) or (compiler == 'intel' and version >= 11)
-
-    # compiler
-    cxx = None
-    if v['CXX']: cxx = v['CXX']
-    elif 'CXX' in conf.environ: cxx = conf.environ['CXX']
-    cxx = conf.find_program(compiler_name, var='CXX', path_list=path, silent_output=True)
-    cxx = conf.cmd_to_list(cxx)
-
-    # before setting anything, check if the compiler is really msvc
-    env = dict(conf.environ)
-    if path: env.update(PATH = ';'.join(path))
-    if not conf.cmd_and_log(cxx + ['/nologo', '/help'], env=env):
-        conf.fatal('the msvc compiler could not be identified')
-
-    # c/c++ compiler
-    v['CC'] = v['CXX'] = cxx[0]
-    v['CC_NAME'] = v['CXX_NAME'] = 'msvc'
-
-    # Bullseye code coverage
-    if conf.is_option_true('use_bullseye_coverage'):
-        # TODO: Error handling for this is opaque. This will fail the MSVS 2015 tool check,
-        # and not say anything about bullseye being missing.
-        try:
-            covc = conf.find_program('covc',var='BULL_COVC',path_list = path, silent_output=True)
-            covlink = conf.find_program('covlink',var='BULL_COVLINK',path_list = path, silent_output=True)
-            covselect = conf.find_program('covselect',var='BULL_COVSELECT',path_list = path, silent_output=True)
-            v['BULL_COVC'] = covc
-            v['BULL_COVLINK'] = covlink
-            v['BULL_COV_FILE'] = conf.CreateRootRelativePath(conf.options.bullseye_cov_file)
-            # Update the coverage file with the region selections detailed in the settings regions parameters
-            # NOTE: should we clear other settings at this point, or allow them to accumulate?
-            # Maybe we need a flag for that in the setup?
-            regions = conf.options.bullseye_coverage_regions.replace(' ','').split(',')
-            conf.cmd_and_log(([covselect] + ['--file', v['BULL_COV_FILE'], '-a'] + regions))
-        except:
-            Logs.error('Could not find the Bullseye Coverage tools on the path, or coverage tools are not correctly installed. Coverage build disabled.')
-
-
-    # linker
-    if not v['LINK_CXX']:
-        link = conf.find_program(linker_name, path_list=path, silent_output=True)
-        if link: v['LINK_CXX'] = link
-        else: conf.fatal('%s was not found (linker)' % linker_name)
-        v['LINK'] = link
-
-    if not v['LINK_CC']:
-        v['LINK_CC'] = v['LINK_CXX']
-
-    # staticlib linker
-    if not v['AR']:
-        stliblink = conf.find_program(lib_name, path_list=path, var='AR', silent_output=True)
-        if not stliblink: return
-        if '/NOLOGO' not in v['ARFLAGS']:
-            v['ARFLAGS'] = ['/NOLOGO']
-
-    # manifest tool. Not required for VS 2003 and below. Must have for VS 2005 and later
-    if v.MSVC_MANIFEST:
-        conf.find_program('MT', path_list=path, var='MT', silent_output=True)
-        if '/NOLOGO' not in v['MTFLAGS']:
-            v['MTFLAGS'] = ['/NOLOGO']
-
-    # call configure on the waflib winres module to setup the environment for configure
-    # conf.load('winres') caches the environment as part of the module load key, and we just modified
-    # the environment, causing the cache to miss, and extra calls import/load the module
-    # winres is loaded
-    try:
-        module = sys.modules['waflib.Tools.winres']
-        func = getattr(module,'configure',None)
-        if func:
-            func(conf)
-    except Exception as e:
-        warn('Resource compiler not found. Compiling resource file is disabled')
-
-
-
 cached_folders = {}
 
 @conf
@@ -1198,8 +571,8 @@ def detect_visual_studio_vc_path(ctx, version):
 
     try:
         vs_regkey = 'Software\\Microsoft\\VisualStudio\\{}_Config\\Setup\\vs'.format(version)
-        vs_tools_reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, vs_regkey, 0, _winreg.KEY_READ)
-        (vs_tools_path, reg_type) = _winreg.QueryValueEx(vs_tools_reg_key, 'ProductDir')
+        vs_tools_reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, vs_regkey, 0, winreg.KEY_READ)
+        (vs_tools_path, reg_type) = winreg.QueryValueEx(vs_tools_reg_key, 'ProductDir')
         vs_tools_path = vs_tools_path.encode('ascii')  # Make ascii string (as we get unicode)
         vs_tools_path += 'VC'
     except:
@@ -1243,7 +616,7 @@ def detect_windows_kits_include_path(ctx, version_if_available_otherwise_latest)
                 if os.path.isdir(windows_sdk_include_path):
                     break
     try:
-        windows_sdk_installed_roots_key = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Wow6432node\\Microsoft\\Windows Kits\\Installed Roots', _winreg.KEY_READ)
+        windows_sdk_installed_roots_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Wow6432node\\Microsoft\\Windows Kits\\Installed Roots', winreg.KEY_READ)
     except WindowsError:
         try:
             windows_sdk_installed_roots_key = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots')
@@ -1259,7 +632,7 @@ def detect_windows_kits_include_path(ctx, version_if_available_otherwise_latest)
         index = 0
         while not exact_version:
             try:
-                value = _winreg.EnumValue(windows_sdk_installed_roots_key, index)
+                value = winreg.EnumValue(windows_sdk_installed_roots_key, index)
                 if 'KitsRoot' in value[0]:
                     if value[0] == 'KitsRoot81':
                         versions.append((8.1, value[1]))
@@ -1288,7 +661,6 @@ def detect_windows_kits_include_path(ctx, version_if_available_otherwise_latest)
         #sort them reversed, so the latest should be first
         versions.sort(reverse=True)
         windows_sdk_include_path = versions[0][1]
-    windows_sdk_include_path = windows_sdk_include_path.encode('ascii')  # Make asci string (as we get unicode)
     windows_sdk_include_path += 'Include'
 
     if windows_sdk_include_path == '':

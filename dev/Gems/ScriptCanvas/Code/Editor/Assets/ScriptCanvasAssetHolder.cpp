@@ -116,12 +116,12 @@ namespace ScriptCanvasEditor
         }        
     }
 
-    AZ::EntityId ScriptCanvasAssetHolder::GetGraphId() const
+    ScriptCanvas::ScriptCanvasId ScriptCanvasAssetHolder::GetScriptCanvasId() const
     {
-        AZ::EntityId graphId;
+        ScriptCanvas::ScriptCanvasId graphId;
         if (m_scriptCanvasAsset.IsReady())
         {
-            ScriptCanvas::SystemRequestBus::BroadcastResult(graphId, &ScriptCanvas::SystemRequests::FindGraphId, m_scriptCanvasAsset.Get()->GetScriptCanvasEntity());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(graphId, &ScriptCanvas::SystemRequests::FindScriptCanvasId, m_scriptCanvasAsset.Get()->GetScriptCanvasEntity());
         }
         return graphId;
     }

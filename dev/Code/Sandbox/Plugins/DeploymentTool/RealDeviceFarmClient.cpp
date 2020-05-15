@@ -13,6 +13,8 @@
 
 #include "RealDeviceFarmClient.h"
 
+#include <AzFramework/AzFramework_Traits_Platform.h>
+
 namespace DeployTool
 {
 
@@ -119,6 +121,13 @@ void RealDeviceFarmClient::DeleteRunAsync(
     const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context)
 {
     mDeviceFarmClient->DeleteRunAsync(request, handler, context);
+}
+
+Aws::Client::ClientConfiguration RealDeviceFarmClient::GetDefaultAwsClientConfiguration()
+{
+    Aws::Client::ClientConfiguration config;
+    config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
+    return config;
 }
 
 } // namespace DeployTool

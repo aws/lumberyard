@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/vector.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
+#include <GraphCanvas/Types/EntitySaveData.h>
 #include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
 
@@ -90,6 +91,10 @@ namespace GraphCanvas
 
         // Will attempt to update the partially disabled state based on the connection Execution connections
         virtual RootGraphicsItemEnabledState UpdateEnabledState() = 0;
+
+        virtual bool IsHidingUnusedSlots() = 0;
+        virtual void ShowAllSlots() = 0;
+        virtual void HideUnusedSlots() = 0;
     };
 
     using NodeRequestBus = AZ::EBus<NodeRequests>;
@@ -128,9 +133,6 @@ namespace GraphCanvas
 
         virtual void OnNodeActivated() {};
 
-        AZ_DEPRECATED(virtual void OnNodeAboutToSerialize(GraphSerialization&), "NodeNotification OnNodeAboutToSerialize deprecated in favor of SceneMemberNotificationOnSceneMemberAboutToSerialize") {}
-        AZ_DEPRECATED(virtual void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization&), "NodeNotification OnNodeAboutToSerialize deprecated in favor of SceneMemberNotificationOnSceneMemberAboutToSerialize") {}
-
         virtual void OnNodeWrapped(const AZ::EntityId& wrappingNode) {}
         virtual void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) {}
 
@@ -140,4 +142,17 @@ namespace GraphCanvas
     };
 
     using NodeNotificationBus = AZ::EBus<NodeNotifications>;
+
+    class NodeSaveData
+        : public ComponentSaveData
+    {
+    public:
+        AZ_RTTI(NodeSaveData, "{24CB38BB-1705-4EC5-8F63-B574571B4DCD}", ComponentSaveData);
+        AZ_CLASS_ALLOCATOR(NodeSaveData, AZ::SystemAllocator, 0);
+
+        NodeSaveData() = default;
+        ~NodeSaveData() = default;
+
+        bool m_hideUnusedSlots = false;
+    };
 }

@@ -46,6 +46,9 @@ public:
 private slots:
     void OnExecute();
 
+protected:
+    void ScanFolderForScripts(QString path, QStringList& scriptFolders) const;
+
 private:
     QScopedPointer<Ui::CPythonScriptsDialog> ui;
 };

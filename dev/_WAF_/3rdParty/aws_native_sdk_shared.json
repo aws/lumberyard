@@ -28,7 +28,7 @@
             "aws-checksums"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [

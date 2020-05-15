@@ -731,6 +731,11 @@ void CHDRPostProcess::MeasureLuminance()
     uint64 nFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
+    if (CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
+
     int32 dwCurTexture = NUM_HDR_TONEMAP_TEXTURES - 1;
     static CCryNameR Param1Name("SampleOffsets");
 

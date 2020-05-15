@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QColorWidgetImp.h"
 #include "../UIUtils.h"
 #include "Utils.h"

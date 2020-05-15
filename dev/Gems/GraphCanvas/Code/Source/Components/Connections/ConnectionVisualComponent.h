@@ -11,8 +11,10 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QGraphicsPathItem>
 #include <QPainterPath>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -93,8 +95,8 @@ namespace GraphCanvas
 
         QPainterPath GetOutline() const override;
 
-        void SetZValue(int zValue) override;
-        int GetZValue() const override;
+        void SetZValue(qreal zValue) override;
+        qreal GetZValue() const override;
         ////
 
     protected:

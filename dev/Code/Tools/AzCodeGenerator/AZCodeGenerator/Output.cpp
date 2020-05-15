@@ -183,7 +183,7 @@ namespace CodeGenerator
         va_copy(targs,args);
         // Manually handle the null terminator because some version of VC++ do not actually print the null terminator when the buffer size is >= input size
         size_t bufferSize = vsnprintf(nullptr, 0, format, targs) + 1;
-	va_end(targs);
+        va_end(targs);
 
         std::vector<char> buffer;
         buffer.resize(bufferSize);

@@ -25,8 +25,6 @@
 
 #include "VegetationObject.h"
 
-#include "Util/BoostPythonHelpers.h"
-
 #include <AzCore/Math/Uuid.h>
 
 //////////////////////////////////////////////////////////////////////
@@ -660,68 +658,6 @@ bool CVegetationObject::IsHidden() const
     return false;
 }
 
-//////////////////////////////////////////////////////////////////////////
-namespace
-{
-    // Handle all Vegetation Object Getters
-    //  -> Single Object by Name or ID
-    //  -> All Vegetation Objects by Name
-    //  -> All Vegetation Objects loaded.
-    boost::python::list PyGetVegetation(const QString& vegetationName = "", bool loadedOnly = false)
-    {
-        boost::python::list result;
-        CVegetationMap* pVegMap = GetIEditor()->GetVegetationMap();
 
-        if (vegetationName.isEmpty())
-        {
-            CSelectionGroup* pSel = GetIEditor()->GetSelection();
-
-            if (pSel->GetCount() == 0)
-            {
-                for (int i = 0; i < pVegMap->GetObjectCount(); i++)
-                {
-                    if (loadedOnly && pVegMap->GetObject(i)->IsHidden())
-                    {
-                        continue;
-                    }
-
-                    result.append(PyScript::CreatePyGameVegetation(pVegMap->GetObject(i)));
-                }
-            }
-            else
-            {
-                for (int i = 0; i < pSel->GetCount(); i++)
-                {
-                    if (pVegMap->GetObject(i)->IsSelected())
-                    {
-                        result.append(PyScript::CreatePyGameVegetation(pVegMap->GetObject(i)));
-                    }
-                }
-            }
-        }
-        else
-        {
-            for (int i = 0; i < pVegMap->GetObjectCount(); i++)
-            {
-                if (QString::compare(vegetationName, pVegMap->GetObject(i)->GetFileName()) == 0)
-                {
-                    if (loadedOnly && pVegMap->GetObject(i)->IsHidden())
-                    {
-                        continue;
-                    }
-
-                    result.append(PyScript::CreatePyGameVegetation(pVegMap->GetObject(i)));
-                }
-            }
-        }
-
-        return result;
-    }
-}
-
-BOOST_PYTHON_FUNCTION_OVERLOADS(pyGetVegetationOverload, PyGetVegetation, 0, 2);
-REGISTER_PYTHON_OVERLOAD_COMMAND(PyGetVegetation, vegetation, get_vegetation, pyGetVegetationOverload,
-    "Get all, selected, specific name, loaded vegetation objects in the current level.",
-    "general.get_vegetation(str vegetationName=\'\', bool loadedOnly=False)");
 
 #include <VegetationObject.moc>

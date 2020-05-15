@@ -150,7 +150,6 @@ namespace Editor
         void DeleteTranslator(QTranslator*& translator);
 
         QTranslator* m_editorTranslator = nullptr;
-        QTranslator* m_flowgraphTranslator = nullptr;
         QTranslator* m_assetBrowserTranslator = nullptr;
         QTimer* const m_idleTimer = nullptr;
         bool m_isMovingOrResizing = false;

@@ -19,6 +19,85 @@
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Debug/Profiler.h>
 
+#include <ImageProcessing/PixelFormats.h>
+#include <ImageProcessing/ImageProcessingBus.h>
+#include <GradientSignal/Util.h>
+#include <numeric>
+
+namespace
+{
+    template <ImageProcessing::EPixelFormat>
+    float RetrieveValue(const AZ::u8* mem,  size_t index)
+    {
+        AZ_Assert(false, "Unimplemented!");
+    }
+
+    template <>
+    float RetrieveValue<ImageProcessing::EPixelFormat::ePixelFormat_Unknown>(const AZ::u8* mem,  size_t index)
+    {
+        return 0.0f;
+    }
+
+    template <>
+    float RetrieveValue<ImageProcessing::EPixelFormat::ePixelFormat_R8>(const AZ::u8* mem,  size_t index)
+    {
+        return mem[index] / static_cast<float>(std::numeric_limits<AZ::u8>::max());
+    }
+
+    template <>
+    float RetrieveValue<ImageProcessing::EPixelFormat::ePixelFormat_R16>(const AZ::u8* mem,  size_t index)
+    {
+        // 16 bits per channel
+        auto actualMem = reinterpret_cast<const AZ::u16*>(mem);
+        actualMem += index;
+
+        return *actualMem / static_cast<float>(std::numeric_limits<AZ::u16>::max());
+    }
+
+    template <>
+    float RetrieveValue<ImageProcessing::EPixelFormat::ePixelFormat_R32>(const AZ::u8* mem,  size_t index)
+    {
+        // 32 bits per channel
+        auto actualMem = reinterpret_cast<const AZ::u32*>(mem);
+        actualMem += index;
+
+        return *actualMem / static_cast<float>(std::numeric_limits<AZ::u32>::max());
+    }
+
+    template <>
+    float RetrieveValue<ImageProcessing::EPixelFormat::ePixelFormat_R32F>(const AZ::u8* mem,  size_t index)
+    {
+        // 32 bits per channel
+        auto actualMem = reinterpret_cast<const float*>(mem);
+        actualMem += index;
+
+        return *actualMem;
+    }
+
+    float RetrieveValue(const AZ::u8* mem, size_t index, ImageProcessing::EPixelFormat format)
+    {
+        using namespace ImageProcessing;
+
+        switch (format)
+        {
+        case ePixelFormat_R8:
+            return RetrieveValue<ePixelFormat_R8>(mem, index);
+
+        case ePixelFormat_R16:
+            return RetrieveValue<ePixelFormat_R16>(mem, index);
+
+        case ePixelFormat_R32:
+            return RetrieveValue<ePixelFormat_R32>(mem, index);
+
+        case ePixelFormat_R32F:
+            return RetrieveValue<ePixelFormat_R32F>(mem, index);
+
+        default:
+            return RetrieveValue<ePixelFormat_Unknown>(mem, index);
+        }
+    }
+}
+
 namespace GradientSignal
 {
     void ImageAsset::Reflect(AZ::ReflectContext* context)
@@ -27,9 +106,10 @@ namespace GradientSignal
         if (serialize)
         {
             serialize->Class<ImageAsset, AZ::Data::AssetData>()
-                ->Version(0)
+                ->Version(1, &ImageAsset::VersionConverter)
                 ->Field("Width", &ImageAsset::m_imageWidth)
                 ->Field("Height", &ImageAsset::m_imageHeight)
+                ->Field("BytesPerPixel", &ImageAsset::m_bytesPerPixel)
                 ->Field("Format", &ImageAsset::m_imageFormat)
                 ->Field("Data", &ImageAsset::m_imageData)
                 ;
@@ -41,6 +121,7 @@ namespace GradientSignal
                     "Image Asset", "")
                     ->DataElement(0, &ImageAsset::m_imageWidth, "Width", "Image width.")
                     ->DataElement(0, &ImageAsset::m_imageHeight, "Height", "Image height.")
+                    ->DataElement(0, &ImageAsset::m_bytesPerPixel, "BytesPerPixel", "Image bytes per pixel.")
                     ->DataElement(0, &ImageAsset::m_imageFormat, "Format", "Image format.")
                     ->DataElement(0, &ImageAsset::m_imageData, "Data", "Image color data.")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -50,6 +131,32 @@ namespace GradientSignal
         }
     }
 
+    bool ImageAsset::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() < 1)
+        {
+            int formatIndex = classElement.FindElement(AZ_CRC("Format", 0xdeba72df));
+
+            if (formatIndex < 0)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& format = classElement.GetSubElement(formatIndex);
+            if (format.Convert<ImageProcessing::EPixelFormat>(context))
+            {
+                format.SetData<ImageProcessing::EPixelFormat>(context, ImageProcessing::EPixelFormat::ePixelFormat_R8);
+            }
+
+            int bppIndex = classElement.AddElement<AZ::u8>(context, "BytesPerPixel");
+
+            AZ::SerializeContext::DataElementNode& bpp = classElement.GetSubElement(bppIndex);
+            bpp.SetData<AZ::u8>(context, 1);
+        }
+
+        return true;
+    }
+
     float GetValueFromImageAsset(const AZ::Data::Asset<ImageAsset>& imageAsset, const AZ::Vector3& uvw, float tilingX, float tilingY, float defaultValue)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
@@ -57,9 +164,12 @@ namespace GradientSignal
         if (imageAsset.IsReady())
         {
             const auto& image = imageAsset.Get();
+            AZStd::size_t imageSize = image->m_imageWidth * image->m_imageHeight *
+                static_cast<AZ::u32>(image->m_bytesPerPixel);
+            
             if (image->m_imageWidth > 0 &&
                 image->m_imageHeight > 0 &&
-                image->m_imageData.size() == image->m_imageWidth * image->m_imageHeight)
+                image->m_imageData.size() == imageSize)
             {
                 // When "rasterizing" from uvs, a range of 0-1 has slightly different meanings depending on the sampler state.
                 // For repeating states (Unbounded/None, Repeat), a uv value of 1 should wrap around back to our 0th pixel.
@@ -83,8 +193,8 @@ namespace GradientSignal
                 // A 16x16 pixel image and tilingX = tilingY = 1.5 maps the uv range of 0-1 to 0-24 pixels.
 
                 const AZ::Vector3 tiledDimensions((image->m_imageWidth  * tilingX),
-                                                  (image->m_imageHeight * tilingY),
-                                                  0.0f);
+                    (image->m_imageHeight * tilingY),
+                    0.0f);
 
                 // Convert from uv space back to pixel space
                 AZ::Vector3 pixelLookup = (uvw * tiledDimensions);
@@ -98,9 +208,10 @@ namespace GradientSignal
                 // Flip the y because images are stored in reverse of our world axes
                 size_t index = ((image->m_imageHeight - 1) - y) * image->m_imageWidth + x;
 
-                return image->m_imageData[index] / 255.0f;
+                return RetrieveValue(image->m_imageData.data(), index, image->m_imageFormat);
             }
         }
+
         return defaultValue;
     }
 }

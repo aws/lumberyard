@@ -94,6 +94,17 @@ namespace GraphCanvas
         PropertySlotBus::Handler::BusDisconnect();
     }
 
+    int PropertySlotComponent::GetLayoutPriority() const
+    {
+        // Going to want property slots to always be at the top of a display group.
+        return std::numeric_limits<int>().max();
+    }
+
+    void PropertySlotComponent::SetLayoutPriority(int priority)
+    {
+        AZ_UNUSED(priority);
+    }
+
     const AZ::Crc32& PropertySlotComponent::GetPropertyId() const
     {
         return m_propertyId;

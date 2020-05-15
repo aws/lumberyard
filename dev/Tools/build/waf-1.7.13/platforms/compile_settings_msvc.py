@@ -10,9 +10,14 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf, Logs
+
+# waflib imports
 from waflib import Options
-from lumberyard import deprecated, multi_conf
+from waflib.Configure import conf, Logs
+
+# lmbrwaflib imports
+from lmbrwaflib.lumberyard import deprecated, multi_conf
+
 
 @deprecated("Logic replaced in load_msvc_common_settings with a combination of setting ENV values and env settings in the common.msvc.json")
 def set_ltcg_threads(conf):
@@ -56,6 +61,7 @@ def load_msvc_common_settings(conf):
     v['CC_TGT_F']   = v['CXX_TGT_F']    = ['/c', '/Fo']
     
     v['CPPPATH_ST']     = '/I%s'
+    v['SYSTEM_CPPPATH_ST'] = '/external:I%s'
     v['DEFINES_ST']     = '/D%s'
     
     v['PCH_FILE_ST']    = '/Fp%s'
@@ -145,6 +151,46 @@ def load_msvc_common_settings(conf):
     else:
         v['SET_LTCG_THREADS_FLAG'] = False
 
+    # Bullseye code coverage
+    if conf.is_option_true('use_bullseye_coverage'):
+        # TODO: Error handling for this is opaque. This will fail the MSVS 2015 tool check,
+        # and not say anything about bullseye being missing.
+        try:
+            path = v['PATH']
+            covc = conf.find_program('covc',var='BULL_COVC',path_list = path, silent_output=True)
+            covlink = conf.find_program('covlink',var='BULL_COVLINK',path_list = path, silent_output=True)
+            covselect = conf.find_program('covselect',var='BULL_COVSELECT',path_list = path, silent_output=True)
+            v['BULL_COVC'] = covc
+            v['BULL_COVLINK'] = covlink
+            v['BULL_COV_FILE'] = conf.CreateRootRelativePath(conf.options.bullseye_cov_file)
+            # Update the coverage file with the region selections detailed in the settings regions parameters
+            # NOTE: should we clear other settings at this point, or allow them to accumulate?
+            # Maybe we need a flag for that in the setup?
+            regions = conf.options.bullseye_coverage_regions.replace(' ','').split(',')
+            conf.cmd_and_log(([covselect] + ['--file', v['BULL_COV_FILE'], '-a'] + regions))
+        except Exception as e:
+            Logs.error(
+                'Could not find the Bullseye Coverage tools on the path, or coverage tools '
+                'are not correctly installed. Coverage build disabled. '
+                'Error: {}'.format(e))
+
+    # Adds undocumented time flags for cl.exe and link.exe for measuring compiler frontend, code generation and link time code generation
+    # timings
+    compile_timing_flags = []
+
+    if conf.is_option_true('report_compile_timing'):
+        compile_timing_flags.append('/Bt+')
+    if conf.is_option_true('report_cxx_frontend_timing'):
+        compile_timing_flags.append('/d1reportTime')
+    if conf.is_option_true('output_msvc_code_generation_summary'):
+        compile_timing_flags.append('/d2cgsummary')
+    v['CFLAGS'] += compile_timing_flags;
+    v['CXXFLAGS'] += compile_timing_flags
+
+    link_timing_flags = []
+    if conf.is_option_true('report_link_timing'):
+        link_timing_flags.append('/time+')
+    v['LINKFLAGS'] += link_timing_flags
 
 @multi_conf
 def generate_ib_profile_tool_elements(ctx):

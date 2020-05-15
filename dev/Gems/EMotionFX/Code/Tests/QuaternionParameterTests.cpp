@@ -32,11 +32,10 @@ namespace EMotionFX
         {
             AnimGraphFixture::ConstructGraph();
             m_param = GetParam();
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
             AddParameter<RotationParameter, AZ::Quaternion>("quaternionTest", m_param);
-
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
 
             /*
             +------------+
@@ -61,7 +60,16 @@ namespace EMotionFX
 
             m_twoLinkIKNode->AddConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeTwoLinkIKNode::PORTID_INPUT_POSE);
             finalNode->AddConnection(m_twoLinkIKNode, BlendTreeTwoLinkIKNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+
+            m_blendTreeAnimGraph->InitAfterLoading();
         };
+
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
 
         template <class paramType, class inputType>
         void ParamSetValue(const AZStd::string& paramName, const inputType& value)
@@ -73,6 +81,7 @@ namespace EMotionFX
         };
 
     protected:
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         AZ::Quaternion m_param;
         BlendTree* m_blendTree = nullptr;
         BlendTreeParameterNode* m_paramNode = nullptr;
@@ -85,7 +94,7 @@ namespace EMotionFX
             ParameterType* parameter = aznew ParameterType();
             parameter->SetName(name);
             parameter->SetDefaultValue(defaultValue);
-            m_animGraph->AddParameter(parameter);
+            m_blendTreeAnimGraph->AddParameter(parameter);
         }
     };
 

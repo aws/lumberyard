@@ -647,23 +647,6 @@ void UiImageComponent::SetImageType(ImageType imageType)
         MarkRenderCacheDirty();
     }
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiImageComponent::SetSpriteSheetCellIndex(AZ::u32 index)
-{
-    SetImageIndex(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-const AZ::u32 UiImageComponent::GetSpriteSheetCellIndex()
-{
-    return GetImageIndex();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-const AZ::u32 UiImageComponent::GetSpriteSheetCellCount()
-{
-    return GetImageIndexCount();
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiImageComponent::SetImageIndex(AZ::u32 index)
@@ -822,25 +805,6 @@ void UiImageComponent::SetFillCenter(bool fillCenter)
         m_fillCenter = fillCenter;
         MarkRenderCacheDirty();
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-AZStd::string UiImageComponent::GetSpriteSheetCellAlias(AZ::u32 index)
-{
-    return GetImageIndexAlias(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiImageComponent::SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias)
-{
-    SetImageIndexAlias(index, alias);
-    MarkRenderCacheDirty();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::u32 UiImageComponent::GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias)
-{
-    return GetImageIndexFromAlias(alias);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1165,8 +1129,6 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetSpriteType", &UiImageBus::Events::SetSpriteType)
             ->Event("GetImageType", &UiImageBus::Events::GetImageType)
             ->Event("SetImageType", &UiImageBus::Events::SetImageType)
-            ->Event("GetSpriteSheetCellIndex", &UiImageBus::Events::GetSpriteSheetCellIndex)
-            ->Event("SetSpriteSheetCellIndex", &UiImageBus::Events::SetSpriteSheetCellIndex)
             ->Event("GetFillType", &UiImageBus::Events::GetFillType)
             ->Event("SetFillType", &UiImageBus::Events::SetFillType)
             ->Event("GetFillAmount", &UiImageBus::Events::GetFillAmount)
@@ -1181,9 +1143,6 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetFillClockwise", &UiImageBus::Events::SetFillClockwise)
             ->Event("GetFillCenter", &UiImageBus::Events::GetFillCenter)
             ->Event("SetFillCenter", &UiImageBus::Events::SetFillCenter)
-            ->Event("GetSpriteSheetCellAlias", &UiImageBus::Events::GetSpriteSheetCellAlias)
-            ->Event("SetSpriteSheetCellAlias", &UiImageBus::Events::SetSpriteSheetCellAlias)
-            ->Event("GetSpriteSheetCellIndexFromAlias", &UiImageBus::Events::GetSpriteSheetCellIndexFromAlias)
             ->VirtualProperty("Color", "GetColor", "SetColor")
             ->VirtualProperty("Alpha", "GetAlpha", "SetAlpha")
             ->VirtualProperty("FillAmount", "GetFillAmount", "SetFillAmount")

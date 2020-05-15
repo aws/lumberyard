@@ -15,6 +15,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
+#include <ImageProcessing/PixelFormats.h>
 
 namespace AZ
 {
@@ -35,10 +36,13 @@ namespace GradientSignal
         AZ_RTTI(ImageAsset, "{4DE8BBFB-EE42-4A6E-B3DB-17A719AC71F9}", AZ::Data::AssetData);
         AZ_CLASS_ALLOCATOR(ImageAsset, AZ::SystemAllocator, 0);
         static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(AZ::SerializeContext& context,
+            AZ::SerializeContext::DataElementNode& classElement);
 
         AZ::u32 m_imageWidth = 0;
         AZ::u32 m_imageHeight = 0;
-        AZ::u32 m_imageFormat = 0;
+        AZ::u8 m_bytesPerPixel = 0;
+        ImageProcessing::EPixelFormat m_imageFormat = ImageProcessing::EPixelFormat::ePixelFormat_Unknown;
         AZStd::vector<AZ::u8> m_imageData;
     };
 

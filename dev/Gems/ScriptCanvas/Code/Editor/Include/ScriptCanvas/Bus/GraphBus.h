@@ -14,6 +14,8 @@
 
 #include <AzCore/EBus/EBus.h>
 
+#include <ScriptCanvas/Core/Core.h>
+
 
 namespace ScriptCanvasEditor
 {   
@@ -22,7 +24,7 @@ namespace ScriptCanvasEditor
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        virtual void OnBuildGameEntity(const AZStd::string& name, const AZ::EntityId& editGraphId, const AZ::EntityId& runtimeGraphId) {}
+        virtual void OnBuildGameEntity(const AZStd::string& name, const AZ::EntityId& editGraphId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId) {}
     };
 
     using GeneralGraphEventBus = AZ::EBus<GeneralGraphEvents>;

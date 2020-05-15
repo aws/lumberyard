@@ -19,9 +19,10 @@
 namespace EMotionFX
 {
     // forward declarations
+    class AnimGraphStateTransition;
     class AnimGraphInstance;
 
-    class EMFX_API AnimGraphTransitionCondition
+    class AnimGraphTransitionCondition
         : public AnimGraphObject
     {
     public:
@@ -33,6 +34,9 @@ namespace EMotionFX
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
+        void SetTransition(AnimGraphStateTransition* transition);
+        AnimGraphStateTransition* GetTransition() const;
+
         virtual bool TestCondition(AnimGraphInstance* animGraphInstance) const = 0;
         virtual void Reset(AnimGraphInstance* animGraphInstance)       { MCORE_UNUSED(animGraphInstance); }
 
@@ -42,6 +46,9 @@ namespace EMotionFX
         // node ids. The method will return the attribute string that will be used to patch this condition on a command
         virtual void GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const;
 
-        static void Reflect(AZ::ReflectContext* context);        
+        static void Reflect(AZ::ReflectContext* context);
+
+    protected:
+        AnimGraphStateTransition* m_transition = nullptr;
     };
 } // namespace EMotionFX

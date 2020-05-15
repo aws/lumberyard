@@ -48,10 +48,40 @@ namespace AzToolsFramework
             int exitCode = 0;
             int result = waitpid(childProcessId, &exitCode, WNOHANG);
 
+            // result == 0 means child PID is still running, nothing to check
             if (result == -1)
             {
                 AZ_TracePrintf("ProcessWatcher", "IsChildProcessDone could not determine child process status (waitpid errno %d). assuming process either failed to launch or terminated unexpectedly\n", errno);
                 exitCode = 0;
+            }
+            else if (result == childProcessId)
+            {
+                // result == child PID indicates done
+                int realExitCode = 0;
+                if (WIFEXITED(exitCode))
+                {
+                    realExitCode = WEXITSTATUS(exitCode);
+                }
+                else if (WIFSIGNALED(exitCode))
+                {
+                    int termSig = WTERMSIG(exitCode);
+                    if (termSig != 0)
+                    {
+                        realExitCode = termSig;
+                    }
+
+                    int coreDump = WCOREDUMP(exitCode);
+                    if (coreDump != 0)
+                    {
+                        realExitCode = coreDump;
+                    }
+                }
+                else if (WIFSTOPPED(exitCode))
+                {
+                    int stopSig = WSTOPSIG(exitCode);
+                    realExitCode = stopSig;
+                }
+                exitCode = realExitCode;
             }
 
             if (outExitCode)
@@ -198,7 +228,7 @@ namespace AzToolsFramework
                 // Allow quote literals to go through as quotes which do NOT alter our "in quotes" bool below
                 // This is to conform with our PC parameter strings which will sometimes include path parameters which
                 // Can have spaces and commas and need to be output as paramname="\"Some pa,ram\"" in order to capture both correctly
-                if(outputString.length() && outputString.back() == '\\')
+                if (outputString.length() && outputString.back() == '\\')
                 {
                     outputString.back() = currentChar;
                 }

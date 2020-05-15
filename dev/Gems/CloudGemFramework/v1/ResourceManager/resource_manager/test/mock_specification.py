@@ -10,8 +10,12 @@
 #
 # $Revision: #1 $
 
+import six
+
+
 def empty():
     return {}
+
 
 def ok_deployment_stack_empty(*args):
     return {
@@ -23,7 +27,11 @@ def ok_deployment_stack_empty(*args):
         }
     }
 
-def ok_project_stack(permissions = {}):
+
+def ok_project_stack(permissions=None, admin_roles=True):
+    if permissions is None:
+        permissions = {}
+
     result = {
         'StackStatus': 'UPDATE_COMPLETE',
         'StackResources': {
@@ -66,18 +74,6 @@ def ok_project_stack(permissions = {}):
             'PlayerAccessTokenExchangeExecution': {
                 'ResourceType': 'AWS::IAM::Role'
             },
-            'ProjectAccess': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
-            'ProjectAdmin': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
-            'ProjectOwner': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
-            'ProjectOwnerAccess': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
             'ProjectIdentityPool': {
                 'ResourceType': 'Custom::CognitoIdentityPool'
             },
@@ -107,16 +103,35 @@ def ok_project_stack(permissions = {}):
             },
             'ServiceLambdaExecution': {
                 'ResourceType': 'AWS::IAM::ManagedPolicy'
+            },
+            'DescribeStacksAndResourcesPolicy': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
+            },
+            'ProjectResourceHandlerLogEventsPolicy': {
+                'ResourceType': 'AWS::IAM::Policy'
+            },
+            'PlayerAccessTokenExchangeLogEventsPolicy': {
+                'ResourceType': 'AWS::IAM::Policy'
             }
         }
     }
 
-    for k,v in permissions.iteritems():
+    if admin_roles:
+        result['StackResources']['ProjectAccess'] = {'ResourceType': 'AWS::IAM::ManagedPolicy'}
+        result['StackResources']['ProjectAdmin'] = {'ResourceType': 'AWS::IAM::Role'}
+        result['StackResources']['ProjectOwner'] = {'ResourceType': 'AWS::IAM::Role'}
+        result['StackResources']['ProjectOwnerAccess'] = {'ResourceType': 'AWS::IAM::ManagedPolicy'}
+
+    for k, v in six.iteritems(permissions):
         result[k]['Permissions'] = v
 
     return result
 
-def ok_deployment_access_stack(permissions = {}):
+
+def ok_deployment_access_stack(permissions=None):
+    if permissions is None:
+        permissions = {}
+
     result = {
         'StackStatus': 'CREATE_COMPLETE',
         'StackResources': {
@@ -159,9 +174,7 @@ def ok_deployment_access_stack(permissions = {}):
         }
     }
 
-    for k,v in permissions.iteritems():
+    for k, v in six.iteritems(permissions):
         result[k]['Permissions'] = v
 
     return result
-
-

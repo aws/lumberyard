@@ -124,8 +124,8 @@ protected:
     void TestSuccessCase(
         CopyDependencyBuilderWorker* worker,
         AZStd::string_view fileName,
-        AZStd::vector<const char*>& expectedPathDependencies,
-        AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies)
+        const AZStd::vector<const char*>& expectedPathDependencies,
+        const AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies)
     {
         AssetBuilderSDK::ProductPathDependencySet resolvedPaths;
         AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;

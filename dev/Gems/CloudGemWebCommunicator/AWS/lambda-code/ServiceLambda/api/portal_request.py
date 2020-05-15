@@ -9,29 +9,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import importlib
 import boto3
 import CloudCanvas
 import service
 import errors
-import messaging
-import iot_websocket
-import registration_shared
-import channel_list
-import iot_request
-import iot_openssl
+from . import messaging
+from . import iot_websocket
+from . import registration_shared
+from . import channel_list
+from . import iot_request
+from . import iot_openssl
 from botocore.exceptions import ClientError
-from registration_shared import listener_policy, cgp_listener_policy, device_policy
-from registration_shared import client_registry_table
-from registration_shared import iot_client
-from registration_shared import iot_data
+from .registration_shared import listener_policy, cgp_listener_policy, device_policy
+from .registration_shared import client_registry_table
+from .registration_shared import iot_client
+from .registration_shared import iot_data
 
 @service.api 
 def channel_broadcast(request, message_info):
 
-    print 'Channel broadcast requested from {}'.format(request)
-    print 'Message info is {}'.format(message_info)
-    
+    print('Channel broadcast requested from {}'.format(request))
+    print('Message info is {}'.format(message_info))
+
     channel_name = message_info.get('ChannelName')
     message_text = message_info.get('Message')
 
@@ -47,7 +48,7 @@ def list_all_users(request):
 
     this_result = {}
     for item_data in table_data['Items']:
-        print 'Found item {}'.format(item_data)
+        print('Found item {}'.format(item_data))
         resultData.append(item_data)
 
     while table_data.get('LastEvaluatedKey'):
@@ -55,18 +56,18 @@ def list_all_users(request):
 
         this_result = {}
         for item_data in table_data['Items']:
-            print 'Found item {}'.format(item_data)
+            print('Found item {}'.format(item_data))
             resultData.append(item_data)
 
     return {'UserInfoList': resultData}
 
 
 def _register_user(clientId):
-    print 'Registering user {}'.format(clientId)
+    print('Registering user {}'.format(clientId))
     client_info = registration_shared.get_user_entry(clientId)
 
     if not client_info:
-        print 'Attempting to register invalid user {}'.format(clientId)
+        print('Attempting to register invalid user {}'.format(clientId))
         return
 
     if client_info.get('CGPClient'):
@@ -81,11 +82,11 @@ def _register_user(clientId):
     iot_client.attach_policy(target=principalId, policyName=policy_name)
 
 def _ban_user(clientId):
-    print 'Banning user {}'.format(clientId)
+    print('Banning user {}'.format(clientId))
     client_info = registration_shared.get_user_entry(clientId)
 
     if not client_info:
-        print 'Attempting to ban invalid user {}'.format(clientId)
+        print('Attempting to ban invalid user {}'.format(clientId))
         return
 
     if client_info.get('CGPClient'):
@@ -104,7 +105,7 @@ def _ban_user(clientId):
 @service.api
 def set_user_status(request, request_content):
 
-    print 'Got set user status request {}'.format(request_content)
+    print('Got set user status request {}'.format(request_content))
 
     userID = request_content.get('ClientID')
     if userID is None:
@@ -143,7 +144,7 @@ def set_user_status(request, request_content):
 
 @service.api     
 def request_cgp_registration(request, registration_type):
-    print 'Portal Registration requested for {} type {}'.format(request, registration_type)
+    print('Portal Registration requested for {} type {}'.format(request, registration_type))
 
     responseObject = {}
 
@@ -152,7 +153,7 @@ def request_cgp_registration(request, registration_type):
     elif registration_type == 'WEBSOCKET':
         responseObject = iot_websocket.register_websocket(request, True)
     else:
-        print 'Invalid Registration type {}'.format(registration_type)
+        print('Invalid Registration type {}'.format(registration_type))
 
     responseResult = responseObject.get('Result')
     if responseResult == 'SUCCESS':

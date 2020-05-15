@@ -43,7 +43,7 @@ namespace AZ
                 : public QObject
                 , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::shared_ptr<ManifestType>>, ManifestVectorWidget>
             {
-                AZ_STATIC_ASSERT((AZStd::is_base_of<DataTypes::IManifestObject, ManifestType>::value), "Manifest type class must inherit from DataTypes::IManifestObject");
+                static_assert((AZStd::is_base_of<DataTypes::IManifestObject, ManifestType>::value), "Manifest type class must inherit from DataTypes::IManifestObject");
             public:
                 AZ_CLASS_ALLOCATOR_DECL
 

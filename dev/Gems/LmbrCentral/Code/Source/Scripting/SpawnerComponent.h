@@ -27,6 +27,7 @@ namespace LmbrCentral
         , private SpawnerComponentRequestBus::Handler
         , private AzFramework::SliceInstantiationResultBus::MultiHandler
         , private AZ::EntityBus::MultiHandler
+        , private AZ::Data::AssetBus::Handler
     {
     public:
         AZ_COMPONENT(SpawnerComponent, SpawnerComponentTypeId);
@@ -54,7 +55,8 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // SpawnerComponentRequestBus::Handler
-        void SetDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& dynamicSliceAsset) override;
+        void SetDynamicSlice(const AZ::Data::Asset<AZ::DynamicSliceAsset>& dynamicSliceAsset) override;
+        void SetDynamicSliceByAssetId(AZ::Data::AssetId& assetId) override;
         void SetSpawnOnActivate(bool spawnOnActivate) override;
         bool GetSpawnOnActivate() override;
         AzFramework::SliceInstantiationTicket Spawn() override;
@@ -81,6 +83,11 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // EntityBus::MultiHandler
         void OnEntityDestruction(const AZ::EntityId& entityId) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetBus::Handler
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

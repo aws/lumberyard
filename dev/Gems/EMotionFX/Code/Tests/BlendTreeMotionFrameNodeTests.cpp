@@ -30,15 +30,15 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             /*
             +--------+    +--------------+    +------------+
             | Motion +--->+ Motion Frame +--->+ Final Node |
             +--------+    +--------------+    +------------+
             */
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
 
             m_motionFrameNode = aznew BlendTreeMotionFrameNode();
             m_blendTree->AddChildNode(m_motionFrameNode);
@@ -49,11 +49,14 @@ namespace EMotionFX
             m_motionNode = aznew AnimGraphMotionNode();
             m_blendTree->AddChildNode(m_motionNode);
             m_motionFrameNode->AddConnection(m_motionNode, AnimGraphMotionNode::PORTID_OUTPUT_MOTION, BlendTreeMotionFrameNode::INPUTPORT_MOTION);
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
         void SetUp() override
         {
             AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
 
             const char* motionId = "Test Motion";
             SkeletalMotion* motion = SkeletalMotion::Create(motionId);
@@ -102,6 +105,7 @@ namespace EMotionFX
         }
 
     public:
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         float m_motionDuration = 1.0f;
         AnimGraphMotionNode* m_motionNode = nullptr;
         BlendTreeMotionFrameNode* m_motionFrameNode = nullptr;

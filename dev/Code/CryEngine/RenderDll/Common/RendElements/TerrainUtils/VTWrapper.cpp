@@ -236,6 +236,53 @@ namespace Terrain
         return false;
     }
 
+    // Given a specific virtual tile address (x, y, mip), clear that tile from the cache if it exists.
+    // Since virtual tiles are created and filled on-demand, clearing the tile will cause the data in it
+    // to get refreshed the next time it is accessed.
+    bool VTWrapper::ClearTile(int x, int y, int mipLevel)
+    {
+        if (!m_indirectionMapCachePtr->ValidateVirtualTextureTile(x, y, mipLevel))
+        {
+#if defined(VT_VERBOSE_LOGGING)
+            AZ_Warning("VTWrapper", false, "VTWrapper::ClearTile() - Invalid Virtual Tile Request - (X, Y, MipLevel) = (%d, %d, %d)", x, y, mipLevel);
+#endif
+            return false;
+        }
+
+        VirtualTile virtualTile;
+        virtualTile.m_x = x;
+        virtualTile.m_y = y;
+        virtualTile.m_mipLevel = mipLevel;
+
+        VirtualTileMap::iterator iter = m_virtualTileMap.find(virtualTile);
+        if (iter != m_virtualTileMap.end())
+        {
+            // VirtualTile is resident in physical cache
+
+            // Remove old entry from the virtual tile map
+            // If the entry doesn't exist, it should not matter (e.g. free physical tile)
+            m_virtualTileMap.erase(iter);
+
+            // Virtual tile maps to a physical tile
+            PhysicalTile& physicalTileAddr = iter->second;
+
+            // Verify the physical tile is pointing to the virtual tile that was requested
+            AZ_Assert(physicalTileAddr.m_virtualAddr == virtualTile, "VTWrapper | Cache Data structures in invalid state!");
+
+            // Update the entry for the virtual tile in the LRU cache with an empty physical tile
+            PhysicalTile emptyPhysicalTile = physicalTileAddr;
+            emptyPhysicalTile.m_virtualAddr = VirtualTile();
+            m_lruCacheQueue.ReplaceCacheEntry(physicalTileAddr, emptyPhysicalTile);
+
+            // Update indirection map; the virtual entry needs to point to nothing.
+            m_indirectionMapCachePtr->ClearPixel(x, y, mipLevel);
+
+            return true;
+        }
+
+        return false;
+    }
+
     ///////////////////////////////
     // VTWrapper Update pump
 

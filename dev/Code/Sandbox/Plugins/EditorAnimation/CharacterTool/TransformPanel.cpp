@@ -192,7 +192,7 @@ namespace CharacterTool
     {
         QLineEdit* edits[3] = { m_editX, m_editY, m_editZ };
 
-        float value = atof(edits[axis]->text().toLocal8Bit().data());
+        float value = aznumeric_cast<float>(atof(edits[axis]->text().toLocal8Bit().data()));
 
         QuatT oldTransform = m_transform;
 

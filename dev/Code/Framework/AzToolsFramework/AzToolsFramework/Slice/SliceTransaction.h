@@ -218,10 +218,21 @@ namespace AzToolsFramework
              */
             const AZ::SliceComponent::EntityIdToEntityIdMap& GetLiveToAssetEntityIdMap() const;
 
+            bool AddLiveToAssetEntityIdMapping(const AZStd::pair<AZ::EntityId, AZ::EntityId>& mapping);
+
+            const AZ::SliceComponent::EntityIdToEntityIdMap& GetAddedEntityIdRemaps() const;
+
             /**
              * Retrieves a pointer to the target asset. This is a modified clone of the original target asset that shares the correct asset id.
              */
             const SliceAssetPtr& GetTargetAsset() const { return m_targetAsset; }
+
+            /**
+            * Retrieves a pointer to the original target asset.
+            * If this is a new slice operation it will be an empty asset as there was no original target.
+            * If this is to update an existing slice it will represent the slice asset being updated.
+            */
+            const SliceAssetPtr& GetOriginalTargetAsset() const { return m_originalTargetAsset; }
 
         private:
     
@@ -243,9 +254,6 @@ namespace AzToolsFramework
             /// intrusive_ptr
             void add_ref();
             void release();
-
-            /// Update any entity references for entities that were added to the slice through this transaction
-            void UpdateEntityReferences();
 
         private:
 

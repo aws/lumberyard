@@ -32,32 +32,42 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             m_transformNode = aznew BlendTreeTransformNode();
-            m_transformNode->SetTargetNodeName("rootNode");
-            m_transformNode->SetMinTranslation(AZ::Vector3::CreateZero());
-            m_transformNode->SetMaxTranslation(AZ::Vector3(10.0f, 0.0f, 0.0f));
+            BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+            BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
 
             m_blendTree->AddChildNode(m_transformNode);
-            BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
             m_blendTree->AddChildNode(finalNode);
-            finalNode->AddUnitializedConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            m_blendTree->AddChildNode(parameterNode);
+
+            m_transformNode->SetTargetNodeName("rootJoint");
+            m_transformNode->SetMinTranslation(AZ::Vector3::CreateZero());
+            m_transformNode->SetMaxTranslation(AZ::Vector3(10.0f, 0.0f, 0.0f));
 
             {
                 Parameter* parameter = ParameterFactory::Create(azrtti_typeid<FloatSliderParameter>());
                 parameter->SetName("translate_amount");
-                m_animGraph->AddParameter(parameter);
+                m_blendTreeAnimGraph->AddParameter(parameter);
             }
 
-            BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
-            m_blendTree->AddChildNode(parameterNode);
+            finalNode->AddUnitializedConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
             m_transformNode->AddUnitializedConnection(parameterNode, 0, BlendTreeTransformNode::PORTID_INPUT_TRANSLATE_AMOUNT);
+
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTree* m_blendTree;
         BlendTreeTransformNode* m_transformNode;
     };

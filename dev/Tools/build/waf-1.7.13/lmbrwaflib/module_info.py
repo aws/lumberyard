@@ -16,14 +16,14 @@ def options(opt):
 
 $ waf info
 """
-from waflib import Build, Errors, Logs, Node, TaskGen, Utils
-
-from pprint import pprint, pformat
-from collections import OrderedDict
-
+# System Imports
 import json
 import os
-import re
+from collections import OrderedDict
+
+# waflib imports
+from waflib import Build, Errors, Logs, Node, TaskGen, Utils
+
 
 def to_list(value):
     if isinstance(value, set):
@@ -35,6 +35,7 @@ def to_list(value):
 
 class ModuleInfoContext(Build.BuildContext):
     cmd = 'info'
+    is_project_generator = True
 
     def execute(self):
         # restore the environments
@@ -118,7 +119,7 @@ class ModuleInfoContext(Build.BuildContext):
                 module = OrderedDict([
                   ('name', target_name),
                   ('location', path),
-                  ('includes', includes.keys()),
+                  ('includes', list(includes.keys())),
                   ('sources', sorted(sources)),
                   ('dependencies', sorted(dependencies))
                 ])
@@ -171,7 +172,7 @@ class ModuleInfoContext(Build.BuildContext):
             module = OrderedDict([
               ('name', artifact_name),
               ('location', os.path.normpath(location)),
-              ('includes', includes.keys())
+              ('includes', list(includes.keys()))
             ])
 
             output_file = os.path.join(output_dir, artifact_name + '.json')

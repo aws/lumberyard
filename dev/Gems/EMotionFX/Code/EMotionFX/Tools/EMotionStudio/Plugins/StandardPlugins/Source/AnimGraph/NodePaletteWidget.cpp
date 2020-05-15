@@ -254,17 +254,20 @@ namespace EMStudio
 
     void NodePaletteWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
-        if (newFocusParent != oldFocusParent)
+        AZ_UNUSED(newFocusIndex);
+        AZ_UNUSED(oldFocusIndex);
+
+        if (newFocusParent.isValid())
         {
-            if (newFocusParent.isValid())
+            if (newFocusParent != oldFocusParent)
             {
                 EMotionFX::AnimGraphNode* node = newFocusParent.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
                 Init(node->GetAnimGraph(), node);
             }
-            else
-            {
-                Init(nullptr, nullptr);
-            }
+        }
+        else
+        {
+            Init(nullptr, nullptr);
         }
     }
 

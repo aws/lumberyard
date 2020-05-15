@@ -11,6 +11,7 @@
 */
 
 #include "SQLiteQuery.h"
+#include <AzToolsFramework/SQLite/SQLiteQueryLogBus.h>
 
 namespace AzToolsFramework
 {
@@ -20,21 +21,12 @@ namespace AzToolsFramework
         {
             void LogQuery(const char* statement, const AZStd::string& params)
             {
-                AZ_UNUSED(statement);
-                AZ_UNUSED(params);
-
-#ifdef ENABLE_QUERY_LOGGING
-                AZ_TracePrintf("SQLiteQuery", "%s %.*s = Params %s\n", statement, params.c_str());
-#endif
+                SQLiteQueryLogBus::Broadcast(&SQLiteQueryLogBus::Events::LogQuery, statement, params);
             }
 
             void LogResultId(AZ::s64 rowId)
             {
-                AZ_UNUSED(rowId);
-
-#ifdef ENABLE_QUERY_LOGGING
-                AZ_TracePrintf("SQLiteQuery", "Last Insert Row Id: %d\n", rowId);
-#endif
+                SQLiteQueryLogBus::Broadcast(&SQLiteQueryLogBus::Events::LogResultId, rowId);
             }
 
             bool Bind(Statement* statement, int index, const AZ::Uuid& value)

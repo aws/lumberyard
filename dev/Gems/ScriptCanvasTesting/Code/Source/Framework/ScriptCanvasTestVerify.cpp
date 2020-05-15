@@ -18,7 +18,7 @@ namespace ScriptCanvasTests
     {
         ScriptCanvasEditor::UnitTestResult result = ScriptCanvasEditor::UnitTestResult(false, true, "");
 
-        if (!reporter.GetGraphId().IsValid())
+        if (!reporter.GetScriptCanvasId().IsValid())
         {
             result.m_consoleOutput += "Graph is not valid\n";
         }

@@ -11,6 +11,7 @@
 */
 
 #include <AzToolsFramework/AssetCatalog/PlatformAddressedAssetCatalog.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
@@ -18,9 +19,9 @@
 namespace AzToolsFramework
 {
 
-    PlatformAddressedAssetCatalog::PlatformAddressedAssetCatalog( AzFramework::PlatformId platformId, bool useRequestBus) :
+    PlatformAddressedAssetCatalog::PlatformAddressedAssetCatalog( AzFramework::PlatformId platformId, bool directConnections) :
         m_platformId(platformId),
-        AzFramework::AssetCatalog(useRequestBus)
+        AzFramework::AssetCatalog(directConnections)
     {
         InitCatalog();
     }
@@ -160,9 +161,9 @@ namespace AzToolsFramework
         return AssetCatalog::RemoveDeltaCatalog(deltaCatalog);
     }
 
-    bool PlatformAddressedAssetCatalog::CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion)
+    bool PlatformAddressedAssetCatalog::CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion, const AZStd::vector<AZStd::string>& levelDirs)
     {
-        return AssetCatalog::CreateBundleManifest(deltaCatalogPath, dependentBundleNames, fileDirectory, bundleVersion);
+        return AssetCatalog::CreateBundleManifest(deltaCatalogPath, dependentBundleNames, fileDirectory, bundleVersion, levelDirs);
     }
 
     bool PlatformAddressedAssetCatalog::CreateDeltaCatalog(const AZStd::vector<AZStd::string>& files, const AZStd::string& filePath)
@@ -208,6 +209,11 @@ namespace AzToolsFramework
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> PlatformAddressedAssetCatalog::GetAllProductDependencies(const AZ::Data::AssetId& asset)
     {
         return AssetCatalog::GetAllProductDependencies(asset);
+    }
+
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> PlatformAddressedAssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+    {
+        return AzFramework::AssetCatalog::GetAllProductDependenciesFilter(id, exclusionList);
     }
 
     void PlatformAddressedAssetCatalog::EnumerateAssets(BeginAssetEnumerationCB beginCB, AssetEnumerationCB enumerateCB, EndAssetEnumerationCB endCB)

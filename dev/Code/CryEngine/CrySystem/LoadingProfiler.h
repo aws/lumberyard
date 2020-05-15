@@ -44,7 +44,7 @@ public:
     static SLoadingTimeContainer* StartLoadingSectionProfiling(CLoadingTimeProfiler* pProfiler, const char* szFuncName);
     static void EndLoadingSectionProfiling(CLoadingTimeProfiler* pProfiler);
     static const char* GetLoadingProfilerCallstack();
-    static void FillProfilersList(std::vector<SLoadingProfilerInfo>& profilers);
+    static void FillProfilersList(AZStd::vector<SLoadingProfilerInfo>& profilers);
     static void FlushTimeContainers();
     static void SaveTimeContainersToFile(const char*, double fMinTotalTime, bool bClean);
     static void WriteTimeContainerToFile(SLoadingTimeContainer* p, AZ::IO::HandleType &handle, unsigned int depth, double fMinTotalTime);

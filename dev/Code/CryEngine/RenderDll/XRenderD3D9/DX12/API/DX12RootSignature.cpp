@@ -596,7 +596,7 @@ namespace DX12
         if (!result->Init(params))
         {
             DX12_ERROR("Could not create root signature!");
-            nullptr;
+            return nullptr;
         }
 
         m_RootSignatureMap[hash] = result;
@@ -618,7 +618,7 @@ namespace DX12
         if (!result->Init(params))
         {
             DX12_ERROR("Could not create root signature!");
-            nullptr;
+            return nullptr;
         }
 
         m_RootSignatureMap[hash] = result;

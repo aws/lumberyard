@@ -446,6 +446,140 @@ namespace EMStudio
         }
     }
 
-}   // namespace EMStudio
+    void AnimGraphActionManager::AlignNodes(AlignMode alignMode)
+    {
+        if (!m_plugin->GetActionFilter().m_editNodes)
+        {
+            return;
+        }
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.moc>
+        NodeGraph* nodeGraph = m_plugin->GetGraphWidget()->GetActiveGraph();
+        if (!nodeGraph)
+        {
+            return;
+        }
+
+        int32 alignedXPos = 0;
+        int32 alignedYPos = 0;
+        int32 maxGraphNodeHeight = 0;
+        int32 maxGraphNodeWidth = 0;
+
+        bool firstSelectedNode = true;
+        const QModelIndexList selectedItems = m_plugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        AZStd::vector<GraphNode*> alignedGraphNodes;
+
+        for (const QModelIndex& selected : selectedItems)
+        {
+            if (selected.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE)
+            {
+                GraphNode* graphNode = nodeGraph->FindGraphNode(selected);
+                if (graphNode) // otherwise it does not belong to the current active graph
+                {
+                    alignedGraphNodes.push_back(graphNode);
+
+                    EMotionFX::AnimGraphNode* animGraphNode = selected.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                    const int32 xPos = animGraphNode->GetVisualPosX();
+                    const int32 yPos = animGraphNode->GetVisualPosY();
+                    const int32 graphNodeHeight = graphNode->CalcRequiredHeight();
+                    const int32 graphNodeWidth = graphNode->CalcRequiredWidth();
+
+                    if (firstSelectedNode)
+                    {
+                        alignedXPos = xPos;
+                        alignedYPos = yPos;
+                        maxGraphNodeHeight = graphNodeHeight;
+                        maxGraphNodeWidth = graphNodeWidth;
+                        firstSelectedNode = false;
+                    }
+
+                    if (graphNodeHeight > maxGraphNodeHeight)
+                    {
+                        maxGraphNodeHeight = graphNodeHeight;
+                    }
+
+                    if (graphNodeWidth > maxGraphNodeWidth)
+                    {
+                        maxGraphNodeWidth = graphNodeWidth;
+                    }
+
+                    switch (alignMode)
+                    {
+                        case Left:
+                        {
+                            if (xPos < alignedXPos)
+                            {
+                                alignedXPos = xPos;
+                            }
+                            break;
+                        }
+                        case Right:
+                        {
+                            if (xPos + graphNodeWidth > alignedXPos)
+                            {
+                                alignedXPos = xPos + graphNodeWidth;
+                            }
+                            break;
+                        }
+                        case Top:
+                        {
+                            if (yPos < alignedYPos)
+                            {
+                                alignedYPos = yPos;
+                            }
+                            break;
+                        }
+                        case Bottom:
+                        {
+                            if (yPos + graphNodeHeight > alignedYPos)
+                            {
+                                alignedYPos = yPos + graphNodeHeight;
+                            }
+                            break;
+                        }
+                        default:
+                            MCORE_ASSERT(false);
+                    }
+                }
+            }
+        }
+
+        if (alignedGraphNodes.size() > 1)
+        {
+            AZStd::string command;
+            AZStd::string outResult;
+            MCore::CommandGroup commandGroup("Align anim graph nodes");
+
+            const QModelIndex& modelIndex = nodeGraph->GetModelIndex();
+            EMotionFX::AnimGraphNode* parentNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+            AZ_Assert(parentNode, "Expected the parent to be a node");
+            EMotionFX::AnimGraph* animGraph = parentNode->GetAnimGraph();
+
+            for (GraphNode* node : alignedGraphNodes)
+            {
+                command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" ", animGraph->GetID(), node->GetName());
+
+                switch (alignMode)
+                {
+                    case Left:
+                        command += AZStd::string::format("-xPos %i", alignedXPos);
+                        break;
+                    case Right:
+                        command += AZStd::string::format("-xPos %i", alignedXPos - node->CalcRequiredWidth());
+                        break;
+                    case Top:
+                        command += AZStd::string::format("-yPos %i", alignedYPos);
+                        break;
+                    case Bottom:
+                        command += AZStd::string::format("-yPos %i", alignedYPos - node->CalcRequiredHeight());
+                        break;
+                    default:
+                        MCORE_ASSERT(false);
+                }
+
+                commandGroup.AddCommandString(command);
+            }
+
+            GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
+        }
+    }
+} // namespace EMStudio

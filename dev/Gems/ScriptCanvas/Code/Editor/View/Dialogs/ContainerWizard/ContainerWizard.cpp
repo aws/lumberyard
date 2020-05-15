@@ -81,9 +81,9 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void ContainerWizard::SetActiveGraph(const AZ::EntityId& scriptCanvasGraphId)
+    void ContainerWizard::SetActiveScriptCanvasId(const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
     {
-        m_activeGraph = scriptCanvasGraphId;
+        m_activeScriptCanvasId = scriptCanvasId;
     }
 
     void ContainerWizard::RegisterType(const AZ::TypeId& dataType)
@@ -143,11 +143,11 @@ namespace ScriptCanvasEditor
 
         do
         {
-            SceneCounterRequestBus::EventResult(m_variableCounter, m_activeGraph, &SceneCounterRequests::GetNewVariableCounter);
+            SceneCounterRequestBus::EventResult(m_variableCounter, m_activeScriptCanvasId, &SceneCounterRequests::GetNewVariableCounter);
 
             variableName = VariableDockWidget::ConstructDefaultVariableName(m_variableCounter);
 
-            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, m_activeGraph, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, variableName);
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, m_activeScriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, variableName);
         } while (!nameAvailable);
 
         m_ui->variableName->setText(variableName.c_str());
@@ -302,7 +302,7 @@ namespace ScriptCanvasEditor
 
         if (m_releaseVariable)
         {
-            SceneCounterRequestBus::Event(m_activeGraph, &SceneCounterRequests::ReleaseVariableCounter, m_variableCounter);
+            SceneCounterRequestBus::Event(m_activeScriptCanvasId, &SceneCounterRequests::ReleaseVariableCounter, m_variableCounter);
         }
     }
 
@@ -339,7 +339,7 @@ namespace ScriptCanvasEditor
 
         bool validName = false;
 
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(validName, m_activeGraph, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, newName.toUtf8().data());
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(validName, m_activeScriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, newName.toUtf8().data());
 
         if (!validName || newName.isEmpty())
         {

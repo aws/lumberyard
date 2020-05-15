@@ -34,6 +34,7 @@ namespace AZ
             RetrieveInfo = 1,   //!< Task to retrieve information from a location such as the Serialize Context.
             CreateDefault,      //!< Task to create a default instance.
             Convert,            //!< Task to convert a value from one type to another.
+            Clear,              //!< Task to clear a field/value.
             ReadField,          //!< Task to read a field from JSON to a value.
             WriteValue          //!< Task to write a value to a JSON field.
         };
@@ -52,6 +53,7 @@ namespace AZ
         {
             Success = 1,        //!< Task completed successfully.
             Skipped,            //!< Task skipped a field of value.
+            PartialSkip,        //!< Task skipped one or more fields when processing an object/array.
             DefaultsUsed,       //!< Task completed, only defaults were used.
             PartialDefaults,    //!< Task completed, but some defaults were used.
             Unavailable,        //!< The task tried to use space that's not available.

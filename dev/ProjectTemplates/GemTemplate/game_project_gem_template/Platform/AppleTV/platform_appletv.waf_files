@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Resource Files":
+        [
+            "../../../Resources/AppleTVLauncher/Info.plist"
+        ]
+    }
+}

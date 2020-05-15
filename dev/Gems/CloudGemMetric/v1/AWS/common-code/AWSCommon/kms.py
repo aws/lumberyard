@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import retry
 import boto3_util
 import metric_constant as c
@@ -20,13 +32,13 @@ class Kms(object):
         params['Plaintext'] = data
         params['EncryptionContext'] = {}                
         response = self.__client.encrypt(**params)
-        print "encrypt", response
+        print("encrypt", response)
         return response
 
     def create_key(self):        
         params = dict({})      
         response = self.__client.create_key(**params)
-        print "create key", response
+        print("create key", response)
         return response['KeyMetadata']
 
     def create_key_alias(self, key_id, alias_name):        
@@ -34,26 +46,26 @@ class Kms(object):
         params['AliasName'] = self.__alias_name(alias_name)
         params['TargetKeyId'] = key_id      
         response = self.__client.create_alias(**params)
-        print "create alias", response
+        print("create alias", response)
         return response
     
     def list_keys(self):        
         params = dict({})   
         response = self.__client.list_keys(**params)
-        print "list_keys", response
+        print("list_keys", response)
         return response['Keys']
 
     def list_aliases(self):        
         params = dict({})   
         response = self.__client.list_aliases(**params)
-        print "list_aliases", response
+        print("list_aliases", response)
         return response['Aliases']
 
     def alias_exists(self, alias_name):        
         aliases = self.list_aliases()
-        print 
         for alias in aliases:
             if alias['AliasName'] == self.__alias_name(alias_name):
+                print("alias exists: {}".format(alias_name))
                 return True
         return False        
 

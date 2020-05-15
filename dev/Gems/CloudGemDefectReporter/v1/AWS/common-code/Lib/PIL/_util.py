@@ -1,14 +1,17 @@
 import os
+import sys
 
-if bytes is str:
-    def isStringType(t):
-        return isinstance(t, basestring)
+py36 = sys.version_info[0:2] >= (3, 6)
+
+
+if py36:
+    from pathlib import Path
 
     def isPath(f):
-        return isinstance(f, basestring)
+        return isinstance(f, (bytes, str, Path))
+
+
 else:
-    def isStringType(t):
-        return isinstance(t, str)
 
     def isPath(f):
         return isinstance(f, (bytes, str))
@@ -19,7 +22,7 @@ def isDirectory(f):
     return isPath(f) and os.path.isdir(f)
 
 
-class deferred_error(object):
+class deferred_error:
     def __init__(self, ex):
         self.ex = ex
 

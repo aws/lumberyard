@@ -17,6 +17,7 @@
 #include <QtNetwork/qabstractsocket.h>
 #include <QTimer>
 
+#include <AzFramework/AzFramework_Traits_Platform.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -850,6 +851,7 @@ void DeploymentToolWindow::OnDeployTargetsTabChanged()
         {
             // Device Farm only works in the lovely state of Oregon
             Aws::Client::ClientConfiguration clientConfiguration = Aws::Client::ClientConfiguration();
+            clientConfiguration.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
             clientConfiguration.region = Aws::Region::US_WEST_2;
 
             // Create the Device Farm Interface and the Driver

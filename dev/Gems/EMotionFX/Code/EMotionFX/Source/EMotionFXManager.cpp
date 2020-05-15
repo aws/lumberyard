@@ -149,16 +149,36 @@ namespace EMotionFX
         // from the motion nodes when destructing the motions itself
         //mRigManager->Destroy();
         mMotionManager->Destroy();
-        mAnimGraphManager->Destroy();
-        mImporter->Destroy();
-        mActorManager->Destroy();
-        mMotionInstancePool->Destroy();
-        mEventManager->Destroy();
-        mSoftSkinManager->Destroy();
-        mWaveletCache->Destroy();
-        mRecorder->Destroy();
-        delete mDebugDraw;
+        mMotionManager = nullptr;
 
+        mAnimGraphManager->Destroy();
+        mAnimGraphManager = nullptr;
+
+        mImporter->Destroy();
+        mImporter = nullptr;
+
+        mActorManager->Destroy();
+        mActorManager = nullptr;
+
+        mMotionInstancePool->Destroy();
+        mMotionInstancePool = nullptr;
+
+        mSoftSkinManager->Destroy();
+        mSoftSkinManager = nullptr;
+
+        mWaveletCache->Destroy();
+        mWaveletCache = nullptr;
+
+        mRecorder->Destroy();
+        mRecorder = nullptr;
+
+        delete mDebugDraw;
+        mDebugDraw = nullptr;
+        
+
+        mEventManager->Destroy();
+        mEventManager = nullptr;
+        
         // delete the thread datas
         for (uint32 i = 0; i < mThreadDatas.GetLength(); ++i)
         {

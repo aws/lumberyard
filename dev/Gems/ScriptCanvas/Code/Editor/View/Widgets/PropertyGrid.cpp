@@ -400,6 +400,30 @@ namespace ScriptCanvasEditor
             componentEditor->show();
         }
 
+        ScriptCanvas::ScriptCanvasId PropertyGrid::GetScriptCanvasId(AZ::Component* component)
+        {
+            ScriptCanvas::ScriptCanvasId executionId;
+            if (const ScriptCanvas::Node* node = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(component->GetEntity()))
+            {
+                executionId = node->GetOwningScriptCanvasId();
+            }
+            else
+            {
+                GeneralRequestBus::BroadcastResult(executionId, &GeneralRequests::GetActiveScriptCanvasId);
+
+                if (!executionId.IsValid())
+                {
+                    AZ::EntityId graphCanvasGraphId;
+
+                    // GraphCanvas Node
+                    GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, component->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+                    GeneralRequestBus::BroadcastResult(executionId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
+                }
+            }
+
+            return executionId;
+        }
+
         AzToolsFramework::ComponentEditor* PropertyGrid::CreateComponentEditor()
         {
             GRAPH_CANVAS_PROFILE_FUNCTION();
@@ -456,10 +480,13 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::BeforePropertyModified(AzToolsFramework::InstanceDataNode* pNode)
         {
+            GeneralRequestBus::Broadcast(&GeneralRequests::PushPreventUndoStateUpdate);
         }
 
         void PropertyGrid::AfterPropertyModified(AzToolsFramework::InstanceDataNode* pNode)
         {
+            GeneralRequestBus::Broadcast(&GeneralRequests::PopPreventUndoStateUpdate);
+
             AzToolsFramework::InstanceDataNode* componentNode = pNode;
             do
             {
@@ -484,26 +511,8 @@ namespace ScriptCanvasEditor
                 AZ::Component* componentInstance = context->Cast<AZ::Component*>(componentNode->GetInstance(firstInstanceIdx), componentNode->GetClassMetadata()->m_typeId);
                 if (componentInstance && componentInstance->GetEntity())
                 {
-                    AZ::EntityId scriptCanvasGraphId;
-                    if (AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(componentInstance->GetEntity()))
-                    {
-                        // ScriptCanvas Node
-                        ScriptCanvas::EditorNodeRequestBus::EventResult(scriptCanvasGraphId, componentInstance->GetEntityId(), &ScriptCanvas::EditorNodeRequests::GetGraphEntityId);
-                    }
-                    else
-                    {
-                        AZ::EntityId graphCanvasGraphId;
-                        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetActiveScriptCanvasGraphId);
-
-                        if (!scriptCanvasGraphId.IsValid())
-                        {
-                            // GraphCanvas Node
-                            GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, componentInstance->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
-                            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
-                        }
-                    }
-
-                    GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
+                    ScriptCanvas::ScriptCanvasId scriptCanvasId = GetScriptCanvasId(componentInstance);
+                    GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasId);
                 }
             }
         }
@@ -598,12 +607,10 @@ namespace ScriptCanvasEditor
                         bool isConnected = false;
                         GraphCanvas::SlotRequestBus::EventResult(isConnected, gcSlotEntityId, &GraphCanvas::SlotRequests::HasConnections);
 
-                        ScriptCanvas::Datum* datum = nullptr;
-                        ScriptCanvas::EditorNodeRequestBus::EventResult(datum, scNodeEntityId, &ScriptCanvas::EditorNodeRequests::ModInput, scSlotId);
-                        if (datum)
-                        {
-                            datum->SetVisibility(isConnected ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::ShowChildrenOnly);
-                        }
+                        ScriptCanvas::ModifiableDatumView datumView;
+                        node->FindModifiableDatumView(scSlotId, datumView);
+
+                        datumView.SetVisibility(isConnected ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                     }
 
                     // Connect to get notified of changes.
@@ -635,26 +642,20 @@ namespace ScriptCanvasEditor
         {
             const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
 
-            ScriptCanvas::Datum* datum = nullptr;
-            ScriptCanvas::EditorNodeRequestBus::EventResult(datum, sourceEndpoint->GetNodeId(), &ScriptCanvas::EditorNodeRequests::ModInput, sourceEndpoint->GetSlotId());
+            ScriptCanvas::ModifiableDatumView datumView;
+            ScriptCanvas::NodeRequestBus::Event(sourceEndpoint->GetNodeId(), &ScriptCanvas::NodeRequests::FindModifiableDatumView, sourceEndpoint->GetSlotId(), datumView);
 
-            if (datum)
-            {
-                datum->SetVisibility(AZ::Edit::PropertyVisibility::Hide);
-            }
+            datumView.SetVisibility(AZ::Edit::PropertyVisibility::Hide);
         }
 
         void PropertyGrid::OnEndpointDisconnected(const ScriptCanvas::Endpoint& targetEndpoint)
         {
             const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
 
-            ScriptCanvas::Datum* datum = nullptr;
-            ScriptCanvas::EditorNodeRequestBus::EventResult(datum, sourceEndpoint->GetNodeId(), &ScriptCanvas::EditorNodeRequests::ModInput, sourceEndpoint->GetSlotId());
+            ScriptCanvas::ModifiableDatumView datumView;
+            ScriptCanvas::NodeRequestBus::Event(sourceEndpoint->GetNodeId(), &ScriptCanvas::NodeRequests::FindModifiableDatumView, sourceEndpoint->GetSlotId(), datumView);
 
-            if (datum)
-            {
-                datum->SetVisibility(AZ::Edit::PropertyVisibility::ShowChildrenOnly);
-            }
+            datumView.SetVisibility(AZ::Edit::PropertyVisibility::ShowChildrenOnly);
         }
 
 #include <Editor/View/Widgets/PropertyGrid.moc>

@@ -9,27 +9,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import configparser
+import glob
+import json
+import os
+import re
+import string
+import fnmatch
+
+from collections import OrderedDict
+
+# waflib imports
 from waflib import Configure, Context, Utils, Errors, Node
 from waflib.TaskGen import feature, after_method
 from waflib.Configure import ConfigurationContext, conf, Logs
 from waflib.Errors import ConfigurationError, WafError
 
-from waf_branch_spec import BINTEMP_CACHE_3RD_PARTY
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import get_configuration, append_unique_kw_entry, append_to_unique_list
+from lmbrwaflib.third_party_sync import P4SyncThirdPartySettings
+from lmbrwaflib.utils import parse_json_file, write_json_file, calculate_file_hash, calculate_string_hash
+from lmbrwaflib.gems import GemManager
+from lmbrwaflib.settings_manager import LUMBERYARD_SETTINGS
 
-from cry_utils import get_configuration, append_unique_kw_entry, append_to_unique_list
-from third_party_sync import P4SyncThirdPartySettings
-from utils import parse_json_file, write_json_file, calculate_file_hash, calculate_string_hash
-from collections import OrderedDict
-from gems import GemManager
-from settings_manager import LUMBERYARD_SETTINGS
+# misc imports
+from waf_branch_spec import BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY
 
-import os
-import glob
-import re
-import json
-import string
-import ConfigParser
-import fnmatch
 
 ALIAS_SEARCH_PATTERN = re.compile(r'(\$\{([\w]*)})')
 
@@ -38,6 +44,7 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     # win_x64 host platform
                                     'win_x64_clang'      : 'win_x64/vc140',
                                     'win_x64_vs2017'     : 'win_x64/vc140',  # Not an error, VS2017 links with VS2015 binaries
+                                    'win_x64_vs2019'     : 'win_x64/vc140',
                                     'android_armv8_clang': 'win_x64/android_ndk_r15/android-21/arm64-v8a/clang-3.8',
 
                                     # osx host platform
@@ -131,7 +138,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
             for alias_value in aliased_names:
                 pre_expansion_aliases = _process_alias_value(name_alias_map, alias_value, visit_stack)
                 for pre_expansion_alias in pre_expansion_aliases:
-                    aliased_values.append(ALIAS_SEARCH_PATTERN.sub(pre_expansion_alias,name_alias_value))
+                    aliased_values.append(ALIAS_SEARCH_PATTERN.sub(pre_expansion_alias, name_alias_value))
             visit_stack.pop()
             return aliased_values
 
@@ -140,7 +147,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
 
     # Scan the optional 'aliases' node off of the parent to look for aliases to build the map
     evaluated_name_alias_map = {}
-    if 'aliases' not in lib_root.keys():
+    if 'aliases' not in list(lib_root.keys()):
         return evaluated_name_alias_map
 
     alias_node = lib_root['aliases']
@@ -164,6 +171,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
 
     return evaluated_name_alias_map
 
+
 CACHE_JSON_MODEL_AND_ALIAS_MAP = {}
 
 # Keep a cache of the 3rd party uselibs mappings to a tuple of the config file and the alias root map that applies to it
@@ -182,7 +190,7 @@ def get_platform_folder_to_keyword_map(ctx):
         return ctx.platform_folder_to_keyword_map
     except AttributeError:
         working_map = {}
-        target_platforms = ctx.get_all_target_platforms(apply_valid_platform_filter=False)
+        target_platforms = ctx.get_all_target_platforms(False)
         for target_platform in target_platforms:
             assert 'platform_folder' in target_platform.attributes
             assert 'platform_keyword' in target_platform.attributes
@@ -218,20 +226,20 @@ def get_3rd_party_config_record(ctx, lib_config_file):
     # Only the following sections at the root level of the config file is 'mergeable'
     mergeable_keys = ['platform', 'aliases', 'configuration_settings']
 
-    for platform_folder, platform_keyword in platform_folder_to_keyword_map.items():
-        
+    for platform_folder, platform_keyword in list(platform_folder_to_keyword_map.items()):
+
         # For each platform, check if there exists a platform fragment config to attempt to merge
         check_fragment_filename = '{}_{}{}'.format(file_base_name, platform_keyword, file_ext)
         check_fragment_path = os.path.join(platform_base_node.abspath(), platform_folder, check_fragment_filename)
         if not os.path.exists(check_fragment_path):
             continue
-            
+
         # Parse the platform fragment and attempt to merge the mergeable sections together
         lib_platform_fragment_node = platform_base_node.make_node('{}/{}'.format(platform_folder, check_fragment_filename))
-        
+
         config_plaform_fragment_json = ctx.parse_json_file(lib_platform_fragment_node)
-        
-        for level_one_key, level_one_dict in config_plaform_fragment_json.items():
+
+        for level_one_key, level_one_dict in list(config_plaform_fragment_json.items()):
             # Validate/Match the root (level 1) key for merging
             if not isinstance(level_one_dict, dict):
                 raise Errors.WafError("3rd Party Platform Fragment file '{}' has an "
@@ -245,7 +253,7 @@ def get_3rd_party_config_record(ctx, lib_config_file):
                                                                                                    ','.join(mergeable_keys)))
 
             target_root_dict = lib_info.setdefault(level_one_key, {})
-            for level_two_key, level_two_values in level_one_dict.items():
+            for level_two_key, level_two_values in list(level_one_dict.items()):
                 # For each value in level 2 dictionary, merge new items from the fragment to the base one. This only accepts new keys
                 # and will not attempt to merge down even further
                 if level_two_key in target_root_dict:
@@ -264,28 +272,27 @@ def get_3rd_party_config_record(ctx, lib_config_file):
 
 @conf
 def mark_3rd_party_config_for_autoconf(ctx):
-
     # Make sure we track 3rd party jsons for auto configure
     if not hasattr(ctx, 'additional_files_to_track'):
         ctx.additional_files_to_track = []
 
     platform_folder_to_keyword_map = ctx.get_platform_folder_to_keyword_map()
-    
+
     config_3rdparty_folder = ctx.engine_node.make_node('_WAF_/3rdParty')
     platform_base_node = config_3rdparty_folder.make_node('Platform')
     config_file_nodes = config_3rdparty_folder.ant_glob('*.json')
-    
+
     for config_file_node in config_file_nodes:
-        
+
         # Track each base 3rd party config node
         ctx.additional_files_to_track.append(config_file_node)
-        
+
         # Track any platform fragment files for the config
         config_file_name = config_file_node.name
         file_base_name, file_ext = os.path.splitext(config_file_name)
-        
-        for platform_folder, platform_keyword in platform_folder_to_keyword_map.items():
-        
+
+        for platform_folder, platform_keyword in list(platform_folder_to_keyword_map.items()):
+
             # For each platform, check if there exists a platform fragment config to attempt to merge
             check_fragment_filename = '{}_{}{}'.format(file_base_name, platform_keyword, file_ext)
             check_fragment_path = os.path.join(platform_base_node.abspath(), platform_folder, check_fragment_filename)
@@ -302,7 +309,6 @@ def mark_3rd_party_config_for_autoconf(ctx):
 
 @conf
 def read_and_mark_3rd_party_libs(ctx):
-
     def _process(config_folder_node, config_file_abs, path_alias_map):
 
         filename = os.path.basename(config_file_abs)
@@ -320,7 +326,7 @@ def read_and_mark_3rd_party_libs(ctx):
     config_files = glob.glob(os.path.join(config_3rdparty_folder_path, '*.json'))
 
     if ctx.is_engine_local():
-        root_alias_map = {'ROOT' : ctx.srcnode.abspath()}
+        root_alias_map = {'ROOT': ctx.srcnode.abspath()}
     else:
         root_alias_map = {'ROOT': ctx.engine_path}
 
@@ -334,8 +340,8 @@ def read_and_mark_3rd_party_libs(ctx):
         gem_3p_abspath = os.path.join(gem.abspath, '3rdParty', '*.json')
         gem_3p_config_files = glob.glob(gem_3p_abspath)
         gem_3p_node = ctx.root.make_node(gem.abspath).make_node('3rdParty')
-        gem_alias_map = {'ROOT' : ctx.srcnode.abspath(),
-                         'GEM'  : gem.abspath }
+        gem_alias_map = {'ROOT': ctx.srcnode.abspath(),
+                         'GEM': gem.abspath}
         for gem_3p_config_file in gem_3p_config_files:
             _process(gem_3p_node, gem_3p_config_file, gem_alias_map)
 
@@ -356,7 +362,7 @@ class ThirdPartyLibReader:
     appropriate environment settings to consume that library
     """
 
-    def __init__(self, ctx, config_node, lib_root, lib_key, platform_key, configuration_key, alias_map, path_alias_map, warn_on_collision, get_env_func, apply_env_func):
+    def __init__(self, ctx, config_node, lib_root, lib_key, platform_key, configuration_key, alias_map, path_alias_map, warn_on_collision, binary_compatible_platforms, get_env_func, apply_env_func):
         """
         Initializes the class
 
@@ -373,6 +379,7 @@ class ThirdPartyLibReader:
         self.ctx = ctx
         self.lib_root = lib_root
         self.lib_key = lib_key
+        self.platform_root = lib_root.get('platform', {})
         self.platform_key = platform_key
         self.configuration_key = configuration_key
         self.name_alias_map = alias_map
@@ -381,59 +388,13 @@ class ThirdPartyLibReader:
         self.get_env_func = get_env_func
         self.apply_env_func = apply_env_func
         self.config_file = config_node.abspath()
-        
+
         # Create an error reference message based on the above settings
         self.error_ref_message = "({}, platform {})".format(config_node.abspath(), self.platform_key)
 
         # Process the platform key (in case the key is an alias).  If the platform value is a string, then it must start with a '@' to represent
         # an alias to another platform definition
-        self.processed_platform_key = self.platform_key
-
-        if "platform" in self.lib_root:
-
-            # There exists a 'platform' node in the 3rd party config. make sure that the input platform key exists in there
-            platform_root = self.lib_root["platform"]
-            if self.platform_key not in platform_root:
-
-                windows_platform = None
-                for platform in ['win_x64_vs2017', 'win_x64_vs2015']:
-                    if platform in platform_root:
-                        windows_platform = platform
-                        break
-
-                if self.platform_key == 'win_x64_clang' and isisntance(windows_platform, str):
-                    windows_config = platform_root[windows_platform]
-
-                    # If windows is also an alias, just copy it
-                    if isinstance(windows_config, str):
-                        platform_root[self.platform_key] = windows_config
-                    # If windows is a full config, link to it
-                    else:
-                        platform_root[self.platform_key] = '@' + windows_platform
-                else:
-                    # If there was no evaluated platform key, that means the configuration file was valid but did not have entries for this
-                    # particular platform.
-                    if Logs.verbose > 1:
-                        Logs.warn('[WARN] Platform {} not specified in 3rd party configuration file {}'.format(self.platform_key,config_node.abspath()))
-                    self.processed_platform_key = None
-
-            # If the platform definition is a string, then it must represent an alias to a defined platform
-            if isinstance(platform_root.get(self.platform_key), str):
-
-                # Validate the platform alias
-                platform_alias_target = platform_root[self.platform_key]
-                if not platform_alias_target.startswith('@'):
-                    self.raise_config_error("Invalid platform alias format {}.  Must be in the form @<platform> where <platform> "
-                                            "represents an explicitly defined platform.".format(self.platform_key))
-                # Validate the target platform is explicitly declared
-                platform_alias_target = platform_alias_target[1:]
-                if platform_alias_target not in platform_root:
-                    self.raise_config_error("Invalid platform alias {}.  Target platform alias not defined in the configuration file".format(self.platform_key))
-
-                self.processed_platform_key = platform_alias_target
-
-                # Update the reference message based on the above processed platform key
-                self.error_ref_message = "({}, platform {})".format(config_node.abspath(), self.platform_key)
+        self.processed_platform_key = self.process_platform_key(binary_compatible_platforms, platform_key)
 
     def raise_config_error(self, message):
         raise RuntimeError("{}: {}".format(message, self.error_ref_message))
@@ -479,7 +440,8 @@ class ThirdPartyLibReader:
         try:
             # If the library is configured only for non-release (debug, profile, et all), but we are currently in release/performance,
             # then short circuit out and return without setting any environment
-            if non_release_only and self.configuration_key.lower() in ["release", "release_dedicated", "performance", "performance_dedicated"]:
+            if non_release_only and self.configuration_key.lower() in ["release", "release_dedicated", "performance",
+                                                                       "performance_dedicated"]:
                 return False, None
 
             # Validate that this is a valid target platform on this host platform
@@ -562,6 +524,9 @@ class ThirdPartyLibReader:
             include_paths = self.get_most_specific_entry("includes", uselib_name, lib_configuration)
             self.apply_uselib_values_file_path(uselib_env_name, include_paths, "INCLUDES", lib_source_path)
 
+            system_include_paths = self.get_most_specific_entry("system_includes", uselib_name, lib_configuration)
+            self.apply_uselib_values_file_path(uselib_env_name, system_include_paths, "SYSTEM_INCLUDES", lib_source_path)
+
             # Read and apply the values for DEFINES_(uselib_name)
             defines = self.get_most_specific_entry("defines", uselib_name, lib_configuration)
             self.apply_uselib_values_general(uselib_env_name, defines, "DEFINES")
@@ -612,21 +577,16 @@ class ThirdPartyLibReader:
 
             if framework_paths:
                 apply_lib_types.append('framework')
-                
-            # Apply any system libs that may be specified
-            system_lib_names = self.get_most_specific_entry("system_lib", uselib_name, lib_configuration)
-            if system_lib_names:
-                self.apply_uselib_values_general(uselib_env_name, system_lib_names, "LIB")
-                
-            system_framework_names = self.get_most_specific_entry("system_framework", uselib_name, lib_configuration)
-            if system_framework_names:
-                self.apply_framework(uselib_env_name, system_framework_names)
 
             # Apply any system libs that may be specified
-            system_lib_names = self.get_most_specific_entry("system_lib", uselib_name, lib_configuration)
-            if system_lib_names:
-                self.apply_uselib_values_general(uselib_env_name, system_lib_names, "LIB")
+            static_system_lib_names = self.get_most_specific_entry("system_static_lib", uselib_name, lib_configuration)
+            if static_system_lib_names:
+                self.apply_uselib_values_general(uselib_env_name, static_system_lib_names, "STLIB")
 
+            shared_system_lib_names = self.get_most_specific_entry("system_lib", uselib_name, lib_configuration)
+            if shared_system_lib_names:
+                self.apply_uselib_values_general(uselib_env_name, shared_system_lib_names, "LIB")
+                
             system_framework_names = self.get_most_specific_entry("system_framework", uselib_name, lib_configuration)
             if system_framework_names:
                 self.apply_framework(uselib_env_name, system_framework_names)
@@ -649,7 +609,7 @@ class ThirdPartyLibReader:
 
             # Apply the link flags flag if any
             link_flags = self.get_most_specific_entry("linkflags", uselib_name, lib_configuration)
-            self.apply_uselib_values_general(uselib_env_name, link_flags, "LINKFLAGS",lib_configuration, platform_config_lib_map)
+            self.apply_uselib_values_general(uselib_env_name, link_flags, "LINKFLAGS", lib_configuration, platform_config_lib_map)
 
             # Apply any optional c/cpp compile flags if any
             cc_flags = self.get_most_specific_entry("ccflags", uselib_name, lib_configuration)
@@ -694,7 +654,7 @@ class ThirdPartyLibReader:
                 if copy_extras_key in copy_extra_cache:
                     copy_extra_base = copy_extra_cache[copy_extras_key]
                     uselib_env_key = 'COPY_EXTRA_{}'.format(uselib_env_name)
-                    self.apply_env_func(uselib_env_key,'@{}'.format(copy_extra_base))
+                    self.apply_env_func(uselib_env_key, '@{}'.format(copy_extra_base))
                 else:
                     copy_extra_cache[copy_extras_key] = uselib_env_name
                     self.apply_copy_extra_values(lib_source_path, copy_extras, uselib_env_name)
@@ -1068,6 +1028,74 @@ class ThirdPartyLibReader:
 
         return apply_value
 
+    def resolve_platform_alias(self, aliased_platform, visited):
+        
+        if not isinstance(aliased_platform, str):
+            self.raise_config_error("Invalid platform alias {}.  Must be in the form @<platform> where <platform> "
+                                    "represents an explicitly defined platform.".format(aliased_platform))
+            
+        if not aliased_platform.startswith('@'):
+            self.raise_config_error("Invalid platform alias format {}.  Must be in the form @<platform> where <platform> "
+                                    "represents an explicitly defined platform.".format(aliased_platform))
+            
+        platform_name = aliased_platform[1:]
+        alias_target = self.platform_root.get(platform_name, None)
+        
+        if alias_target is None:
+            self.raise_config_error("Invalid alias '{}'".format(aliased_platform))
+            
+        if isinstance(alias_target, str):
+            # Protect against cyclic dependencies
+            if alias_target in visited:
+                self.raise_config_error("Invalid cyclic platform alias detected {}.".format(aliased_platform))
+            # The target is potentially another alias
+            visited.add(alias_target)
+            return self.resolve_platform_alias(alias_target, visited)
+        
+        elif isinstance(alias_target, dict):
+            # The target is a concrete target, return the de-alias key
+            return aliased_platform[1:]
+        else:
+            self.raise_config_error("Invalid platform entry {}.  Must be either a dictionary of settings or an alias.".format(alias_target))
+
+    def process_platform_key(self, binary_compatible_platforms, platform_key):
+    
+        # No platform root is declared, then the processed platform is the platform
+        if not self.platform_root:
+            return platform_key
+    
+        # There exists a 'platform' node in the 3rd party config. make sure that the input platform key exists in there
+        platform_value = self.platform_root.get(platform_key, None)
+        if platform_value is None:
+            # The platform cannot be found, check if there are any 'binary_compatible_platforms' for this platform
+            if binary_compatible_platforms:
+                # Check if any of the binary compatible platforms match any that exists in the current platform root
+                binary_compatible_platform_match = False
+                for binary_compatible_platform in binary_compatible_platforms:
+                    if binary_compatible_platform in self.platform_root:
+                        binary_compatible_platform_match = True
+                        break
+                if binary_compatible_platform_match:
+                    # If there is a compatible platform, attempt to resolve it
+                    visited = set()
+                    return self.resolve_platform_alias('@{}'.format(binary_compatible_platform), visited)
+                    
+                else:
+                    # If there was no evaluated platform key, that means the configuration file was valid but did not have entries for this
+                    # particular platform.
+                    if Logs.verbose > 1:
+                        Logs.warn('[WARN] Platform {} not specified in 3rd party configuration file {}'.format(
+                            self.platform_key, self.config_file))
+                    return None
+        
+        if isinstance(platform_value, str):
+            visited = set()
+            return self.resolve_platform_alias(platform_value, visited)
+        elif isinstance(platform_value, dict):
+            return platform_key
+        else:
+            self.raise_config_error("Invalid platform entry {}.  Must be either a dictionary of settings or an alias.".format(platform_key))
+
 
 ALIAS_SEARCH_PATTERN = re.compile(r'(\$\{([\w]*)})')
 
@@ -1101,7 +1129,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
             for alias_value in aliased_names:
                 pre_expansion_aliases = _process_alias_value(name_alias_map, alias_value, visit_stack)
                 for pre_expansion_alias in pre_expansion_aliases:
-                    aliased_values.append(ALIAS_SEARCH_PATTERN.sub(pre_expansion_alias,name_alias_value))
+                    aliased_values.append(ALIAS_SEARCH_PATTERN.sub(pre_expansion_alias, name_alias_value))
             visit_stack.pop()
             return aliased_values
 
@@ -1110,7 +1138,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
 
     # Scan the optional 'aliases' node off of the parent to look for aliases to build the map
     evaluated_name_alias_map = {}
-    if 'aliases' not in lib_root.keys():
+    if 'aliases' not in list(lib_root.keys()):
         return evaluated_name_alias_map
 
     alias_node = lib_root['aliases']
@@ -1138,6 +1166,7 @@ def evaluate_node_alias_map(lib_root, lib_name):
 # Maintain a list of all the uselib prefixes that we apply to the env per platform/config
 ALL_3RD_PARTY_USELIB_PREFIXES = (
     'INCLUDES',
+    'SYSTEM_INCLUDES'
     'DEFINES',
     'LIBPATH',
     'FRAMEWORKPATH',
@@ -1209,7 +1238,6 @@ def register_3rd_party_uselib(ctx, use_name, target_platform, *k, **kw):
         ctx.env['{}_{}'.format(lib_uselib_prefix, use_name)] = processed_libs
         ctx.env['{}_{}'.format(libpath_uselib_prefix, use_name)] = libpaths_to_process
 
-
     if 'lib' in kw and 'sharedlib' in kw:
         raise Errors.WafError("Cannot register both a static lib and a regular lib for the same library ({})".format(use_name))
     if 'sharedlib' in kw and 'importlib' not in kw:
@@ -1227,6 +1255,7 @@ def register_3rd_party_uselib(ctx, use_name, target_platform, *k, **kw):
 
     # Apply the general uselib keys if provided
     _apply_to_list('INCLUDES', 'includes')
+    _apply_to_list('SYSTEM_INCLUDES', 'system_includes')
     _apply_to_list('DEFINES', 'defines')
     _apply_to_list('FRAMEWORKPATH', 'frameworkpath')
     _apply_to_list('LINKFLAGS', 'linkflags')
@@ -1235,9 +1264,6 @@ def register_3rd_party_uselib(ctx, use_name, target_platform, *k, **kw):
 
     global REGISTERED_3RD_PARTY_USELIB
     REGISTERED_3RD_PARTY_USELIB.add(use_name)
-
-    append_to_unique_list(ctx.all_envs['']['THIRD_PARTY_USELIBS'], use_name)
-    append_to_unique_list(ctx.env['THIRD_PARTY_USELIBS'], use_name)
 
 
 @conf
@@ -1264,7 +1290,7 @@ def is_third_party_uselib_configured(ctx, use_name):
 
     # Second check the current env against all the possible combinations
     for prefix in ALL_3RD_PARTY_USELIB_PREFIXES:
-        prefix_key = '{}_{}'.format(prefix,use_name)
+        prefix_key = '{}_{}'.format(prefix, use_name)
         if prefix_key in ctx.env:
             return True
 
@@ -1276,12 +1302,12 @@ def is_third_party_uselib_configured(ctx, use_name):
 def get_configuration_settings(ctx, use_name):
     configdict = {}
 
-# During the configuration step the uselib .json file is parsed and cached in memory
+    # During the configuration step the uselib .json file is parsed and cached in memory
     lib_config_file, _ = CONFIGURED_3RD_PARTY_USELIBS.get(use_name, (None, None))
     if lib_config_file:
         config, uselib_names, alias_map = get_3rd_party_config_record(ctx, lib_config_file)
         configdict = config.get('configuration_settings', {})
-# During the build step check for configuration_settings which were saved to the context environment
+    # During the build step check for configuration_settings which were saved to the context environment
     else:
         third_party_uselib_additional_settings = getattr(ctx.all_envs[''], 'THIRD_PARTY_USELIB_SETTINGS', {})
         configdict = third_party_uselib_additional_settings.get(use_name, {})
@@ -1293,7 +1319,7 @@ def get_configuration_settings(ctx, use_name):
 def append_dependency_configuration_settings(ctx, use_name, kw):
     configdict = ctx.get_configuration_settings(use_name)
 
-    for _key, _val in configdict.iteritems():
+    for _key, _val in configdict.items():
         append_unique_kw_entry(kw, _key, _val)
 
 
@@ -1328,17 +1354,19 @@ THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
 
     # Will start the key weight at 100 for the platforms just in case
     'win_x64': 100,
-    'win_x64_vs2017': 103,
-    'win_x64_clang': 104,
+    'win_x64_vs2017': 101,
+    'win_x64_vs2019': 102,
+    'win_x64_clang': 103,
+    'xenia': 110,
     'xenia_vs2017': 111,
-    'provo_vs2017': 107,
-    'darwin_x64': 108,
-    'ios': 109,
-    'appletv': 110,
-    'android_armv7_clang': 112,
-    'android_armv8_clang': 113,
-    'linux_x64': 114,
-    'salem': 115
+    'xenia_vs2019': 112,
+    'provo': 120,
+    'darwin_x64': 130,
+    'ios': 131,
+    'appletv': 132,
+    'android_armv8_clang': 140,
+    'linux_x64': 150,
+    'salem': 160
 }
 
 
@@ -1348,7 +1376,7 @@ def _get_config_key_weight(key):
     :param key: The key to evaluate
     :return:  The key weight
     '''
-    if key in THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE :
+    if key in THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE:
         return THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE[key]
     else:
         return 99999
@@ -1359,27 +1387,26 @@ def _get_config_key_weight(key):
 def generate_3p_config(tgen):
 
     ctx = tgen.bld
-
-    def _compare_list(left,right):
+    def _compare_list(left, right):
         if not isinstance(left, list):
             return False
         if not isinstance(right, list):
             return False
-        left_str = string.join(left,':')
-        right_str = string.join(right,':')
+        left_str = string.join(left, ':')
+        right_str = string.join(right, ':')
         return left_str == right_str
 
     platform = ctx.env['PLATFORM']
     # Short circuit out if its not a true build platform
-    if platform=='project_generator':
+    if platform == 'project_generator':
         return
 
-    name = getattr(tgen,'target',None)
+    name = getattr(tgen, 'target', None)
     uselib_name = getattr(tgen, 'output_file_name', name)
     description = getattr(tgen, 'description', uselib_name)
-    base_path = getattr(tgen,'base_path', None)
-    config_includes = getattr(tgen,'config_includes', ['.'])
-    config_defines = getattr(tgen,'config_defines', [])
+    base_path = getattr(tgen, 'base_path', None)
+    config_includes = getattr(tgen, 'config_includes', ['.'])
+    config_defines = getattr(tgen, 'config_defines', [])
 
     if name is None or uselib_name is None or base_path is None:
         return
@@ -1422,7 +1449,7 @@ def generate_3p_config(tgen):
         if 'includes' not in config:
             config['includes'] = config_includes
             need_update = True
-        elif not _compare_list(config['includes'],config_includes):
+        elif not _compare_list(config['includes'], config_includes):
             config['includes'] = config_includes
             need_update = True
 
@@ -1472,12 +1499,12 @@ def generate_3p_config(tgen):
             elif 'libpath' in cur_platform:
                 # Only one libpath exists, it may be either configuration.  Check if we need to update the existing or
                 # split into 2
-                if cur_platform['libpath'][0]!=lib_path:
+                if cur_platform['libpath'][0] != lib_path:
                     # The libpath doesnt match, 'libpath' needs to be split
                     replace_libpath_key = 'libpath_release' if config_configuration == 'debug' else 'libpath_debug'
                     new_libpath_key = 'libpath_debug' if config_configuration == 'debug' else 'libpath_release'
                     cur_platform[replace_libpath_key] = cur_platform['libpath']
-                    cur_platform.pop('libpath',None)
+                    cur_platform.pop('libpath', None)
                     cur_platform[new_libpath_key] = [lib_path]
                     need_update = True
             elif 'libpath_debug' in cur_platform or 'libpath_release' in cur_platform:
@@ -1514,12 +1541,12 @@ def generate_3p_config(tgen):
             third_party_root = ctx.tp.content.get("3rdPartyRoot")
             base_source = os.path.relpath(base_path, third_party_root)
             content_sdks = ctx.tp.content.get("SDKs")
-            for key, value in content_sdks.iteritems():
+            for key, value in content_sdks.items():
                 if os.path.normpath(value['base_source']) == base_source:
                     third_party_name = key
                     break
         except:
-            pass    # fallback to ROOT pathing
+            pass  # fallback to ROOT pathing
 
         if third_party_name:
             third_party_source = '@3P:{}@'.format(third_party_name)
@@ -1545,22 +1572,22 @@ def generate_3p_config(tgen):
 
     if need_update:
         # Level 1 : Order the root
-        ordered_config = OrderedDict(sorted(config.items(), key=lambda t: _get_config_key_weight(t[0])))
+        ordered_config = OrderedDict(sorted(list(config.items()), key=lambda t: _get_config_key_weight(t[0])))
 
         # Level 2 : Order the platforms
         if 'platform' in ordered_config:
             config_platforms = ordered_config['platform']
-            ordered_config['platform'] = OrderedDict(sorted(config_platforms.items(), key=lambda t: _get_config_key_weight(t[0])))
+            ordered_config['platform'] = OrderedDict(sorted(list(config_platforms.items()), key=lambda t: _get_config_key_weight(t[0])))
             for config_platform_name in ordered_config['platform']:
                 config_platform_def = ordered_config['platform'][config_platform_name]
                 if isinstance(config_platform_def, dict):
-                    ordered_config['platform'][config_platform_name] = OrderedDict(sorted(config_platform_def.items(), key=lambda t: _get_config_key_weight(t[0])))
+                    ordered_config['platform'][config_platform_name] = OrderedDict(sorted(list(config_platform_def.items()), key=lambda t: _get_config_key_weight(t[0])))
 
         config_content = json.dumps(ordered_config, indent=4, separators=(',', ': '))
         try:
             config_file_node.write(config_content)
         except Exception as err:
-            Logs.warn('[WARNING] Unable to update 3rd Party Configuration File {}:{}'.format(config_filename, err.message))
+            Logs.warn('[WARNING] Unable to update 3rd Party Configuration File {}:{}'.format(config_filename, err))
 
 
 # The current version of the working 3rd party settings file in bin temp.
@@ -1600,7 +1627,7 @@ THIRD_PARTY_SETTINGS_3P_ROOT = "3rdPartyRoot"
 THIRD_PARTY_SETTINGS_3P_ROOT_HASH = "3rdPartyRootHash"
 THIRD_PARTY_SETTINGS_EC_HASH = "EnabledCapabilitiesHash"
 THIRD_PARTY_SETTINGS_AP_HASH = "AvailablePlatformsHash"
-THIRD_PARTY_SETTINGS_SA_SOURCE= "SetupAssistantSource"
+THIRD_PARTY_SETTINGS_SA_SOURCE = "SetupAssistantSource"
 THIRD_PARTY_SETTINGS_SA_SOURCE_HASH = "SetupAssistantSourceHash"
 THIRD_PARTY_SETTINGS_WSCRIPT_HASH = "3rdPartyWafScriptHash"
 THIRD_PARTY_SETTINGS_CONFIGURED_PLATFORM_HASH = "ConfiguredPlatformsHash"
@@ -1617,7 +1644,7 @@ class ThirdPartySettings:
 
     def __init__(self, ctx):
         self.ctx = ctx
-        self.file_path_abs = os.path.join(ctx.path.abspath(), "BinTemp", "3rdParty.json")
+        self.file_path_abs = os.path.join(Context.launch_dir, BINTEMP_FOLDER, "3rdParty.json")
         self.content = None
         self.third_party_root = None
         self.local_p4_sync_settings = None
@@ -1625,12 +1652,12 @@ class ThirdPartySettings:
         self.third_party_p4_config_file = os.path.join(self.ctx.engine_node.abspath(), "3rd_party_p4.ini")
         self.disable_p4_sync_settings = not os.path.exists(self.third_party_p4_config_file)
 
-
     def initialize(self):
 
         self.content = None
 
-        available_platforms = [base_target_platform.name() for base_target_platform in self.ctx.get_enabled_target_platforms(reset_cache=True, apply_validated_platforms=True)]
+        available_platforms = [base_target_platform.name() for base_target_platform in
+                               self.ctx.get_all_target_platforms()]
         available_platforms_hash = calculate_string_hash(','.join(available_platforms))
 
         if not os.path.exists(self.file_path_abs):
@@ -1658,7 +1685,7 @@ class ThirdPartySettings:
 
                 if check_version != CURRENT_3RD_PARTY_SETTINGS_VERSION:
                     raise RuntimeWarning("Unsupported version")
-                
+
                 if check_available_platforms_hash != available_platforms_hash:
                     raise RuntimeWarning("Available Platforms changed")
 
@@ -1680,7 +1707,7 @@ class ThirdPartySettings:
                 if enabled_capabilities_hash != check_enabled_capabilities_hash:
                     raise RuntimeWarning("EnabledCapabilitiesHash value changed.")
 
-                available_platform = sorted(self.ctx.get_enabled_target_platform_names())
+                available_platform = sorted(self.ctx.get_all_target_platform_names())
                 available_platform_hash = calculate_string_hash(','.join(available_platform))
                 if available_platform_hash != check_configured_platforms_hash:
                     raise RuntimeWarning("ConfiguredPlatformsHash value changed.")
@@ -1697,7 +1724,7 @@ class ThirdPartySettings:
 
             except RuntimeWarning:
                 Logs.info('[INFO] Regenerating 3rd Party settings file...')
-                self.content = self.create_default(available_platforms,available_platforms_hash)
+                self.content = self.create_default(available_platforms, available_platforms_hash)
 
     def create_content(self, third_party_root, available_platforms, available_platforms_hash):
 
@@ -1714,7 +1741,7 @@ class ThirdPartySettings:
             return matched
 
         # Validate the third party root
-        if len(third_party_root)>0 and not os.path.exists(third_party_root):
+        if len(third_party_root) > 0 and not os.path.exists(third_party_root):
             self.ctx.fatal('[ERROR] 3rd Party root path is invalid')
 
         # Create a hash of the third party lib so we can detect changes
@@ -1773,7 +1800,7 @@ class ThirdPartySettings:
                                     'linux': 'linux'}
         restricted_platform = sys_platform_to_setup_os[host_platform]
 
-        available_platforms = sorted(self.ctx.get_enabled_target_platform_names())
+        available_platforms = sorted(self.ctx.get_all_target_platform_names())
         available_platforms_hash = calculate_string_hash(','.join(available_platforms))
 
         # Build up the SDKs section of the config
@@ -1786,12 +1813,12 @@ class ThirdPartySettings:
             # Make sure the required identifier and source are present
             sdk_identifier = sdk.get("identifier", None)
             if not sdk_identifier:
-                Logs.warn('[WARN] Missing "identifier" for "SDKs" entry {}'.format(sdk_index-1))
+                Logs.warn('[WARN] Missing "identifier" for "SDKs" entry {}'.format(sdk_index - 1))
                 continue
 
             sdk_source = sdk.get("source", None)
             if not sdk_source:
-                Logs.warn('[WARN] Missing "source" for "SDKs" entry {}'.format(sdk_index-1))
+                Logs.warn('[WARN] Missing "source" for "SDKs" entry {}'.format(sdk_index - 1))
                 continue
 
             sdk_optional = sdk.get("optional", 0) == 1
@@ -1861,17 +1888,17 @@ class ThirdPartySettings:
 
                         # Check if there is an optional override at the 'symlinks' level
                         sdk_symlink_optional = sdk_symlink.get("optional", 1 if sdk_optional else 0)
-                        current_platform_optional = current_platform_optional and (sdk_symlink_optional==1)
+                        current_platform_optional = current_platform_optional and (sdk_symlink_optional == 1)
 
                         sdk_symlink_roles = sdk_symlink.get("roles", None)
                         if sdk_symlink_roles:
                             current_platform_roles += [sdk_symlink_role for sdk_symlink_role in sdk_symlink_roles]
 
                         sdk_symlink_example = sdk_symlink.get("exampleFile", "")
-                        if len(sdk_symlink_example)>0:
+                        if len(sdk_symlink_example) > 0:
                             check_files.append(os.path.normpath(os.path.join(sdk_symlink_check_source, sdk_symlink_example)))
 
-                    if len(current_platform_roles)==0:
+                    if len(current_platform_roles) == 0:
                         current_platform_roles = sdk_roles
                     sdk_platform_role_matched = _do_roles_match(current_platform_roles, filter_roles)
 
@@ -1903,16 +1930,16 @@ class ThirdPartySettings:
             third_party_sdks[sdk_identifier] = third_party_sdk
 
         third_party_settings_content = {
-            THIRD_PARTY_SETTINGS_KEY_VERSION:               CURRENT_3RD_PARTY_SETTINGS_VERSION,
-            THIRD_PARTY_SETTINGS_3P_ROOT:                   third_party_root,
-            THIRD_PARTY_SETTINGS_3P_ROOT_HASH:              hash_digest_3rd_party_path,
-            THIRD_PARTY_SETTINGS_EC_HASH:                   enabled_capabilities_hash,
-            THIRD_PARTY_SETTINGS_AP_HASH:                   available_platforms_hash,
-            THIRD_PARTY_SETTINGS_SA_SOURCE:                 os.path.join(self.ctx.engine_path, CONFIG_FILE_SETUP_ASSISTANT_CONFIG),
-            THIRD_PARTY_SETTINGS_SA_SOURCE_HASH:            hash_src_setup_assistant_config,
-            THIRD_PARTY_SETTINGS_WSCRIPT_HASH:              waf_3rd_party_script_hash,
-            THIRD_PARTY_SETTINGS_CONFIGURED_PLATFORM_HASH:  available_platforms_hash,
-            THIRD_PARTY_SETTINGS_SDKS:                      third_party_sdks
+            THIRD_PARTY_SETTINGS_KEY_VERSION: CURRENT_3RD_PARTY_SETTINGS_VERSION,
+            THIRD_PARTY_SETTINGS_3P_ROOT: third_party_root,
+            THIRD_PARTY_SETTINGS_3P_ROOT_HASH: hash_digest_3rd_party_path,
+            THIRD_PARTY_SETTINGS_EC_HASH: enabled_capabilities_hash,
+            THIRD_PARTY_SETTINGS_AP_HASH: available_platforms_hash,
+            THIRD_PARTY_SETTINGS_SA_SOURCE: os.path.join(self.ctx.engine_path, CONFIG_FILE_SETUP_ASSISTANT_CONFIG),
+            THIRD_PARTY_SETTINGS_SA_SOURCE_HASH: hash_src_setup_assistant_config,
+            THIRD_PARTY_SETTINGS_WSCRIPT_HASH: waf_3rd_party_script_hash,
+            THIRD_PARTY_SETTINGS_CONFIGURED_PLATFORM_HASH: available_platforms_hash,
+            THIRD_PARTY_SETTINGS_SDKS: third_party_sdks
         }
         return third_party_settings_content
 
@@ -1951,11 +1978,11 @@ class ThirdPartySettings:
 
         def _read_setup_assistant_user_pref():
 
-            setup_assistant_user_pref_filepath = os.path.join(self.ctx.engine_node.abspath(), CONFIG_SETUP_ASSISTANT_USER_PREF)
+            setup_assistant_user_pref_filepath = os.path.join(self.ctx.get_engine_node().abspath(), CONFIG_SETUP_ASSISTANT_USER_PREF)
             if not os.path.exists(setup_assistant_user_pref_filepath):
                 return _get_default_third_party_root()
             try:
-                config_parser = ConfigParser.ConfigParser()
+                config_parser = configparser.ConfigParser()
                 config_parser.read(setup_assistant_user_pref_filepath)
 
                 engine_path_valid = config_parser.get(SETUP_ASSISTANT_PREF_SECTION, SETUP_ASSISTANT_ENGINE_PATH_VALID)
@@ -1968,11 +1995,10 @@ class ThirdPartySettings:
 
                 return os.path.normpath(third_party_path)
 
-            except ConfigParser.Error as err:
+            except configparser.Error as err:
                 return _get_default_third_party_root()
 
-
-        third_party_override = getattr(self.ctx.options,"bootstrap_third_party_override",None)
+        third_party_override = getattr(self.ctx.options, "bootstrap_third_party_override", None)
         if third_party_override:
             if not os.path.exists(os.path.join(third_party_override, "3rdParty.txt")):
                 Logs.warn('[WARN] The 3rd party override (--3rdpartypath) path ({})is not a valid 3rd party root folder.'.format(third_party_override))
@@ -1981,7 +2007,7 @@ class ThirdPartySettings:
 
         return _read_setup_assistant_user_pref()
 
-    def create_default(self, available_platforms, available_platforms_hash, third_party_root_override = None):
+    def create_default(self, available_platforms, available_platforms_hash, third_party_root_override=None):
         """
         Create the default 3rd party settings file
         :return:
@@ -2010,7 +2036,7 @@ class ThirdPartySettings:
         third_party_root = os.path.normpath(self.content.get("3rdPartyRoot"))
 
         content_sdks = self.content.get("SDKs")
-        for sdk_identifier, sdk_content in content_sdks.iteritems():
+        for sdk_identifier, sdk_content in content_sdks.items():
             sdk_targets = sdk_content.get("targets")
             sdk_target = sdk_targets.get(target_platform)
             sdk_validated = True
@@ -2018,8 +2044,8 @@ class ThirdPartySettings:
                 sdk_target_source = sdk_target.get("source")
                 sdk_check_files = sdk_target.get("check_files")
 
-                sdk_enabled = sdk_target.get("enabled" , False)
-                sdk_optional = sdk_target.get("optional" , True)
+                sdk_enabled = sdk_target.get("enabled", False)
+                sdk_optional = sdk_target.get("optional", True)
 
                 for sdk_check_file in sdk_check_files:
                     sdk_check_file_full_path = os.path.join(third_party_root, sdk_check_file)
@@ -2093,7 +2119,6 @@ class ThirdPartySettings:
             sdk_optional = sdk_content_target.get('optional', sdk_optional)
             sdk_roles = sdk_content_target.get('roles', sdk_roles)
 
-
         third_party_root = self.content.get("3rdPartyRoot")
         sdk_source_full_path = os.path.normpath(os.path.join(third_party_root, sdk_source))
 
@@ -2105,7 +2130,6 @@ class ThirdPartySettings:
 
 @conf
 def get_sdk_setup_assistant_roles_for_sdk(ctx, sdk_identifier_key):
-
     _, setup_assistant_contents = ctx.get_setup_assistant_config_file_and_content()
     sdks = setup_assistant_contents.get('SDKs')
     for sdk in sdks:
@@ -2141,7 +2165,7 @@ class ThirdPartyConfigEnvironmentCache:
     for each 3rd party file
     """
 
-    def __init__(self, config_file_path_abs, engine_root_abs, bintemp_path_abs, bootstrap_hash, lib_configurations_hash):
+    def __init__(self, config_file_path_abs, engine_root_abs, bootstrap_hash, lib_configurations_hash):
 
         # Capture the fingerprints for the files that affect the cache directly
         setup_assistant_config_file_path = os.path.join(engine_root_abs, CONFIG_FILE_SETUP_ASSISTANT_CONFIG)
@@ -2155,13 +2179,13 @@ class ThirdPartyConfigEnvironmentCache:
         self.current_config_fingerprint = calculate_file_hash(config_file_path_abs)
         self.current_bootstrap_param = bootstrap_hash
         self.platform_configurations_fingerprint = lib_configurations_hash
-        
+
         # Working dictionary that will help optimize the storage size of the cache file
         self.variant_fingerprints_dict = {}
 
         # Calculate the cache file target
         config_filename = os.path.basename(config_file_path_abs)
-        cache_path = os.path.join(bintemp_path_abs, BINTEMP_CACHE_3RD_PARTY)
+        cache_path = os.path.join(engine_root_abs, BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY)
         if not os.path.isdir(cache_path):
             os.makedirs(cache_path)
         self.cached_config_file_path = os.path.join(cache_path, 'cache_3p.{}'.format(config_filename))
@@ -2195,6 +2219,17 @@ class ThirdPartyConfigEnvironmentCache:
             self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_VARIANTS].clear()
         else:
             self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_VARIANTS] = {}
+
+    def clear_specific_variant(self, platform, configuration):
+        if not platform or not configuration:
+            Logs.warn('[WARN] No platform or configuration set for clear_specific_variants for the third party cache')
+            return
+
+        variants = self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_VARIANTS]
+        variant = '{}_{}'.format(platform, configuration)
+
+        if variant in variants:
+            variants[variant] = {}
 
     def set_uselib_names(self, uselib_names):
         self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_USELIB_NAMES] = [uselib_name for uselib_name in uselib_names]
@@ -2261,29 +2296,29 @@ class ThirdPartyConfigEnvironmentCache:
         variant = '{}_{}'.format(platform, configuration.config_name())
         if variant not in variants:
             return False
-        
+
         if isinstance(variants[variant], str):
-            
+
             # Check if this variant is a string that matches a concrete variant dictionary
             aliased_variant = variants[variant]
             # Make sure the alias points to an existing variant
             if aliased_variant not in variants:
                 raise Errors.WafError("Invalid aliased variant '{}' for 3rd party cache file '{}' (Missing alias)".format(variant, self.cached_config_file_path))
-            
+
             # Make sure the variant that the alias points to is a concrete variant dictionary
             if isinstance(variants[aliased_variant], str):
                 raise Errors.WafError("Invalid aliased variant '{}' for 3rd party cache file '{}' (Aliases cannot reference other aliases)".format(variant, self.cached_config_file_path))
             variant_dict = variants.get(aliased_variant, None)
-            
+
         elif not isinstance(variants[variant], dict):
             # If the variant is not a concrete definition (dictionary), then raise an error
             raise Errors.WafError("Invalid variant '{}' for 3rd party cache file '{}' (Bad definition, expecting an environment dictionary)".format(variant, self.cached_config_file_path))
         else:
             # The variant represents a concrete dictionary
             variant_dict = variants[variant]
-            
+
         # Apply the values from the concrete variant dictionary
-        for key, value_list in variant_dict.items():
+        for key, value_list in list(variant_dict.items()):
             for value in value_list:
                 env.append_unique(key, value)
 
@@ -2315,7 +2350,7 @@ class ThirdPartyConfigEnvironmentCache:
             value_list = variant_dict[key]
             if value not in value_list:
                 variant_dict[key].append(value)
-                
+
     def get_current_variant_fingerprint(self):
         variants = self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_VARIANTS]
         variant = '{}_{}'.format(self.current_platform, self.current_configuration)
@@ -2324,7 +2359,7 @@ class ThirdPartyConfigEnvironmentCache:
         variant_str = str(variants[variant])
         variant_fingerprint = calculate_string_hash(variant_str)
         return variant_fingerprint
-    
+
     def record_current_variant_fingerprint(self):
         """
         Register the variant dictionary for the current platform and configurations. The fingerprints that will be registered
@@ -2339,7 +2374,7 @@ class ThirdPartyConfigEnvironmentCache:
             return
         variant_str = str(variants[variant])
         current_variant_fingerprint = calculate_string_hash(variant_str)
-        
+
         # Apply the fingerprint to a dictionary. Each fingerprint entry will be a list of variants that match the fingerprint
         self.variant_fingerprints_dict.setdefault(current_variant_fingerprint, []).append(variant)
 
@@ -2373,12 +2408,12 @@ class ThirdPartyConfigEnvironmentCache:
         # If there are no variants, this cache object is invalid. Do not save it
         if not self.dictionary[THIRD_PARTY_CACHE_CONFIG_KEY_VARIANTS]:
             return
-        
+
         # Go through the variant dictionary and update it so duplicate items can be aliased, reducing the size of the cache file
         else:
             optimized_variants = {}
             base_variant_for_variant_fingerprints = {}
-            for variant_fingerprint, variant_list in self.variant_fingerprints_dict.items():
+            for variant_fingerprint, variant_list in list(self.variant_fingerprints_dict.items()):
                 variant_list.sort()
                 for variant in variant_list:
                     if variant_fingerprint not in base_variant_for_variant_fingerprints:
@@ -2413,23 +2448,22 @@ class CachedThirdPartyLibReader:
         self.path_prefix_map = path_prefix_map
         self.warn_on_collision = warn_on_collision
         self.lib_configurations = []
-        
-        platforms_list = ctx.get_enabled_target_platform_names()
+
+        platforms_list = ctx.get_all_target_platform_names()
         platforms_list.sort()
-        
+
         for platform in platforms_list:
             for configuration in ctx.get_supported_configurations(platform):
                 append_to_unique_list(self.lib_configurations, configuration)
         self.lib_configurations.sort()
-        lib_configurations_hash = calculate_string_hash(",".join(self.lib_configurations+platforms_list))
+        lib_configurations_hash = calculate_string_hash(",".join(self.lib_configurations + platforms_list))
 
         bootstrap_param = getattr(ctx.options, 'bootstrap_tool_param', '')
         bootstrap_3rd_party_override = getattr(ctx.options, 'bootstrap_third_party_override', '')
         bootstrap_hash = calculate_string_hash('{}/{}'.format(bootstrap_param, bootstrap_3rd_party_override))
-        
+
         self.cache_obj = ThirdPartyConfigEnvironmentCache(config_file_path_abs=config_file_path_node.abspath(),
                                                           engine_root_abs=ctx.engine_path,
-                                                          bintemp_path_abs=ctx.bldnode.abspath(),
                                                           bootstrap_hash=bootstrap_hash,
                                                           lib_configurations_hash=lib_configurations_hash)
 
@@ -2453,48 +2487,62 @@ class CachedThirdPartyLibReader:
         self.cache_obj.set_non_release_only(non_release_only)
 
         # Iterate through the current supported platforms
-        supported_platforms = [enabled_platform.platform for enabled_platform in ctx.get_enabled_target_platforms()]
-        
+        supported_platforms = [enabled_platform for enabled_platform in ctx.get_all_target_platforms()]
+
         # Before going through the list of current platforms, determine the actual platforms that the config is defined for
         # so we can skip processing those altogether
-        config_platforms = config.get('platform', {}).keys() or supported_platforms
-        
+        config_platforms = list(config.get('platform', {}).keys()) or [supported_platform.platform for supported_platform in supported_platforms]
+
         for platform in supported_platforms:
-            
+
+            binary_compatible_platforms = platform.attributes.get('binary_compatible_platforms', [])
+
             # Skip any platform that is not supported by the current config
-            if platform not in config_platforms:
-                continue
+            if platform.platform not in config_platforms:
+                binary_compatible_platform_found = False
+                for binary_compatible_platform in binary_compatible_platforms:
+                    if binary_compatible_platform in config_platforms:
+                        binary_compatible_platform_found = True
+                        break
+                if not binary_compatible_platform_found:
+                    continue
 
             for configuration in self.lib_configurations:
-    
+
                 # Skip any configuration that the platform does not support
                 try:
-                    ctx.get_platform_configuration(platform, configuration)
+                    ctx.get_platform_configuration(platform.platform, configuration)
                 except Errors.WafError:
                     continue
-    
+
                 get_env_func = self.cache_obj.get_env_value
                 apply_env_func = self.cache_obj.apply_env_value
 
-                self.cache_obj.set_variant(platform, configuration)
+                self.cache_obj.set_variant(platform.platform, configuration)
 
-                result, err_msg = ThirdPartyLibReader(ctx, self.config_file_path_node,
-                                                      config,
-                                                      self.config_file_path_node.name,
-                                                      platform,
-                                                      configuration,
-                                                      alias_map,
-                                                      self.path_prefix_map,
-                                                      self.warn_on_collision,
-                                                      get_env_func,
-                                                      apply_env_func).detect_3rd_party_lib()
-                
-                # Record the variant for this platform/configuration for storage optimization later
-                self.cache_obj.record_current_variant_fingerprint()
+                result, err_msg = ThirdPartyLibReader(ctx=ctx,
+                                                      config_node=self.config_file_path_node,
+                                                      lib_root=config,
+                                                      lib_key=self.config_file_path_node.name,
+                                                      platform_key=platform.platform,
+                                                      configuration_key=configuration,
+                                                      alias_map=alias_map,
+                                                      path_alias_map=self.path_prefix_map,
+                                                      warn_on_collision=self.warn_on_collision,
+                                                      binary_compatible_platforms=binary_compatible_platforms,
+                                                      get_env_func=get_env_func,
+                                                      apply_env_func=apply_env_func).detect_3rd_party_lib()
+
                 if err_msg and len(err_msg) > 0:
+                    # If there were any errrors, clear out any cached values set for this variant as they could be invalid now.
+                    self.cache_obj.clear_specific_variant(platform.platform, configuration)
+
                     ctx.warn_once("Unable to configure uselibs '{}' for platform '{}'. This may cause build errors for "
                                   "modules that depend on those uselibs for that platform"
-                                  .format(','.join(uselib_names), platform))
+                                  .format(','.join(uselib_names), platform.platform))
+
+                # Record the variant for this platform/configuration for storage optimization later
+                self.cache_obj.record_current_variant_fingerprint()
 
         self.cache_obj.save()
 
@@ -2551,7 +2599,8 @@ def get_uselib_third_party_reader_map(ctx):
             uselib_names = tp_reader.get_uselib_names()
             for uselib_name in uselib_names:
                 if uselib_name in ctx.uselib_third_party_reader_map:
-                    Logs.warn('Duplicate uselib library name "{}" detected from file {}'.format(uselib_name,config_file_node.abspath()))
+                    Logs.warn('Duplicate uselib library name "{}" detected from file {}'.format(uselib_name,
+                                                                                                config_file_node.abspath()))
                 else:
                     ctx.uselib_third_party_reader_map[uselib_name] = tp_reader
 
@@ -2609,7 +2658,7 @@ def check_platform_uselib_compatibility(ctx, uselib):
     :param ctx:     Context
     :param uselib:  The uselib name to check
     :return: True if the uselib is supported by the current platform
-             False if the uselib is not supported by the current platform, or the uselib does not exit
+             False if the uselib is not supported by the current platform, or the uselib does not exist
              None If this is a 'project_generator' platform or this call is invoked during configure
     """
     

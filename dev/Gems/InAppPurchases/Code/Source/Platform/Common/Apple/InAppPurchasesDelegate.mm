@@ -342,8 +342,12 @@
         {
             continue;
         }
-        
+
+#if (defined(TARGET_OS_OSX) && TARGET_OS_OSX) || (defined(__IPHONE_12_0) && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_12_0)
+        switch(download.state)
+#else
         switch(download.downloadState)
+#endif	
         {
             case SKDownloadStateFinished:
             {

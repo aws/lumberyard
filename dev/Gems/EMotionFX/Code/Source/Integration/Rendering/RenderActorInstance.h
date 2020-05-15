@@ -67,6 +67,8 @@ namespace EMotionFX
             typedef AZStd::function<void(const AZStd::string& materialName)> MaterialChangedFunction;
             void SetOnMaterialChangedCallback(MaterialChangedFunction callback);
 
+            Actor* GetActor() const;
+
         protected:
             AZ::Data::Asset<ActorAsset> m_actorAsset;
             ActorInstance* m_actorInstance = nullptr;

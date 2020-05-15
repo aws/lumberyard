@@ -8,12 +8,15 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib import Errors, Logs
-from waflib.Configure import conf
-from lumberyard import deprecated
 
-import subprocess
+# System Imports
 import os
+import subprocess
+import sys
+
+# waflib imports
+from waflib.Configure import conf
+
 
 PLATFORM = 'darwin_x64'
 
@@ -24,7 +27,7 @@ def apple_clang_supports_option(option):
     with open(os.devnull, "w") as DEV_NULL:
         clang_subprocess = subprocess.Popen(['clang', option, '-o-', '-x', 'c++', '-'], 
             stdin=subprocess.PIPE, stdout=DEV_NULL, stderr=subprocess.STDOUT)
-        clang_subprocess.stdin.write('int main(){}\n')
+        clang_subprocess.stdin.write(b'int main(){}\n')
         clang_subprocess.communicate()
         clang_subprocess.stdin.close()
         return clang_subprocess.returncode == 0
@@ -65,7 +68,7 @@ def load_darwin_x64_common_settings(ctx):
     ]
     
     # Set the path to the current sdk
-    sdk_path = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"]).strip()
+    sdk_path = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"]).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip()
     env['CFLAGS'] += ['-isysroot' + sdk_path, ]
     env['CXXFLAGS'] += ['-isysroot' + sdk_path, ]
     env['LINKFLAGS'] += ['-isysroot' + sdk_path, ]
@@ -104,4 +107,9 @@ def load_darwin_x64_configuration_settings(ctx, platform_configuration):
 @conf
 def is_darwin_x64_available(ctx):
     return True
+
+
+@conf
+def get_mac_project_name(self):
+    return '{}/{}'.format(self.options.mac_project_folder, self.options.mac_project_name)
 

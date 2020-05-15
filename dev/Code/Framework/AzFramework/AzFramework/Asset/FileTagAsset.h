@@ -41,7 +41,7 @@ namespace AzFramework
         struct FileTagData
         {
             AZ_TYPE_INFO(FileTagData, "{5F66E43B-548B-4AA8-8CD8-F6924F6031E6}");
-            FileTagData(AZStd::set<AZStd::string> fileTags, FilePatternType filePatternType = FilePatternType::Exact);
+            FileTagData(AZStd::set<AZStd::string> fileTags, FilePatternType filePatternType = FilePatternType::Exact, const AZStd::string& comment = "");
             FileTagData() = default;
             static void Reflect(AZ::ReflectContext* context);
 

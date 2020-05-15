@@ -75,6 +75,10 @@ void CFolderTreeCtrl::init(const QStringList& folders, const QString& fileNameSp
         {
             m_foldersSegments.insert(std::make_pair((*item), Path::SplitIntoSegments((*item)).size()));
         }
+        else if (Path::IsFolder((*item).toLocal8Bit().constData()))
+        {
+            m_foldersSegments.insert(std::make_pair((*item), Path::SplitIntoSegments((*item)).size()));
+        }
         else
         {
             (*item).clear();
@@ -209,13 +213,30 @@ void CFolderTreeCtrl::LoadTreeRec(const QString& currentFolder)
     CFileEnum fileEnum;
     QFileInfo fileData;
 
-    const QString currentFolderSlash = Path::AddSlash(currentFolder);
+    QString currentFolderSlash = Path::AddSlash(currentFolder);
+    QString targetFolder = currentFolder;
 
-    for (bool bFoundFile = fileEnum.StartEnumeration(currentFolder, "*", &fileData);
+    if (currentFolder.startsWith('@'))
+    {
+        char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
+        if (AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(currentFolder.toLocal8Bit().constData(), resolvedPath, AZ_MAX_PATH_LEN))
+        {
+            targetFolder = resolvedPath;
+        }
+
+        // update the base folder name
+        QStringList parts =  Path::SplitIntoSegments(currentFolderSlash);
+        if (parts.size() > 1)
+        {
+            parts.removeFirst();
+            currentFolderSlash = Path::AddSlash(parts.join(QDir::separator()));
+        }
+    }
+
+    for (bool bFoundFile = fileEnum.StartEnumeration(targetFolder, "*", &fileData);
          bFoundFile; bFoundFile = fileEnum.GetNextFile(&fileData))
     {
         const QString fileName = fileData.fileName();
-        const QString ext = Path::GetExt(fileName);
 
         // Have we found a folder?
         if (fileData.isDir())
@@ -244,7 +265,7 @@ void CFolderTreeCtrl::AddItem(const QString& path)
     if (path.contains(QRegExp(m_fileNameSpec, Qt::CaseInsensitive, QRegExp::Wildcard)))
     {
         CTreeItem* folderTreeItem = CreateFolderItems(folder);
-        CTreeItem* fileTreeItem = folderTreeItem->AddChild(fileNameWithoutExtension, path, eTreeImage_File);
+        folderTreeItem->AddChild(fileNameWithoutExtension, path, eTreeImage_File);
     }
 }
 

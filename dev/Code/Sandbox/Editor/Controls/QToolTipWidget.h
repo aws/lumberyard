@@ -74,7 +74,9 @@ protected:
     virtual void hideEvent(QHideEvent*) override;
 
     QLabel* m_title;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QVector<QLabel*> m_currentShortcuts;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //can be anything from QLabel to QBitMapPreviewDialog
     //must allow movement, and show/hide calls
     QLabel* m_content;

@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <FileIOHandler_wwise_Platform.h>
+
 #include <AK/SoundEngine/Common/AkTypes.h>
 #include <AK/SoundEngine/Common/AkStreamMgrModule.h>
 
@@ -61,7 +63,7 @@ namespace Audio
 
         AKRESULT Read(AkFileDesc& fileDesc, const AkIoHeuristics& heuristics, AkAsyncIOTransferInfo& transferInfo) override;
         AKRESULT Write(AkFileDesc& fileDesc, const AkIoHeuristics& heuristics, AkAsyncIOTransferInfo& transferInfo) override;
-        void Cancel(AkFileDesc& fileDesc, AkAsyncIOTransferInfo& transferInfo, bool& cancelAllTransfersForThisFile) override;
+        void Cancel(AkFileDesc& fileDesc, AkAsyncIOTransferInfo& transferInfo, bool& cancelAllTransfersForThisFile) override {}
 
         AKRESULT Close(AkFileDesc& fileDesc) override;
         AkUInt32 GetBlockSize(AkFileDesc& fileDesc) override;

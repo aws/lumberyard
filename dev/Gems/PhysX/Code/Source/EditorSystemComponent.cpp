@@ -11,7 +11,9 @@
  */
 
 #include <PhysX_precompiled.h>
+
 #include "EditorSystemComponent.h"
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <PhysX/ConfigurationBus.h>
@@ -37,9 +39,7 @@ namespace PhysX
         Physics::EditorWorldBus::Handler::BusConnect();
         AZ::TickBus::Handler::BusConnect();
 
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
-        Physics::WorldConfiguration editorWorldConfiguration = configuration.m_worldConfiguration;
+        Physics::WorldConfiguration editorWorldConfiguration = AZ::Interface<Physics::SystemRequests>::Get()->GetDefaultWorldConfiguration();
         editorWorldConfiguration.m_fixedTimeStep = 0.0f;
 
         m_editorWorld = AZ::Interface<Physics::System>::Get()->CreateWorldCustom(Physics::EditorPhysicsWorldId, editorWorldConfiguration);
@@ -136,12 +136,12 @@ namespace PhysX
 
     void EditorSystemComponent::UpdateDefaultMaterialLibrary()
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &ConfigurationRequests::GetConfiguration);
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> materialLibrary = *AZ::Interface<Physics::SystemRequests>::
+            Get()->GetDefaultMaterialLibraryAssetPtr();
 
-        AZ_Error("Physics", !configuration.m_materialLibrary.IsError(), "Default material library '%s' not found, generating default library", configuration.m_materialLibrary.GetHint().c_str());
+        AZ_Error("Physics", !materialLibrary.IsError(), "Default material library '%s' not found, generating default library", materialLibrary.GetHint().c_str());
 
-        if (!configuration.m_materialLibrary.GetId().IsValid() || configuration.m_materialLibrary.IsError())
+        if (!materialLibrary.GetId().IsValid() || materialLibrary.IsError())
         {
             // if the default material library is not set, we generate a new one from the Cry Engine surface types
             AZ::Data::AssetId newLibraryAssetId = GenerateSurfaceTypesLibrary();
@@ -149,11 +149,11 @@ namespace PhysX
             if (newLibraryAssetId.IsValid())
             {
                 // New material library successfully created, set it to configuration
-                configuration.m_materialLibrary =
+                materialLibrary =
                     AZ::Data::AssetManager::Instance().GetAsset<Physics::MaterialLibraryAsset>(newLibraryAssetId, true, nullptr, true);
 
                 // Update the configuration (this will also update the configuration file)
-                PhysX::ConfigurationRequestBus::Broadcast(&ConfigurationRequests::SetConfiguration, configuration);
+                AZ::Interface<Physics::SystemRequests>::Get()->SetDefaultMaterialLibrary(materialLibrary);
             }
         }
     }

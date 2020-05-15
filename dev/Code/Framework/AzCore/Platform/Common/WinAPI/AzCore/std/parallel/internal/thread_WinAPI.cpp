@@ -26,8 +26,8 @@ namespace AZStd
 
     // Since we avoid including windows.h in header files in the code, we are declaring storage for CRITICAL_SECTION and CONDITION_VARIABLE
     // Make sure at compile that that the storage is enough to store the variables
-    AZ_STATIC_ASSERT(sizeof(native_mutex_data_type) >= sizeof(CRITICAL_SECTION), "native_mutex_data_type is used to store CRITICAL_SECTION, it should be big enough!");
-    AZ_STATIC_ASSERT(sizeof(native_cond_var_data_type) >= sizeof(CONDITION_VARIABLE), "native_mutex_data_type is used to store CONDITION_VARIABLE, it should be big enough!");
+    static_assert(sizeof(native_mutex_data_type) >= sizeof(CRITICAL_SECTION), "native_mutex_data_type is used to store CRITICAL_SECTION, it should be big enough!");
+    static_assert(sizeof(native_cond_var_data_type) >= sizeof(CONDITION_VARIABLE), "native_mutex_data_type is used to store CONDITION_VARIABLE, it should be big enough!");
 
     namespace Internal
     {

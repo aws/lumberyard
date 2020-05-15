@@ -27,11 +27,13 @@
 #include <EditorDefs.h>
 #include <QtUtil.h>
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Manages all Libraries and Items.
 */
 class SANDBOX_API  CBaseLibraryManager
     : public IBaseLibraryManager
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CBaseLibraryManager();
     ~CBaseLibraryManager();

@@ -36,7 +36,7 @@ namespace Vegetation
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~InstanceSystemRequests() AZ_DEFAULT_METHOD;
+        virtual ~InstanceSystemRequests()  = default;
 
         virtual DescriptorPtr RegisterUniqueDescriptor(const Descriptor& descriptor) = 0;
         virtual void ReleaseUniqueDescriptor(DescriptorPtr descriptorPtr) = 0;

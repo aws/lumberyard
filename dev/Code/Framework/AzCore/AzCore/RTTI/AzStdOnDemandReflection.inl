@@ -544,6 +544,11 @@ namespace AZ
             return AZ::Failure();
         }
 
+        static bool IsScriptEventType()
+        {
+            return AZStd::is_same<T, AZ::EntityId>::value;
+        }
+
         static void Reflect(ReflectContext* context)
         {
             if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
@@ -554,6 +559,7 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::ToolTip, &ScriptCanvasOnDemandReflection::OnDemandToolTip<ContainerType>::Get)
                     ->Attribute(AZ::Script::Attributes::Category, &ScriptCanvasOnDemandReflection::OnDemandCategoryName<ContainerType>::Get)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
+                    ->Attribute(AZ::Script::Attributes::EnableAsScriptEventParamType, &IsScriptEventType)
                     ->template Method<void(ContainerType::*)(typename ContainerType::const_reference)>("push_back", &ContainerType::push_back)
                         ->Attribute(AZ::Script::Attributes::Deprecated, true)
                         ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)

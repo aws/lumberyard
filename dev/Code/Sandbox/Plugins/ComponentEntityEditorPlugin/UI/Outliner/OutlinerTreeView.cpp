@@ -95,20 +95,12 @@ void OutlinerTreeView::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_queuedMouseEvent)
     {
-        //only trigger this if the mouse cursor was indeed moved
-        if ((event->pos() - m_queuedMouseEvent->pos()).manhattanLength() < QApplication::startDragDistance())
-        {
-            return;
-        }
-
         //disable selection for the pending click if the mouse moved so selection is maintained for dragging
         QAbstractItemView::SelectionMode selectionModeBefore = selectionMode();
         setSelectionMode(QAbstractItemView::NoSelection);
 
         //treat this as a mouse pressed event to process everything but selection, but use the position data from the mousePress message
         processQueuedMousePressedEvent(m_queuedMouseEvent);
-
-        ClearQueuedMouseEvent();
 
         //restore selection state
         setSelectionMode(selectionModeBefore);

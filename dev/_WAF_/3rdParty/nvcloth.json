@@ -6,7 +6,7 @@
     "non_release_only": "False",
     "lib_required": "True",
     "engine_configs": "True",
-    "includes": ["NvCloth/include","NvCloth/extensions/include","PxShared/include"],
+    "system_includes": ["NvCloth/include","NvCloth/extensions/include","PxShared/include"],
     "aliases": {
         "lib_names": [
             "NvCloth"

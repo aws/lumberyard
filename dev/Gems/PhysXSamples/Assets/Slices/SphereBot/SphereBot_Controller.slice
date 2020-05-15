@@ -200,7 +200,7 @@
 											<Class name="AZStd::string" field="AssetPath" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
-									<Class name="MeshRenderOptions" field="Render Options" version="4" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
+									<Class name="MeshRenderOptions" field="Render Options" version="5" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="8000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -500,7 +500,7 @@
 											<Class name="AZStd::string" field="AssetPath" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
-									<Class name="MeshRenderOptions" field="Render Options" version="4" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
+									<Class name="MeshRenderOptions" field="Render Options" version="5" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="8000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -947,6 +947,10 @@
 										<Class name="AZ::u64" field="ComponentId" value="14600628241439518763" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="12314722304808539393" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="1" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
 								</Class>
 							</Class>
 							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
@@ -1002,6 +1006,14 @@
 									</Class>
 								</Class>
 								<Class name="bool" field="IsEditorOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorCommentComponent" field="element" version="1" type="{5181117D-CD69-4C05-8804-C1FBE5F0C00F}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="12314722304808539393" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::string" field="Configuration" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 							</Class>
 						</Class>
 						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -1061,7 +1073,7 @@
 								<Class name="unsigned int" field="InterpolatePosition" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 								<Class name="unsigned int" field="InterpolateRotation" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 							</Class>
-							<Class name="EditorColliderComponent" field="element" version="6" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
+							<Class name="EditorColliderComponent" field="element" version="9" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="3541776781639848745" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -1111,26 +1123,25 @@
 										<Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									</Class>
-									<Class name="PhysicsAssetShapeConfiguration" field="PhysicsAsset" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="EditorProxyAssetShapeConfig" field="PhysicsAsset" version="1" type="{C1B46450-C2A3-4115-A2FB-E5FF3BAAAD15}">
+										<Class name="Asset" field="Asset" value="id={00000000-0000-0000-0000-000000000000}:0,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+										<Class name="PhysicsAssetShapeConfiguration" field="Configuration" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
+											<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+												<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											</Class>
+											<Class name="Asset" field="PhysicsAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={AF3F7D32-1536-422A-89F3-A11E1F5B5A9C},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+											<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											<Class name="bool" field="UseMaterialsFromAsset" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 										</Class>
-										<Class name="Asset" field="PhysicsAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={AF3F7D32-1536-422A-89F3-A11E1F5B5A9C},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-										<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									</Class>
-								</Class>
-								<Class name="Asset" field="MeshAsset" value="id={00000000-0000-0000-0000-000000000000}:0,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
-									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
 								<Class name="Collider" field="DebugDrawSettings" version="1" type="{7DE9CA01-DF1E-4D72-BBF4-76C9136BE6A2}">
 									<Class name="bool" field="LocallyEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									<Class name="bool" field="GlobalButtonState" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
-								<Class name="AssetId" field="LinkedRenderMeshAssetId" version="1" type="{652ED536-3402-439B-AEBE-4A5DBC554085}">
-									<Class name="AZ::Uuid" field="guid" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-									<Class name="unsigned int" field="subId" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
+									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								</Class>
 							</Class>
 							<Class name="EditorRigidBodyComponent" field="element" version="1" type="{F2478E6B-001A-4006-9D7E-DCB5A6B041DD}">
@@ -1193,7 +1204,7 @@
 											<Class name="AZStd::string" field="AssetPath" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
-									<Class name="MeshRenderOptions" field="Render Options" version="4" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
+									<Class name="MeshRenderOptions" field="Render Options" version="5" type="{EFF77BEB-CB99-44A3-8F15-111B0200F50D}">
 										<Class name="float" field="Opacity" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="MaxViewDistance" value="8000.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 										<Class name="float" field="ViewDistanceMultiplier" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
@@ -1303,7 +1314,228 @@
 									<Class name="Asset" field="m_asset" value="id={6368264D-6270-55FE-9701-2992EB34836E}:0,type={FA10C3DA-0717-4B72-8944-CD67D13DFA2B},hint={scriptcanvas/spherebot/spherebot_controller.scriptcanvas}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 								</Class>
 								<Class name="EditableVariableData" field="m_variableData" version="2" type="{D335AEC5-D118-443D-B85C-FEB17C0B26D6}">
-									<Class name="AZStd::list" field="m_variables" type="{FD89FC9A-3931-5B41-B7DF-69006B7F76FE}"/>
+									<Class name="AZStd::list" field="m_variables" type="{FD89FC9A-3931-5B41-B7DF-69006B7F76FE}">
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="1" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="bool" field="ExposeAsInput" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{B15BB753-AB1B-4F93-81F1-8161BEB92722}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="592777257051312" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Head" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Head" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="1" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="bool" field="ExposeAsInput" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{5FA2EC8F-F1DD-4E51-95EB-6CC46C37A9E4}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="592790141953200" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="NeckYaw" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="NeckYaw" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="1" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="bool" field="ExposeAsInput" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{D96F5AA1-4C9D-49D8-B56C-320FD9B6FF79}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="592785846985904" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Body" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Body" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="1" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="bool" field="ExposeAsInput" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{090044DE-3BBF-4B7E-88E7-AF6ECCA7F04F}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="592772962084016" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="NeckPitch" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="NeckPitch" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="1" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="bool" field="ExposeAsInput" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{4E3E9BD7-5B46-440B-A680-32DAAB79710A}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="592794436920496" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="NeckLean" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="NeckLean" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+									</Class>
 								</Class>
 								<Class name="AZStd::unordered_map" field="m_variableEntityIdMap" type="{47B19271-1BD5-5FF9-931D-A90E2E72900D}"/>
 							</Class>
@@ -1494,15 +1726,15 @@
 										<Class name="AZ::u64" field="SortIndex" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
-										<Class name="AZ::u64" field="ComponentId" value="12745580718985483606" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="ComponentId" value="1718891140921253767" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="1" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
-										<Class name="AZ::u64" field="ComponentId" value="1718891140921253767" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="ComponentId" value="11738445242054878842" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="2" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
-										<Class name="AZ::u64" field="ComponentId" value="11738445242054878842" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="ComponentId" value="18195655143588169277" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										<Class name="AZ::u64" field="SortIndex" value="3" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 									</Class>
 								</Class>
@@ -1563,78 +1795,6 @@
 								</Class>
 								<Class name="AZStd::vector" field="DisabledComponents" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}"/>
 							</Class>
-							<Class name="EditorColliderComponent" field="element" version="6" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
-								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
-									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-										<Class name="AZ::u64" field="Id" value="12745580718985483606" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-									</Class>
-								</Class>
-								<Class name="ColliderConfiguration" field="ColliderConfiguration" version="3" type="{16206828-F867-4DA9-9E4E-549B7B2C6174}">
-									<Class name="CollisionLayer" field="CollisionLayer" version="1" type="{5AA459C8-2D92-46D2-9154-ED49EE4FE70E}">
-										<Class name="unsigned char" field="Index" value="0" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
-									</Class>
-									<Class name="Id" field="CollisionGroupId" version="1" type="{DFED4FE5-2292-4F07-A318-41C68DAEFE9C}">
-										<Class name="AZ::Uuid" field="GroupId" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-									</Class>
-									<Class name="bool" field="Visible" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="Trigger" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="Exclusive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="Vector3" field="Position" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Quaternion" field="Rotation" value="0.0000000 0.0000000 0.0000000 1.0000000" type="{73103120-3DD3-4873-BAB3-9713FA2804FB}"/>
-									<Class name="MaterialSelection" field="MaterialSelection" version="2" type="{F571AFF4-C4BB-4590-A204-D11D9EEABBC4}">
-										<Class name="Asset" field="Material" value="id={3A055A3F-8CB7-5FEE-B437-EB365FACD0D4}:0,type={9E366D8C-33BB-4825-9A1F-FA3ADBE11D0F},hint={surfacetypemateriallibrary.physmaterial}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-										<Class name="AZStd::vector" field="MaterialIds" type="{82111EAD-9C65-57F0-BA72-46D6D931B434}">
-											<Class name="MaterialId" field="element" version="1" type="{744CCE6C-9F69-4E2F-B950-DAB8514F870B}">
-												<Class name="AZ::Uuid" field="MaterialId" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-											</Class>
-										</Class>
-									</Class>
-									<Class name="unsigned char" field="propertyVisibilityFlags" value="255" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
-									<Class name="AZStd::string" field="ColliderTag" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-								</Class>
-								<Class name="EditorProxyShapeConfig" field="ShapeConfiguration" version="2" type="{531FB42A-42A9-4234-89BA-FD349EF83D0C}">
-									<Class name="unsigned char" field="ShapeType" value="7" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
-									<Class name="SphereShapeConfiguration" field="Sphere" version="1" type="{0B9F3D2E-0780-4B0B-BFEE-B41C5FDE774A}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-										</Class>
-										<Class name="float" field="Radius" value="0.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-									</Class>
-									<Class name="BoxShapeConfiguration" field="Box" version="1" type="{E58040ED-3E50-4882-B0E9-525E7A548F8D}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-										</Class>
-										<Class name="Vector3" field="Configuration" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									</Class>
-									<Class name="CapsuleShapeConfiguration" field="Capsule" version="1" type="{19C6A07E-5644-46B7-A49E-48703B56ED32}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-										</Class>
-										<Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-										<Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
-									</Class>
-									<Class name="PhysicsAssetShapeConfiguration" field="PhysicsAsset" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
-										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
-											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-										</Class>
-										<Class name="Asset" field="PhysicsAsset" value="id={EEE9F7A7-8155-59DA-BF16-A7DFB885B933}:6027d547,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={objects/spherebot/r0-b_head.pxmesh}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-										<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									</Class>
-								</Class>
-								<Class name="Asset" field="MeshAsset" value="id={EEE9F7A7-8155-59DA-BF16-A7DFB885B933}:6027d547,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={objects/spherebot/r0-b_head.pxmesh}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
-								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
-									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-								</Class>
-								<Class name="Collider" field="DebugDrawSettings" version="1" type="{7DE9CA01-DF1E-4D72-BBF4-76C9136BE6A2}">
-									<Class name="bool" field="LocallyEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-									<Class name="bool" field="GlobalButtonState" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-								</Class>
-								<Class name="AssetId" field="LinkedRenderMeshAssetId" version="1" type="{652ED536-3402-439B-AEBE-4A5DBC554085}">
-									<Class name="AZ::Uuid" field="guid" value="{EEE9F7A7-8155-59DA-BF16-A7DFB885B933}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-									<Class name="unsigned int" field="subId" value="1399862545" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
-								</Class>
-							</Class>
 							<Class name="EditorRigidBodyComponent" field="element" version="1" type="{F2478E6B-001A-4006-9D7E-DCB5A6B041DD}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -1676,6 +1836,77 @@
 								</Class>
 								<Class name="AZStd::string" field="Configuration" value="Head collision is on a seperate entity from the mesh since the mesh is being non-uniformly scaled. " type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 							</Class>
+							<Class name="EditorColliderComponent" field="element" version="9" type="{FD429282-A075-4966-857F-D0BBF186CFE6}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="18195655143588169277" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="ColliderConfiguration" field="ColliderConfiguration" version="3" type="{16206828-F867-4DA9-9E4E-549B7B2C6174}">
+									<Class name="CollisionLayer" field="CollisionLayer" version="1" type="{5AA459C8-2D92-46D2-9154-ED49EE4FE70E}">
+										<Class name="unsigned char" field="Index" value="0" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+									</Class>
+									<Class name="Id" field="CollisionGroupId" version="1" type="{DFED4FE5-2292-4F07-A318-41C68DAEFE9C}">
+										<Class name="AZ::Uuid" field="GroupId" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									</Class>
+									<Class name="bool" field="Visible" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="Trigger" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="Exclusive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="Vector3" field="Position" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Quaternion" field="Rotation" value="0.0000000 0.0000000 0.0000000 1.0000000" type="{73103120-3DD3-4873-BAB3-9713FA2804FB}"/>
+									<Class name="MaterialSelection" field="MaterialSelection" version="2" type="{F571AFF4-C4BB-4590-A204-D11D9EEABBC4}">
+										<Class name="Asset" field="Material" value="id={00000000-0000-0000-0000-000000000000}:0,type={9E366D8C-33BB-4825-9A1F-FA3ADBE11D0F},hint={}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+										<Class name="AZStd::vector" field="MaterialIds" type="{82111EAD-9C65-57F0-BA72-46D6D931B434}">
+											<Class name="MaterialId" field="element" version="1" type="{744CCE6C-9F69-4E2F-B950-DAB8514F870B}">
+												<Class name="AZ::Uuid" field="MaterialId" value="{D0F915FC-244B-4BE3-AFAD-CA5CCEB3BA9A}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="unsigned char" field="propertyVisibilityFlags" value="255" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+									<Class name="AZStd::string" field="ColliderTag" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+								</Class>
+								<Class name="EditorProxyShapeConfig" field="ShapeConfiguration" version="2" type="{531FB42A-42A9-4234-89BA-FD349EF83D0C}">
+									<Class name="unsigned char" field="ShapeType" value="7" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+									<Class name="SphereShapeConfiguration" field="Sphere" version="1" type="{0B9F3D2E-0780-4B0B-BFEE-B41C5FDE774A}">
+										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+										</Class>
+										<Class name="float" field="Radius" value="0.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+									</Class>
+									<Class name="BoxShapeConfiguration" field="Box" version="1" type="{E58040ED-3E50-4882-B0E9-525E7A548F8D}">
+										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+										</Class>
+										<Class name="Vector3" field="Configuration" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									</Class>
+									<Class name="CapsuleShapeConfiguration" field="Capsule" version="1" type="{19C6A07E-5644-46B7-A49E-48703B56ED32}">
+										<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+											<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+										</Class>
+										<Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+										<Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+									</Class>
+									<Class name="EditorProxyAssetShapeConfig" field="PhysicsAsset" version="1" type="{C1B46450-C2A3-4115-A2FB-E5FF3BAAAD15}">
+										<Class name="Asset" field="Asset" value="id={EEE9F7A7-8155-59DA-BF16-A7DFB885B933}:6027d547,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={objects/spherebot/r0-b_head.pxmesh}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+										<Class name="PhysicsAssetShapeConfiguration" field="Configuration" version="1" type="{1C0046D9-BC9E-4F93-9F0E-D62654FB18EA}">
+											<Class name="ShapeConfiguration" field="BaseClass1" version="1" type="{1FD56C72-6055-4B35-9253-07D432B94E91}">
+												<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											</Class>
+											<Class name="Asset" field="PhysicsAsset" value="id={EEE9F7A7-8155-59DA-BF16-A7DFB885B933}:6027d547,type={7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB},hint={objects/spherebot/r0-b_head.pxmesh}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+											<Class name="Vector3" field="AssetScale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+											<Class name="bool" field="UseMaterialsFromAsset" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+									</Class>
+								</Class>
+								<Class name="Collider" field="DebugDrawSettings" version="1" type="{7DE9CA01-DF1E-4D72-BBF4-76C9136BE6A2}">
+									<Class name="bool" field="LocallyEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="GlobalButtonState" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								</Class>
+								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
+									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								</Class>
+							</Class>
 						</Class>
 						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -1695,10 +1926,19 @@
 							</Class>
 							<Class name="AZStd::unordered_set" field="AssociatedIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
 								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592768667116720" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="id" value="592794436920496" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592798731887792" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="id" value="592790141953200" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="592785846985904" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="592781552018608" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="592777257051312" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 									<Class name="AZ::u64" field="id" value="592772962084016" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -1707,19 +1947,10 @@
 									<Class name="AZ::u64" field="id" value="592803026855088" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592777257051312" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="id" value="592768667116720" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592781552018608" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-								</Class>
-								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592785846985904" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-								</Class>
-								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592790141953200" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-								</Class>
-								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-									<Class name="AZ::u64" field="id" value="592794436920496" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="id" value="592798731887792" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 							</Class>
 							<Class name="EntityId" field="ParentId" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">

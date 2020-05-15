@@ -30,7 +30,6 @@
 #include "RenderViewport.h"
 #include "Export/ExportManager.h"
 
-//#include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayerManager.h"
 #include "QtUtilWin.h"
 #include "QtUtil.h"

@@ -1053,7 +1053,7 @@ void CAttachmentManager::PhysicalizeAttachment(int idx, int nLod, IPhysicalEntit
     gp.flags = 0;
     if (pIAttachment->GetFlags() & FLAGS_ATTACH_PHYSICALIZED_COLLISIONS)
     {
-        gp.flags = geom_colltype_solid | geom_colltype_solid | geom_floats | geom_colltype_explosion;
+        gp.flags = geom_colltype_solid | geom_floats | geom_colltype_explosion;
     }
     if (pIAttachment->GetFlags() & FLAGS_ATTACH_PHYSICALIZED_RAYS)
     {

@@ -44,7 +44,7 @@ public:
     static void RegisterViewClass();
 
 protected Q_SLOTS:
-    void OnAssetSaveFailed(const AZStd::string& error) const;
+    void OnAssetSaveFailed(const AZStd::string& error);
     void OnAssetOpened(const AZ::Data::Asset<AZ::Data::AssetData>& asset);
 
 protected:

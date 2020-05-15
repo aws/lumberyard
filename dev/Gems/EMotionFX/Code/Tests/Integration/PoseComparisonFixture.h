@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <Tests/SystemComponentFixture.h>
 
 namespace EMotionFX
@@ -41,7 +42,7 @@ namespace EMotionFX
         void LoadAssets();
 
     protected:
-        Actor* m_actor = nullptr;
+        AZStd::unique_ptr<Actor> m_actor = nullptr;
         ActorInstance* m_actorInstance = nullptr;
         AnimGraph* m_animGraph = nullptr;
         MotionSet* m_motionSet = nullptr;

@@ -547,12 +547,10 @@ namespace AZStd
             return insert_impl_emplace(AZStd::forward<Args>(arguments)...);
         }
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE void insert(std::initializer_list<value_type> list)
         {
             insert(list.begin(), list.end());
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         // START UNIQUE
         template<class Iterator>

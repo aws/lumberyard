@@ -63,7 +63,7 @@
 
 
 #ifdef REMOTEFILEIO_CACHE_FILETREE
-#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 namespace AZ
@@ -168,7 +168,7 @@ namespace AZ
         class RemoteFileIO
             : public NetworkFileIO
 #ifdef REMOTEFILEIO_CACHE_FILETREE
-            , private AzFramework::AssetSystemBus::Handler
+            , private AzFramework::AssetCatalogEventBus::Handler
 #endif
         {
         public:
@@ -207,9 +207,9 @@ namespace AZ
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
-            //implementation of AssetSystemBus
-            void AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage message) override;
-            void AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message) override;
+            //implementation of AssetCatalogEventBus
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
             //////////////////////////////////////////////////////////////////////////
 #endif
             mutable AZStd::recursive_mutex m_remoteFileCacheGuard;

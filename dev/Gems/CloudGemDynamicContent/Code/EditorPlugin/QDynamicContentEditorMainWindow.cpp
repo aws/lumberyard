@@ -72,13 +72,16 @@ namespace DynamicContent
         m_fileWatcherProxyModel(new QSortFilterProxyModel(this)),
         m_packagesProxyModel(new QSortFilterProxyModel(this))
     {
-
-        EBUS_EVENT_RESULT(m_requestId, PythonWorkerRequests::Bus, AllocateRequestId);
+        auto pythonWorkerRequestsInterface = AZ::Interface<PythonWorkerRequestsInterface>::Get();
+        if (pythonWorkerRequestsInterface)
+        {
+            m_requestId = pythonWorkerRequestsInterface->AllocateRequestId();
+        }
 
         m_manifestStatus.reset(new ManifestInfo);
 
         setupUi(this);
-        PythonWorkerEvents::Bus::Handler::BusConnect();
+        AZ::Interface<PythonWorkerEventsInterface>::Register(this);
         SetupUI();
 
         m_platformMap = PlatformMap();
@@ -95,7 +98,7 @@ namespace DynamicContent
 
     QDynamicContentEditorMainWindow::~QDynamicContentEditorMainWindow()
     {
-        PythonWorkerEvents::Bus::Handler::BusDisconnect();
+        AZ::Interface<PythonWorkerEventsInterface>::Unregister(this);
         auto metricId = LyMetrics_CreateEvent(DCM_METRIC_EVENT_NAME);
         LyMetrics_AddAttribute(metricId, DCM_OPERATION_ATTRIBUTE_NAME, "close");
         LyMetrics_SubmitEvent(metricId);
@@ -389,7 +392,11 @@ namespace DynamicContent
 
     void QDynamicContentEditorMainWindow::PythonExecute(const char* command, const QVariantMap& args)
     {
-        EBUS_EVENT(PythonWorkerRequests::Bus, ExecuteAsync, m_requestId, command, args);
+        auto pythonWorkerRequestsInterface = AZ::Interface<PythonWorkerRequestsInterface>::Get();
+        if (pythonWorkerRequestsInterface)
+        {
+            pythonWorkerRequestsInterface->ExecuteAsync(m_requestId, command, args);
+        }
     }
 
 
@@ -1368,7 +1375,7 @@ namespace DynamicContent
         args[ARGS_SECTION] = KEY_FILES_SECTION;
 
         m_isLoading = true;
-        status->showMessage("Retriving file info from " + filePath);
+        status->showMessage("Retrieving file info from " + filePath);
 
         PythonExecute(COMMAND_SHOW_MANIFESTS, args);
         PythonExecute(COMMAND_GET_BUCKET_STATUS, args);

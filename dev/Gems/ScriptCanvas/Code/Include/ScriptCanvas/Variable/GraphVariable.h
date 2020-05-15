@@ -12,24 +12,72 @@
 
 #pragma once
 
-#include <ScriptCanvas/Variable/VariableDatumBase.h>
+#include <ScriptCanvas/Core/Datum.h>
+#include <ScriptCanvas/Core/GraphScopedTypes.h>
+#include <ScriptCanvas/Variable/VariableCore.h>
+
+#include <ScriptCanvas/Core/DatumBus.h>
+
+// Version Converion Information
+#include <ScriptCanvas/Deprecated/VariableHelpers.h>
+////
 
 namespace ScriptCanvas
 {
-    class VariableDatum
-        : public VariableDatumBase
+    class ModifiableDatumView;
+
+    //! Properties that govern Datum replication
+    struct ReplicaNetworkProperties
     {
-    public:
-        AZ_TYPE_INFO(VariableDatum, "{E0315386-069A-4061-AD68-733DCBE393DD}");
-        AZ_CLASS_ALLOCATOR(VariableDatum, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(ReplicaNetworkProperties, "{4F055551-DD75-4877-93CE-E80C844FC155}");
+        AZ_CLASS_ALLOCATOR(ReplicaNetworkProperties, AZ::SystemAllocator, 0);
+
         static void Reflect(AZ::ReflectContext* context);
 
-        VariableDatum();
-        explicit VariableDatum(const Datum& variableData);
-        explicit VariableDatum(Datum&& variableData);
+        bool m_isSynchronized = false;
+    };
 
-        bool operator==(const VariableDatum& rhs) const;
-        bool operator!=(const VariableDatum& rhs) const;
+    class GraphVariable
+        : public DatumNotificationBus::Handler
+    {
+        friend class ModifiableDatumView;
+
+    public:
+        AZ_TYPE_INFO(GraphVariable, "{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}");
+        AZ_CLASS_ALLOCATOR(GraphVariable, AZ::SystemAllocator, 0);
+        static void Reflect(AZ::ReflectContext* context);
+
+        static const char* GetVariableNotificationBusName() { return "VariableNotification"; }
+
+        GraphVariable();
+        explicit GraphVariable(const Datum& variableData);
+        explicit GraphVariable(Datum&& variableData);
+
+        GraphVariable(const Datum& variableData, const VariableId& variableId);
+
+        // Conversion Information
+        GraphVariable(Deprecated::VariableNameValuePair&& valuePair);
+        ////
+
+        ~GraphVariable();
+
+        bool operator==(const GraphVariable& rhs) const;
+        bool operator!=(const GraphVariable& rhs) const;
+
+        void DeepCopy(const GraphVariable& source);
+
+        const Data::Type& GetDataType() const;
+
+        const VariableId& GetVariableId() const;
+
+        const Datum*    GetDatum() const;
+        void            ConfigureDatumView(ModifiableDatumView& accessController);
+        
+        void SetVariableName(AZStd::string_view displayName);
+        AZStd::string_view GetVariableName() const;
+
+        void SetDisplayName(const AZStd::string& displayName);
+        AZStd::string_view GetDisplayName() const;
 
         AZ::Crc32 GetInputControlVisibility() const;
         void SetInputControlVisibility(const AZ::Crc32& inputControlVisibility);
@@ -44,14 +92,29 @@ namespace ScriptCanvas
         void SetExposeAsComponentInput(bool exposeAsInput) { m_exposeAsInput = exposeAsInput;  }
 
         void SetExposureCategory(AZStd::string_view exposureCategory) { m_exposureCategory = exposureCategory; }
-        AZStd::string_view GetExposureCategory() const { return m_exposureCategory; }
+        AZStd::string_view GetExposureCategory() const { return m_exposureCategory; }        
 
         void GenerateNewId();
 
+        void SetAllowSignalOnChange(bool allowSignalChange);
+        
+        bool IsSynchronized() const { return m_networkProperties.m_isSynchronized; }
+
+        void SetOwningScriptCanvasId(const ScriptCanvasId& scriptCanvasId);
+        GraphScopedVariableId GetGraphScopedId() const;
+
+        // Editor Callbacks
+        void OnDatumEdited(const Datum* datum) override;
+        ////
+
     private:
-        friend bool VariableDatumVersionConverter(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
+
         void OnExposureChanged();
         void OnExposureGroupChanged();
+
+        void OnValueChanged();
+
+        AZStd::string GetDescriptionOverride();
 
         // Still need to make this a proper bitmask, once we have support for multiple
         // input/output attributes. For now, just going to assume it's only the single flag(which is is).
@@ -60,25 +123,26 @@ namespace ScriptCanvas
         AZ::Crc32 m_visibility;
 
         AZStd::string m_exposureCategory;
+
+        bool m_signalValueChanges;
+
+        ScriptCanvasId m_scriptCanvasId;
+        VariableId m_variableId;        
+
+        AZ::EntityId m_datumId;
+
+        AZStd::string m_variableName;
+        Datum m_datum;
+        
+        ReplicaNetworkProperties m_networkProperties;
+
+        GraphScopedVariableId    m_notificationId;
     };
 
-    struct VariableNameValuePair
-    {
-        AZ_TYPE_INFO(VariableNameValuePair, "{C1732C54-5E61-4D00-9A39-5B919CF2F8E7}");
-        AZ_CLASS_ALLOCATOR(VariableNameValuePair, AZ::SystemAllocator, 0);
-        static void Reflect(AZ::ReflectContext* context);
+    using GraphVariableMapping = AZStd::unordered_map< VariableId, GraphVariable >;
+}
 
-        VariableNameValuePair() = default;
-        VariableNameValuePair(AZStd::string_view variableName, const VariableDatum& variableDatum);
+namespace AZ
+{
 
-        VariableDatum m_varDatum;
-
-        void SetVariableName(AZStd::string_view displayName);
-        AZStd::string_view GetVariableName() const;
-
-    private:
-        AZStd::string GetDescriptionOverride();
-
-        AZStd::string m_varName;
-    };
 }

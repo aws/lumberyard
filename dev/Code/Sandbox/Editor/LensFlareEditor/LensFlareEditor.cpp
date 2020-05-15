@@ -38,7 +38,7 @@
 #include <LmbrCentral/Rendering/LensFlareAsset.h>
 
 CLensFlareEditor* CLensFlareEditor::s_pLensFlareEditor = NULL;
-const char* CLensFlareEditor::s_pLensFlareEditorClassName = "Lens Flare Editor";
+const char* CLensFlareEditor::s_pLensFlareEditorClassName = LyViewPane::LensFlareEditor;
 
 #define DISABLE_REFERENCETREE
 
@@ -180,6 +180,17 @@ CLensFlareItem* CLensFlareEditor::GetSelectedLensFlareItem() const
 void CLensFlareEditor::ResetElementTreeControl()
 {
     m_pLensFlareElementTree->InvalidateLensFlareItem();
+}
+
+void CLensFlareEditor::SelectItem(CBaseLibraryItem* item, bool bForceReload)
+{
+    if (item != m_pCurrentItem || bForceReload)
+    {
+        //Ensure that the property window is emptied out whenever the selected library changes
+        m_pWndProps->RemoveAllItems();
+    }
+
+    CDatabaseFrameWnd::SelectItem(item, bForceReload);
 }
 
 void CLensFlareEditor::OnTvnItemSelChanged(const QItemSelection& selected, const QItemSelection& deselected)

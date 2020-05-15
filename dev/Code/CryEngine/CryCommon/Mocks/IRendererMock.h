@@ -12,6 +12,8 @@
 #pragma once
 
 #include <IRenderer.h>
+#include <I3DEngine.h> // needed for SRenderingPassInfo definition
+#include <IVideoRenderer.h>
 #include <IImage.h>
 #include <gmock/gmock.h>
 
@@ -150,8 +152,8 @@ public:
         void(void));
     MOCK_METHOD3(ChangeDisplay,
         bool(unsigned int width, unsigned int height, unsigned int cbpp));
-    MOCK_METHOD5(ChangeViewport,
-        void(unsigned int, unsigned int, unsigned int, unsigned int, bool));
+    MOCK_METHOD7(ChangeViewport,
+        void(unsigned int, unsigned int, unsigned int, unsigned int, bool, float, float));
     MOCK_CONST_METHOD6(SaveTga,
         bool(unsigned char* sourcedata, int sourceformat, int w, int h, const char* filename, bool flip));
     MOCK_METHOD1(SetTexture,
@@ -650,6 +652,10 @@ public:
 #if !defined(_RELEASE)
     MOCK_METHOD1(GetDrawCallsInfoPerMesh,
         RNDrawcallsMapMesh & (bool));
+    MOCK_METHOD1(GetDrawCallsInfoPerMeshPreviousFrame,
+        RNDrawcallsMapMesh & (bool));
+    MOCK_METHOD1(GetDrawCallsInfoPerNodePreviousFrame,
+        RNDrawcallsMapNode & (bool));
     MOCK_METHOD1(GetDrawCallsPerNode,
         int(IRenderNode * pRenderNode));
     MOCK_METHOD1(ForceRemoveNodeFromDrawCallsMap,
@@ -676,7 +682,7 @@ public:
     MOCK_METHOD2(ForceUpdateShaderItem,
         void(SShaderItem * pShaderItem, _smart_ptr<IMaterial> pMaterial));
     MOCK_METHOD2(RefreshShaderResourceConstants,
-        void(SShaderItem * pShaderItem, _smart_ptr<IMaterial> pMaterial));
+        void(SShaderItem * pShaderItem, IMaterial * pMaterial));
     MOCK_METHOD0(IsStereoModeChangePending,
         bool());
     MOCK_METHOD0(SyncComputeVerticesJobs,
@@ -860,6 +866,14 @@ public:
         void(const char*));
     MOCK_METHOD1(AddProfilerLabel,
         void(const char*));
+
+    MOCK_METHOD1(InitializeVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer));
+    MOCK_METHOD1(CleanupVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer));
+    MOCK_METHOD2(DrawVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments));
+
     MOCK_METHOD5(EF_QueryImpl,
         void(ERenderQueryTypes eQuery, void* pInOut0, uint32 nInOutSize0, void* pInOut1, uint32 nInOutSize1));
 };

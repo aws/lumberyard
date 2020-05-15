@@ -69,7 +69,7 @@ namespace AssetProcessor
             ScannerMatchType matchType= ScannerMatchType::ExtensionOnlyFirstMatch,
             AZ::Crc32* forceScanner=nullptr);
 
-        static const int DefaultMaxScanIteration = 100;
+        static const int DefaultMaxScanIteration;
 
         void RegisterSpecializedScanner(AZStd::shared_ptr<SpecializedDependencyScanner> scanner);
 

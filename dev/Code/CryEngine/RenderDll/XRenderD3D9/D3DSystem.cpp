@@ -195,10 +195,10 @@ bool CD3D9Renderer::CreateContext(WIN_HWND hWnd, bool bAllowMSAA, int SSX, int S
     pContext->m_Height = m_height;
     pContext->m_pSwapChain  = 0;
     pContext->m_pBackBuffer = 0;
-    pContext->m_nViewportWidth  = m_width  / (m_CurrContext ? m_CurrContext->m_nSSSamplesX : 1);
-    pContext->m_nViewportHeight = m_height / (m_CurrContext ? m_CurrContext->m_nSSSamplesY : 1);
-    pContext->m_nSSSamplesX = std::max(1, SSX);
-    pContext->m_nSSSamplesY = std::max(1, SSY);
+    pContext->m_nViewportWidth  = aznumeric_cast<int>(aznumeric_cast<float>(m_width)  / (m_CurrContext ? m_CurrContext->m_fPixelScaleX : 1.0f));
+    pContext->m_nViewportHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / (m_CurrContext ? m_CurrContext->m_fPixelScaleY : 1.0f));
+    pContext->m_fPixelScaleX = aznumeric_cast<float>(std::max(1, SSX));
+    pContext->m_fPixelScaleY = aznumeric_cast<float>(std::max(1, SSY));
     pContext->m_bMainViewport = !gEnv->IsEditor();
     m_CurrContext = pContext;
     m_RContexts.AddElem(pContext);
@@ -1606,6 +1606,8 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 
     if (!iSystem || !iLog)
     {
+        AZ_Error("CD3D9Renderer::Init", iSystem, "Renderer initialization failed because iSystem was null.");
+        AZ_Error("CD3D9Renderer::Init", iLog, "Renderer initialization failed because iLog was null.");
         return 0;
     }
 

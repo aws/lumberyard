@@ -125,26 +125,6 @@ void AssetScannerWorker::ScanForSourceFiles(const ScanFolderInfo& scanFolderInfo
         }
         else
         {
-            // Filtering out metadata files as well, there is no need to send both the source file and the metadata files 
-            // to the apm for analysis, just sending the source file should be enough
-            bool isMetaFile = false;
-            for (int idx = 0; idx < m_platformConfiguration->MetaDataFileTypesCount(); idx++)
-            {
-                QPair<QString, QString> metaInfo = m_platformConfiguration->GetMetaDataFileTypeAt(idx);
-                if (absPath.endsWith("." + metaInfo.first, Qt::CaseInsensitive))
-                {
-                    // its a meta file
-                    isMetaFile = true;
-                    break;
-                }
-            }
-
-            if (isMetaFile)
-            {
-                m_excludedList.insert(AZStd::move(assetFileInfo));
-                continue;
-            }
-
             //Entry is a file
             m_fileList.insert(AZStd::move(assetFileInfo));
         }

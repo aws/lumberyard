@@ -60,6 +60,7 @@ namespace Physics
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< The layers to include in the query
         FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
+        AZ::u64 m_maxResults = 32; ///< The Maximum results for this request to return, this is limited by the value set in WorldConfiguration
     };
     
     /// Sweeps a shape from a starting pose along a direction returning objects that intersected with the shape.
@@ -75,6 +76,7 @@ namespace Physics
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< Collision filter for the query.
         FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
+        AZ::u64 m_maxResults = 32; ///< The Maximum results for this request to return, this is limited by the value set in WorldConfiguration
     };
 
     /// Callback used for undirected scene queries: Overlaps
@@ -91,6 +93,7 @@ namespace Physics
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< Collision filter for the query.
         OverlapFilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
+        AZ::u64 m_maxResults = 32; ///< The Maximum results for this request to return, this is limited by the value set in WorldConfiguration
     };
 
     /// Structure used to store the result from either a raycast or a shape cast.

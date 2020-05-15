@@ -9,11 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
-import messaging
+from . import messaging
 
 @service.api
 def post(request, message_request, cognito_id):
-    print 'Got send direct request: {}'.format(request)
-    print 'Cognito ID {} Message request: {}'.format(cognito_id,message_request)  
+    print('Got send direct request: {}'.format(request))
+    print('Cognito ID {} Message request: {}'.format(cognito_id, message_request))
     return messaging.send_direct_message(message_request['channel'], message_request['message'], cognito_id)

@@ -10,7 +10,7 @@
 *
 */
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <AzCore/PlatformIncl.h>
 
@@ -28,13 +28,15 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Math/Uuid.h>
 
-#pragma warning(push)
-#pragma warning(disable:4251)
 #include <aws/core/utils/Outcome.h>
+
+// To avoid the warning below
+// Semaphore.h(50): warning C4251: 'Aws::Utils::Threading::Semaphore::m_mutex': class 'std::mutex' needs to have dll-interface to be used by clients of class 'Aws::Utils::Threading::Semaphore'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <aws/gamelift/model/DescribeGameSessionsRequest.h>
 #include <aws/gamelift/model/CreatePlayerSessionRequest.h>
 #include <aws/gamelift/model/CreatePlayerSessionResult.h>
-#pragma warning(pop)
+AZ_POP_DISABLE_WARNING
 
 namespace
 {
@@ -89,6 +91,9 @@ namespace GridMate
     };
     //-----------------------------------------------------------------------------
 
+    // Maintain size and alignment same for corresponding classes in GameLiftServerSession
+    // GameLiftMemberId -> GameLiftServerMemeberId
+    // GameLiftMemeber -> GameLiftServerMember
 
     //-----------------------------------------------------------------------------
     // GameLiftMemberID
@@ -133,6 +138,7 @@ namespace GridMate
 
     private:
         AZ::u32 m_id;
+        string m_address;
     };
     //-----------------------------------------------------------------------------
 
@@ -298,6 +304,7 @@ namespace GridMate
         using GridMember::SetHost;
 
         GameLiftMemberID m_memberId;
+        string m_playerSessionId;
     };
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
@@ -330,7 +337,23 @@ namespace GridMate
         m_sm.SetStateHandler(AZ_HSM_STATE_NAME(SS_GAMELIFT_INIT), AZ::HSM::StateHandler(this, &GameLiftClientSession::OnStateGameLiftInit), SS_NO_SESSION);
         SetUpStateMachine();
 
-        RequestEvent(SE_JOIN);
+        // If player session id is already set then join existing player session.
+        if (!info.m_playerSessionId.empty())
+        {
+            m_playerSession.SetGameSessionId(m_searchInfo.m_sessionId.c_str());
+            m_playerSession.SetPlayerSessionId(m_searchInfo.m_playerSessionId.c_str());
+            m_playerSession.SetPort(m_searchInfo.m_port);
+            m_playerSession.SetIpAddress(m_searchInfo.m_ipAddress.c_str());
+
+            SetGameLiftLocalParams();
+
+            m_sessionId = m_searchInfo.m_sessionId;
+            RequestEvent(SE_MATCHMAKING_JOIN);
+        }
+        else
+        {
+            RequestEvent(SE_JOIN);
+        }
 
         return true;
     }
@@ -375,7 +398,7 @@ namespace GridMate
 
                 if (result->GetGameSessions().size() != 1)
                 {
-                    AZ_TracePrintf("GridMate", "Game session does not exist %s\n", m_searchInfo.m_gameInstanceId.c_str());
+                    AZ_TracePrintf("GridMate", "Game session does not exist %s\n", m_searchInfo.m_sessionId.c_str());
                     RequestEvent(SE_DELETE);
                     return true;
                 }
@@ -384,7 +407,7 @@ namespace GridMate
                 if (gameSession.GetStatus() == Aws::GameLift::Model::GameSessionStatus::ACTIVE)
                 {
                     Aws::GameLift::Model::CreatePlayerSessionRequest request;
-                    request.WithGameSessionId(m_searchInfo.m_gameInstanceId.c_str()).WithPlayerId(m_clientService->GetPlayerId());
+                    request.WithGameSessionId(m_searchInfo.m_sessionId.c_str()).WithPlayerId(m_clientService->GetPlayerId());
                     m_createPlayerSessionOutcomeCallable = m_clientService->GetClient()->CreatePlayerSessionCallable(request);
                 }
                 else if (gameSession.GetStatus() == Aws::GameLift::Model::GameSessionStatus::ACTIVATING && m_numGameSessionRetryAttempts < k_maxGameSessionRetries)
@@ -404,27 +427,7 @@ namespace GridMate
             case SE_RECEIVED_PLAYERSESSION:
             {
                 m_playerSession = *reinterpret_cast<const Aws::GameLift::Model::PlayerSession*>(e.userData);
-                const auto& clientEndpoint = m_clientService->GetEndpoint();
-
-                //To support GameLiftLocal on a remote server, convert the reported 127.0.0.1
-                // address to the configured GameLiftLocal endpoint address
-                if (m_clientService->UseGameLiftLocal() &&
-                    m_playerSession.GetIpAddress().compare("127.0.0.1") == 0 &&
-                    //Ignore actual loopback connections
-                    clientEndpoint.find("localhost") == -1 &&
-                    clientEndpoint.find("127.") != 0)
-                {
-                    const auto portLocation = clientEndpoint.find(":");
-                    if (portLocation != -1)
-                    {
-                        //Copy only the host name/address
-                        m_playerSession.SetIpAddress(clientEndpoint.substr(0, portLocation).c_str());
-                    }
-                    else
-                    {
-                        m_playerSession.SetIpAddress(clientEndpoint.c_str());
-                    }
-                }
+                SetGameLiftLocalParams();
                 m_sessionId = m_playerSession.GetGameSessionId().c_str();
                 sm.Transition(SS_CREATE);
                 return true;
@@ -439,15 +442,44 @@ namespace GridMate
         return false;
     }
 
+    void GameLiftClientSession::SetGameLiftLocalParams()
+    {
+        const auto& clientEndpoint = m_clientService->GetEndpoint();
+        //To support GameLiftLocal on a remote server, convert the reported 127.0.0.1
+                // address to the configured GameLiftLocal endpoint address
+        if (m_clientService->UseGameLiftLocal() &&
+            m_playerSession.GetIpAddress().compare("127.0.0.1") == 0 &&
+            //Ignore actual loopback connections
+            clientEndpoint.find("localhost") == -1 &&
+            clientEndpoint.find("127.") != 0)
+        {
+            const auto portLocation = clientEndpoint.find(":");
+            if (portLocation != -1)
+            {
+                //Copy only the host name/address
+                m_playerSession.SetIpAddress(clientEndpoint.substr(0, portLocation).c_str());
+            }
+            else
+            {
+                m_playerSession.SetIpAddress(clientEndpoint.c_str());
+            }
+        }
+    }
+
     bool GameLiftClientSession::OnStateStartup(AZ::HSM& sm, const AZ::HSM::Event& e)
     {
         switch (e.id)
         {
-        case SE_JOIN:
-        {
-            sm.Transition(SS_GAMELIFT_INIT);
-        }
-            return true;
+            case SE_JOIN:
+            {
+                sm.Transition(SS_GAMELIFT_INIT);
+                return true;
+            }
+            case SE_MATCHMAKING_JOIN:
+            {
+                sm.Transition(SS_CREATE);
+                return true;
+            }
         }
         return false;
     }
@@ -538,7 +570,7 @@ namespace GridMate
             if (AZStd::chrono::milliseconds(AZStd::chrono::system_clock::now() - m_gameSessionRetryTimestamp).count() >= m_gameSessionRetryTimeout)
             {
                 Aws::GameLift::Model::DescribeGameSessionsRequest request;
-                request.SetGameSessionId(m_searchInfo.m_gameInstanceId.c_str());
+                request.SetGameSessionId(m_searchInfo.m_sessionId.c_str());
                 m_describeGameSessionsOutcomeCallable = m_clientService->GetClient()->DescribeGameSessionsCallable(request);
 
                 m_gameSessionRetryTimeout = -1;

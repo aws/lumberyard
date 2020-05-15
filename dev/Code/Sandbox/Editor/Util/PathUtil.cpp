@@ -13,12 +13,12 @@
 
 #include "StdAfx.h"
 #include "PathUtil.h"
-#include <QRegularExpression>
 
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h> // for ebus events
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <AzToolsFramework/Engine/EngineUtilities.h>
+
+#include <QRegularExpression>
 
 namespace
 {

@@ -15,31 +15,31 @@ import os
 import traceback
 import sys
 
-import project
-import deployment
-import mappings
-import resource_group
-import player_identity
-import profile
-import importer
-import gem
-import log_finder
-import backup
-
-from resource_manager_common import constant
-import security
-import function
-
-from errors import HandledError
-from context import Context
-from metrics import MetricsContext
-from util import Args
-
 from botocore.exceptions import NoCredentialsError
 from botocore.exceptions import EndpointConnectionError
 from botocore.exceptions import IncompleteReadError
 from botocore.exceptions import ConnectionError
 from botocore.exceptions import UnknownEndpointError
+
+from . import project
+from . import deployment
+from . import mappings
+from . import resource_group
+from . import player_identity
+from . import profile
+from . import importer
+from . import gem
+from . import log_finder
+from . import backup
+
+from resource_manager_common import constant
+from . import security
+from . import function
+
+from .errors import HandledError
+from .context import Context
+from .metrics import MetricsContext
+from .util import Args
 
 
 def main():
@@ -127,22 +127,22 @@ def main():
     except KeyboardInterrupt:
         return constant.CLI_RETURN_ERROR_HANDLED_CODE
     except HandledError as e:
-        print '\nERROR: {0}'.format(e)
+        print('\nERROR: {0}'.format(e))
         if '--verbose' in sys.argv:
             traceback.print_exc()
         return constant.CLI_RETURN_ERROR_HANDLED_CODE
     except NoCredentialsError:
-        print '\nERROR: No AWS credentials were provided.'
+        print('\nERROR: No AWS credentials were provided.')
         if '--verbose' in sys.argv:
             traceback.print_exc()
         return constant.CLI_RETURN_ERROR_HANDLED_CODE
     except (EndpointConnectionError, IncompleteReadError, ConnectionError, UnknownEndpointError) as e:
-        print '\nERROR: We were unable to contact your AWS endpoint.\n {}'.format(e.message)
+        print('\nERROR: We were unable to contact your AWS endpoint.\n {}'.format(str(e)))
         if '--verbose' in sys.argv:
             traceback.print_exc()
         return constant.CLI_RETURN_ERROR_HANDLED_CODE
     except Exception as e:
-        print '\nERROR: An unexpected error has occurred: {}\n'.format(e.message)
+        print('\nERROR: An unexpected error has occurred: {}\n'.format(str(e)))
         traceback.print_exc()
         return constant.CLI_RETURN_ERROR_UNHANDLED_CODE
 
@@ -233,6 +233,14 @@ def __add_project_stack_commands(stack_subparser):
                            help='Initializes the {game}\\AWS directory and exit. If this option is given the project stack is not created. If the directory already exists and contains any files, no new files are created.')
     subparser.add_argument('--region', required=True, help='The AWS region where the project stack will be located.')
     subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the Cognito pools that are stood up during deployment access updates')
+
+    # Add an optionally exclusive set of controls around create_admin_roles
+    feature_parser = subparser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--admin-roles', dest='create_admin_roles', action='store_true', help='Create the optional ProjectOwner and ProjectAdmin roles')
+    feature_parser.add_argument('--no-admin-roles', dest='create_admin_roles', action='store_false',
+                                help='Do not Create the optional ProjectOwner and ProjectAdmin roles')
+    subparser.set_defaults(create_admin_roles=True)
+
     __add_common_args(subparser, no_assume_role=True)
     subparser.set_defaults(func=project.create_stack)
 
@@ -688,6 +696,12 @@ def __add_deprecated_commands(context, subparsers):
     subparser.add_argument('--region', required=True, help='The AWS region where the project stack will be located.')
     subparser.add_argument('--confirm-security-change', '-S', action='store_true', help='Confirms that you know this command will make security changes.')
     __add_common_args(subparser, no_assume_role=True)
+    # Add an optionally exclusive set of controls around create_admin_roles (same controls as project create)
+    feature_parser = subparser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--admin-roles', dest='create_admin_roles', action='store_true', help='Create the optional ProjectOwner and ProjectAdmin roles')
+    feature_parser.add_argument('--no-admin-roles', dest='create_admin_roles', action='store_false',
+                                help='Do not Create the optional ProjectOwner and ProjectAdmin roles')
+    subparser.set_defaults(create_admin_roles=False)
     subparser.set_defaults(func=project.create_stack)
 
     subparser = subparsers.add_parser('update-project-stack')
@@ -850,6 +864,7 @@ def __add_deprecated_commands(context, subparsers):
 
     subparser = subparsers.add_parser('list-profiles')
     subparser.add_argument('--profile', required=False, help='The name of the profile to list. All profiles are listed by default.')
+    subparser.add_argument('--region', required=False, help='The region to call STS in when checking profiles. Defaults to us-east-1')
     subparser.set_defaults(func=profile.list)
 
     subparser = subparsers.add_parser('add-profile')
@@ -905,9 +920,9 @@ def __add_deprecated_commands(context, subparsers):
 
     subparser = subparsers.add_parser('clear-parameter')
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False,
-                           help='Clears the parameter value for the specified deployment. Use * to clear a parameter that has been set for all deployments. If ommited, the parameter will be cleared for deployments.')
+                           help='Clears the parameter value for the specified deployment. Use * to clear a parameter that has been set for all deployments. If omitted, the parameter will be cleared for deployments.')
     subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP', required=False,
-                           help='Clears the parameter value for the specified resource group. Use * to set the parameter for all resource groups. If ommitted the parameter will be cleared for all resource groups.')
+                           help='Clears the parameter value for the specified resource group. Use * to set the parameter for all resource groups. If omitted the parameter will be cleared for all resource groups.')
     subparser.add_argument('--parameter', metavar='PARAMETER', required=True, help='The name of the parameter to clear.')
     subparser.add_argument('--confirm-clear', required=False, action='store_true',
                            help='Confirms that you want to clear the parameter values. Required only if the --deployment or --resource-group option is omitted. By default you are prompted to confirm the change.')

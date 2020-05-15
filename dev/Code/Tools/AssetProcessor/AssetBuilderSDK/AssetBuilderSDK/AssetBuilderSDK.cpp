@@ -23,6 +23,7 @@
 #include <AzCore/Component/Entity.h> // so we can have the entity UUID type.
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Slice/SliceAsset.h> // For slice asset sub ids
 //////////////////////////////////////////////////////////////////////////
 
 namespace AssetBuilderSDK
@@ -611,6 +612,7 @@ namespace AssetBuilderSDK
     static AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
     static AZ::Data::AssetType geomCacheAssetType("{EBC96071-E960-41B6-B3E3-328F515AE5DA}");
     static AZ::Data::AssetType skeletonAssetType("{60161B46-21F0-4396-A4F0-F2CCF0664CDE}");
+    static AZ::Data::AssetType entityIconAssetType("{3436C30E-E2C5-4C3B-A7B9-66C94A28701B}");
 
     // now the ones that are actual asset types that already have an AssetData-derived class in the engine
     // note that ideally, all NEW asset types beyond this point are instead built by an actual specific builder-SDK derived builder
@@ -884,19 +886,19 @@ namespace AssetBuilderSDK
     {
         // The engine only uses dynamic slice files, but for right now slices are also copy products...
         // So slice will have two products, so they must have a different sub id's.
-        // In the interest of future compatibility we will want dynamic slices to have a 0 sub id, so set the slice copy product
-        // sub id's to 1. The only reason they are currently copy products is for the builder to
+        // In the interest of future compatibility we will want dynamic slices to have a unique subId, seperate from a
+        // slice copy job product subId. The only reason they are currently copy products is for the builder to
         // make dynamic slice products. This will change in the future and the .slice files will no longer copy themselves
-        // as products, so this is a temporary rule and eventually there will only be 0's
+        // as products, so this is a temporary rule and eventually there will only be one subId
         if (assetType == sliceAssetType)
         {
-            return 1;
+            return AZ::SliceAsset::GetAssetSubId();
         }
 
-        // Dynamic slices should use subId = 0 to avoid ambiguity with legacy editor slice guids.
+        // Dynamic slices use a unique subId to avoid ambiguity with legacy editor slice guids.
         if (assetType == dynamicSliceAssetType)
         {
-            return 2;
+            return AZ::DynamicSliceAsset::GetAssetSubId();
         }
 
         //get the extension
@@ -921,6 +923,12 @@ namespace AssetBuilderSDK
         //////////////////////////////////////////////////////////////////////////
         //calculated sub ids
         AZ::u32 subID = 0;
+
+        // PNG files can be processed as both texture and EntityIcon assets. Make sure they have different subids.
+        if (assetType == entityIconAssetType)
+        {
+            return subID + 1;
+        }
 
         // if its texture or texture mip there is a special case for diff-textures
         // it is special because a single FILENAME_CM.TIF can become -many- outputs:

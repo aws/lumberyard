@@ -47,6 +47,8 @@ namespace LmbrCentral
         void SetShapeColor(const AZ::Color& solidColor) override;
         void SetShapeWireframeColor(const AZ::Color& wireColor) override;
         void SetVisibleInEditor(bool visible) override;
+        void SetShapeColorIsEditable(bool editable) override;
+        bool GetShapeColorIsEditable() override;
 
         /// Should shape be rendered all the time, even when not selected.
         bool CanDraw() const;
@@ -72,6 +74,7 @@ namespace LmbrCentral
 
         AZ::Color m_shapeColor = AzFramework::ViewportColors::DeselectedColor; ///< Shaded color used for debug visualizations.
         AZ::Color m_shapeWireColor = AzFramework::ViewportColors::WireColor; ///< Wireframe color used for debug visualizations.
+        bool m_shapeColorIsEditable = true;
 
         bool m_visibleInEditor = true; ///< Visible in the editor viewport.
         bool m_visibleInGameView = false; ///< Visible in Game View.

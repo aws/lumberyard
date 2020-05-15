@@ -19,6 +19,7 @@
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
 
 #include <QTimer>
 #include <QPainter>
@@ -48,11 +49,6 @@ namespace AzQtComponents
 
     namespace
     {
-        bool isWin10()
-        {
-            return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
-        }
-
         // Restores the window state from QWidget::saveGeometry
         // Includes a workaround for restoring the maximization state correctly on Windows
         bool RestoreWindowState(QWidget* window, QByteArray geometry)

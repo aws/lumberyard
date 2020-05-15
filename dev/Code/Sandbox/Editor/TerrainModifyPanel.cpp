@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "TerrainModifyPanel.h"
 #include "TerrainModifyTool.h"
-#include "Util/BoostPythonHelpers.h"
 #include <Cry_Math.h>
 #include <Util/GdiUtil.h>
 
@@ -164,15 +163,15 @@ void CTerrainModifyPanel::OnBrushTypeCmd(const QString& brushType)
     m_tool->ClearCtrlPressedState();
     if (brushType == tr(BRUSH_TYPE_FLATTEN))
     {
-        GetIEditor()->ExecuteCommand("terrain.set_tool_flatten");
+        CTerrainModifyTool::Command_Flatten();
     }
     else if (brushType == tr(BRUSH_TYPE_SMOOTH))
     {
-        GetIEditor()->ExecuteCommand("terrain.set_tool_smooth");
+        CTerrainModifyTool::Command_Smooth();
     }
     else if (brushType == tr(BRUSH_TYPE_RISE_LOWER))
     {
-        GetIEditor()->ExecuteCommand("terrain.set_tool_riselower");
+        CTerrainModifyTool::Command_RiseLower();
     }
     else if (brushType == tr(BRUSH_TYPE_PICK_HEIGHT))
     {

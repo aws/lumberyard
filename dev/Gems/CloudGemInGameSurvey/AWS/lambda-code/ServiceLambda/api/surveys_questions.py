@@ -17,7 +17,6 @@ import validation_common
 import errors
 import json
 import time
-import StringIO
 import uuid
 from botocore.exceptions import ClientError
 
@@ -97,8 +96,8 @@ def delete(request, survey_id, question_id):
                         ExpressionAttributeValues={':question_id':question_id, ':false': False}
                     )
             except ClientError as e:
-            	if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            		raise errors.ClientError('Survey has been modified before update')
+                if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                    raise errors.ClientError('Survey has been modified before update')
                 else:
                     raise RuntimeError('Failed to update DynamoDB')
             break

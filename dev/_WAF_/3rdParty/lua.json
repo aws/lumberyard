@@ -2,7 +2,7 @@
     "name": "lua",
     "source": "@3P:Lua@",
     "description": "LUA scripting language library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

@@ -87,11 +87,39 @@ namespace GradientSignal
         return m_gradientEntityId;
     }
 
-    AZStd::function<float(float)> EditorGradientSurfaceDataComponent::GetFilterFunc()
+    AZStd::function<float(float, const GradientSampleParams & params)> EditorGradientSurfaceDataComponent::GetFilterFunc()
     {
-        return [this](float sampleValue)
+        // By default, our preview will show the gradient value that was queried from the gradient on this entity.
+        // To show what this GradientSurfaceData component will produce, we use a custom FilterFunc to modify what
+        // the preview will display.  We create a SurfacePoint, call ModifySurfacePoints() on that point, and return
+        // the max value from any tags returned, or 0 if no tags were added to the point.
+
+        // This allows us to view the results of the GradientSurfaceData modifications, including threshold clamping and
+        // constraining to shape bounds.  Note that the primary gradient controls the "Pin Preview to Entity" preview setting
+        // that affects *where* this preview is rendered.  If the primary gradient is pinned to a different entity that doesn't
+        // overlap this component's shape constraint entity, this preview can end up all black.  To see a preview that lines up
+        // with this shape constraint, the input gradient will need to "Pin Preview to Entity" to the same shape entity.
+
+        return [this](float sampleValue, const GradientSampleParams& params)
         {
-            return ((sampleValue >= m_configuration.m_thresholdMin) && (sampleValue <= m_configuration.m_thresholdMax)) ? sampleValue : 0.0f;
+            // Create a fake surface point with the position we're sampling.
+            SurfaceData::SurfacePoint point;
+            point.m_position = params.m_position;
+            SurfaceData::SurfacePointList pointList;
+            pointList.emplace_back(point);
+
+            // Send it into the component, see what emerges
+            m_component.ModifySurfacePoints(pointList);
+
+            // If the point was successfully modified, we should have one or more masks with a non-zero value.
+            // Technically, they should all have the same value, but we'll grab the max from all of them in case
+            // the underlying logic ever changes to allow separate ranges per tag.
+            float result = 0.0f;
+            for (auto& mask : pointList[0].m_masks)
+            {
+                result = AZ::GetMax(result, mask.second);
+            }
+            return result;
         };
     }
 }

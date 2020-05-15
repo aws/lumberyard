@@ -99,7 +99,7 @@ namespace ScriptCanvasEditor
 
             virtual void SendMetric(const char* operation) = 0;
             virtual void SendEditorMetric(const char* operation, const AZ::Data::AssetId& assetId) = 0;
-            virtual void SendNodeMetric(const char* operation, const AZ::Uuid& nodeId, AZ::EntityId graphId) = 0;
+            virtual void SendNodeMetric(const char* operation, const AZ::Uuid& nodeId, ScriptCanvas::ScriptCanvasId scriptCanvasId) = 0;
             virtual void SendGraphMetric(const char* operation, const AZ::Data::AssetId& assetId) = 0;
             virtual void SendGraphStatistics(const AZ::Data::AssetId& assetId, const GraphStatisticsHelper& graphStatistics) = 0;
 
@@ -130,7 +130,7 @@ namespace ScriptCanvasEditor
             // MetricsEventsBus::Handler
             void SendMetric(const char* operation) override;
             void SendEditorMetric(const char* operation, const AZ::Data::AssetId& assetId) override;
-            void SendNodeMetric(const char* operation, const AZ::Uuid& nodeTypeId, AZ::EntityId graphId) override;
+            void SendNodeMetric(const char* operation, const AZ::Uuid& nodeTypeId, ScriptCanvas::ScriptCanvasId scriptCanvasId) override;
             void SendGraphMetric(const char* operation, const AZ::Data::AssetId& assetId) override;
             void SendGraphStatistics(const AZ::Data::AssetId& assetId, const GraphStatisticsHelper& graphStatistics) override;
 

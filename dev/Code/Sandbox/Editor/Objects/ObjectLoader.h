@@ -23,12 +23,14 @@ class CPakFile;
 
 typedef std::map<GUID, GUID, guid_less_predicate> TGUIDRemap;
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** CObjectLoader used to load Bas Object and resolve ObjectId references while loading.
 */
 class SANDBOX_API CObjectArchive
 {
 public:
     XmlNodeRef node; //!< Current archive node.
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     bool bLoading;
     bool bUndo;
 
@@ -119,6 +121,7 @@ private:
         Callback() { func1 = 0; func2 = 0; userData = 0; };
     };
     typedef std::multimap<GUID, Callback, guid_less_predicate> Callbacks;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Callbacks m_resolveCallbacks;
 
     // Set of all saved objects to this archive.
@@ -150,6 +153,7 @@ private:
     // This table is used when there is any collision of ids while importing TrackView sequences.
     std::map<uint32, uint32> m_sequenceIdRemap;
     std::vector<uint32> m_pendingIds;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_OBJECTLOADER_H

@@ -35,50 +35,6 @@ namespace ImageProcessing
         s_instance = nullptr;
     }
 
-    bool IsASTCFormat(EPixelFormat fmt)
-    {
-        if (fmt == ePixelFormat_ASTC_4x4
-            || fmt == ePixelFormat_ASTC_5x4
-            || fmt == ePixelFormat_ASTC_5x5
-            || fmt == ePixelFormat_ASTC_6x5
-            || fmt == ePixelFormat_ASTC_6x6
-            || fmt == ePixelFormat_ASTC_8x5
-            || fmt == ePixelFormat_ASTC_8x6
-            || fmt == ePixelFormat_ASTC_8x8
-            || fmt == ePixelFormat_ASTC_10x5
-            || fmt == ePixelFormat_ASTC_10x6
-            || fmt == ePixelFormat_ASTC_10x8
-            || fmt == ePixelFormat_ASTC_10x10
-            || fmt == ePixelFormat_ASTC_12x10
-            || fmt == ePixelFormat_ASTC_12x12)
-        {
-            return true;
-        }
-        return false;
-    }
-    
-    bool IsETCFormat(EPixelFormat fmt)
-    {
-        if (fmt == ePixelFormat_ETC2
-            || fmt == ePixelFormat_ETC2a
-            || fmt == ePixelFormat_EAC_R11
-            || fmt == ePixelFormat_EAC_RG11)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    bool IsPVRTCFormat(EPixelFormat fmt)
-    {
-        if (fmt == ePixelFormat_PVRTC2
-            || fmt == ePixelFormat_PVRTC4)
-        {
-            return true;
-        }
-        return false;
-    }
-
     PixelFormatInfo::PixelFormatInfo(
         int         a_bitsPerPixel,
         int         a_Channels,
@@ -223,7 +179,9 @@ namespace ImageProcessing
 
         //legacy BGRA8
         InitPixelFormat(ePixelFormat_B8G8R8A8, PixelFormatInfo(32, 4, true, "8", 1, 1, 1, 1, 32, false, DXGI_FORMAT_B8G8R8A8_UNORM, FOURCC_DX10, ESampleType::eSampleType_Uint8, "B8G8R8A8", "32-bit BGRA pixel format with alpha, using 8 bits per channel", false, true));
-        
+
+        InitPixelFormat(ePixelFormat_R32,           PixelFormatInfo(32, 1, false,  "0", 1, 1, 1, 1, 32, false, DXGI_FORMAT_FORCE_UINT, FOURCC_DX10, ESampleType::eSampleType_Uint32, "R32", "32-bit red only", false, false));
+
         //Set legacy name it can be used for convertion
         m_pixelFormatInfo[ePixelFormat_R8G8B8A8].szLegacyName = "A8R8G8B8";
         m_pixelFormatInfo[ePixelFormat_R8G8B8X8].szLegacyName = "X8R8G8B8";

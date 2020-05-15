@@ -38,6 +38,7 @@ namespace GraphCanvas
     public:
         GraphCanvasTreeCategorizer(const CategorizerInterface& nodePaletteModel);
 
+        void RegisterCategoryNode(GraphCanvas::GraphCanvasTreeItem* treeItem, const char* subCategory, GraphCanvas::GraphCanvasTreeItem* parentRoot);
         GraphCanvas::GraphCanvasTreeItem* GetCategoryNode(const char* categoryPath, GraphCanvas::GraphCanvasTreeItem* parentRoot);
 
         void PruneEmptyNodes();

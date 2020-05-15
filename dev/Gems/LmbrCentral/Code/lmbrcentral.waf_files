@@ -79,15 +79,16 @@
             "include/LmbrCentral/Rendering/RenderBoundsBus.h",
             "include/LmbrCentral/Rendering/GiRegistrationBus.h"
         ],
+        "Include/Rendering/Utils": [
+            "include/LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h"            
+        ],
         "Include/Scripting": [
             "include/LmbrCentral/Scripting/EditorTagComponentBus.h",
             "include/LmbrCentral/Scripting/SimpleStateComponentBus.h",
             "include/LmbrCentral/Scripting/SpawnerComponentBus.h",
             "include/LmbrCentral/Scripting/RandomTimedSpawnerComponentBus.h",
             "include/LmbrCentral/Scripting/TagComponentBus.h",
-            "include/LmbrCentral/Scripting/TriggerAreaComponentBus.h",
-            "include/LmbrCentral/Scripting/FlowGraphSerialization.h",
-            "include/LmbrCentral/Scripting/FlowGraphSerialization.inl"
+            "include/LmbrCentral/Scripting/TriggerAreaComponentBus.h"
         ],
         "Include/Shape": [
             "include/LmbrCentral/Shape/EditorShapeComponentBus.h",
@@ -96,6 +97,7 @@
             "include/LmbrCentral/Shape/BoxShapeComponentBus.h",
             "include/LmbrCentral/Shape/CylinderShapeComponentBus.h",
             "include/LmbrCentral/Shape/CapsuleShapeComponentBus.h",
+            "include/LmbrCentral/Shape/DiskShapeComponentBus.h",
             "include/LmbrCentral/Shape/CompoundShapeComponentBus.h",
             "include/LmbrCentral/Shape/SplineComponentBus.h",
             "include/LmbrCentral/Shape/PolygonPrismShapeComponentBus.h",
@@ -216,16 +218,12 @@
             "Source/Rendering/LightInstance.h",
             "Source/Rendering/LightInstance.cpp",
             "Source/Rendering/MaterialHandle.cpp",
-            "Source/Rendering/MaterialOwnerRequestBusHandlerImpl.h",
-            "Source/Rendering/MaterialOwnerRequestBusHandlerImpl.cpp",
             "Source/Rendering/FogVolumeComponent.h",
             "Source/Rendering/FogVolumeComponent.cpp",
             "Source/Rendering/FogVolumeCommon.h",
             "Source/Rendering/FogVolumeCommon.cpp",
             "Source/Rendering/FogVolumeRequestsHandler.h",
             "Source/Rendering/FogVolumeRequestsHandler.cpp",
-            "Source/Rendering/MaterialAssetHandler.h",
-            "Source/Rendering/MaterialAssetHandler.cpp",
             "Source/Rendering/MeshAssetHandler.h",
             "Source/Rendering/MeshAssetHandler.cpp",
             "Source/Rendering/ParticleAssetHandler.h",
@@ -244,8 +242,6 @@
             "Source/Rendering/EntityDebugDisplayComponent.cpp"
         ],
         "Source/Scripting": [
-            "Source/Scripting/FlowGraphComponent.h",
-            "Source/Scripting/FlowGraphComponent.cpp",
             "Source/Scripting/LookAtComponent.h",
             "Source/Scripting/LookAtComponent.cpp",
             "Source/Scripting/RandomTimedSpawnerComponent.cpp",
@@ -278,6 +274,10 @@
             "Source/Shape/CapsuleShape.cpp",
             "Source/Shape/CapsuleShapeComponent.h",
             "Source/Shape/CapsuleShapeComponent.cpp",
+            "Source/Shape/DiskShape.h",
+            "Source/Shape/DiskShape.cpp",
+            "Source/Shape/DiskShapeComponent.h",
+            "Source/Shape/DiskShapeComponent.cpp",
             "Source/Shape/CompoundShapeComponent.h",
             "Source/Shape/CompoundShapeComponent.cpp",
             "Source/Shape/SplineComponent.h",

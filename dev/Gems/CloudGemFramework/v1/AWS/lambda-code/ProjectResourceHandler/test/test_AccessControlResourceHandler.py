@@ -11,14 +11,14 @@
 # $Revision: #3 $
 
 import unittest
-import mock
+from unittest import mock
 import json
 
 from cgf_utils.test import mock_aws
-from test_case import ResourceHandlerTestCase
+from .test_case import ResourceHandlerTestCase
 
-from resource_manager_common import stack_info
 from resource_types import Custom_AccessControl
+
 
 def merge_dicts(*args):
     result = {}
@@ -32,8 +32,9 @@ class Custom_AccessControlTestCase(ResourceHandlerTestCase):
     def __init__(self, *args, **kwargs):
         super(Custom_AccessControlTestCase, self).__init__(*args, **kwargs)
 
-    def make_problem_reporting_side_effect(self, problems_caused, return_values = None):
-        index = [0] # in list to avoid reference before assignment error in side effect function below
+    def make_problem_reporting_side_effect(self, problems_caused, return_values=None):
+        index = [0]  # in list to avoid reference before assignment error in side effect function below
+
         def side_effect(*args):
             # assumes that the last argument is the "problems" list to which problems, if given, will be added
             if problems_caused and index[0] < len(problems_caused):
@@ -280,8 +281,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
             mock_get_permissions, 
             mock_get_resource_group_policy_name):
 
-        mock_get_explicit_role_mappings.side_effect = [ self.DEPLOYMENT_ACCESS_ROLE_MAPPINGS, self.PROJECT_ROLE_MAPPINGS ]
-        mock_get_implicit_role_mappings.side_effect = [ self.RESOURCE_GROUP_ROLE_MAPPINGS ]
+        mock_get_explicit_role_mappings.side_effect = [self.DEPLOYMENT_ACCESS_ROLE_MAPPINGS, self.PROJECT_ROLE_MAPPINGS]
+        mock_get_implicit_role_mappings.side_effect = [self.RESOURCE_GROUP_ROLE_MAPPINGS]
 
         policy_name = mock_get_resource_group_policy_name.return_value
 
@@ -293,7 +294,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_resource_group_policy_name.assert_has_calls([
             mock.call(self.RESOURCE_GROUP)])
@@ -342,7 +343,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, resource_group, problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_resource_group_policy_name.assert_has_calls([
             mock.call(resource_group)])
@@ -353,7 +354,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
         mock_get_explicit_role_mappings.assert_has_calls([
             mock.call(resource_group.deployment.project, problems)])
 
-        self.assertEquals(mock_get_explicit_role_mappings.call_count, 1)
+        self.assertEqual(mock_get_explicit_role_mappings.call_count, 1)
 
         mock_get_implicit_role_mappings.assert_has_calls([
             mock.call(resource_group, problems)])
@@ -362,7 +363,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
             mock.call(self.REQUEST_TYPE, policy_name, permissions, self.RESOURCE_GROUP_ROLE_MAPPINGS),
             mock.call(self.REQUEST_TYPE, policy_name, permissions, self.PROJECT_ROLE_MAPPINGS)])
 
-        self.assertEquals(mock_update_roles.call_count, 2)
+        self.assertEqual(mock_update_roles.call_count, 2)
 
 
     @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
@@ -408,7 +409,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_resource_group_policy_name.assert_has_calls([
             mock.call(self.RESOURCE_GROUP)])
@@ -465,7 +466,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
         Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_1", problems)
         Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_2", problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_explicit_role_mappings.assert_called_with(deployment_access, problems)
 
@@ -529,7 +530,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, "test_rg_1", problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_explicit_role_mappings.assert_called_with(deployment_access, problems)
 
@@ -591,7 +592,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         actual_problems = Custom_AccessControl._apply_project_access_control(request_type, project, problems)
 
-        self.assertEquals(len(problems), len(expected_problems))
+        self.assertEqual(len(problems), len(expected_problems))
 
         mock_get_explicit_role_mappings.assert_called_with(project, problems)
 
@@ -677,7 +678,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_app
 
         expected_problems = [ mock_get_explicit_role_mappings_problem ]
         expected_problems.extend( mock_get_permissions_problems )
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_explicit_role_mappings.assert_called_with(project, actual_problems)
 
@@ -711,13 +712,14 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_policy_name = "{}.{}.{}-AccessControl".format(
             resource_group.project.project_uuid, deployment_name, resource_group_name)
         actual_policy_name = Custom_AccessControl._get_resource_group_policy_name(resource_group)
-        self.assertEquals(actual_policy_name, expected_policy_name)
+        self.assertEqual(actual_policy_name, expected_policy_name)
 
         # Test without a project uuid
         resource_group.project.project_uuid = ""
         expected_policy_name = "{}.{}-AccessControl".format(deployment_name, resource_group_name)
         actual_policy_name = Custom_AccessControl._get_resource_group_policy_name(resource_group)
-        self.assertEquals(actual_policy_name, expected_policy_name)
+        self.assertEqual(actual_policy_name, expected_policy_name)
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permissions(Custom_AccessControlTestCase):
 
@@ -740,8 +742,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
         
-        self.assertEquals(actual_permissions, expected_permissions)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permissions, expected_permissions)
+        self.assertEqual(len(actual_problems), len(expected_problems))
         
         resource_a.get_cloud_canvas_metadata.assert_called_with('Permissions')
         resource_b.get_cloud_canvas_metadata.assert_called_with('Permissions')
@@ -775,8 +777,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
-        self.assertEquals(actual_permissions, expected_permissions)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permissions, expected_permissions)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         resource_a.get_cloud_canvas_metadata.assert_called_with('Permissions')
         resource_b.get_cloud_canvas_metadata.assert_called_with('Permissions')
@@ -819,8 +821,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
-        self.assertEquals(actual_permissions, expected_permissions)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permissions, expected_permissions)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         resource_a.get_cloud_canvas_metadata.assert_called_with('Permissions')
         resource_b.get_cloud_canvas_metadata.assert_called_with('Permissions')
@@ -859,8 +861,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
-        self.assertEquals(actual_permissions, expected_permissions)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permissions, expected_permissions)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         resource_a.get_cloud_canvas_metadata.assert_called_with('Permissions')
         resource_b.get_cloud_canvas_metadata.assert_called_with('Permissions')
@@ -893,8 +895,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
-        self.assertEquals(actual_permission_list, expected_permission_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission_list, expected_permission_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_permission.assert_has_calls([
             mock.call(resource_group_name, resource_logical_id, permission_metadata, actual_problems)])
@@ -904,7 +906,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
     def test_with_metadata_list(self, 
             mock_get_permission):
 
-        permission_a = mock.MagicMock()        
+        permission_a = mock.MagicMock()
         permission_b = mock.MagicMock()        
         mock_get_permission.side_effect = [ permission_a, permission_b ]
 
@@ -922,8 +924,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
-        self.assertEquals(actual_permission_list, expected_permission_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission_list, expected_permission_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_permission.assert_has_calls([
             mock.call(resource_group_name, resource_logical_id, permission_metadata_a, actual_problems),
@@ -934,8 +936,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
     def test_with_get_permission_problem(self, 
             mock_get_permission):
         
-        problem_a = mock.MagicMock()        
-        problem_b = mock.MagicMock()        
+        problem_a = mock.MagicMock()
+        problem_b = mock.MagicMock()
         mock_get_permission.side_effect = self.make_problem_reporting_side_effect(
             [ problem_a, problem_b ],
             [ None, None ])
@@ -954,8 +956,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
-        self.assertEquals(actual_permission_list, expected_permission_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission_list, expected_permission_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_permission.assert_has_calls([
             mock.call(resource_group_name, resource_logical_id, permission_metadata_a, actual_problems),
@@ -978,8 +980,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission = Custom_AccessControl._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
 
-        self.assertEquals(actual_permission, expected_permission)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission, expected_permission)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     @mock.patch('resource_types.Custom_AccessControl._get_permission_abstract_role_list')
@@ -1015,8 +1017,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission = Custom_AccessControl._get_permission(resource_name, resource_logical_id, permission_metadata, actual_problems)
 
-        self.assertEquals(actual_permission, expected_permission)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission, expected_permission)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_permission_resource_suffix_list.assert_has_calls([
             mock.call(resource_suffix, actual_problems)])
@@ -1062,8 +1064,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_permission = Custom_AccessControl._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
 
-        self.assertEquals(actual_permission, expected_permission)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_permission, expected_permission)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_permission_resource_suffix_list.assert_has_calls([
             mock.call(resource_suffix, actual_problems)])
@@ -1089,8 +1091,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = []
         actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string(self):
@@ -1106,8 +1108,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = [ [ resource_group_name, abstract_role ] ]
         actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_list(self):
@@ -1128,8 +1130,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_object(self):
@@ -1145,8 +1147,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string_with_dot(self):
@@ -1162,8 +1164,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = []
         actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_resource_suffix_list(Custom_AccessControlTestCase):
@@ -1178,8 +1180,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_resource_suffix_list = ['']
         actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
-        self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_resource_suffix_list, expected_resource_suffix_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string(self):
@@ -1193,8 +1195,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_resource_suffix_list = [ resource_suffix ]
         actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
-        self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_resource_suffix_list, expected_resource_suffix_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_list(self):
@@ -1210,8 +1212,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
-        self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_resource_suffix_list, expected_resource_suffix_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_empty_list(self):
@@ -1225,8 +1227,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
-        self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_resource_suffix_list, expected_resource_suffix_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_object(self):
@@ -1240,8 +1242,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
-        self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_resource_suffix_list, expected_resource_suffix_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_allowed_action_list(Custom_AccessControlTestCase):
@@ -1256,8 +1258,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_allowed_action_list = []
         actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
-        self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_allowed_action_list, expected_allowed_action_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string(self):
@@ -1271,8 +1273,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_allowed_action_list = [ allowed_action ]
         actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
-        self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_allowed_action_list, expected_allowed_action_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_list(self):
@@ -1288,8 +1290,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
-        self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_allowed_action_list, expected_allowed_action_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_object(self):
@@ -1303,8 +1305,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
-        self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_allowed_action_list, expected_allowed_action_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_implicit_role_mappings(Custom_AccessControlTestCase):
@@ -1336,17 +1338,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_mappings = {
             mock_physical_role_name_1: [{
                 'Effect': 'Allow',
-                'AbstractRole': [ [ mock_resource_info_name, mock_logical_role_name_1.encode('utf8') ] ]
+                'AbstractRole': [ [ mock_resource_info_name, mock_logical_role_name_1 ] ]
             }],
             mock_physical_role_name_2: [{
                 'Effect': 'Allow',
-                'AbstractRole': [ [ mock_resource_info_name, mock_logical_role_name_2.encode('utf8') ] ]
+                'AbstractRole': [ [ mock_resource_info_name, mock_logical_role_name_2 ] ]
             }]
         }
 
         actual_mappings = Custom_AccessControl._get_implicit_role_mappings(mock_resource_info, problems)
 
-        self.assertEquals(actual_mappings, expected_mappings)
+        self.assertEqual(actual_mappings, expected_mappings)
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_explicit_role_mappings(Custom_AccessControlTestCase):
@@ -1360,7 +1362,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         role_resource_b.get_cloud_canvas_metadata.return_value = None
         
         stack = mock.MagicMock()
-        stack.resources.get_by_type.return_value = [ role_resource_a, role_resource_b ]
+        stack.resources.get_by_type.return_value = [role_resource_a, role_resource_b]
         
         actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
@@ -1372,8 +1374,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
         
-        self.assertEquals(actual_role_mappings, expected_role_mappings)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mappings, expected_role_mappings)
+        self.assertEqual(len(actual_problems), len(expected_problems))
         
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
@@ -1415,8 +1417,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         
         actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
 
-        self.assertEquals(actual_role_mappings, expected_role_mappings)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mappings, expected_role_mappings)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
@@ -1461,8 +1463,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
 
-        self.assertEquals(actual_role_mappings, expected_role_mappings)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mappings, expected_role_mappings)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
@@ -1493,8 +1495,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
-        self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping_list, expected_role_mapping_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_role_mapping.assert_has_calls([
             mock.call(role_mapping_metadata, actual_problems)])
@@ -1519,8 +1521,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
-        self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping_list, expected_role_mapping_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_role_mapping.assert_has_calls([
             mock.call(role_mapping_metadata_a, actual_problems),
@@ -1548,8 +1550,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
-        self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping_list, expected_role_mapping_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_role_mapping.assert_has_calls([
             mock.call(role_mapping_metadata_a, actual_problems),
@@ -1569,8 +1571,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
-        self.assertEquals(actual_role_mapping, expected_role_mapping)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping, expected_role_mapping)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_abstract_role_list')
@@ -1597,8 +1599,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
-        self.assertEquals(actual_role_mapping, expected_role_mapping)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping, expected_role_mapping)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_role_mapping_effect.assert_has_calls([
             mock.call(effect, actual_problems)])
@@ -1632,8 +1634,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
-        self.assertEquals(actual_role_mapping, expected_role_mapping)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_role_mapping, expected_role_mapping)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
         mock_get_role_mapping_effect.assert_has_calls([
             mock.call(effect, actual_problems)])
@@ -1654,8 +1656,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = []
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string(self):
@@ -1671,8 +1673,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = [ [ resource_group_name, abstract_role_name ] ]
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_list(self):
@@ -1695,8 +1697,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_object(self):
@@ -1710,8 +1712,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string_without_dot(self):
@@ -1725,8 +1727,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = []
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_string_with_too_many_dots(self):
@@ -1740,8 +1742,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_abstract_role_list = []
         actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
-        self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_abstract_role_list, expected_abstract_role_list)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_role_mapping_effect(Custom_AccessControlTestCase):
@@ -1756,8 +1758,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_effect = effect
         actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
-        self.assertEquals(actual_effect, expected_effect)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_effect, expected_effect)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_Allow(self):
@@ -1770,8 +1772,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_effect = effect
         actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
-        self.assertEquals(actual_effect, expected_effect)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_effect, expected_effect)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_Deny(self):
@@ -1784,8 +1786,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         expected_effect = effect
         actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
-        self.assertEquals(actual_effect, expected_effect)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_effect, expected_effect)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_invalid_type(self):
@@ -1799,8 +1801,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
-        self.assertEquals(actual_effect, expected_effect)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_effect, expected_effect)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
     def test_with_invalid_string(self):
@@ -1814,8 +1816,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
-        self.assertEquals(actual_effect, expected_effect)
-        self.assertEquals(len(actual_problems), len(expected_problems))
+        self.assertEqual(actual_effect, expected_effect)
+        self.assertEqual(len(actual_problems), len(expected_problems))
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_update_roles(Custom_AccessControlTestCase):
@@ -1986,7 +1988,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_cre
 
         actual_policy = Custom_AccessControl._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
 
-        self.assertEquals(actual_policy, expected_policy)
+        self.assertEqual(actual_policy, expected_policy)
 
         mock_any_abstract_roles_match.assert_has_calls([
             mock.call(self.PERMISSION_ABSTRACT_ROLE_LIST_1_A, self.ROLE_MAPPING_ABSTRACT_ROLE_LIST_1),
@@ -2061,7 +2063,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_cre
 
         actual_policy = Custom_AccessControl._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
 
-        self.assertItemsEqual(actual_policy['Statement'], expected_policy['Statement'])
+        self.assertCountEqual(actual_policy['Statement'], expected_policy['Statement'])
 
         mock_any_abstract_roles_match.assert_has_calls([
             mock.call(self.PERMISSION_ABSTRACT_ROLE_LIST_1_A, self.ROLE_MAPPING_ABSTRACT_ROLE_LIST_1),

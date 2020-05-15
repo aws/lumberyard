@@ -46,7 +46,7 @@ namespace Terrain
             PhysicalType& physicalValueRef = m_lruQueue.back();
 
             // track queue iterator per object for easy management
-            typename LRUQueue::iterator physicalValueIter = --m_lruQueue.end();
+            auto physicalValueIter = --m_lruQueue.end();
             m_lruQueueIteratorMap.insert(IteratorPair(physicalValueRef, physicalValueIter));
         }
 
@@ -54,14 +54,27 @@ namespace Terrain
         void ReferenceCacheEntry(const PhysicalType& physicalValue)
         {
             // Retrieve the list iterator for the physical tile
-            typename LRUQueueIteratorMap::iterator iteratorMapIter = m_lruQueueIteratorMap.find(physicalValue);
+            auto iteratorMapIter = m_lruQueueIteratorMap.find(physicalValue);
 
             // These map entries should always exist
             AZ_Assert(iteratorMapIter != m_lruQueueIteratorMap.end(), "VTWrapper | Cache data structures in invalid state!");
 
             // Use the iterator, move the physical tile to the back of the queue
-            typename LRUQueue::iterator& lruQueueIter = iteratorMapIter->second;
+            auto& lruQueueIter = iteratorMapIter->second;
             m_lruQueue.splice(m_lruQueue.end(), m_lruQueue, lruQueueIter);
+        }
+
+        void ReplaceCacheEntry(const PhysicalType& oldPhysicalValue, const PhysicalType& newPhysicalValue)
+        {
+            // Retrieve the list iterator for the physical tile
+            auto iteratorMapIter = m_lruQueueIteratorMap.find(oldPhysicalValue);
+
+            // These map entries should always exist
+            AZ_Assert(iteratorMapIter != m_lruQueueIteratorMap.end(), "VTWrapper | Cache data structures in invalid state!");
+            iteratorMapIter->first = newPhysicalValue;
+
+            auto& lruQueueIter = iteratorMapIter->second;
+            *lruQueueIter = newPhysicalValue;
         }
 
         // Returns reference to the next LRU cache entry

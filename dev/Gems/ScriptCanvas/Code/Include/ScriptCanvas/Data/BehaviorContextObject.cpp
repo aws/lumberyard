@@ -15,6 +15,9 @@
 #include <ScriptCanvas/Data/DataRegistry.h>
 
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/Serialization/Utils.h>
+
+#include <ScriptCanvas/Core/GraphScopedTypes.h>
 
 namespace ScriptCanvas
 {
@@ -68,10 +71,42 @@ namespace ScriptCanvas
         object->OnWriteEnd();
     }
 
+    BehaviorContextObjectPtr BehaviorContextObject::CloneObject(const AZ::BehaviorClass& behaviorClass)
+    {
+        if (SystemRequestBus::HasHandlers())
+        {
+            AZStd::vector<char> buffer;
+
+            {
+                bool wasOwned = IsOwned();
+                m_flags |= Flags::Owned;
+
+                AZ::IO::ByteContainerStream<AZStd::vector<char>> writeStream(&buffer);
+                AZ::Utils::SaveObjectToStream<BehaviorContextObject>(writeStream, AZ::DataStream::ST_BINARY, this);
+
+                if (!wasOwned)
+                {
+                    m_flags &= ~Flags::Owned;
+                }
+            }
+
+            AZ::IO::ByteContainerStream<AZStd::vector<char>> readStream(&buffer);
+
+            BehaviorContextObject* newObject = CreateDefault(behaviorClass);
+            AZ::Utils::LoadObjectFromStreamInPlace(readStream, (*newObject));
+
+            if (newObject != nullptr)
+            {
+                SystemRequestBus::Broadcast(&SystemRequests::AddOwnedObjectReference, newObject->Get(), newObject);
+                return BehaviorContextObjectPtr(newObject);
+            }
+        }
+
+        return nullptr;
+    }
+
     BehaviorContextObjectPtr BehaviorContextObject::Create(const AZ::BehaviorClass& behaviorClass, const void* value)
     {
-        CheckClass(behaviorClass);
-
         if (SystemRequestBus::HasHandlers())
         {
             BehaviorContextObject* ownedObject = value ? CreateCopy(behaviorClass, value) : CreateDefault(behaviorClass);
@@ -100,13 +135,6 @@ namespace ScriptCanvas
             SystemRequestBus::Broadcast(&SystemRequests::RemoveOwnedObjectReference, Get());
             delete this;
         }
-    }
-
-    void BehaviorContextObject::CheckClass(const AZ::BehaviorClass& behaviorClass)
-    {
-        auto dataRegistry = GetDataRegistry();
-        auto foundIt = dataRegistry->m_creatableTypes.find(Data::FromAZType(behaviorClass.m_typeId));
-        AZ_Error("ScriptCanvas", foundIt != dataRegistry->m_creatableTypes.end(), "Script Canvas Objects only support fully supported behavior classes. %s is not registered with the DataRegistry", behaviorClass.m_name.data());
     }
 
 } // namespace ScriptCanvas

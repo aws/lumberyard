@@ -16,6 +16,9 @@
 #include "Messages/Notify.h"
 #include "Messages/Request.h"
 
+#include <ScriptCanvas/Core/GraphBus.h>
+#include <ScriptCanvas/Execution/RuntimeComponent.h>
+
 namespace ScriptCanvas
 {
     namespace Debugger
@@ -216,6 +219,7 @@ namespace ScriptCanvas
             }
 
             AzFramework::TmMsgBus::Handler::BusDisconnect(k_clientRequestsMsgSlotId);
+            AzFramework::TargetManagerClient::Bus::Handler::BusDisconnect();
             ExecutionNotificationsBus::Handler::BusDisconnect();
 
             {
@@ -479,7 +483,7 @@ namespace ScriptCanvas
 #endif //defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
         }
 
-        bool ServiceComponent::IsVariableObserved(const Node& /*node*/, VariableId /*variableId*/)
+        bool ServiceComponent::IsVariableObserved(const VariableId& /*variableId*/)
         {
 #if defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
             return true;
@@ -567,6 +571,9 @@ namespace ScriptCanvas
 
                 m_self.m_script.Merge(request.m_addTargets);
                 m_client.m_script.Merge(request.m_addTargets);
+
+                SetTargetsObserved(request.m_addTargets.m_entities, true);
+                SetTargetsObserved(request.m_addTargets.m_staticEntities, true);
             }
         }
 
@@ -581,6 +588,9 @@ namespace ScriptCanvas
 
                 m_self.m_script.Remove(request.m_removeTargets);
                 m_client.m_script.Remove(request.m_removeTargets);
+
+                SetTargetsObserved(request.m_removeTargets.m_entities, false);
+                SetTargetsObserved(request.m_removeTargets.m_staticEntities, false);
             }
         }
 
@@ -595,6 +605,10 @@ namespace ScriptCanvas
 
                 m_client.m_script = request.m_initialTargets;
                 m_client.m_script.m_logExecution = true;
+
+                SetTargetsObserved(request.m_initialTargets.m_entities, true);
+                SetTargetsObserved(request.m_initialTargets.m_staticEntities, true);
+
 
                 m_contextId = AzFramework::EntityContextId::CreateNull();
 
@@ -711,6 +725,41 @@ namespace ScriptCanvas
             else
             {
                 SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is rejecting step over request as it is not interactive");
+            }
+        }
+
+        void ServiceComponent::SetTargetsObserved(const TargetEntities& targetEntities, bool observedState)
+        {
+            for (auto target : targetEntities)
+            {
+                AZ::Entity* entity = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, target.first);
+
+                if (entity)
+                {
+                    auto runtimeComponents = AZ::EntityUtils::FindDerivedComponents<RuntimeComponent>(entity);
+
+                    if (runtimeComponents.empty())
+                    {
+                        continue;
+                    }
+
+                    for (auto graphIdentifier : target.second)
+                    {
+                        for (auto graphIter = runtimeComponents.begin(); graphIter != runtimeComponents.end(); ++graphIter)
+                        {
+                            auto runtimeComponent = (*graphIter);
+
+                            if (graphIdentifier.m_assetId.m_guid == runtimeComponent->GetAssetId().m_guid)
+                            {
+                                // TODO: Gate on ComponentId
+                                runtimeComponent->SetIsGraphObserved(observedState);
+                                runtimeComponents.erase(graphIter);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 

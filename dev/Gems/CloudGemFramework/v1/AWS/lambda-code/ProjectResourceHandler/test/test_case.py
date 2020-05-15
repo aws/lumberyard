@@ -10,6 +10,9 @@
 #
 # $Revision: #3 $
 
+# Python 2.7/3.7 Compatibility
+from six import string_types
+
 import unittest
 
 
@@ -27,7 +30,7 @@ class EnhancedTestCase(unittest.TestCase):
             return isinstance(other, self.__expected_type)
 
     ANY_LIST = AnyInstance(list)
-    ANY_STRING = AnyInstance(basestring)
+    ANY_STRING = AnyInstance(string_types)
 
 
 class ResourceHandlerTestCase(EnhancedTestCase):

@@ -64,7 +64,6 @@
     <file>img/16x16/Database_view.png</file>
     <file>img/16x16/Delete_named_selection.png</file>
     <file>img/16x16/deploy.png</file>
-    <file>img/16x16/Flowgraph.png</file>
     <file>img/16x16/Follow_terrain.png</file>
     <file>img/16x16/Freeze.png</file>
     <file>img/16x16/Grid.png</file>
@@ -133,7 +132,6 @@
     <file>img/24x24/Database_view.png</file>
     <file>img/24x24/Delete_named_selection.png</file>
     <file>img/24x24/deploy.png</file>
-    <file>img/24x24/Flowgraph.png</file>
     <file>img/24x24/Follow_terrain.png</file>
     <file>img/24x24/Freeze.png</file>
     <file>img/24x24/Get_physics_state.png</file>
@@ -191,7 +189,6 @@
     <file>img/32x32/Database_view.png</file>
     <file>img/32x32/Delete_named_selection.png</file>
     <file>img/32x32/deploy.png</file>
-    <file>img/32x32/Flowgraph.png</file>
     <file>img/32x32/Follow_terrain.png</file>
     <file>img/32x32/Freeze.png</file>
     <file>img/32x32/Get_physics_state.png</file>

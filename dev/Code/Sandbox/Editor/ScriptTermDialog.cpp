@@ -17,7 +17,6 @@
 #include "StdAfx.h"
 #include "ScriptTermDialog.h"
 #include "ScriptHelpDialog.h"
-#include "Util/BoostPythonHelpers.h"
 #include <ui_ScriptTermDialog.h>
 #include "QtViewPaneManager.h"
 
@@ -28,12 +27,14 @@
 #include <QStringListModel>
 #include <QStringBuilder>
 
+#include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+
 CScriptTermDialog::CScriptTermDialog()
     : QWidget()
     , ui(new Ui::CScriptTermDialog)
 {
     ui->setupUi(this);
-    PyScript::RegisterListener(this);
+    AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusConnect();
 
     ui->SCRIPT_INPUT->installEventFilter(this);
 
@@ -46,7 +47,7 @@ CScriptTermDialog::CScriptTermDialog()
 
 CScriptTermDialog::~CScriptTermDialog()
 {
-    PyScript::RemoveListener(this);
+    AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusDisconnect();
 }
 
 void CScriptTermDialog::RegisterViewClass()
@@ -60,27 +61,16 @@ void CScriptTermDialog::RegisterViewClass()
 void CScriptTermDialog::InitCompleter()
 {
     QStringList inputs;
-    // Add module names to the auto-completion list.
-    const CAutoRegisterPythonModuleHelper::ModuleList modules
-        = CAutoRegisterPythonModuleHelper::s_modules;
-    for (size_t i = 0; i < modules.size(); ++i)
+
+    AzToolsFramework::EditorPythonConsoleInterface* editorPythonConsoleInterface = AZ::Interface<AzToolsFramework::EditorPythonConsoleInterface>::Get();
+    if (editorPythonConsoleInterface)
     {
-        inputs.append(QtUtil::ToQString(modules[i].name));
-    }
-
-    // Add full command names to the auto-completion list.
-    CAutoRegisterPythonCommandHelper* pCurrent = CAutoRegisterPythonCommandHelper::s_pFirst;
-    while (pCurrent)
-    {
-        QString command = pCurrent->m_name;
-        QString fullCmd = CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name;
-        fullCmd += ".";
-        fullCmd += command;
-        fullCmd += "()";
-
-        inputs.append(fullCmd);
-
-        pCurrent = pCurrent->m_pNext;
+        AzToolsFramework::EditorPythonConsoleInterface::GlobalFunctionCollection globalFunctionCollection;
+        editorPythonConsoleInterface->GetGlobalFunctionList(globalFunctionCollection);
+        for (const AzToolsFramework::EditorPythonConsoleInterface::GlobalFunction& globalFunction : globalFunctionCollection)
+        {
+            inputs.append(QString("%1.%2()").arg(globalFunction.m_moduleName.data()).arg(globalFunction.m_functionName.data()));
+        }
     }
 
     m_lastCommandModel = new QStringListModel(ui->SCRIPT_INPUT);
@@ -125,24 +115,28 @@ void CScriptTermDialog::OnScriptHelp()
 
 void CScriptTermDialog::ExecuteAndPrint(const char* cmd)
 {
-    PyScript::AcquirePythonLock();
-
-    // Execute the given script command.
-    PyRun_SimpleString(cmd);
-
-    PyErr_Print(); // Make python print any errors.
-
-    PyScript::ReleasePythonLock();
+    if (AzToolsFramework::EditorPythonRunnerRequestBus::HasHandlers())
+    {
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, cmd);
+    }
+    else
+    {
+        AZ_Warning("python", false, "EditorPythonRunnerRequestBus has no handlers");
+    }
 }
 
 void CScriptTermDialog::AppendText(const char* pText)
 {
     AppendToConsole(QtUtil::ToQString(pText));
 }
-
-void CScriptTermDialog::AppendError(const char* pText)
+void CScriptTermDialog::OnTraceMessage(AZStd::string_view message)
 {
-    AppendToConsole(QtUtil::ToQString(pText), QColor(255, 64, 64));
+    AppendToConsole(QtUtil::ToQString(message.data()));
+}
+
+void CScriptTermDialog::OnErrorMessage(AZStd::string_view message)
+{
+    AppendToConsole(QtUtil::ToQString(message.data()), QColor(255, 64, 64));
 }
 
 void CScriptTermDialog::AppendToConsole(const QString& string, const QColor& color)
@@ -195,6 +189,7 @@ bool CScriptTermDialog::eventFilter(QObject* obj, QEvent* e)
     }
     return QObject::eventFilter(obj, e);
 }
+
 
 
 #include <ScriptTermDialog.moc>

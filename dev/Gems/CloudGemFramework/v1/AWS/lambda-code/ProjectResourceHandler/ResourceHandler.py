@@ -14,8 +14,8 @@ from cgf_utils import properties
 import response
 from cgf_utils import aws_utils
 
+
 def handler(event, context):
-    
     props = properties.load(event, {
         'ConfigurationBucket': properties.String(),
         'ConfigurationKey': properties.String(),
@@ -24,7 +24,9 @@ def handler(event, context):
     data = {
         'ConfigurationBucket': props.ConfigurationBucket,
         'ConfigurationKey': '{}/resource-group/{}'.format(props.ConfigurationKey, props.ResourceGroupName),
-        'TemplateURL': 'https://s3.amazonaws.com/{}/{}/resource-group/{}/resource-template.json'.format(props.ConfigurationBucket, props.ConfigurationKey, props.ResourceGroupName)
+        'TemplateURL': 'https://s3.amazonaws.com/{}/{}/resource-group/{}/resource-template.json'.format(props.ConfigurationBucket,
+                                                                                                        props.ConfigurationKey,
+                                                                                                        props.ResourceGroupName)
     }
 
     physical_resource_id = 'CloudCanvas:LambdaConfiguration:{stack_name}:{resource_group_name}'.format(

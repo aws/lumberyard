@@ -116,13 +116,12 @@ namespace EMotionFX
             // Make sure our morphs are registered in the transform data poses.
             m_actor->ResizeTransformData();
             m_attachmentActor->ResizeTransformData();
-            m_attachmentActorInstance = ActorInstance::Create(m_attachmentActor);
+            m_attachmentActorInstance = ActorInstance::Create(m_attachmentActor.get());
         }
 
         void TearDown() override
         {
             m_attachmentActorInstance->Destroy();
-            m_attachmentActor->Destroy();
 
             JackGraphFixture::TearDown();
         }
@@ -131,7 +130,7 @@ namespace EMotionFX
         AnimGraphMotionNode* m_motionNode = nullptr;
         BlendTree* m_blendTree = nullptr;
         BlendTreeFloatConstantNode* m_floatConstNode = nullptr;
-        Actor* m_attachmentActor = nullptr;
+        AZStd::unique_ptr<Actor> m_attachmentActor = nullptr;
         ActorInstance* m_attachmentActorInstance = nullptr;
     };
 

@@ -115,7 +115,7 @@ namespace UnitTest
             AssetCatalogRequestBus::Handler::BusConnect();
         }
 
-        ~SliceTest_MockCatalog()
+        ~SliceTest_MockCatalog() override
         {
             AssetCatalogRequestBus::Handler::BusDisconnect();
         }
@@ -594,7 +594,7 @@ namespace UnitTest
             AssetCatalogRequestBus::Handler::BusConnect();
         }
 
-        ~SliceTest_RecursionDetection_Catalog()
+        ~SliceTest_RecursionDetection_Catalog() override
         {
             AssetCatalogRequestBus::Handler::BusDisconnect();
         }
@@ -702,6 +702,30 @@ namespace UnitTest
     TEST_F(DataFlags_CleanupTest, ValidEntitiesRemain)
     {
         EXPECT_EQ(m_dataFlags->GetEntityDataFlagsAtAddress(m_entityIdToRemain, m_addressOfSetFlag), m_valueOfSetFlag);
+    }
+
+    TEST_F(SliceTest, SliceMetadataInfoComponentV1ToV2Converter)
+    {
+        AZStd::string_view sliceAssociatedEntityIds = R"(<ObjectStream version="3">
+                <Class name="SliceMetadataInfoComponent" field="element" version="1" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
+                    <Class name="AZStd::unordered_set" field="AssociatedIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
+                        <Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+                            <Class name="AZ::u64" field="id" value="421626392978" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                        </Class>
+                    </Class>
+                </Class>
+            </ObjectStream>)";
+
+        AZ::Entity* entity = aznew AZ::Entity("Slice");
+        AZ::SliceMetadataInfoComponent* sliceMetadataInfoComponent = entity->CreateComponent<AZ::SliceMetadataInfoComponent>();
+        AZ::IO::MemoryStream xmlStream(sliceAssociatedEntityIds.data(), sliceAssociatedEntityIds.size());
+        Utils::LoadObjectFromStreamInPlace(xmlStream, *sliceMetadataInfoComponent, m_serializeContext);
+        sliceMetadataInfoComponent->Activate();
+        AZStd::set<AZ::EntityId> associatedEntities;
+        AZ::SliceMetadataInfoRequestBus::Event(sliceMetadataInfoComponent->GetEntityId(), &AZ::SliceMetadataInfoRequestBus::Events::GetAssociatedEntities, associatedEntities);
+        ASSERT_TRUE(associatedEntities.size() == 1);
+        delete sliceMetadataInfoComponent;
+        delete entity;
     }
 
     TEST_F(SliceTest, PreventOverrideOfPropertyinEntityFromSlice_InstancedSlicesCantOverrideProperty)

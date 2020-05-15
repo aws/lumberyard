@@ -156,6 +156,10 @@ void SEnviropment::InitializePlatformAttributes()
 #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_2
 #include "Provo/CrySimpleServer_cpp_provo.inl"
 #endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_2
+#include "Salem/CrySimpleServer_cpp_salem.inl"
+#endif
 #endif
 
     m_ShaderCompilersMap[m_D3D11_FXC] = "PCD3D11/v006/fxc.exe ";
@@ -383,11 +387,15 @@ void CompileJob::Process()
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
     #if defined(TOOLS_SUPPORT_XENIA)
         #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
-        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+        #include "Xenia/CrySimpleServer_cpp_xenia.inl"
     #endif
     #if defined(TOOLS_SUPPORT_PROVO)
         #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
-        #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
+        #include "Provo/CrySimpleServer_cpp_provo.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_SALEM)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Salem/CrySimpleServer_cpp_salem.inl"
     #endif
 #endif
 

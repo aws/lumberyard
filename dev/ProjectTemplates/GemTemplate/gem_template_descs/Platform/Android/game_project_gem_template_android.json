@@ -1,0 +1,12 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/game_project_gem_template",
+    "copyFiles": [
+        {
+            "inFile": "Platform/Android/platform_android.waf_files",
+            "outfile": "Code/Platform/Android/platform_android.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

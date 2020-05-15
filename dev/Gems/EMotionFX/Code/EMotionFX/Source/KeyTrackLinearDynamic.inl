@@ -335,6 +335,19 @@ MCORE_INLINE AZ::Quaternion KeyTrackLinearDynamic<AZ::Quaternion, MCore::Compres
 }
 
 
+template <>
+MCORE_INLINE AZ::Quaternion KeyTrackLinearDynamic<AZ::Quaternion, AZ::Quaternion>::Interpolate(uint32 startKey, float currentTime) const
+{
+    // get the keys to interpolate between
+    const KeyFrame<AZ::Quaternion, AZ::Quaternion>& firstKey = mKeys[startKey];
+    const KeyFrame<AZ::Quaternion, AZ::Quaternion>& nextKey  = mKeys[startKey + 1];
+
+    // calculate the time value in range of [0..1]
+    const float t = (currentTime - firstKey.GetTime()) / (nextKey.GetTime() - firstKey.GetTime());
+
+    // lerp between them
+    return firstKey.GetValue().NLerp(nextKey.GetValue(), t);
+}
 
 
 // adds a keyframe with automatic sorting support

@@ -29,6 +29,7 @@
 namespace AzToolsFramework 
 {
     const char* logWindowName = "AssetBundle";
+    const char tempBundleFileSuffix[] = "_temp";
     const int NumOfBytesInMB = 1024 * 1024;
     const int ManifestFileSizeBufferInBytes = 10 * 1024; // 10 KB
     const float AssetCatalogFileSizeBufferPercentage = 1.0f;
@@ -56,19 +57,36 @@ namespace AzToolsFramework
         return true;
     }
 
-    bool MakeTempFolderFromFilePath(AZStd::string filePath, AZStd::string& tempFolderPathOutput)
+    //! This helper class can be used to create a temp folder from a filename.
+    //! It strips the extension and than adds _temp token to the name and tries to create that directory on disk.
+    struct TemporaryDir
     {
-        AzFramework::StringFunc::Path::StripExtension(filePath);
-        filePath += "_temp";
-
-        if (!MakePath(filePath))
+        explicit TemporaryDir(AZStd::string filePath)
         {
-            return false;
+            AzFramework::StringFunc::Path::StripExtension(filePath);
+            filePath += "_temp";
+            if (MakePath(filePath))
+            {
+                m_tempFolderPath = filePath;
+                m_result = true;
+            }
         }
 
-        tempFolderPathOutput = filePath;
-        return true;
-    }
+        AZ_DISABLE_COPY_MOVE(TemporaryDir)
+
+        ~TemporaryDir()
+        {
+            if (m_result)
+            {
+                AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+                fileIO->DestroyPath(m_tempFolderPath.c_str());
+            }
+        }
+
+        AZStd::string m_tempFolderPath;
+        bool m_result = false;
+    };
+
     
     void AssetBundleComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -178,8 +196,9 @@ namespace AzToolsFramework
         AZ_TracePrintf(logWindowName, "Creating new asset bundle manifest file \"%s\" for source pak \"%s\".\n", AzFramework::AssetBundleManifest::s_manifestFileName, sourcePak.c_str());
         bool manifestSaved = false;
         AZStd::string manifestDirectory;
+        AZStd::vector<AZStd::string> levelDirs;
         AzFramework::StringFunc::Path::GetFullPath(sourcePak.c_str(), manifestDirectory);
-        AssetCatalogRequestBus::BroadcastResult(manifestSaved, &AssetCatalogRequestBus::Events::CreateBundleManifest, outCatalogPath, AZStd::vector<AZStd::string>(), manifestDirectory, AzFramework::AssetBundleManifest::CurrentBundleVersion);
+        AssetCatalogRequestBus::BroadcastResult(manifestSaved, &AssetCatalogRequestBus::Events::CreateBundleManifest, outCatalogPath, AZStd::vector<AZStd::string>(), manifestDirectory, AzFramework::AssetBundleManifest::CurrentBundleVersion, levelDirs);
 
         AZStd::string manifestPath;
         AzFramework::StringFunc::Path::Join(manifestDirectory.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, manifestPath);
@@ -210,7 +229,7 @@ namespace AzToolsFramework
         AzFramework::StringFunc::AssetDatabasePath::Split(assetBundleFilePath.c_str(), nullptr, nullptr, nullptr, &fileName, &extension);
         if (!bundleIndex)
         {
-            return fileName;
+            return  AZStd::string::format("%s%s", fileName.c_str(), extension.c_str());
         }
         return AZStd::string::format("%s__%d%s", fileName.c_str(), bundleIndex, extension.c_str());
     }
@@ -244,10 +263,12 @@ namespace AzToolsFramework
         int bundleIndex = 0;
 
         AZStd::string bundleFullPath = bundleFilePath;
+        AZStd::string tempBundleFilePath = bundleFullPath + "_temp";
 
         AZStd::vector<AZStd::string> dependentBundleNames;
+        AZStd::vector<AZStd::string> levelDirs;
         AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>> bundlePathDeltaCatalogPair;
-        bundlePathDeltaCatalogPair.emplace_back(AZStd::make_pair(bundleFullPath, DeltaCatalogName));
+        bundlePathDeltaCatalogPair.emplace_back(AZStd::make_pair(tempBundleFilePath, DeltaCatalogName));
 
         AZStd::vector<AZStd::string> fileEntries; // this is used to add files to the archive
         AZStd::vector<AZStd::string> deltaCatalogEntries; // this is used to create the delta catalog
@@ -278,15 +299,29 @@ namespace AzToolsFramework
         for (const AzToolsFramework::AssetFileInfo& assetFileInfo : assetFileInfoList.m_fileInfoList)
         {
             AZ::u64 fileSize = 0;
-            if (!fileIO->Size(assetFileInfo.m_assetRelativePath.c_str(), fileSize))
+            AZStd::string fullAssetFilePath;
+            AzFramework::StringFunc::Path::Join(assetAlias.c_str(), assetFileInfo.m_assetRelativePath.c_str(), fullAssetFilePath, true);
+            if (!fileIO->Size(fullAssetFilePath.c_str(), fileSize))
             {
-                AZ_Error(logWindowName, false, "Unable to find size of file (%s).\n", assetFileInfo.m_assetRelativePath.c_str());
+                AZ_Error(logWindowName, false, "Unable to find size of file (%s).\n", fullAssetFilePath.c_str());
                 return false;
             }
 
             if (fileSize > maxSizeInBytes)
             {
                 AZ_Warning(logWindowName, false, "File (%s) size (%d) is bigger than the max bundle size (%d).\n", assetFileInfo.m_assetRelativePath.c_str(), fileSize, maxSizeInBytes);
+            }
+
+            if (AzFramework::StringFunc::EndsWith(assetFileInfo.m_assetRelativePath, "level.pak"))
+            {
+                AZStd::string levelFolder;
+                AzFramework::StringFunc::Path::GetFolderPath(assetFileInfo.m_assetRelativePath.c_str(), levelFolder);
+                AzFramework::StringFunc::RelativePath::Normalize(levelFolder);
+                if (AzFramework::StringFunc::LastCharacter(levelFolder.c_str()) == AZ_CORRECT_FILESYSTEM_SEPARATOR)
+                {
+                    AzFramework::StringFunc::RChop(levelFolder, 1);
+                }
+                levelDirs.emplace_back(levelFolder);
             }
 
             totalFileSize += fileSize;
@@ -302,16 +337,16 @@ namespace AzToolsFramework
             else
             {
                 // add all files to the archive as a batch and update the bundle size
-                if (!InjectFiles(fileEntries, bundleFullPath, assetAlias.c_str()))
+                if (!InjectFiles(fileEntries, tempBundleFilePath, assetAlias.c_str()))
                 {
                     return false;
                 }
 
                 fileEntries.clear();
 
-                if (fileIO->Exists(bundleFullPath.c_str()))
+                if (fileIO->Exists(tempBundleFilePath.c_str()))
                 {
-                    if (!fileIO->Size(bundleFullPath.c_str(), bundleSize))
+                    if (!fileIO->Size(tempBundleFilePath.c_str(), bundleSize))
                     {
                         AZ_Error(logWindowName, false, "Unable to find size of archive file (%s).\n", bundleFilePath.c_str());
                         return false;
@@ -325,7 +360,7 @@ namespace AzToolsFramework
             {
                 // if we are here it implies that adding file size to the remaining increases the size over the max size 
                 // and therefore we can add the pending files and the delta catalog to the bundle
-                if (!AddCatalogAndFilesToBundle(deltaCatalogEntries, fileEntries, bundleFullPath, deltaCatalogFilePath, assetAlias.c_str(), platformId))
+                if (!AddCatalogAndFilesToBundle(deltaCatalogEntries, fileEntries, tempBundleFilePath, assetAlias.c_str(), platformId))
                 {
                     return false;
                 }
@@ -341,8 +376,8 @@ namespace AzToolsFramework
                     bundleIndex++;
                     numOfTries--;
                     dependentBundleFileName = CreateAssetBundleFileName(bundleFilePath, bundleIndex);
-                    AzFramework::StringFunc::Path::ReplaceFullName(bundleFullPath, dependentBundleFileName.c_str());
-                } while (numOfTries && fileIO->Exists(bundleFullPath.c_str()));
+                    AzFramework::StringFunc::Path::ReplaceFullName(tempBundleFilePath, (dependentBundleFileName + tempBundleFileSuffix).c_str());
+                } while (numOfTries && fileIO->Exists(tempBundleFilePath.c_str()));
 
                 if (!numOfTries)
                 {
@@ -354,7 +389,7 @@ namespace AzToolsFramework
 
                 AZStd::string currentDeltaCatalogName = DeltaCatalogName;
                 AzFramework::StringFunc::Path::ConstructFull(bundleFolder.c_str(), currentDeltaCatalogName.c_str(), deltaCatalogFilePath, true);
-                bundlePathDeltaCatalogPair.emplace_back(AZStd::make_pair(bundleFullPath, currentDeltaCatalogName));
+                bundlePathDeltaCatalogPair.emplace_back(AZStd::make_pair(tempBundleFilePath, currentDeltaCatalogName));
             }
 
             fileEntries.emplace_back(assetFileInfo.m_assetRelativePath);
@@ -362,15 +397,31 @@ namespace AzToolsFramework
         }
 
 
-        if (!AddCatalogAndFilesToBundle(deltaCatalogEntries, fileEntries, bundleFullPath, deltaCatalogFilePath, assetAlias.c_str(), platformId))
+        if (!AddCatalogAndFilesToBundle(deltaCatalogEntries, fileEntries, tempBundleFilePath, assetAlias.c_str(), platformId))
         {
             return false;
         }
 
         // Create and add manifest files for all the bundles
-        if (!AddManifestFileToBundles(bundlePathDeltaCatalogPair, dependentBundleNames, bundleFolder, assetBundleSettings))
+        if (!AddManifestFileToBundles(bundlePathDeltaCatalogPair, dependentBundleNames, bundleFolder, assetBundleSettings, levelDirs))
         {
             return false;
+        }
+
+        // Rename all the temp files to the actual bundle names
+        for (int idx = 0; idx < bundlePathDeltaCatalogPair.size(); ++idx)
+        {
+            AZStd::string destinationBundleFullPath = bundlePathDeltaCatalogPair[idx].first.c_str();
+
+            if (destinationBundleFullPath.ends_with(tempBundleFileSuffix))
+            {
+                destinationBundleFullPath = destinationBundleFullPath.substr(0, destinationBundleFullPath.length() - strlen(tempBundleFileSuffix));
+                if (!fileIO->Rename(bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str()))
+                {
+                    AZ_Error(logWindowName, false, "Failed to rename temporary bundle file (%s) to (%s)", bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str());
+                    return false;
+                }
+            }
         }
 
         return true;
@@ -414,9 +465,8 @@ namespace AzToolsFramework
         return CreateAssetBundleFromList(assetBundleSettings, assetFileInfoList);
     }
 
-    bool AssetBundleComponent::AddCatalogAndFilesToBundle(const AZStd::vector<AZStd::string>& deltaCatalogEntries, const AZStd::vector<AZStd::string>& fileEntries, const AZStd::string& bundleFilePath, const AZStd::string& deltaCatalogFilePath, const char* assetAlias, const AzFramework::PlatformId& platformId)
+    bool AssetBundleComponent::AddCatalogAndFilesToBundle(const AZStd::vector<AZStd::string>& deltaCatalogEntries, const AZStd::vector<AZStd::string>& fileEntries, const AZStd::string& bundleFilePath, const char* assetAlias, const AzFramework::PlatformId& platformId)
     {
-        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         AZStd::string bundleFolder;
         AzFramework::StringFunc::Path::GetFullPath(bundleFilePath.c_str(), bundleFolder);
 
@@ -435,31 +485,35 @@ namespace AzToolsFramework
 
         if(deltaCatalogEntries.size())
         {
+            TemporaryDir tempDir(bundleFilePath);
+            if (!tempDir.m_result)
+            {
+                return false;
+            }
+
+            AZStd::string tempDeltaCatalogFile;
+            AzFramework::StringFunc::Path::Join(tempDir.m_tempFolderPath.c_str(), DeltaCatalogName, tempDeltaCatalogFile);
+
             // add the delta catalog to the bundle
             bool success = false;
-            AssetCatalog::PlatformAddressedAssetCatalogRequestBus::EventResult(success, platformId, &AssetCatalog::PlatformAddressedAssetCatalogRequestBus::Events::CreateDeltaCatalog, fileEntries, deltaCatalogFilePath.c_str());
+            AssetCatalog::PlatformAddressedAssetCatalogRequestBus::EventResult(success, platformId, &AssetCatalog::PlatformAddressedAssetCatalogRequestBus::Events::CreateDeltaCatalog, deltaCatalogEntries, tempDeltaCatalogFile.c_str());
             if (!success)
             {
-                AZ_Error(logWindowName, false, "Failed to create the delta catalog file (%s).\n", deltaCatalogFilePath.c_str());
+                AZ_Error(logWindowName, false, "Failed to create the delta catalog file (%s).\n", tempDeltaCatalogFile.c_str());
                 return false;
             }
-            AZStd::string deltaCatalogFileName;
-            AzFramework::StringFunc::Path::GetFullFileName(deltaCatalogFilePath.c_str(), deltaCatalogFileName);
-            if (!InjectFile(deltaCatalogFileName, bundleFilePath, bundleFolder.c_str()))
+            if (!InjectFile(DeltaCatalogName, bundleFilePath, tempDir.m_tempFolderPath.c_str()))
             {
-                AZ_Error(logWindowName, false, "Failed to add the delta catalog file (%s) in the bundle (%s).\n", deltaCatalogFilePath.c_str(), bundleFilePath.c_str());
+                AZ_Error(logWindowName, false, "Failed to add the delta catalog file (%s) in the bundle (%s).\n", tempDeltaCatalogFile.c_str(), bundleFilePath.c_str());
                 return false;
             }
-            fileIO->Remove(deltaCatalogFilePath.c_str());
         }
 
         return true;
     }
 
-    bool AssetBundleComponent::AddManifestFileToBundles(const AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>>& bundlePathDeltaCatalogPair, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& bundleFolder, const AzToolsFramework::AssetBundleSettings& assetBundleSettings)
+    bool AssetBundleComponent::AddManifestFileToBundles(const AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>>& bundlePathDeltaCatalogPair, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& bundleFolder, const AzToolsFramework::AssetBundleSettings& assetBundleSettings, const AZStd::vector<AZStd::string>& levelDirs)
     {
-        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-
         if (!MakePath(bundleFolder))
         {
             return false;
@@ -472,15 +526,15 @@ namespace AzToolsFramework
             return false;
         }
 
-        AZStd::string bundleTempFolder = bundlePathDeltaCatalogPair[0].first;
+        TemporaryDir tempDir(bundlePathDeltaCatalogPair[0].first);
 
-        if (!MakeTempFolderFromFilePath(bundlePathDeltaCatalogPair[0].first, bundleTempFolder))
+        if (!tempDir.m_result)
         {
             return false;
         }
 
         AZStd::string bundleManifestPath;
-        AzFramework::StringFunc::Path::ConstructFull(bundleTempFolder.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, bundleManifestPath, true);
+        AzFramework::StringFunc::Path::ConstructFull(tempDir.m_tempFolderPath.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, bundleManifestPath, true);
 
         for (int idx = 0; idx < bundlePathDeltaCatalogPair.size(); idx++)
         {
@@ -492,7 +546,7 @@ namespace AzToolsFramework
             }
 
             bool manifestSaved = false;
-            AssetCatalogRequestBus::BroadcastResult(manifestSaved, &AssetCatalogRequestBus::Events::CreateBundleManifest, bundlePathDeltaCatalogPair[idx].second, bundleNameList, bundleTempFolder, assetBundleSettings.m_bundleVersion);
+            AssetCatalogRequestBus::BroadcastResult(manifestSaved, &AssetCatalogRequestBus::Events::CreateBundleManifest, bundlePathDeltaCatalogPair[idx].second, bundleNameList, tempDir.m_tempFolderPath, assetBundleSettings.m_bundleVersion, levelDirs);
             if (!manifestSaved)
             {
                 AZ_Error(logWindowName, false, "Failed to create manifest file (%s) for the bundle (%s).\n", AzFramework::AssetBundleManifest::s_manifestFileName, bundlePathDeltaCatalogPair[idx].first.c_str());
@@ -502,13 +556,12 @@ namespace AzToolsFramework
             AZStd::string bundleManifestFileName;
             AzFramework::StringFunc::Path::GetFullFileName(bundleManifestPath.c_str(), bundleManifestFileName);
 
-            if (!InjectFile(bundleManifestFileName, bundlePathDeltaCatalogPair[idx].first, bundleTempFolder.c_str()))
+            if (!InjectFile(bundleManifestFileName, bundlePathDeltaCatalogPair[idx].first, tempDir.m_tempFolderPath.c_str()))
             {
                 AZ_Error(logWindowName, false, "Failed to add manifest file (%s) in the bundle (%s).\n", bundleManifestPath.c_str(), bundlePathDeltaCatalogPair[idx].first.c_str());
                 return false;
             }
 
-            fileIO->DestroyPath(bundleTempFolder.c_str());
         }
 
         return true;
@@ -574,9 +627,9 @@ namespace AzToolsFramework
             filesStr.append(AZStd::string::format("%s\n", file.c_str()));
         }
 
-        AZStd::string bundleFolder;
+        TemporaryDir tempDir(sourcePak);
 
-        if (!MakeTempFolderFromFilePath(sourcePak, bundleFolder))
+        if (!tempDir.m_result)
         {
             return false;
         }
@@ -584,7 +637,7 @@ namespace AzToolsFramework
         // Creating a list file
         AZStd::string listFilePath;
         const char listFileName[] = "ListFile.txt";
-        AzFramework::StringFunc::Path::ConstructFull(bundleFolder.c_str(), listFileName, listFilePath, true);
+        AzFramework::StringFunc::Path::ConstructFull(tempDir.m_tempFolderPath.c_str(), listFileName, listFilePath, true);
 
         {
             AZ::IO::FileIOStream fileStream(listFilePath.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText);
@@ -595,7 +648,6 @@ namespace AzToolsFramework
             else
             {
                 AZ_Error(logWindowName, false, "Failed to create list file (%s) for adding files in the bundle (%s).\n", listFilePath.c_str(), sourcePak.c_str());
-                AZ::IO::FileIOBase::GetInstance()->DestroyPath(bundleFolder.c_str());
                 return false;
             }
         }
@@ -607,7 +659,6 @@ namespace AzToolsFramework
             AZ_Error(logWindowName, false, "Failed to insert files into bundle (%s).\n", sourcePak.c_str());
         }
 
-        AZ::IO::FileIOBase::GetInstance()->DestroyPath(bundleFolder.c_str());
         return filesAddedToArchive;
     }
 
@@ -622,20 +673,19 @@ namespace AzToolsFramework
         // open the manifest and deserialize it
         bool manifestExtracted = false;
         const bool overwriteExisting = true;
-        AZStd::string archiveFolder;
 
-        if (!MakeTempFolderFromFilePath(sourcePak, archiveFolder))
+        TemporaryDir tempDir(sourcePak);
+        if (!tempDir.m_result)
         {
             return nullptr;
         }
 
         AZStd::string manifestFilePath;
-        AzFramework::StringFunc::Path::ConstructFull(archiveFolder.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, manifestFilePath, true);
-        ArchiveCommandsBus::BroadcastResult(manifestExtracted, &ArchiveCommandsBus::Events::ExtractFileBlocking, sourcePak, AzFramework::AssetBundleManifest::s_manifestFileName, archiveFolder, overwriteExisting);
+        AzFramework::StringFunc::Path::ConstructFull(tempDir.m_tempFolderPath.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, manifestFilePath, true);
+        ArchiveCommandsBus::BroadcastResult(manifestExtracted, &ArchiveCommandsBus::Events::ExtractFileBlocking, sourcePak, AzFramework::AssetBundleManifest::s_manifestFileName, tempDir.m_tempFolderPath, overwriteExisting);
         if (!manifestExtracted)
         {
             AZ_Error(logWindowName, false, "Failed to extract existing manifest from archive \"%s\".", sourcePak.c_str());
-            AZ::IO::FileIOBase::GetInstance()->DestroyPath(archiveFolder.c_str());
             return nullptr;
         }
 
@@ -653,7 +703,6 @@ namespace AzToolsFramework
             AZ_Error(logWindowName, false, "Failed to deserialize existing manifest from archive \"%s\".", sourcePak.c_str());
         }
 
-        AZ::IO::FileIOBase::GetInstance()->DestroyPath(archiveFolder.c_str());
         return manifest;
     }
 

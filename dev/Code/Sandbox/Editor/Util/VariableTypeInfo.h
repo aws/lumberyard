@@ -203,9 +203,11 @@ protected:
     Vars    m_Vars;
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 struct EDITOR_CORE_API CUIEnumsDBList
     : IVarEnumList
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     CUIEnumsDatabase_SEnum const* m_pEnumList;
 
     CUIEnumsDBList(CUIEnumsDatabase_SEnum const* pEnumList);

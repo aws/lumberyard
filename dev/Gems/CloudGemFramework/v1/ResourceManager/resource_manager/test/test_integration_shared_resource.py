@@ -1,13 +1,22 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
 import os
 import resource_manager.util
 import datetime
 import time
-import test_constant
-import resource_manager_common.constant
-from filelock import Timeout, FileLock
+from . import test_constant
+from .lib.filelock import FileLock
 
 
-class SharedResourceManager():
+class SharedResourceManager:
 
     FILE_SHARED_RESOURCES_CONTEXT = 'tmp_last_running_cgf_test_shared_context'
 
@@ -26,23 +35,23 @@ class SharedResourceManager():
 
     @property
     def is_registered_for_shared(self):
-        return self.is_registered_for_shared
+        return self._is_registered_for_shared
 
     def __init__(self):
         self.root_dir = None
-        self.is_registered_for_shared = False
+        self._is_registered_for_shared = False
 
 
     def register_for_shared_resource(self, path):
         self.root_dir = path
         self.update_shared_resource_context_attr(self.CONTEXT_REGISTERED_ATTR,
-                                                        lambda items: self.__append_registered_to_list(items, path))
-        self.is_registered_for_shared = True
+                                                 lambda items: self.__append_registered_to_list(items, path))
+        self._is_registered_for_shared = True
 
     def unregister_for_shared_resource(self, path):
         self.update_shared_resource_context_attr(self.CONTEXT_REGISTERED_ATTR,
-                                                        lambda items: self.__remove_registered_to_list(items, path))
-        self.is_registered_for_shared = False
+                                                 lambda items: self.__remove_registered_to_list(items, path))
+        self._is_registered_for_shared = False
 
     def append_shared_gem(self, gem_name, version, value, path=None):
         item = {"Name": gem_name}
@@ -52,8 +61,7 @@ class SharedResourceManager():
             item["Path"] = path
 
         if value is None or len(value) == 0:
-            value = []
-            value.append(item)
+            value = [item]
             return value
 
         is_found = False
@@ -81,20 +89,20 @@ class SharedResourceManager():
     def lock_file_and_execute(self, file_name, func):
         file_path, lock_path = self.lock_path(file_name)
         lock_file = FileLock("{}".format(lock_path))
-        print "Acquiring lock file for file ", file_path
+        print("Acquiring lock file for file {}".format(file_path))
         with lock_file:
-            print "File locked...", file_path, datetime.datetime.utcnow()
+            print("File {} locked... {}".format(file_path, datetime.datetime.utcnow()))
             context = resource_manager.util.load_json(file_path, {})
             func(context)
             resource_manager.util.save_json(file_path, context)
-            print "File unlocked...", file_path, datetime.datetime.utcnow()
+            print("File {} unlocked... {}".format(file_path, datetime.datetime.utcnow()))
 
     def update_context_attribute(self, context, name, value):
-        context[name]=value
+        context[name] = value
 
     def remove_json_file_attribute(self, context, file_name, attr_name):
         file_path, lock_path = self.lock_path(file_name)
-        print "REMOVING lock", file_path, attr_name, context
+        print("REMOVING lock {} {} {}".format(file_path, attr_name, context))
         if attr_name in context:
             del context[attr_name]
         return context
@@ -103,12 +111,12 @@ class SharedResourceManager():
         file_path, lock_path = self.lock_path(file_name, append_relative)
         context = resource_manager.util.load_json(file_path, {})
         lock_file = FileLock("{}".format(lock_path))
-        print "Acquiring lock file for file ", file_path
+        print("Acquiring lock file for file {}".format(file_path))
         with lock_file:
-            print "REMOVING lock", file_path, attr_name, context
+            print("REMOVING lock".format(file_path, attr_name, context))
             if attr_name in context:
                 del context[attr_name]
-            print context
+            print(context)
             resource_manager.util.save_json(file_path, context)
 
     def sync_registered_gems(self, game_dir, enable_gem_func):
@@ -119,7 +127,7 @@ class SharedResourceManager():
             ))
 
     def sync_project_settings_file(self, context, file_path_src, file_path_target):
-        # sync the local_project_setttings with the process that created the stack
+        # sync the local_project_settings with the process that created the stack
         shared_project_settings = resource_manager.util.load_json(file_path_src, {})        
         resource_manager.util.save_json(file_path_target, shared_project_settings)       
 
@@ -139,7 +147,7 @@ class SharedResourceManager():
             items = context.get(attr_name, [])
             context[attr_name] = func(items)
             resource_manager.util.save_json(file_path, context)
-        #provide a small buffer between IO read/writes to help stability
+        # provide a small buffer between IO read/writes to help stability
         time.sleep(1)
 
     def __sync_registered_gems(self, game_dir, enable_gem_func, shared_deployment_gems):
@@ -164,9 +172,9 @@ class SharedResourceManager():
                     found = True
             if not found:
                 if shared_gem_path:
-                    print "MISSING the  gem named  '", shared_gem_name, "' at path '", shared_gem_path, "'. Adding version '", shared_gem_version, "'"
+                    print("MISSING the  gem named  '{}' at path '{}'. Adding version '{}'".format(shared_gem_name, shared_gem_path, shared_gem_version))
                 else:
-                    print "MISSING the  gem named  '", shared_gem_name, "'. Adding version '", shared_gem_version, "'"
+                    print("MISSING the  gem named  '{}'. Adding version '{}'".format(shared_gem_name, shared_gem_version))
                 enable_gem_func(shared_gem_name, shared_gem_version, True, shared_gem_path)
 
         gem_settings[context_gems] = shared_deployment_gems

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <AzCore/Component/Component.h>
+
 //////////////////////////////////////////////////////////////////////////
 class CTerrainHoleTool
     : public CEditTool
@@ -71,5 +73,22 @@ private:
     class CTerrainHolePanel* m_panel;
 };
 
+//////////////////////////////////////////////////////////////////////////
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class TerrainHoleToolPythonFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TerrainHoleToolPythonFuncsHandler, "{9725BC25-846F-4AD6-9EE3-E1719E534FD2}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_TERRAINHOLETOOL_H

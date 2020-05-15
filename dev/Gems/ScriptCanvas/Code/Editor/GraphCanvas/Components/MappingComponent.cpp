@@ -12,9 +12,17 @@
 #include "precompiled.h"
 
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
 #include <Editor/GraphCanvas/Components/MappingComponent.h>
-#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+
+#include <Editor/Include/ScriptCanvas/Bus/RequestBus.h>
+
+#include <ScriptCanvas/Core/Slot.h>
+#include <ScriptCanvas/Core/Node.h>
+#include <ScriptCanvas/Variable/GraphVariable.h>
+#include <ScriptCanvas/Variable/VariableBus.h>
+
 
 namespace ScriptCanvasEditor
 {
@@ -42,7 +50,7 @@ namespace ScriptCanvasEditor
 
     void SceneMemberMappingComponent::Activate()
     {
-        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());        
         SceneMemberMappingConfigurationRequestBus::Handler::BusConnect(GetEntityId());
         ConfigureMapping(m_sourceId);
     }
@@ -50,7 +58,7 @@ namespace ScriptCanvasEditor
     void SceneMemberMappingComponent::Deactivate()
     {
         SceneMemberMappingRequestBus::Handler::BusDisconnect();
-        SceneMemberMappingConfigurationRequestBus::Handler::BusDisconnect();
+        SceneMemberMappingConfigurationRequestBus::Handler::BusDisconnect();        
         GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
     }
 
@@ -110,7 +118,7 @@ namespace ScriptCanvasEditor
     {
         m_slotMapping.clear();
 
-        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());        
         SceneMemberMappingConfigurationRequestBus::Handler::BusConnect(GetEntityId());
 
         ConfigureMapping(m_sourceId);
@@ -191,8 +199,31 @@ namespace ScriptCanvasEditor
 
         if (graphCanvasSlotId.IsValid())
         {
+            GraphCanvas::DataValueType valueType = GraphCanvas::DataValueType::Primitive;
+
             AZ::Uuid typeId = ScriptCanvas::Data::ToAZType(slotType);
-            GraphCanvas::DataSlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::DataSlotRequests::SetDataAndContainedTypeIds, typeId, ScriptCanvas::Data::GetContainedTypes(typeId));
+
+            if (ScriptCanvas::Data::IsContainerType(typeId))
+            {
+                valueType = GraphCanvas::DataValueType::Container;
+            }
+            else if (typeId.IsNull())
+            {
+                ScriptCanvas::Slot* slot = nullptr;
+                ScriptCanvas::NodeRequestBus::EventResult(slot, m_sourceId, &ScriptCanvas::NodeRequests::GetSlot, slotId);
+
+                if (slot && slot->IsDynamicSlot())
+                {
+                    auto dynamicSlotType = slot->GetDynamicDataType();
+
+                    if (dynamicSlotType == ScriptCanvas::DynamicDataType::Container)
+                    {
+                        valueType = GraphCanvas::DataValueType::Container;
+                    }
+                }
+            }
+
+            GraphCanvas::DataSlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::DataSlotRequests::SetDataAndContainedTypeIds, typeId, ScriptCanvas::Data::GetContainedTypes(typeId), valueType);
         }
     }
 

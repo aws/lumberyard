@@ -19,6 +19,11 @@
         "Uuid": "32d8ba21703e4bbbb08487366e48dd69",
         "VersionConstraints": [ ">=0.1.0" ],
         "_comment": "ScriptEvents"
+      },
+      {
+        "Uuid": "4c6f9df57ca2468f93c8d860ee6a1167",
+        "VersionConstraints": [ ">=0.1.0" ],
+        "_comment": "ExpressionEvaluation"
       }
     ]
 }

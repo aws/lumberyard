@@ -42,11 +42,11 @@
             "API/EditorCameraBus.h",
             "API/EditorAnimationSystemRequestBus.h",
             "API/EditorVegetationRequestsBus.h",
+            "API/EditorPythonConsoleBus.h",
             "API/EditorPythonRunnerRequestsBus.h",
             "API/EntityPropertyEditorRequestsBus.h",
             "API/EntityCompositionRequestBus.h",
             "API/EntityCompositionNotificationBus.h",
-            "API/HyperGraphBus.h",
             "API/ViewPaneOptions.h"
         ],
         "Application": [
@@ -130,16 +130,16 @@
             "Debug/TraceContextLogFormatter.cpp",
             "Debug/TraceContextLogFormatter.h"
         ],
-        "Engine": [
-            "Engine/EngineUtilities.h",
-            "Engine/EngineUtilities.cpp"
-        ],
         "Component": [
             "Component/EditorComponentAPIBus.h",
             "Component/EditorComponentAPIComponent.cpp",
-            "Component/EditorComponentAPIComponent.h"
+            "Component/EditorComponentAPIComponent.h",
+            "Component/EditorLevelComponentAPIBus.h",
+            "Component/EditorLevelComponentAPIComponent.cpp",
+            "Component/EditorLevelComponentAPIComponent.h"
         ],
         "Entity": [
+            "Entity/EditorEntityStartStatus.h",
             "Entity/EditorEntityAPIBus.h",
             "Entity/EditorEntityContextComponent.cpp",
             "Entity/EditorEntityContextComponent.h",
@@ -272,6 +272,7 @@
             "SQLite/SQLiteConnection.h",
             "SQLite/SQLiteQuery.cpp",
             "SQLite/SQLiteQuery.h",
+            "SQLite/SQLiteQueryLogBus.h",
             "SQLite/SQLiteBoundColumnSet.h",
             "SQLite/SQLiteBoundColumnSet.cpp"
         ],
@@ -284,6 +285,8 @@
             "ToolsComponents/EditorAssetMimeDataContainer.h",
             "ToolsComponents/EditorAssetReference.cpp",
             "ToolsComponents/EditorAssetReference.h",
+            "ToolsComponents/EditorComponentAdapter.inl",
+            "ToolsComponents/EditorComponentAdapter.h",
             "ToolsComponents/EditorComponentBase.cpp",
             "ToolsComponents/EditorComponentBase.h",
             "ToolsComponents/EditorDisabledCompositionComponent.h",
@@ -404,15 +407,15 @@
             "UI/PropertyEditor/PropertyAssetCtrl.cpp",
             "UI/PropertyEditor/PropertyAudioCtrl.h",
             "UI/PropertyEditor/PropertyAudioCtrl.cpp",
-            "UI/PropertyEditor/PropertyAudioCtrlTypes.h",
-            "UI/PropertyEditor/PropertyBoolCheckBoxCtrl.hxx",
-            "UI/PropertyEditor/PropertyBoolCheckBoxCtrl.cpp",
+            "UI/PropertyEditor/PropertyAudioCtrlTypes.h",            
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.hxx",
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.cpp",
             "UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.hxx",
             "UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.cpp",
             "UI/PropertyEditor/PropertyButtonCtrl.hxx",
             "UI/PropertyEditor/PropertyButtonCtrl.cpp",
+            "UI/PropertyEditor/PropertyCheckBoxCtrl.hxx",
+            "UI/PropertyEditor/PropertyCheckBoxCtrl.cpp",
             "UI/PropertyEditor/PropertyColorCtrl.hxx",
             "UI/PropertyEditor/PropertyColorCtrl.cpp",
             "UI/PropertyEditor/PropertyDoubleSliderCtrl.hxx",
@@ -494,21 +497,31 @@
             "Undo/UndoSystem.h"
         ],
         "Undo/Commands": [
-            "Commands/ComponentModeCommand.cpp",
-            "Commands/ComponentModeCommand.h",
-            "Commands/EntityManipulatorCommand.h",
-            "Commands/EntityManipulatorCommand.cpp",
-            "Commands/EntityStateCommand.cpp",
-            "Commands/EntityStateCommand.h",
-            "Commands/SelectionCommand.cpp",
-            "Commands/SelectionCommand.h",
-            "Commands/EntityTransformCommand.cpp",
-            "Commands/EntityTransformCommand.h",
-            "Commands/PreemptiveUndoCache.cpp",
-            "Commands/PreemptiveUndoCache.h",
-            "Commands/SliceDetachEntityCommand.cpp",
-            "Commands/SliceDetachEntityCommand.h",
-            "Commands/LegacyCommand.h"
+          "Commands/ComponentModeCommand.cpp",
+          "Commands/ComponentModeCommand.h",
+          "Commands/EntityManipulatorCommand.h",
+          "Commands/EntityManipulatorCommand.cpp",
+          "Commands/EntityStateCommand.cpp",
+          "Commands/EntityStateCommand.h",
+          "Commands/SelectionCommand.cpp",
+          "Commands/SelectionCommand.h",
+          "Commands/EntityTransformCommand.cpp",
+          "Commands/EntityTransformCommand.h",
+          "Commands/PreemptiveUndoCache.cpp",
+          "Commands/PreemptiveUndoCache.h",
+          "Commands/LegacyCommand.h"
+        ],
+        "Undo/Commands/Slice": [
+          "Commands/BaseSliceCommand.cpp",
+          "Commands/BaseSliceCommand.h",
+          "Commands/SliceDetachEntityCommand.cpp",
+          "Commands/SliceDetachEntityCommand.h",
+          "Commands/DetachSubSliceInstanceCommand.cpp",
+          "Commands/DetachSubSliceInstanceCommand.h",
+          "Commands/PushToSliceCommand.cpp",
+          "Commands/PushToSliceCommand.h",
+          "Commands/CreateSliceCommand.cpp",
+          "Commands/CreateSliceCommand.h"
         ],
         "Viewport": [
             "Viewport/ActionBus.h",

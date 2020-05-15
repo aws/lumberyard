@@ -42,7 +42,9 @@ namespace EditorUIPlugin
         ScopedLibraryModifyUndo(const AZStd::string& libId);
         ~ScopedLibraryModifyUndo();
     private:
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         AZStd::string m_libId;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
         LibraryModifyCommand* m_modifyCmd;
         LibraryDeleteCommand* m_deleteCmd;
     };
@@ -56,7 +58,9 @@ namespace EditorUIPlugin
         ~ScopedLibraryMoveUndo();
 
     private:
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         AZStd::string m_libId;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
         LibraryMoveCommand* m_moveCmd;
         LibraryDeleteCommand* m_deleteCmd;
     };
@@ -288,8 +292,10 @@ namespace EditorUIPlugin
 
     struct EDITOR_QT_UI_API LibTreeExpandInfo
     {
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         AZStd::string LibState;
         AZStd::string ItemState;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     };
 
     class LibraryPanelRequests

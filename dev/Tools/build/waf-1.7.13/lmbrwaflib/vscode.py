@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+
+# waflib imports
 from waflib import Logs, Utils, Errors, Build
 import os
 import collections
@@ -48,6 +51,7 @@ VSCODE_PLATFORM_SETTINGS_MAP = {
 
 
 class GenerateVSCodeWorkspace(Build.BuildContext):
+    '''Generate a Visual Studio Code project'''
     cmd = 'vscode'
     fun = 'build'
     
@@ -74,7 +78,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
             self.scriptPattern      = platform_settings['scriptPattern']
             self.problemMatcher     = platform_settings['problemMatcher']
         except KeyError as err:
-            raise Errors.WafError("VSCode settings '{}' for platform '{}' is missing from the definition table ({})".format(str(err.message), host_name, __file__))
+            raise Errors.WafError("VSCode settings '{}' for platform '{}' is missing from the definition table ({})".format(err, host_name, __file__))
 
     @staticmethod
     def write_vscode_node(node, json_obj):
@@ -100,7 +104,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
         enabled_specs = [spec_name.strip() for spec_name in self.options.specs_to_include_in_project_generation.split(',')]
         
         # Collect all the enabled platforms
-        enabled_platforms = self.get_enabled_target_platform_names()
+        enabled_platforms = [platform.platform for platform in self.get_all_target_platforms()]
         
         task_list = []
 
@@ -177,7 +181,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
         launcher_targets.extend(enabled_game_projects)
         
         # Collect the enabled platforms for this host platform
-        enabled_platforms = self.get_enabled_target_platform_names()
+        enabled_platforms = [platform.platform for platform in self.get_all_target_platforms()]
 
         launch_configurations = []
 

@@ -41,6 +41,8 @@
 #include <IRenderAuxGeom.h>
 #include <ICryAnimation.h>
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 //#define MAX_LODS 6                                        // I want an engine-wide const :-(
 #define MAX_SLOTS 100                                   // GetSlotCount() is not working :-(
 #define BIG_NUMBER 1e20f
@@ -740,6 +742,11 @@ void CLocalMemoryUsage::OnRender(IRenderer* pRenderer, const CCamera* camera)
     float localMemoryTextureLimit = sys_LocalMemoryTextureLimit  * 1024.f * 1024.f;
     float localMemoryGeometryLimit = sys_LocalMemoryGeometryLimit * 1024.f * 1024.f;
 
+    //The assumption is that this is called on Main Thread, otherwise the loop
+    //Should be wrapped inside a EnumerateHandlers lambda.
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+
     for (int y = yMin; y < yMax; y++)
     {
         sector = &m_arrSectors[xMin + y * LOCALMEMORY_SECTOR_NR_X];
@@ -747,7 +754,7 @@ void CLocalMemoryUsage::OnRender(IRenderer* pRenderer, const CCamera* camera)
         {
             pos.x = (x + 0.5f) * LOCALMEMORY_SECTOR_SIZE;
             pos.y = (y + 0.5f) * LOCALMEMORY_SECTOR_SIZE;
-            pos.z = gEnv->p3DEngine->GetTerrainElevation(pos.x, pos.y);
+            pos.z = terrain ? terrain->GetHeightFromFloats(pos.x, pos.y) : defaultTerrainHeight;
 
             if (m_pDebugDraw->GetIVal() == 17)
             {

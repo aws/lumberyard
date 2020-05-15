@@ -39,6 +39,8 @@
 #include <MCore/Source/AttributeFactory.h>
 #include <MCore/Source/ReflectionSerializer.h>
 
+#include <Tests/Matchers.h>
+
 namespace AnimGraphParameterCommandsTests
 {
     namespace AZStd
@@ -120,12 +122,6 @@ namespace AnimGraphParameterCommandsTests
 
 #include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.cpp>
 
-    inline testing::PolymorphicMatcher<testing::internal::StrEqualityMatcher<AZStd::string> >
-        StrEq(const AZStd::string& str) {
-        return ::testing::MakePolymorphicMatcher(testing::internal::StrEqualityMatcher<AZStd::string>(
-          str, true, true));
-    }
-
     class TestParameter
         : public EMotionFX::ValueParameter
     {
@@ -202,7 +198,7 @@ namespace AnimGraphParameterCommandsTests
             // AnimGraphInstance::InsertParameterValue must be called before
             // AnimGraphNode::ParameterAdded
             EXPECT_CALL(animGraphInstance0, InsertParameterValue(0));
-            EXPECT_CALL(parameterNode, ParameterAdded(0));
+            EXPECT_CALL(parameterNode, ParameterAdded(StrEq("testParameter")));
         }
 
         MCore::CommandLine parameters(R"(-name testParameter -animGraphID 0 -type "{6C91B0BE-EFCF-4270-A356-28B1C4612CCE}" -description "The Test Parameter Description")");

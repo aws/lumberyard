@@ -12,6 +12,12 @@
 
 def build(bld):
 
+
+    exclude_monolithic_metal = False
+
+    if bld.is_option_true('use_other_in_monolithic'):
+        exclude_monolithic_metal = True
+
     #==============================
     # Build CryRenderMetal
     #==============================
@@ -21,7 +27,9 @@ def build(bld):
         target              = 'CryRenderMetal',
         vs_filter           = 'CryEngine',
         file_list           = [ 'metal_renderer.waf_files', 'metal_mesh_baker.waf_files' ],
-        platforms           = ['ios', 'appletv', 'darwin'],
+        platforms           = [ 'ios', 'appletv', 'darwin'],
+
+        exclude_monolithic  = exclude_monolithic_metal,
         configurations      = ['all'],
         client_only         = True,
         pch        	        = '../../StdAfx.cpp',

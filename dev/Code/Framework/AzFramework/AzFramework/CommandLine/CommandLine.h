@@ -42,6 +42,7 @@ namespace AzFramework
         * It will load parameters from the given ARGC/ARGV parameters instead of process command line.
         */
         void Parse(int argc, char** argv);
+        void Parse(const AZStd::vector<AZStd::string>& commandLine);
 
         /**
         * Determines whether a switch is present in the command line
@@ -80,7 +81,9 @@ namespace AzFramework
         typedef AZStd::unordered_map<AZStd::string, ParamContainer > ParamMap;
 
         const ParamMap& GetSwitchList() const;
+		
     private:
+        void AddArgument(AZStd::string currentArg, AZStd::string& currentSwitch);
 
         ParamMap m_switches;
         ParamContainer m_miscValues;

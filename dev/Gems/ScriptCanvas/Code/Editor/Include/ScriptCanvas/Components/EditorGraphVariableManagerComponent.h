@@ -27,7 +27,7 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(EditorGraphVariableItemModel, AZ::SystemAllocator, 0);
         EditorGraphVariableItemModel() = default;
 
-        void Activate(const AZ::EntityId& busId);
+        void Activate(const ScriptCanvas::ScriptCanvasId& executionId);
 
         ScriptCanvas::VariableId FindVariableIdForIndex(const QModelIndex& modelIndex) const;
 
@@ -52,7 +52,7 @@ namespace ScriptCanvasEditor
         EditorGraphVariableItemModel& operator=(const EditorGraphVariableItemModel&) = delete;
 
         AZStd::vector< ScriptCanvas::VariableId > m_variableIds;
-        AZ::EntityId m_busId;
+        ScriptCanvas::ScriptCanvasId m_busId;
     };
 
     // Editor version of Variable Component which prevents multiple of them being on the same Entity
@@ -67,11 +67,11 @@ namespace ScriptCanvasEditor
         static void Reflect(AZ::ReflectContext* context);
 
         EditorGraphVariableManagerComponent() = default;
-        EditorGraphVariableManagerComponent(AZ::EntityId uniqueId);
+        EditorGraphVariableManagerComponent(ScriptCanvas::ScriptCanvasId scriptCanvasId);
         ~EditorGraphVariableManagerComponent() override = default;
 
-        // ScriptCanvas::SceneVariableManagerComponent
-        void Activate() override;
+        // GraphConfigurationNotificationBus
+        void ConfigureScriptCanvasId(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) override;
         ////
 
         // EditorSceneVariableManagerRequestBus
@@ -86,6 +86,7 @@ namespace ScriptCanvasEditor
             ScriptCanvas::GraphVariableManagerComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("EditorScriptCanvasVariableService", 0x3df3d54e));
         }
+
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("EditorScriptCanvasVariableService", 0x3df3d54e));

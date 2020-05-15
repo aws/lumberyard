@@ -11,10 +11,9 @@
 */
 #pragma once
 
-
 namespace ImageProcessing
 {
-    enum EPixelFormat
+    enum EPixelFormat : int
     {
         //unsigned formats
         ePixelFormat_R8G8B8A8 = 0,
@@ -79,12 +78,30 @@ namespace ImageProcessing
         //legacy format. Only used to load old converted dds files. 
         ePixelFormat_B8G8R8A8,   //32bits rgba format
 
+        ePixelFormat_R32,
+
         ePixelFormat_Count,
         ePixelFormat_Unknown = ePixelFormat_Count
     };
 
-    bool IsASTCFormat(EPixelFormat fmt);
-    bool IsETCFormat(EPixelFormat fmt);
-    bool IsPVRTCFormat(EPixelFormat fmt);
+    inline bool IsASTCFormat(EPixelFormat fmt)
+    {
+        return fmt == ePixelFormat_ASTC_4x4   || fmt == ePixelFormat_ASTC_5x4  || fmt == ePixelFormat_ASTC_5x5   ||
+               fmt == ePixelFormat_ASTC_6x5   || fmt == ePixelFormat_ASTC_6x6  || fmt == ePixelFormat_ASTC_8x5   ||
+               fmt == ePixelFormat_ASTC_8x6   || fmt == ePixelFormat_ASTC_8x8  || fmt == ePixelFormat_ASTC_10x5  ||
+               fmt == ePixelFormat_ASTC_10x6  || fmt == ePixelFormat_ASTC_10x8 || fmt == ePixelFormat_ASTC_10x10 ||
+               fmt == ePixelFormat_ASTC_12x10 || fmt == ePixelFormat_ASTC_12x12;
+    }
+
+    inline bool IsETCFormat(EPixelFormat fmt)
+    {
+        return fmt == ePixelFormat_ETC2 || fmt == ePixelFormat_ETC2a || fmt == ePixelFormat_EAC_R11 ||
+               fmt == ePixelFormat_EAC_RG11;
+    }
+
+    inline bool IsPVRTCFormat(EPixelFormat fmt)
+    {
+        return fmt == ePixelFormat_PVRTC2 || fmt == ePixelFormat_PVRTC4;
+    }
 
 } // namespace ImageProcessing

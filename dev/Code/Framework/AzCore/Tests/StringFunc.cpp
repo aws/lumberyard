@@ -13,16 +13,16 @@
 #include <gtest/gtest-param-test.h>
 
 #include <AzCore/UnitTest/TestTypes.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
+#include <string.h>
 
-namespace AzFramework
+namespace AZ
 {
     using namespace UnitTest;
 
     using StringFuncTest = AllocatorsFixture;
 
     // Strip out any trailing path separators
-    
 
     TEST_F(StringFuncTest, Strip_ValidInputExtraEndingPathSeparators_Success)
     {
@@ -30,7 +30,7 @@ namespace AzFramework
         AZStd::string       expectedResult = "F:\\w s 1\\dev";
         const char*         stripCharacters = AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING  AZ_WRONG_FILESYSTEM_SEPARATOR_STRING;
 
-        AzFramework::StringFunc::Strip(samplePath, stripCharacters, false, false, true);
+        AZ::StringFunc::Strip(samplePath, stripCharacters, false, false, true);
 
         ASSERT_TRUE(samplePath == expectedResult);
     }
@@ -40,7 +40,7 @@ namespace AzFramework
         AZStd::string input = "aa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken);
+        AZ::StringFunc::Strip(input, stripToken);
 
         ASSERT_TRUE(input.empty());
     }
@@ -50,7 +50,7 @@ namespace AzFramework
         AZStd::string input = "aaaa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken);
+        AZ::StringFunc::Strip(input, stripToken);
 
         ASSERT_TRUE(input.empty());
     }
@@ -60,7 +60,7 @@ namespace AzFramework
         AZStd::string input = "aa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+        AZ::StringFunc::Strip(input, stripToken, true, true, true);
 
         ASSERT_TRUE(input.empty());
     }
@@ -71,7 +71,7 @@ namespace AzFramework
         AZStd::string expectedResult = "aa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+        AZ::StringFunc::Strip(input, stripToken, true, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -81,7 +81,7 @@ namespace AzFramework
         AZStd::string input = "aa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true, true);
 
         ASSERT_TRUE(input.empty());
     }
@@ -92,7 +92,7 @@ namespace AzFramework
         AZStd::string expectedResult = "aa";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -104,10 +104,10 @@ namespace AzFramework
         AZStd::string expectedResult = "1/2/3/4/5/6";
         AZStd::string joinResult;
 
-        AzFramework::StringFunc::Path::Normalize(path1);
-        AzFramework::StringFunc::Path::Normalize(path2);
-        AzFramework::StringFunc::Path::Normalize(expectedResult);
-        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
+        AZ::StringFunc::Path::Normalize(path1);
+        AZ::StringFunc::Path::Normalize(path2);
+        AZ::StringFunc::Path::Normalize(expectedResult);
+        AZ::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
 
         ASSERT_EQ(joinResult, expectedResult);
     }
@@ -119,10 +119,10 @@ namespace AzFramework
         AZStd::string expectedResult = "1/2/3/4/3/4/5/6";
         AZStd::string joinResult;
 
-        AzFramework::StringFunc::Path::Normalize(path1);
-        AzFramework::StringFunc::Path::Normalize(path2);
-        AzFramework::StringFunc::Path::Normalize(expectedResult);
-        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
+        AZ::StringFunc::Path::Normalize(path1);
+        AZ::StringFunc::Path::Normalize(path2);
+        AZ::StringFunc::Path::Normalize(expectedResult);
+        AZ::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
 
         ASSERT_EQ(joinResult, expectedResult);
     }
@@ -135,10 +135,10 @@ namespace AzFramework
         AZStd::string expectedResult = "1/2/3/4/5/6";
         AZStd::string joinResult;
 
-        AzFramework::StringFunc::Path::Normalize(path1);
-        AzFramework::StringFunc::Path::Normalize(path2);
-        AzFramework::StringFunc::Path::Normalize(expectedResult);
-        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+        AZ::StringFunc::Path::Normalize(path1);
+        AZ::StringFunc::Path::Normalize(path2);
+        AZ::StringFunc::Path::Normalize(expectedResult);
+        AZ::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
 
         ASSERT_EQ(joinResult, expectedResult);
     }
@@ -151,10 +151,10 @@ namespace AzFramework
         AZStd::string expectedResult = "1/2/3/4/5/6";
         AZStd::string joinResult;
 
-        AzFramework::StringFunc::Path::Normalize(path1);
-        AzFramework::StringFunc::Path::Normalize(path2);
-        AzFramework::StringFunc::Path::Normalize(expectedResult);
-        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+        AZ::StringFunc::Path::Normalize(path1);
+        AZ::StringFunc::Path::Normalize(path2);
+        AZ::StringFunc::Path::Normalize(expectedResult);
+        AZ::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
 
         ASSERT_EQ(joinResult, expectedResult);
     }
@@ -167,12 +167,76 @@ namespace AzFramework
         AZStd::string expectedResult = "1/2/3/4/3";
         AZStd::string joinResult;
 
-        AzFramework::StringFunc::Path::Normalize(path1);
-        AzFramework::StringFunc::Path::Normalize(path2);
-        AzFramework::StringFunc::Path::Normalize(expectedResult);
-        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+        AZ::StringFunc::Path::Normalize(path1);
+        AZ::StringFunc::Path::Normalize(path2);
+        AZ::StringFunc::Path::Normalize(expectedResult);
+        AZ::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
 
         ASSERT_EQ(joinResult, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Tokenize_SingleDelimeter_Empty)
+    {
+        AZStd::string input = "";
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, ' ');
+        ASSERT_EQ(tokens.size(), 0);
+    }
+
+    TEST_F(StringFuncTest, Tokenize_SingleDelimeter)
+    {
+        AZStd::string input = "a b,c";
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, ' ');
+
+        ASSERT_EQ(tokens.size(), 2);
+        ASSERT_TRUE(tokens[0] == "a");
+        ASSERT_TRUE(tokens[1] == "b,c");
+    }
+
+    TEST_F(StringFuncTest, Tokenize_MultiDelimeter_Empty)
+    {
+        AZStd::string input = "";
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, " ,");
+        ASSERT_EQ(tokens.size(), 0);
+    }
+
+    TEST_F(StringFuncTest, Tokenize_MultiDelimeters)
+    {
+        AZStd::string input = " -a +b +c -d-e";
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, "-+");
+
+        ASSERT_EQ(tokens.size(), 5);
+        ASSERT_TRUE(tokens[0] == "a ");
+        ASSERT_TRUE(tokens[1] == "b ");
+        ASSERT_TRUE(tokens[2] == "c ");
+        ASSERT_TRUE(tokens[3] == "d");
+        ASSERT_TRUE(tokens[4] == "e");
+    }
+
+    TEST_F(StringFuncTest, Tokenize_SubstringDelimeters_Empty)
+    {
+        AZStd::string input = "";
+        AZStd::vector<AZStd::string> tokens;
+        AZStd::vector<AZStd::string_view> delimeters = {" -", " +"};
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, delimeters);
+        ASSERT_EQ(tokens.size(), 0);
+    }
+
+    TEST_F(StringFuncTest, Tokenize_SubstringDelimeters)
+    {
+        AZStd::string input = " -a +b +c -d-e";
+        AZStd::vector<AZStd::string> tokens;
+        AZStd::vector<AZStd::string_view> delimeters = { " -", " +" };
+        AZ::StringFunc::Tokenize(input.c_str(), tokens, delimeters);
+
+        ASSERT_EQ(tokens.size(), 4);
+        ASSERT_TRUE(tokens[0] == "a");
+        ASSERT_TRUE(tokens[1] == "b");
+        ASSERT_TRUE(tokens[2] == "c");
+        ASSERT_TRUE(tokens[3] == "d-e"); // Test for something like a guid, which contain typical separator characters
     }
 
     TEST_F(StringFuncTest, GroupDigits_BasicFunctionality)
@@ -288,7 +352,7 @@ namespace AzFramework
         AZStd::string       expectedToken = "0x68E564C5";
         AZStd::string       resultToken;
 
-        AzFramework::StringFunc::AssetPath::CalculateBranchToken(samplePath, resultToken);
+        AZ::StringFunc::AssetPath::CalculateBranchToken(samplePath, resultToken);
 
         ASSERT_TRUE(resultToken == expectedToken);
     }
@@ -299,14 +363,14 @@ namespace AzFramework
         AZStd::string       expectedToken = "0x68E564C5";
         AZStd::string       resultToken;
 
-        AzFramework::StringFunc::AssetPath::CalculateBranchToken(samplePath, resultToken);
+        AZ::StringFunc::AssetPath::CalculateBranchToken(samplePath, resultToken);
 
         ASSERT_TRUE(resultToken == expectedToken);
     }
 
     TEST_F(StringFuncTest, HasDrive_EmptyInput_NoDriveFound)
     {
-        EXPECT_FALSE(AzFramework::StringFunc::Path::HasDrive(""));
+        EXPECT_FALSE(AZ::StringFunc::Path::HasDrive(""));
     }
 
     TEST_F(StringFuncTest, HasDrive_InputContainsDrive_DriveFound)
@@ -319,7 +383,7 @@ namespace AzFramework
         input = "/test/to/get/drive/";
 #endif
 
-        EXPECT_TRUE(AzFramework::StringFunc::Path::HasDrive(input.c_str()));
+        EXPECT_TRUE(AZ::StringFunc::Path::HasDrive(input.c_str()));
     }
 
     TEST_F(StringFuncTest, HasDrive_InputDoesNotContainDrive_NoDriveFound)
@@ -332,7 +396,7 @@ namespace AzFramework
         input = "test/with/no/drive/";
 #endif
 
-        EXPECT_FALSE(AzFramework::StringFunc::Path::HasDrive(input.c_str()));
+        EXPECT_FALSE(AZ::StringFunc::Path::HasDrive(input.c_str()));
     }
 
     TEST_F(StringFuncTest, HasDrive_CheckAllFileSystemFormats_InputContainsDrive_DriveFound)
@@ -340,8 +404,8 @@ namespace AzFramework
         AZStd::string input1 = "F:\\test\\to\\get\\drive\\";
         AZStd::string input2 = "/test/to/get/drive/";
 
-        EXPECT_TRUE(AzFramework::StringFunc::Path::HasDrive(input1.c_str(), true));
-        EXPECT_TRUE(AzFramework::StringFunc::Path::HasDrive(input2.c_str(), true));
+        EXPECT_TRUE(AZ::StringFunc::Path::HasDrive(input1.c_str(), true));
+        EXPECT_TRUE(AZ::StringFunc::Path::HasDrive(input2.c_str(), true));
     }
 
     TEST_F(StringFuncTest, HasDrive_CheckAllFileSystemFormats_InputDoesNotContainDrive_NoDriveFound)
@@ -349,8 +413,8 @@ namespace AzFramework
         AZStd::string input1 = "test\\with\\no\\drive\\";
         AZStd::string input2 = "test/with/no/drive/";
 
-        EXPECT_FALSE(AzFramework::StringFunc::Path::HasDrive(input1.c_str(), true));
-        EXPECT_FALSE(AzFramework::StringFunc::Path::HasDrive(input2.c_str(), true));
+        EXPECT_FALSE(AZ::StringFunc::Path::HasDrive(input1.c_str(), true));
+        EXPECT_FALSE(AZ::StringFunc::Path::HasDrive(input2.c_str(), true));
     }
 
     TEST_F(StringFuncTest, GetDrive_UseSameStringForInOut_Success)
@@ -363,10 +427,27 @@ namespace AzFramework
         AZStd::string expectedDriveResult = "";
 #endif //AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
-        bool result = AzFramework::StringFunc::Path::GetDrive(input.c_str(), input);
+        bool result = AZ::StringFunc::Path::GetDrive(input.c_str(), input);
 
         ASSERT_TRUE(result);
         ASSERT_EQ(input, expectedDriveResult);
+    }
+
+    TEST_F(StringFuncTest, IsValid_LongPathComponent_Success)
+    {
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        AZStd::string longFilename = "F:\\folder\\1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890.txt";
+        AZStd::string longFolder = "F:\\1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\filename.ext";
+#else
+        AZStd::string longFilename = "/folder/1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890.txt";
+        AZStd::string longFolder = "/1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890/filename.ext";
+#endif // AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+
+        bool result = AZ::StringFunc::Path::IsValid(longFilename.c_str(), true, true);
+        EXPECT_TRUE(result);
+
+        result = AZ::StringFunc::Path::IsValid(longFolder.c_str(), true, true);
+        EXPECT_TRUE(result);
     }
 
     //! Strip
@@ -377,7 +458,7 @@ namespace AzFramework
         AZStd::string expectedResult = "Heo Word";
         const char stripToken = 'l';
 
-        AzFramework::StringFunc::Strip(input, stripToken);
+        AZ::StringFunc::Strip(input, stripToken);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -388,7 +469,7 @@ namespace AzFramework
         AZStd::string expectedResult = "Hello World";
         const char stripToken = 'l';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -399,7 +480,7 @@ namespace AzFramework
         AZStd::string expectedResult = "Hello World";
         const char stripToken = 'l';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, false, true);
+        AZ::StringFunc::Strip(input, stripToken, false, false, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -410,7 +491,7 @@ namespace AzFramework
         AZStd::string expectedResult = "Hello World";
         const char stripToken = 'l';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -421,7 +502,7 @@ namespace AzFramework
         AZStd::string expectedResult = "HeLlo HeLlo HELlO";
         const char stripToken = 'l';
 
-        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+        AZ::StringFunc::Strip(input, stripToken, true, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -432,7 +513,7 @@ namespace AzFramework
         AZStd::string expectedResult = " HeLlo ";
         const char* stripToken = "hello";
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -443,7 +524,7 @@ namespace AzFramework
         AZStd::string expectedResult = "brAcadabra";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -454,7 +535,7 @@ namespace AzFramework
         AZStd::string expectedResult = "AbrAcadabr";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, false, true);
+        AZ::StringFunc::Strip(input, stripToken, false, false, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -465,7 +546,7 @@ namespace AzFramework
         AZStd::string expectedResult = "brAcadabr";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, false, true, true);
+        AZ::StringFunc::Strip(input, stripToken, false, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
@@ -476,10 +557,108 @@ namespace AzFramework
         AZStd::string expectedResult = "AbrAcadabr";
         const char stripToken = 'a';
 
-        AzFramework::StringFunc::Strip(input, stripToken, true, true, true);
+        AZ::StringFunc::Strip(input, stripToken, true, true, true);
 
         ASSERT_EQ(input, expectedResult);
     }
+
+
+    using StringFuncPathTest = AllocatorsFixture;
+
+    TEST_F(StringFuncPathTest, StripQuotes_PathHasNoQuotes_Success)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str(C:\path\to\some\resource\)str";
+        const char* expectedResult = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str(/path/to/some/resource/)str";
+        const char* expectedResult = R"str(/path/to/some/resource/)str";
+    #endif
+
+        char output[AZ_MAX_PATH_LEN] = { 0 };
+
+        ASSERT_TRUE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
+    TEST_F(StringFuncPathTest, StripQuotes_PathHasQuotes_Success)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str("C:\path\to\some\resource\")str";
+        const char* expectedResult = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str("/path/to/some/resource/")str";
+        const char* expectedResult = R"str(/path/to/some/resource/)str";
+    #endif
+
+        char output[AZ_MAX_PATH_LEN] = { 0 };
+
+        ASSERT_TRUE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
+    TEST_F(StringFuncPathTest, StripQuotes_PathHasExtraQuotes_Success)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str(""C:\path\to\some\resource\"")str";
+        const char* expectedResult = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str(""/path/to/some/resource/"")str";
+        const char* expectedResult = R"str(/path/to/some/resource/)str";
+    #endif
+
+        char output[AZ_MAX_PATH_LEN] = { 0 };
+
+        ASSERT_TRUE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
+    TEST_F(StringFuncPathTest, StripQuotes_PathHasUnbalancedPrecedingQuotes_Success)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str("C:\path\to\some\resource\)str";
+        const char* expectedResult = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str("/path/to/some/resource/)str";
+        const char* expectedResult = R"str(/path/to/some/resource/)str";
+    #endif
+
+        char output[AZ_MAX_PATH_LEN] = { 0 };
+
+        ASSERT_TRUE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
+    TEST_F(StringFuncPathTest, StripQuotes_PathHasUnbalancedTrailingQuotes_Success)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str(C:\path\to\some\resource\")str";
+        const char* expectedResult = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str(/path/to/some/resource/")str";
+        const char* expectedResult = R"str(/path/to/some/resource/)str";
+    #endif
+
+        char output[AZ_MAX_PATH_LEN] = { 0 };
+
+        ASSERT_TRUE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
+    TEST_F(StringFuncPathTest, StripQuotes_InsufficientOutputBuffer_Failure)
+    {
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        const char* input = R"str(C:\path\to\some\resource\)str";
+    #else
+        const char* input = R"str(/path/to/some/resource/)str";
+    #endif
+        const char expectedResult[1] = { 0 };
+
+        char output[1] = { 0 };
+        ASSERT_FALSE(AZ::StringFunc::Path::StripQuotes(input, output, AZ_ARRAY_SIZE(output)));
+        ASSERT_STREQ(output, expectedResult);
+    }
+
 
     class TestPathStringArgs
     {
@@ -511,7 +690,7 @@ namespace AzFramework
         AZStd::string input = AZStd::string(param.m_input);
         AZStd::string expected = AZStd::string(param.m_expected);
 
-        bool result = AzFramework::StringFunc::Path::Normalize(input);
+        bool result = AZ::StringFunc::Path::Normalize(input);
         EXPECT_TRUE(result);
         EXPECT_EQ(input, expected);
     }

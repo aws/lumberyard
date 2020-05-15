@@ -56,7 +56,7 @@ namespace GridUtils
         int lockupPreventionCounter = 10000;
         for (float tickX = firstTick; tickX < right && lockupPreventionCounter >= 0; tickX += pixelsPerTick, --lockupPreventionCounter)
         {
-            f(frame, tickX);
+            f(frame, aznumeric_cast<int>(tickX));
 
             frame += int(framesPerTick);
         }

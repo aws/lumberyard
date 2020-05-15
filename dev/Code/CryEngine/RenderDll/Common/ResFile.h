@@ -296,7 +296,7 @@ public:
 
     int mfFileClose(SDirEntry* de);
     bool mfCloseEntry(SDirEntry* de, bool bEraseOpenEntry = true);
-    SDirEntryOpen* mfOpenEntry(SDirEntry* de);
+    SDirEntryOpen* mfOpenEntry(SDirEntry* de, bool readingIntoEntryData = true);
     SDirEntryOpen* mfGetOpenEntry(SDirEntry* de);
     SDirEntry* mfGetEntry(CCryNameTSCRC name, bool* bAsync = NULL);
     ResDir* mfGetDirectory();

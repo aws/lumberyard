@@ -250,7 +250,7 @@ namespace AZ
             {
                 AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::SetBranchToken, branchToken.c_str());
             }
-            if (!ResourceCompilerUtil::ConnectToAssetProcessor(m_context.config->GetAsInt("port", 0, 0), "RC Scene Compiler"))
+            if (!ResourceCompilerUtil::ConnectToAssetProcessor(m_context.config->GetAsInt("port", 0, 0), "RC Scene Compiler", m_context.config->GetAsString("gamesubdirectory", "", "")))
             {
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to connect to Asset Processor on port %i.\n", m_context.config->GetAsInt("port", 0, 0));
                 return false;

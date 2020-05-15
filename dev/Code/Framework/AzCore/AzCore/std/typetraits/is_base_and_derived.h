@@ -121,8 +121,8 @@ namespace AZStd
             // May silently do the wrong thing with incomplete types
             // unless we trap them here:
             //
-            AZ_STATIC_ASSERT(sizeof(B) != 0, "B must be a complete type");
-            AZ_STATIC_ASSERT(sizeof(D) != 0, "D must be a complete type");
+            static_assert(sizeof(B) != 0, "B must be a complete type");
+            static_assert(sizeof(D) != 0, "D must be a complete type");
 
             struct Host
             {

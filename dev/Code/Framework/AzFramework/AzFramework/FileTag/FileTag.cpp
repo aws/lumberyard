@@ -12,6 +12,7 @@
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/string/wildcard.h>
 #include <AzCore/std/string/regex.h>
@@ -27,8 +28,8 @@ namespace AzFramework
 {
     namespace FileTag
     {
-        const char* BlackListFileName = "blacklist";
-        const char* WhiteListFileName = "whitelist";
+        const char* ExcludeFileName = "exclude";
+        const char* IncludeFileName = "include";
         const char* FileTags[] = { "ignore", "error", "productdependency", "editoronly", "shader" };
         const char EngineName[] = "Engine";
 
@@ -63,6 +64,18 @@ namespace AzFramework
 
             LowerCaseFileTags(fileTags);
             return true;
+        }
+
+        AZStd::string ResolveFilePath(const AZStd::string& filePath)
+        {
+            char filePathBuffer[AZ_MAX_PATH_LEN] = { 0 };
+            AZ::IO::FileIOBase::GetInstance()->ResolvePath(filePath.c_str(), filePathBuffer, AZ_MAX_PATH_LEN);
+
+            AZStd::string resolvedFilePath(filePathBuffer);
+            // Do not call the normalize function since it will strip the wildcard character
+            AZStd::replace(resolvedFilePath.begin(), resolvedFilePath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
+
+            return resolvedFilePath;
         }
 
         FileTagManager::FileTagManager()
@@ -101,9 +114,13 @@ namespace AzFramework
             }
 
             AzFramework::FileTag::FileTagAsset* fileTagAsset = GetFileTagAsset(fileTagType);
-            AZStd::string successString;
+            AZStd::string resolvedFilePath = ResolveFilePath(filePath);
+            auto entryFound = AZStd::find_if(fileTagAsset->m_fileTagMap.begin(), fileTagAsset->m_fileTagMap.end(), [resolvedFilePath](auto& entry) -> bool
+            {
+                return ResolveFilePath(entry.first) == resolvedFilePath;
+            });
 
-            auto entryFound = fileTagAsset->m_fileTagMap.find(filePath);
+            AZStd::string successString;
             if (entryFound != fileTagAsset->m_fileTagMap.end())
             {
                 if (filePatternType != AzFramework::FileTag::FilePatternType::Exact && filePatternType != entryFound->second.m_filePatternType)
@@ -145,7 +162,11 @@ namespace AzFramework
             AzFramework::FileTag::FileTagAsset* fileTagAsset = GetFileTagAsset(fileTagType);
             AZStd::string successString;
 
-            auto entryFound = fileTagAsset->m_fileTagMap.find(filePath);
+            auto entryFound = AZStd::find_if(fileTagAsset->m_fileTagMap.begin(), fileTagAsset->m_fileTagMap.end(), [filePath](auto& entry) -> bool
+            {
+                return ResolveFilePath(entry.first) == ResolveFilePath(filePath);
+            });
+
             if (entryFound == fileTagAsset->m_fileTagMap.end())
             {
                 return AZ::Failure(AZStd::string::format("Unable to find file/pattern (%s) for removal.\n", filePath.c_str()));
@@ -182,7 +203,6 @@ namespace AzFramework
         {
             return AddTagsInternal(filePath, fileTagType, fileTags);
         }
-
 
         AZ::Outcome<AZStd::string, AZStd::string> FileTagManager::RemoveFileTags(const AZStd::string& filePath, FileTagType fileTagType, const AZStd::vector<AZStd::string>& fileTags)
         {
@@ -226,7 +246,7 @@ namespace AzFramework
             AZStd::string destinationFilePath;
             const char* appRoot = nullptr;
             AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-            AzFramework::StringFunc::Path::ConstructFull(appRoot, EngineName, fileTagType == FileTagType::BlackList ? BlackListFileName : WhiteListFileName, AzFramework::FileTag::FileTagAsset::Extension(), destinationFilePath, true);
+            AzFramework::StringFunc::Path::ConstructFull(appRoot, EngineName, fileTagType == FileTagType::Exclude ? ExcludeFileName : IncludeFileName, AzFramework::FileTag::FileTagAsset::Extension(), destinationFilePath, true);
             return destinationFilePath;
         }
 
@@ -313,17 +333,15 @@ namespace AzFramework
                     continue;
                 }
 
-                // File paths specified inside *_dependencies.xml may not have the correct file system separator (e.g. <Dependency path="config\\singleplayer.cfg" />)
-                // We need to replace the wrong separator and add '*' at the beginning of the string to make it work with the tag system
                 AZStd::string filePathPattern = pathAttr->value();
-                AZStd::replace(filePathPattern.begin(), filePathPattern.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-                if (!filePathPattern.starts_with("*"))
+                if (filePathPattern.find("*") == AZStd::string::npos)
                 {
-                    filePathPattern = "*" + filePathPattern;
+                    m_fileTagsMap[filePathPattern] = AzFramework::FileTag::FileTagData({ "ignore", "productdependency" }, FilePatternType::Exact);
                 }
-
-                AZStd::to_lower(filePathPattern.begin(), filePathPattern.end());
-                m_patternTagsMap[filePathPattern] = AzFramework::FileTag::FileTagData({ "ignore", "productdependency" }, FilePatternType::Wildcard);
+                else
+                {
+                    m_patternTagsMap[filePathPattern] = AzFramework::FileTag::FileTagData({ "ignore", "productdependency" }, FilePatternType::Wildcard);
+                }
             }
 
             return true;
@@ -349,9 +367,13 @@ namespace AzFramework
         AZStd::set<AZStd::string> FileTagQueryManager::GetTags(const AZStd::string& filePath)
         {
             AZStd::set<AZStd::string> tags;
-            AZStd::string normalizedFilePath = filePath;
-            AzFramework::StringFunc::AssetDatabasePath::Normalize(normalizedFilePath);
-            auto found = m_fileTagsMap.find(normalizedFilePath);
+            AZStd::string resolvedFilePath = ResolveFilePath(filePath);
+
+            auto found = AZStd::find_if(m_fileTagsMap.begin(), m_fileTagsMap.end(), [filePath, resolvedFilePath, this](auto& entry) -> bool
+            {
+                return resolvedFilePath == ResolveFilePath(entry.first);
+            });
+
             if (found != m_fileTagsMap.end())
             {
                 tags.insert(found->second.m_fileTags.begin(), found->second.m_fileTags.end());
@@ -361,7 +383,7 @@ namespace AzFramework
             {
                 if (data.second.m_filePatternType == AzFramework::FileTag::FilePatternType::Wildcard)
                 {
-                    if (AZStd::wildcard_match(data.first, normalizedFilePath))
+                    if (AZStd::wildcard_match(ResolveFilePath(data.first), resolvedFilePath))
                     {
                         tags.insert(data.second.m_fileTags.begin(), data.second.m_fileTags.end());
                     }
@@ -369,7 +391,7 @@ namespace AzFramework
                 else
                 {
                     AZStd::regex regex(data.first, AZStd::regex::extended);
-                    if (AZStd::regex_match(normalizedFilePath.c_str(), regex))
+                    if (AZStd::regex_match(resolvedFilePath.c_str(), regex))
                     {
                         tags.insert(data.second.m_fileTags.begin(), data.second.m_fileTags.end());
                     }

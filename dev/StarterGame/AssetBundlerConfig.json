@@ -1,0 +1,10 @@
+{
+    "Seeds": [
+        "levels/startergame/level.pak"
+    ],
+    "SeedListFiles": [
+        "StarterGame/Levels/StarterGame/SeedAssetList.seed"
+    ],
+    "AddDefaultSeedListFiles": true,
+    "AllowOverwrites":  true
+}

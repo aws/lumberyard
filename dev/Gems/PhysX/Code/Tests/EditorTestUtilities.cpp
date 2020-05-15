@@ -25,7 +25,7 @@
 
 namespace PhysXEditorTests
 {
-    ToolsApplicationMessageHandler PhysXEditorFixture::s_messageHandler = ToolsApplicationMessageHandler();
+    ToolsApplicationMessageHandler* PhysXEditorFixture::s_messageHandler;
     AzToolsFramework::ToolsApplication* PhysXEditorFixture::s_app = nullptr;
     PhysXEditorSystemComponentEntity* PhysXEditorFixture::s_systemComponentEntity = nullptr;
 
@@ -61,6 +61,7 @@ namespace PhysXEditorTests
     {
         if (s_app == nullptr)
         {
+            s_messageHandler = new ToolsApplicationMessageHandler();
             PhysX::SystemComponent::InitializePhysXSDK();
 
             s_app = aznew AzToolsFramework::ToolsApplication;
@@ -100,6 +101,8 @@ namespace PhysXEditorTests
             delete s_app;
             s_app = nullptr;
             PhysX::SystemComponent::DestroyPhysXSDK();
+            delete s_messageHandler;
+            s_messageHandler = nullptr;
         }
     }
 
@@ -108,10 +111,17 @@ namespace PhysXEditorTests
         m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
         m_defaultWorld->SetEventHandler(this);
         Physics::DefaultWorldBus::Handler::BusConnect();
+
+        m_oldConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetConfiguration();
     }
 
     void PhysXEditorFixture::TearDown()
     {
+        // Have to reset config to the old one, because other tests will pick up this config, but they rely
+        // on old configurations instead. This can be deleted once asset directory is isolated between tests.
+        // https://jira.agscollab.com/browse/LY-105551
+        AZ::Interface<PhysX::ConfigurationRequests>::Get()->SetConfiguration(m_oldConfiguration);
+
         Physics::DefaultWorldBus::Handler::BusDisconnect();
         m_defaultWorld.reset();
 

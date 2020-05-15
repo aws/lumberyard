@@ -968,6 +968,7 @@ namespace EMStudio
     void MotionSetWindow::OnLoadEntries()
     {
         const AZStd::vector<AZStd::string> filenames = GetMainWindow()->GetFileManager()->LoadMotionsFileDialog(this);
+        GetMainWindow()->activateWindow();
         if (filenames.empty())
         {
             return;

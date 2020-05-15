@@ -15,6 +15,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
@@ -22,10 +23,12 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzFramework/Asset/AssetRegistry.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
+#include <AzFramework/Asset/AssetRegistry.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 // uncomment to have the catalog be dumped to stdout:
 //#define DEBUG_DUMP_CATALOG
@@ -41,16 +44,20 @@ namespace AzFramework
         , m_registry(aznew AssetRegistry())
     {
         AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
+        // We need to start listening immediately - Updates are not queued
+        StartMonitoringAssets();
     }
 
-    AssetCatalog::AssetCatalog(bool useRequestBus)
+    AssetCatalog::AssetCatalog(bool directConnections)
         : m_shutdownThreadSignal(false)
         , m_registry(aznew AssetRegistry())
-        , m_useRequestBus(useRequestBus)
+        , m_directConnections(directConnections)
     {
-        if (m_useRequestBus)
+        if (m_directConnections)
         {
             AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
+            // We need to start listening immediately - Updates are not queued
+            StartMonitoringAssets();
         }
     }
 
@@ -59,10 +66,7 @@ namespace AzFramework
     //=========================================================================
     AssetCatalog::~AssetCatalog()
     {
-        if (m_useRequestBus)
-        {
-            AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
-        }
+        AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
         DisableCatalog();
         Reset();
     }
@@ -279,23 +283,32 @@ namespace AzFramework
     
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependencies(const AZ::Data::AssetId& id)
     {
+        return GetAllProductDependenciesFilter(id, {});
+    }
+
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+    {
         AZStd::vector<AZ::Data::ProductDependency> dependencyList;
         AZStd::unordered_set<AZ::Data::AssetId> assetSet;
 
-        AddAssetDependencies(id, assetSet, dependencyList);
+        if (exclusionList.find(id) == exclusionList.end())
+        {
+            AddAssetDependencies(id, assetSet, dependencyList, exclusionList);
+        }
 
         // dependencyList will be appended to while looping, so use a traditional loop
-        for(size_t i = 0; i < dependencyList.size(); ++i)
+        for (size_t i = 0; i < dependencyList.size(); ++i)
         {
-            AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList);
+            AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList, exclusionList);
         }
 
         return AZ::Success(AZStd::move(dependencyList));
     }
 
-    void AssetCatalog::AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList)
+    void AssetCatalog::AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList) const
     {
         using namespace AZ::Data;
+
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
         auto itr = m_registry->m_assetDependencies.find(searchAssetId);
 
@@ -305,6 +318,11 @@ namespace AzFramework
 
             for (const ProductDependency& dependency : assetDependencyList)
             {
+                if(exclusionList.find(dependency.m_assetId) != exclusionList.end())
+                {
+                    continue;
+                }
+
                 // Only proceed if this ID is valid and we haven't encountered this assetId before.
                 // Invalid IDs usually come from unmet path product dependencies.
                 if (dependency.m_assetId.IsValid() &&
@@ -405,6 +423,13 @@ namespace AzFramework
 
         if (!bytes.empty())
         {
+            AZStd::shared_ptr < AzFramework::AssetRegistry> prevRegistry;
+            if (!m_initialized)
+            {
+                // First time initialization may have updates already processed which we want to apply
+                prevRegistry = AZStd::move(m_registry);
+                m_registry.reset(aznew AssetRegistry());
+            }
             AZ::IO::MemoryStream catalogStream(bytes.data(), bytes.size());
         #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
             ApplicationRequests::Bus::Broadcast(&ApplicationRequests::PumpSystemEventLoopWhileDoingWorkInNewThread,
@@ -421,6 +446,13 @@ namespace AzFramework
 
             AZ_TracePrintf("AssetCatalog", "Loaded registry containing %u assets.\n", m_registry->m_assetIdToInfo.size());
 
+            // It's currently possible in tools for us to have received updates from AP which were applied before the catalog was ready to load
+            // due to CryPak and CrySystem coming online later than our components
+            if (!m_initialized)
+            {
+                ApplyDeltaCatalog(prevRegistry);
+                m_initialized = true;
+            }
             AssetCatalogEventBus::Broadcast(&AssetCatalogEventBus::Events::OnCatalogLoaded, catalogRegistryFile);
         }
         else
@@ -551,7 +583,16 @@ namespace AzFramework
     //=========================================================================
     void AssetCatalog::StartMonitoringAssets()
     {
-        AssetSystemBus::Handler::BusConnect();
+        AZStd::lock_guard<AZStd::mutex> m_monitorLock{ m_monitorMutex };
+        if (m_monitoring)
+        {
+            return;
+        }
+        m_monitoring = true;
+        if (m_directConnections)
+        {
+            AZ::Interface<AssetSystem::NetworkAssetUpdateInterface>::Register(this);
+        }
     }
 
     //=========================================================================
@@ -559,12 +600,25 @@ namespace AzFramework
     //=========================================================================
     void AssetCatalog::StopMonitoringAssets()
     {
-        AssetSystemBus::Handler::BusDisconnect();
+        AZStd::lock_guard<AZStd::mutex> m_monitorLock{ m_monitorMutex };
+        if (!m_monitoring)
+        {
+            return;
+        }
+        m_monitoring = false;
+
+        if (m_directConnections)
+        {
+            AZ::Interface<AssetSystem::NetworkAssetUpdateInterface>::Unregister(this);
+        }
     }
 
     //=========================================================================
-    // AssetSystemBus::AssetChanged
+    // NetworkAssetUpdateInterface
     //=========================================================================
+    // note that this function is called from within a network job thread in order to update
+    // the catalog as soon as new data is available, before other systems try to reach in and query
+    // the results.  For this reason, it is a direct call and protects its structures with a lock.
     void AssetCatalog::AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage message)
     {
         AZStd::string relativePath = message.m_data;
@@ -572,15 +626,16 @@ namespace AzFramework
 
         AZ::Data::AssetId assetId = message.m_assetId;
 
-        // Uncomment this when debugging change notifications
-        //AZ_TracePrintf("AssetCatalog", "AssetChanged: path=%s id=%s\n", relativePath.c_str(), assetId.ToString<AZStd::string>().c_str());
         AZStd::string extension;
         AzFramework::StringFunc::Path::GetExtension(relativePath.c_str(), extension, false);
         if (assetId.IsValid())
         {
             bool isNewAsset = false;
             {
+                // this scope controls the below lock guard, do not remove this scope.  
+                // the lock must expire before we send out notifications to other systems.
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+
                 // is it an add or a change?
                 auto assetInfoPair = m_registry->m_assetIdToInfo.find(assetId);
                 isNewAsset = (assetInfoPair == m_registry->m_assetIdToInfo.end());
@@ -610,57 +665,83 @@ namespace AzFramework
             }
             if (!isNewAsset)
             {
-                EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetChanged, assetId);
+                // the following deliveries must happen on the main thread of the application:
+                AZ::TickBus::QueueFunction([assetId]() 
+                {
+                    AzFramework::AssetCatalogEventBus::Broadcast(&AzFramework::AssetCatalogEventBus::Events::OnCatalogAssetChanged, assetId);
+                });
 
                 // in case someone has an ancient reference, notify on that too.
                 for (const auto& mapping : message.m_legacyAssetIds)
                 {
-                    EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetChanged, mapping);
+                    AZ::TickBus::QueueFunction([mapping]()
+                    {
+                        AzFramework::AssetCatalogEventBus::Broadcast(&AzFramework::AssetCatalogEventBus::Events::OnCatalogAssetChanged, mapping);
+                    });
+                    
                 }
             }
             else
             {
-                EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetAdded, assetId);
+                AZ::TickBus::QueueFunction([assetId]()
+                {
+                    AzFramework::AssetCatalogEventBus::Broadcast(&AzFramework::AssetCatalogEventBus::Events::OnCatalogAssetAdded, assetId);
+                });
                 for (const auto& mapping : message.m_legacyAssetIds)
                 {
-                    EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetAdded, mapping);
+                    AZ::TickBus::QueueFunction([mapping]()
+                    {
+                        AzFramework::AssetCatalogEventBus::Broadcast(&AzFramework::AssetCatalogEventBus::Events::OnCatalogAssetAdded, mapping);
+                    });
                 }
             }
 
-            EBUS_QUEUE_EVENT_ID(AZ::Crc32(extension.c_str()), AzFramework::LegacyAssetEventBus, OnFileChanged, relativePath);
-            AZ::Data::AssetManager::Instance().ReloadAsset(assetId);
+            AzFramework::LegacyAssetEventBus::QueueEvent(AZ::Crc32(extension.c_str()), &AzFramework::LegacyAssetEventBus::Events::OnFileChanged, relativePath);
+            
+            if (AZ::Data::AssetManager::IsReady())
+            {
+                AZ::TickBus::QueueFunction([assetId]()
+                {
+                    AZ::Data::AssetManager::Instance().ReloadAsset(assetId, true);
+                });
+            }
         }
         else
         {
-            AZ_TracePrintf("AssetCatalog", "AssetChanged: invalid asset id: %s", assetId.ToString<AZStd::string>().c_str());
+            AZ_TracePrintf("AssetCatalog", "AssetChanged: invalid asset id: %s\n", assetId.ToString<AZStd::string>().c_str());
         }
     }
 
     //=========================================================================
-    // AssetSystemBus::AssetRemoved
+    // NetworkAssetUpdateInterface
     //=========================================================================
+    // note that this function is called from within a network job thread in order to update
+    // the catalog as soon as new data is available, before other systems try to reach in and query
+    // the results.  For this reason, it is a direct call and protects its structures with a lock.
     void AssetCatalog::AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message)
     {
         AZStd::string relativePath = message.m_data;
-        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, MakePathAssetRootRelative, relativePath);
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::Bus::Events::MakePathAssetRootRelative, relativePath);
 
         const AZ::Data::AssetId assetId = message.m_assetId;
         if (assetId.IsValid())
         {
-            AZ_TracePrintf("AssetCatalog", "AssetRemoved: path=%s id=%s\n", relativePath.c_str(), assetId.ToString<AZStd::string>().c_str());
             AZStd::string extension;
             AzFramework::StringFunc::Path::GetExtension(relativePath.c_str(), extension, false);
-            EBUS_QUEUE_EVENT_ID(AZ::Crc32(extension.c_str()), AzFramework::LegacyAssetEventBus, OnFileRemoved, relativePath);
             UnregisterAsset(assetId);
-            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
-            for (const auto& mapping : message.m_legacyAssetIds)
             {
-                m_registry->UnregisterLegacyAssetMapping(mapping);
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+                for (const auto& mapping : message.m_legacyAssetIds)
+                {
+                    m_registry->UnregisterLegacyAssetMapping(mapping);
+                }
             }
+            // queue this for later delivery, since we are not on the main thread:
+            AzFramework::LegacyAssetEventBus::QueueEvent(AZ::Crc32(extension.c_str()), &AzFramework::LegacyAssetEventBus::Events::OnFileRemoved, relativePath);
         }
         else
         {
-            AZ_TracePrintf("AssetCatalog", "AssetRemoved: invalid asset id: %s", assetId.ToString<AZStd::string>().c_str());
+            AZ_TracePrintf("AssetCatalog", "AssetRemoved: invalid asset id: %s\n", assetId.ToString<AZStd::string>().c_str());
         }
     }
 
@@ -942,7 +1023,7 @@ namespace AzFramework
     }
 
 
-    bool AssetCatalog::CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion)
+    bool AssetCatalog::CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion, const AZStd::vector<AZStd::string>& levelDirs)
     {
         if (bundleVersion > AzFramework::AssetBundleManifest::CurrentBundleVersion || bundleVersion < 0)
         {
@@ -956,6 +1037,11 @@ namespace AzFramework
         {
             manifest.SetCatalogName(deltaCatalogPath);
             manifest.SetDependentBundleNames(dependentBundleNames);
+        }
+
+        if (bundleVersion >= 2)
+        {
+            manifest.SetLevelsDirectory(levelDirs);
         }
 
         AZStd::string manifestFilePath;

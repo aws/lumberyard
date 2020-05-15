@@ -119,6 +119,10 @@ namespace EMotionFX
         AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, m_valueParameter);
     }
 
+    AZ::Outcome<size_t> AnimGraphParameterAction::GetParameterIndex() const
+    {
+        return m_parameterIndex;
+    }
 
     void AnimGraphParameterAction::SetParameterName(const AZStd::string& parameterName)
     {
@@ -174,6 +178,33 @@ namespace EMotionFX
         *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_parameterName.c_str());
     }
 
+    void AnimGraphParameterAction::ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
+    {
+        if (m_parameterName == oldParameterName)
+        {
+            SetParameterName(newParameterName);
+        }
+    }
+
+    void AnimGraphParameterAction::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
+    {
+        AZ_UNUSED(beforeChange);
+        AZ_UNUSED(afterChange);
+        m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+    }
+
+    void AnimGraphParameterAction::ParameterRemoved(const AZStd::string& oldParameterName)
+    {
+        if (oldParameterName == m_parameterName)
+        {
+            m_parameterName.clear();
+            m_parameterIndex = AZ::Failure();
+        }
+        else
+        {
+            m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+        }
+    }
 
     void AnimGraphParameterAction::Reflect(AZ::ReflectContext* context)
     {
@@ -199,7 +230,7 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphParameterAction::m_parameterName, "Parameter", "The parameter name to apply the action on.")
+            ->DataElement(AZ_CRC("AnimGraphNumberParameter", 0x8023eba9), &AnimGraphParameterAction::m_parameterName, "Parameter", "The parameter name to apply the action on.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphParameterAction::Reinit)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                 ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphParameterAction::GetAnimGraph)

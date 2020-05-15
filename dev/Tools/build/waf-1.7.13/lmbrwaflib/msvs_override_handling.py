@@ -12,14 +12,20 @@
 #
 
 ## Description: Helper to configure build customizations requested by visual studio
-from waflib.TaskGen import before_method, feature
-from waflib import Utils
 
+# System Imports
 import os
 import sys
+
+# waflib imports
+from waflib.TaskGen import before_method, feature
+from waflib import Context, Utils, Errors
 from waflib.Configure import conf
 from waflib import Logs
-from cry_utils import compare_config_sets
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import compare_config_sets
+
 
 ###############################################################################
 def _set_override(override_options_map, node_name, node_value, env, proj_path):
@@ -174,8 +180,24 @@ def _get_project_overrides(ctx, target):
     vs_platform = target_platform_details['toolset_name']
     vs_configuration = ctx.target_configuration
     vs_valid_spec_for_build = '[%s] %s|%s' % (vs_spec, vs_configuration, vs_platform)
- 
-    vcxproj_file =  (ctx.get_project_output_folder(ctx.options.msvs_version).make_node('%s%s'%(target,'.vcxproj'))).abspath()
+
+    solutions_path = ctx.options.visual_studio_solution_folder
+    
+    dependent_platform = ctx.get_platform_attribute(ctx.target_platform, 'dependent_platform')
+    if dependent_platform:
+        # If the target platform has a dependent platform, use that dependent target platform's msvs:vs_solution_key instead
+        dependent_target_platform_details = ctx.get_platform_attribute(dependent_platform, 'msvs')
+        solutions_name_option_key = dependent_target_platform_details.get('vs_solution_key')
+    else:
+        solutions_name_option_key = target_platform_details.get('vs_solution_key')
+
+    if not solutions_name_option_key:
+        raise Errors.WafError("Missing required msvs attribute 'vs_solution_key' for platform settings '{}'".format(ctx.target_platform))
+    solutions_name_value = getattr(ctx.options, solutions_name_option_key, None)
+    if not solutions_name_value:
+        raise Errors.WafError("Invalid solutions name attribute value for platform settings '{}': '{]' not found in settings.".format(ctx.target_platform, solutions_name_option_key))
+
+    vcxproj_file = os.path.join(Context.launch_dir, solutions_path, '{}.depproj'.format(solutions_name_value),'{}.vcxproj'.format(target))
 
     # Example: <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='[MyProject] Profile|Win64'"> 
     project_override = '<ItemDefinitionGroup Condition="\'$(Configuration)|$(Platform)\'==\'%s\'"' % vs_valid_spec_for_build
@@ -228,14 +250,14 @@ def _get_project_overrides(ctx, target):
         # </ItemGroup>
         elif stripped_line.startswith('<ItemGroup>') == True:   
             while True:
-                next_line = file_iter.next().strip()
+                next_line = next(file_iter).strip()
                 
                 # Check that element is a "ClCompile" element that has child elements i.e. not <ClCompile ... />
                 if next_line.endswith('/>') == False and next_line.startswith('<ClCompile') == True:                    
                     item_tasks = []             
                     # Is WAF Element
                     while True:
-                        next_line_child = file_iter.next().strip()                      
+                        next_line_child = next(file_iter).strip()
                         if next_line_child.startswith('<WAF_'):                     
                             # Condition meets platform specs (optimize if needed)
                             if vs_valid_spec_for_build in next_line_child:
@@ -325,7 +347,7 @@ def apply_project_compiler_overrides_msvc(self):
 
     def _count_non_empty_values(item_list):
         count = 0
-        for key, value in item_list.iteritems():
+        for key, value in item_list.items():
             if value is None:
                 continue
             if isinstance(value,str):
@@ -357,14 +379,14 @@ def apply_project_compiler_overrides_msvc(self):
             if len(project_tasks) > 0:
                 _detach_and_consolidate_envs(project_tasks)
                 for task in project_tasks:
-                    for key, value in project_overrides.iteritems():
+                    for key, value in project_overrides.items():
                         _apply_env_override(task.env, key, value)
 
     # If there are any file overrides, process them
     file_overrides = self.bld.get_file_overrides(target)
     if len(file_overrides) > 0:
 
-        for file_path, override_options in file_overrides.iteritems():
+        for file_path, override_options in file_overrides.items():
 
             # Scan through the overrides and make sure we have at least one non-empty item to apply
             file_override_count = _count_non_empty_values(override_options)
@@ -375,7 +397,7 @@ def apply_project_compiler_overrides_msvc(self):
                 if len(item_tasks) > 0:
                     _detach_and_consolidate_envs(item_tasks)
                     for task in item_tasks:
-                        for key, value in override_options.iteritems():
+                        for key, value in override_options.items():
                             _apply_env_override(task.env, key, value)
 
 
@@ -434,7 +456,7 @@ def get_solution_overrides(self):
             project_guid_to_name[project_guid] = project_name
             
         elif stripped_line.startswith('Global') == True:
-            file_iter.next()
+            next(file_iter)
             break 
         else:
             continue
@@ -442,7 +464,7 @@ def get_solution_overrides(self):
     # Skip to beginning of project configurations information
     for line in file_iter:      
         if line.lstrip().startswith('GlobalSection(ProjectConfigurationPlatforms) = postSolution') == True:
-            file_iter.next()
+            next(file_iter)
             break       
       
     # Loop over all project

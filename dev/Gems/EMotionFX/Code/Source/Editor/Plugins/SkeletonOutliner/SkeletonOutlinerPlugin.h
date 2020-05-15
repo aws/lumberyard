@@ -33,12 +33,16 @@ namespace EMotionFX
         Q_OBJECT //AUTOMOC
 
     public:
+        enum {
+            CLASS_ID = 0x00754155
+        };
+
         SkeletonOutlinerPlugin();
-        ~SkeletonOutlinerPlugin();
+        ~SkeletonOutlinerPlugin() override;
 
         // EMStudioPlugin overrides
         const char* GetName() const override                { return "Skeleton Outliner"; }
-        uint32 GetClassID() const override                  { return 0x00754155; }
+        uint32 GetClassID() const override                  { return CLASS_ID; }
         bool GetIsClosable() const override                 { return true;  }
         bool GetIsFloatable() const override                { return true;  }
         bool GetIsVertical() const override                 { return false; }
@@ -50,7 +54,7 @@ namespace EMotionFX
         QModelIndex GetSingleSelectedModelIndex() override;
         AZ::Outcome<const QModelIndexList&> GetSelectedRowIndices() override;
         SkeletonModel* GetModel() override;
-        void DataChanged(const QModelIndex& modelIndex);
+        void DataChanged(const QModelIndex& modelIndex) override;
         void DataListChanged(const QModelIndexList& modelIndexList) override;
 
     private slots:

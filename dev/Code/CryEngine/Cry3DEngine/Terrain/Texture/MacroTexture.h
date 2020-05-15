@@ -13,7 +13,7 @@
 #pragma once
 
 #include "TexturePool.h"
-#include "../../Cry3DEngineBase.h"
+#include "../LegacyTerrainBase.h"
 #include <IStreamEngine.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/vector.h>
@@ -21,23 +21,21 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/string/string.h>
 
+namespace LegacyTerrain
+{
+    namespace MacroTexture
+    {
+        struct TileStatistics;
+    } //namespace MacroTexture
+
+    struct MacroTextureConfiguration;
+
+} //namespace LegacyTerrain
+
 namespace Morton
 {
     using Key = uint32;
 }
-
-struct MacroTextureConfiguration
-{
-    AZStd::vector<int16> indexBlocks;
-    AZStd::string filePath = "";
-    uint32 maxElementCountPerPool = 0x1000;
-    uint32 totalSectorDataSize = 0;
-    uint32 tileSizeInPixels = 0;
-    uint32 sectorStartDataOffset = 0;
-    float colorMultiplier_deprecated = 1.0f;
-    ETEX_Format texureFormat = eTF_Unknown;
-    bool endian = eLittleEndian;
-};
 
 /*!
  * A runtime class for a tiled, quadtree-based megatexture format. This implementation
@@ -46,12 +44,12 @@ struct MacroTextureConfiguration
  * Higher mip levels are returned on a cache miss.
  */
 class MacroTexture
-    : private Cry3DEngineBase
+    : public LegacyTerrainBase
     , public IStreamCallback
 {
 public:
 
-    MacroTexture(const MacroTextureConfiguration& configuration);
+    MacroTexture(const LegacyTerrain::MacroTextureConfiguration& configuration);
     ~MacroTexture();
 
     using UniquePtr = AZStd::unique_ptr<MacroTexture>;
@@ -96,25 +94,6 @@ public:
         uint32 mipLevel;
     };
 
-    //! Current statistics of the internal streaming engine and texture pools.
-    struct TileStatistics
-    {
-        //! Total number of textures available.
-        uint32 poolCapacity;
-
-        //! Total texture tiles requested for paging.
-        uint32 activeTotalCount;
-
-        //! Total texture tiles resident in memory.
-        uint32 residentCount;
-
-        //! Total texture tiles currently streaming from disk.
-        uint32 streamingCount;
-
-        //! Total texture tiles waiting to be streamed (requires eviction).
-        uint32 waitingCount;
-    };
-
     //! Flush all tiles from memory and reset the texture pool.
     void FlushTiles();
 
@@ -134,7 +113,7 @@ public:
     //!                                             prioritize new stream requests based on distance.
     void Update(uint32 maxNewStreamRequestCount, LoadPolicy loadPolicy, const Vec2* streamingFocusPoint);
 
-    void GetTileStatistics(TileStatistics& statistics) const;
+    void GetTileStatistics(LegacyTerrain::MacroTexture::TileStatistics& statistics) const;
 
     void GetMemoryUsage(ICrySizer* sizer) const;
 
@@ -145,9 +124,9 @@ public:
 
 private:
 
-    MacroTexture(const MacroTexture& other) AZ_DELETE_METHOD;
-    MacroTexture& operator=(const MacroTexture& other) AZ_DELETE_METHOD;
-	
+    MacroTexture(const MacroTexture& other) = delete;
+    MacroTexture& operator=(const MacroTexture& other) = delete;
+
 
     void InitNodeTree(Morton::Key key, Region region, uint32 depth, const int16*& indices, uint16& elementsLeft);
     struct Node

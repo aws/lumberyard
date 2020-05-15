@@ -10,8 +10,9 @@
 #
 # $Revision: #1 $
 
-import httplib
-from urlparse import urlparse
+import six
+from six.moves.urllib import parse
+
 import random
 import time
 import json
@@ -19,7 +20,7 @@ from cgf_utils import json_utils
 
 
 def success_response(data, physical_resource_id):
-    print 'success_response -- data: {} -- physical_resource_id: {}'.format(data, physical_resource_id)
+    print('success_response -- data: {} -- physical_resource_id: {}'.format(data, physical_resource_id))
     return {
         'Success': True,
         'Data': data,
@@ -28,7 +29,7 @@ def success_response(data, physical_resource_id):
 
 
 def failure_response(reason):
-    print 'failure_response -- reason: {}'.format(reason)
+    print('failure_response -- reason: {}'.format(reason))
     return {
         'Success': False,
         'Reason': reason
@@ -41,7 +42,7 @@ class HttpError(Exception):
 
 
 def succeed(event, context, data, physical_resource_id):
-    print 'succeeded -- event: {} -- context: {} -- data: {} -- physical_resource_id: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, data, physical_resource_id)
+    print('succeeded -- event: {} -- context: {} -- data: {} -- physical_resource_id: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, data, physical_resource_id))
     __send(event, context, 
         {
             'Status': 'SUCCESS',
@@ -55,7 +56,7 @@ def succeed(event, context, data, physical_resource_id):
 
 
 def fail(event, context, reason):
-    print 'failed -- event: {} -- context: {} -- reason: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, reason)
+    print('failed -- event: {} -- context: {} -- reason: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, reason))
     __send(event, context, 
         {
             'Status': 'FAILED',
@@ -77,7 +78,7 @@ def __send(event, context, body):
 
     bodyJSON = json.dumps(body)
 
-    parsed_url = urlparse(event['ResponseURL'])
+    parsed_url = parse.urlparse(event['ResponseURL'])
 
     path = parsed_url.path
     if parsed_url.query:
@@ -90,18 +91,17 @@ def __send(event, context, body):
 
         try:
 
-            connection = httplib.HTTPSConnection(parsed_url.hostname)
+            connection = six.moves.http_client.HTTPSConnection(parsed_url.hostname)
             connection.connect()
             connection.request('PUT', path, bodyJSON)
             response = connection.getresponse()
-            if response.status != httplib.OK:
+            if response.status != six.moves.http_client.OK:
                 raise HttpError(response)
 
             return
 
         except Exception as e:
-
-            print 'Attempt to send custom resource response failed: {}'.format(e.message)
+            print('Attempt to send custom resource response failed: {}'.format(str(e)))
 
             if count == BACKOFF_MAX_TRYS:
                 raise e
@@ -109,7 +109,7 @@ def __send(event, context, body):
             temp = min(BACKOFF_MAX_SECONDS, BACKOFF_BASE_SECONDS * 2 ** count)
             sleep_seconds = temp / 2 + random.uniform(0, temp / 2)
 
-            print 'Retry attempt {}. Sleeping {} seconds'.format(count, sleep_seconds)
+            print('Retry attempt {}. Sleeping {} seconds'.format(count, sleep_seconds))
 
             time.sleep(sleep_seconds)
 

@@ -99,41 +99,53 @@ namespace GradientSignal
         }
 
         GradientSampleParams sampleParamsTransformed(sampleParams);
-        AZ_ErrorOnce("GradientSignal", !m_isRequestInProgress, "Detected cyclic dependences with gradient entity references");
+
+        //apply transform if set
+        if (m_enableTransform && GradientSamplerUtil::AreTransformParamsSet(*this))
+        {
+            const AZ::Transform transform =
+                AZ::Transform::CreateTranslation(m_translate) *
+                AZ::ConvertEulerDegreesToTransform(m_rotate) *
+                AZ::Transform::CreateScale(m_scale);
+
+            sampleParamsTransformed.m_position = transform * sampleParamsTransformed.m_position;
+        }
 
         float output = 0.0f;
 
-        if (!m_isRequestInProgress)
         {
-            m_isRequestInProgress = true;
-
-            //apply transform if set
-            if (m_enableTransform && GradientSamplerUtil::AreTransformParamsSet(*this))
-            {
-                const AZ::Transform transform =
-                    AZ::Transform::CreateTranslation(m_translate) *
-                    AZ::ConvertEulerDegreesToTransform(m_rotate) *
-                    AZ::Transform::CreateScale(m_scale);
-
-                sampleParamsTransformed.m_position = transform * sampleParamsTransformed.m_position;
-            }
-
+            // Block other threads from accessing the surface data bus while we are in GetValue (which may call into the SurfaceData bus).
+            // We lock our surface data mutex *before* checking / setting "isRequestInProgress" so that we prevent race conditions
+            // that create false detection of cyclic dependencies when multiple requests occur on different threads simultaneously.
+            // (One case where this was previously able to occur was in rapid updating of the Preview widget on the GradientSurfaceDataComponent
+            // in the Editor when moving the threshold sliders back and forth rapidly)
             auto& surfaceDataContext = SurfaceData::SurfaceDataSystemRequestBus::GetOrCreateContext(false);
-            typename SurfaceData::SurfaceDataSystemRequestBus::Context::DispatchLockGuard scopeLock(surfaceDataContext.m_contextMutex); // block other threads from accessing the surface data bus while we are in GetValue (which may call into the SurfaceData bus)
-            GradientRequestBus::EventResult(output, m_gradientId, &GradientRequestBus::Events::GetValue, sampleParamsTransformed);
+            typename SurfaceData::SurfaceDataSystemRequestBus::Context::DispatchLockGuard scopeLock(surfaceDataContext.m_contextMutex);
 
-            if (m_invertInput)
+            if (m_isRequestInProgress)
             {
-                output = 1.0f - output;
+                AZ_ErrorOnce("GradientSignal", !m_isRequestInProgress, "Detected cyclic dependences with gradient entity references");
+            }
+            else
+            {
+                m_isRequestInProgress = true;
+
+                GradientRequestBus::EventResult(output, m_gradientId, &GradientRequestBus::Events::GetValue, sampleParamsTransformed);
+
+                if (m_invertInput)
+                {
+                    output = 1.0f - output;
+                }
+
+                //apply levels if set
+                if (m_enableLevels && GradientSamplerUtil::AreLevelParamsSet(*this))
+                {
+                    output = GetLevels(output, m_inputMid, m_inputMin, m_inputMax, m_outputMin, m_outputMax);
+                }
+
+                m_isRequestInProgress = false;
             }
 
-            //apply levels if set
-            if (m_enableLevels && GradientSamplerUtil::AreLevelParamsSet(*this))
-            {
-                output = GetLevels(output, m_inputMid, m_inputMin, m_inputMax, m_outputMin, m_outputMax);
-            }
-
-            m_isRequestInProgress = false;
         }
 
         return output * m_opacity;

@@ -95,6 +95,7 @@ namespace ScriptCanvasEditor
 
             void SetVisibility(const AZStd::vector<AZ::EntityId>& selectedEntityIds);
             void DisplayInstances(const InstancesToDisplay& instances);
+            ScriptCanvas::ScriptCanvasId GetScriptCanvasId(AZ::Component* component);
 
             AzToolsFramework::ComponentEditor* CreateComponentEditor();
 

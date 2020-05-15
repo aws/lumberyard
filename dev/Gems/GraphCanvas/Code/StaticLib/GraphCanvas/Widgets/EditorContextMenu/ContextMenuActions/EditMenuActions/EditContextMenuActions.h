@@ -26,7 +26,7 @@ namespace GraphCanvas
         CutGraphSelectionMenuAction(QObject* parent);
         virtual ~CutGraphSelectionMenuAction() = default;
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class CopyGraphSelectionMenuAction
@@ -38,20 +38,22 @@ namespace GraphCanvas
         CopyGraphSelectionMenuAction(QObject* parent);
         virtual ~CopyGraphSelectionMenuAction() = default;
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class PasteGraphSelectionMenuAction
         : public EditContextMenuAction
     {
     public:
+        using ContextMenuAction::RefreshAction;
+
         AZ_CLASS_ALLOCATOR(PasteGraphSelectionMenuAction, AZ::SystemAllocator, 0);
         
         PasteGraphSelectionMenuAction(QObject* parent);
         virtual ~PasteGraphSelectionMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
     
     class DeleteGraphSelectionMenuAction
@@ -63,7 +65,7 @@ namespace GraphCanvas
         DeleteGraphSelectionMenuAction(QObject* parent);
         virtual ~DeleteGraphSelectionMenuAction() = default;
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class DuplicateGraphSelectionMenuAction
@@ -75,6 +77,6 @@ namespace GraphCanvas
         DuplicateGraphSelectionMenuAction(QObject* parent);
         virtual ~DuplicateGraphSelectionMenuAction() = default;
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 }

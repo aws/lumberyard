@@ -156,8 +156,8 @@ namespace EMStudio
         glEnable(GL_MULTISAMPLE);
 
         // tell the system about the current viewport
-        glViewport(0, 0, mWidth * devicePixelRatioF(), mHeight * devicePixelRatioF());
-        renderUtil->SetDevicePixelRatio(devicePixelRatioF());
+        glViewport(0, 0, aznumeric_cast<GLsizei>(mWidth * devicePixelRatioF()), aznumeric_cast<GLsizei>(mHeight * devicePixelRatioF()));
+        renderUtil->SetDevicePixelRatio(aznumeric_cast<float>(devicePixelRatioF()));
 
         // update advanced render settings
         /*  graphicsManager->SetAdvancedRendering( renderOptions->mEnableAdvancedRendering );
@@ -320,16 +320,16 @@ namespace EMStudio
         glBegin(GL_LINES);
         // left
         glVertex2f(0.0f, 0.0f);
-        glVertex2f(0.0f, mHeight);
+        glVertex2f(0.0f, aznumeric_cast<GLfloat>(mHeight));
         // bottom
-        glVertex2f(0.0f, mHeight);
-        glVertex2f(mWidth, mHeight);
+        glVertex2f(0.0f, aznumeric_cast<GLfloat>(mHeight));
+        glVertex2f(aznumeric_cast<GLfloat>(mWidth), aznumeric_cast<GLfloat>(mHeight));
         // top
         glVertex2f(0.0f, 0.0f);
-        glVertex2f(mWidth, 0);
+        glVertex2f(aznumeric_cast<GLfloat>(mWidth), 0);
         // right
-        glVertex2f(mWidth, 0.0f);
-        glVertex2f(mWidth, mHeight);
+        glVertex2f(aznumeric_cast<GLfloat>(mWidth), 0.0f);
+        glVertex2f(aznumeric_cast<GLfloat>(mWidth), aznumeric_cast<float>(mHeight));
         glEnd();
 
         glLineWidth(1.0f);

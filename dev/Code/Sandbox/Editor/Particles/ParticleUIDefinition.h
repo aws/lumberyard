@@ -46,12 +46,14 @@ public:
     void ResetParticles(CParticleItem* pParticles, SLodInfo* pLevelOfDetail = nullptr);
 
 public:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     ParticleParams m_localParams;
     ParticleParams m_defaultParams;
     CVarBlockPtr m_vars;
     IVariable::OnSetCallback m_onSetCallback = nullptr;
     IParticleEffect* m_localParticleEffect = nullptr; // pointer to the particle effect that's being selected in the UI
     std::vector<IVariable*> m_pForceUpdateVars;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     float m_aspectRatioYX = 1;
     float m_aspectRatioZX = 1;

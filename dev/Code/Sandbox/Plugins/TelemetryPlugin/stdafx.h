@@ -90,5 +90,9 @@
 
 #include <IItem.h>
 
+#if (_MSC_VER >= 1920)
+#pragma comment(lib, "../../../../Bin64vc142/Editor.lib")
+#elif (_MSC_VER >= 1910)
 #pragma comment(lib, "../../../../Bin64vc141/Editor.lib")
+#endif
 

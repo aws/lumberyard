@@ -21,7 +21,7 @@ def build(bld):
     script_canvas_dir = driver_node.path_from(gem_node)
 ########################################################################################
 
-    USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework']
+    USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework', 'ExpressionEvaluationAPI']
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
     COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
@@ -39,7 +39,13 @@ def build(bld):
 
 
     CODEGEN_FILE_LIST = [
+
+            # Internal
+            'Include/ScriptCanvas/Internal/Nodes/ExpressionNodeBase.h',
             'Include/ScriptCanvas/Internal/Nodes/StringFormatted.h',
+            'Include/ScriptCanvas/Internal/Nodes/BaseTimerNode.h',
+
+            # Core
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
             'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
             'Include/ScriptCanvas/Libraries/Core/ForEach.h',
@@ -50,8 +56,13 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Core/SendScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/Start.h',
+
+            # Entity
             'Include/ScriptCanvas/Libraries/Entity/Rotate.h',
+
+            # Logic
             'Include/ScriptCanvas/Libraries/Logic/Any.h',
+            'Include/ScriptCanvas/Libraries/Logic/Cycle.h',
             'Include/ScriptCanvas/Libraries/Logic/Gate.h',
             'Include/ScriptCanvas/Libraries/Logic/Indexer.h',
             'Include/ScriptCanvas/Libraries/Logic/IsNull.h',
@@ -61,15 +72,21 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Logic/Sequencer.h',
             'Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.h',
             'Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.h',
-            'Include/ScriptCanvas/Libraries/Math/Random.h',
+
+            # String
             'Include/ScriptCanvas/Libraries/String/Format.h',
             'Include/ScriptCanvas/Libraries/String/Print.h',
             'Include/ScriptCanvas/Libraries/String/Replace.h',
             'Include/ScriptCanvas/Libraries/String/Contains.h',
             'Include/ScriptCanvas/Libraries/String/Utilities.h',
+
+            # Time
             'Include/ScriptCanvas/Libraries/Time/Countdown.h',
             'Include/ScriptCanvas/Libraries/Time/Duration.h',
+            'Include/ScriptCanvas/Libraries/Time/HeartBeat.h',
             'Include/ScriptCanvas/Libraries/Time/Timer.h',
+
+            # Unit Testing
             'Include/ScriptCanvas/Libraries/UnitTesting/AddFailure.h',
             'Include/ScriptCanvas/Libraries/UnitTesting/AddSuccess.h',
             'Include/ScriptCanvas/Libraries/UnitTesting/Checkpoint.h',
@@ -96,6 +113,8 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorPushBack.h',
             
             # Math
+            'Include/ScriptCanvas/Libraries/Math/Random.h',
+            'Include/ScriptCanvas/Libraries/Math/MathExpression.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorArithmetic.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorAdd.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorSub.h',
@@ -122,12 +141,8 @@ def build(bld):
         debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
         test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
 
-        includes        = ['.',
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           'Include',
-                           'Include/ScriptCanvas'],
-        use             = ['AzCore', 'AzFramework', 'ScriptEventsStatic','ScriptCanvasDebugger'],
+        includes        = ['Include', 'Include/ScriptCanvas'],
+        use             = ['AzCore', 'AzFramework', 'ScriptEventsStatic','ScriptCanvasDebugger', 'ExpressionEvaluation'],
         features        = ['az_code_gen'],
         win_features    = ['crcfix'],
         vs_filter       = 'Gems/ScriptCanvas',
@@ -158,12 +173,8 @@ def build(bld):
         debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
         test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
 
-        includes        = ['.',
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           'Include',
-                           'Include/ScriptCanvas'],
-        use             = ['AzCore', 'AzFramework'],
+        includes        = ['Include', 'Include/ScriptCanvas'],
+        use             = ['AzCore', 'AzFramework', 'ScriptEventsStatic'],
         win_features    = ['crcfix'],
         vs_filter       = 'Gems/ScriptCanvas',
         disable_pch     = True,
@@ -198,13 +209,10 @@ def build(bld):
 
     bld.DefineGem(
 
-        includes           = [ '.',
-                               '..',
-                               bld.ThirdPartyPath('boost'),
-                               bld.Path('Code/CryEngine/CryCommon') ,
-                               'Include',
-                               'Include/ScriptCanvas'
-                               ],
+        includes           = [ '.' , '..', 
+                                'Include',
+                                'Include/ScriptCanvas'
+                                ],
         export_includes     = [ '.', 'Include/ScriptCanvas', 'Editor/Include' ],
 
         defines             = COMMON_DEFINES,
@@ -243,7 +251,6 @@ def build(bld):
                                 'Include/ScriptCanvas',
                                 'Editor/Include',
                                 'Source',
-                                bld.ThirdPartyPath('boost'),
                                 bld.Path('Code/CryEngine/CryCommon'),
                                 bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                 bld.Path('Code/Sandbox/Editor'),

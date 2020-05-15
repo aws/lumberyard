@@ -16,7 +16,7 @@
 
 namespace EMotionFX
 {
-    class FloatSliderParameter 
+    class FloatSliderParameter
         : public FloatParameter
     {
     public:
@@ -26,9 +26,14 @@ namespace EMotionFX
         FloatSliderParameter()
             : FloatParameter()
         {}
-        
+
+        explicit FloatSliderParameter(AZStd::string name, AZStd::string description = {})
+            : FloatParameter(AZStd::move(name), AZStd::move(description))
+        {
+        }
+
         static void Reflect(AZ::ReflectContext* context);
-        
+
         const AZStd::string& GetTypeDisplayName() const override;
     };
-} 
+} // namespace EMotionFX

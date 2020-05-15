@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib.Configure import conf
-from waflib.TaskGen import feature, after_method, before_method
+# System Imports
+import os
+
+# waflib imports
 from waflib import Task, Logs, Utils, Errors
 from waflib.Context import BOTH
-import os
+from waflib.TaskGen import feature, after_method, before_method
+
 
 warned_about_missing_crcfix = False
 
@@ -36,11 +39,15 @@ def create_crcfix_tasks(self):
         return
 
     global warned_about_missing_crcfix
-    binary = os.path.join(self.bld.env['CRCFIX_PATH'][0], self.bld.env['CRCFIX_EXECUTABLE'])
-    if not os.path.exists(binary):
-        if not warned_about_missing_crcfix:
-            Logs.debug('crcfix: No crcfix binary found, skipping crcfix task creation')
-            warned_about_missing_crcfix = True
+    if self.bld.env['CRCFIX_PATH']:
+        binary = os.path.join(self.bld.env['CRCFIX_PATH'][0], self.bld.env['CRCFIX_EXECUTABLE'])
+        if not os.path.exists(binary):
+            if not warned_about_missing_crcfix:
+                Logs.debug('crcfix: No crcfix binary found, skipping crcfix task creation')
+                warned_about_missing_crcfix = True
+            return
+    else:
+        Logs.debug('crcfix: Path to crcfix binary not found for host {}'.format(host))
         return
 
     src_node = self.path.get_src()

@@ -11,7 +11,9 @@
 */
 
 #include "InitSceneAPIFixture.h"
+#include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/conversions.h>
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
@@ -35,7 +37,8 @@
 #include <EMotionFX/Pipeline/RCExt/ExportContexts.h>
 #include <EMotionFX/Pipeline/SceneAPIExt/Groups/ActorGroup.h>
 #include <EMotionFX/Pipeline/SceneAPIExt/Rules/MorphTargetRule.h>
-#include <Integration/System/SystemCommon.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 
 namespace EMotionFX
 {
@@ -43,6 +46,7 @@ namespace EMotionFX
     // the morph target pipeline tests
 
     using MorphTargetPipelineFixtureBase = InitSceneAPIFixture<
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
         AzToolsFramework::Components::PropertyManagerComponent,
@@ -59,7 +63,7 @@ namespace EMotionFX
         {
             MorphTargetPipelineFixtureBase::SetUp();
 
-            m_actor = EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::Actor::Create("TestActor"));
+            m_actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(0);
 
             // Set up the scene graph
             m_scene = new AZ::SceneAPI::Containers::MockScene("MockScene");
@@ -166,7 +170,7 @@ namespace EMotionFX
             return mesh;
         }
 
-        EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor> m_actor;
+        AZStd::unique_ptr<Actor> m_actor;
         AZ::SceneAPI::Containers::Scene* m_scene;
     };
 

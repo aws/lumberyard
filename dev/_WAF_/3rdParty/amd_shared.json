@@ -2,7 +2,7 @@
     "name": "amd_shared",
     "source": "@3P:AMD_AGS@",
     "description": "AMD AGS Library (Shared)",
-    "includes": [
+    "system_includes": [
         "inc"
     ],
     "defines": [

@@ -15,6 +15,7 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QIntValidator>
 #include <QLabel>
@@ -453,21 +454,21 @@ RGBSliders::RGBSliders(QWidget* widget)
     layout->addWidget(m_blueSlider);
 
     m_redSlider->setColorFunction([this](qreal position) {
-        return toQColor(position, m_greenSlider->value(), m_blueSlider->value());
+        return toQColor(aznumeric_cast<float>(position), aznumeric_cast<float>(m_greenSlider->value()), aznumeric_cast<float>(m_blueSlider->value()));
     });
     m_redSlider->setToolTipFunction([this](qreal position) {
         return createToolTipText("Red", position, m_redSlider, /*includeRGB=*/false);
     });
 
     m_greenSlider->setColorFunction([this](qreal position) {
-        return toQColor(m_redSlider->value(), position, m_blueSlider->value());
+        return toQColor(aznumeric_cast<float>(m_redSlider->value()), aznumeric_cast<float>(position), aznumeric_cast<float>(m_blueSlider->value()));
     });
     m_greenSlider->setToolTipFunction([this](qreal position) {
         return createToolTipText("Green", position, m_greenSlider, /*includeRGB=*/false);
     });
 
     m_blueSlider->setColorFunction([this](qreal position) {
-        return toQColor(m_redSlider->value(), m_greenSlider->value(), position);
+        return toQColor(aznumeric_cast<float>(m_redSlider->value()), aznumeric_cast<float>(m_greenSlider->value()), aznumeric_cast<float>(position));
     });
     m_blueSlider->setToolTipFunction([this](qreal position) {
         return createToolTipText("Blue", position, m_blueSlider, /*includeRGB=*/false);

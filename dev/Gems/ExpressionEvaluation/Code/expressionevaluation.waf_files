@@ -1,0 +1,30 @@
+{
+    "auto": {
+        "Include": [
+            "Include/ExpressionEvaluation/ExpressionEvaluationBus.h",
+            "Include/ExpressionEvaluation/ExpressionEngine.h"
+        ],
+        "Include/ExpressionEngine": [            
+            "Include/ExpressionEvaluation/ExpressionEngine/ExpressionTree.h",
+            "Include/ExpressionEvaluation/ExpressionEngine/ExpressionTypes.h"
+        ],
+        "Source": [
+            "Source/ExpressionEvaluationModule.cpp",
+            "Source/ExpressionEvaluationSystemComponent.cpp",
+            "Source/ExpressionEvaluationSystemComponent.h"
+        ],
+        "Source/ExpressionEngine": [
+            "Source/ExpressionEngine/ExpressionElementParser.h",
+            "Source/ExpressionEngine/ExpressionPrimitive.cpp",
+            "Source/ExpressionEngine/ExpressionPrimitive.h",
+            "Source/ExpressionEngine/ExpressionVariable.cpp",
+            "Source/ExpressionEngine/ExpressionVariable.h",
+            "Source/ExpressionEngine/InternalTypes.h",
+            "Source/ExpressionEngine/Utils.h"
+        ],
+        "Source/ExpressionEngine/MathOperators": [      
+            "Source/ExpressionEngine/MathOperators/MathExpressionOperators.cpp",
+            "Source/ExpressionEngine/MathOperators/MathExpressionOperators.h"
+        ]
+    }
+}

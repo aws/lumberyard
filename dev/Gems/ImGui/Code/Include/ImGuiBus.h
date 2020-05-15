@@ -208,7 +208,10 @@ namespace ImGui
             static void Disconnect(typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::BusPtr& busPtr)
             {
                 AZ::EBusConnectionPolicy<Bus>::Disconnect(context, handler, busPtr);
-                ImGuiEntityOutlinerRequestBus::Broadcast(&ImGuiEntityOutlinerRequestBus::Events::RemoveComponentView, busPtr->m_busId);
+                if (busPtr)
+                {
+                    ImGuiEntityOutlinerRequestBus::Broadcast(&ImGuiEntityOutlinerRequestBus::Events::RemoveComponentView, busPtr->m_busId);
+                }
             }
         };
     };

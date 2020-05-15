@@ -52,13 +52,13 @@
             "InitializeCloudCanvasProject.cpp",
             "InitializeCloudCanvasProject.h", 
             "MaglevControlPanelPlugin.cpp",
-            "MaglevControlPanelPlugin.h",
             "PlaceholderDeploymentStatusModel.cpp",
             "PlaceholderDeploymentStatusModel.h",
             "ProjectStatusModel.cpp",
             "ProjectStatusModel.h",
             "PythonWorker.cpp",
             "PythonWorker.h",
+            "CloudCanvasPythonWorkerInterface.h",
             "QAWSCredentialsEditor.cpp",
             "QAWSCredentialsEditor.h",
             "QBackgroundLambda.cpp",
@@ -81,9 +81,7 @@
             "StackStatusListModel.h",
             "StackStatusModel.cpp",
             "StackStatusModel.h",
-            "StandardItemChildManager.h",
-            "stdafx.cpp",
-            "stdafx.h"
+            "StandardItemChildManager.h"
         ],
         "DetailWidget":
         [
@@ -161,13 +159,17 @@
             "DetailWidget/ValidatingLineEditWidget.cpp",
             "DetailWidget/ValidatingLineEditWidget.h"
         ],
-        "UI":
+        "UI": 
         [
             "UI/AddSQSQueue.ui",
             "UI/AddSNSTopic.ui",
             "UI/AddS3Bucket.ui",
             "UI/AddDynamoDBTable.ui",
             "UI/AddLambdaFunction.ui"
+        ],
+        "Include": 
+        [
+            "Include/PythonWorkerBus.h"
         ]
     }
 }

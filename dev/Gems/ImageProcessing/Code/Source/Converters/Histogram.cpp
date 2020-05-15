@@ -12,8 +12,8 @@
 
 #include <ImageProcessing_precompiled.h>
 
-#include <BuilderSettings/PixelFormats.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/PixelFormats.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Converters/PixelOperation.h>
 #include <Processing/PixelFormatInfo.h>
 

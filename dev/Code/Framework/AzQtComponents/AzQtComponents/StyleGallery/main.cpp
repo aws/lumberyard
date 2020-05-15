@@ -88,7 +88,6 @@ QToolBar * toolBar()
         "Audio",
         "Database_view",
         "Delete_named_selection",
-        "Flowgraph",
         "Follow_terrain",
         "Freeze",
         "Gepetto",

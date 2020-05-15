@@ -32,4 +32,7 @@ def build(bld):
 
         win_x64_clang_cxxflags       = ['-Wno-int-to-void-pointer-cast',
                                         '-Wno-unknown-pragmas'],
+
+        # running "lmbr_waf clean_win_x64_*" should not remove crcfix as there would be no way to re-built from a package
+        exclude_from_clean           = True
     )

@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import retry
 import boto3_util
 import metric_constant as c
@@ -64,7 +76,7 @@ class Glue(object):
                         Name=self.__name(name)
                     )
                 except ClientError as e:
-                    print e
+                    print(e)
                     if e.response['Error']['Code'] != 'CrawlerRunningException':                    
                         break                    
             else:
@@ -88,7 +100,7 @@ class Glue(object):
                 Name=name
             )            
         except ClientError as e:
-            print e
+            print(e)
             return
 
     def delete_table(self, db_name, table_name):        
@@ -96,10 +108,10 @@ class Glue(object):
             result = self.__client.delete_table( 
                 DatabaseName=db_name,        
                 Name=table_name
-            )                    
-            print result
+            )
+            print(result)
         except ClientError as e:
-            print e
+            print(e)
             return
 
     def get_database(self, name):
@@ -113,7 +125,7 @@ class Glue(object):
                 Name=self.__name(name)
             )            
         except ClientError as e:
-            print e
+            print(e)
         
         if sync:
             self.__wait_for_crawler(name)         
@@ -124,7 +136,7 @@ class Glue(object):
                 CrawlerName=self.__name(name)
             )            
         except ClientError as e:
-            print e
+            print(e)
         if sync:
             self.__wait_for_crawler(name)
 
@@ -147,7 +159,7 @@ class Glue(object):
         try:       
             response = self.__client.get_crawler(**params)                    
         except ClientError as e:     
-            print e       
+            print(e)
             if (hasattr(e, 'response') and e.response and e.response['Error']['Code'] == 'EntityNotFoundException'):
                 return None
             raise e
@@ -207,8 +219,8 @@ class Glue(object):
         params = dict({})     
         params['DatabaseName'] = db_name    
         params['TableName'] = table_name
-        params['PartitionsToDelete'] = values       
-        print params 
+        params['PartitionsToDelete'] = values
+        print(params)
         return retry.try_with_backoff({}, self.__client.batch_delete_partition, **params)   
         
     def __wait_for_crawler(self, name):
@@ -217,7 +229,7 @@ class Glue(object):
         while attempt < max_attempts:
             response = self.get_crawler(name)
             state = response['Crawler']['State']
-            print name, 'is', state
+            print(name, 'is', state)
             if state == "READY":                
                 break
             else:

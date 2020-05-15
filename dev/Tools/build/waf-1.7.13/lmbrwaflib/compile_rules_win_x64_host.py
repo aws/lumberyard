@@ -1,4 +1,4 @@
-#
+﻿#
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -8,9 +8,12 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib.Configure import conf, Logs
-import cry_utils
+
+# System Imports
 import os
+
+# waflib imports
+from waflib.Configure import conf, Logs
 
 
 # being a _host file, this means that these settings apply to any build at all that is
@@ -92,24 +95,26 @@ def load_win_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = AZ_CODE_GEN_EXECUTABLE
     v['CODE_GENERATOR_PATH'] = [AZCG_VALIDATED_PATH]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/2.7.12/windows/Lib'),
-                                        conf.Path('Tools/Python/2.7.12/windows/libs'),
-                                        conf.Path('Tools/Python/2.7.12/windows/DLLs'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/windows/Lib'),
+                                        conf.Path('Tools/Python/3.7.5/windows/libs'),
+                                        conf.Path('Tools/Python/3.7.5/windows/DLLs'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/2.7.12/windows/Lib'),
-                                              conf.Path('Tools/Python/2.7.12/windows/libs'),
-                                              conf.Path('Tools/Python/2.7.12/windows/DLLs'),
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.5/windows/Lib'),
+                                              conf.Path('Tools/Python/3.7.5/windows/libs'),
+                                              conf.Path('Tools/Python/3.7.5/windows/DLLs'),
                                               conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/windows')
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/windows')
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/windows'
+    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/windows')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
-
+    
     v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']
     v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'],'include')
     v['EMBEDDED_PYTHON_LIBPATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'libs')
-    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'python27.dll')
+    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'python37.dll')
+
 
     crcfix_dir = conf.Path('Tools/crcfix/bin/windows')
     if not os.path.exists(crcfix_dir):

@@ -24,29 +24,24 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 
-namespace AZ
+namespace AZ::IO
 {
-    namespace IO
-    {
-        /**
-         * Streamer internal data.
-         */
-        struct StreamerData
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(StreamerData, SystemAllocator, 0)
 
-            AZStd::thread_desc  m_threadDesc;                   ///< Device thread descriptor.
-            AZStd::shared_ptr<StreamStackEntry> m_streamStack;  ///< The stack used for file reads that go directly to the file system and decompress asynchronously.
+/**
+ * Streamer internal data.
+ */
+struct StreamerData
+{
+public:
+    AZ_CLASS_ALLOCATOR(StreamerData, SystemAllocator, 0)
 
-            AZStd::mutex                        m_devicesLock;
-            AZStd::fixed_vector<Device*, 32>    m_devices;
-            StreamerContext m_streamerContext;
-        };
-    }
-}
+    AZStd::thread_desc  m_threadDesc;                   ///< Device thread descriptor.
+    AZStd::shared_ptr<StreamStackEntry> m_streamStack;  ///< The stack used for file reads that go directly to the file system and decompress asynchronously.
 
-using namespace AZ::IO;
+    AZStd::mutex                        m_devicesLock;
+    AZStd::fixed_vector<Device*, 32>    m_devices;
+    StreamerContext m_streamerContext;
+};
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -56,29 +51,23 @@ using namespace AZ::IO;
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-namespace AZ
+static const char* kStreamerInstanceVarName = "StreamerInstance";
+
+AZ::EnvironmentVariable<Streamer*> g_streamer;
+
+Streamer* GetStreamer()
 {
-    namespace IO
+    if (!g_streamer)
     {
-        static const char* kStreamerInstanceVarName = "StreamerInstance";
-
-        AZ::EnvironmentVariable<Streamer*> g_streamer;
-
-        Streamer* GetStreamer()
-        {
-            if (!g_streamer)
-            {
-                g_streamer = Environment::FindVariable<Streamer*>(kStreamerInstanceVarName);
-            }
-
-            return g_streamer ? (*g_streamer) : nullptr;
-        }
-
-        namespace Platform
-        {
-            bool GetDeviceSpecsFromPath(DeviceSpecifications& specs, const char* fullpath);
-        }
+        g_streamer = Environment::FindVariable<Streamer*>(kStreamerInstanceVarName);
     }
+
+    return g_streamer ? (*g_streamer) : nullptr;
+}
+
+namespace Platform
+{
+    bool GetDeviceSpecsFromPath(DeviceSpecifications& specs, const char* fullpath);
 }
 
 //=========================================================================
@@ -729,3 +718,5 @@ bool Streamer::ResolveRequestPath(RequestPath& resolvedPath, bool& isArchivedFil
     }
     return true;
 }
+
+} // namespace AZ::IO

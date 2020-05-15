@@ -99,13 +99,11 @@ namespace AZStd
             : m_tree(rhs.m_tree)  {}
         AZ_FORCE_INLINE map(const this_type& rhs, const Allocator& alloc)
             : m_tree(rhs.m_tree, alloc)   {}
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE map(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
             m_tree.insert_unique(list.begin(), list.end());
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         // Add move semantics...
         AZ_FORCE_INLINE this_type& operator=(const this_type& rhs) { m_tree = rhs.m_tree; return *this; }
@@ -367,13 +365,11 @@ namespace AZStd
             : m_tree(rhs.m_tree) {}
         AZ_FORCE_INLINE multimap(const this_type& rhs, const Allocator& alloc)
             : m_tree(rhs.m_tree, alloc)   {}
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE multimap(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
             m_tree.insert_equal(list.begin(), list.end());
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         // Add move semantics...
         AZ_FORCE_INLINE this_type& operator=(const this_type& rhs) { m_tree = rhs.m_tree; return *this; }

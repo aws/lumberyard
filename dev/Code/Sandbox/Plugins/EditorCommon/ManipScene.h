@@ -232,10 +232,12 @@ namespace Manip
         virtual QuatT GetTransform(const SSpaceAndIndex& index) const = 0;
     };
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     class EDITOR_COMMON_API CScene
         : public QObject
         , public QViewportConsumer
     {
+    AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
         Q_OBJECT
     public:
         CScene();
@@ -312,6 +314,7 @@ namespace Manip
         IElementTracer* m_customTracer;
         IElementDrawer* m_customDrawer;
 
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         SSelectionSet m_selection;
         unique_ptr<IMouseDragHandler> m_mouseDragHandler;
         ISpaceProvider* m_spaceProvider;
@@ -326,6 +329,7 @@ namespace Manip
         SLookSettings m_lookSettings;
         int m_highlightedItem;
         QuatT m_temporaryLocalDelta;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     };
 }
 

@@ -50,7 +50,7 @@ namespace AzToolsFramework
 }
 
 // CRenderViewport window
-
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API CRenderViewport
     : public QtViewport
     , public IEditorNotifyListener
@@ -64,6 +64,7 @@ class SANDBOX_API CRenderViewport
     , public AzToolsFramework::EditorEvents::Bus::Handler
     , public AzFramework::WindowRequestBus::Handler
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
     struct SResolution
@@ -311,7 +312,9 @@ public:
 
     static CRenderViewport* GetPrimaryViewport();
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     CCamera m_Camera;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 protected:
     struct SScopedCurrentContext;
@@ -429,6 +432,7 @@ protected:
     float m_moveSpeed = 1;
 
     float m_orbitDistance = 10.0f;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Vec3 m_orbitTarget;
 
     //-------------------------------------------
@@ -617,6 +621,7 @@ private:
     size_t m_cameraSetForWidgetRenderingCount = 0; ///< How many calls to PreWidgetRendering happened before
                                                    ///< subsequent calls to PostWidetRendering.
     AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // Used to prevent circular set camera events
     bool m_ignoreSetViewFromEntityPerspective = false;

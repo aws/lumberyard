@@ -31,6 +31,14 @@
             "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h",
             "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.cpp"
         ],
+        "Source/Pipeline/PrimitiveShapeFitter": [
+            "Source/Pipeline/PrimitiveShapeFitter/PrimitiveShapeFitter.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/PrimitiveShapeFitter.h",
+            "Source/Pipeline/PrimitiveShapeFitter/AbstractShapeParameterization.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/AbstractShapeParameterization.h",
+            "Source/Pipeline/PrimitiveShapeFitter/Utils.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/Utils.h"
+        ],
         "Editor": [
             "Editor/ConfigurationWidget.h",
             "Editor/ConfigurationWidget.cpp",

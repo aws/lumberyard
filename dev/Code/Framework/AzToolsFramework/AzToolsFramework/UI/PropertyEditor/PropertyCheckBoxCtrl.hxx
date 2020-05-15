@@ -10,33 +10,26 @@
 *
 */
 
-#ifndef PROPERTY_BOOLCHECKBOX_CTRL
-#define PROPERTY_BOOLCHECKBOX_CTRL
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QtWidgets/QWidget>
 #include "PropertyEditorAPI.h"
 
-#pragma once
-
 class QCheckBox;
-class QLineEdit;
-class QPushButton;
 
 namespace AzToolsFramework
 {
-    //just a test to see how it would work to pop a dialog
-
-    class PropertyBoolCheckBoxCtrl : public QWidget
+    class PropertyCheckBoxCtrl
+        : public QWidget
     {
-        template<typename T> friend class PropertyCheckBoxHandlerCommon;
         Q_OBJECT
     public:
-        AZ_CLASS_ALLOCATOR(PropertyBoolCheckBoxCtrl, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(PropertyCheckBoxCtrl, AZ::SystemAllocator, 0);
 
-        PropertyBoolCheckBoxCtrl(QWidget* pParent = NULL);
-        virtual ~PropertyBoolCheckBoxCtrl();
+        PropertyCheckBoxCtrl(QWidget* parent = nullptr);
+        virtual ~PropertyCheckBoxCtrl() = default;
 
         bool value() const;
 
@@ -56,34 +49,65 @@ namespace AzToolsFramework
         void onStateChanged(int value);
 
     private:
-        QCheckBox* m_pCheckBox;
+        QCheckBox* m_checkBox;
     };
 
-    template <class ValueType> class PropertyCheckBoxHandlerCommon : public PropertyHandler<ValueType, PropertyBoolCheckBoxCtrl>
+    class CheckBoxHandlerCommon
+        : public QObject
     {
-        virtual AZ::u32 GetHandlerName(void) const override { return AZ_CRC("CheckBox", 0x1e7b08ed); }
-        virtual bool IsDefaultHandler() const override { return true; }
-        virtual QWidget* GetFirstInTabOrder(PropertyBoolCheckBoxCtrl* widget) override { return widget->GetFirstInTabOrder(); }
-        virtual QWidget* GetLastInTabOrder(PropertyBoolCheckBoxCtrl* widget) override { return widget->GetLastInTabOrder(); }
-        virtual void UpdateWidgetInternalTabbing(PropertyBoolCheckBoxCtrl* widget) override { widget->UpdateTabOrder(); }
-
-        virtual void ConsumeAttribute(PropertyBoolCheckBoxCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(CheckBoxHandlerCommon, AZ::SystemAllocator, 0);
+        QWidget* CreateGUICommon(QWidget* parent);
+        void ConsumeAttributeCommon(PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName);
     };
 
-    class BoolPropertyCheckBoxHandler : QObject, public PropertyCheckBoxHandlerCommon<bool>
+    template <typename ValueType>
+    class PropertyCheckBoxHandlerCommon
+        : public CheckBoxHandlerCommon
+        , public PropertyHandler<ValueType, PropertyCheckBoxCtrl>
+    {
+    public:
+        AZ::u32 GetHandlerName(void) const override { return AZ::Edit::UIHandlers::CheckBox; }
+        bool IsDefaultHandler() const override { return true; }
+        QWidget* GetFirstInTabOrder(PropertyCheckBoxCtrl* widget) override { return widget->GetFirstInTabOrder(); }
+        QWidget* GetLastInTabOrder(PropertyCheckBoxCtrl* widget) override { return widget->GetLastInTabOrder(); }
+        void UpdateWidgetInternalTabbing(PropertyCheckBoxCtrl* widget) override { widget->UpdateTabOrder(); }
+
+        void ConsumeAttribute(PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+    };
+
+    class BoolPropertyCheckBoxHandler
+        : public PropertyCheckBoxHandlerCommon<bool>
     {
         // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(BoolPropertyCheckBoxHandler, AZ::SystemAllocator, 0);
 
-        virtual QWidget* CreateGUI(QWidget *pParent) override;
+        QWidget* CreateGUI(QWidget *parent) override;
  
-        virtual void WriteGUIValuesIntoProperty(size_t index, PropertyBoolCheckBoxCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        virtual bool ReadValuesIntoGUI(size_t index, PropertyBoolCheckBoxCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
+        void WriteGUIValuesIntoProperty(size_t index, PropertyCheckBoxCtrl* widget, property_t& instance, InstanceDataNode* node) override;
+        bool ReadValuesIntoGUI(size_t index, PropertyCheckBoxCtrl* widget, const property_t& instance, InstanceDataNode* node)  override;
     };
 
-    void RegisterBoolCheckBoxHandler();
+    // A CheckBoxGenericHandler is used to register a checkbox widget that doesn't depend on the underlying type
+    // This is useful if we want UI checkbox element that doesn't have any specific underlying storage
+    class CheckBoxGenericHandler
+        : public CheckBoxHandlerCommon
+        , public GenericPropertyHandler<PropertyCheckBoxCtrl>
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(CheckBoxGenericHandler, AZ::SystemAllocator, 0);
+
+        QWidget* CreateGUI(QWidget* parent) override;
+        AZ::u32 GetHandlerName() const override { return AZ::Edit::UIHandlers::CheckBox; }
+        void WriteGUIValuesIntoProperty(size_t index, PropertyCheckBoxCtrl* widget, void* value, const AZ::Uuid& propertyType) override;
+        bool ReadValueIntoGUI(size_t index, PropertyCheckBoxCtrl* widget, void* value, const AZ::Uuid& propertyType) override;
+        void ConsumeAttribute(PropertyCheckBoxCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+    };
+
+    void RegisterCheckBoxHandlers();
 };
 
-#endif

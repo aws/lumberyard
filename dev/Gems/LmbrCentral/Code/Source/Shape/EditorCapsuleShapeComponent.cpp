@@ -91,13 +91,23 @@ namespace LmbrCentral
             m_capsuleShape.GetCurrentTransform());
     }
 
-    void EditorCapsuleShapeComponent::ConfigurationChanged()
+    void EditorCapsuleShapeComponent::ClampHeight()
     {
+        // make sure the height is at least twice the radius so that the capsule is tall enough to accommodate the end caps
+        const float height = m_capsuleShape.GetCapsuleConfiguration().m_height;
+        const float radius = m_capsuleShape.GetCapsuleConfiguration().m_radius;
+        m_capsuleShape.ModifyCapsuleConfiguration().m_height = AZ::GetMax(height, 2.0f * radius);
+    }
+
+    AZ::Crc32 EditorCapsuleShapeComponent::ConfigurationChanged()
+    {
+        ClampHeight();
         GenerateVertices();
         m_capsuleShape.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
         ShapeComponentNotificationsBus::Event(
             GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+        return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
     }
 
     void EditorCapsuleShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)

@@ -53,12 +53,12 @@ namespace CD
         mathMatrixLookAt(&mView, camera.GetPosition(), camera.GetPosition() + camera.GetViewdir(), BrushVec3(0, 0, 1));
         Matrix44A mInvViewProj = (mView * mProj).GetInverted();
 
-        Vec4 projectedpos = Vec4((screenPos.x - vx) / vw * 2.0f - 1.0f,
+        Vec4d projectedpos = Vec4d((screenPos.x - vx) / vw * 2.0f - 1.0f,
                 -((screenPos.y - vy) / vh) * 2.0f + 1.0f,
                 screenPos.z,
                 1.0f);
 
-        Vec4 wp = projectedpos * mInvViewProj;
+        Vec4d wp = projectedpos * mInvViewProj;
         worldPos.x = wp.x / wp.w;
         worldPos.y = wp.y / wp.w;
         worldPos.z = wp.z / wp.w;
@@ -609,8 +609,8 @@ namespace CD
         Vec3 tVecx, tVecy;
         CalcTextureBasis(p, ti, tVecx, tVecy);
 
-        float scale_u = fabs(ti.scale[0]) < kDesignerEpsilon ? kDesignerEpsilon : ti.scale[0];
-        float scale_v = fabs(ti.scale[1]) < kDesignerEpsilon ? kDesignerEpsilon : ti.scale[1];
+        float scale_u = fabs(ti.scale[0]) < kDesignerEpsilon ? aznumeric_cast<float>(kDesignerEpsilon) : ti.scale[0];
+        float scale_v = fabs(ti.scale[1]) < kDesignerEpsilon ? aznumeric_cast<float>(kDesignerEpsilon) : ti.scale[1];
 
         if (ti.scale[0] < 0)
         {
@@ -767,7 +767,7 @@ namespace CD
         for (int i = nSegmentCount - 1; i >= 0; --i)
         {
             BrushFloat theta = startRadian + diffRadian * ((BrushFloat)i / (BrushFloat)(nSegmentCount - 1));
-            BrushVec2 v(vCenter.x + fRadius * cosf(theta), vCenter.y + fRadius * sinf(theta));
+            BrushVec2 v(vCenter.x + fRadius * cosf(aznumeric_cast<float>(theta)), vCenter.y + fRadius * sinf(aznumeric_cast<float>(theta)));
             outVertexList.push_back(v);
         }
     }
@@ -777,7 +777,7 @@ namespace CD
         BrushVec2 vCenterToPos2D = (vPointedPos - vCenter).GetNormalized();
         BrushVec2 vAxis2D(1.0f, 0.0f);
         BrushLine vAxisLine(vCenter, vCenter + vAxis2D);
-        float fAngle = acos(vAxis2D.Dot(vCenterToPos2D));
+        float fAngle = aznumeric_cast<float>(acos(vAxis2D.Dot(vCenterToPos2D)));
         if (vAxisLine.Distance(vPointedPos) < 0)
         {
             fAngle = -fAngle;

@@ -32,49 +32,20 @@
 
 namespace Multiplayer
 {
+    class MultiplayerLobbyServiceWrapper;
+    class MultiplayerDedicatedHostTypeSelectionCanvas;
+    class MultiplayerGameLiftLobbyCanvas;
+    class MultiplayerLANGameLobbyCanvas;
+    class MultiplayerBusyAndErrorCanvas;
+
     class MultiplayerLobbyComponent
         : public AZ::Component
         , public GridMate::SessionEventBus::Handler
         , public Multiplayer::MultiplayerLobbyBus::Handler
-        , public UiCanvasNotificationBus::Handler
-        , public IActionListener
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         , public GridMate::GameLiftClientServiceEventsBus::Handler
 #endif
     {
-    private:
-        enum class LobbyMode
-        {
-            Unknown,
-            LobbySelection,
-            GameliftLobby,
-            ServiceWrapperLobby
-        };
-
-        class ServerListingResultRow
-        {
-        public:
-            ServerListingResultRow(const AZ::EntityId& canvas, int row, int text, int highlight);
-
-            int GetRowID();
-
-            void Select();
-            void Deselect();
-
-            void DisplayResult(const GridMate::SearchInfo* result);
-
-            void ResetDisplay();
-
-        private:
-
-            void SetTitle(const char* title);
-
-            AZ::EntityId m_canvas;
-            int m_row;
-            int m_text;
-            int m_highlight;
-        };
-
     public:
         AZ_COMPONENT(MultiplayerLobbyComponent,"{916E8722-7CCF-4FBA-B2B2-81A7407B2272}");
         static void Reflect(AZ::ReflectContext* reflectContext);
@@ -83,15 +54,8 @@ namespace Multiplayer
         virtual ~MultiplayerLobbyComponent();
 
         // AZ::Component
-        void Init();
-        void Activate();
-        void Deactivate();
-
-        // UiCanvasActionNotification
-        void OnAction(AZ::EntityId entityId, const LyShine::ActionName& actionName) override;
-
-        // IActionListener
-        void OnAction(const ActionId& action, int activationMode, float value) override;
+        void Activate() override;
+        void Deactivate() override;
 
         // SessionEventBus
         void OnSessionCreated(GridMate::GridSession* session) override;
@@ -100,84 +64,61 @@ namespace Multiplayer
 
         // MultiplayerLobbyBus
         int GetGamePort() const;
-
-        void ShowError(const char* error);
-        void DismissError(bool force = false);
-
-        void ShowBusyScreen();
-        void DismissBusyScreen(bool force = false);
-
         void ConfigureSessionParams(GridMate::SessionParams& sessionParams);
 
     protected:
+        enum class LobbyMode
+        {
+            Unknown,
+            LobbySelection, // Provides selection to enter LAN/GAMELIFT
+            GameliftLobby, // GameLift lobby
+            ServiceWrapperLobby // LAN lobby
+        };
 
         // MultiplayerLobbyComponent
         void ShowSelectionLobby();
         void ShowLobby(LobbyMode lobbyType);
         void HideLobby();
 
-        bool StartSessionService(LobbyMode lobbyType);
-        void StopSessionService();
+        virtual bool StartSessionService(LobbyMode lobbyType);
+        virtual void StopSessionService();
 
         void CreateServer();
-
         void ListServers();
-        void ClearServerListings();
         void ClearSearches();
-        void SelectId(int rowId);
 
         void JoinServer();
         bool JoinSession(const GridMate::SearchInfo* searchInfo);
 
-        bool SanityCheck();
+        virtual bool SanityCheck();
+        virtual bool SanityCheckGameLift();
 
-        void ShowQueuedErrorMessage();
+        void SelectLANServerType();
+        void SelectGameLiftServerType();
+        void StartGameLiftMatchmaking();
 
-        AZ::EntityId LoadCanvas(const char* canvasName) const;
-        void SetElementEnabled(const AZ::EntityId& canvasID, const char* elementName, bool enabled);
-        void SetElementInputEnabled(const AZ::EntityId& canvasID, const char* elementName, bool enabled);
-        void SetElementText(const AZ::EntityId& canvasID, const char* elementName, const char* text);
-        LyShine::StringType GetElementText(const AZ::EntityId& canvasID, const char* elementName) const;
+        MultiplayerLANGameLobbyCanvas* m_lanGameLobbyCanvas;
+        MultiplayerGameLiftLobbyCanvas* m_gameLiftLobbyCanvas;
+        MultiplayerBusyAndErrorCanvas* m_busyAndErrorCanvas;
+        MultiplayerDedicatedHostTypeSelectionCanvas* m_dedicatedHostTypeSelectionCanvas;
+        // Wrapped Session Service
+        MultiplayerLobbyServiceWrapper* m_multiplayerLobbyServiceWrapper;
 
-        template<class T>
-        void RegisterServiceWrapper()
-        {
-            if (m_multiplayerLobbyServiceWrapper)
-            {
-                delete m_multiplayerLobbyServiceWrapper;
-            }
+        // Shared Configuration
+        GridMate::GridSearch* m_listSearch;
 
-            m_multiplayerLobbyServiceWrapper = aznew T(GetEntityId());
-        }
-
+        // Gamelift Configuration
+        GridMate::GridSearch* m_gameliftCreationSearch;
     private:
-
-        // Server Listing Methods
-        void OnLobbySelectionAction(const ActionId& action, int activationMode, float value);
-        void OnServerListingAction(const ActionId& action, int activationMode, float value);
-
-        // Functions used by the ServerListing View
-        void SetupServerListingDisplay();
-        LyShine::StringType GetServerName() const;
-        LyShine::StringType GetMapName() const;
 
         // ServiceWrapperLobby Functions
         bool SanityCheckWrappedSessionService();
         void CreateServerForWrappedService();
         void ListServersForWrappedService();
 
-        // GameLift Functions
-        const char* GetGameLiftParam(const char* param);
-        bool GetGameLiftBoolParam(const char* param);
-        void SetGameLiftParam(const char* param, const char* value);
+        bool ValidateGameLiftConfig();
 
-        void ShowGameLiftConfig();
-        void DismissGameLiftConfig();
-        void SaveGameLiftConfig();
-
-        bool SanityCheckGameLift();
-
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         bool StartGameLiftSession();
         void StopGameLiftSession();
         void CreateServerForGameLift();
@@ -186,7 +127,16 @@ namespace Multiplayer
         // GridMate::GameLiftSessionServiceEventsBus::Handler
         void OnGameLiftSessionServiceReady(GridMate::GameLiftClientService*) override;
         void OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService*, const AZStd::string& message) override;
+
 #endif
+
+        void ShowError(const char* error);
+        void DismissError(bool force = false);
+        void ShowBusyScreen();
+        void DismissBusyScreen(bool force = false);
+
+        LyShine::StringType GetMapName() const;
+        LyShine::StringType GetServerName() const;
 
         // External Configuration
         int m_maxPlayers;
@@ -196,32 +146,11 @@ namespace Multiplayer
 
         AZStd::string m_defaultMap;
         AZStd::string m_defaultServerName;
-
-        // Internal Configuration
-        AZ::EntityId m_selectionLobbyID;
-        AZ::EntityId m_serverListingID;
+        AZStd::string m_defaultMatchmakingConfig;
 
         bool m_unregisterGameliftServiceOnErrorDismiss;
         bool m_hasGameliftSession;
-        bool m_isShowingBusy;
-        bool m_isShowingError;
-        bool m_isShowingGameLiftConfig;
         LobbyMode m_lobbyMode;
-
-        int m_selectedServerResult;
-
-        // Shared Configuration
-        GridMate::GridSearch* m_listSearch;
-        GridMate::GridSearch* m_joinSearch;
-
-        // Wrapped Session Service
-        MultiplayerLobbyServiceWrapper* m_multiplayerLobbyServiceWrapper;
-
-        // Gamelift Configuration
-        GridMate::GridSearch* m_gameliftCreationSearch;
-
-        AZStd::vector< ServerListingResultRow > m_listingRows;
-        AZStd::vector< AZStd::string > m_errorMessageQueue;
     };
 }
 

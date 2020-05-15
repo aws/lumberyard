@@ -111,6 +111,8 @@ public:
         const float());
     MOCK_METHOD0(GetGSMRangeStep,
         const float());
+    MOCK_CONST_METHOD0(GetTerrainDetailMaterialsViewDistRatio
+        , float());
     MOCK_METHOD0(GetLoadedObjectCount,
         int());
     MOCK_METHOD2(GetLoadedStatObjArray,
@@ -125,6 +127,12 @@ public:
         void(IRenderNode* pEntity));
     MOCK_METHOD0(IsSunShadows,
         bool());
+    MOCK_METHOD2(MakeSystemMaterialFromShaderHelper
+        , _smart_ptr<IMaterial>(const char* sShaderName, SInputShaderResources* Res));
+    MOCK_METHOD1(CheckMinSpecHelper
+        , bool(uint32 nMinSpec));
+    MOCK_METHOD1(OnCasterDeleted
+        , void(IShadowCaster* pCaster));
     MOCK_METHOD7(SetOctreeCompiledData,
         bool(byte* pData, int nDataSize, std::vector<IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable,
             bool bHotUpdate, SHotUpdateInfo* pExportInfo, bool loadTerrainMacroTexture));
@@ -243,9 +251,13 @@ public:
         void(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]));
     MOCK_METHOD5(TraceFogVolumes,
         void(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality));
+    MOCK_METHOD5(GetLegacyTerrainLevelData,
+        int(AZ::IO::HandleType& fileHandle, STerrainInfo& terrainInfo, bool& bSectorPalettes, EEndian& eEndian, XmlNodeRef& surfaceTypesXmlNode));
+    MOCK_METHOD4(GetLegacyTerrainLevelData,
+        int (uint8*& octreeData, STerrainInfo& terrainInfo, bool& bSectorPalettes, EEndian& eEndian));
 
     // "Un-mocked" this method so that we could avoid including MacroTexture.h from 3DEngine.
-    bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const override { return true; }
+    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const override { return true; }
 
     MOCK_METHOD3(GetTerrainElevation,
         float(float, float, int));
@@ -273,7 +285,7 @@ public:
         void(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY));
     MOCK_METHOD0(GetTerrainTextureNodeSizeMeters,
         int());
-    MOCK_METHOD0(GetShowTerrainSurface,
+    MOCK_METHOD0(IsTerrainActive,
         bool());
     MOCK_METHOD3(SetStatInstGroup,
         bool(int nGroupId, const IStatInstGroup& siGroup, int nSID));
@@ -297,7 +309,7 @@ public:
         void(XmlNodeRef, int));
     MOCK_METHOD3(LoadTerrainSurfacesFromXML,
         void(XmlNodeRef, bool, int));
-    MOCK_METHOD0(LoadCompiledTerrainForEditor,
+    MOCK_METHOD0(LoadCompiledOctreeForEditor,
         bool());
     MOCK_CONST_METHOD0(GetSunDir,
         Vec3());
@@ -325,6 +337,11 @@ public:
     // Can't mock methods with variable parameters so just create empty bodies for them.
     void DrawTextRightAligned(const float x, const float y, const char* format, ...) override {}
     void DrawTextRightAligned(const float x, const float y, const float scale, const ColorF& color, const char* format, ...) override {}
+
+    MOCK_METHOD3(DrawBBoxHelper
+        , void (const Vec3& vMin, const Vec3& vMax, ColorB col));
+    MOCK_METHOD2(DrawBBoxHelper
+        , void (const AABB& box, ColorB col));
     
     MOCK_METHOD3(ActivatePortal,
         void(const Vec3& vPos, bool bActivate, const char* szEntityName));
@@ -464,6 +481,8 @@ public:
         void(_smart_ptr<IMaterial> pMat));
     MOCK_METHOD1(ChangeOceanWaterLevel,
         void(float fWaterLevel));
+    MOCK_METHOD1(InitMaterialDefautMappingAxis
+        , void(_smart_ptr<IMaterial> pMat));
     MOCK_METHOD0(GetITerrain,
         ITerrain*());
     MOCK_METHOD1(CreateTerrain,
@@ -520,8 +539,16 @@ public:
         bool(Vec3 vStart, Vec3 vEnd, Vec3& vHitPoint, EERType eERType));
     MOCK_METHOD3(RenderMeshRayIntersection,
         bool(IRenderMesh* pRenderMesh, SRayHitInfo& hitInfo, _smart_ptr<IMaterial> pCustomMtl));
+    MOCK_METHOD3(CheckCreateRNTmpData
+        , void(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo));
     MOCK_METHOD1(FreeRNTmpData,
         void(CRNTmpData** ppInfo));
+    MOCK_METHOD0(IsTerrainSyncLoad
+        , bool());
+    MOCK_METHOD0(IsObjectTreeReady
+        , bool());
+    MOCK_METHOD0(GetIObjectTree
+        , IOctreeNode*());
     MOCK_METHOD2(GetObjectsByType,
         uint32(EERType, IRenderNode**));
     MOCK_METHOD4(GetObjectsByTypeInBox,
@@ -578,6 +605,12 @@ public:
 #endif
     MOCK_METHOD3(LoadDesignerObject,
         IStatObj*(int nVersion, const char* szBinaryStream, int size));
+
+    MOCK_METHOD0(WaitForCullingJobsCompletion,
+        void());
+
+    MOCK_CONST_METHOD4(ClipTriangleHelper
+        , void(const PodArray<vtx_idx>& lstInds, const Plane pPlanes[4], PodArray<Vec3>& posBuffer, PodArray<vtx_idx>& lstClippedInds));
 };
 
 #if defined(AZ_COMPILER_MSVC) 

@@ -15,6 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <AzToolsFramework/Application/ToolsApplication.h>
@@ -94,6 +95,8 @@ namespace EditorPythonBindingsUnitTests
 
             m_app.Start(appDesc);
             m_app.RegisterComponentDescriptor(AzToolsFramework::PythonEditorFuncsHandler::CreateDescriptor());
+            // Disable saving global user settings to prevent failure due to detecting file updates
+            AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
         }
 
         void TearDown() override

@@ -17,7 +17,6 @@
 #include "StdAfx.h"
 #include "terrain_sector.h"
 #include "terrain.h"
-#include "ObjMan.h"
 
 void CTerrainNode::SetLOD(const SRenderingPassInfo& passInfo)
 {
@@ -38,7 +37,7 @@ void CTerrainNode::SetLOD(const SRenderingPassInfo& passInfo)
         // The LOD range spans the entire sector quad, so we can't go higher than that. The unit-to-sector bitshift encodes this maximum LOD.
         // Each sector has a min LOD that it has encoded in the height data (e.g. some have only a 3x3 heightmap). We can't go lower than this.
         //
-        const int maxLOD = GetTerrain()->m_UnitToSectorBitShift - 1;
+        const int maxLOD = CTerrain::GetTerrain()->m_UnitToSectorBitShift - 1;
         const int minLOD = 0;
 
         int lod = maxLOD;
@@ -89,3 +88,4 @@ void CTerrainNode::GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials)
         }
     }
 }
+

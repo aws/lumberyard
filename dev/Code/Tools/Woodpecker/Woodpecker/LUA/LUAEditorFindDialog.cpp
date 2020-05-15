@@ -1274,28 +1274,39 @@ namespace LUAEditor
 
         int count = 0;
         pLUAViewWidget->SetCursorPosition(0, 0);
+        const int advance = m_gui->txtReplaceWith->text().size();
+        int firstFoundLine = 0;
+        int firstFoundIndex = 0;
         if (pLUAViewWidget->FindFirst(m_gui->txtFind->text(),
+            m_gui->regularExpressionCheckBox->isChecked(),
+            m_gui->caseSensitiveCheckBox->isChecked(),
+            m_gui->wholeWordsCheckBox->isChecked(),
+            m_gui->wrapCheckBox->isChecked(),
+            m_gui->searchDownRadioButton->isChecked()))
+        {
+            pLUAViewWidget->GetCursorPosition(firstFoundLine, firstFoundIndex);
+            pLUAViewWidget->ReplaceSelectedText(m_gui->txtReplaceWith->text());
+            count++;
+
+            while (pLUAViewWidget->FindFirst(m_gui->txtFind->text(),
                 m_gui->regularExpressionCheckBox->isChecked(),
                 m_gui->caseSensitiveCheckBox->isChecked(),
                 m_gui->wholeWordsCheckBox->isChecked(),
                 m_gui->wrapCheckBox->isChecked(),
                 m_gui->searchDownRadioButton->isChecked()))
-        {
-            pLUAViewWidget->ReplaceSelectedText(m_gui->txtReplaceWith->text());
-            count++;
-            while (pLUAViewWidget->FindFirst(m_gui->txtFind->text(),
-                       m_gui->regularExpressionCheckBox->isChecked(),
-                       m_gui->caseSensitiveCheckBox->isChecked(),
-                       m_gui->wholeWordsCheckBox->isChecked(),
-                       m_gui->wrapCheckBox->isChecked(),
-                       m_gui->searchDownRadioButton->isChecked()))
             {
-                pLUAViewWidget->ReplaceSelectedText(m_gui->txtReplaceWith->text());
-
                 int startLine = 0;
                 int startIndex = 0;
                 pLUAViewWidget->GetCursorPosition(startLine, startIndex);
-                pLUAViewWidget->SetCursorPosition(startLine, startIndex + 1);
+
+                if (startLine == firstFoundLine && startIndex == firstFoundIndex)
+                {
+                    break;
+                }
+
+                pLUAViewWidget->ReplaceSelectedText(m_gui->txtReplaceWith->text());
+                pLUAViewWidget->GetCursorPosition(startLine, startIndex);
+                pLUAViewWidget->SetCursorPosition(startLine, startIndex + advance);
 
                 count++;
             }

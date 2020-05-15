@@ -9,10 +9,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import os
 import json
-import channel_list
-from registration_shared import iot_data
+from . import channel_list
+from .registration_shared import iot_data
 
 def __get_channel_prefix():
     if not hasattr(__get_channel_prefix,'channel_prefix'):
@@ -41,18 +42,18 @@ def __send_message(publish_channel_name, channel_name, message_text, quality_of_
     
     payload_str = json.dumps(message_data)
     if len(payload_str) >= __get_message_size_limit():
-        print 'Message size limit exceeded - Channel {} message {}'.format(channel_name, message_text)
+        print('Message size limit exceeded - Channel {} message {}'.format(channel_name, message_text))
         return
         
     response = iot_data.publish(topic=publish_channel, qos=quality_of_service, payload=payload_str)
 
-    print 'Sent message {} on channel {} with response {}'.format(message_text, publish_channel, response)
+    print('Sent message {} on channel {} with response {}'.format(message_text, publish_channel, response))
     return { "status": '{}'.format(response)}
 
 def broadcast_message(channel_name, message_text):
     is_valid, send_channel = channel_list.is_valid_broadcast_channel(channel_name, 'BROADCAST')
     if not is_valid:
-        print 'Invalid broadcast request on channel {} message {}'.format(channel_name, message_text)
+        print('Invalid broadcast request on channel {} message {}'.format(channel_name, message_text))
         return
 
     return __send_message(send_channel, channel_name, message_text)
@@ -60,7 +61,7 @@ def broadcast_message(channel_name, message_text):
 def send_direct_message(channel_name, message_text, cognito_id):
     is_valid, send_channel = channel_list.is_valid_broadcast_channel(channel_name, 'PRIVATE')
     if not is_valid:
-        print 'Invalid private message request on channel {} message {}'.format(channel_name, message_text)
+        print('Invalid private message request on channel {} message {}'.format(channel_name, message_text))
         return
 
     user_channel = '/client/{}'.format(cognito_id)

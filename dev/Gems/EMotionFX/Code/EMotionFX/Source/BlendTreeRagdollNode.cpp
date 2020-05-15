@@ -409,6 +409,11 @@ namespace EMotionFX
         return true;
     }
 
+    AZStd::string BlendTreeRagdollNode::GetSimulatedJointName(int index) const
+    {
+        return m_simulatedJointNames[index];
+    }
+
     void BlendTreeRagdollNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -424,14 +429,15 @@ namespace EMotionFX
             {
                 editContext->Class<BlendTreeRagdollNode>("Ragdoll", "Ragdoll node properties")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ_CRC("ActorRagdollJoints", 0xed1cae00), &BlendTreeRagdollNode::m_simulatedJointNames, "Simulated Joints", "The selected joints will be simulated as part of the ragdoll.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeRagdollNode::Reinit)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                    ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                    ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeRagdollNode::Reinit)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeRagdollNode::GetSimulatedJointName)
+                        ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
                 ;
             }
         }

@@ -11,14 +11,17 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
+# System Imports
 import os
+from collections import defaultdict
 
+# waflib imports
 from waflib.Build import BuildContext
 from waflib import TaskGen, Options
 from waflib.TaskGen import extension
 from waflib.Task import Task,RUN_ME
 from waflib.Configure import conf, conf_event, ConfigurationContext
-from collections import OrderedDict, defaultdict
+
 
 UBER_HEADER_COMMENT = '// UBER SOURCE'
 #############################################################################
@@ -26,6 +29,7 @@ class uber_file_generator(BuildContext):
     ''' Util class to generate Uber Files after configure '''
     cmd = 'generate_uber_files'
     fun = 'build'
+    is_project_generator = True
 
 @TaskGen.taskgen_method
 @extension('.xpm')
@@ -56,7 +60,6 @@ class uber_file_generator(BuildContext):
 @extension('.bmp')
 @extension('.ico')
 @extension('.S')
-@extension('.pssl')
 @extension('.cur')
 @extension('.actions')
 @extension('.lua')
@@ -95,11 +98,11 @@ def map_uber_files(ctx, original_file_list, token, target_name=None):
     # copy the input file list and remove the auto group, to be replaced with the
     # generated uber files and their contents
     remapped_file_list = dict(original_file_list)
-    if remapped_file_list.has_key('auto'):
+    if 'auto' in remapped_file_list:
         remapped_file_list.pop('auto')
 
     if 'auto' in original_file_list:
-        for (filter_name, file_list) in original_file_list['auto'].items():
+        for (filter_name, file_list) in list(original_file_list['auto'].items()):
             for file in file_list:
                 if ctx.is_cxx_file(file):
                     if os.path.isabs(file):
@@ -133,7 +136,7 @@ def map_uber_files(ctx, original_file_list, token, target_name=None):
         file_size = os.path.getsize(file_node.abspath())
 
         # if we've compiled at least one file into this uber file and we'd be over the size limit
-        if total_size + file_size > uber_size_limit and uber_file in auto_uber_files and (auto_uber_files[uber_file]) > 0:
+        if total_size + file_size > uber_size_limit and uber_file in auto_uber_files and len(auto_uber_files[uber_file]) > 0:
             uber_file = next_uber_file()
             total_size = 0
 
@@ -141,7 +144,7 @@ def map_uber_files(ctx, original_file_list, token, target_name=None):
         total_size += file_size
 
     # insert the newly generated uber files into the file list
-    for (uber_file_node, combined_file_nodes) in auto_uber_files.items():
+    for (uber_file_node, combined_file_nodes) in list(auto_uber_files.items()):
         remapped_file_list[uber_file_node.name] = {}
         for file_node in combined_file_nodes:
             filter = file_to_filter[file_node]
@@ -160,11 +163,11 @@ def gen_create_uber_file_task(tgen):
 
     # Iterate over all uber files, to collect files per Uber file
     uber_file_list = getattr(tgen, 'uber_file_list')
-    for (uber_file,project_filter) in uber_file_list.items():
+    for (uber_file,project_filter) in list(uber_file_list.items()):
         if uber_file == 'none' or uber_file == 'NoUberFile': # TODO: Deprecate 'NoUberfile'
             continue # Don't create a uber file for the special 'none' name
         files = []
-        for (k_1,file_list) in project_filter.items():
+        for (k_1,file_list) in list(project_filter.items()):
             for file in file_list:
                 if tgen.bld.is_cxx_file(str(file)):
                     files.append(file)
@@ -231,7 +234,7 @@ class gen_uber_file(Task):
         return RUN_ME   # Always execute Uber file Generation
 
 
-@conf_event(after_methods=['update_valid_configurations_file'])
+@conf_event(after_methods=['load_compile_rules_for_enabled_platforms'])
 def inject_generate_uber_command(conf):
     """
     Make sure generate_uber_files command is injected into the configure pipeline
@@ -240,5 +243,6 @@ def inject_generate_uber_command(conf):
         return
 
     # Insert the generate_uber_files command, it has the highest priority
-    Options.commands.append('generate_uber_files')
+    if 'generate_uber_files' not in Options.commands:
+        Options.commands.append('generate_uber_files')
 

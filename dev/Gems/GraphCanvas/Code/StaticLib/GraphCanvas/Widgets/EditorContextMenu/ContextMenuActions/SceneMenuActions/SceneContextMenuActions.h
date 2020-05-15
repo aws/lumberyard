@@ -29,8 +29,7 @@ namespace GraphCanvas
         bool IsInSubMenu() const override;
         AZStd::string GetSubMenuPath() const override;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;        
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class RemoveUnusedNodesMenuAction
@@ -45,7 +44,6 @@ namespace GraphCanvas
         bool IsInSubMenu() const override;
         AZStd::string GetSubMenuPath() const override;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 }

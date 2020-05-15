@@ -19,51 +19,65 @@ using namespace UnitTestInternal;
 
 namespace UnitTest
 {
-	TEST(CreateDestroy, UninitializedFill_StdArray_IntType_AllEight)
-	{
-		const int intArraySize = 5;
-		const int fillValue = 8;
-		std::array<int, intArraySize> intArray;
-		AZStd::uninitialized_fill(intArray.begin(), intArray.end(), fillValue, std::false_type());
-		for (auto itr : intArray)
-		{
-			EXPECT_EQ(itr, fillValue);
-		}
-	}
+    TEST(CreateDestroy, UninitializedFill_StdArray_IntType_AllEight)
+    {
+        const int intArraySize = 5;
+        const int fillValue = 8;
+        std::array<int, intArraySize> intArray;
+        AZStd::uninitialized_fill(intArray.begin(), intArray.end(), fillValue, std::false_type());
+        for (auto itr : intArray)
+        {
+            EXPECT_EQ(itr, fillValue);
+        }
+    }
 
-	TEST(CreateDestroy, UninitializedFill_AZStdArray_IntType_AllEight)
-	{
-		const int intArraySize = 5;
-		const int fillValue = 8;
-		AZStd::array<int, intArraySize> intArray;
-		AZStd::uninitialized_fill(intArray.begin(), intArray.end(), fillValue, std::false_type());
-		for (auto itr : intArray)
-		{
-			EXPECT_EQ(itr, fillValue);
-		}
-	}
+    TEST(CreateDestroy, UninitializedFill_AZStdArray_IntType_AllEight)
+    {
+        const int intArraySize = 5;
+        const int fillValue = 8;
+        AZStd::array<int, intArraySize> intArray;
+        AZStd::uninitialized_fill(intArray.begin(), intArray.end(), fillValue, std::false_type());
+        for (auto itr : intArray)
+        {
+            EXPECT_EQ(itr, fillValue);
+        }
+    }
 
-	TEST(CreateDestroy, UninitializedFill_StdArray_StringType_AllEight)
-	{
-		const int stringArraySize = 5;
-		const AZStd::string fillValue = "hello, world";
-		std::array<AZStd::string, stringArraySize> stringArray;
-		AZStd::uninitialized_fill(stringArray.begin(), stringArray.end(), fillValue, std::false_type());
-		for (auto itr : stringArray)
-		{
-			EXPECT_EQ(0, strcmp(itr.c_str(), fillValue.c_str()));
-		}
-	}
+    TEST(CreateDestroy, UninitializedFill_StdArray_StringType_AllEight)
+    {
+        const int stringArraySize = 5;
+        const AZStd::string fillValue = "hello, world";
+        std::array<AZStd::string, stringArraySize> stringArray;
+        AZStd::uninitialized_fill(stringArray.begin(), stringArray.end(), fillValue, std::false_type());
+        for (auto itr : stringArray)
+        {
+            EXPECT_EQ(0, strcmp(itr.c_str(), fillValue.c_str()));
+        }
+    }
 
-	TEST(CreateDestroy, UninitializedFill_AZStdArray_StringType_AllEight)
-	{
-		const int stringArraySize = 5;
-		const AZStd::string fillValue = "hello, world";
-		AZStd::array<AZStd::string, stringArraySize> stringArray;
-		AZStd::uninitialized_fill(stringArray.begin(), stringArray.end(), fillValue, std::false_type());
-		for (auto itr : stringArray)
-		{
-			EXPECT_EQ(0, strcmp(itr.c_str(), fillValue.c_str()));
-		}
-	}
+    TEST(CreateDestroy, UninitializedFill_AZStdArray_StringType_AllEight)
+    {
+        const int stringArraySize = 5;
+        const AZStd::string fillValue = "hello, world";
+        AZStd::array<AZStd::string, stringArraySize> stringArray;
+        AZStd::uninitialized_fill(stringArray.begin(), stringArray.end(), fillValue, std::false_type());
+        for (auto itr : stringArray)
+        {
+            EXPECT_EQ(0, strcmp(itr.c_str(), fillValue.c_str()));
+        }
+    }
+
+    TEST(CreateDestroy, Destroy_Compile_WhenUsedInConstexpr)
+    {   
+        auto TestDestroyFunc = []() constexpr -> int
+        {
+            AZStd::string_view testValue("Test");
+            AZStd::Internal::destroy<decltype(testValue)*>::single(&testValue);
+
+            AZStd::string_view testArray[] = { AZStd::string_view("Test"), AZStd::string_view("World") };
+            AZStd::Internal::destroy<decltype(testValue)*>::range(AZStd::begin(testArray), AZStd::end(testArray));
+            return 73;
+        };
+        static_assert(TestDestroyFunc() == 73);
+    }
 }

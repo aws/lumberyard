@@ -7,7 +7,6 @@
     },
     "auto": {
         "Include": [
-            "Include/GraphicsReflectContext/GraphicsReflectContextBus.h"
         ],
         "Source": [
             "Source/Environment.cpp",

@@ -1,0 +1,36 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/game_project_gem_template",
+    "copyFiles": [
+        {
+            "inFile": "Platform/AppleTV/platform_appletv.waf_files",
+            "outfile": "Code/Platform/AppleTV/platform_appletv.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/AppleTV/wscript_appletv",
+            "outfile": "Code/Platform/AppleTV/wscript_appletv",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/AppleTV/Info.plist",
+            "outfile": "Resources/AppleTVLauncher/Info.plist",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/AppleTV/Images.xcassets/LaunchImage.launchimage/Contents.json",
+            "outfile": "Resources/AppleTVLauncher/Images.xcassets/LaunchImage.launchimage/Contents.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/AppleTV/Images.xcassets/LaunchImage.launchimage/AppleTVLaunchImage1920x1080.png",
+            "outfile": "Resources/AppleTVLauncher/Images.xcassets/LaunchImage.launchimage/AppleTVLaunchImage1920x1080.png",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

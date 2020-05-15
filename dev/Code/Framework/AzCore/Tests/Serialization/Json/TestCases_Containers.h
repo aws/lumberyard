@@ -43,9 +43,6 @@ namespace JsonSerializationTests
         Container m_container;
     };
 
-    using SimpleContainer_Vector = SimpleContainer<AZStd::vector<int>>;
-    using SimpleContainer_List = SimpleContainer<AZStd::list<int>>;
-    using SimpleContainer_ForwardList = SimpleContainer<AZStd::forward_list<int>>;
     using SimpleContainer_FixedVector = SimpleContainer<AZStd::fixed_vector<int, 3>>;
 
     struct SimpleContainer_Array
@@ -93,9 +90,6 @@ namespace JsonSerializationTests
         Container m_container;
     };
 
-    using ComplexContainer_Vector = ComplexContainer<AZStd::vector<SimpleNested>>;
-    using ComplexContainer_ForwardList = ComplexContainer<AZStd::forward_list<SimpleNested>>;
-    using ComplexContainer_List = ComplexContainer<AZStd::list<SimpleNested>>;
     using ComplexContainer_FixedVector = ComplexContainer<AZStd::fixed_vector<SimpleNested, 3>>;
     using ComplexContainer_Array = ComplexContainer<AZStd::array<SimpleNested, 3>>;
 

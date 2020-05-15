@@ -10,12 +10,14 @@
 *
 */
 
+#include <AzCore/Asset/AssetJsonSerializer.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Math/Crc.h>
@@ -124,6 +126,11 @@ namespace AZ
                 ->Event("GetAssetPathById", &Data::AssetCatalogRequests::GetAssetPathById)
                 ->Event("GetAssetIdByPath", &Data::AssetCatalogRequests::GetAssetIdByPath)
                 ;
+        }
+
+        if (JsonRegistrationContext* jsonContext = azrtti_cast<JsonRegistrationContext*>(context))
+        {
+            jsonContext->Serializer<AZ::Data::AssetJsonSerializer>()->HandlesType<AZ::Data::Asset>();
         }
     }
 }

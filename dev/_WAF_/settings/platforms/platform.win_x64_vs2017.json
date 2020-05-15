@@ -12,9 +12,9 @@
         "platforms/compile_settings_cryengine",
         "platforms/compile_settings_msvc",
         "platforms/compile_settings_windows",
-        "platforms/platform_settings_win_x64_vs2017",
         "platforms/platform_impl_win_x64",
-        "platforms/platform_impl_win_x64_vs2017"
+        "platforms/platform_impl_win_x64_vs2017",
+        "platforms/platform_settings_win_x64_vs2017"
     ],
 
     "includes": [
@@ -33,7 +33,11 @@
             "msvs_ver"          : "15",
             "prefix"            : "win",
             "compat_toolsets"   : ["v141"],
-            "toolset_name"      : "x64"
+            "toolset_name"      : "x64",
+            "format_ver"        : "12.00",
+            "vs_name"           : "Visual Studio 2017",
+            "vs_solution_key"   : "vs2017_solution_name",
+            "command"           : "msvs_2017"
         },
         "sa_capability": {
             "key"               : "vc141",
@@ -47,9 +51,8 @@
             "win32/vc140/qtgad.pdb"
         ]
     },
-
     "settings"      : {
-        "Windows Options" :
+        "Visual Studio 2017 Options" :
         [
             {
                 "long_form"         : "--win-vs2017-vswhere-args",
@@ -68,6 +71,18 @@
                 "attribute"         : "win_vs2017_vcvarsall_args",
                 "default_value"     : "",
                 "description"       : "Additional arguments to pass to vcvarsall.bat"
+            },
+            {
+                "long_form"         : "--vs2017-solution-name",
+                "attribute"         : "vs2017_solution_name",
+                "default_value"     : "LumberyardSDK_vs2017",
+                "description"       : "The name of the generated VS2017 solution"
+            },
+            {
+                "long_form"         : "--generate-vs2017-projects-automatically",
+                "attribute"         : "generate_vs2017_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate Visual Studio 2017 Projects/Solutions during every configure"
             }
         ]
     },
@@ -79,7 +94,10 @@
         "CFLAGS,CXXFLAGS": [
             "/FS",
             "/std:c++17",
-            "/Zc:__cplusplus"
+            "/Zc:__cplusplus",
+            "/experimental:external", # Turns on "external" headers feature for MSVC compilers
+            "/external:W0", # Set warning level in external headers to 0. This is used to suppress warnings 3rdParty libraries which uses the "system_includes" option in their json configuration
+            "/wd4193" # Temporary workaround for the /experiment:external feature generating warning C4193: #pragma warning(pop): no matching '#pragma warning(push)'
         ]
     },
     "env/performance": {

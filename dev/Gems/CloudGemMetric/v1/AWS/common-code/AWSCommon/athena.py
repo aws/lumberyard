@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import retry
 import metric_constant as c
 import math
@@ -13,7 +25,7 @@ import retry
 import enum_type
 import boto3_util
 from s3 import S3
-from StringIO import StringIO
+from six import StringIO
 
 DEFAULT_EVENTS = enum_type.create(CLIENTINITCOMPLETE="clientinitcomplete", SESSIONSTART="sessionstart")
 
@@ -34,7 +46,7 @@ class Athena(object):
         if not self.is_valid_query(sql):
             return None
 
-        print "Executing query\n\t", sql        
+        print("Executing query\n\t", sql)
         params = dict({})                
         params['QueryString'] = sql
         params['QueryExecutionContext']={
@@ -52,11 +64,11 @@ class Athena(object):
             #TODO: implement a boto3 waiter
             while True:
                 query = self.get_query_execution(id)
-                print "Query '{}...' is".format(sql[:30]), query['Status']['State'] 
+                print("Query '{}...' is".format(sql[:30]), query['Status']['State'])
                 if query['Status']['State'] == 'RUNNING' or query['Status']['State'] == 'QUEUED':
                     time.sleep(3)
                 elif query['Status']['State'] == 'FAILED':
-                    print "The query '{}' FAILED with ERROR: {}".format(query, query['Status']["StateChangeReason"])
+                    print("The query '{}' FAILED with ERROR: {}".format(query, query['Status']["StateChangeReason"]))
                     if 'HIVE_CANNOT_OPEN_SPLIT' in query['Status']["StateChangeReason"]:
                         #The amoeba generator could be running which would cause files to be removed        
                         return []
@@ -98,8 +110,9 @@ class Athena(object):
 
     def get_output(self, location, result_as_list=True):
         parts = location.split("/")
-        file = parts[len(parts)-1]                
-        result = StringIO(self.__s3.read("{}/{}".format(self.query_results_path, file)))                
+        file = parts[len(parts)-1]
+        file_content = self.__s3.read("{}/{}".format(self.query_results_path, file))
+        result = StringIO(file_content) if isinstance(file_content, str) else StringIO(file_content.decode())
         self.__s3.delete(["/{}/{}".format(self.query_results_path, file)]) 
         if result_as_list:                   
             return list(csv.reader(result, delimiter=',', quotechar='"')) 

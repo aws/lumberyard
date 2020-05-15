@@ -123,10 +123,10 @@ namespace ScriptCanvasEditor
         return nullptr;
     }
 
-    UndoCache* UndoManager::GetSceneUndoCache(AZ::EntityId scriptCanvasGraphId)
+    UndoCache* UndoManager::GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
         AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
         SceneUndoState* sceneUndoState = FindUndoState(graphCanvasGraphId);
 
@@ -245,28 +245,35 @@ namespace ScriptCanvasEditor
         AddUndo(command);
     }
 
-    UndoData UndoManager::CreateUndoData(AZ::EntityId scriptCanvasEntityId)
+    UndoData UndoManager::CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId)
     {
         AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasEntityId, &EditorGraphRequests::GetGraphCanvasGraphId);
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
-        GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, scriptCanvasEntityId);
+        AZ::Entity* graphEntity = nullptr;
+        ScriptCanvas::GraphRequestBus::EventResult(graphEntity, scriptCanvasGraphId, &ScriptCanvas::GraphRequests::GetGraphEntity);
+
+        if (graphEntity)
+        {
+            GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, graphEntity->GetId());
+        }
+
         GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, graphCanvasGraphId);
 
         UndoData undoData;
 
         ScriptCanvas::GraphData* graphData{};
-        ScriptCanvas::GraphRequestBus::EventResult(graphData, scriptCanvasEntityId, &ScriptCanvas::GraphRequests::GetGraphData);
+        ScriptCanvas::GraphRequestBus::EventResult(graphData, scriptCanvasGraphId, &ScriptCanvas::GraphRequests::GetGraphData);
 
         const ScriptCanvas::VariableData* varData{};
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varData, scriptCanvasEntityId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableDataConst);
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varData, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableDataConst);
         
         if (graphData && varData)
         {
             undoData.m_graphData = *graphData;
             undoData.m_variableData = *varData;
 
-            EditorGraphRequestBus::EventResult(undoData.m_visualSaveData, scriptCanvasEntityId, &EditorGraphRequests::GetGraphCanvasSaveData);
+            EditorGraphRequestBus::EventResult(undoData.m_visualSaveData, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasSaveData);
         }
 
         return undoData;
@@ -299,10 +306,10 @@ namespace ScriptCanvasEditor
 
     void UndoManager::OnGraphLoaded(const GraphCanvas::GraphId& graphCanvasGraphId)
     {
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        if (!scriptCanvasGraphId.IsValid())
+        if (!scriptCanvasId.IsValid())
         {
             return;
         }
@@ -354,10 +361,10 @@ namespace ScriptCanvasEditor
         }
     }
 
-    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(AZ::EntityId scriptCanvasGraphId)
+    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
         AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
         if (!graphCanvasGraphId.IsValid())
         {
@@ -379,10 +386,10 @@ namespace ScriptCanvasEditor
         return extractUndoState;
     }
 
-    void UndoManager::InsertUndoState(AZ::EntityId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
+    void UndoManager::InsertUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
     {
         AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
         if (!graphCanvasGraphId.IsValid() || !sceneUndoState)
         {

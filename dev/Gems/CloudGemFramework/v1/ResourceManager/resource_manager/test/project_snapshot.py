@@ -9,17 +9,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision$
-'''Creates a zip file that can be used to re-create project and deployment stacks 
+"""Creates a zip file that can be used to re-create project and deployment stacks
 without any external tools (such as lmbr_aws). This is used to capture stacks that
 can be used as the starting point for project update testing. It isn't intended to
 be a comprehensive backup and restore solution.
-'''
+"""
 
 from __future__ import print_function
 
 import argparse
 import contextlib
-import copy
 import json
 import os
 import shutil
@@ -27,10 +26,10 @@ import stat
 import sys
 import tempfile
 import time
-import urllib
 import zipfile
 
 import boto3
+import six
 
 import resource_manager.aws
 from resource_manager_common import constant
@@ -38,13 +37,13 @@ from resource_manager_common import constant
 REPLACE_ME = '-REPLACE-ME-'
 
 REPLACED_PARAMETER_KEYS = [
-    'ConfigurationBucket', 
-    'DeploymentStack', 
-    'DeploymentStackArn', 
+    'ConfigurationBucket',
+    'DeploymentStack',
+    'DeploymentStackArn',
     'PlayerAccessTokenExchange',
-    'ProjectResourceHandler', 
-    'ProjectStack', 
-    'ProjectStackId', 
+    'ProjectResourceHandler',
+    'ProjectStack',
+    'ProjectStackId',
     'ResourceHandler'
 ]
 
@@ -62,43 +61,43 @@ SNAPSHOT_SUBSTACK_DIRECTORY_NAME = 'stacks'
 
 session = None
 
+
 ##
-## Common
+# Common
 #####################################################################################################################################
-## Create
+# Create
 ##
 
 def get_create_subparser(subparsers):
-
     create_parser = subparsers.add_parser('create', help='Create a snapshot of a project.')
-    
+
     create_parser.add_argument(
-        '--project-directory', '-p', 
-        metavar='PATH', 
-        required=True, 
-        dest='project_directory_path', 
+        '--project-directory', '-p',
+        metavar='PATH',
+        required=True,
+        dest='project_directory_path',
         help='The path to the project directory (or the name of the project directory in the current directory).')
 
     create_parser.add_argument(
-        '--snapshot-file', '-s', 
-        metavar='PATH', 
-        required=True, 
-        dest='snapshot_file_path', 
+        '--snapshot-file', '-s',
+        metavar='PATH',
+        required=True,
+        dest='snapshot_file_path',
         help='The path to the zip file where the snapshot will be written.')
 
     create_parser.add_argument(
-        '--profile', 
-        required=False, 
-        default='default', 
+        '--profile',
+        required=False,
+        default='default',
         help='Identifies the AWS profile to use. The default is "default".')
 
     create_parser.add_argument(
-        '--gems', '-g', 
-        metavar='PATH', 
-        nargs='+', 
-        required=False, 
-        default=[], 
-        dest='copied_gem_names', 
+        '--gems', '-g',
+        metavar='PATH',
+        nargs='+',
+        required=False,
+        default=[],
+        dest='copied_gem_names',
         help='The names of gems that will be included in the snapshot. This should NOT include any gem that ships with Lumberyard.')
 
     create_parser.add_argument(
@@ -114,12 +113,11 @@ def get_create_subparser(subparsers):
 
 
 def create_snapshot(profile, project_directory_path, snapshot_file_path, copied_gem_names, root_directory_path):
-
     if root_directory_path is None:
         root_directory_path = os.path.abspath(os.path.join(project_directory_path, '..'))
 
     snapshot_directory_path = tempfile.mkdtemp(prefix='project_snapshot_')
-        
+
     project_directory_path = os.path.abspath(project_directory_path)
     snapshot_directory_path = os.path.abspath(snapshot_directory_path)
 
@@ -131,12 +129,12 @@ def create_snapshot(profile, project_directory_path, snapshot_file_path, copied_
     if project_stack_name:
         global session
         if os.environ.get('NO_TEST_PROFILE'):
-            session = boto3.Session(region_name = region_name)
+            session = boto3.Session(region_name=region_name)
         else:
-            session = boto3.Session(region_name = region_name, profile_name = profile)
+            session = boto3.Session(region_name=region_name, profile_name=profile)
         deployment_stack_arns = download_project_stack(project_stack_name, snapshot_directory_path)
 
-        for deployment_name, stack_arns in deployment_stack_arns.iteritems():
+        for deployment_name, stack_arns in six.iteritems(deployment_stack_arns):
             download_deployment_stack(deployment_name, stack_arns['DeploymentStackArn'], snapshot_directory_path)
             download_deployment_access_stack(deployment_name, stack_arns['DeploymentAccessStackArn'], snapshot_directory_path)
 
@@ -146,7 +144,6 @@ def create_snapshot(profile, project_directory_path, snapshot_file_path, copied_
 
 
 def copy_project_directory(project_directory_path, snapshot_directory_path):
-    
     snapshot_project_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_PROJECT_DIRECTORY_NAME)
     os.makedirs(snapshot_project_directory_path)
 
@@ -176,7 +173,6 @@ def copy_project_directory(project_directory_path, snapshot_directory_path):
 
 
 def copy_gem_directories(project_directory_path, snapshot_directory_path, root_directory_path, copied_gem_names):
-    
     project_gem_path = os.path.basename(project_directory_path) + '/Gem'
 
     with json_file_content(os.path.join(snapshot_directory_path, SNAPSHOT_PROJECT_DIRECTORY_NAME, 'gems.json')) as gems_content:
@@ -190,15 +186,14 @@ def copy_gem_directories(project_directory_path, snapshot_directory_path, root_d
                 gem['Path'] = SNAPSHOT_PROJECT_GEM_DIRECTORY_PLACEHOLDER
 
             elif gem.get('Path', '').startswith('Gems'):
-                gem['Path'] = SNAPSHOT_ROOT_GEMS_DIRECTORY_PLACEHOLDER + gem['Path'][4:] # Gems/... -> PLACEHOLDER/...
+                gem['Path'] = SNAPSHOT_ROOT_GEMS_DIRECTORY_PLACEHOLDER + gem['Path'][4:]  # Gems/... -> PLACEHOLDER/...
 
             else:
                 raise RuntimeError('Unsupported gem configuration: {}'.format(gem))
 
 
 def copy_gem(gem, root_directory_path, snapshot_directory_path):
-
-    gem_name = gem['_comment'] # vs opening the gem.json and reading it....
+    gem_name = gem['_comment']  # vs opening the gem.json and reading it....
 
     dst_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_GEMS_DIRECTORY_NAME, gem_name)
     src_directory_path = os.path.join(root_directory_path, gem['Path'])
@@ -208,10 +203,9 @@ def copy_gem(gem, root_directory_path, snapshot_directory_path):
     shutil.copytree(src_directory_path, dst_directory_path)
 
     return SNAPSHOT_COPIED_GEMS_DIRECTORY_PLACEHOLDER + '/' + gem_name
-    
+
 
 def get_project_stack_and_region_names(project_directory_path):
-
     local_project_settings = get_json_file_content(os.path.join(project_directory_path, 'AWS', 'local-project-settings.json'))
     stack_arn = local_project_settings.get('ProjectStackId')
 
@@ -222,21 +216,21 @@ def get_project_stack_and_region_names(project_directory_path):
         stack_name = None
         region_name = None
 
-    return (stack_name, region_name)
+    return stack_name, region_name
 
 
 def download_project_stack(project_stack_name, snapshot_directory_path):
-    
     snapshot_project_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_PROJECT_STACK_DIRECTORY_NAME)
 
     download_stack(project_stack_name, snapshot_project_directory_path, ignore=["Logs"])
-    
+
     # Get all deployment stack arns from the project settings and save without 
     # stack arns to prevent leading account numbers, etc.
-    with json_file_content(os.path.join(snapshot_project_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, 'Configuration', 'project-settings.json')) as project_settings:
+    with json_file_content(
+            os.path.join(snapshot_project_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, 'Configuration', 'project-settings.json')) as project_settings:
 
         deployment_stack_arns = {}
-        for deployment_name, deployment_settings in project_settings.get('deployment', {}).iteritems():
+        for deployment_name, deployment_settings in six.iteritems(project_settings.get('deployment', {})):
             if deployment_name == '*':
                 continue
             deployment_stack_arn = deployment_settings['DeploymentStackId']
@@ -251,16 +245,18 @@ def download_project_stack(project_stack_name, snapshot_directory_path):
     return deployment_stack_arns
 
 
-def download_deployment_stack(deployment_name, desployment_stack_arn, snapshot_directory_path):
-    download_stack(desployment_stack_arn, os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_STACK_DIRECTORY_NAME, deployment_name))
+def download_deployment_stack(deployment_name, deployment_stack_arn, snapshot_directory_path):
+    download_stack(deployment_stack_arn, os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_STACK_DIRECTORY_NAME, deployment_name))
 
 
-def download_deployment_access_stack(deployment_name, desployment_access_stack_arn, snapshot_directory_path):
-    download_stack(desployment_access_stack_arn, os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_ACCESS_STACK_DIRECTORY_NAME, deployment_name))
+def download_deployment_access_stack(deployment_name, deployment_access_stack_arn, snapshot_directory_path):
+    download_stack(deployment_access_stack_arn, os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_ACCESS_STACK_DIRECTORY_NAME, deployment_name))
 
 
-def download_stack(stack_name, snapshot_directory_path, ignore=[], save_parameters = True):
-    
+def download_stack(stack_name, snapshot_directory_path, ignore=None, save_parameters=True):
+    if ignore is None:
+        ignore = []
+
     print('Downloading stack {} content to {}.'.format(stack_name, snapshot_directory_path))
 
     if not os.path.exists(snapshot_directory_path):
@@ -270,14 +266,14 @@ def download_stack(stack_name, snapshot_directory_path, ignore=[], save_paramete
 
     # filter and write project-parameters.json
     if save_parameters:
-        res = cf.describe_stacks(StackName = stack_name)
+        res = cf.describe_stacks(StackName=stack_name)
         parameters = res['Stacks'][0]['Parameters']
-        set_parameter_values(parameters, **{ key: REPLACE_ME for key in REPLACED_PARAMETER_KEYS })
+        set_parameter_values(parameters, **{key: REPLACE_ME for key in REPLACED_PARAMETER_KEYS})
         with open(os.path.join(snapshot_directory_path, SNAPSHOT_STACK_PARAMETERS_FILE_NAME), 'w') as file:
             json.dump(parameters, file, indent=4, sort_keys=True)
 
     # write resource content
-    res = cf.describe_stack_resources(StackName = stack_name)
+    res = cf.describe_stack_resources(StackName=stack_name)
     for resource_description in res['StackResources']:
         if resource_description['LogicalResourceId'] in ignore:
             continue
@@ -287,13 +283,12 @@ def download_stack(stack_name, snapshot_directory_path, ignore=[], save_paramete
 
 
 def download_bucket_content(resource_description, snapshot_directory_path):
-    
     logical_resource_id = resource_description['LogicalResourceId']
     physical_resource_id = resource_description['PhysicalResourceId']
     content_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, logical_resource_id)
 
     print('Downloading {} bucket objects to {}.'.format(logical_resource_id, content_directory_path))
-    
+
     if not os.path.exists(content_directory_path):
         os.makedirs(content_directory_path)
 
@@ -304,7 +299,7 @@ def download_bucket_content(resource_description, snapshot_directory_path):
         for content in res.get('Contents'):
 
             dst_key = content['Key'].replace('/', os.sep)
-            
+
             if dst_key.startswith(os.sep):
                 dst_key = dst_key[1:]
 
@@ -312,7 +307,7 @@ def download_bucket_content(resource_description, snapshot_directory_path):
 
             print('Downloading {} bucket object {} to {}.'.format(physical_resource_id, content['Key'], dst_file_path))
 
-            dst_directory_path =os.path.dirname(dst_file_path)
+            dst_directory_path = os.path.dirname(dst_file_path)
             if not os.path.exists(dst_directory_path):
                 os.makedirs(dst_directory_path)
 
@@ -320,12 +315,11 @@ def download_bucket_content(resource_description, snapshot_directory_path):
 
 
 def download_stack_content(resource_description, snapshot_directory_path):
-
     logical_resource_id = resource_description['LogicalResourceId']
     physical_resource_id = resource_description['PhysicalResourceId']
     content_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_SUBSTACK_DIRECTORY_NAME, logical_resource_id)
 
-    download_stack(physical_resource_id, content_directory_path, save_parameters = False)
+    download_stack(physical_resource_id, content_directory_path, save_parameters=False)
 
 
 DOWNLOAD_RESOURCE_TYPE_HANDLER = {
@@ -333,46 +327,47 @@ DOWNLOAD_RESOURCE_TYPE_HANDLER = {
     'AWS::CloudFormation::Stack': download_stack_content
 }
 
+
 ##
-## Create 
+# Create
 #####################################################################################################################################
-## Restore
+# Restore
 ##
+
 
 def get_restore_subparser(subparsers):
-
     restore_parser = subparsers.add_parser('restore', help='Restore a project from a snapshot.')
 
     restore_parser.add_argument(
-        '--project-directory', '-p', 
-        metavar='PATH', 
-        required=True, 
-        dest='project_directory_path', 
+        '--project-directory', '-p',
+        metavar='PATH',
+        required=True,
+        dest='project_directory_path',
         help='The path to the project directory (or the name of the project directory in the current directory).')
 
     restore_parser.add_argument(
-        '--snapshot-file', '-s', 
-        metavar='PATH', 
-        required=True, 
-        dest='snapshot_file_path', 
+        '--snapshot-file', '-s',
+        metavar='PATH',
+        required=True,
+        dest='snapshot_file_path',
         help='The path to the zip file that contains the snapshot.')
 
     restore_parser.add_argument(
-        '--profile', 
-        required=False, 
-        default='default', 
+        '--profile',
+        required=False,
+        default='default',
         help='Identifies the AWS profile to use. The default is "default".')
 
     restore_parser.add_argument(
-        '--region', 
-        required=False, 
-        default='us-east-1', 
+        '--region',
+        required=False,
+        default='us-east-1',
         help='The AWS region to use when creating resources.')
 
     restore_parser.add_argument(
-        '--stack-name', 
-        required=False, 
-        help='The name of the project stack and the pefix for the deployment stack names. Required if the snapshot includes a project stack.')
+        '--stack-name',
+        required=False,
+        help='The name of the project stack and the prefix for the deployment stack names. Required if the snapshot includes a project stack.')
 
     restore_parser.add_argument(
         '--root-directory',
@@ -385,7 +380,6 @@ def get_restore_subparser(subparsers):
 
 
 def restore_snapshot(region, profile, stack_name, project_directory_path, snapshot_file_path, root_directory_path):
-
     if root_directory_path is None:
         root_directory_path = os.path.dirname(os.path.abspath(project_directory_path))
 
@@ -405,9 +399,9 @@ def restore_snapshot(region, profile, stack_name, project_directory_path, snapsh
 
         global session
         if os.environ.get('NO_TEST_PROFILE'):
-            session = boto3.Session(region_name = region)
+            session = boto3.Session(region_name=region)
         else:
-            session = boto3.Session(region_name = region, profile_name = profile)
+            session = boto3.Session(region_name=region, profile_name=profile)
 
         project_stack_arn = upload_project_stack(stack_name, project_directory_path, snapshot_directory_path)
 
@@ -428,14 +422,12 @@ def restore_project_directory(project_directory_path, snapshot_directory_path):
 
 
 def restore_gems(project_directory_path, snapshot_directory_path, root_directory_path):
-
     # copy any of the gems archived in the snapshot to the project directory=
 
     restored_gems_directory_path = os.path.abspath(os.path.join(project_directory_path, 'RestoredGems'))
     snapshot_gems_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_GEMS_DIRECTORY_NAME)
 
     for gem_name in os.listdir(snapshot_gems_directory_path):
-
         restored_gem_directory_path = os.path.join(restored_gems_directory_path, gem_name)
         snapshot_gem_directory_path = os.path.join(snapshot_gems_directory_path, gem_name)
 
@@ -476,27 +468,26 @@ def restore_gems(project_directory_path, snapshot_directory_path, root_directory
 
 
 def upload_project_stack(stack_name, project_directory_path, snapshot_directory_path):
-
     snapshot_project_stack_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_PROJECT_STACK_DIRECTORY_NAME)
 
     cf = get_cloud_formation_client()
 
     res = cf.create_stack(
-        StackName = stack_name,
-        TemplateBody = BOOTSTRAP_TEMPLATE,
-        Capabilities = ['CAPABILITY_IAM'],
-        DisableRollback = True
+        StackName=stack_name,
+        TemplateBody=BOOTSTRAP_TEMPLATE,
+        Capabilities=['CAPABILITY_IAM'],
+        DisableRollback=True
     )
-    
+
     project_stack_arn = res['StackId']
 
     print('Waiting for create of stack {}.'.format(get_stack_name_from_stack_arn(project_stack_arn)))
-    cf.get_waiter('stack_create_complete').wait(StackName = project_stack_arn)
+    cf.get_waiter('stack_create_complete').wait(StackName=project_stack_arn)
 
     configuration_bucket_name = get_stack_resource_physical_id(project_stack_arn, 'Configuration')
-    
+
     upload_bucket_content(
-        configuration_bucket_name, 
+        configuration_bucket_name,
         os.path.join(snapshot_project_stack_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, 'Configuration'))
 
     parameters = get_json_file_content(os.path.join(snapshot_project_stack_directory_path, SNAPSHOT_STACK_PARAMETERS_FILE_NAME))
@@ -504,16 +495,16 @@ def upload_project_stack(stack_name, project_directory_path, snapshot_directory_
     template_object_name = "{}/{}".format(get_parameter_value(parameters, 'ConfigurationKey'), constant.PROJECT_TEMPLATE_FILENAME)
 
     res = cf.update_stack(
-        StackName = stack_name,
-        TemplateURL = make_s3_url(configuration_bucket_name, template_object_name),
-        Capabilities = ['CAPABILITY_IAM'],
-        Parameters = parameters
+        StackName=stack_name,
+        TemplateURL=make_s3_url(configuration_bucket_name, template_object_name),
+        Capabilities=['CAPABILITY_IAM'],
+        Parameters=parameters
     )
 
     print('Waiting for update of stack {}.'.format(get_stack_name_from_stack_arn(project_stack_arn)))
-    cf.get_waiter('stack_update_complete').wait(StackName = project_stack_arn)
+    cf.get_waiter('stack_update_complete').wait(StackName=project_stack_arn)
 
-    upload_stack_resource_content(project_stack_arn, snapshot_project_stack_directory_path, ignore = ['Configuration'])
+    upload_stack_resource_content(project_stack_arn, snapshot_project_stack_directory_path, ignore=['Configuration'])
 
     with json_file_content(os.path.join(project_directory_path, 'AWS', 'local-project-settings.json')) as local_project_settings:
         local_project_settings['ProjectStackId'] = project_stack_arn
@@ -522,29 +513,27 @@ def upload_project_stack(stack_name, project_directory_path, snapshot_directory_
 
 
 def upload_bucket_content_handler(resource_description, snapshot_directory_path):
-
     bucket_name = resource_description['LogicalResourceId']
-    
-    bucket_content_dirctory_path = os.path.join(snapshot_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, bucket_name)
-    
-    if not os.path.exists(bucket_content_dirctory_path):
+
+    bucket_content_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_BUCKET_DIRECTORY_NAME, bucket_name)
+
+    if not os.path.exists(bucket_content_directory_path):
         return
 
-    upload_bucket_content(resource_description['PhysicalResourceId'], bucket_content_dirctory_path)
-        
+    upload_bucket_content(resource_description['PhysicalResourceId'], bucket_content_directory_path)
 
-def upload_bucket_content(bucket_name, bucket_content_dirctory_path):
+
+def upload_bucket_content(bucket_name, bucket_content_directory_path):
     s3 = get_s3_client()
-    for root, directory_names, file_names in os.walk(bucket_content_dirctory_path):
+    for root, directory_names, file_names in os.walk(bucket_content_directory_path):
         for file_name in file_names:
             file_path = os.path.join(root, file_name)
-            object_name = file_path.replace(bucket_content_dirctory_path + os.sep, '').replace(os.sep, '/')
+            object_name = file_path.replace(bucket_content_directory_path + os.sep, '').replace(os.sep, '/')
             print('Uploading {} to bucket {} object {}.'.format(file_path, bucket_name, object_name))
             s3.upload_file(file_path, bucket_name, object_name)
 
 
 def upload_stack_content_handler(resource_description, snapshot_directory_path):
-
     logical_resource_id = resource_description['LogicalResourceId']
     physical_resource_id = resource_description['PhysicalResourceId']
     content_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_SUBSTACK_DIRECTORY_NAME, logical_resource_id)
@@ -558,9 +547,12 @@ UPLOAD_RESOURCE_TYPE_HANDLER = {
 }
 
 
-def upload_stack_resource_content(stack_arn, snapshot_directory_path, ignore = []):
+def upload_stack_resource_content(stack_arn, snapshot_directory_path, ignore=None):
+    if ignore is None:
+        ignore = []
+
     cf = get_cloud_formation_client()
-    res = cf.describe_stack_resources(StackName = stack_arn)
+    res = cf.describe_stack_resources(StackName=stack_arn)
     for resource_description in res['StackResources']:
         if resource_description['LogicalResourceId'] in ignore:
             continue
@@ -570,7 +562,6 @@ def upload_stack_resource_content(stack_arn, snapshot_directory_path, ignore = [
 
 
 def upload_deployment_stack(deployment_name, project_stack_arn, snapshot_directory_path):
-    
     deployment_stack_name = get_stack_name_from_stack_arn(project_stack_arn) + '-' + deployment_name
     deployment_stack_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_STACK_DIRECTORY_NAME, deployment_name)
 
@@ -580,25 +571,25 @@ def upload_deployment_stack(deployment_name, project_stack_arn, snapshot_directo
 
     set_parameter_values(
         parameters,
-        ProjectStackId = project_stack_arn,
-        ConfigurationBucket = configuration_bucket_name,
-        ProjectResourceHandler = get_stack_lambda_arn(project_stack_arn, 'ProjectResourceHandler'))
+        ProjectStackId=project_stack_arn,
+        ConfigurationBucket=configuration_bucket_name,
+        ProjectResourceHandler=get_stack_lambda_arn(project_stack_arn, 'ProjectResourceHandler'))
 
     template_object_name = get_parameter_value(parameters, 'ConfigurationKey') + '/deployment-template.json'
 
     cf = get_cloud_formation_client()
     res = cf.create_stack(
-        StackName = deployment_stack_name,
-        TemplateURL = make_s3_url(configuration_bucket_name, template_object_name),
-        Capabilities = ['CAPABILITY_IAM'],
-        DisableRollback = True,
-        Parameters = parameters
+        StackName=deployment_stack_name,
+        TemplateURL=make_s3_url(configuration_bucket_name, template_object_name),
+        Capabilities=['CAPABILITY_IAM'],
+        DisableRollback=True,
+        Parameters=parameters
     )
 
     deployment_stack_arn = res['StackId']
 
     print('Waiting for create of stack {}'.format(get_stack_name_from_stack_arn(deployment_stack_arn)))
-    cf.get_waiter('stack_create_complete').wait(StackName = deployment_stack_arn)
+    cf.get_waiter('stack_create_complete').wait(StackName=deployment_stack_arn)
 
     upload_stack_resource_content(deployment_stack_arn, deployment_stack_directory_path)
 
@@ -606,36 +597,35 @@ def upload_deployment_stack(deployment_name, project_stack_arn, snapshot_directo
 
 
 def upload_deployment_access_stack(deployment_name, project_stack_arn, snapshot_directory_path, deployment_stack_arn):
-    
     deployment_access_stack_name = get_stack_name_from_stack_arn(project_stack_arn) + '-' + deployment_name + '-Access'
     deployment_access_stack_directory_path = os.path.join(snapshot_directory_path, SNAPSHOT_DEPLOYMENT_ACCESS_STACK_DIRECTORY_NAME, deployment_name)
 
     configuration_bucket_name = get_stack_resource_physical_id(project_stack_arn, 'Configuration')
 
     parameters = get_json_file_content(os.path.join(deployment_access_stack_directory_path, SNAPSHOT_STACK_PARAMETERS_FILE_NAME))
-    set_parameter_values(parameters, 
-        ProjectStack = get_stack_name_from_stack_arn(project_stack_arn),
-        ConfigurationBucket = configuration_bucket_name,
-        ProjectResourceHandler = get_stack_lambda_arn(project_stack_arn, 'ProjectResourceHandler'),
-        PlayerAccessTokenExchange = get_stack_lambda_arn(project_stack_arn, 'PlayerAccessTokenExchange'),
-        DeploymentStack = get_stack_name_from_stack_arn(project_stack_arn),
-        DeploymentStackArn = deployment_stack_arn)
+    set_parameter_values(parameters,
+                         ProjectStack=get_stack_name_from_stack_arn(project_stack_arn),
+                         ConfigurationBucket=configuration_bucket_name,
+                         ProjectResourceHandler=get_stack_lambda_arn(project_stack_arn, 'ProjectResourceHandler'),
+                         PlayerAccessTokenExchange=get_stack_lambda_arn(project_stack_arn, 'PlayerAccessTokenExchange'),
+                         DeploymentStack=get_stack_name_from_stack_arn(project_stack_arn),
+                         DeploymentStackArn=deployment_stack_arn)
 
     template_object_name = get_parameter_value(parameters, 'ConfigurationKey') + '/deployment-access-template.json'
 
     cf = get_cloud_formation_client()
     res = cf.create_stack(
-        StackName = deployment_access_stack_name,
-        TemplateURL = make_s3_url(configuration_bucket_name, template_object_name),
-        Capabilities = ['CAPABILITY_IAM'],
-        DisableRollback = True,
-        Parameters = parameters
+        StackName=deployment_access_stack_name,
+        TemplateURL=make_s3_url(configuration_bucket_name, template_object_name),
+        Capabilities=['CAPABILITY_IAM'],
+        DisableRollback=True,
+        Parameters=parameters
     )
 
     deployment_access_stack_arn = res['StackId']
 
     print('Waiting for create of stack {}.'.format(get_stack_name_from_stack_arn(deployment_access_stack_arn)))
-    cf.get_waiter('stack_create_complete').wait(StackName = deployment_access_stack_arn)
+    cf.get_waiter('stack_create_complete').wait(StackName=deployment_access_stack_arn)
 
     upload_stack_resource_content(deployment_access_stack_arn, deployment_access_stack_directory_path)
 
@@ -643,21 +633,20 @@ def upload_deployment_access_stack(deployment_name, project_stack_arn, snapshot_
 
 
 def upload_deployment_configuration(project_stack_arn, deployment_name, deployment_stack_arn, deployment_access_stack_arn):
-
     print('Uploading deployment {} configuration.'.format(deployment_name))
 
     configuration_bucket_name = get_stack_resource_physical_id(project_stack_arn, 'Configuration')
 
-    with json_object_content(Bucket = configuration_bucket_name, Key = 'project-settings.json') as project_settings:
+    with json_object_content(Bucket=configuration_bucket_name, Key='project-settings.json') as project_settings:
         deployment_settings = project_settings.setdefault('deployment', {}).setdefault(deployment_name, {})
         deployment_settings['DeploymentStackId'] = deployment_stack_arn
         deployment_settings['DeploymentAccessStackId'] = deployment_access_stack_arn
 
 
 ##
-## Restore 
+# Restore
 #####################################################################################################################################
-## Common
+# Common
 ##
 
 def get_stack_name_from_stack_arn(arn):
@@ -676,11 +665,13 @@ def get_account_from_stack_arn(arn):
 
 
 __physical_resource_id_cache = {}
+
+
 def get_stack_resource_physical_id(stack_arn, resource_name):
     stack_cache = __physical_resource_id_cache.setdefault(stack_arn, {})
     if resource_name not in stack_cache:
         cf = get_cloud_formation_client()
-        res = cf.describe_stack_resource(StackName = stack_arn, LogicalResourceId = resource_name)
+        res = cf.describe_stack_resource(StackName=stack_arn, LogicalResourceId=resource_name)
         stack_cache[resource_name] = res['StackResourceDetail']['PhysicalResourceId']
     return stack_cache[resource_name]
 
@@ -688,10 +679,10 @@ def get_stack_resource_physical_id(stack_arn, resource_name):
 def get_stack_lambda_arn(stack_arn, resource_name):
     physical_resource_id = get_stack_resource_physical_id(stack_arn, resource_name)
     return 'arn:aws:lambda:{region}:{account}:function:{function}'.format(
-        region = get_region_name_from_stack_arn(stack_arn),
-        account = get_account_from_stack_arn(stack_arn),
-        function = physical_resource_id)
-    
+        region=get_region_name_from_stack_arn(stack_arn),
+        account=get_account_from_stack_arn(stack_arn),
+        function=physical_resource_id)
+
 
 def make_s3_url(bucket, key):
     return 'https://{bucket}.s3.amazonaws.com/{key}'.format(bucket=bucket, key=key)
@@ -700,27 +691,34 @@ def make_s3_url(bucket, key):
 def get_stack_arn(stack_name):
     try:
         cf = get_cloud_formation_client()
-        res = cf.describe_stacks(StackName = stack_name)
+        res = cf.describe_stacks(StackName=stack_name)
         return res['Stacks'][0]['StackId']
     except:
         return None
 
 
 def rmtree(path):
-
-    # fast ssd introduce a race condition when removing directories where the 
+    # fast ssd introduce a race condition when removing directories where the
     # directory is empty but the os still reports it has contents. A slight
     # delay before retrying works around the problem.
-    def retry_rmdir(action, name, exc):
-        if action == os.rmdir: 
+    def retry_del(action, name, exc):
+        if os.access(name, os.W_OK):
+            # Do we have write access on path, if not set and retry
+            os.chmod(name, stat.S_IWUSR)
+            action(name)
+        elif os.path.isfile(name):
+            # Do we have write access on file, if not set and retry
+            os.chmod(name, stat.S_IWRITE)
+            action(name)
+        elif action == os.rmdir:
             time.sleep(0.1)
             os.rmdir(name)
         else:
-            raise RuntimeError('Error when removing {}: {}'.format(name, exc))
+            raise RuntimeError('Error when attempting to {} on {}: {}'.format(action, name, exc))
 
     if os.path.exists(path):
         print('Deleting {}.'.format(path))
-        shutil.rmtree(path, onerror=retry_rmdir)
+        shutil.rmtree(path, onerror=retry_del)
 
     time.sleep(0.1)
 
@@ -741,7 +739,6 @@ def get_parameter_value(parameters, key):
 
 @contextlib.contextmanager
 def json_file_content(file_path):
-
     with open(file_path, 'r') as file:
         content = json.load(file)
 
@@ -753,34 +750,30 @@ def json_file_content(file_path):
 
 @contextlib.contextmanager
 def json_object_content(**kvargs):
-
     s3 = get_s3_client()
     res = s3.get_object(**kvargs)
     content = json.loads(res['Body'].read())
 
     yield content
 
-    s3.put_object(Body = json.dumps(content, indent=4, sort_keys=True), **kvargs)
+    s3.put_object(Body=json.dumps(content, indent=4, sort_keys=True), **kvargs)
 
 
 def get_json_file_content(file_path):
-
     with open(file_path, 'r') as file:
         return json.load(file)
-    
+
 
 def zip_directory(directory_path, file_path):
-
     print('Zipping {} to {}.'.format(directory_path, file_path))
 
-    if(file_path.endswith('.zip')):
+    if file_path.endswith('.zip'):
         file_path = file_path[:-4]
 
     shutil.make_archive(file_path, 'zip', directory_path)
 
 
 def unzip_directory(file_path, directory_path):
-
     if not file_path.endswith('.zip'):
         file_path += '.zip'
 
@@ -791,15 +784,17 @@ def unzip_directory(file_path, directory_path):
 
 
 def get_cloud_formation_client():
-    return resource_manager.aws.CloudFormationClientWrapper(session.client('cloudformation'), verbose = False)
+    return resource_manager.aws.CloudFormationClientWrapper(session.client('cloudformation'), verbose=False)
+
 
 def get_s3_client():
-    return resource_manager.aws.ClientWrapper(session.client('s3'), verbose = False)
-            
+    return resource_manager.aws.ClientWrapper(session.client('s3'), verbose=False)
+
+
 ##
-## Common
+# Common
 #####################################################################################################################################
-## Templates
+# Templates
 ##
 
 BOOTSTRAP_TEMPLATE = '''{
@@ -845,6 +840,7 @@ BOOTSTRAP_TEMPLATE = '''{
 
 }'''
 
+
 ##
 ## Templates
 #####################################################################################################################################
@@ -852,9 +848,8 @@ BOOTSTRAP_TEMPLATE = '''{
 ##
 
 def main():
-
     parser = argparse.ArgumentParser(
-        prog = 'project_snapshot',
+        prog='project_snapshot',
         description='Captures the data needed to recreate project and deployment stacks without using lmbr_aws as needed to support version upgrade testing.'
     )
 
@@ -870,6 +865,7 @@ def main():
     handler(**vars(args))
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

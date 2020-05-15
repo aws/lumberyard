@@ -30,7 +30,6 @@
 namespace LevelBuilder
 {
     const char s_materialExtension[] = ".mtl";
-    const char s_audioControlFilesRootPath[] = "@devassets@/libs/gameaudio/wwise";
     const char s_audioControlFilesLevelPath[] = "@devassets@/libs/gameaudio/wwise/levels/%s";
     const char s_audioControlFilter[] = "*.xml";
 
@@ -215,6 +214,11 @@ namespace LevelBuilder
         // Hardcoded paths are used here instead of the defines because:
         //  The defines exist in CryEngine code that we can't link from here.
         //  We want to minimize engine changes to make it easier for game teams to incorporate these dependency improvements.
+
+        //  LevelSystem.cpp, CLevelSystem::PopulateLevels stores all pak files in the level folder
+        //  to load them during opening a level. AFAIK apart from level.pak, terraintexture.pak is the only pak file that might be present in the cached level folder.
+        //  string paks = levelPath + string("/*.pak");
+        AddLevelRelativeSourcePathProductDependency("terraintexture.pak", sourceLevelPakPath, productPathDependencies);
 
         // TerrainCompile.cpp, CTerrain::Load attempts to load the cover.ctc file for the terrain.
         //      OpenTerrainTextureFile(COMPILED_TERRAIN_TEXTURE_FILE_NAME)
@@ -492,11 +496,6 @@ namespace LevelBuilder
             productDependencies.emplace(relativePath.c_str(), AssetBuilderSDK::ProductPathDependencyType::ProductFile);
             return true;
         };
-
-        if (fileIO->IsDirectory(s_audioControlFilesRootPath))
-        {
-            fileIO->FindFiles(s_audioControlFilesRootPath, s_audioControlFilter, registerFoundFileAsProductPathDependencyCallback);
-        }
 
         AZStd::string levelScopedControlsPath = AZStd::string::format(s_audioControlFilesLevelPath, levelName.c_str());
         if (fileIO->IsDirectory(levelScopedControlsPath.c_str()))

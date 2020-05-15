@@ -16,20 +16,28 @@ def options(opt):
 
 $ waf android_studio
 """
-import os, shutil
+
+# System Imports
+import os
+import shutil
 
 from collections import defaultdict
 from pprint import pprint, pformat
-from string import Template, translate
+from string import Template
 
-from android import SUPPORTED_APIS
-from utils import write_auto_gen_header
-
-from build_configurations import PLATFORM_MAP
-from waf_branch_spec import BINTEMP_FOLDER
-
+# waflib imports
 from waflib import Build, Errors, Logs, TaskGen, Utils
-from build_configurations import ALIAS_TO_PLATFORMS_MAP
+
+# lmbrwaflib imports
+from lmbrwaflib.android import SUPPORTED_APIS
+from lmbrwaflib.utils import write_auto_gen_header
+from lmbrwaflib.build_configurations import ALIAS_TO_PLATFORMS_MAP, PLATFORM_MAP
+
+# misc imports
+from waf_branch_spec import BINTEMP_FOLDER
+from cry_utils import append_to_unique_list
+
+
 ################################################################
 #                     Defaults                                 #
 MIN_API_VERSION_NUMBER = sorted(SUPPORTED_APIS)[0].split('-')[1]
@@ -170,6 +178,9 @@ org.gradle.configureondemand=false
 
 # bump the JVM memory limits due to the size of Lumberyard. Defaults: -Xmx1280m -XX:MaxPermSize=256m
 org.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=1024m
+
+# required to use Android X libraries
+android.useAndroidX=true
 '''
 
 GRADLE_WRAPPER_PROPERTIES = r'''
@@ -257,7 +268,7 @@ class GradleBool:
     def __init__(self, val):
         self._val = val
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
 
     def __str__(self):
@@ -276,7 +287,7 @@ class GradleList(list):
 ################################################################
 class GradleNode(object):
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(self.__dict__.values())
 
     def to_string(self, obj):
@@ -299,14 +310,14 @@ class GradleNode(object):
             obj.write(stream, indent)
 
         elif isinstance(obj, dict):
-            for key, value in obj.iteritems():
+            for key, value in obj.items():
                 indent_text('{} {}'.format(convert_to_gradle_name(key), self.to_string(value)), next_indent, stream)
 
     def write_internal_dict(self, stream, indent = 0):
         next_indent = indent + (0 if getattr(self, 'is_root_node', False) else 1)
         private_attrib_prefix = '_'
 
-        for attribute, value in self.__dict__.iteritems():
+        for attribute, value in self.__dict__.items():
 
             if not value or attribute.startswith(private_attrib_prefix):
                 continue
@@ -315,7 +326,7 @@ class GradleNode(object):
                 value.write(stream, next_indent)
 
             elif isinstance(value, dict):
-                for key, subvalue in value.iteritems():
+                for key, subvalue in value.items():
                     if not subvalue:
                         continue
 
@@ -356,7 +367,7 @@ class SigningConfigRef:
     def __init__(self, config_name = ''):
         self.config_name = config_name
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True if self.config_name else False
 
     def __str__(self):
@@ -383,7 +394,7 @@ class SigningConfigs(GradleNode):
             self.store_file = SigningConfigs.FileRef()
             self.store_password = ''
 
-        def __nonzero__(self):
+        def __bool__(self):
             return all(self.__dict__.values())
 
         def __setattr__(self, name, value):
@@ -394,13 +405,13 @@ class SigningConfigs(GradleNode):
     def __init__(self):
         self.configs = defaultdict(SigningConfigs.Config)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(self.configs.values())
 
     def add_signing_config(self, config_name, **config_props):
         config = SigningConfigs.Config()
 
-        for attribute in config.__dict__.keys():
+        for attribute in list(config.__dict__.keys()):
             setattr(config, attribute, config_props.get(attribute, ''))
 
         self.configs[config_name] = config
@@ -418,13 +429,13 @@ class CMakeLists:
         self.exports = []
         self.dependencies = []
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(self.source)
 
     def write(self, module_name, stream):
         # strips out any quotes and commas from the stringified list
         def format_cmake_list(lst):
-            return translate(format_list(lst), None, '\',')
+            return format_list(lst).translate(str.maketrans('', '', '\','))
 
         library_def = [
             module_name,
@@ -544,7 +555,7 @@ class Sources(GradleNode):
         def __init__(self):
             self.paths = defaultdict(Sources.Paths)
 
-        def __nonzero__(self):
+        def __bool__(self):
             return any(self.paths.values())
 
         def set_java_properties(self, **props):
@@ -564,7 +575,7 @@ class Sources(GradleNode):
     def __init__(self):
         self.variants = defaultdict(Sources.Set)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(self.variants.values())
 
     def set_main_properties(self, **props):
@@ -644,7 +655,7 @@ class JavaCompileOptions(GradleNode):
         def __init__(self, version):
             self._version = version.replace('.', '_')
 
-        def __nonzero__(self):
+        def __bool__(self):
             return True
 
         def __str__(self):
@@ -670,13 +681,13 @@ class Android(GradleNode):
     def __init__(self):
         self.compile_sdk_version = MIN_API_VERSION_NUMBER
         self.build_tools_version = ''
+        self.signing_configs = SigningConfigs() # required to be defined before default_config for writing purposes
         self.default_config = DefaultConfig()
         self.ndk = NativeBuildPaths()
         self.build_types = Builds()
         self.flavor_dimensions = GradleList('arch')
         self.product_flavors = Products()
         self.sources = Sources()
-        self.signing_configs = SigningConfigs()
 
     def set_general_properties(self, **props):
         if 'sdk_version' in props:
@@ -737,9 +748,11 @@ class Module(GradleNode):
         gradle_name = 'dependencies'
 
         def __getattr__(self, name):
-            if not hasattr(self, name):
-                setattr(self, name, [])
-            return self.__dict__[name]
+            try:
+                return self.__dict__[name]
+            except (AttributeError, KeyError):
+                self.__dict__[name] = []
+                return self.__dict__[name]
 
         def _add_dependency(self, dependency):
             deps = getattr(self, dependency.linkage)
@@ -806,17 +819,25 @@ class Module(GradleNode):
 
                 enable_game_arg = '--enabled-game-projects={}'.format(self.name.replace('Launcher', ''))
 
-                waf_build_args['CMD_ARGS'] = '{} --deploy-android=False'.format(enable_game_arg)
+                waf_build_args['CMD_ARGS'] = '{} --package-projects-automatically=False'.format(enable_game_arg)
                 write(waf_section_tmpl.safe_substitute(waf_build_args))
 
                 write(TASK_GEN_APK_COPY_SECTION)
 
                 write(waf_section_tmpl.safe_substitute({
-                    'CMD' : 'deploy',
-                    'CMD_NAME' : 'Deploy',
-                    'CMD_ARGS' : '{} --deploy-android=True'.format(enable_game_arg),
+                    'CMD' : 'package',
+                    'CMD_NAME' : 'Package',
+                    'CMD_ARGS' : '{} --deploy-projects-automatically=False'.format(enable_game_arg),
                     'INJECTION_TYPE' : 'finalizedBy',
                     'INJECTION_TASK' : 'copyTaskName'
+                }))
+
+                write(waf_section_tmpl.safe_substitute({
+                    'CMD' : 'deploy',
+                    'CMD_NAME' : 'Deploy',
+                    'CMD_ARGS' : enable_game_arg,
+                    'INJECTION_TYPE' : 'finalizedBy',
+                    'INJECTION_TASK' : 'wafPackageTaskName'
                 }))
 
                 build_file.write(TASK_GEN_FOOTER)
@@ -849,7 +870,7 @@ class Module(GradleNode):
             self.android.signing_configs.add_signing_config('Development', **signing_props)
 
     def apply_build_types(self, build_types):
-        for type_name, type_props in build_types.iteritems():
+        for type_name, type_props in build_types.items():
             module_props = {}
 
             if self.type != Module.Type.Library:
@@ -858,7 +879,7 @@ class Module(GradleNode):
             self.android.add_build_type(type_name, **module_props)
 
     def apply_product_flavors(self, product_flavors):
-        for flavor_name, flavor_props in product_flavors.iteritems():
+        for flavor_name, flavor_props in product_flavors.items():
             module_props = {}
 
             if self.type != Module.Type.Library:
@@ -1167,8 +1188,10 @@ def options(opt):
 
 ################################################################
 class android_studio(Build.BuildContext):
+    '''Generate an Android Studio project'''
     cmd = 'android_studio'
     is_android_studio = True
+    is_project_generator = True
 
     def get_target_platforms(self):
         """
@@ -1190,6 +1213,30 @@ class android_studio(Build.BuildContext):
             mod_attrib = '{}_{}'.format(mod, attribute)
             result.extend(to_list(getattr(task_generator, mod_attrib, [])))
         return result
+        
+    def get_module_uses_for_taskgen(self, taskgen, target_to_taskgen):
+
+        def _recurse_find_module_use(taskgen, target_to_taskgen, visited):
+
+            module_uses = []
+            if taskgen.target in visited:
+                return module_uses
+
+            visited.add(taskgen.target)
+
+            use_related_keywords = self.get_all_eligible_use_keywords()
+            taskgen_uses = []
+            for use_keyword in use_related_keywords:
+                append_to_unique_list(taskgen_uses, getattr(taskgen, use_keyword, []))
+
+            for  taskgen_use in taskgen_uses:
+                module_uses.append(taskgen_use)
+                if taskgen_use in target_to_taskgen:
+                    module_uses += _recurse_find_module_use(target_to_taskgen[taskgen_use], target_to_taskgen, visited)
+            return module_uses
+
+        visited = set()
+        return _recurse_find_module_use(taskgen, target_to_taskgen, visited)
 
     def execute(self):
         ''' Entry point of the project generation '''
@@ -1214,6 +1261,7 @@ class android_studio(Build.BuildContext):
 
         # get the core build settings
         android_platforms = self.get_platforms_for_alias('android')
+        android_platforms = [ platform for platform in android_platforms if self.is_target_platform_enabled(platform) ]
         android_config_sets = []
         for platform in android_platforms:
             android_config_sets.append(set(PLATFORM_MAP[platform].get_configuration_names()))
@@ -1252,7 +1300,7 @@ class android_studio(Build.BuildContext):
                         'Only one version can be specified in JAVA_VERSION')
 
         def filter_unique(source_map, common_set):
-            return { key : set.intersection(*value).difference(common_set) for key, value in source_map.iteritems() }
+            return { key : set.intersection(*value).difference(common_set) for key, value in source_map.items() }
 
         common_defines = set.intersection(*all_defines)
         unique_platform_defines = filter_unique(platform_defines, common_defines)
@@ -1269,6 +1317,9 @@ class android_studio(Build.BuildContext):
             modules.extend(self.project_and_platform_modules(project_name, acceptable_platforms))
 
         # validate all the possible spec modules and find their respective task generators
+        unqualified_taskgens = []
+        target_to_taskgen = {}
+        whitelisted_targets = set()
         self.project_tasks = []
         for group in self.groups:
             for task_generator in group:
@@ -1289,11 +1340,25 @@ class android_studio(Build.BuildContext):
                 if is_android_enabled and is_game_project:
                     is_android_enabled = self.get_android_settings(game_project)
 
-                if not (is_in_spec and is_android_enabled):
-                    Logs.debug('android_studio: Skipped module - %s - is not in the spec or not configure for Android', target_name)
+                if (not is_in_spec) and is_android_enabled:
+                    # Not in spec but is enabled for android, so may be used as a dependency from another module
+                    unqualified_taskgens.append(task_generator)
+                    continue
+                elif not (is_in_spec and is_android_enabled):
+                    Logs.debug('android_studio: Skipped module - %s - is not in the spec or not configured for Android', target_name)
                     continue
 
                 self.project_tasks.append(task_generator)
+                
+                # find modules that this module uses
+                module_uses = self.get_module_uses_for_taskgen(task_generator, target_to_taskgen)
+                for module_use in module_uses:
+                    whitelisted_targets.add(module_use)
+                    
+        # Add dependencies
+        for taskgen in unqualified_taskgens:
+            if taskgen.target in whitelisted_targets:
+                self.project_tasks.append(taskgen)
 
         debug_log_value('project_tasks', [tsk.name for tsk in self.project_tasks])
 
@@ -1396,7 +1461,7 @@ class android_studio(Build.BuildContext):
             'gradle-wrapper.jar' : wrapper_root_node
         }
 
-        for filename, dest_root in wrapper_files.iteritems():
+        for filename, dest_root in wrapper_files.items():
             node = source_node.find_node(filename)
             if not node:
                 self.fatal('[ERROR] Failed to find required Gradle wrapper file - {} - in {}'.format(filename, source_node.abspath()))
@@ -1440,7 +1505,7 @@ class android_studio(Build.BuildContext):
                 
             if json_data:
                 module_deps = []
-                for lib_name, value in json_data.iteritems():
+                for lib_name, value in json_data.items():
                     new_task_generator = _DummyTaskGenerator()
                     # Check if the library was patched. If so, we need to look in a different folder.
                     if 'patches' in value:

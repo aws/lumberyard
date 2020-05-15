@@ -10,25 +10,21 @@
 #
 # $Revision$
 
-#
-# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-# its licensors.
-#
-# For complete copyright and license terms please see the LICENSE at the root of this
-# distribution (the "License"). All use of this software is governed by the License,
-# or, if provided, by the license below or the license accompanying this file. Do not
-# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#
+# Suppress "Parent module 'resource_types' not found while handling absolute import " warnings
+from __future__ import print_function
+from __future__ import absolute_import
 
 import json
 import boto3
 import hashlib
-import urlparse
-import botocore
+import botocore.config as boto_config
+
+# Python 2.7/3.7 Compatibility
+from six import iteritems
 
 from cgf_utils import custom_resource_response
 from cgf_utils import properties
+from resource_manager_common import constant
 from resource_manager_common import stack_info
 from resource_manager_common import service_interface
 from cgf_utils import role_utils
@@ -37,9 +33,9 @@ from cgf_utils import aws_utils
 from botocore.exceptions import ClientError
 from cgf_service_directory import ServiceDirectory
 
-cfg = botocore.config.Config(read_timeout=70, connect_timeout=70)
-s3 = aws_utils.ClientWrapper(boto3.client('s3', config = cfg))
-api_gateway = aws_utils.ClientWrapper(boto3.client('apigateway', config = cfg), do_not_log_args=['body'])
+cfg = boto_config.Config(read_timeout=70, connect_timeout=70)
+s3 = aws_utils.ClientWrapper(boto3.client('s3', config=cfg))
+api_gateway = aws_utils.ClientWrapper(boto3.client('apigateway', config=cfg), do_not_log_args=['body'])
 
 API_GATEWAY_SERVICE_NAME = 'apigateway.amazonaws.com'
 STAGE_NAME = 'api'
@@ -47,30 +43,30 @@ STAGE_NAME = 'api'
 PROPERTY_SCHEMA = {
     'ConfigurationBucket': properties.String(),
     'ConfigurationKey': properties.String(),
-    'CacheClusterEnabled': properties.Boolean( default = False ),
-    'CacheClusterSize': properties.String( default = '0.5' ),
-    'SwaggerSettings': properties.Dictionary( default={} ),
-    'MethodSettings': properties.Object( default={},
-        schema={
-            '*': properties.Object( default={}, # path, can be *
-                schema={
-                    '*': properties.Object( default={}, # method, can be *
-                        schema={
-                            'cacheDataEncrypted': properties.Boolean( default = False ),
-                            'cacheTtlInSeconds': properties.Integer( default = 300 ),
-                            'cachingEnabled': properties.Boolean( default = False ),
-                            'dataTraceEnabled': properties.Boolean( default = False ),
-                            'loggingLevel': properties.String( default='OFF' ),
-                            'metricsEnabled': properties.Boolean( default = False ),
-                            'throttlingBurstLimit': properties.Integer( default = 500 ),
-                            'throttlingRateLimit': properties.Integer( default = 1000 ),
-                        }
-                    )
-                }
-            )
-        }
-    ),
-    'StageVariables': properties.Dictionary( default = {} )
+    'CacheClusterEnabled': properties.Boolean(default=False),
+    'CacheClusterSize': properties.String(default='0.5'),
+    'SwaggerSettings': properties.Dictionary(default={}),
+    'MethodSettings': properties.Object(default={},
+                                        schema={
+                                            '*': properties.Object(default={},  # path, can be *
+                                                                   schema={
+                                                                       '*': properties.Object(default={},  # method, can be *
+                                                                                              schema={
+                                                                                                  'cacheDataEncrypted': properties.Boolean(default=False),
+                                                                                                  'cacheTtlInSeconds': properties.Integer(default=300),
+                                                                                                  'cachingEnabled': properties.Boolean(default=False),
+                                                                                                  'dataTraceEnabled': properties.Boolean(default=False),
+                                                                                                  'loggingLevel': properties.String(default='OFF'),
+                                                                                                  'metricsEnabled': properties.Boolean(default=False),
+                                                                                                  'throttlingBurstLimit': properties.Integer(default=500),
+                                                                                                  'throttlingRateLimit': properties.Integer(default=1000),
+                                                                                              }
+                                                                                              )
+                                                                   }
+                                                                   )
+                                        }
+                                        ),
+    'StageVariables': properties.Dictionary(default={})
 }
 
 
@@ -90,19 +86,24 @@ def arn_handler(event, context):
 
 
 def handler(event, context):
-
+    """Entry point for the Custom::ServiceApi resource handler."""
+    stack_id = event['StackId']
     request_type = event['RequestType']
     logical_resource_id = event['LogicalResourceId']
     logical_role_name = logical_resource_id
     stack_manager = stack_info.StackInfoManager()
-    stack = stack_manager.get_stack_info(event['StackId'])
+    stack = stack_manager.get_stack_info(stack_id)
 
     rest_api_resource_name = stack.stack_name + '-' + logical_resource_id
     id_data = aws_utils.get_data_from_custom_physical_resource_id(event.get('PhysicalResourceId', None))
 
     response_data = {}
+    project_tags = {
+        constant.PROJECT_NAME_TAG: stack.project_stack.project_name,
+        constant.STACK_ID_TAG: stack_id
+    }
 
-    if request_type  == 'Create':
+    if request_type == 'Create':
 
         props = properties.load(event, PROPERTY_SCHEMA)
         role_arn = role_utils.create_access_control_role(stack_manager, id_data, stack.stack_arn, logical_role_name, API_GATEWAY_SERVICE_NAME)
@@ -111,7 +112,7 @@ def handler(event, context):
         service_url = get_service_url(rest_api_id, stack.region)
 
         register_service_interfaces(stack, service_url, swagger_content)
-        update_api_gateway_tags(rest_api_id, event);
+        update_api_gateway_tags(rest_api_id, event, project_tags)
 
         response_data['Url'] = service_url
         id_data['RestApiId'] = rest_api_id
@@ -129,7 +130,7 @@ def handler(event, context):
         service_url = get_service_url(rest_api_id, stack.region)
         register_service_interfaces(stack, service_url, swagger_content)
 
-        update_api_gateway_tags(rest_api_id, event)
+        update_api_gateway_tags(rest_api_id, event, project_tags)
 
         response_data['Url'] = service_url
 
@@ -139,14 +140,14 @@ def handler(event, context):
 
             # The will be no data in the id if Cloud Formation cancels a resource creation
             # (due to a failure in another resource) before it processes the resource create
-            # response. Appearently Cloud Formation has an internal temporary id for the
+            # response. Apparently Cloud Formation has an internal temporary id for the
             # resource and uses it for the delete request.
             #
-            # Unfortunalty there isn't a good way to deal with this case. We don't have the
+            # Unfortunately there isn't a good way to deal with this case. We don't have the
             # id data, so we can't clean up the things it identifies. At best we can allow the
             # stack cleanup to continue, leaving the rest API behind and role behind.
 
-            print 'WARNING: No id_data provided on delete.'.format(id_data)
+            print('WARNING: No id_data provided on delete.')
 
         else:
 
@@ -178,18 +179,16 @@ def get_configured_swagger_content(owning_stack_info, props, role_arn, rest_api_
 
 
 def get_input_swagger_content(props):
-
     swagger_key = props.ConfigurationKey + '/swagger.json'
 
-    res = s3.get_object(Bucket = props.ConfigurationBucket, Key = swagger_key)
-    content = res['Body'].read()
+    res = s3.get_object(Bucket=props.ConfigurationBucket, Key=swagger_key)
+    content = res['Body'].read().decode()
 
     return content
 
 
-def configure_swagger_content(owning_stack_info , props, role_arn, rest_api_resource_name, content):
-
-    print 'provided swagger', content.replace('\n', ' ')
+def configure_swagger_content(owning_stack_info, props, role_arn, rest_api_resource_name, content):
+    print('provided swagger {}'.format(content.replace('\n', ' ')))
 
     deployment_name = "NONE"
     resource_group_name = "NONE"
@@ -212,12 +211,12 @@ def configure_swagger_content(owning_stack_info , props, role_arn, rest_api_reso
     settings['RestApiResourceName'] = rest_api_resource_name
     settings['ProjectName'] = project_name
 
-    print 'settings', settings
+    print('settings {}'.format(settings))
 
-    for key, value in settings.iteritems():
+    for key, value in iteritems(settings):
         content = content.replace('$' + key + '$', value)
 
-    print 'configured swagger', content.replace('\n', ' ')
+    print('configured swagger {}'.format(content.replace('\n', ' ')))
 
     return content
 
@@ -226,12 +225,13 @@ def list_rest_apis():
     response = api_gateway.get_rest_apis()
     return response['items']
 
+
 def create_api_gateway(rest_api_resource_name, props, swagger_content):
     existing_apis = list_rest_apis()
     rest_api_id = None
     for api in existing_apis:
         if rest_api_resource_name == api["name"]:
-            print "We have already created {}, skipping create and using existing api Id".format(rest_api_resource_name)
+            print("We have already created {}, skipping create and using existing api Id".format(rest_api_resource_name))
             rest_api_id = api["id"]
 
     if rest_api_id is None:
@@ -247,6 +247,7 @@ def create_api_gateway(rest_api_resource_name, props, swagger_content):
         raise
 
     return rest_api_id
+
 
 def update_api_gateway(rest_api_id, props, swagger_content):
     rest_api_deployment_id = get_rest_api_deployment_id(rest_api_id)
@@ -264,17 +265,18 @@ def delete_api_gateway(rest_api_id):
 
 def delete_rest_api(rest_api_id):
     try:
-        res = api_gateway.delete_rest_api(restApiId = rest_api_id)
+        res = api_gateway.delete_rest_api(restApiId=rest_api_id)
     except ClientError as e:
         if e.response['Error']['Code'] == 'NotFoundException':
-            print 'No API found. Skipping delete.'
+            print('No API found. Skipping delete.')
         else:
             raise e
 
+
 def create_documentation_version(rest_api_id, attempt=0):
     version = get_documentation_version(rest_api_id)
-    if version == None:
-        print "Failed to create service API documentation."
+    if version is None:
+        print("Failed to create service API documentation.")
     else:
         kwargs = {
             'restApiId': rest_api_id,
@@ -286,15 +288,14 @@ def create_documentation_version(rest_api_id, attempt=0):
             res = api_gateway.create_documentation_version(**kwargs)
         except ClientError as error:
             if attempt < 3 and (hasattr(error, 'response') and error.response and error.response['Error']['Code'] != 'ConflictException'):
-                print "Version conflict, incrementing the version and trying again.  This is attempt {}".format(attempt)
+                print("Version conflict, incrementing the version and trying again.  This is attempt {}".format(attempt))
                 attempt = attempt + 1
-                self.create_documentation_version(rest_api_id, attempt)
+                create_documentation_version(rest_api_id, attempt)
             else:
                 raise error
 
 
 def get_documentation_version(rest_api_id):
-
     kwargs = {
         'restApiId': rest_api_id,
     }
@@ -306,15 +307,15 @@ def get_documentation_version(rest_api_id):
 
     # find current version by date time comparison
     for item in items:
-        if current_version == None or item['createdDate'] > current_version['createdDate']:
+        if current_version is None or item['createdDate'] > current_version['createdDate']:
             current_version = item
             version = current_version['version']
-    print "The current version is ", version
-    if current_version != None:
+    print("The current version is {}".format(version))
+    if current_version is not None:
         version_parts = version.split('.')
         build = int(version_parts[2])
-        version = '{}.{}.{}'.format(version_parts[0], version_parts[1], build+1)
-        print "The new version will be", version
+        version = '{}.{}.{}'.format(version_parts[0], version_parts[1], build + 1)
+        print("The new version will be {}".format(version))
 
     # verify the document version does not exist
     try:
@@ -325,13 +326,13 @@ def get_documentation_version(rest_api_id):
 
         res = api_gateway.get_documentation_version(**kwargs)
 
-        print "The calculated document version has already been created for api '{}' and version '{}'.".format(rest_api_id, version)
+        print("The calculated document version has already been created for api '{}' and version '{}'.".format(rest_api_id, version))
         return None
     except ClientError as notFound:
         return version
 
-def detect_swagger_changes(rest_api_id, rest_api_deployment_id, swagger_content):
 
+def detect_swagger_changes(rest_api_id, rest_api_deployment_id, swagger_content):
     new_digest = compute_swagger_digest(swagger_content)
     old_digest = get_rest_api_deployment_swagger_digest(rest_api_id, rest_api_deployment_id)
 
@@ -342,11 +343,10 @@ def detect_swagger_changes(rest_api_id, rest_api_deployment_id, swagger_content)
 
 
 def compute_swagger_digest(swagger_content):
-    return hashlib.sha224(swagger_content).hexdigest()
+    return hashlib.sha224(swagger_content.encode()).hexdigest()
 
 
 def get_rest_api_deployment_swagger_digest(rest_api_id, rest_api_deployment_id):
-
     kwargs = {
         'restApiId': rest_api_id,
         'deploymentId': rest_api_deployment_id
@@ -357,7 +357,6 @@ def get_rest_api_deployment_swagger_digest(rest_api_id, rest_api_deployment_id):
 
 
 def import_rest_api(swagger_content):
-
     kwargs = {
         'failOnWarnings': True,
         'body': swagger_content,
@@ -370,7 +369,6 @@ def import_rest_api(swagger_content):
 
 
 def put_rest_api(rest_api_id, swagger_content):
-
     kwargs = {
         'failOnWarnings': True,
         'restApiId': rest_api_id,
@@ -381,8 +379,7 @@ def put_rest_api(rest_api_id, swagger_content):
     res = api_gateway.put_rest_api(**kwargs)
 
 
-def create_rest_api_deployment(rest_api_id, swagger_digest, new_api = False):
-
+def create_rest_api_deployment(rest_api_id, swagger_digest, new_api=False):
     if new_api:
         # Creates have a habit of timing out when standing up large deployments due to APIG throttling calls.
         # This can cause the create event to refire.
@@ -393,7 +390,7 @@ def create_rest_api_deployment(rest_api_id, swagger_digest, new_api = False):
         )
 
         if response["items"]:
-            print "Deployment has already been created for this API"
+            print("Deployment has already been created for this API")
             return
 
     kwargs = {
@@ -406,7 +403,6 @@ def create_rest_api_deployment(rest_api_id, swagger_digest, new_api = False):
 
 
 def update_rest_api_stage(rest_api_id, props):
-
     kwargs = {
         'restApiId': rest_api_id,
         'stageName': STAGE_NAME,
@@ -417,7 +413,6 @@ def update_rest_api_stage(rest_api_id, props):
     patch_operations = get_rest_api_stage_update_patch_operations(current_stage, props)
 
     if patch_operations:
-
         kwargs = {
             'restApiId': rest_api_id,
             'stageName': STAGE_NAME,
@@ -428,7 +423,6 @@ def update_rest_api_stage(rest_api_id, props):
 
 
 def get_rest_api_stage_update_patch_operations(current_stage, props):
-
     builder = patch.OperationListBuilder()
 
     if current_stage.get('cacheClusterEnabled', False) != props.CacheClusterEnabled:
@@ -449,40 +443,40 @@ def get_rest_api_stage_update_patch_operations(current_stage, props):
     #           }
     #       }
     #   }
-    #}
-    settingsObj = current_stage.get('methodSettings',{})
-    existing_paths = [curPath for curPath, curSettings in settingsObj.iteritems()]
+    # }
+    settings_obj = current_stage.get('methodSettings', {})
+    existing_paths = [curPath for curPath, curSettings in iteritems(settings_obj)]
 
-    propsSettings = props.MethodSettings
+    props_settings = props.MethodSettings
 
-    for pathStr in dir(propsSettings):
-        pathInfo = getattr(propsSettings, pathStr)
-        if not isinstance(pathInfo, properties._Properties):
+    for path_str in dir(props_settings):
+        path_info = getattr(props_settings, path_str)
+        if not isinstance(path_info, properties._Properties):
             continue
 
-        for requestVerb in dir(pathInfo):
-            settings_path = pathStr.replace('/', '~1') + '/' + requestVerb
+        for requestVerb in dir(path_info):
+            settings_path = path_str.replace('/', '~1') + '/' + requestVerb
 
             if settings_path in existing_paths:
                 existing_paths.remove(settings_path)
 
             update_path = '/' + settings_path
-            pathSettings = getattr(pathInfo, requestVerb)
-            if not isinstance(pathSettings, properties._Properties):
+            path_settings = getattr(path_info, requestVerb)
+            if not isinstance(path_settings, properties._Properties):
                 continue
-            for methodbase, methodUpdate in [('throttlingBurstLimit', '/throttling/burstLimit'),
-                                             ('throttlingRateLimit', '/throttling/rateLimit'),
-                                             ('cacheDataEncrypted', '/caching/dataEncrypted'),
-                                             ('cacheTtlInSeconds', '/caching/ttlInSeconds'),
-                                             ('cachingEnabled', '/caching/enabled'),
-                                             ('dataTraceEnabled', '/logging/dataTrace'),
-                                             ('loggingLevel', '/logging/loglevel'),
-                                             ('metricsEnabled', '/metrics/enabled')]:
-                cur_settings = settingsObj.get(settings_path, {})
-                curValue = cur_settings.get(methodbase, '')
-                propValue = getattr(pathSettings, methodbase)
-                if curValue != propValue:
-                    builder.replace(update_path + methodUpdate, str(propValue))
+            for method_base, method_update in [('throttlingBurstLimit', '/throttling/burstLimit'),
+                                               ('throttlingRateLimit', '/throttling/rateLimit'),
+                                               ('cacheDataEncrypted', '/caching/dataEncrypted'),
+                                               ('cacheTtlInSeconds', '/caching/ttlInSeconds'),
+                                               ('cachingEnabled', '/caching/enabled'),
+                                               ('dataTraceEnabled', '/logging/dataTrace'),
+                                               ('loggingLevel', '/logging/loglevel'),
+                                               ('metricsEnabled', '/metrics/enabled')]:
+                cur_settings = settings_obj.get(settings_path, {})
+                cur_value = cur_settings.get(method_base, '')
+                prop_value = getattr(path_settings, method_base)
+                if cur_value != prop_value:
+                    builder.replace(update_path + method_update, str(prop_value))
 
     for thisPath in existing_paths:
         builder.remove('/' + thisPath)
@@ -491,7 +485,6 @@ def get_rest_api_stage_update_patch_operations(current_stage, props):
 
 
 def get_rest_api_deployment_id(rest_api_id):
-
     kwargs = {
         'restApiId': rest_api_id,
         'stageName': STAGE_NAME
@@ -503,29 +496,30 @@ def get_rest_api_deployment_id(rest_api_id):
 
 def get_service_url(rest_api_id, region):
     return 'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
-        rest_api_id = rest_api_id,
-        region = region,
-        stage_name = STAGE_NAME)
+        rest_api_id=rest_api_id,
+        region=region,
+        stage_name=STAGE_NAME)
 
 
 def register_service_interfaces(stack, service_url, swagger_content):
     try:
         swagger = json.loads(swagger_content)
     except Exception as e:
-        raise RuntimeError('Could not parse swagger content: {}'.format(e.message))
+        raise RuntimeError('Could not parse swagger content: {}'.format(str(e)))
 
     interfaces_metadata = swagger.get(service_interface.INTERFACE_METADATA_OBJECT_NAME, None)
     if not interfaces_metadata:
         return
 
     interfaces = []
-    for interface_id, interface_metadata in interfaces_metadata.iteritems():
+    for interface_id, interface_metadata in iteritems(interfaces_metadata):
 
         base_path = interface_metadata.get('basePath', None)
         if not base_path:
             raise RuntimeError('Missing required property basePath in the metadata for interface {}.'.format(interface_id))
         if not base_path.startswith('/') or base_path.endswith('/'):
-            raise RuntimeError('The basePath property in the metadata for interface {} should start with a slash and not end with a slash.'.format(interface_id))
+            raise RuntimeError(
+                'The basePath property in the metadata for interface {} should start with a slash and not end with a slash.'.format(interface_id))
         interface_url = service_url + base_path
 
         interface_swagger = get_interface_swagger(
@@ -549,7 +543,6 @@ def register_service_interfaces(stack, service_url, swagger_content):
 
 
 def get_interface_swagger(swagger, interface_id, base_path, interface_paths, interface_definitions):
-
     gem_name, interface_name, interface_version = service_interface.parse_interface_id(interface_id)
 
     interface_swagger = {
@@ -567,15 +560,15 @@ def get_interface_swagger(swagger, interface_id, base_path, interface_paths, int
         if not interface_path.startswith(base_path):
             raise RuntimeError('Interface path {} does not start with the interface base path {}.'.format(interface_path, base_path))
 
-        path_object = swagger['paths'].get(interface_path, None);
+        path_object = swagger['paths'].get(interface_path, None)
         if not path_object:
             raise RuntimeError('Missing path {} in the swagger document.'.format(interface_path))
 
         relative_interface_path = interface_path.replace(base_path, '')
-        interface_swagger['paths'][relative_interface_path] = path_object;
+        interface_swagger['paths'][relative_interface_path] = path_object
 
     for definition in interface_definitions:
-        interface_swagger['definitions'][definition] = swagger['definitions'][definition];
+        interface_swagger['definitions'][definition] = swagger['definitions'][definition]
 
     return json.dumps(interface_swagger)
 
@@ -586,28 +579,32 @@ def unregister_service_interfaces(stack, service_url):
 
 
 def get_service_directory(stack):
-
     configuration_bucket_name = stack.project.configuration_bucket
     if not configuration_bucket_name:
         raise RuntimeError('Cannot register or unregister service interfaces because there is no project service url.')
 
     return ServiceDirectory(configuration_bucket_name)
 
-def update_api_gateway_tags(rest_api_id, event):
-    resourceProps = event.get('ResourceProperties')
-    settings = resourceProps.get('SwaggerSettings')
+
+def update_api_gateway_tags(rest_api_id, event, project_tags):
+    resource_props = event.get('ResourceProperties')
+    settings = resource_props.get('SwaggerSettings')
     region = settings.get('Region')
-    resourceArn = "arn:aws:apigateway:{region}::/restapis/{rest_api_id}/stages/{stageName}".format(
+    resource_arn = "arn:aws:apigateway:{region}::/restapis/{rest_api_id}/stages/{stageName}".format(
         region=region,
         rest_api_id=rest_api_id,
         stageName=STAGE_NAME
     )
-    kwargs = {
-        'resourceArn': resourceArn,
-        'tags': {
-            "Deployment": settings['DeploymentName'],
-            "Gem": settings['ResourceGroupName']
-        }
-    }
-    api_gateway.tag_resource(**kwargs);
 
+    gem_tags = {
+        constant.DEPLOYMENT_TAG: settings['DeploymentName'],
+        constant.DEPLOYMENT_GEM_TAG: settings['ResourceGroupName']
+    }
+
+    gem_tags.update(project_tags)
+
+    kwargs = {
+        'resourceArn': resource_arn,
+        'tags': gem_tags
+    }
+    api_gateway.tag_resource(**kwargs)

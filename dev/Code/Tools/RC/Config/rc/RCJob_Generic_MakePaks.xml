@@ -14,7 +14,7 @@
         levels_pak_types="levels\*.*"
         levels_pak_excludes="*\leveldata\*;*.pak"
 
-        game_data_pak_types="*.uicanvas;*.bin;*.pssl;*.grd;*.grp;*.cal;*.lut;*.sprite;prototypes\*.*;aws\*.*;difficulty\*.*;libs\*.*;materials\*.*;prefabs\*.*"
+        game_data_pak_types="*.uicanvas;*.bin;*.grd;*.grp;*.cal;*.lut;*.sprite;prototypes\*.*;aws\*.*;difficulty\*.*;libs\*.*;materials\*.*;prefabs\*.*"
         game_data_pak_excludes="*filelist.*"
 
         animation_pak_types="animations\*.*"
@@ -44,8 +44,11 @@
         gems_pak_types="gems\*.json;${game}\gems.json;${game}\gem\*.*"
         gems_pak_excludes=""
 
+        video_pak_types="*.mp4;*.mkv;*.webm;*.mov;*.bk2"
+        video_pak_excludes=""
+
         misc_pak_types="*.*"
-        misc_pak_excludes="*cmakelists.*;editor\*.*;${levels_pak_types};${levels_pak_excludes};${game_data_pak_types};${game_data_pak_excludes};${animation_pak_types};${animation_pak_excludes};${objects_pak_types};${objects_pak_excludes};${character_pak_types};${character_pak_excludes};${textures_pak_types};${textures_pak_excludes};${sounds_pak_types};${sounds_pak_excludes};${scripts_pak_types};${scripts_pak_excludes};${shader_pak_types};${shader_pak_excludes};${engine_pak_types};${engine_pak_excludes};${gems_pak_types};${gems_pak_excludes}"
+        misc_pak_excludes="*cmakelists.*;editor\*.*;${levels_pak_types};${levels_pak_excludes};${game_data_pak_types};${game_data_pak_excludes};${animation_pak_types};${animation_pak_excludes};${objects_pak_types};${objects_pak_excludes};${character_pak_types};${character_pak_excludes};${textures_pak_types};${textures_pak_excludes};${sounds_pak_types};${sounds_pak_excludes};${scripts_pak_types};${scripts_pak_excludes};${shader_pak_types};${shader_pak_excludes};${engine_pak_types};${engine_pak_excludes};${gems_pak_types};${gems_pak_excludes};${video_pak_types}"
 
         src_game="${src}\${game}"
         trg_paks="${trg}\${game}"
@@ -79,6 +82,7 @@
         <Job sourceroot="${src_game}" input="${textures_pak_types}" zip="${trg_paks}\textures.pak" exclude="${textures_pak_excludes}" />
         <Job sourceroot="${src_game}" input="${sounds_pak_types}" zip="${trg_paks}\sounds.pak" exclude="${sounds_pak_excludes}" zip_compression="0" />
         <Job sourceroot="${src_game}" input="${scripts_pak_types}" zip="${trg_paks}\scripts.pak" exclude="${scripts_pak_excludes}" />
+        <Job sourceroot="${src_game}" input="${video_pak_types}" zip="${trg_paks}\videos.pak" exclude="${video_pak_excludes}" zip_compression="0" />
 
         <Job sourceroot="${src_game}" input="${shader_pak_types}" zip="${trg_paks}\shaders.pak" exclude="${shader_pak_excludes}" />
         <Job sourceroot="${src_game}" input="${engine_pak_types}" zip="${trg_paks}\engine.pak" exclude="${engine_pak_excludes}" />

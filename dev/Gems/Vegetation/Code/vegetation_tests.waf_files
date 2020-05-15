@@ -6,6 +6,7 @@
         "Tests/VegetationComponentModifierTests.cpp",
         "Tests/VegetationComponentDescriptorTests.cpp",
         "Tests/VegetationComponentFilterTests.cpp",
+        "Tests/VegetationAreaSystemComponentTest.cpp",
         "Tests/VegetationTest.cpp",
         "Tests/VegetationTest.h"
       ]

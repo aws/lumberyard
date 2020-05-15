@@ -18,15 +18,19 @@
 #include <AzCore/std/containers/stack.h>
 #include <AzCore/std/containers/unordered_map.h>
 
+#include <AzFramework/Network/NetBindable.h>
+
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/GraphData.h>
 #include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 #include <ScriptCanvas/Execution/ExecutionContext.h>
 #include <ScriptCanvas/Execution/RuntimeBus.h>
+#include <ScriptCanvas/Variable/GraphVariableNetBindings.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 #include <ScriptCanvas/Variable/VariableCore.h>
 #include <ScriptCanvas/Variable/VariableData.h>
+
 
 namespace ScriptCanvas
 {
@@ -42,7 +46,9 @@ namespace ScriptCanvas
     //! This component should only be used at runtime 
     class RuntimeComponent
         : public AZ::Component
+        , public AzFramework::NetBindable
         , protected RuntimeRequestBus::Handler
+        , protected VariableNotificationBus::MultiHandler
         , protected VariableRequestBus::MultiHandler
         , private AZ::Data::AssetBus::Handler
         , public AZ::EntityBus::Handler
@@ -50,15 +56,16 @@ namespace ScriptCanvas
     public:
         friend class Node;
 
-        AZ_COMPONENT(RuntimeComponent, "{95BFD916-E832-4956-837D-525DE8384282}");
+        AZ_COMPONENT(RuntimeComponent, "{95BFD916-E832-4956-837D-525DE8384282}", NetBindable);
 
         static void Reflect(AZ::ReflectContext* context);
         static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         static AZStd::vector<RuntimeComponent*> FindAllByEditorAssetId(AZ::Data::AssetId editorScriptCanvasAssetId);
+        
+        RuntimeComponent(ScriptCanvasId uniqueId = AZ::Entity::MakeId());
+        RuntimeComponent(AZ::Data::Asset<RuntimeAsset> runtimeAsset, ScriptCanvasId uniqueId = AZ::Entity::MakeId());
 
-        RuntimeComponent(AZ::EntityId uniqueId = AZ::Entity::MakeId());
-        RuntimeComponent(AZ::Data::Asset<RuntimeAsset> runtimeAsset, AZ::EntityId uniqueId = AZ::Entity::MakeId());
         ~RuntimeComponent() override;
 
         //// AZ::Component
@@ -67,7 +74,16 @@ namespace ScriptCanvas
         void Deactivate() override;
         ////
 
-        AZ::EntityId GetUniqueId() const { return m_uniqueId; };
+        void CreateNetBindingTable();
+
+        //////////////////////////////////////////////////////////////////////////
+        // NetBindable
+        GridMate::ReplicaChunkPtr GetNetworkBinding() override;
+        void SetNetworkBinding(GridMate::ReplicaChunkPtr chunk) override;
+        void UnbindFromNetwork() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        ScriptCanvasId GetScriptCanvasId() const { return m_scriptCanvasId; };
 
         void SetRuntimeAsset(const AZ::Data::Asset<RuntimeAsset>& runtimeAsset);
 
@@ -89,17 +105,28 @@ namespace ScriptCanvas
         AZStd::vector<AZ::EntityId> GetNodes() const override;
         AZStd::vector<AZ::EntityId> GetConnections() const override;
         AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& firstEndpoint) const override;
+        AZStd::pair< EndpointMapConstIterator, EndpointMapConstIterator > GetConnectedEndpointIterators(const Endpoint& endpoint) const override;
+
         bool IsEndpointConnected(const Endpoint& endpoint) const override;
         GraphData* GetGraphData() override;
         const GraphData* GetGraphDataConst() const override { return const_cast<RuntimeComponent*>(this)->GetGraphData(); }
 
         VariableData* GetVariableData() override;
         const VariableData* GetVariableDataConst() const { return const_cast<RuntimeComponent*>(this)->GetVariableData(); }
-        const AZStd::unordered_map<VariableId, VariableNameValuePair>* GetVariables() const override;
-        VariableDatum* FindVariable(AZStd::string_view propName) override;
-        VariableNameValuePair* FindVariableById(const VariableId& variableId) override;
+        const GraphVariableMapping* GetVariables() const override;
+
+        GraphVariable* FindVariable(AZStd::string_view propName) override;
+        GraphVariable* FindVariableById(const VariableId& variableId) override;
+
         Data::Type GetVariableType(const VariableId& variableId) const override;
-        AZStd::string_view GetVariableName(const VariableId& variableId) const override;
+        AZStd::string_view GetVariableName(const VariableId& variableId) const override;        
+
+        bool IsGraphObserved() const override;
+        void SetIsGraphObserved(bool isObserved) override;
+        ////
+
+        //// VariableNotificationBus::Handler
+        void OnVariableValueChanged() override;
         ////
 
         void SetVariableOverrides(const VariableData& overrideData);
@@ -107,8 +134,8 @@ namespace ScriptCanvas
         void SetVariableEntityIdMap(const AZStd::unordered_map<AZ::u64, AZ::EntityId> variableEntityIdMap);
 
         //// VariableRequestBus::Handler
-        VariableDatum* GetVariableDatum() override;
-        const VariableDatum* GetVariableDatumConst() const override { return const_cast<RuntimeComponent*>(this)->GetVariableDatum(); }
+        GraphVariable* GetVariable() override;
+        const GraphVariable* GetVariableConst() const override { return const_cast<RuntimeComponent*>(this)->GetVariable(); }
         Data::Type GetType() const override;
         AZStd::string_view GetName() const override;
         AZ::Outcome<void, AZStd::string> RenameVariable(AZStd::string_view newVarName) override;
@@ -148,28 +175,36 @@ namespace ScriptCanvas
         void CreateAssetInstance();
         ////
 
-    private:
-        AZ::EntityId m_uniqueId;
+    private:        
+        ScriptCanvasId m_scriptCanvasId;
         RuntimeData m_runtimeData;
         AZ::Data::Asset<RuntimeAsset> m_runtimeAsset;
-        //<! Per instance variable data overrides for the runtime asset
-        //<! This is serialized when building this component from the EditorScriptCanvasComponent
+
+        //! Per instance variable data overrides for the runtime asset
+        //! This is serialized when building this component from the EditorScriptCanvasComponent
         VariableData m_variableOverrides;
 
         ExecutionContext m_executionContext;
         
-        // Script Canvas VariableId populated when the RuntimeAsset loads
+        //! Script Canvas VariableId populated when the RuntimeAsset loads
         VariableIdMap m_assetToRuntimeVariableMap;
         VariableIdMap m_runtimeToAssetVariableMap;
 
         AZStd::unordered_set< Node* > m_entryNodes;
+        AZStd::unordered_map< AZ::EntityId, Node* > m_nodeLookupMap;
 
-        // Script Canvas VariableId map populated by the EditorScriptCanvasComponent in build game Entity
+        //! Script Canvas VariableId map populated by the EditorScriptCanvasComponent in build game Entity
         AZStd::unordered_map<AZ::u64, AZ::EntityId> m_variableEntityIdMap;
         
-        // used to map runtime graphs back to asset sources, for use in debugging and logging against human written content in the editor
+        //! Used to map runtime graphs back to asset sources, for use in debugging and logging against human written content in the editor
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_runtimeIdToAssetId;
-        // used to map asset sources to runtime graphs, for use in debugging and logging against human written content in the editor
+        //! Used to map asset sources to runtime graphs, for use in debugging and logging against human written content in the editor
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_assetIdToRuntimeId;
+
+        using GraphVariableNetBindingTablePtr = AZStd::unique_ptr<GraphVariableNetBindingTable>;
+        //! Ptr to netbinding table used to track and execute networking-related logic for reflected variables.
+        GraphVariableNetBindingTablePtr m_graphVariableNetBindingTable = nullptr;
+
+        bool m_isObserved = false;
     };
 }

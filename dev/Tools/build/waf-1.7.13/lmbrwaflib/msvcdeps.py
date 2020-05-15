@@ -20,13 +20,16 @@ The technique of gutting scan() and pushing the dependency calculation
 down to post_run() is cribbed from gccdeps.py.
 '''
 
+# System Imports
 import os
 import sys
 import tempfile
 import threading
 
+# waflib imports
 from waflib import Context, Errors, Logs, Task, Utils
 from waflib.TaskGen import feature, before_method
+
 
 PREPROCESSOR_FLAG = '/showIncludes'
 INCLUDE_PATTERN = 'Note: including file:'
@@ -137,7 +140,7 @@ def wrap_compiled_task(classname):
         unresolved_names = []
         resolved_nodes = []
 
-        if (len(self.src_deps_paths) + len(self.bld_deps_paths)):
+        if (len(self.src_deps_paths) + len(self.bld_deps_paths) + len(self.eng_deps_paths)):
             # The following code is executed by threads, it is not safe, so a lock is needed...
             with lock:
                 for path in self.src_deps_paths:
@@ -145,6 +148,9 @@ def wrap_compiled_task(classname):
                     resolved_nodes.append(node)
                 for path in self.bld_deps_paths:
                     node = _find_or_make_node_case_correct(bld.bldnode, path)
+                    resolved_nodes.append(node)
+                for path in self.eng_deps_paths:
+                    node = _find_or_make_node_case_correct(bld.engine_node, path)
                     resolved_nodes.append(node)
 
 
@@ -161,6 +167,7 @@ def wrap_compiled_task(classname):
         # Free memory (200KB for each file in CryEngine, without UberFiles, this accumulates to 1 GB)
         del self.src_deps_paths
         del self.bld_deps_paths
+        del self.eng_deps_paths
 
         try:
             del self.cache_sig
@@ -225,6 +232,7 @@ def wrap_compiled_task(classname):
 
                 self.src_deps_paths = set()
                 self.bld_deps_paths = set()
+                self.eng_deps_paths = set()
 
                 kw['env'] = kw.get('env', os.environ.copy())
                 kw['cwd'] = kw.get('cwd', os.getcwd())
@@ -246,10 +254,39 @@ def wrap_compiled_task(classname):
                         ret = -1
 
                 bld = self.generator.bld
-                srcnode_abspath_lower = bld.srcnode.abspath().lower()
-                bldnode_abspath_lower = bld.bldnode.abspath().lower()
-                srcnode_abspath_lower_len = len(srcnode_abspath_lower)
-                bldnode_abspath_lower_len = len(bldnode_abspath_lower)
+
+                class Path:
+                    def __init__(self, path):
+                        self.raw = path
+                        self.lower = path.lower()
+                        self.length = len(self.lower)
+
+                def add_if_same_prefix(compare_path, prefix_path, lst):
+                    if (prefix_path.length + 1) < compare_path.length and (compare_path.raw[prefix_path.length] == os.sep) and (compare_path.lower[:prefix_path.length] == prefix_path.lower):
+                        subpath = compare_path.raw[prefix_path.length + 1:]
+                        lst.add(subpath)
+                        return True
+                    return False
+
+                srcnode_path = Path(bld.srcnode.abspath())
+                bldnode_path = Path(bld.bldnode.abspath())
+                engnode_path = Path(bld.engine_node.abspath())
+
+                def check_std_paths(compare_path):
+                    if add_if_same_prefix(compare_path, srcnode_path, self.src_deps_paths):
+                        return True
+                    elif add_if_same_prefix(compare_path, bldnode_path, self.bld_deps_paths):
+                        return True
+                    return False
+
+                def check_all_paths(compare_path):
+                    if check_std_paths(compare_path):
+                        return True
+                    elif add_if_same_prefix(compare_path, engnode_path, self.eng_deps_paths):
+                        return True
+                    return False
+
+                is_path_trackable = check_std_paths if bld.is_engine_local() else check_all_paths
 
                 show_includes = bld.is_option_true('show_includes')
                 for line in raw_out.splitlines():
@@ -261,20 +298,13 @@ def wrap_compiled_task(classname):
                             Logs.debug('msvcdeps: Regex matched %s' % inc_path)
                         # normcase will change '/' to '\\' and lowercase everything, use sparingly
                         # normpath is safer, but we really want to ignore all permutations of these roots
-                        norm_path = os.path.normpath(inc_path)
-                        norm_path_len = len(norm_path)
+                        norm_path = Path(os.path.normpath(inc_path))
+
                         # The bld node may be embedded under the source node, eg dev/BinTemp/flavor.
                         # check if the path is in the src node first, and bld node second, allowing for this overlap
-                        if (srcnode_abspath_lower_len + 1) < norm_path_len:
-                            if norm_path[srcnode_abspath_lower_len] == os.sep and norm_path[:srcnode_abspath_lower_len].lower() == srcnode_abspath_lower:
-                                subpath = norm_path[srcnode_abspath_lower_len + 1:]
-                                self.src_deps_paths.add(subpath)
-                                continue
-                        if (bldnode_abspath_lower_len + 1) < norm_path_len:
-                            if norm_path[bldnode_abspath_lower_len] == os.sep and norm_path[:bldnode_abspath_lower_len].lower() == bldnode_abspath_lower:
-                                subpath = norm_path[bldnode_abspath_lower_len + 1:]
-                                self.bld_deps_paths.add(subpath)
-                                continue
+                        if is_path_trackable(norm_path):
+                            continue
+
                         # System library
                         if Logs.verbose:
                             Logs.debug('msvcdeps: Ignoring system include %r' % inc_path)

@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import retry
 import boto3_util
 import metric_constant as c
@@ -47,7 +59,7 @@ class Sqs(object):
         self.__queue_url = context[c.KEY_SQS_QUEUE_URL] if c.KEY_SQS_QUEUE_URL in context and context[c.KEY_SQS_QUEUE_URL] else None
         self.__max_message_size = c.MAXIMUM_MESSAGE_SIZE_IN_BYTES
         self.__queue_urls = []
-        print "Queue prefix", queue_prefix   
+        print("Queue prefix", queue_prefix)
 
     @property
     def queue_url(self):
@@ -72,7 +84,7 @@ class Sqs(object):
         return len(self.queue_urls)
 
     def drop(self, receiptid, body, attempts):
-        print "Dropping message after {} attempts that had a message body of \n{}".format(attempts, body)
+        print("Dropping message after {} attempts that had a message body of \n{}".format(attempts, body))
         self.__context[c.KEY_THREAD_POOL].add(retry.try_with_backoff, self.__context, self.__client.delete_message, QueueUrl=self.__queue_url, ReceiptHandle=receiptid)
 
     def delete_message_batch(self, metrics, queue_url = None):
@@ -96,13 +108,13 @@ class Sqs(object):
 
     def read_queue(self, url = None):    
         timeout = self.__context[c.KEY_MAX_LAMBDA_TIME] + 30
-        response = retry.try_with_backoff(self.__context, self.__client.receive_message, \
-                            QueueUrl= url or self.__queue_url, \
-                            AttributeNames=['ApproximateReceiveCount'], \
-                            MessageAttributeNames=['All'], \
-                            MaxNumberOfMessages=10, \
-                            VisibilityTimeout=timeout, \
-                            WaitTimeSeconds=5 #enables log polling http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
+        response = retry.try_with_backoff(self.__context, self.__client.receive_message,
+                                          QueueUrl= url or self.__queue_url,
+                                          AttributeNames=['ApproximateReceiveCount'],
+                                          MessageAttributeNames=['All'],
+                                          MaxNumberOfMessages=10,
+                                          VisibilityTimeout=timeout,
+                                          WaitTimeSeconds=5 #enables log polling http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
                             )
         if response is None or 'Messages' not in response:
             return []
@@ -144,7 +156,7 @@ class Sqs(object):
                QueueNamePrefix=self.__queue_prefix
         )
         if 'QueueUrls' not in response:
-            print "There are no queues found using queue prefix '{}'".format(self.__queue_prefix)
+            print("There are no queues found using queue prefix '{}'".format(self.__queue_prefix))
             return []
         return response['QueueUrls']
 
@@ -153,8 +165,8 @@ class Sqs(object):
             queues = self.get_queues()
         else:
             queues = self.__queue_urls
-
-        message_count = sys.maxint if lowest_load_queue else 0
+        
+        message_count = c.MAX_INT if lowest_load_queue else 0
         idx_to_use = 0
         is_all_under_load = True        
         idx = 0          
@@ -191,7 +203,7 @@ class Sqs(object):
         if self.__type == 'fifo': 
             name = "{}.fifo".format(name)
 
-        print "Adding new SQS queue named '{}'".format(name)  
+        print("Adding new SQS queue named '{}'".format(name))
         params = {
             "QueueName": name,
             "Attributes": {
@@ -215,7 +227,7 @@ class Sqs(object):
         queues = self.get_queues()
         for url in queues:
             if prefix in url:
-                print "Deleting queue '{}'".format(url)
+                print("Deleting queue '{}'".format(url))
                 retry.try_with_backoff(self.__context, self.__client.delete_queue, QueueUrl=url)
 
     def __create_message(self, sensitivity_type, data, compression_mode, payload_type ):

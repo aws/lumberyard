@@ -27,7 +27,6 @@ def build(bld):
         exclude_monolithic  = True,
         includes            = ['.',
                                'PCH/.',
-                               bld.ThirdPartyPath('boost'),
                                bld.Path('Code/CryEngine/CryCommon'),
                                bld.Path('Code/Tools'),
                                bld.Path('Code/Tools/RC/ResourceCompiler'),

@@ -45,6 +45,7 @@ namespace EMStudio
         virtual ~ParameterWidget();
 
         void SetSelectionMode(bool useSingleSelection);
+        void SetFilterTypes(const AZStd::vector<AZ::TypeId>& filterTypes);
         void Update(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& selectedParameters);
         void FireSelectionDoneSignal();
         MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mTreeWidget; }
@@ -67,12 +68,13 @@ namespace EMStudio
     private:
         void AddParameterToInterface(EMotionFX::AnimGraph* animGraph, const EMotionFX::Parameter* parameter, QTreeWidgetItem* groupParameterItem);
 
-        EMotionFX::AnimGraph*           mAnimGraph;
-        QTreeWidget*                    mTreeWidget;
+        EMotionFX::AnimGraph* mAnimGraph;
+        QTreeWidget* mTreeWidget;
         AzQtComponents::FilteredSearchWidget* m_searchWidget;
-        AZStd::string                   m_searchWidgetText;
-        AZStd::vector<AZStd::string>    mSelectedParameters;
-        AZStd::vector<AZStd::string>    mOldSelectedParameters;
-        bool                            mUseSingleSelection;
+        AZStd::string m_searchWidgetText;
+        AZStd::vector<AZ::TypeId> m_filterTypes;
+        AZStd::vector<AZStd::string> mSelectedParameters;
+        AZStd::vector<AZStd::string> mOldSelectedParameters;
+        bool mUseSingleSelection;
     };
 } // namespace EMStudio

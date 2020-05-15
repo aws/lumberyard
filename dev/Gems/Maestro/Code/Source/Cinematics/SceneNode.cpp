@@ -1305,7 +1305,7 @@ void CAnimSceneNode::PrecacheDynamic(float time)
                 if (time < key.time && (time + fPrecacheCameraTime) > key.time && key.time > m_lastPrecachePoint)
                 {
                     fLastPrecachePoint = max(key.time, fLastPrecachePoint);
-                    IEntity* pCameraEntity = gEnv->pEntitySystem->FindEntityByName(key.szSelection.c_str());
+                    IEntity* pCameraEntity = gEnv->pEntitySystem ? gEnv->pEntitySystem->FindEntityByName(key.szSelection.c_str()) : nullptr;
 
                     if (pCameraEntity != NULL)
                     {

@@ -84,9 +84,9 @@ namespace ScriptCanvasEditor
         m_model->SubmitPendingPinChanges();
     }
 
-    void VariablePaletteTableView::SetActiveScene(const AZ::EntityId& scriptCanvasGraphId)
+    void VariablePaletteTableView::SetActiveScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
     {
-        m_containerWizard->SetActiveGraph(scriptCanvasGraphId);
+        m_containerWizard->SetActiveScriptCanvasId(scriptCanvasId);
     }
 
     void VariablePaletteTableView::PopulateVariablePalette(const AZStd::unordered_set< AZ::Uuid >& objectTypes)

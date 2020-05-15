@@ -9,19 +9,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision$
-
-from botocore.exceptions import ClientError
-from errors import HandledError
-from resource_manager_common import constant
-
 import os
 import imp
 import importlib
 import sys
 import os.path
 import traceback
+import six
 
-import common_code
+from . import common_code
+from .errors import HandledError
+from resource_manager_common import constant
+
 
 class HookContext(object):
 
@@ -29,9 +28,23 @@ class HookContext(object):
         self.context = context
         self.__hook_modules = {}
 
-    def load_modules(self, module_name):
+    def __len__(self):
+        return len(self.__hook_modules)
 
+    def count(self, module_name):
+        """
+        Get count of loaded module hooks for a given module
+        :param module_name: The module to check
+        :return: The number of hook modules loaded
+        """
+        if module_name in self.__hook_modules:
+            return len(self.__hook_modules[module_name])
+        return 0
+
+    def load_modules(self, module_name):
         module_hooks = []
+
+        seen_names = set()
 
         project_module_path = os.path.join(self.context.config.aws_directory_path, module_name)
         if os.path.isfile(project_module_path):
@@ -41,33 +54,36 @@ class HookContext(object):
             resource_group_directory_path = resource_group.directory_path
             resource_group_module_path = os.path.join(resource_group_directory_path, module_name)
             if os.path.isfile(resource_group_module_path):
-                module_hooks.append(HookModule(self.context, resource_group_module_path, resource_group = resource_group))
+                hook_module = HookModule(self.context, resource_group_module_path, resource_group=resource_group)
+                seen_names.add(hook_module.hook_path)
+                module_hooks.append(hook_module)
 
-        for gem in self.context.gem.enabled_gems:            
+        for gem in self.context.gem.enabled_gems:
             gem_module_path = os.path.join(gem.aws_directory_path, module_name)
             if os.path.isfile(gem_module_path):
-                module_hooks.append(HookModule(self.context, gem_module_path, gem = gem))            
+                hook_module = HookModule(self.context, gem_module_path, gem=gem)
+                if hook_module.hook_path in seen_names:
+                    continue
+                module_hooks.append(hook_module)
 
         self.__hook_modules[module_name] = module_hooks
 
-    def call_single_module_handler(self, module_name, handler_name, resource_group_name, args=(), kwargs={}, deprecated=False, disabled=False):
-        '''Calls a function in a hook module for a specified resource group.
+    def call_single_module_handler(self, module_name, handler_name, resource_group_name, args=(), kwargs=None, deprecated=False, disabled=False):
+        """Calls a function in a hook module for a specified resource group.
 
-        Args:
+        Notes: If deprecated is True, a warning is displayed if the hook method exists. It is still invoked.
 
-            module_name - the name of the module
-            handler_name - the name of the function
-            resource_group_name - The name of the resource group.
-            args (named) - a list containing the positional args passed to the handler. Default is ().
-            kwargs (named) - dict containing the key word args passed to the handler. Default is {}.
-            deprecated (named) - indicates if this is a deprecated hook. Default is False.
+        :param module_name: the name of the module
+        :param handler_name: the name of the function
+        :param resource_group_name: The name of the resource group.
+        :param args: (named) - a list containing the positional args passed to the handler. Default is ().
+        :param kwargs: (named) - dict containing the key word args passed to the handler. Default is None.
+        :param deprecated: (named) - indicates if this is a deprecated hook. Default is False.
+        :param disabled:
+        """
 
-        Notes:
-
-            If deprecated is True, a warning is displayed if the hook method exists. It is still invoked.
-
-        '''
-
+        if kwargs is None:
+            kwargs = {}
         if not self.__hook_modules.get(module_name, None):
             self.load_modules(module_name)
 
@@ -79,25 +95,23 @@ class HookContext(object):
             if not disabled and hook_module.is_disabled:
                 continue
             if hook_module.resource_group == resource_group:
-                hook_module.call_handler(handler_name, args = args, kwargs = kwargs, deprecated = deprecated)
+                hook_module.call_handler(handler_name, args=args, kwargs=kwargs, deprecated=deprecated)
 
-    def call_module_handlers(self, module_name, handler_name, args=(), kwargs={}, deprecated=None, disabled=False):
-        '''Calls a function in a hook module.
+    def call_module_handlers(self, module_name, handler_name, args=(), kwargs=None, deprecated=None, disabled=False):
+        """Calls a function in a hook module.
 
-        Args:
+        Notes: If deprecated is True, a warning is displayed if the hook method exists. It is still invoked.
 
-            module_name - the name of the module
-            handler_name - the name of the function
-            args (named) - a list containing the positional args passed to the handler. Default is ().
-            kwargs (named) - dict containing the key word args passed to the handler. Default is {}.
-            deprecated (named) - indicates if this is a deprecated hook. Default is False.
+        :param module_name: the name of the module
+        :param handler_name: - the name of the function
+        :param args: (named) - a list containing the positional args passed to the handler. Default is ().
+        :param kwargs: (named) - dict containing the key word args passed to the handler. Default is None.
+        :param deprecated: (named) - indicates if this is a deprecated hook. Default is False.
+        :param disabled:
+        """
 
-        Notes:
-
-            If depcreated is True, a warning is displayed if the hook method exists. It is still invoked.
-
-        '''
-
+        if kwargs is None:
+            kwargs = {}
         if not self.__hook_modules.get(module_name, None):
             self.load_modules(module_name)
 
@@ -106,14 +120,13 @@ class HookContext(object):
         for hook_module in hook_modules:
             if not disabled and hook_module.is_disabled:
                 continue
-            hook_module.call_handler(handler_name, args = args, kwargs = kwargs, deprecated = deprecated)
+            hook_module.call_handler(handler_name, args=args, kwargs=kwargs, deprecated=deprecated)
 
 
 class HookModule(object):
+    """An individual hook module.  Can belong to a project, gem, or resource group"""
 
-    '''An individual hook module.  Can belong to a project, gem, or resource group'''
-
-    def __init__(self, context, module_path, resource_group = None, gem = None):
+    def __init__(self, context, module_path, resource_group=None, gem=None):
         self.__context = context
         self.__resource_group = resource_group
         self.__gem = gem
@@ -121,11 +134,28 @@ class HookModule(object):
         self.__module_path = module_path  # Full path to module
         self.__module_directory = os.path.split(module_path)[0]  # Module directory without file/module name
         self.__module_lib_directory = os.path.join(self.__module_directory, 'lib')
-        self.__module_name_with_extension = os.path.split(module_path)[1] # Module name with .py or other extension if exists
-        self.__module_name = os.path.splitext(self.__module_name_with_extension)[0] # No path, no extension, just module name
-        self.__hook_module_name = self.__hook_name + self.__module_name # Mangled name to prevent collisions among same module names under different resources
+        self.__module_name_with_extension = os.path.split(module_path)[1]  # Module name with .py or other extension if exists
+        self.__module_name = os.path.splitext(self.__module_name_with_extension)[0]  # No path, no extension, just module name
+        self.__hook_module_name = self.__hook_name + self.__module_name  # Mangled name to prevent collisions among same module names under different resources
         self.__module = None
         self.__load_module()
+
+    @staticmethod
+    def load_module_from_path(module_name, module_path):
+        module = None
+        if sys.version_info[0] == 3 and sys.version_info[1] >= 5:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        elif sys.version_info[0] == 3 and sys.version_info[1] < 5:
+            import importlib.machinery
+            loader = importlib.machinery.SourceFileLoader(module_name, module_path)
+            module = loader.load_module()
+        elif sys.version_info[0] == 2:
+            import imp
+            module = imp.load_source(module_name, module_path)
+        return module
 
     def __load_module(self):
         try:
@@ -138,27 +168,30 @@ class HookModule(object):
                     return
                 added_paths, multi_imports = self.__add_plugin_paths()
                 try:
-                    for module, imported_gem_names in multi_imports.iteritems():
+                    for module, imported_gem_names in six.iteritems(multi_imports):
                         loader = MultiImportModuleLoader(module, imported_gem_names)
                         loader.load_module(module)
-                    self.__module = imp.load_source(self.__hook_module_name, self.__module_path)
+                    self.__module = self.load_module_from_path(self.__hook_module_name, self.__module_path)
                 finally:
                     self.__remove_plugin_paths(added_paths)
                     imp.release_lock()
         except Exception as e:
             raise HandledError('Failed to load hook module {}. {}'.format(self.__module_path, traceback.format_exc()))
 
-    def call_handler(self, handler_name, args = (), kwargs={}, deprecated = False):
+    def call_handler(self, handler_name, args=(), kwargs=None, deprecated=False):
+        if kwargs is None:
+            kwargs = {}
+
         try:
-            thisHandler = getattr(self.__module, handler_name,None)
-            if thisHandler is not None:
+            this_handler = getattr(self.__module, handler_name, None)
+            if this_handler is not None:
                 if deprecated:
                     self.context.view.calling_deprecated_hook(self.__module, handler_name)
                 else:
                     if args:
                         raise ValueError('The args parameter is only supported for deprecated hooks. Using only kwargs (key word args), and requiring all hooks should have an **kwargs parameter, allows new args to be added in the future.')
                     self.context.view.calling_hook(self.__module, handler_name)
-                return thisHandler(self, *args, **kwargs)
+                return this_handler(self, *args, **kwargs)
         except:
             raise HandledError('{} in {} failed. {}'.format(handler_name, self.__module_path, traceback.format_exc()))
 
@@ -170,61 +203,62 @@ class HookModule(object):
         return added_paths, multi_imports
 
     def __remove_plugin_paths(self, added_paths):
-        for added_path in added_paths: 
+        for added_path in added_paths:
             if added_path in sys.path:
                 sys.path.remove(added_path)
-   
+
     @property
     def context(self):
         return self.__context
 
     @property
     def resource_group(self):
-        '''The resource group that implements the hook, if any.'''
+        """The resource group that implements the hook, if any."""
         return self.__resource_group
 
     @property
     def gem(self):
-        '''The gem that implements the hook, if any.'''
+        """The gem that implements the hook, if any."""
         return self.__gem
 
-    @property     
+    @property
     def hook_name(self):
-        '''Name of the resource group or Gem that provides the hook.'''
+        """Name of the resource group or Gem that provides the hook."""
         return self.__hook_name
 
     # Deprecated in 1.9. TODO: remove.
-    @property     
+    @property
     def group_name(self):
-        '''Depcreated. Use hook_name.'''
+        """Deprecated. Use hook_name."""
         return self.__hook_name
 
     # Deprecated in 1.9. TODO: remove.
-    @property     
+    @property
     def path(self):
-        '''Deprecated. Use hook_path instead.'''
+        """Deprecated. Use hook_path instead."""
         return self.__module_directory
 
-    @property     
+    @property
     def hook_path(self):
-        '''Path to the resource group or Gem directory where the hook is defined.'''
+        """Path to the resource group or Gem directory where the hook is defined."""
         return self.__module_directory
 
     @property
     def is_disabled(self):
-        '''If a hook belongs to a resource group, check if it is enabled'''
+        """If a hook belongs to a resource group, check if it is enabled"""
         if self.__resource_group:
             return self.__resource_group.is_enabled == False
 
         if self.__gem:
-            if self.__gem.name in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []):
+            if self.__gem.name in self.__context.config.local_project_settings.get(
+                    constant.DISABLED_RESOURCE_GROUPS_KEY, []):
                 return True
         return False
 
-class MultiImportModuleLoader(object):
 
-    '''A module loader that handles loading multiple sub-modules from different directories that need to be imported into a single module namespace.
-    The implementation here should be the local workspace equivalent of how zip_and_upload_lambda_function_code in uploader.py handles multi-imports.'''
+class MultiImportModuleLoader(object):
+    """A module loader that handles loading multiple sub-modules from different directories that need to be imported into a single module namespace.
+    The implementation here should be the local workspace equivalent of how zip_and_upload_lambda_function_code in uploader.py handles multi-imports."""
 
     def __init__(self, import_package_name, imported_gem_names):
         self.__import_package_name = import_package_name
@@ -257,12 +291,15 @@ class MultiImportModuleLoader(object):
                 try:
                     imported_module = importlib.import_module(top_level_name)
                 except:
-                    raise HandledError('Failed to import {} while importing "*.{}". {}'.format(top_level_name, module_name, traceback.format_exc()))
+                    raise HandledError('Failed to import {} while importing "*.{}". {}'.format(
+                        top_level_name, module_name, traceback.format_exc()))
 
-                # Import each top level module ( MyModule__CloudGemName ) using the gem name as the sub-module name ( MyModule.CloudGemName ).
+                # Import each top level module ( MyModule__CloudGemName ) using the gem name as
+                # the sub-module name ( MyModule.CloudGemName ).
                 setattr(module, gem_name, imported_module)
 
-                # A dictionary of gem name to loaded module for easy iterating ( imported_modules = { CloudGemName: <the_loaded_CloudGemName_module> } ).
+                # A dictionary of gem name to loaded module for easy iterating
+                # ( imported_modules = { CloudGemName: <the_loaded_CloudGemName_module> } ).
                 module.imported_modules[gem_name] = imported_module
 
             sys.modules[module_name] = module

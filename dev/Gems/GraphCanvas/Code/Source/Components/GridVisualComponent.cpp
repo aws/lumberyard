@@ -120,15 +120,15 @@ namespace GraphCanvas
         return QPainterPath();
     }
 
-    void GridVisualComponent::SetZValue(int)
+    void GridVisualComponent::SetZValue(qreal)
     {
     }
 
-    int GridVisualComponent::GetZValue() const
+    qreal GridVisualComponent::GetZValue() const
     {
         if (m_gridVisualUi)
         {
-            return m_gridVisualUi->zValue();
+            return aznumeric_cast<int>(m_gridVisualUi->zValue());
         }
 
         return -10000;
@@ -242,7 +242,7 @@ namespace GraphCanvas
         qreal width = option->exposedRect.width();
         qreal height = option->exposedRect.height();
 
-        int numDraws = AZStd::max(ceil(height /static_cast<qreal>(m_gridVisual.m_majorPitch.GetY())) , ceil(width / static_cast<qreal>(m_gridVisual.m_majorPitch.GetX())));
+        int numDraws = aznumeric_cast<int>(AZStd::max(ceil(height /static_cast<qreal>(m_gridVisual.m_majorPitch.GetY())) , ceil(width / static_cast<qreal>(m_gridVisual.m_majorPitch.GetX()))));
                 
         while (numDraws > 10 && lod < (m_levelOfDetails.size() - 1))
         {
@@ -257,21 +257,21 @@ namespace GraphCanvas
             return;
         }
 
-        int gridStartX = option->exposedRect.left();
+        int gridStartX = aznumeric_cast<int>(option->exposedRect.left());
         gridStartX -= gridStartX % static_cast<int>(m_gridVisual.m_majorPitch.GetX());
 
         // Offset by one major step to give a buffer when dealing with negative values to avoid making this super complicated
-        gridStartX -= m_gridVisual.m_majorPitch.GetX();
+        gridStartX = aznumeric_cast<int>(gridStartX - m_gridVisual.m_majorPitch.GetX());
 
 
 
-        int gridStartY = option->exposedRect.top();
+        int gridStartY = aznumeric_cast<int>(option->exposedRect.top());
         gridStartY -= gridStartY % static_cast<int>(m_gridVisual.m_majorPitch.GetY());
 
         // Offset by one major step to give a buffer when dealing with negative values to avoid making this super complicated
-        gridStartY -= m_gridVisual.m_majorPitch.GetY();        
+        gridStartY = aznumeric_cast<int>(gridStartY - m_gridVisual.m_majorPitch.GetY());
 
-        int terminalY = option->exposedRect.bottom() + m_gridVisual.m_majorPitch.GetY();
+        int terminalY = aznumeric_cast<int>(option->exposedRect.bottom() + m_gridVisual.m_majorPitch.GetY());
 
         QRectF patternFillRect(QPointF(gridStartX, gridStartY), QPointF(option->exposedRect.right(), terminalY));
 
@@ -287,11 +287,11 @@ namespace GraphCanvas
     {
         int stencilSize = 1;
 
-        int majorX = m_gridVisual.m_majorPitch.GetX();
-        int majorY = m_gridVisual.m_majorPitch.GetY();
+        int majorX = aznumeric_cast<int>(m_gridVisual.m_majorPitch.GetX());
+        int majorY = aznumeric_cast<int>(m_gridVisual.m_majorPitch.GetY());
 
-        int minorX = m_gridVisual.m_minorPitch.GetX();
-        int minorY = m_gridVisual.m_minorPitch.GetY();
+        int minorX = aznumeric_cast<int>(m_gridVisual.m_minorPitch.GetX());
+        int minorY = aznumeric_cast<int>(m_gridVisual.m_minorPitch.GetY());
 
         int totalSizeX = majorX * stencilSize;
         int totalSizeY = majorY * stencilSize;

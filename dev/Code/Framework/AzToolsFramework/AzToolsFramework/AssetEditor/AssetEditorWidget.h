@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI_Internals.h>
@@ -62,6 +63,7 @@ namespace AzToolsFramework
             , private AZ::Data::AssetBus::Handler
             , private AzFramework::AssetCatalogEventBus::Handler
             , private AzToolsFramework::IPropertyEditorNotify
+            , private AZ::SystemTickBus::Handler
         {
             Q_OBJECT
 
@@ -69,7 +71,7 @@ namespace AzToolsFramework
             AZ_CLASS_ALLOCATOR(AssetEditorWidget, AZ::SystemAllocator, 0);
 
             explicit AssetEditorWidget(QWidget* parent = nullptr);
-            ~AssetEditorWidget() override = default;
+            ~AssetEditorWidget() override;
 
             void CreateAsset(AZ::Data::AssetType assetType);
             void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData> asset);
@@ -118,11 +120,17 @@ namespace AzToolsFramework
             void DirtyAsset();
 
             void SetStatusText(const QString& assetStatus);
+            void ApplyStatusText();
+
+            QString m_queuedAssetStatus;
 
             void AddRecentPath(const AZStd::string& recentPath);
             void PopulateRecentMenu();
 
             void UpdateMenusOnAssetOpen();
+
+            // AZ::SystemTickBus
+            void OnSystemTick() override;
 
             AZStd::vector<AZ::Data::AssetType> m_genericAssetTypes;
             AZ::Data::AssetId                    m_sourceAssetId;

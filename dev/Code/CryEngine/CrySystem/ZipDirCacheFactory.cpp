@@ -52,6 +52,15 @@ ZipDir::CacheFactory::CacheFactory (CMTSafeHeap* pHeap, InitMethodEnum nInitMeth
         m_bBuildFileEntryTree = false;
         m_bBuildOptimizedFileEntry = true;
     }
+
+    if (m_nFlags & FLAGS_READ_INSIDE_PAK)
+    {
+        m_fileExt.m_fileIOBase = AZ::IO::FileIOBase::GetInstance();
+    }
+    else
+    {
+        m_fileExt.m_fileIOBase = AZ::IO::FileIOBase::GetDirectInstance();
+    }
 }
 
 ZipDir::CacheFactory::~CacheFactory()
@@ -64,8 +73,14 @@ ZipDir::CachePtr ZipDir::CacheFactory::New (const char* szFile, ICryPak::EInMemo
     m_szFilename = szFile;
 
     Clear();
-
-    AZ::IO::FileIOBase::GetDirectInstance()->Open(szFile, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, m_fileExt.m_fileHandle);
+    if (eInMemLocal == ICryPak::eInMemoryPakLocale_PAK)
+    {
+        AZ::IO::FileIOBase::GetInstance()->Open(szFile, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, m_fileExt.m_fileHandle);
+    }
+    else
+    {
+        AZ::IO::FileIOBase::GetDirectInstance()->Open(szFile, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, m_fileExt.m_fileHandle);
+    }
 
     if (eInMemLocal != ICryPak::eInMemoryPakLocale_Unload)
     {
@@ -85,12 +100,15 @@ ZipDir::CachePtr ZipDir::CacheFactory::New (const char* szFile, ICryPak::EInMemo
 #endif
 
 #ifdef SUPPORT_UNBUFFERED_IO
-        char fileResolved[AZ_MAX_PATH_LEN] = { 0 };
-        AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(szFile, fileResolved, AZ_MAX_PATH_LEN);
-
-        if (!m_fileExt.OpenUnbuffered(fileResolved))
+        if (eInMemLocal != ICryPak::eInMemoryPakLocale_PAK)
         {
-            CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Failed to open '%s' for unbuffered IO.", szFile);
+            char fileResolved[AZ_MAX_PATH_LEN] = { 0 };
+            AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(szFile, fileResolved, AZ_MAX_PATH_LEN);
+
+            if (!m_fileExt.OpenUnbuffered(fileResolved))
+            {
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Failed to open '%s' for unbuffered IO.", szFile);
+            }
         }
 #endif
 

@@ -13,10 +13,5 @@
 
 #include <AzCore/JSON/rapidjson.h>
 
-// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
-#pragma push_macro("RAPIDJSON_NOMEMBERITERATORCLASS")
-#ifndef RAPIDJSON_NOMEMBERITERATORCLASS
-#define RAPIDJSON_NOMEMBERITERATORCLASS
-#endif
+// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.1.0\include
 #include <rapidjson/pointer.h>
-#pragma pop_macro("RAPIDJSON_NOMEMBERITERATORCLASS")

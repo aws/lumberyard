@@ -21,7 +21,6 @@
 #include "MFXContainer.h"
 #include "SurfacesLookupTable.h"
 
-class CMaterialFGManager;
 class CScriptBind_MaterialEffects;
 
 namespace MaterialEffectsUtils
@@ -76,12 +75,6 @@ public:
     CMaterialEffects();
     virtual ~CMaterialEffects();
 
-    // load flowgraph based effects
-    bool LoadFlowGraphLibs();
-
-    // serialize
-    void Serialize(TSerialize ser);
-
     // load assets referenced by material effects.
     void PreLoadAssets();
 
@@ -95,23 +88,16 @@ public:
     virtual TMFXEffectId GetEffectId(IEntityClass* pEntityClass, int surfaceIndex2);
     virtual SMFXResourceListPtr GetResources(TMFXEffectId effectId) const;
     virtual bool ExecuteEffect(TMFXEffectId effectId, SMFXRunTimeEffectParams& runtimeParams);
-    virtual void StopEffect(TMFXEffectId effectId);
     virtual int GetDefaultSurfaceIndex() { return m_defaultSurfaceId; }
     virtual int GetDefaultCanopyIndex();
     virtual bool PlayBreakageEffect(ISurfaceType* pSurfaceType, const char* breakageType, const SMFXBreakageParams& breakageParams);
     virtual void SetCustomParameter(TMFXEffectId effectId, const char* customParameter, const SMFXCustomParamValue& customParameterValue);
     virtual void CompleteInit();
-    virtual void ReloadMatFXFlowGraphs(bool editorReload);
-    virtual int GetMatFXFlowGraphCount() const;
-    virtual IFlowGraphPtr GetMatFXFlowGraph(int index, string* pFileName = NULL) const;
-    virtual IFlowGraphPtr LoadNewMatFXFlowGraph(const string& filename);
     // ~IMaterialEffects
 
     void GetMemoryUsage(ICrySizer* s) const;
-    void NotifyFGHudEffectEnd(IFlowGraphPtr pFG);
     void Update(float frameTime);
     void SetUpdateMode(bool bMode);
-    CMaterialFGManager* GetFGManager() const { return m_pMaterialFGManager; }
 
     void FullReload();
 
@@ -163,7 +149,6 @@ private:
     int                 m_canopySurfaceId;
     bool                m_bUpdateMode;
     bool                m_bDataInitialized;
-    CMaterialFGManager* m_pMaterialFGManager;
 
     // The libraries we have loaded
     TFXLibrariesMap m_mfxLibraries;

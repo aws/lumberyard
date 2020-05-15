@@ -79,7 +79,7 @@ namespace ScriptCanvas
                     SlotId sourceSlotId = OperatorSizeProperty::GetSourceSlotId(this);
                     SlotId sizeSlotId = OperatorSizeProperty::GetSizeSlotId(this);
 
-                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    const Datum* containerDatum = FindDatum(sourceSlotId);
 
                     if (Datum::IsValidDatum(containerDatum))
                     {

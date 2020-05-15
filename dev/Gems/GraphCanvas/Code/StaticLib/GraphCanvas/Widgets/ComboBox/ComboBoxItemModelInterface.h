@@ -11,19 +11,21 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QAbstractItemModel>
 #include <QString>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace GraphCanvas
 {
-    class ComboBoxModelInterface
+    class ComboBoxItemModelInterface
     {
     public:
-        ComboBoxModelInterface() = default;
-        ~ComboBoxModelInterface() = default;
+        ComboBoxItemModelInterface() = default;
+        ~ComboBoxItemModelInterface() = default;
 
         virtual void SetFontScale(qreal fontScale) = 0;
 
@@ -39,64 +41,14 @@ namespace GraphCanvas
 
         virtual QModelIndex GetNextIndex(const QModelIndex& modelIndex) const = 0;
         virtual QModelIndex GetPreviousIndex(const QModelIndex& modelIndex) const = 0;
+
+        virtual void OnDropDownAboutToShow() {};
+        virtual void OnDropDownHidden() {};
         ////
 
         // Methods for the Autocompleter
         virtual QAbstractListModel* GetCompleterItemModel() = 0;
         virtual int GetCompleterColumn() const = 0;
         ////
-    };
-
-    class GraphCanvasListComboBoxModel
-        : public QAbstractListModel
-        , public ComboBoxModelInterface
-    {
-        Q_OBJECT
-    public:
-
-        enum ColumnIndex
-        {
-            Name = 0
-        };
-    
-        GraphCanvasListComboBoxModel() = default;
-        ~GraphCanvasListComboBoxModel() = default;
-
-        void SetFontScale(qreal fontScale) override;
-        
-        QModelIndex AddElement(const AZStd::string& element);        
-        void RemoveElement(const AZStd::string& element);
-        void RemoveElement(const QModelIndex& index);
-        
-        // QAbstractTableModel
-        int rowCount(const QModelIndex& parent = QModelIndex()) const override final;
-        
-        QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override final;
-        ////
-        
-        // ComboBoxModelInterface
-        QString GetNameForIndex(const QModelIndex& index) const override;
-        QModelIndex FindIndexForName(const QString& name) const override;
-
-        QModelIndex GetDefaultIndex() const override;
-
-        QAbstractItemModel* GetDropDownItemModel() override;
-        int GetSortColumn() const override;
-        int GetFilterColumn() const override;
-
-        QModelIndex GetNextIndex(const QModelIndex& modelIndex) const override;
-        QModelIndex GetPreviousIndex(const QModelIndex& modelIndex) const override;
-
-        QAbstractListModel* GetCompleterItemModel() override;
-        int GetCompleterColumn() const override;
-        ////
-
-    private:
-
-        virtual QVariant GetRoleData(const QModelIndex& index, int role) const;
-
-        qreal m_fontScale = 1.0;
-
-        AZStd::vector< QString > m_elements;        
     };
 }

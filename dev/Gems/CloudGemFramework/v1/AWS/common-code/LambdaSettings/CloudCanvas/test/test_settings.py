@@ -11,7 +11,7 @@
 # $Revision: #4 $
 
 import unittest
-import mock
+from unittest import mock
 import pkgutil
 
 import CloudCanvas

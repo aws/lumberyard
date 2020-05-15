@@ -125,7 +125,7 @@ namespace GraphCanvas
 
             QPen checkPen;
             checkPen.setColor(m_styleHelper.GetAttribute(Styling::Attribute::LineColor, QColor(0,0,0)));
-            checkPen.setWidth(m_styleHelper.GetAttribute(Styling::Attribute::LineWidth, 2.0));
+            checkPen.setWidth(m_styleHelper.GetAttribute(Styling::Attribute::LineWidth, 2));
 
             painter->setPen(checkPen);
 

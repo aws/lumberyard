@@ -85,7 +85,22 @@ namespace AzToolsFramework
         {
             if (!SendRequest(request, response))
             {
-                AZ_Error("Editor", false, "Failed to send GetAssetJobsInfo Info for search term: %s", request.m_searchTerm.c_str());
+                bool hasAssetId = request.m_assetId.IsValid();
+                bool hasSearchTerm = !request.m_searchTerm.empty();
+
+                if(hasAssetId)
+                {
+                    AZ_Error("Editor", false, "GetAssetJobsInfo request failed for AssetId: %s", request.m_assetId.ToString<AZStd::string>().c_str());
+                }
+                else if(hasSearchTerm)
+                {
+                    AZ_Error("Editor", false, "GetAssetJobsInfo request failed for search term: %s", request.m_searchTerm.c_str());
+                }
+                else
+                {
+                    AZ_Error("Editor", false, "GetAssetJobsInfo request failed, no AssetId or search term was provided");
+                }
+                
                 return AZ::Failure();
             }
 

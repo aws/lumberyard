@@ -113,12 +113,8 @@ public:
         IPlatformOS * ());
     MOCK_METHOD0(GetINotificationNetwork,
         INotificationNetwork * ());
-    MOCK_METHOD0(GetIHardwareMouse,
-        IHardwareMouse * ());
     MOCK_METHOD0(GetIDialogSystem,
         IDialogSystem * ());
-    MOCK_METHOD0(GetIFlowSystem,
-        IFlowSystem * ());
     MOCK_METHOD0(GetIViewSystem,
         IViewSystem * ());
     MOCK_METHOD0(GetILevelSystem,
@@ -205,8 +201,7 @@ public:
         ISystem::ILoadingProgressListener * ());
     MOCK_METHOD1(SetIGame,
         void(IGame * pGame));
-    MOCK_METHOD1(SetIFlowSystem,
-        void(IFlowSystem * pFlowSystem));
+
     MOCK_METHOD1(SetIDialogSystem,
         void(IDialogSystem * pDialogSystem));
     MOCK_METHOD1(SetIMaterialEffects,

@@ -3,7 +3,7 @@
     "source": "@3P:rapidxml@",
     "description": "Rapid XML header only library",
     "header_only": "True",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

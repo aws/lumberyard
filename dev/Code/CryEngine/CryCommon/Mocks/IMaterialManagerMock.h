@@ -75,7 +75,7 @@ public:
     MOCK_METHOD3(LoadCGFMaterial,
         _smart_ptr<IMaterial>(CMaterialCGF* pMaterialCGF, const char* sCgfFilename, unsigned long nLoadingFlags));
     MOCK_CONST_METHOD2(GetLoadedMaterials,
-        void(std::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount));
+        void(AZStd::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount));
     MOCK_METHOD0(RefreshMaterialRuntime,
         void());
 };

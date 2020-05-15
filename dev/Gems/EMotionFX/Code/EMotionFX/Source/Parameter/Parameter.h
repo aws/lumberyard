@@ -24,6 +24,12 @@ namespace EMotionFX
         AZ_RTTI(Parameter, "{4AF0BAFC-98F8-4EA3-8946-4AD87D7F2A6C}")
         AZ_CLASS_ALLOCATOR_DECL
 
+        Parameter() = default;
+        explicit Parameter(AZStd::string name, AZStd::string description = {})
+            : m_name(AZStd::move(name))
+            , m_description(AZStd::move(description))
+        {
+        }
         virtual ~Parameter() = default;
 
         static void Reflect(AZ::ReflectContext* context);

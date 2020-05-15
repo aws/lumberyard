@@ -17,6 +17,7 @@ import json
 import random
 from boto3.dynamodb.conditions import Key
 from decimal import *
+from six import iteritems
 
 
 MAIN_TABLE = None
@@ -166,8 +167,8 @@ class RecordProcessor:
                 record_map[abbreviated_record["user"]] = { abbreviated_record["stat"]: abbreviated_record }
 
         consolidated_records = []
-        for user, user_scores in record_map.iteritems():
-            for score, record in user_scores.iteritems():
+        for user, user_scores in iteritems(record_map):
+            for score, record in iteritems(user_scores):
                 if record:
                     consolidated_records.append(record)
 
@@ -371,7 +372,7 @@ class LeaderboardWriter:
             
         # handle evictions
         with self.get_leaderboard_table().batch_writer() as batch:
-            for stat, sample_size_change in sample_size_changes.iteritems():
+            for stat, sample_size_change in iteritems(sample_size_changes):
                 if sample_size_change == 0:
                     continue
                 sample = self.get_all_entries(stat, True)
@@ -409,7 +410,7 @@ class LeaderboardWriter:
 
 
     def record_top_scores(self, high_scores):
-        for stat, score in high_scores.iteritems():
+        for stat, score in iteritems(high_scores):
             current_high_score = json.loads(self.get_leaderboard_info(stat)["high_score"])
             if not "value" in current_high_score:
                 self.get_info_table().put_item(Item={
@@ -430,7 +431,7 @@ class LeaderboardWriter:
             return
         info_table = self.get_info_table()
         with info_table.batch_writer() as batch:
-            for stat, change in changes.iteritems():
+            for stat, change in iteritems(changes):
                 print("population change for {} =  {}".format(stat, change))
                 item = {
                     "stat": stat,
@@ -501,7 +502,7 @@ def main(event, context):
                                CloudCanvas.get_setting("LeaderboardInfo"))
     record_processor = RecordProcessor(writer, shard_sequence_table)
 
-    for shard_id, shard in shard_dict.iteritems():
+    for shard_id, shard in iteritems(shard_dict):
         # read the oldest ancestor so we process the records in order
         id_to_read = get_oldest_ancestor(shard_id, shard_dict)
         while (id_to_read != shard_id):

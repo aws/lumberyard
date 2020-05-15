@@ -373,6 +373,20 @@ HRESULT CDeviceManager::SyncFence(DeviceFenceHandle query, bool block, bool flus
             if (hr != S_OK && hr != S_FALSE)
             {
                 CHECK_HRESULT(hr);
+
+                if (hr == DXGI_ERROR_DEVICE_REMOVED)
+                {
+                    // If the device has been removed we will be stuck here if this is a blocking sync (i.e. block == true) ).
+                    // It's a critical error, though, so we have to bail out and handle it elsewhere.
+                    ID3D11Device* device = nullptr;
+                    gcpRendD3D->GetDeviceContext().GetDevice(&device);
+                    if (device)
+                    {
+                        const HRESULT removedReason = device->GetDeviceRemovedReason();
+                        CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_WARNING, "Graphical device was removed for the following reason: %x", removedReason);
+                    }
+                    return hr;
+                }
             }
 #     endif
         } while (block && hr != S_OK);

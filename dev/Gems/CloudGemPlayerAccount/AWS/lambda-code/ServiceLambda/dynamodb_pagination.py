@@ -13,6 +13,7 @@ import base64
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 import json
+from six import iteritems # Python 2.7/3.7 Compatibility
 
 DISTINCT_KEY_SEARCH_MAX_PAGES = 3
 DISTINCT_KEY_SEARCH_MAX_RESULTS_PER_PAGE = 20
@@ -45,7 +46,7 @@ class PaginatedSearch:
 
         # Sort the combined results by utf-8 bytes.
         # This should preserve the order of results within each partition.
-        page_results.sort(lambda x,y: cmp(x['sort'], y['sort']), reverse=not self.__forward)
+        page_results.sort(key=lambda x: x['sort'], reverse=not self.__forward)
 
         # Truncate the results if needed to get one page.
         if len(page_results) > max_results:
@@ -111,18 +112,18 @@ class PageToken:
         if serialized_token:
             token = json.loads(base64.b64decode(serialized_token))
             self.__forward = token.get('direction', 'forward') != 'backward'
-            for partition, partition_state in token.get('partitions', {}).iteritems():
+            for partition, partition_state in iteritems(token.get('partitions', {})):
                 self.__partitions[int(partition)] = partition_state
         else:
             self.__forward = forward
 
     def serialize(self):
         partitions = {}
-        for partition, start in self.__partitions.iteritems():
+        for partition, start in iteritems(self.__partitions):
             serializable_partition = {}
             if 'key' in start:
                 serializable_key = {}
-                for k,v in start['key'].iteritems():
+                for k,v in iteritems(start['key']):
                     # Decimal is not json serializable.
                     if isinstance(v, Decimal):
                         serializable_key[k] = int(v)
@@ -136,7 +137,10 @@ class PageToken:
             'direction': 'forward' if self.forward else 'backward',
             'partitions': partitions
         }
-        return base64.b64encode(json.dumps(token))
+        # In Python 2, base64.b64encode encodes a string using Base64 and returns the encoded string
+        # In Python 3, base64.b64encode encodes the bytes-like object s using Base64 and returns the encoded bytes
+        # Python 2.7 include bytes as a builtin alias of str
+        return base64.b64encode(bytes(json.dumps(token), 'utf-8')).decode('utf-8')
 
     @property
     def forward(self):
@@ -334,7 +338,7 @@ class PartitionedIndexConfig:
         result = {}
         result[self.__partition_key_name] = item[self.__partition_key_name]
         result[self.__sort_key_name] = item[self.__sort_key_name]
-        for key, value in self.__required_fields.iteritems():
+        for key, value in iteritems(self.__required_fields):
             if key in item:
                 result[key] = item[key]
             else:

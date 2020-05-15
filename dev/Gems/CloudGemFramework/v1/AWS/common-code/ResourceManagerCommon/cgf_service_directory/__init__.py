@@ -9,4 +9,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from ServiceDirectory import ServiceDirectory
+from .ServiceDirectory import ServiceDirectory

@@ -108,7 +108,6 @@ namespace DRS {
 struct IMaterialEffects;
 struct IParticleManager;
 class IOpticsManager;
-struct IHardwareMouse;
 class ICrySizer;
 struct ITestSystem;
 class IXMLBinarySerializer;
@@ -507,10 +506,6 @@ enum ESystemEvent
     // Description:
     //      Sent when a new audio implementation is loaded
     ESYSTEM_EVENT_AUDIO_IMPLEMENTATION_LOADED,
-
-    // Description:
-    //      Sent when optional modules (like gems) should register their flow nodes
-    ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES,
 
     ESYSTEM_EVENT_USER = 0x1000,
 
@@ -944,7 +939,6 @@ struct SSystemGlobalEnvironment
     // **************************************************************************************
     IScriptSystem*             pScriptSystem;
     IPhysicalWorld*            pPhysicalWorld;
-    IFlowSystem*               pFlowSystem;
     IInput*                    pInput;
     IStatoscope*        pStatoscope;
     ICryPak*                   pCryPak;
@@ -970,7 +964,6 @@ struct SSystemGlobalEnvironment
     INameTable*                pNameTable;
     IVisualLog*                pVisualLog;
     IRenderer*                 pRenderer;
-    IHardwareMouse*            pHardwareMouse;
     IMaterialEffects*          pMaterialEffects;
     ISoftCodeMgr*                            pSoftCodeMgr;
     IOverloadSceneManager*       pOverloadSceneManager;
@@ -1402,9 +1395,7 @@ struct ISystem
     virtual ICryPerfHUD* GetPerfHUD() = 0;
     virtual IPlatformOS* GetPlatformOS() = 0;
     virtual INotificationNetwork* GetINotificationNetwork() = 0;
-    virtual IHardwareMouse* GetIHardwareMouse() = 0;
     virtual IDialogSystem* GetIDialogSystem() = 0;
-    virtual IFlowSystem* GetIFlowSystem() = 0;
     virtual IViewSystem* GetIViewSystem() = 0;
     virtual ILevelSystem* GetILevelSystem() = 0;
     virtual IBudgetingSystem* GetIBudgetingSystem() = 0;
@@ -1462,7 +1453,6 @@ struct ISystem
     // Summary:
     //   Game is created after System init, so has to be set explicitly.
     virtual void                        SetIGame(IGame* pGame) = 0;
-    virtual void            SetIFlowSystem(IFlowSystem* pFlowSystem) = 0;
     virtual void SetIDialogSystem(IDialogSystem* pDialogSystem) = 0;
     virtual void SetIMaterialEffects(IMaterialEffects* pMaterialEffects) = 0;
     virtual void SetIParticleManager(IParticleManager* pParticleManager) = 0;
@@ -1839,14 +1829,6 @@ struct ISystem
     // Summary:
     //      Unregister an IWindowMessageHandler that was previously registered using RegisterWindowMessageHandler
     virtual void UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler) = 0;
-
-    // Deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead
-    AZ_DEPRECATED(virtual int PumpWindowMessage(bool bAll, WIN_HWND hWnd = 0),
-        "PumpWindowMessage has been deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead.")
-    {
-        // AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
-        return 0;
-    }
 
     // Create an instance of a Local File IO object (which reads directly off the local filesystem, instead of,
     // for example, reading from the network or a pack or USB or such.

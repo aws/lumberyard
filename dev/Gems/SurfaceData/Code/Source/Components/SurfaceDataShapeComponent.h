@@ -97,7 +97,6 @@ namespace SurfaceData
         // cached data
         AZStd::atomic_bool m_refresh{ false };
         mutable AZStd::recursive_mutex m_cacheMutex;
-        AZ::Transform m_shapeWorldTM = AZ::Transform::CreateIdentity();
         AZ::Aabb m_shapeBounds = AZ::Aabb::CreateNull();
         bool m_shapeBoundsIsValid = false;
         static const float s_rayAABBHeightPadding;

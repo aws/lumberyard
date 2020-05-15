@@ -11,6 +11,8 @@
 */
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/NodeContextMenu.h>
 
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeMenuActions/NodeContextMenuActions.h>
+
 namespace GraphCanvas
 {
     ////////////////////
@@ -24,6 +26,14 @@ namespace GraphCanvas
         m_nodeGroupActionGroup.PopulateMenu(this);
         m_disableActionGroup.PopulateMenu(this);
         m_alignmentActionGroup.PopulateMenu(this);
+
+        AddActionGroup(NodeContextMenuAction::GetNodeContextMenuActionGroupId());
+
+        const bool showUnusedSlots = false;
+        const bool hideUnusedSlots = true;
+
+        AddMenuAction(aznew ManageUnusedSlotsMenuAction(this, showUnusedSlots));
+        AddMenuAction(aznew ManageUnusedSlotsMenuAction(this, hideUnusedSlots));
     }
     
     void NodeContextMenu::OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId)

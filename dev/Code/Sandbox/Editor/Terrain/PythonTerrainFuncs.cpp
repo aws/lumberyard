@@ -15,7 +15,6 @@
 #include "IEditor.h"
 #include "GameEngine.h"
 #include "ViewManager.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Terrain/Heightmap.h"
 
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
@@ -93,6 +92,50 @@ namespace PyTerrainHeightmap
         return GetIEditor() ? GetIEditor()->GetTerrainElevation(x, y) : 0.0f;
     }
 
+    float GetHeightmapElevation(float x, float y)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (editor)
+        {
+            CHeightmap* heightMap = editor->GetHeightmap();
+
+            if (heightMap)
+            {
+                QPoint hCoord = heightMap->WorldToHmap(Vec3{x, y, 0.0f});
+                return heightMap->GetSafeXY(hCoord.x(), hCoord.y());
+            }
+        }
+
+        return 0.0f;
+    }
+
+    void SetElevation(float x, float y, float height)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (editor)
+        {
+            CHeightmap* heightMap = editor->GetHeightmap();
+
+            if (heightMap)
+            {
+                QPoint hCoord = heightMap->WorldToHmap(Vec3{x, y, 0.0f});
+
+                int xCoord = hCoord.x();
+                int yCoord = hCoord.y();
+
+                if (xCoord < 0 || xCoord >= heightMap->GetWidth() || yCoord < 0 || yCoord >= heightMap->GetHeight())
+                {
+                    return;
+                }
+
+                heightMap->SetXY(xCoord, yCoord, height);
+                heightMap->RefreshTerrain();
+            }
+        }
+    }
+
     void Flatten(float percentage)
     {
         if (percentage > 0.0f && percentage <= 100.0f)
@@ -108,6 +151,23 @@ namespace PyTerrainHeightmap
                     heightMap->Flatten(1.0f - (percentage / 100.f));
                     heightMap->RefreshTerrain();
                 }
+            }
+        }
+    }
+
+    void ReduceRange(float percentage)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (editor)
+        {
+            CHeightmap* heightMap = editor->GetHeightmap();
+
+            if (heightMap)
+            {
+                percentage = AZ::GetClamp(percentage, 0.0f, 100.0f);
+                heightMap->LowerRange(1.0f - (percentage / 100.f));
+                heightMap->RefreshTerrain();
             }
         }
     }
@@ -273,7 +333,10 @@ void AzToolsFramework::TerrainPythonFuncsHandler::Reflect(AZ::ReflectContext* co
         addTerrainMethod(behaviorContext->Method("import_heightmap", PyTerrainHeightmap::ImportHeightmap, nullptr, "Import a heightmap into the terrain.  Use resize=True to scale the input if it's a different size, resize=False to clip it."));
         addTerrainMethod(behaviorContext->Method("export_heightmap", PyTerrainHeightmap::ExportHeightmap, nullptr, "Export a heightmap from the terrain."));
         addTerrainMethod(behaviorContext->Method("get_elevation", PyTerrainHeightmap::GetElevation, nullptr, "Get the elevation for an XY point on the terrain."));
+        addTerrainMethod(behaviorContext->Method("get_heightmap_elevation", PyTerrainHeightmap::GetHeightmapElevation, nullptr, "Get the elevation for an XY point on the terrain directly from the heightmap."));
+        addTerrainMethod(behaviorContext->Method("set_elevation", PyTerrainHeightmap::SetElevation, nullptr, "Sets the elevation for an XY point on the terrain."));
         addTerrainMethod(behaviorContext->Method("flatten", PyTerrainHeightmap::Flatten, nullptr, "Globally flattens the terrain."));
+        addTerrainMethod(behaviorContext->Method("reduce_range", PyTerrainHeightmap::ReduceRange, nullptr, "Globally flattens the terrain. If an ocean exists, terrain is flattened relative to the existing ocean."));
         addTerrainMethod(behaviorContext->Method("smooth", PyTerrainHeightmap::Smooth, nullptr, "Globally applies a 3x3 smooth to the terrain."));
         addTerrainMethod(behaviorContext->Method("slope_smooth", PyTerrainHeightmap::SmoothSlope, nullptr, "Globally applies a 3x3 smooth to slopes of the terrain."));
         addTerrainMethod(behaviorContext->Method("erase", PyTerrainHeightmap::Erase, nullptr, "Erases/clears the terrain."));
@@ -285,49 +348,3 @@ void AzToolsFramework::TerrainPythonFuncsHandler::Reflect(AZ::ReflectContext* co
         addTerrainMethod(behaviorContext->Method("hold", PyTerrainHeightmap::Hold, nullptr, "Saves a backup copy of the heightmap."));
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::GetMaxHeight, terrain, get_max_height,
-    "Gets the max height of the terrain.",
-    "float terrain.get_max_height()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::SetMaxHeight, terrain, set_max_height,
-    "Sets the max height of the terrain.",
-    "void terrain.set_max_height(float maxHeight)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::ImportHeightmap, terrain, import_heightmap,
-    "Import a heightmap into the terrain.  Use resize=True to scale the input if it's a different size, resize=False to clip it.",
-    "void terrain.import_heightmap(string filename, bool resize)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::ExportHeightmap, terrain, export_heightmap,
-    "Export a heightmap from the terrain.",
-    "void terrain.export_heightmap(string filename)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::GetElevation, terrain, get_elevation,
-    "Get the elevation for an XY point on the terrain.",
-    "void terrain.get_elevation(float x, float y)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Flatten, terrain, flatten,
-    "Globally flattens the terrain.",
-    "void terrain.flatten(float percentage)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Smooth, terrain, smooth,
-    "Globally applies a 3x3 smooth to the terrain.",
-    "void terrain.smooth()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::SmoothSlope, terrain, slope_smooth,
-    "Globally applies a 3x3 smooth to slopes of the terrain.",
-    "void terrain.slope_smooth()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Erase, terrain, erase,
-    "Erases/clears the terrain.",
-    "void terrain.erase()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Resize, terrain, resize,
-    "Resizes the terrain.",
-    "void terrain.resize(int resolution, int unit_size)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::MakeIsle, terrain, make_isle,
-    "Convert any terrain into an isle.",
-    "void terrain.make_isle()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Normalize, terrain, normalize,
-    "Normalize the heightmap to a 0 - max height range.",
-    "void terrain.normalize()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Invert, terrain, invert,
-    "Inverts the heightmap.",
-    "void terrain.invert()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Fetch, terrain, fetch,
-    "Reads a backup copy of the heightmap.",
-    "void terrain.fetch()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainHeightmap::Hold, terrain, hold,
-    "Saves a backup copy of the heightmap.",
-    "void terrain.hold()");

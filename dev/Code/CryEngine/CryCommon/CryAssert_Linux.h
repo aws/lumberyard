@@ -56,6 +56,24 @@ bool CryAssert(const char* szCondition, const char* szFile, unsigned int line, b
     {
         return false;
     }
+
+#if defined(CRY_ASSERT_DIALOG_ONLY_IN_DEBUG) && !defined(AZ_DEBUG_BUILD)
+    // we are in a non-debug build, so we should turn this into a warning instead.
+    if (gEnv->pLog)
+    {
+        if (!gEnv->bIgnoreAllAsserts)
+        {
+            gEnv->pLog->LogWarning("%s(%u): Assertion failed - \"%s\"", szFile, line, szCondition);
+        }
+    }
+    if (pIgnore)
+    {
+        // avoid showing the same one repeatedly.
+        *pIgnore = true;
+    }
+    return false;
+#endif
+
     static const int max_len = 4096;
     static char gs_command_str[4096];
     static CryLockT<CRYLOCK_RECURSIVE> lock;

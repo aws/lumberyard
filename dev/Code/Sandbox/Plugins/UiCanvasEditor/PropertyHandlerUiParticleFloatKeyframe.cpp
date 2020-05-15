@@ -158,8 +158,8 @@ void PropertyHandlerUiParticleFloatKeyframe::ConsumeAttribute(PropertyUiParticle
 
 void PropertyHandlerUiParticleFloatKeyframe::WriteGUIValuesIntoProperty(size_t /*index*/, PropertyUiParticleFloatKeyframeCtrl* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* /*node*/)
 {
-    instance.time = GUI->GetTimeCtrl()->value();
-    instance.multiplier = GUI->GetMultiplierCtrl()->value();
+    instance.time = aznumeric_cast<float>(GUI->GetTimeCtrl()->value());
+    instance.multiplier = aznumeric_cast<float>(GUI->GetMultiplierCtrl()->value());
     instance.inTangent = static_cast<UiParticleEmitterInterface::ParticleKeyframeTangentType>(GUI->GetInTangentCtrl()->value());
     instance.outTangent = static_cast<UiParticleEmitterInterface::ParticleKeyframeTangentType>(GUI->GetOutTangentCtrl()->value());
 }

@@ -10,6 +10,7 @@
 #
 
 import service
+from six import iteritems # Python 2.7/3.7 Compatibility
 import CloudCanvas
 import survey_utils
 import validation_utils
@@ -29,7 +30,7 @@ def get(request, survey_id):
 
     survey_answer_aggregations = []
     for each_survey_answer_aggregation in query_result['Items']:
-        for key, val in each_survey_answer_aggregation.items():
+        for key, val in iteritems(each_survey_answer_aggregation):
             if key == 'survey_id':
                 continue
             question_id = key
@@ -41,7 +42,7 @@ def get(request, survey_id):
                 'answer_aggregations': answer_aggregations
             }
 
-            for answer, count in each_question_answer_aggregation.items():
+            for answer, count in iteritems(each_question_answer_aggregation):
                 answer_aggregations.append({
                     'answer': answer,
                     'count': count

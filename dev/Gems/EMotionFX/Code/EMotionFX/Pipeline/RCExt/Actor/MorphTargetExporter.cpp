@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-//
-#include <Cry_Geo.h>
+
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -83,7 +82,7 @@ namespace EMotionFX
             const AZ::SceneAPI::Containers::SceneGraph& graph = context.m_scene.GetGraph();
 
             //clone the actor
-            auto baseActorImage = EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(context.m_actor->Clone());
+            auto baseActorImage = context.m_actor->Clone();
             baseActorImage->RemoveAllNodeMeshes();
 
             AZStd::unordered_set<AZStd::string> visitedBlendShapeNames;
@@ -104,7 +103,7 @@ namespace EMotionFX
                     continue;
                 }
                 visitedBlendShapeNames.insert(morphTargetName);
-                EMotionFX::Actor* morphTargetActor = baseActorImage->Clone();
+                AZStd::unique_ptr<Actor> morphTargetActor = baseActorImage->Clone();
                 if (!morphTargetActor)
                 {
                     return SceneEvents::ProcessingResult::Failure;
@@ -136,13 +135,13 @@ namespace EMotionFX
                                 AZ::Transform globalTransformN = globalTransform.GetInverseFull().GetTranspose();
                                 globalTransformN.SetTranslation(AZ::Vector3::CreateZero());
 
-                                BuildMorphTargetMesh(morphTargetActor, emfxNode, morphTargetData, globalTransform, globalTransformN, context.m_coordinateSystemConverter, context.m_useMeshOptimization);
+                                BuildMorphTargetMesh(morphTargetActor.get(), emfxNode, morphTargetData, globalTransform, globalTransformN, context.m_coordinateSystemConverter);
                             }
                         }
                     }
                 }
                 //add the morph target actor to the main actor
-                EMotionFX::MorphTargetStandard* morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, context.m_actor, morphTargetActor, morphTargetName.c_str());
+                EMotionFX::MorphTargetStandard* morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, context.m_actor, morphTargetActor.get(), morphTargetName.c_str());
                 //assume LOD 0
                 EMotionFX::MorphSetup* morphSetup = context.m_actor->GetMorphSetup(0);
                 if (!morphSetup)
@@ -162,12 +161,12 @@ namespace EMotionFX
 
 
         void MorphTargetExporter::BuildMorphTargetMesh(EMotionFX::Actor* actor, EMotionFX::Node* emfxNode,
-            const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IBlendShapeData>& morphTargetData, const AZ::Transform& globalTransform, const AZ::Transform& globalTransformN, CoordinateSystemConverter& coordinateSystemConverter, bool optimizeTriangleList)
+            const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IBlendShapeData>& morphTargetData, const AZ::Transform& globalTransform, const AZ::Transform& globalTransformN, CoordinateSystemConverter& coordinateSystemConverter)
         {
             const AZ::u32 numFaces = morphTargetData->GetFaceCount();
 
             // Get the number of orgVerts (control point)
-            const AZ::u32 controlPointCount = morphTargetData->GetUsedControlPointCount();
+            const AZ::u32 controlPointCount = static_cast<AZ::u32>(morphTargetData->GetUsedControlPointCount());
             EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), controlPointCount, false, false /* Disable vertex duplication optimization for morphed meshes. */);
 
             // Original vertex numbers

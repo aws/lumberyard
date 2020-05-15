@@ -2,7 +2,7 @@
     "name": "TomCrypt",
     "source": "@3P:libtomcrypt@",
     "description": "LibTomCrypt open source library (http://www.libtom.org/)",
-    "includes": [
+    "system_includes": [
         "src/headers"
     ],
     "defines": [],

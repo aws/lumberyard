@@ -33,6 +33,13 @@ namespace ImageProcessing
         const AZStd::string LoadSettingFromTIFF(const AZStd::string& filename);
     };// namespace ImageTIFF
 
+    namespace BTLoader
+    {
+        bool IsExtensionSupported(const char* extension);
+        // Load a BT file to an image object.
+        IImageObject* LoadImageFromBT(const AZStd::string& fileName);
+    }// namespace BTLoader
+
     // Image loader through Qt's QImage with image formats supported native and through plugins
     namespace QtImageLoader
     {

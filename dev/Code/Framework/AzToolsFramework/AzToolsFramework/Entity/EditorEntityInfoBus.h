@@ -12,10 +12,12 @@
 #pragma once
 
 #include "EditorEntitySortBus.h"
+
 #include <AzCore/Component/Entity.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityStartStatus.h>
 
 namespace AzToolsFramework
 {
@@ -69,6 +71,7 @@ namespace AzToolsFramework
         virtual bool IsVisible() const = 0;
         virtual bool IsHidden() const = 0;
         virtual bool IsLocked() const = 0;
+        virtual EditorEntityStartStatus GetStartStatus() const = 0;
 
         // Locked layers override the lock status of entities, but shouldn't change
         // that entity's lock state. This allows layers to have their lock toggled on and

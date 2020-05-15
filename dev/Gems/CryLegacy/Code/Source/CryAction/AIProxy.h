@@ -107,8 +107,6 @@ public:
     virtual bool IsActionAnimationStarted(const char* value);
     virtual bool IsAnimationBlockingMovement() const;
     virtual EActorTargetPhase GetActorTargetPhase() const;
-    virtual void PlayAnimationAction(const struct IAIAction* pAction, int goalPipeId);
-    virtual void AnimationActionDone(bool succeeded);
     virtual bool IsPlayingSmartObjectAction() const;
     virtual int  GetAndResetShotBulletCount() { int ret = m_shotBulletCount; m_shotBulletCount = 0; return ret; }  // Only used in firecommand
     virtual void EnableWeaponListener(const EntityId weaponId, bool needsSignal);

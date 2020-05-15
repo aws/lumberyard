@@ -20,7 +20,15 @@ int main(int argc, char** argv)
     traceMessageHook.EnableTraceContext(true);
     AZ::Debug::Trace::HandleExceptions(true);
 
-    app.Start(AzFramework::Application::Descriptor());
+    // Perform an additional check for an override app root argument, and set it in the startup params if appropriate
+    char destinationRootArgBuffer[AZ_MAX_PATH_LEN];
+    AZ::ComponentApplication::StartupParameters   startupParams;
+    if (app.GetOptionalAppRootArg(destinationRootArgBuffer, AZ_MAX_PATH_LEN))
+    {
+        startupParams.m_appRootOverride = destinationRootArgBuffer;
+    }
+
+    app.Start(AzFramework::Application::Descriptor(), startupParams);
     traceMessageHook.EnableDebugMode(app.IsInDebugMode());
 
     bool result = false;

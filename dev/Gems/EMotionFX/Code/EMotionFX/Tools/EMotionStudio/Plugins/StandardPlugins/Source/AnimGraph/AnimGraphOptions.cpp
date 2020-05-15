@@ -80,13 +80,15 @@ namespace EMStudio
             return;
         }
 
-        editContext->Class<AnimGraphOptions>("Anim graph plugin properties", "")
+        editContext->Class<AnimGraphOptions>("Anim graph plugin properties", "Anim graph window properties")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphOptions::m_graphAnimation, "Graph animation", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphOptions::m_graphAnimation, "Graph animation",
+                "Enable to see graph animations like blinking error states or data flow through connections.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphOptions::OnGraphAnimationChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphOptions::m_showFPS, "Show FPS", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphOptions::m_showFPS, "Show FPS",
+                "Show anim graph rendering statistics like render time and average frames per second.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphOptions::OnShowFPSChangedCallback)
             ;
     }

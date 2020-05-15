@@ -10,27 +10,37 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-import sys, subprocess
+
+# System Imports
+import json
+import os
+import re
+import subprocess
+import sys
+import copy
+
+winreg_available = True
+try:
+    import winreg
+except ImportError:
+    winreg_available = False
+    pass
+
+# waflib imports
 from waflib import Configure, Logs, Utils, Options, ConfigSet
 from waflib.Configure import conf, deprecated
 from waflib import Logs, Node, Errors
 from waflib.Scripting import _is_option_true
 from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
 from waflib.Task import Task, RUN_ME, SKIP_ME
+
+# lmbrwaflib imports
+from lmbrwaflib import utils
+
+# misc import
 from waf_branch_spec import WAF_FILE_GLOB_WARNING_THRESHOLD
 
-import utils
-import json
-import os
-import re
-import copy
 
-winreg_available = True
-try:
-    import _winreg
-except ImportError:
-    winreg_available = False
-    pass
 
 ###############################################################################
 WAF_EXECUTABLE = 'lmbr_waf.bat'
@@ -43,8 +53,8 @@ def get_command_line_limit():
     arg_max = 16384 # windows command line length limit
 
     if Utils.unversioned_sys_platform() != "win32":
-        arg_max = int(subprocess.check_output(["getconf", "ARG_MAX"]).strip())
-        env_size = len(subprocess.check_output(['env']))
+        arg_max = int(subprocess.check_output(["getconf", "ARG_MAX"]).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip())
+        env_size = len(subprocess.check_output(['env']).decode(sys.stdout.encoding or 'iso8859-1', 'replace'))
         # on platforms such as mac, ARG_MAX encodes the amount of room you have for args, but in BYTES.
         # as well as for environment itself.
         arg_max = arg_max - (env_size * 2) # env has lines which are null terminated, reserve * 2 for safety
@@ -196,41 +206,11 @@ def cry_warning(conf, msg):
 def cry_file_warning(conf, msg, filePath, lineNum = 0 ):
     Logs.warn('%s(%s): warning: %s.' % (filePath, lineNum, msg))
 
-#############################################################################
-#############################################################################
-# Helper functions to json file parsing and validation
-
-def _decode_list(data):
-    rv = []
-    for item in data:
-        if isinstance(item, unicode):
-            item = item.encode('utf-8')
-        elif isinstance(item, list):
-            item = _decode_list(item)
-        elif isinstance(item, dict):
-            item = _decode_dict(item)
-        rv.append(item)
-    return rv
-
-def _decode_dict(data):
-    rv = {}
-    for key, value in data.iteritems():
-        if isinstance(key, unicode):
-            key = key.encode('utf-8')
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        elif isinstance(value, list):
-            value = _decode_list(value)
-        elif isinstance(value, dict):
-            value = _decode_dict(value)
-        rv[key] = value
-    return rv
-
 @conf
 def parse_json_file(conf, file_node):
     try:
         file_content_raw = file_node.read()
-        file_content_parsed = json.loads(file_content_raw, object_hook=_decode_dict)
+        file_content_parsed = json.loads(file_content_raw)
         return file_content_parsed
     except Exception as e:
         line_num = 0
@@ -306,22 +286,23 @@ lmbr_override_target_map = {'SetupAssistant', 'SetupAssistantBatch'}
 
 
 @conf
-def get_output_folders(self, platform, configuration, ctx=None, target=None):
+def get_output_folders(self, platform, configuration, tgen=None, target_name=None):
     output_paths = []
 
-    # if target is provided, see if it's in the override list, if it is then override with specific logic
-    if target is not None:
-        # override for Tools/LmbrSetup folder
-        if target in lmbr_override_target_map:
-            output_paths = [self.get_lmbr_setup_tools_output_folder(platform, configuration)]
+    class dummy_tgen:
+        def __getattr__(self, attribute):
+            return None
+    tsk_gen = tgen or dummy_tgen()
 
-    if ctx is None:
-        ctx = self
+    # if target is provided, see if it's in the override list, if it is then override with specific logic
+    target = target_name or tsk_gen.name
+    if target and target in lmbr_override_target_map:
+        output_paths = [self.get_lmbr_setup_tools_output_folder(platform, configuration)]
 
     # if no overwrite provided
     if len(output_paths) == 0:
         # check if output_folder is defined
-        output_paths = getattr(ctx, 'output_folder', None)
+        output_paths = getattr(tsk_gen, 'output_folder', None)
         if output_paths:
             if not isinstance(output_paths, list):
                 output_paths = [output_paths]
@@ -345,8 +326,23 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
         if os.path.isabs(path):
             output_nodes.append(self.root.make_node(path))
         else:
-            # For relative path, prefix binary output folder with game project folder
-            output_nodes.append(self.launch_node().make_node(path))
+            host = Utils.unversioned_sys_platform()
+            if host == 'win32':
+                host = 'win'
+            is_host_target = (platform in self.get_platform_aliases(host))
+
+            # for host targets, the binaries will be split between the engine and project directory
+            if is_host_target:
+                if not self.is_engine_local() and getattr(tsk_gen, 'project_local', False):
+                    root_node = self.get_launch_node()
+                else:
+                    root_node = self.get_engine_node()
+
+            # while all other target's binaries will be exclusively output into the project directory
+            else:
+                root_node = self.get_launch_node()
+
+            output_nodes.append(root_node.make_node(path))
 
     return output_nodes
 
@@ -500,7 +496,7 @@ def read_file_list(bld, file):
         Perform house clean in case glob pattern overrides move all files out of a 'root' group.
         """
         empty_filters = []
-        for filter_name, filter_contents in current_uber_dict.items():
+        for filter_name, filter_contents in list(current_uber_dict.items()):
             if len(filter_contents)==0:
                 empty_filters.append(filter_name)
         for empty_filter in empty_filters:
@@ -513,7 +509,7 @@ def read_file_list(bld, file):
         """
         processed_uber_dict = {}
 
-        for filter_name, filter_contents in uber_dict.items():
+        for filter_name, filter_contents in list(uber_dict.items()):
             for filter_content in filter_contents:
 
                 if isinstance(filter_content, str):
@@ -531,8 +527,13 @@ def read_file_list(bld, file):
                             processed_path = os.path.normpath(os.path.join(base_path_abs, filter_content))
 
                         if not os.path.exists(processed_path):
-                            Logs.warn("[WARN] File '{}' specified in '{}' does not exist.  It will be ignored"
-                                      .format(processed_path, waf_file_node_abs))
+                            if processed_path.lower().endswith(('.cpp', '.c', '.cxx')):
+                                # This is an error, not warning, because it could result in unit tests accidentally getting lost
+                                raise Errors.WafError("File '{}' specified in '{}' does not exist."
+                                        .format(processed_path, waf_file_node_abs))
+                            else:
+                                Logs.warn("[WARN] File '{}' specified in '{}' does not exist.  It will be ignored"
+                                        .format(processed_path, waf_file_node_abs))
                         elif not os.path.isfile(processed_path):
                             Logs.warn("[WARN] Path '{}' specified in '{}' is a folder, only files or glob patterns are "
                                       "allowed.  It will be ignored"
@@ -579,7 +580,7 @@ def read_file_list(bld, file):
     # Prepare a processed waf_file list
     processed_file_list = {}
 
-    for uber_file_entry, uber_file_dict in source_file_list.items():
+    for uber_file_entry, uber_file_dict in list(source_file_list.items()):
         processed_file_list[uber_file_entry] = _process_uber_dict(uber_file_entry, uber_file_dict)
         pass
 
@@ -632,6 +633,11 @@ def target_clean(self):
         for tgen in self.get_all_task_gen():
             tgen.post()
             if not tgen.target in tmp_targets:
+                continue
+
+            # Skip cleaning targets that set the 'exclude_from_clean' attribute as True
+            skip_delete = getattr(tgen, 'exclude_from_clean', False)
+            if skip_delete:
                 continue
 
             for t in tgen.tasks:
@@ -741,6 +747,12 @@ def clean_output_targets(self):
 
                 target_name = getattr(tgen, 'output_file_name', tgen.get_name())
                 delete_target = target_output_folder_node.make_node(target_ext_PATTERN % str(target_name))
+
+                # Skip cleaning targets that set the 'exclude_from_clean' attribute as True
+                skip_delete = getattr(tgen, 'exclude_from_clean', False)
+                if skip_delete:
+                    continue
+
                 to_delete.append(delete_target)
                 for target_output_copy_folder_item in target_output_copy_folder_items:
                     delete_target_copy = target_output_copy_folder_item.make_node(target_ext_PATTERN % str(target_name))
@@ -817,7 +829,6 @@ def link_to_output_folder(self):
 
             self.create_task('create_symbol_link', file, output_node)
 
-import ctypes
 ###############################################################################
 # Class to handle copying of the final outputs into the Bin folder
 class create_symbol_link(Task):
@@ -834,6 +845,7 @@ class create_symbol_link(Task):
             pass
 
         try:
+            import ctypes
             kdll = ctypes.windll.LoadLibrary("kernel32.dll")
             res = kdll.CreateSymbolicLinkA(tgt, src, 0)
         except:
@@ -925,8 +937,8 @@ def compare_config_sets(left, right, deep_compare = False):
         return False
 
     # Compare the number of keys
-    left_keys = left.keys()
-    right_keys = right.keys()
+    left_keys = list(left.keys())
+    right_keys = list(right.keys())
     if len(left_keys) != len(right_keys):
         return False
     key_len = len(left_keys)

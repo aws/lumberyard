@@ -287,10 +287,10 @@ namespace GraphCanvas
         pen.setWidth(MINIMAP_MAGNIFIER_BOX_THICKNESS); // Box thickness.
         painter.setPen(pen);
 
-        painter.drawRect(m_magnifierBoxInWindowCoordinates.x(),
-            m_magnifierBoxInWindowCoordinates.y(),
-            m_magnifierBoxInWindowCoordinates.width(),
-            m_magnifierBoxInWindowCoordinates.height());
+        painter.drawRect(aznumeric_cast<int>(m_magnifierBoxInWindowCoordinates.x()),
+            aznumeric_cast<int>(m_magnifierBoxInWindowCoordinates.y()),
+            aznumeric_cast<int>(m_magnifierBoxInWindowCoordinates.width()),
+            aznumeric_cast<int>(m_magnifierBoxInWindowCoordinates.height()));
     }
 
     void MiniMapGraphicsView::UpdateCompleteSceneContentInSceneCoordinates()

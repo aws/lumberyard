@@ -58,8 +58,7 @@ namespace NvCloth
                     continue;
                 }
 
-                bool hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32) != nullptr); // NOTE: Using ATTRIB_COLORS32 for cloth inverse masses
-
+                const bool hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES) != nullptr);
                 if (hasClothInverseMasses)
                 {
                     const EMotionFX::Node* node = actor->GetSkeleton()->GetNode(nodeIndex);
@@ -183,7 +182,7 @@ namespace NvCloth
 
         const uint32* sourceIndices = emfxMesh.GetIndices();
         const AZ::Vector3* sourcePositions = static_cast<AZ::Vector3*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-        const AZ::u32* sourceClothInverseMasses = static_cast<AZ::u32*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32)); // NOTE: Using ATTRIB_COLORS32 for cloth inverse masses
+        const AZ::u32* sourceClothInverseMasses = static_cast<AZ::u32*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES));
         const AZ::Vector2* sourceUVs = static_cast<AZ::Vector2*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0)); // first UV set
 
         if (!sourceIndices || !sourcePositions || !sourceClothInverseMasses)

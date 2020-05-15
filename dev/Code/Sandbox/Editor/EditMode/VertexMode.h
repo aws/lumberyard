@@ -78,8 +78,6 @@ public:
 
     bool IsNeedMoveTool() { return true; };
 
-    static void PySetSelectionType(const char* modeName);
-
 protected:
     enum ECommandMode
     {

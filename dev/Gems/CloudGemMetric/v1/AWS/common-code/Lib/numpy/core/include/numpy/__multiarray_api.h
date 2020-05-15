@@ -145,9 +145,9 @@ NPY_NO_EXPORT  PyObject * PyArray_ScalarFromObject \
 NPY_NO_EXPORT  PyArray_VectorUnaryFunc * PyArray_GetCastFunc \
        (PyArray_Descr *, int);
 NPY_NO_EXPORT  PyObject * PyArray_FromDims \
-       (int, int *, int);
+       (int NPY_UNUSED(nd), int *NPY_UNUSED(d), int NPY_UNUSED(type));
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(3) PyObject * PyArray_FromDimsAndDataAndDescr \
-       (int, int *, PyArray_Descr *, char *);
+       (int NPY_UNUSED(nd), int *NPY_UNUSED(d), PyArray_Descr *, char *NPY_UNUSED(data));
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(2) PyObject * PyArray_FromAny \
        (PyObject *, PyArray_Descr *, int, int, int, PyObject *);
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(1) PyObject * PyArray_EnsureArray \
@@ -171,7 +171,7 @@ NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(2) NPY_GCC_NONNULL(2) int PyArray_SetField \
 NPY_NO_EXPORT  PyObject * PyArray_Byteswap \
        (PyArrayObject *, npy_bool);
 NPY_NO_EXPORT  PyObject * PyArray_Resize \
-       (PyArrayObject *, PyArray_Dims *, int, NPY_ORDER);
+       (PyArrayObject *, PyArray_Dims *, int, NPY_ORDER NPY_UNUSED(order));
 NPY_NO_EXPORT  int PyArray_MoveInto \
        (PyArrayObject *, PyArrayObject *);
 NPY_NO_EXPORT  int PyArray_CopyInto \
@@ -197,9 +197,9 @@ NPY_NO_EXPORT  int PyArray_ValidType \
 NPY_NO_EXPORT  void PyArray_UpdateFlags \
        (PyArrayObject *, int);
 NPY_NO_EXPORT NPY_GCC_NONNULL(1) PyObject * PyArray_New \
-       (PyTypeObject *, int, npy_intp *, int, npy_intp *, void *, int, int, PyObject *);
+       (PyTypeObject *, int, npy_intp const *, int, npy_intp const *, void *, int, int, PyObject *);
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(2) NPY_GCC_NONNULL(1) NPY_GCC_NONNULL(2) PyObject * PyArray_NewFromDescr \
-       (PyTypeObject *, PyArray_Descr *, int, npy_intp *, npy_intp *, void *, int, PyObject *);
+       (PyTypeObject *, PyArray_Descr *, int, npy_intp const *, npy_intp const *, void *, int, PyObject *);
 NPY_NO_EXPORT  PyArray_Descr * PyArray_DescrNew \
        (PyArray_Descr *);
 NPY_NO_EXPORT  PyArray_Descr * PyArray_DescrNewFromType \
@@ -208,7 +208,7 @@ NPY_NO_EXPORT  double PyArray_GetPriority \
        (PyObject *, double);
 NPY_NO_EXPORT  PyObject * PyArray_IterNew \
        (PyObject *);
-NPY_NO_EXPORT  PyObject * PyArray_MultiIterNew \
+NPY_NO_EXPORT  PyObject* PyArray_MultiIterNew \
        (int, ...);
 NPY_NO_EXPORT  int PyArray_PyIntAsInt \
        (PyObject *);
@@ -327,19 +327,19 @@ NPY_NO_EXPORT  PyObject * PyArray_Flatten \
 NPY_NO_EXPORT  PyObject * PyArray_Ravel \
        (PyArrayObject *, NPY_ORDER);
 NPY_NO_EXPORT  npy_intp PyArray_MultiplyList \
-       (npy_intp *, int);
+       (npy_intp const *, int);
 NPY_NO_EXPORT  int PyArray_MultiplyIntList \
-       (int *, int);
+       (int const *, int);
 NPY_NO_EXPORT  void * PyArray_GetPtr \
-       (PyArrayObject *, npy_intp*);
+       (PyArrayObject *, npy_intp const*);
 NPY_NO_EXPORT  int PyArray_CompareLists \
-       (npy_intp *, npy_intp *, int);
+       (npy_intp const *, npy_intp const *, int);
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(5) int PyArray_AsCArray \
        (PyObject **, void *, npy_intp *, int, PyArray_Descr*);
 NPY_NO_EXPORT  int PyArray_As1D \
-       (PyObject **, char **, int *, int);
+       (PyObject **NPY_UNUSED(op), char **NPY_UNUSED(ptr), int *NPY_UNUSED(d1), int NPY_UNUSED(typecode));
 NPY_NO_EXPORT  int PyArray_As2D \
-       (PyObject **, char ***, int *, int *, int);
+       (PyObject **NPY_UNUSED(op), char ***NPY_UNUSED(ptr), int *NPY_UNUSED(d1), int *NPY_UNUSED(d2), int NPY_UNUSED(typecode));
 NPY_NO_EXPORT  int PyArray_Free \
        (PyObject *, void *);
 NPY_NO_EXPORT  int PyArray_Converter \
@@ -377,9 +377,9 @@ NPY_NO_EXPORT  int PyArray_OrderConverter \
 NPY_NO_EXPORT  unsigned char PyArray_EquivTypes \
        (PyArray_Descr *, PyArray_Descr *);
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(3) PyObject * PyArray_Zeros \
-       (int, npy_intp *, PyArray_Descr *, int);
+       (int, npy_intp const *, PyArray_Descr *, int);
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(3) PyObject * PyArray_Empty \
-       (int, npy_intp *, PyArray_Descr *, int);
+       (int, npy_intp const *, PyArray_Descr *, int);
 NPY_NO_EXPORT  PyObject * PyArray_Where \
        (PyObject *, PyObject *, PyObject *);
 NPY_NO_EXPORT  PyObject * PyArray_Arange \
@@ -427,8 +427,8 @@ NPY_NO_EXPORT  PyObject * PyArray_CheckAxis \
 NPY_NO_EXPORT  npy_intp PyArray_OverflowMultiplyList \
        (npy_intp *, int);
 NPY_NO_EXPORT  int PyArray_CompareString \
-       (char *, char *, size_t);
-NPY_NO_EXPORT  PyObject * PyArray_MultiIterFromObjects \
+       (const char *, const char *, size_t);
+NPY_NO_EXPORT  PyObject* PyArray_MultiIterFromObjects \
        (PyObject **, int, int, ...);
 NPY_NO_EXPORT  int PyArray_GetEndianness \
        (void);
@@ -437,7 +437,7 @@ NPY_NO_EXPORT  unsigned int PyArray_GetNDArrayCFeatureVersion \
 NPY_NO_EXPORT  PyObject * PyArray_Correlate2 \
        (PyObject *, PyObject *, int);
 NPY_NO_EXPORT  PyObject* PyArray_NeighborhoodIterNew \
-       (PyArrayIterObject *, npy_intp *, int, PyArrayObject*);
+       (PyArrayIterObject *, const npy_intp *, int, PyArrayObject*);
 extern NPY_NO_EXPORT PyTypeObject PyTimeIntegerArrType_Type;
 
 extern NPY_NO_EXPORT PyTypeObject PyDatetimeArrType_Type;
@@ -449,15 +449,15 @@ extern NPY_NO_EXPORT PyTypeObject PyHalfArrType_Type;
 extern NPY_NO_EXPORT PyTypeObject NpyIter_Type;
 
 NPY_NO_EXPORT  void PyArray_SetDatetimeParseFunction \
-       (PyObject *);
+       (PyObject *NPY_UNUSED(op));
 NPY_NO_EXPORT  void PyArray_DatetimeToDatetimeStruct \
-       (npy_datetime, NPY_DATETIMEUNIT, npy_datetimestruct *);
+       (npy_datetime NPY_UNUSED(val), NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_datetimestruct *);
 NPY_NO_EXPORT  void PyArray_TimedeltaToTimedeltaStruct \
-       (npy_timedelta, NPY_DATETIMEUNIT, npy_timedeltastruct *);
+       (npy_timedelta NPY_UNUSED(val), NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_timedeltastruct *);
 NPY_NO_EXPORT  npy_datetime PyArray_DatetimeStructToDatetime \
-       (NPY_DATETIMEUNIT, npy_datetimestruct *);
+       (NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_datetimestruct *NPY_UNUSED(d));
 NPY_NO_EXPORT  npy_datetime PyArray_TimedeltaStructToTimedelta \
-       (NPY_DATETIMEUNIT, npy_timedeltastruct *);
+       (NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_timedeltastruct *NPY_UNUSED(d));
 NPY_NO_EXPORT  NpyIter * NpyIter_New \
        (PyArrayObject *, npy_uint32, NPY_ORDER, NPY_CASTING, PyArray_Descr*);
 NPY_NO_EXPORT  NpyIter * NpyIter_MultiNew \
@@ -505,7 +505,7 @@ NPY_NO_EXPORT  int NpyIter_GetShape \
 NPY_NO_EXPORT  NpyIter_GetMultiIndexFunc * NpyIter_GetGetMultiIndex \
        (NpyIter *, char **);
 NPY_NO_EXPORT  int NpyIter_GotoMultiIndex \
-       (NpyIter *, npy_intp *);
+       (NpyIter *, npy_intp const *);
 NPY_NO_EXPORT  int NpyIter_RemoveMultiIndex \
        (NpyIter *);
 NPY_NO_EXPORT  npy_bool NpyIter_HasIndex \
@@ -577,9 +577,9 @@ NPY_NO_EXPORT  npy_bool NpyIter_IsFirstVisit \
 NPY_NO_EXPORT NPY_STEALS_REF_TO_ARG(2) int PyArray_SetBaseObject \
        (PyArrayObject *, PyObject *);
 NPY_NO_EXPORT  void PyArray_CreateSortedStridePerm \
-       (int, npy_intp *, npy_stride_sort_item *);
+       (int, npy_intp const *, npy_stride_sort_item *);
 NPY_NO_EXPORT  void PyArray_RemoveAxesInPlace \
-       (PyArrayObject *, npy_bool *);
+       (PyArrayObject *, const npy_bool *);
 NPY_NO_EXPORT  void PyArray_DebugPrint \
        (PyArrayObject *);
 NPY_NO_EXPORT  int PyArray_FailUnlessWriteable \
@@ -614,6 +614,10 @@ NPY_NO_EXPORT NPY_GCC_NONNULL(1) int PyArray_CheckAnyScalarExact \
        (PyObject *);
 NPY_NO_EXPORT  PyObject * PyArray_MapIterArrayCopyIfOverlap \
        (PyArrayObject *, PyObject *, int, PyArrayObject *);
+NPY_NO_EXPORT  int PyArray_ResolveWritebackIfCopy \
+       (PyArrayObject *);
+NPY_NO_EXPORT  int PyArray_SetWritebackIfCopyBase \
+       (PyArrayObject *, PyArrayObject *);
 
 #else
 
@@ -755,10 +759,10 @@ static void **PyArray_API=NULL;
         (*(PyArray_VectorUnaryFunc * (*)(PyArray_Descr *, int)) \
          PyArray_API[66])
 #define PyArray_FromDims \
-        (*(PyObject * (*)(int, int *, int)) \
+        (*(PyObject * (*)(int NPY_UNUSED(nd), int *NPY_UNUSED(d), int NPY_UNUSED(type))) \
          PyArray_API[67])
 #define PyArray_FromDimsAndDataAndDescr \
-        (*(PyObject * (*)(int, int *, PyArray_Descr *, char *)) \
+        (*(PyObject * (*)(int NPY_UNUSED(nd), int *NPY_UNUSED(d), PyArray_Descr *, char *NPY_UNUSED(data))) \
          PyArray_API[68])
 #define PyArray_FromAny \
         (*(PyObject * (*)(PyObject *, PyArray_Descr *, int, int, int, PyObject *)) \
@@ -794,7 +798,7 @@ static void **PyArray_API=NULL;
         (*(PyObject * (*)(PyArrayObject *, npy_bool)) \
          PyArray_API[79])
 #define PyArray_Resize \
-        (*(PyObject * (*)(PyArrayObject *, PyArray_Dims *, int, NPY_ORDER)) \
+        (*(PyObject * (*)(PyArrayObject *, PyArray_Dims *, int, NPY_ORDER NPY_UNUSED(order))) \
          PyArray_API[80])
 #define PyArray_MoveInto \
         (*(int (*)(PyArrayObject *, PyArrayObject *)) \
@@ -833,10 +837,10 @@ static void **PyArray_API=NULL;
         (*(void (*)(PyArrayObject *, int)) \
          PyArray_API[92])
 #define PyArray_New \
-        (*(PyObject * (*)(PyTypeObject *, int, npy_intp *, int, npy_intp *, void *, int, int, PyObject *)) \
+        (*(PyObject * (*)(PyTypeObject *, int, npy_intp const *, int, npy_intp const *, void *, int, int, PyObject *)) \
          PyArray_API[93])
 #define PyArray_NewFromDescr \
-        (*(PyObject * (*)(PyTypeObject *, PyArray_Descr *, int, npy_intp *, npy_intp *, void *, int, PyObject *)) \
+        (*(PyObject * (*)(PyTypeObject *, PyArray_Descr *, int, npy_intp const *, npy_intp const *, void *, int, PyObject *)) \
          PyArray_API[94])
 #define PyArray_DescrNew \
         (*(PyArray_Descr * (*)(PyArray_Descr *)) \
@@ -851,7 +855,7 @@ static void **PyArray_API=NULL;
         (*(PyObject * (*)(PyObject *)) \
          PyArray_API[98])
 #define PyArray_MultiIterNew \
-        (*(PyObject * (*)(int, ...)) \
+        (*(PyObject* (*)(int, ...)) \
          PyArray_API[99])
 #define PyArray_PyIntAsInt \
         (*(int (*)(PyObject *)) \
@@ -1028,25 +1032,25 @@ static void **PyArray_API=NULL;
         (*(PyObject * (*)(PyArrayObject *, NPY_ORDER)) \
          PyArray_API[157])
 #define PyArray_MultiplyList \
-        (*(npy_intp (*)(npy_intp *, int)) \
+        (*(npy_intp (*)(npy_intp const *, int)) \
          PyArray_API[158])
 #define PyArray_MultiplyIntList \
-        (*(int (*)(int *, int)) \
+        (*(int (*)(int const *, int)) \
          PyArray_API[159])
 #define PyArray_GetPtr \
-        (*(void * (*)(PyArrayObject *, npy_intp*)) \
+        (*(void * (*)(PyArrayObject *, npy_intp const*)) \
          PyArray_API[160])
 #define PyArray_CompareLists \
-        (*(int (*)(npy_intp *, npy_intp *, int)) \
+        (*(int (*)(npy_intp const *, npy_intp const *, int)) \
          PyArray_API[161])
 #define PyArray_AsCArray \
         (*(int (*)(PyObject **, void *, npy_intp *, int, PyArray_Descr*)) \
          PyArray_API[162])
 #define PyArray_As1D \
-        (*(int (*)(PyObject **, char **, int *, int)) \
+        (*(int (*)(PyObject **NPY_UNUSED(op), char **NPY_UNUSED(ptr), int *NPY_UNUSED(d1), int NPY_UNUSED(typecode))) \
          PyArray_API[163])
 #define PyArray_As2D \
-        (*(int (*)(PyObject **, char ***, int *, int *, int)) \
+        (*(int (*)(PyObject **NPY_UNUSED(op), char ***NPY_UNUSED(ptr), int *NPY_UNUSED(d1), int *NPY_UNUSED(d2), int NPY_UNUSED(typecode))) \
          PyArray_API[164])
 #define PyArray_Free \
         (*(int (*)(PyObject *, void *)) \
@@ -1103,10 +1107,10 @@ static void **PyArray_API=NULL;
         (*(unsigned char (*)(PyArray_Descr *, PyArray_Descr *)) \
          PyArray_API[182])
 #define PyArray_Zeros \
-        (*(PyObject * (*)(int, npy_intp *, PyArray_Descr *, int)) \
+        (*(PyObject * (*)(int, npy_intp const *, PyArray_Descr *, int)) \
          PyArray_API[183])
 #define PyArray_Empty \
-        (*(PyObject * (*)(int, npy_intp *, PyArray_Descr *, int)) \
+        (*(PyObject * (*)(int, npy_intp const *, PyArray_Descr *, int)) \
          PyArray_API[184])
 #define PyArray_Where \
         (*(PyObject * (*)(PyObject *, PyObject *, PyObject *)) \
@@ -1178,10 +1182,10 @@ static void **PyArray_API=NULL;
         (*(npy_intp (*)(npy_intp *, int)) \
          PyArray_API[207])
 #define PyArray_CompareString \
-        (*(int (*)(char *, char *, size_t)) \
+        (*(int (*)(const char *, const char *, size_t)) \
          PyArray_API[208])
 #define PyArray_MultiIterFromObjects \
-        (*(PyObject * (*)(PyObject **, int, int, ...)) \
+        (*(PyObject* (*)(PyObject **, int, int, ...)) \
          PyArray_API[209])
 #define PyArray_GetEndianness \
         (*(int (*)(void)) \
@@ -1193,7 +1197,7 @@ static void **PyArray_API=NULL;
         (*(PyObject * (*)(PyObject *, PyObject *, int)) \
          PyArray_API[212])
 #define PyArray_NeighborhoodIterNew \
-        (*(PyObject* (*)(PyArrayIterObject *, npy_intp *, int, PyArrayObject*)) \
+        (*(PyObject* (*)(PyArrayIterObject *, const npy_intp *, int, PyArrayObject*)) \
          PyArray_API[213])
 #define PyTimeIntegerArrType_Type (*(PyTypeObject *)PyArray_API[214])
 #define PyDatetimeArrType_Type (*(PyTypeObject *)PyArray_API[215])
@@ -1201,19 +1205,19 @@ static void **PyArray_API=NULL;
 #define PyHalfArrType_Type (*(PyTypeObject *)PyArray_API[217])
 #define NpyIter_Type (*(PyTypeObject *)PyArray_API[218])
 #define PyArray_SetDatetimeParseFunction \
-        (*(void (*)(PyObject *)) \
+        (*(void (*)(PyObject *NPY_UNUSED(op))) \
          PyArray_API[219])
 #define PyArray_DatetimeToDatetimeStruct \
-        (*(void (*)(npy_datetime, NPY_DATETIMEUNIT, npy_datetimestruct *)) \
+        (*(void (*)(npy_datetime NPY_UNUSED(val), NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_datetimestruct *)) \
          PyArray_API[220])
 #define PyArray_TimedeltaToTimedeltaStruct \
-        (*(void (*)(npy_timedelta, NPY_DATETIMEUNIT, npy_timedeltastruct *)) \
+        (*(void (*)(npy_timedelta NPY_UNUSED(val), NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_timedeltastruct *)) \
          PyArray_API[221])
 #define PyArray_DatetimeStructToDatetime \
-        (*(npy_datetime (*)(NPY_DATETIMEUNIT, npy_datetimestruct *)) \
+        (*(npy_datetime (*)(NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_datetimestruct *NPY_UNUSED(d))) \
          PyArray_API[222])
 #define PyArray_TimedeltaStructToTimedelta \
-        (*(npy_datetime (*)(NPY_DATETIMEUNIT, npy_timedeltastruct *)) \
+        (*(npy_datetime (*)(NPY_DATETIMEUNIT NPY_UNUSED(fr), npy_timedeltastruct *NPY_UNUSED(d))) \
          PyArray_API[223])
 #define NpyIter_New \
         (*(NpyIter * (*)(PyArrayObject *, npy_uint32, NPY_ORDER, NPY_CASTING, PyArray_Descr*)) \
@@ -1285,7 +1289,7 @@ static void **PyArray_API=NULL;
         (*(NpyIter_GetMultiIndexFunc * (*)(NpyIter *, char **)) \
          PyArray_API[246])
 #define NpyIter_GotoMultiIndex \
-        (*(int (*)(NpyIter *, npy_intp *)) \
+        (*(int (*)(NpyIter *, npy_intp const *)) \
          PyArray_API[247])
 #define NpyIter_RemoveMultiIndex \
         (*(int (*)(NpyIter *)) \
@@ -1393,10 +1397,10 @@ static void **PyArray_API=NULL;
         (*(int (*)(PyArrayObject *, PyObject *)) \
          PyArray_API[282])
 #define PyArray_CreateSortedStridePerm \
-        (*(void (*)(int, npy_intp *, npy_stride_sort_item *)) \
+        (*(void (*)(int, npy_intp const *, npy_stride_sort_item *)) \
          PyArray_API[283])
 #define PyArray_RemoveAxesInPlace \
-        (*(void (*)(PyArrayObject *, npy_bool *)) \
+        (*(void (*)(PyArrayObject *, const npy_bool *)) \
          PyArray_API[284])
 #define PyArray_DebugPrint \
         (*(void (*)(PyArrayObject *)) \
@@ -1447,17 +1451,22 @@ static void **PyArray_API=NULL;
 #define PyArray_MapIterArrayCopyIfOverlap \
         (*(PyObject * (*)(PyArrayObject *, PyObject *, int, PyArrayObject *)) \
          PyArray_API[301])
+#define PyArray_ResolveWritebackIfCopy \
+        (*(int (*)(PyArrayObject *)) \
+         PyArray_API[302])
+#define PyArray_SetWritebackIfCopyBase \
+        (*(int (*)(PyArrayObject *, PyArrayObject *)) \
+         PyArray_API[303])
 
 #if !defined(NO_IMPORT_ARRAY) && !defined(NO_IMPORT)
 static int
 _import_array(void)
 {
   int st;
-  PyObject *numpy = PyImport_ImportModule("numpy.core.multiarray");
+  PyObject *numpy = PyImport_ImportModule("numpy.core._multiarray_umath");
   PyObject *c_api = NULL;
 
   if (numpy == NULL) {
-      PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
       return -1;
   }
   c_api = PyObject_GetAttrString(numpy, "_ARRAY_API");

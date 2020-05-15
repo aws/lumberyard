@@ -26,7 +26,8 @@ namespace ScriptCanvas
         MathOperatorContract() = default;
         MathOperatorContract(AZStd::string_view operatorMethod)
             : m_supportedOperator(operatorMethod)
-        {}
+        {
+        }
 
         ~MathOperatorContract() override = default;        
 

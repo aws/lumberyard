@@ -115,8 +115,8 @@ void MagnetTool::PrepareChooseFirstPointStep()
         BrushVec2 v0 = plane.W2P(CD::ToBrushVec3(aabb.min));
         BrushVec2 v1 = plane.W2P(CD::ToBrushVec3(aabb.max));
 
-        rectangleAABB.Add(Vec3(v0.x, 0, v0.y));
-        rectangleAABB.Add(Vec3(v1.x, 0, v1.y));
+        rectangleAABB.Add(Vec3(aznumeric_cast<float>(v0.x), 0, aznumeric_cast<float>(v0.y)));
+        rectangleAABB.Add(Vec3(aznumeric_cast<float>(v1.x), 0, aznumeric_cast<float>(v1.y)));
 
         BrushVec3 step = CD::ToBrushVec3((rectangleAABB.max - rectangleAABB.min) * 0.5f);
 

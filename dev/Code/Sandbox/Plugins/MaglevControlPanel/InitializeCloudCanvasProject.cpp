@@ -46,8 +46,12 @@ static const char* PROJECT_DETAILS_IAM_CREDENTIALS_LABEL =
 
 static const char* AFFIRM_REVIEW_BUTTON_LABEL = "Cloud Canvas will deploy AWS resources to your account using your CloudFormation templates.  There is no additional charge for Cloud Canvas or CloudFormation.  You pay for AWS resources created using Cloud Canvas and CloudFormation in the same manner as if you created them manually.  You only pay for what you use, as you use it; there are no minimum fees and no required upfront commitments, and most services include a free tier.  <a style='color:#4285F4;' href='https ://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas'>Learn more</a>";
 
+static const char* ADMIN_ROLES_REVIEW_LABEL = "Create the optional ProjectAdmin and ProjectOwner roles, which could impact security. <a style='color:#4285F4;' href='https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-built-in-roles-and-policies.html'>Learn more</a>.";
+
+
 static const char* CREATE_BUTTON = "Create Button";
 static const char* DEPLOYMENT_SELECTOR = "Deployment region";
+static const char* ADMIN_ROLES_CHECKBOX = "Admin Checkbox";
 static const char* PROJECT_NAME_EDIT = "Project name edit";
 static const char* PROFILE_NAME_EDIT = "Profile name edit";
 static const char* ACCESS_KEY_EDIT = "Access key edit";
@@ -207,6 +211,8 @@ void InitializeCloudCanvasProject::AddProjectDetailsWithProfile(QFrame* groupBox
 
     AddDeploymentRegionBox(boxLayout);
 
+    AddAdminRoleControl(boxLayout);
+
     groupBox->setLayout(boxLayout);
 
 }
@@ -319,6 +325,8 @@ void InitializeCloudCanvasProject::AddProjectDetailsNoProfile(QFrame* groupBox)
 
     AddDeploymentRegionBox(boxLayout);
 
+    AddAdminRoleControl(boxLayout);
+
     groupBox->setLayout(boxLayout);
 
 }
@@ -337,6 +345,44 @@ void InitializeCloudCanvasProject::AddAffirmReview(QVBoxLayout* verticalLayout)
     affirmText->setWordWrap(true);
 
     verticalLayout->addWidget(affirmText);
+}
+
+void InitializeCloudCanvasProject::AddAdminRoleControl(QVBoxLayout* verticalLayout)
+{
+    static const char* detailWidgetBackgroundColor = "#303030";
+
+    QFrame* adminRoleBox = new QFrame();
+    adminRoleBox->setStyleSheet("border:0;");
+    adminRoleBox->setStyleSheet(QString("background-color:%1;").arg(detailWidgetBackgroundColor));
+
+    QHBoxLayout* adminLayout = new QHBoxLayout;
+    adminLayout->setSpacing(3);
+
+    QCheckBox* rolecheckbox = new QCheckBox();
+    rolecheckbox->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    rolecheckbox->setChecked(false);
+    rolecheckbox->setObjectName(ADMIN_ROLES_CHECKBOX);
+
+    adminLayout->addWidget(rolecheckbox, Qt::AlignLeft);
+
+    QLabel* adminText = new QLabel(ADMIN_ROLES_REVIEW_LABEL);
+    adminText->setObjectName("ConfirmLabel");
+    QWidget::connect(adminText, &QLabel::linkActivated, this, &InitializeCloudCanvasProject::OnProjectAdminLearnMoreClicked);
+    adminText->setWordWrap(true);
+    adminLayout->addWidget(adminText, Qt::AlignCenter);
+
+    adminRoleBox->setLayout(adminLayout);
+    verticalLayout->addWidget(adminRoleBox, 0);
+}
+
+bool InitializeCloudCanvasProject::GetCreateAdminRoleStatus() const
+{
+    QCheckBox* adminBox = centralWidget()->findChild<QCheckBox*>(QString(ADMIN_ROLES_CHECKBOX), Qt::FindChildrenRecursively);
+    if (adminBox)
+    {
+        return adminBox->isChecked();
+    }
+    return false;
 }
 
 QPushButton* InitializeCloudCanvasProject::GetCreateButton() const
@@ -415,6 +461,11 @@ void InitializeCloudCanvasProject::OnCancelClicked()
     close();
 }
 
+void InitializeCloudCanvasProject::OnProjectAdminLearnMoreClicked()
+{
+    QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetRolesHelpLink())));
+}
+
 void InitializeCloudCanvasProject::SaveNewProfile(const QString& profileName, const QString& accessKey, const QString& secretKey)
 {
     if (!profileName.length())
@@ -463,17 +514,20 @@ void InitializeCloudCanvasProject::OnCreateClicked()
 
     QString region = GetSelectedDeploymentRegion();
     QString projectName = GetEditControlText(PROJECT_NAME_EDIT);
+    bool createAdminRoles = GetCreateAdminRoleStatus();
 
-    ValidateSourceInitializeProject(region, projectName, accessKey, secretKey);
+    ValidateSourceInitializeProject(region, projectName, accessKey, secretKey, createAdminRoles);
 }
 
-void InitializeCloudCanvasProject::ValidateSourceInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey)
+void InitializeCloudCanvasProject::ValidateSourceInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles)
 {
-    QObject::connect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, [this, regionName, projectName, accessKey, secretKey]() {SourceUpdatedInitializeProject(regionName, projectName, accessKey, secretKey); });
+    QObject::connect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, [this, regionName, projectName, accessKey, secretKey, createAdminRoles]() {
+        SourceUpdatedInitializeProject(regionName, projectName, accessKey, secretKey, createAdminRoles);
+    });
     GetIEditor()->GetAWSResourceManager()->UpdateSourceControlStates();
 }
 
-void InitializeCloudCanvasProject::SourceUpdatedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey)
+void InitializeCloudCanvasProject::SourceUpdatedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles)
 {
     QObject::disconnect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, 0);
 
@@ -489,28 +543,29 @@ void InitializeCloudCanvasProject::SourceUpdatedInitializeProject(const QString&
 
         if (reply == QMessageBox::Yes)
         {
-            QObject::connect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, regionName, projectName, accessKey, secretKey]() { SourceChangedInitializeProject(regionName, projectName, accessKey, secretKey); });
-
+            QObject::connect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, regionName, projectName, accessKey, secretKey, createAdminRoles]() {
+                SourceChangedInitializeProject(regionName, projectName, accessKey, secretKey, createAdminRoles);
+            });
             GetIEditor()->GetAWSResourceManager()->RequestEditProjectSettings();
         }
         return;
     }
-    DoInitializeProject(regionName, projectName, accessKey, secretKey);
+    DoInitializeProject(regionName, projectName, accessKey, secretKey, createAdminRoles);
 }
 
-void InitializeCloudCanvasProject::DoInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey)
+void InitializeCloudCanvasProject::DoInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles)
 {
-    GetIEditor()->GetAWSResourceManager()->InitializeProject(regionName, projectName, accessKey, secretKey);
+    GetIEditor()->GetAWSResourceManager()->InitializeProject(regionName, projectName, accessKey, secretKey, createAdminRoles);
     close();
 }
 
-void InitializeCloudCanvasProject::SourceChangedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey)
+void InitializeCloudCanvasProject::SourceChangedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles)
 {
     QObject::disconnect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, 0);
     QObject::disconnect(&*GetIEditor()->GetAWSResourceManager()->GetProjectSettingsSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, 0);
     if (!GetIEditor()->GetAWSResourceManager()->ProjectSettingsNeedsCheckout())
     {
-        DoInitializeProject(regionName, projectName, accessKey, secretKey);
+        DoInitializeProject(regionName, projectName, accessKey, secretKey, createAdminRoles);
     }
 }
 

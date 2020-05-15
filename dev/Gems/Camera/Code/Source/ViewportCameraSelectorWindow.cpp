@@ -145,7 +145,7 @@ namespace Camera
 
         void OnCameraAdded(const AZ::EntityId& cameraId) override
         {
-            beginInsertRows(QModelIndex(), rowCount(), rowCount() + 1);
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
             m_cameraItems.push_back(cameraId);
             endInsertRows();
         }
@@ -161,7 +161,7 @@ namespace Camera
                 }
                 ++index;
             }
-            beginRemoveRows(QModelIndex(), index, index + 1);
+            beginRemoveRows(QModelIndex(), index, index);
             m_cameraItems.erase(m_cameraItems.begin() + index);
             endRemoveRows();
         }

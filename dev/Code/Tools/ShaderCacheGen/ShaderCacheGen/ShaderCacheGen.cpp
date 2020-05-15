@@ -385,6 +385,10 @@ int main_wrapped(int argc, char* argv[])
         #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
         #include "Provo/ShaderCacheGen_cpp_provo.inl"
     #endif
+    #if defined(TOOLS_SUPPORT_SALEM)
+        #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+        #include "Salem/ShaderCacheGen_cpp_salem.inl"
+    #endif
 #endif
 
     }
@@ -445,6 +449,7 @@ int main_wrapped(int argc, char* argv[])
 
     if (pISystem)
     {
+        pISystem->Quit();
         pISystem->Release();
     }
     pISystem = nullptr;
@@ -465,10 +470,14 @@ int main(int argc, char* argv[])
     app.Start(descriptor, startupParams);
     AcquireCryMemoryManager();
 
+    AZ::Debug::Trace::Instance().Init();
+
     int returncode = main_wrapped(argc, argv);
 
     app.Stop();
-    
+
+    AZ::Debug::Trace::Instance().Destroy();
+
     ReleaseCryMemoryManager();
     AZ::AllocatorInstance<CryStringAllocator>::Destroy();
     AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();

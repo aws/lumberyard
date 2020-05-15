@@ -42,6 +42,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelDigital::SimulateRawInput(float rawValue)
+    {
+        ProcessRawInputEvent(rawValue != 0.0f ? true : false);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelDigital::ProcessRawInputEvent(bool rawValue)
     {
         UpdateState(rawValue);

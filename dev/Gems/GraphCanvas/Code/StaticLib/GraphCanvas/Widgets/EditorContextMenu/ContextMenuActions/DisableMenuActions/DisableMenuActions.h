@@ -26,7 +26,7 @@ namespace GraphCanvas
 
         void SetEnableState(bool enableState);
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
         
     private:
     

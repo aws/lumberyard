@@ -205,7 +205,11 @@ namespace CommandSystem
             if (azrtti_istypeof<EMotionFX::BlendTreeBlendNNode>(targetNode))
             {
                 EMotionFX::BlendTreeBlendNNode* blendTreeBlendNNode = static_cast<EMotionFX::BlendTreeBlendNNode*>(targetNode);
-                blendTreeBlendNNode->UpdateParamWeights();
+                mUpdateParamFlag = parameters.GetValueAsBool("updateParam", true);
+                if (mUpdateParamFlag)
+                {
+                    blendTreeBlendNNode->UpdateParamWeights();
+                }
             }
         }
         else // create a state transition
@@ -377,7 +381,7 @@ namespace CommandSystem
     // init the syntax of the command
     void CommandAnimGraphCreateConnection::InitSyntax()
     {
-        GetSyntax().ReserveParameters(12);
+        GetSyntax().ReserveParameters(13);
         GetSyntax().AddRequiredParameter("sourceNode", "The name of the source node, where the connection starts (output port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("targetNode", "The name of the target node to connect to (input port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddParameter("animGraphID", "The id of the anim graph to work on.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
@@ -392,6 +396,7 @@ namespace CommandSystem
         GetSyntax().AddParameter("id", "The id of the connection.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("transitionType", "The transition type ID. This is the type ID (UUID) of the AnimGraphStateTransition inherited node types.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("contents", "The serialized contents of the parameter (in reflected XML).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateParam", "The parameter of the connection, flag whether it needs to be updated.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -766,13 +771,13 @@ namespace CommandSystem
 
     bool CommandAnimGraphAdjustTransition::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -865,13 +870,13 @@ namespace CommandSystem
     bool CommandAnimGraphAdjustTransition::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -896,7 +901,6 @@ namespace CommandSystem
         GetSyntax().ReserveParameters(12);
 
         MCore::CommandSyntax& syntax = GetSyntax();
-        ParameterMixinAnimGraphId::InitSyntax(syntax);
         ParameterMixinTransitionId::InitSyntax(syntax);
         ParameterMixinAttributesString::InitSyntax(syntax, false);
 
@@ -912,7 +916,6 @@ namespace CommandSystem
 
     bool CommandAnimGraphAdjustTransition::SetCommandParameters(const MCore::CommandLine& parameters)
     {
-        ParameterMixinAnimGraphId::SetCommandParameters(parameters);
         ParameterMixinTransitionId::SetCommandParameters(parameters);
         ParameterMixinAttributesString::SetCommandParameters(parameters);
         return true;
@@ -1153,7 +1156,8 @@ namespace CommandSystem
         for (size_t i = 0; i < numConditions; ++i)
         {
             const size_t conditionIndex = numConditions - i - 1;
-            RemoveCondition(transition, conditionIndex, commandGroup);
+            CommandRemoveTransitionCondition* removeConditionCommand = aznew CommandRemoveTransitionCondition(transition->GetAnimGraph()->GetID(), transition->GetId(), conditionIndex);
+            commandGroup->AddCommand(removeConditionCommand);
         }
 
         // If we are dealing with a wildcard transition, reset the source node so that we use the empty name for that.
@@ -1304,13 +1308,12 @@ namespace CommandSystem
 
                 if (!attributesString.empty())
                 {
-                    commandString = AZStd::string::format("%s -%s %d -%s %s -conditionIndex %i -attributesString {%s}",
-                        CommandAdjustTransitionCondition::s_commandName,
-                        EMotionFX::ParameterMixinAnimGraphId::s_parameterName, targetAnimGraph->GetID(),
-                        EMotionFX::ParameterMixinTransitionId::s_parameterName, newTransitionId.ToString().c_str(),
-                        i,
-                        attributesString.c_str());
-                    commandGroup->AddCommandString(commandString);
+                    CommandSystem::CommandAdjustTransitionCondition* adjustConditionCommand = aznew CommandSystem::CommandAdjustTransitionCondition(
+                        targetAnimGraph->GetID(),
+                        newTransitionId,
+                        /*conditionIndex=*/i,
+                        attributesString);
+                    commandGroup->AddCommand(adjustConditionCommand);
                 }
             }
         }
@@ -1350,7 +1353,7 @@ namespace CommandSystem
         const uint16 sourcePort = connection->GetSourcePort();
         const uint16 targetPort = connection->GetTargetPort();
         
-        const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePortName \"%s\" -targetPortName \"%s\"",
+        const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePortName \"%s\" -targetPortName \"%s\" -updateParam \"false\"",
                 targetAnimGraph->GetID(),
                 sourceNodeName.c_str(),
                 targetNodeName.c_str(),

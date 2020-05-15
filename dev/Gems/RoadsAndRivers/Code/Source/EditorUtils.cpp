@@ -19,6 +19,7 @@
 #include <IEditor.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorVegetationRequestsBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 
@@ -165,6 +166,13 @@ namespace RoadsAndRivers
             AZ::Transform localFromWorldTransform = transform.GetInverseFull();
 
             CHeightmap* heightmap = editor->GetHeightmap();
+
+            // If Terrain doesn't exist in the Editor, there's nothing for us to modify
+            if (!heightmap)
+            {
+                return;
+            }
+
             int cellSize = heightmap->GetUnitSize();
 
             AZ::Aabb splineAabb;
@@ -246,6 +254,34 @@ namespace RoadsAndRivers
             }
 
             heightmap->UpdateEngineTerrain(minX, minY, AZ::GetMax(width, height), 0.0f, true, false);
+        }
+
+        bool TerrainExists()
+        {
+            // If there aren't any active terrain components, we don't currently have terrain.
+            if (!AzFramework::Terrain::TerrainDataRequestBus::HasHandlers())
+            {
+                return false;
+            }
+
+            // The river/road terrain modification code currently only works with legacy terrain, and more specifically
+            // with the legacy terrain Editor code.  So our test for terrain existence *also* needs to verify that we have
+            // an active Editor representation of legacy terrain.
+
+            IEditor* editor = nullptr;
+            AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
+
+            if (editor)
+            {
+                IHeightmap* heightmap = editor->GetIHeightmap();
+
+                if (heightmap)
+                {
+                    return heightmap->GetUseTerrain();
+                }
+            }
+
+            return false;
         }
     }
 }

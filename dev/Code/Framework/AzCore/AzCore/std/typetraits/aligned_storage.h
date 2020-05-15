@@ -127,7 +127,7 @@ namespace AZStd
     {
         typedef typename Internal::aligned_storage<Size, Alignment> type;
 
-        AZ_STATIC_ASSERT(Size > 0, "You can not have 0 size");
+        static_assert(Size > 0, "You can not have 0 size");
     };
 
     template <size_t Size, size_t Alignment>

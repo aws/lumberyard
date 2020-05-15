@@ -19,6 +19,7 @@
 #include "Editor/Undo/ScriptCanvasGraphCommand.h"
 
 #include <ScriptCanvas/Variable/VariableBus.h>
+#include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 
 namespace ScriptCanvasEditor
 {
@@ -36,7 +37,7 @@ namespace ScriptCanvasEditor
         explicit CreateGetVariableNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
         ~CreateGetVariableNodeMimeEvent() = default;
 
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         ScriptCanvas::VariableId m_variableId;
@@ -52,7 +53,7 @@ namespace ScriptCanvasEditor
         static const QString& GetDefaultIcon();
 
         GetVariableNodePaletteTreeItem();
-        GetVariableNodePaletteTreeItem(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
+        GetVariableNodePaletteTreeItem(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         ~GetVariableNodePaletteTreeItem();
 
         GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
@@ -82,7 +83,7 @@ namespace ScriptCanvasEditor
         explicit CreateSetVariableNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
         ~CreateSetVariableNodeMimeEvent() = default;
 
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;        
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         ScriptCanvas::VariableId m_variableId;
@@ -98,7 +99,7 @@ namespace ScriptCanvasEditor
         static const QString& GetDefaultIcon();
 
         SetVariableNodePaletteTreeItem();
-        SetVariableNodePaletteTreeItem(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
+        SetVariableNodePaletteTreeItem(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         ~SetVariableNodePaletteTreeItem();
 
         // VariableNotificationBus::Handler
@@ -111,21 +112,69 @@ namespace ScriptCanvasEditor
     private:
         ScriptCanvas::VariableId m_variableId;
     };
-    // </GetVariableNode>
+    // </SetVariableNode>
 
-    // <GetOrSetVariableNodeMimeEvent>
-    class CreateGetOrSetVariableNodeMimeEvent
-        : public MultiCreateNodeMimeEvent
+    // <VariableChanged>
+    class CreateVariableChangedNodeMimeEvent
+        : public CreateEBusHandlerEventMimeEvent
     {
     public:
-        AZ_RTTI(CreateGetOrSetVariableNodeMimeEvent, "{924C1192-C32A-4A35-B146-2739AB4383DB}", MultiCreateNodeMimeEvent);
-        AZ_CLASS_ALLOCATOR(CreateGetOrSetVariableNodeMimeEvent, AZ::SystemAllocator, 0);
+        AZ_RTTI(CreateVariableChangedNodeMimeEvent, "{C117AC91-FBB5-410D-BA7F-B4C15140EA6F}", CreateEBusHandlerEventMimeEvent);
+        AZ_CLASS_ALLOCATOR(CreateVariableChangedNodeMimeEvent, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* reflectContext);
 
-        CreateGetOrSetVariableNodeMimeEvent() = default;
-        explicit CreateGetOrSetVariableNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
-        ~CreateGetOrSetVariableNodeMimeEvent() = default;
+        CreateVariableChangedNodeMimeEvent() = default;
+        explicit CreateVariableChangedNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
+        ~CreateVariableChangedNodeMimeEvent() = default;
+
+        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
+        NodeIdPair ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) override;
+
+    private:
+        void ConfigureEBusEvent();
+
+        ScriptCanvas::VariableId m_variableId;
+    };
+
+    class VariableChangedNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
+        , public ScriptCanvas::VariableNotificationBus::Handler
+    {
+    public:
+        AZ_RTTI(VariableChangedNodePaletteTreeItem, "{209D877C-9D15-4B4F-ADF0-2D1A127A4A0D}", GraphCanvas::DraggableNodePaletteTreeItem);
+        AZ_CLASS_ALLOCATOR(VariableChangedNodePaletteTreeItem, AZ::SystemAllocator, 0);
+        static const QString& GetDefaultIcon();
+
+        VariableChangedNodePaletteTreeItem();
+        VariableChangedNodePaletteTreeItem(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        ~VariableChangedNodePaletteTreeItem();
+
+        // VariableNotificationBus::Handler
+        void OnVariableRenamed(AZStd::string_view variableName) override;
+        ////
+
+        const ScriptCanvas::VariableId& GetVariableId() const;
+
+        GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
+    private:
+        ScriptCanvas::VariableId m_variableId;
+    };
+    // </VariableChanged>
+
+    // <CreateVariableSpecificNodeMimeEvent>
+    class CreateVariableSpecificNodeMimeEvent
+        : public MultiCreateNodeMimeEvent
+    {
+    public:
+        AZ_RTTI(CreateVariableSpecificNodeMimeEvent, "{924C1192-C32A-4A35-B146-2739AB4383DB}", MultiCreateNodeMimeEvent);
+        AZ_CLASS_ALLOCATOR(CreateVariableSpecificNodeMimeEvent, AZ::SystemAllocator, 0);
+
+        static void Reflect(AZ::ReflectContext* reflectContext);
+
+        CreateVariableSpecificNodeMimeEvent() = default;
+        explicit CreateVariableSpecificNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
+        ~CreateVariableSpecificNodeMimeEvent() = default;
 
         bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
         ScriptCanvasEditor::NodeIdPair ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) override;
@@ -136,7 +185,7 @@ namespace ScriptCanvasEditor
 
         ScriptCanvas::VariableId m_variableId;
     };
-    // </GetOrSetVariableNodeMimeEvent>
+    // </CreateVariableSpecificNodeMimeEvent>
 
     // <VariableCategoryNodePaletteTreeItem>
     class VariableCategoryNodePaletteTreeItem
@@ -178,11 +227,18 @@ namespace ScriptCanvasEditor
         void OnVariableRemovedFromGraph(const ScriptCanvas::VariableId& variableId, AZStd::string_view variableName) override;
         ////
 
+    protected:
+
+        void OnChildAdded(GraphCanvas::GraphCanvasTreeItem* treeItem) override;
+
     private:
 
         void RefreshVariableList();
 
-        AZ::EntityId m_scriptCanvasGraphId;
+        ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
+
+        bool m_ignoreTreeSignals = false;
+        AZStd::unordered_set<GraphCanvas::GraphCanvasTreeItem*> m_nonVariableTreeItems;
     };
     // </LocalVariablesNodePaletteTreeItem>
 
@@ -193,7 +249,7 @@ namespace ScriptCanvasEditor
     {
     public:
         AZ_CLASS_ALLOCATOR(LocalVariableNodePaletteTreeItem, AZ::SystemAllocator, 0);
-        LocalVariableNodePaletteTreeItem(ScriptCanvas::VariableId variableTreeItem, const AZ::EntityId& scriptCanvasGraphId);
+        LocalVariableNodePaletteTreeItem(ScriptCanvas::VariableId variableTreeItem, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         ~LocalVariableNodePaletteTreeItem();
 
         void PopulateChildren();
@@ -204,8 +260,8 @@ namespace ScriptCanvasEditor
         ////
 
     private:
-        AZ::EntityId             m_scriptCanvasGraphId;
-        ScriptCanvas::VariableId m_variableId;
+        ScriptCanvas::ScriptCanvasId    m_scriptCanvasId;
+        ScriptCanvas::VariableId        m_variableId;
     };
 
     // </VariableNodePaletteTreeItem>

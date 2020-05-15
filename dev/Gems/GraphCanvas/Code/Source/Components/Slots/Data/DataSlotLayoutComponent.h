@@ -39,7 +39,27 @@ namespace GraphCanvas
         , public SceneMemberNotificationBus::Handler
         , public StyleNotificationBus::Handler
         , public VisualNotificationBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
+    private:
+
+        class DataTypeConversionDataSlotDragDropInterface
+            : public DataSlotDragDropInterface
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(DataTypeConversionDataSlotDragDropInterface, AZ::SystemAllocator, 0);
+
+            DataTypeConversionDataSlotDragDropInterface(const SlotId& slotId);
+
+            AZ::Outcome<DragDropState> OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
+            void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
+            void OnDropEvent(QGraphicsSceneDragDropEvent* dropEvent) override;
+
+        private:
+
+            SlotId m_slotId;
+        };
+
     public:
         AZ_CLASS_ALLOCATOR(DataSlotLayout, AZ::SystemAllocator, 0);
 
@@ -48,6 +68,10 @@ namespace GraphCanvas
 
         void Activate();
         void Deactivate();
+
+        // SystemTickBus
+        void OnSystemTick() override;
+        ////
 
         // SceneMemberNotificationBus
         void OnSceneSet(const AZ::EntityId&) override;
@@ -80,7 +104,18 @@ namespace GraphCanvas
         void RecreatePropertyDisplay() override;
         ////
 
+        void OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
+        void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
+        void OnDropEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
+
     private:
+
+        void UpdateFilterState();
+
+        void RegisterDataSlotDragDropInterface(DataSlotDragDropInterface* dragDropInterface);
+        void RemoveDataSlotDragDropInterface(DataSlotDragDropInterface* dragDropInterface);
+
+        void SetDragDropState(DragDropState dragDropState);
 
         AZ::EntityId GetSceneId() const;
 
@@ -88,7 +123,16 @@ namespace GraphCanvas
 
         void CreateDataDisplay();
         void UpdateLayout();
-        void UpdateGeometry();
+        void UpdateGeometry();        
+
+        AZStd::unordered_set< DataSlotDragDropInterface* >  m_dragDropInterfaces;
+        DataSlotDragDropInterface*                          m_activeHandler;
+        QGraphicsItem*                                      m_eventFilter;
+
+        DragDropState                                       m_dragDropState;
+
+        // Internal DragDrop Interface
+        DataSlotDragDropInterface*                          m_valueReferenceInterface;
 
         ConnectionType m_connectionType;
 

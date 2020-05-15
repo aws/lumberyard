@@ -19,9 +19,6 @@ import re
 
 from . import Image, ImageFile
 
-__version__ = "0.2"
-
-
 #
 # --------------------------------------------------------------------
 
@@ -30,6 +27,7 @@ field = re.compile(br"([a-z]*) ([^ \r\n]*)")
 
 ##
 # Image plugin for IM Tools images.
+
 
 class ImtImageFile(ImageFile.ImageFile):
 
@@ -53,12 +51,12 @@ class ImtImageFile(ImageFile.ImageFile):
             if not s:
                 break
 
-            if s == b'\x0C':
+            if s == b"\x0C":
 
                 # image data begins
-                self.tile = [("raw", (0, 0)+self.size,
-                             self.fp.tell(),
-                             (self.mode, 0, 1))]
+                self.tile = [
+                    ("raw", (0, 0) + self.size, self.fp.tell(), (self.mode, 0, 1))
+                ]
 
                 break
 
@@ -78,10 +76,10 @@ class ImtImageFile(ImageFile.ImageFile):
                 k, v = m.group(1, 2)
                 if k == "width":
                     xsize = int(v)
-                    self.size = xsize, ysize
+                    self._size = xsize, ysize
                 elif k == "height":
                     ysize = int(v)
-                    self.size = xsize, ysize
+                    self._size = xsize, ysize
                 elif k == "pixel" and v == "n8":
                     self.mode = "L"
 

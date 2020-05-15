@@ -70,8 +70,8 @@ def create_output_directory(output_path, no_timestamp):
                     os.remove(os.path.join(root, name))
         except Exception:
             # print error message to console and exit
-            print "ERROR! Could not delete old report files. Please close any open files in {} and try again" \
-                .format(output_dir)
+            print("ERROR! Could not delete old report files. Please close any open files in {} and try again" \
+                .format(output_dir))
             sys.exit(1)
     else:
         os.makedirs(output_dir)

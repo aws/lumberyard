@@ -9,6 +9,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
@@ -16,7 +17,6 @@
 #include <AzCore/Module/Module.h>
 
 #include <LyzardSDK/cli.h>
-#include <LyzardSDK/gui.h>
 
 namespace Lyzard
 {
@@ -26,6 +26,5 @@ namespace Lyzard
         AZ_RTTI(Module, "{9C4A5BD5-11AE-4D27-B6B7-A9B73013D1BB}");
 
         virtual void RegisterCliCommands(AZStd::shared_ptr<CLI::Namespace> /*lmbr*/) { }
-        virtual void RegisterGuiViews(QWidget* /*tabs*/) { }
     };
 }

@@ -43,6 +43,7 @@
             "Asset/CustomAssetTypeComponent.h",
             "Asset/FileTagAsset.cpp",
             "Asset/FileTagAsset.h",
+            "Asset/NetworkAssetNotification_private.h",
             "Asset/XmlSchemaAsset.cpp",
             "Asset/XmlSchemaAsset.h"
         ],
@@ -52,9 +53,17 @@
             "CommandLine/CommandRegistrationBus.h"
         ],
         "Debug": [
-            "Debug/DebugCameraBus.h"
+            "Debug/DebugCameraBus.h",
+            "Debug/TimeDataStatisticsManager.h",
+            "Debug/TimeDataStatisticsManager.cpp",
+            "Debug/StatisticalProfiler.h",
+            "Debug/StatisticalProfilerProxy.h",
+            "Debug/StatisticalProfilerProxySystemComponent.h",
+            "Debug/StatisticalProfilerProxySystemComponent.cpp"
         ],
         "Viewport": [
+            "Viewport/ViewportBus.h",
+            "Viewport/ViewportBus.cpp",
             "Viewport/ViewportColors.h",
             "Viewport/ViewportColors.cpp",
             "Viewport/ViewportConstants.h",
@@ -82,6 +91,9 @@
             "Driller/DrillToFileComponent.cpp"
         ],
         "Components": [
+            "Components/ComponentAdapter.h",
+            "Components/ComponentAdapter.inl",
+            "Components/ComponentAdapterHelpers.h",
             "Components/EditorEntityEvents.h",
             "Components/TransformComponent.cpp",
             "Components/TransformComponent.h",
@@ -90,6 +102,7 @@
             "Components/CameraBus.h",
             "Components/ConsoleBus.h",
             "Components/ConsoleBus.cpp",
+            "Components/DeprecatedComponentsBus.h",
             "Components/AzFrameworkConfigurationSystemComponent.h",
             "Components/AzFrameworkConfigurationSystemComponent.cpp"
         ],
@@ -98,8 +111,7 @@
             "FileFunc/FileFunc.cpp"
         ],
         "StringFunc": [
-            "StringFunc/StringFunc.h",
-            "StringFunc/StringFunc.cpp"
+            "StringFunc/StringFunc.h"
         ],
         "InGameUI": [
             "InGameUI/UiFrameworkBus.h"
@@ -225,6 +237,9 @@
             "Physics/ScriptCanvasPhysicsUtils.h",
             "Physics/ScriptCanvasPhysicsUtils.cpp"
         ],
+        "Terrain": [
+            "Terrain/TerrainDataRequestBus.h"
+        ],
         "Platform": [
             "Platform/PlatformDefaults.h",
             "Platform/PlatformDefaults.cpp"
@@ -340,10 +355,7 @@
             "Statistics/RunningStatistic.h",
             "Statistics/RunningStatistic.cpp",
             "Statistics/NamedRunningStatistic.h",
-            "Statistics/RunningStatisticsManager.h",
-            "Statistics/RunningStatisticsManager.cpp",
-            "Statistics/TimeDataStatisticsManager.h",
-            "Statistics/TimeDataStatisticsManager.cpp"
+            "Statistics/StatisticsManager.h"
         ]
     },
     "AzFramework_TargetManagement_Uber.cpp":

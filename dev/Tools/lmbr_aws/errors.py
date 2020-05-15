@@ -10,8 +10,9 @@
 #
 # $Revision: #1 $
 
+
 class HandledError(Exception):
-    '''Represents an error that can be displayed to the user without a stack trace.'''
+    """Represents an error that can be displayed to the user without a stack trace."""
 
     def __init__(self, msg, cause=None):
         self.msg = msg

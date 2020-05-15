@@ -58,8 +58,7 @@ namespace TrackViewPythonBindingsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("get_num_sequences") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("get_sequence_name") != behaviorContext->m_methods.end());
 
-        // Blocked by LY-99827
-        //EXPECT_TRUE(behaviorContext->m_methods.find("get_sequence_time_range") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_sequence_time_range") != behaviorContext->m_methods.end());
 
         EXPECT_TRUE(behaviorContext->m_methods.find("set_sequence_time_range") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("play_sequence") != behaviorContext->m_methods.end());
@@ -77,8 +76,7 @@ namespace TrackViewPythonBindingsUnitTests
 
         EXPECT_TRUE(behaviorContext->m_methods.find("get_num_track_keys") != behaviorContext->m_methods.end());
 
-        // LY-101771
-        //EXPECT_TRUE(behaviorContext->m_methods.find("get_key_value") != behaviorContext->m_methods.end());
-        //EXPECT_TRUE(behaviorContext->m_methods.find("get_interpolated_value") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_key_value") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_interpolated_value") != behaviorContext->m_methods.end());
     }
 }

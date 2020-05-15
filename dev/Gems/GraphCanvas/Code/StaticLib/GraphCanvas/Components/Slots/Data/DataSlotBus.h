@@ -11,7 +11,9 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QColor>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
@@ -23,20 +25,21 @@ namespace GraphCanvas
 {
     class DataSlotConnectionPin;
 
-    enum class DataSlotType
+    constexpr const char* k_ReferenceMimeType = "GraphCanvas::Data::ReferenceMimeType";
+    constexpr const char* k_ValueMimeType = "GraphCanvas::DAta::ValueMimeType";
+
+    class DataSlotUtils
     {
-        Unknown,
+    public:
+        static bool IsValueDataSlotType(DataSlotType dataSlotType)
+        {
+            return dataSlotType == DataSlotType::Value;
+        }
 
-        // These are options that can be used on most DataSlots
-        Value,
-        Reference,
-
-        // This is a special value that is used as a 'source' variable.
-        // Rather then a set to a variable.
-        Variable,
-
-        // Container types
-        Container
+        static bool IsValueDataReferenceType(DataSlotType dataSlotType)
+        {
+            return dataSlotType == DataSlotType::Reference;
+        }
     };
 
     struct DataSlotConfiguration
@@ -53,7 +56,9 @@ namespace GraphCanvas
         {
         }
 
-        DataSlotType            m_dataSlotType;
+        bool                    m_canConvertTypes = true;
+        DataSlotType            m_dataSlotType = DataSlotType::Value;
+        DataValueType           m_dataValueType = DataValueType::Primitive;
 
         AZ::Uuid                m_typeId;
         AZStd::vector<AZ::Uuid> m_containerTypeIds;
@@ -66,9 +71,6 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual bool AssignVariable(const AZ::EntityId& variableSourceId) = 0;
-        virtual AZ::EntityId GetVariableId() const = 0;
-
         virtual bool ConvertToReference() = 0;
         virtual bool CanConvertToReference() const = 0;
 
@@ -76,6 +78,7 @@ namespace GraphCanvas
         virtual bool CanConvertToValue() const = 0;
 
         virtual DataSlotType GetDataSlotType() const = 0;
+        virtual DataValueType GetDataValueType() const = 0;
 
         virtual AZ::Uuid GetDataTypeId() const = 0;
         virtual void SetDataTypeId(AZ::Uuid typeId) = 0;
@@ -86,7 +89,7 @@ namespace GraphCanvas
         virtual AZ::Uuid GetContainedTypeId(size_t index) const = 0;
         virtual const Styling::StyleHelper* GetContainedTypeColorPalette(size_t index) const = 0;
 
-        virtual void SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds = AZStd::vector<AZ::Uuid>()) = 0;
+        virtual void SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds, DataValueType valueType) = 0;
     };
 
     using DataSlotRequestBus = AZ::EBus<DataSlotRequests>;
@@ -98,9 +101,11 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual void OnVariableAssigned(const AZ::EntityId& variableId) { };
-        virtual void OnDataSlotTypeChanged(const DataSlotType& dataSlotType) { };
+        virtual void OnVariableAssigned(const AZ::EntityId& variableId) {};
+        virtual void OnDataSlotTypeChanged(const DataSlotType& dataSlotType) {};
         virtual void OnDisplayTypeChanged(const AZ::Uuid& dataType, const AZStd::vector<AZ::Uuid>& typeIds) {};
+        
+        virtual void OnDragDropStateStateChanged(const DragDropState& dragDropState) { AZ_UNUSED(dragDropState); };
     };
     
     using DataSlotNotificationBus = AZ::EBus<DataSlotNotifications>;
@@ -135,4 +140,14 @@ namespace GraphCanvas
 
     using NodeDataSlotRequestBus = AZ::EBus<NodeDataSlotRequests>;
 
+    class DataSlotDragDropInterface
+    {
+    public:
+
+        virtual ~DataSlotDragDropInterface() = default;
+
+        virtual AZ::Outcome<DragDropState> OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent) = 0;
+        virtual void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent) = 0;
+        virtual void OnDropEvent(QGraphicsSceneDragDropEvent* dropEvent) = 0;
+    };
 }

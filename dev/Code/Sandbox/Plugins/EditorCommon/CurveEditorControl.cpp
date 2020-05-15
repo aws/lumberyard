@@ -346,7 +346,7 @@ QPointF CCurveEditorTangentControl::GetScreenPosition() const
     }
 
     Vec2 tangentScreenPosition = m_Control.GetCurveEditor().TransformToScreenCoordinates(Vec2(m_Control.GetKey().m_time + tangent.x, m_Control.GetKey().m_value + tangent.y));
-    Vec2 transformedTangentDelta = (tangentScreenPosition - Vec2(controlPosition.x(), controlPosition.y())).Normalize() * m_DistanceFromControl;
+    Vec2 transformedTangentDelta = (tangentScreenPosition - Vec2(aznumeric_cast<float>(controlPosition.x()), aznumeric_cast<float>(controlPosition.y()))).Normalize() * aznumeric_cast<float>(m_DistanceFromControl);
 
     return controlPosition + QPointF(transformedTangentDelta.x, transformedTangentDelta.y);
 }

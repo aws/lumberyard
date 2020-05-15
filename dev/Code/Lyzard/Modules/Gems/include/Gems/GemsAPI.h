@@ -74,23 +74,23 @@ namespace Gems
         virtual bool IsGemVersionsEnabled(const AZ::Uuid& id, const AZStd::vector<AZStd::string>& versionConstraints) const = 0;
 
         /**
-        * Checks if all the gems dependencies of the specific Gem is met.
-        *
-        * \param[in] dep    The dependency of the gem to check in the project
-        *
-        * \returns          True if that dependency is enabled on the project, false otherwise.
-        */
+         * Checks if all the gems dependencies of the specific Gem is met.
+         *
+         * \param[in] dep    The dependency of the gem to check in the project
+         *
+         * \returns          True if that dependency is enabled on the project, false otherwise.
+         */
         virtual bool IsGemDependencyMet(const AZStd::shared_ptr<GemDependency> dep) const = 0;
 
         /**
-        * Checks if the engine dependency is met.
-        *
-        * \param[in] dep    The dependency to validate
-        * \param[in] againstVersion
-        *                   The version of the engine to validate against
-        *
-        * \returns          True if that dependency is enabled on the project, false otherwise.
-        */
+         * Checks if the engine dependency is met.
+         *
+         * \param[in] dep    The dependency to validate
+         * \param[in] againstVersion
+         *                   The version of the engine to validate against
+         *
+         * \returns          True if that dependency is enabled on the project, false otherwise.
+         */
         virtual bool IsEngineDependencyMet(const AZStd::shared_ptr<EngineDependency> dep, const EngineVersion& againstVersion) const = 0;
 
         /**
@@ -121,13 +121,14 @@ namespace Gems
         virtual void Save(AZStd::function<void(Lyzard::StringOutcome result)> callback) const = 0;
 
         /**
-        * Examine a project's Gems list add any missing required Gem automatically
-        * 
-        * \returns             List of missing required gems that were added for the project
-        */
+         * Examine a project's Gems list add any missing required Gem automatically
+         * 
+         * \returns             List of missing required gems that were added for the project
+         */
         virtual AZStd::vector<IGemDescriptionConstPtr> AddMissingRequiredGemsForProject() = 0;
 
     };
+
     using GemsProjectRequestBus = AZ::EBus<GemsProjectRequests>;
 
     /**
@@ -171,20 +172,20 @@ namespace Gems
         virtual Lyzard::StringOutcome LoadAllGemsFromDisk() = 0;
 
         /**
-        * Looks for a gems.json file in the given folder and returns a IGemDescriptionConstPtr if found
-        *
-        * \param[in] gemFolderRelPath   A valid path on disk to a directory that contains a gem.json file relative to the engine root
-        *
-        * \returns                 IGemDescriptionConstPtr if a gem.json file could be parsed out of the gemFolderPath,
-        *                          AZ::Failure with error message if any errors occurred.
-        */
+         * Looks for a gems.json file in the given folder and returns a IGemDescriptionConstPtr if found
+         *
+         * \param[in] gemFolderRelPath   A valid path on disk to a directory that contains a gem.json file relative to the engine root
+         *
+         * \returns                 IGemDescriptionConstPtr if a gem.json file could be parsed out of the gemFolderPath,
+         *                          AZ::Failure with error message if any errors occurred.
+         */
         virtual AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath) = 0;
 
         /**
-        * Destroys the existing ProjectSettings object on the GemsProject and recreates a new one
-        *
-        * \returns                 True if the search succeeded, False if any errors occurred.
-        */
+         * Destroys the existing ProjectSettings object on the GemsProject and recreates a new one
+         *
+         * \returns                 True if the search succeeded, False if any errors occurred.
+         */
         virtual Lyzard::StringOutcome RefreshProjectSettings(Projects::ProjectId project) = 0;
 
         /**
@@ -253,21 +254,22 @@ namespace Gems
         virtual AZStd::vector<IGemDescriptionConstPtr> GetAllGemDescriptions() const = 0;
 
         /**
-        * Gets a list of all required Gem descriptions.
-        * 
-        * \returns             List of all required Gems
-        */
+         * Gets a list of all required Gem descriptions.
+         * 
+         * \returns             List of all required Gems
+         */
         virtual AZStd::vector<IGemDescriptionConstPtr> GetAllRequiredGemDescriptions() const = 0;
 
 
         /**
-        * Gets the project specific gem if available
-        *
-        * \returns             The project specific gem description if it exists, null if not
-        */
+         * Gets the project specific gem if available
+         *
+         * \returns             The project specific gem description if it exists, null if not
+         */
         virtual IGemDescriptionConstPtr GetProjectGemDescription(const AZStd::string& projectName) const = 0;
 
     };
+
     using GemsRequestBus = AZ::EBus<GemsRequests>;
 
     /**
@@ -307,5 +309,7 @@ namespace Gems
          */
         virtual Lyzard::StringOutcome OnGemsProjectSave(Projects::ProjectId /*projectId*/) { return AZ::Success(); }
     };
+
     using GemsNotificationBus = AZ::EBus<GemsNotifications>;
-}
+
+} // namespace Gems

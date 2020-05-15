@@ -19,7 +19,6 @@
 #include "CryAction.h"
 #include "CryActionCVars.h"
 
-#include "IGameTokens.h"
 #include "ILevelSystem.h"
 #include "IActorSystem.h"
 #include "IItemSystem.h"
@@ -49,16 +48,13 @@
 static const char* SAVEGAME_GAMESTATE_SECTION = "GameState";
 static const char* SAVEGAME_AISTATE_SECTION = "AIState";
 static const char* SAVEGAME_AIOBJECTID_SECTION = "AIObjectReservedIDs";
-static const char* SAVEGAME_GAMETOKEN_SECTION = "GameTokens";
 static const char* SAVEGAME_TERRAINSTATE_SECTION = "TerrainState";
 static const char* SAVEGAME_TIMER_SECTION = "Timer";
-static const char* SAVEGAME_FLOWSYSTEM_SECTION = "FlowSystem";
 static const char* SAVEGAME_DIALOGSYSTEM_SECTION = "DialogSystem";
 static const char* SAVEGAME_SOUNDSYSTEM_SECTION = "SoundSystem";
 static const char* SAVEGAME_MUSICSYSTEM_SECTION = "MusicSystem";
 static const char* SAVEGAME_LTLINVENTORY_SECTION = "LTLInventory";
 static const char* SAVEGAME_VIEWSYSTEM_SECTION = "ViewSystem";
-static const char* SAVEGAME_MATERIALEFFECTS_SECTION = "MatFX";
 static const char* SAVEGAME_BUILD_TAG = "build";
 static const char* SAVEGAME_TIME_TAG = "saveTime";
 static const char* SAVEGAME_VERSION_TAG = "version";
@@ -342,16 +338,6 @@ bool CGameSerialize::SaveGame(CCryAction* pCryAction, const char* method, const 
     Checkpoint checkpoint(CHECKPOINT_OUTPUT);
 
     bool bResult = false;
-
-    if (reason == eSGR_FlowGraph)
-    {
-        bool isTimeDemoActive = false;
-        TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
-        if (isTimeDemoActive)
-        {
-            return true; // Ignore checkpoint saving when running time demo
-        }
-    }
 
     if (gEnv->IsEditor())
     {
@@ -1003,13 +989,6 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
         }
     }
 
-    if (gEnv->pFlowSystem != NULL)
-    {
-        // this guarantees that the values sent by the scripts in OnPostLoad
-        // through their FG nodes get delivered to all of the connected nodes
-        gEnv->pFlowSystem->Update();
-    }
-
     return eLGR_Ok;
 }
 
@@ -1068,12 +1047,7 @@ void CGameSerialize::SaveEngineSystems(SSaveEnvironment& savEnv)
 
     // terrain modifications (e.g. heightmap changes)
     gEnv->p3DEngine->SerializeState(savEnv.m_pSaveGame->AddSection(SAVEGAME_TERRAINSTATE_SECTION));
-    savEnv.m_checkpoint.Check("3DEngine");
-    {
-        // game tokens
-        savEnv.m_pCryAction->GetIGameTokenSystem()->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_GAMETOKEN_SECTION));
-        savEnv.m_checkpoint.Check("GameToken");
-    }
+
     // view system
     savEnv.m_pCryAction->GetIViewSystem()->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_VIEWSYSTEM_SECTION));
     savEnv.m_checkpoint.Check("ViewSystem");
@@ -1093,20 +1067,6 @@ void CGameSerialize::SaveEngineSystems(SSaveEnvironment& savEnv)
         savEnv.m_pCryAction->GetIItemSystem()->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_LTLINVENTORY_SECTION));
     }
     savEnv.m_checkpoint.Check("Inventory");
-
-    //FlowSystem data
-    if (savEnv.m_pCryAction->GetIFlowSystem())
-    {
-        savEnv.m_pCryAction->GetIFlowSystem()->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_FLOWSYSTEM_SECTION));
-    }
-    savEnv.m_checkpoint.Check("FlowSystem");
-
-    CMaterialEffects* pMatFX = static_cast<CMaterialEffects*> (savEnv.m_pCryAction->GetIMaterialEffects());
-    if (pMatFX)
-    {
-        pMatFX->Serialize(savEnv.m_pSaveGame->AddSection(SAVEGAME_MATERIALEFFECTS_SECTION));
-    }
-    savEnv.m_checkpoint.Check("MaterialFX");
 
     CDialogSystem* pDS = savEnv.m_pCryAction->GetDialogSystem();
     if (pDS)
@@ -1470,11 +1430,6 @@ void CGameSerialize::SerializeSoundData(TSerialize ser)
 //////////////////////////////////////////////////////////////////////////
 void CGameSerialize::LoadEngineSystems(SLoadEnvironment& loadEnv)
 {
-    // Reset the flowsystem here (sending eFE_Initialize) to all FGs
-    // also makes sure, that nodes present in the level.pak but not in the
-    // savegame loaded afterwards get initialized correctly
-    gEnv->pFlowSystem->Reset(false);
-
     loadEnv.m_checkpoint.Check("DestroyedState");
 
     loadEnv.m_failure = eLGR_FailedAndDestroyedState;
@@ -1507,57 +1462,11 @@ void CGameSerialize::LoadEngineSystems(SLoadEnvironment& loadEnv)
 
     loadEnv.m_checkpoint.Check("3DEngine");
 
-    // game tokens
-    loadEnv.m_pSer = loadEnv.m_pLoadGame->GetSection(SAVEGAME_GAMETOKEN_SECTION);
-    if (!loadEnv.m_pSer.get())
-    {
-        GameWarning("No game token data in save game");
-    }
-    else
-    {
-        IGameTokenSystem* pGTS = CCryAction::GetCryAction()->GetIGameTokenSystem();
-        if (pGTS)
-        {
-            if (gEnv->IsEditor())
-            {
-                char* sLevelName;
-                char* levelFolder;
-                loadEnv.m_pCryAction->GetEditorLevel(&sLevelName, &levelFolder);
-                string tokenPath = levelFolder;
-                tokenPath += "/GameTokens/*.xml";
-                pGTS->Reset();
-                pGTS->LoadLibs(tokenPath);
-                pGTS->Serialize(*loadEnv.m_pSer);
-            }
-            else
-            {
-                // no need to reload token libraries
-                pGTS->Serialize(*loadEnv.m_pSer);
-            }
-        }
-    }
-
-    loadEnv.m_checkpoint.Check("GameTokens");
-
     CMaterialEffects* pMatFX = static_cast<CMaterialEffects*> (loadEnv.m_pCryAction->GetIMaterialEffects());
     if (pMatFX)
     {
         pMatFX->Reset(false);
     }
-
-    loadEnv.m_pSer = loadEnv.m_pLoadGame->GetSection(SAVEGAME_MATERIALEFFECTS_SECTION);
-    if (!loadEnv.m_pSer.get())
-    {
-        GameWarning("Unable to open section %s", SAVEGAME_MATERIALEFFECTS_SECTION);
-    }
-    else
-    {
-        if (pMatFX)
-        {
-            pMatFX->Serialize(*loadEnv.m_pSer);
-        }
-    }
-    loadEnv.m_checkpoint.Check("MaterialFX");
 
     // ViewSystem Serialization
     IViewSystem* pViewSystem = loadEnv.m_pCryAction->GetIViewSystem();
@@ -1593,21 +1502,6 @@ void CGameSerialize::LoadEngineSystems(SLoadEnvironment& loadEnv)
         }
     }
     loadEnv.m_checkpoint.Check("ItemSystem");
-
-    // load flowsystem data
-    if (loadEnv.m_pCryAction->GetIFlowSystem())
-    {
-        loadEnv.m_pSer = loadEnv.m_pLoadGame->GetSection(SAVEGAME_FLOWSYSTEM_SECTION);
-        if (loadEnv.m_pSer.get())
-        {
-            loadEnv.m_pCryAction->GetIFlowSystem()->Serialize(*loadEnv.m_pSer);
-        }
-        else
-        {
-            GameWarning("Unable to open section %s", SAVEGAME_FLOWSYSTEM_SECTION);
-        }
-    }
-    loadEnv.m_checkpoint.Check("FlowSystem");
 
     // Dialog System Reset & Serialization
     CDialogSystem* pDS = loadEnv.m_pCryAction->GetDialogSystem();

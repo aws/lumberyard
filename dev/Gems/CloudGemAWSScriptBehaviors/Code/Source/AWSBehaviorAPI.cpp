@@ -29,6 +29,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <CloudGemFramework/ServiceJob.h>
@@ -153,6 +154,7 @@ namespace CloudGemAWSScriptBehaviors
         job = AZ::CreateJobFunction([this, url]()
         {
             auto config = Aws::Client::ClientConfiguration();
+            config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
             AZStd::string caFile;
             CloudCanvas::RequestRootCAFileResult requestResult;
             EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);

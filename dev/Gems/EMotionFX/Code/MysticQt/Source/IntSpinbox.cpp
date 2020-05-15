@@ -23,6 +23,7 @@
 #include <QtGui/QDoubleValidator>
 #include <QApplication>
 
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace MysticQt
 {
@@ -122,7 +123,7 @@ namespace MysticQt
                     double fracPart, intPart;
                     fracPart = modf (mMouseMoveDeltaValue, &intPart);
                     MCORE_UNUSED(fracPart);
-                    int deltaValue = intPart;
+                    int deltaValue = aznumeric_cast<int>(intPart);
 
                     if (deltaValue != 0)
                     {
@@ -179,7 +180,7 @@ namespace MysticQt
 
             // this is needed because when using QCursor::setPos() a mouse move event will be fired by Qt
             int compensateDelta = newGlobalPos.y() - event->globalPos().y();
-            int compensatedValue = mSpinbox->value() + compensateDelta * mSpinbox->singleStep() * 0.1;
+            int compensatedValue = aznumeric_cast<int>(mSpinbox->value() + compensateDelta * mSpinbox->singleStep() * 0.1);
 
             mSpinbox->setValue(compensatedValue, false, false);
 

@@ -23,7 +23,7 @@ namespace ScriptCanvasEditor
     struct AssetGraphSceneId
     {
         AZ::Data::AssetId m_assetId;
-        AZ::EntityId m_scriptCanvasGraphId;
+        ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
         AZ::EntityId m_scriptCanvasEntityId;
     };
 
@@ -54,8 +54,7 @@ namespace ScriptCanvasEditor
         void Clear();
 
         AssetGraphSceneData* GetByAssetId(const AZ::Data::AssetId& assetId) const;
-        AssetGraphSceneData* GetByGraphId(AZ::EntityId graphId) const;
-        AssetGraphSceneData* GetBySceneId(AZ::EntityId entityId) const;
+        AssetGraphSceneData* GetByScriptCanvasId(ScriptCanvas::ScriptCanvasId scriptCanvasId) const;
 
         AZStd::unordered_map<AZ::Data::AssetId, AZStd::unique_ptr<AssetGraphSceneData>> m_assetIdToDataMap;
     };

@@ -234,7 +234,7 @@ void UiCanvasAssetRefComponent::Deactivate()
 #if !defined(DEDICATED_SERVER)
     if (m_canvasEntityId.IsValid())
     {
-        gEnv->pLyShine->ReleaseCanvas(m_canvasEntityId);
+        gEnv->pLyShine->ReleaseCanvasDeferred(m_canvasEntityId);
         m_canvasEntityId.SetInvalid();
     }
 

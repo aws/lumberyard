@@ -37,7 +37,7 @@ namespace TestNodes
 
     void TestResult::OnInputSignal(const ScriptCanvas::SlotId&)
     {
-        auto valueDatum = GetInput(GetSlotId("Value"));
+        auto valueDatum = FindDatum(GetSlotId("Value"));
         if (!valueDatum)
         {
             return;
@@ -218,7 +218,7 @@ namespace TestNodes
             ScriptCanvas::Data::NumberType result{};
             for (const ScriptCanvas::SlotId& dynamicSlotId : m_dynamicSlotIds)
             {
-                if (auto numberInput = GetInput(dynamicSlotId))
+                if (auto numberInput = FindDatum(dynamicSlotId))
                 {
                     if (auto argValue = numberInput->GetAs<ScriptCanvas::Data::NumberType>())
                     {
@@ -299,7 +299,8 @@ namespace TestNodes
 
     void StringView::OnInputSignal(const ScriptCanvas::SlotId&)
     {
-        auto viewDatum = GetInput(GetSlotId("View"));
+        auto viewDatum = FindDatum(GetSlotId("View"));
+
         if (!viewDatum)
         {
             return;
@@ -368,7 +369,7 @@ namespace TestNodes
 
             for (const ScriptCanvas::Slot* concatSlot : GetAllSlotsByDescriptor(ScriptCanvas::SlotDescriptors::DataIn()))
             {
-                if (auto inputDatum = GetInput(concatSlot->GetId()))
+                if (auto inputDatum = FindDatum(concatSlot->GetId()))
                 {
                     ScriptCanvas::Data::StringType stringArg;
                     if (inputDatum->ToString(stringArg))
@@ -417,9 +418,16 @@ namespace TestNodes
         return GetSlot(slotId);
     }
 
-    ScriptCanvas::Datum* ConfigurableUnitTestNode::FindDatum(const ScriptCanvas::SlotId& slotId)
+    ScriptCanvas::Slot* ConfigurableUnitTestNode::InsertTestingSlot(int index, const ScriptCanvas::SlotConfiguration& slotConfiguration)
     {
-        return ModInput(slotId);
+        ScriptCanvas::SlotId slotId = InsertSlot(index, slotConfiguration);
+
+        return GetSlot(slotId);
+    }
+
+    AZStd::vector< const ScriptCanvas::Slot* > ConfigurableUnitTestNode::FindSlotsByDescriptor(const ScriptCanvas::SlotDescriptor& slotDescriptor) const
+    {
+        return GetAllSlotsByDescriptor(slotDescriptor);
     }
 
     void ConfigurableUnitTestNode::TestClearDisplayType(const AZ::Crc32& dynamicGroup)

@@ -11,9 +11,11 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QDebug>
 #include <QPoint>
 #include <QString>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/string/string.h>
@@ -50,7 +52,7 @@ namespace GraphCanvas
 
         inline bool IsClose(const QPointF& left, const QPointF& right)
         {
-            return AZ::Vector2(left.x(), left.y()).IsClose(AZ::Vector2(right.x(), right.y()));
+            return AZ::Vector2(aznumeric_cast<float>(left.x()), aznumeric_cast<float>(left.y())).IsClose(AZ::Vector2(aznumeric_cast<float>(right.x()), aznumeric_cast<float>(right.y())));
         }
 
         inline bool IsClose(qreal left, qreal right, float tolerance)

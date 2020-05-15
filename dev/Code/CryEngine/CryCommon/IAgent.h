@@ -1199,9 +1199,6 @@ struct IPipeUser
     //   Returns most probable target position or the target if it is visible.
     virtual Vec3 GetProbableTargetPosition() = 0;
 
-    //Last finished AIAction sets status as succeed or failed
-    virtual void SetLastActionStatus(bool bSucceed) = 0;
-
     virtual void AllowLowerBodyToTurn(bool bAllowLowerBodyToTurn) = 0;
     virtual bool IsAllowingBodyTurn() = 0;
 

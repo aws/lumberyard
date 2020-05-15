@@ -170,7 +170,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_classElement.m_nameCrc)
                 {
@@ -190,7 +190,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array.
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 T* arrayPtr = reinterpret_cast<T*>(instance);
 
@@ -212,14 +212,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 const T* arrayPtr = reinterpret_cast<const T*>(instance);
                 return arrayPtr->size();
             }
             
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return 0;
@@ -227,22 +227,22 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override           { return IsStableIterators; }
+            bool    IsStableElements() const override           { return IsStableIterators; }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override                { return false; }
+            bool    IsFixedSize() const override                { return false; }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override            { return false; }
+            bool    IsFixedCapacity() const override            { return false; }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override             { return false; }
+            bool    IsSmartPointer() const override             { return false; }
 
             /// Returns true if elements can be retrieved by index.
-            virtual bool    CanAccessElementsByIndex() const override   { return false; }
+            bool    CanAccessElementsByIndex() const override   { return false; }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
             {
                 (void)classElement;
                 T* arrayPtr = reinterpret_cast<T*>(instance);
@@ -251,7 +251,7 @@ namespace AZ
             }
 
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)instance;
                 (void)classElement;
@@ -260,7 +260,7 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override
+            void    StoreElement(void* instance, void* element) override
             {
                 (void)instance;
                 (void)element;
@@ -269,7 +269,7 @@ namespace AZ
             }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 T* arrayPtr = reinterpret_cast<T*>(instance);
                 for (typename T::iterator it = arrayPtr->begin(); it != arrayPtr->end(); ++it)
@@ -289,7 +289,7 @@ namespace AZ
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 if (numElements == 0)
                 {
@@ -334,7 +334,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 T* arrayPtr = reinterpret_cast<T*>(instance);
                 if (deletePointerDataContext)
@@ -385,10 +385,10 @@ namespace AZ
             }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override          { return true; }
+            bool    IsFixedCapacity() const override          { return true; }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
             {
                 (void)classElement;
                 T* arrayPtr = reinterpret_cast<T*>(instance);
@@ -437,7 +437,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_classElement.m_nameCrc)
                 {
@@ -457,7 +457,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array.
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 ContainerType* arrayPtr = reinterpret_cast<ContainerType*>(instance);
 
@@ -480,14 +480,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 (void)instance;
                 return N;
             }
             
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return N;
@@ -495,22 +495,22 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override           { return true; }
+            bool    IsStableElements() const override           { return true; }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override                { return true; }
+            bool    IsFixedSize() const override                { return true; }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override            { return true; }
+            bool    IsFixedCapacity() const override            { return true; }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override             { return false; }
+            bool    IsSmartPointer() const override             { return false; }
 
             /// Returns true if elements can be retrieved by index.
-            virtual bool    CanAccessElementsByIndex() const override   { return true; }
+            bool    CanAccessElementsByIndex() const override   { return true; }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
             {
                 (void)classElement;
                 GenericClassInfo* containerClassInfo = SerializeGenericTypeInfo<ContainerType>::GetGenericInfo();
@@ -536,7 +536,7 @@ namespace AZ
             }
 
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)classElement;
                 ContainerType* arrayPtr = reinterpret_cast<ContainerType*>(instance);
@@ -548,7 +548,7 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override
+            void    StoreElement(void* instance, void* element) override
             {
                 (void)instance;
                 (void)element;
@@ -557,7 +557,7 @@ namespace AZ
             }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 (void)element;
                 
@@ -593,7 +593,7 @@ namespace AZ
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 (void)instance;
                 (void)elements;
@@ -603,7 +603,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 (void)instance;
                 (void)deletePointerDataContext;
@@ -678,7 +678,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_classElement.m_nameCrc)
                 {
@@ -698,7 +698,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 T* containerPtr = reinterpret_cast<T*>(instance);
 
@@ -720,14 +720,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 const T* arrayPtr = reinterpret_cast<const T*>(instance);
                 return arrayPtr->size();
             }
             
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return 0;
@@ -735,28 +735,28 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override           { return true; }
+            bool    IsStableElements() const override           { return true; }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override                { return false; }
+            bool    IsFixedSize() const override                { return false; }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override            { return false; }
+            bool    IsFixedCapacity() const override            { return false; }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override             { return false; }
+            bool    IsSmartPointer() const override             { return false; }
 
             /// Returns true if elements can be retrieved by index.
-            virtual bool    CanAccessElementsByIndex() const override   { return false; }
+            bool    CanAccessElementsByIndex() const override   { return false; }
 
             /// Returns the associative interface for this container if available, otherwise null.
-            virtual SerializeContext::IDataContainer::IAssociativeDataContainer* GetAssociativeContainerInterface() override
+            SerializeContext::IDataContainer::IAssociativeDataContainer* GetAssociativeContainerInterface() override
             {
                 return this;
             }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const  SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const  SerializeContext::ClassElement* classElement) override
             {
                 (void)classElement;
                 T* containerPtr = reinterpret_cast<T*>(instance);
@@ -765,7 +765,7 @@ namespace AZ
 
         protected:
             /// Reserve a key and get its address. Used by GetKey.
-            virtual void*   AllocateKey() override
+            void*   AllocateKey() override
             {
                 // We use new here as we may be allocating a type without AZ_CLASS_ALLOCATOR (e.g. primitives)
                 // This key is never owned by any of our container instances, so can be safely managed by our allocator.
@@ -775,14 +775,14 @@ namespace AZ
             }
 
             /// Deallocates a key created by ReserveKey. Used by GetKey.
-            virtual void    FreeKey(void* key) override
+            void    FreeKey(void* key) override
             {
                 delete reinterpret_cast<KeyType*>(key);
             }
 
         public:
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)instance;
                 (void)classElement;
@@ -791,7 +791,7 @@ namespace AZ
             }
 
             /// Get an element's address by its key. Not used for serialization.
-            virtual void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, const void* key) override
+            void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, const void* key) override
             {
                 (void)classElement;
                 T* containerPtr = reinterpret_cast<T*>(instance);
@@ -800,7 +800,7 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override
+            void    StoreElement(void* instance, void* element) override
             {
                 T* containerPtr = reinterpret_cast<T*>(instance);
                 ValueType* valuePtr = reinterpret_cast<ValueType*>(element);
@@ -810,7 +810,7 @@ namespace AZ
             }
 
             /// FreeReservedElement
-            virtual void    FreeReservedElement(void* instance, void* element, SerializeContext* deletePointerDataContext) override
+            void    FreeReservedElement(void* instance, void* element, SerializeContext* deletePointerDataContext) override
             {
                 if (deletePointerDataContext)
                 {
@@ -824,7 +824,7 @@ namespace AZ
             }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 T* containerPtr = reinterpret_cast<T*>(instance);
                 // this container can be a multi container so key is NOT enough, but a good start
@@ -851,13 +851,13 @@ namespace AZ
             }
 
             /// Inserts an entry at key in the container (for keyed containers only). Not used for serialization.
-            virtual void    SetElementKey(void* element, void* key) override
+            void    SetElementKey(void* element, void* key) override
             {
                 KeyHelper<ValueType>::SetElementKey(reinterpret_cast<ValueType*>(element), AZStd::move(*reinterpret_cast<KeyType*>(key)));
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 size_t numRemoved = 0;
                 for (size_t i = 0; i < numElements; ++i)
@@ -871,7 +871,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 T* containerPtr = reinterpret_cast<T*>(instance);
                 if (deletePointerDataContext)
@@ -920,7 +920,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_value1ClassElement.m_nameCrc)
                 {
@@ -949,7 +949,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 PairType* pairPtr = reinterpret_cast<PairType*>(instance);
 
@@ -969,14 +969,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 (void)instance;
                 return 2;
             }
             
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return 2;
@@ -984,22 +984,22 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override           { return true; }
+            bool    IsStableElements() const override           { return true; }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override                { return true; }
+            bool    IsFixedSize() const override                { return true; }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override            { return true; }
+            bool    IsFixedCapacity() const override            { return true; }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override             { return false; }
+            bool    IsSmartPointer() const override             { return false; }
 
             /// Returns true if elements can be retrieved by index.
-            virtual bool    CanAccessElementsByIndex() const override   { return true; }
+            bool    CanAccessElementsByIndex() const override   { return true; }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
             {
                 PairType* pairPtr = reinterpret_cast<PairType*>(instance);
                 if (classElement->m_nameCrc == m_value1ClassElement.m_nameCrc)
@@ -1014,7 +1014,7 @@ namespace AZ
             }
 
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)classElement;
                 PairType* pairPtr = reinterpret_cast<PairType*>(instance);
@@ -1030,10 +1030,10 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override         { (void)instance; (void)element; }
+            void    StoreElement(void* instance, void* element) override         { (void)instance; (void)element; }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 PairType* pairPtr = reinterpret_cast<PairType*>(instance);
                 if (&pairPtr->first == element && deletePointerDataContext)
@@ -1050,7 +1050,7 @@ namespace AZ
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 if (deletePointerDataContext)
                 {
@@ -1063,7 +1063,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 if (deletePointerDataContext)
                 {
@@ -1398,7 +1398,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_valueClassElement.m_nameCrc)
                 {
@@ -1418,7 +1418,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 WrapperType* wrapperPtr = reinterpret_cast<WrapperType*>(instance);
                 cb(&wrapperPtr->m_data, m_valueClassElement.m_typeId, m_valueClassElement.m_genericClassInfo ? m_valueClassElement.m_genericClassInfo->GetClassData() : nullptr, &m_valueClassElement);
@@ -1430,14 +1430,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 (void)instance;
                 return 1;
             }
 
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return 1;
@@ -1445,37 +1445,37 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override
+            bool    IsStableElements() const override
             {
                 return true;
             }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override
+            bool    IsFixedSize() const override
             {
                 return true;
             }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override
+            bool    IsFixedCapacity() const override
             {
                 return true;
             }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override
+            bool    IsSmartPointer() const override
             {
                 return false;
             }
 
             /// Returns true if elements can be retrieved by index.
-            virtual bool    CanAccessElementsByIndex() const override
+            bool    CanAccessElementsByIndex() const override
             {
                 return true;
             }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const SerializeContext::ClassElement* classElement) override
             {
                 WrapperType* wrapperPtr = reinterpret_cast<WrapperType*>(instance);
                 if (classElement->m_nameCrc == m_valueClassElement.m_nameCrc)
@@ -1486,7 +1486,7 @@ namespace AZ
             }
 
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)classElement;
                 WrapperType* wrapperPtr = reinterpret_cast<WrapperType*>(instance);
@@ -1498,13 +1498,13 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override
+            void    StoreElement(void* instance, void* element) override
             {
                 (void)instance; (void)element;
             }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 WrapperType* wrapperPtr = reinterpret_cast<WrapperType*>(instance);
                 if (&wrapperPtr->m_data == element && deletePointerDataContext)
@@ -1515,7 +1515,7 @@ namespace AZ
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 if (deletePointerDataContext)
                 {
@@ -1528,7 +1528,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 if (deletePointerDataContext)
                 {
@@ -1573,7 +1573,7 @@ namespace AZ
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
-            virtual const SerializeContext::ClassElement* GetElement(AZ::u32 elementNameCrc) const override
+            const SerializeContext::ClassElement* GetElement(AZ::u32 elementNameCrc) const override
             {
                 if (elementNameCrc == m_classElement.m_nameCrc)
                 {
@@ -1593,7 +1593,7 @@ namespace AZ
             }
 
             /// Enumerate elements in the array
-            virtual void EnumElements(void* instance, const ElementCB& cb) override
+            void EnumElements(void* instance, const ElementCB& cb) override
             {
                 T* smartPtr = reinterpret_cast<T*>(instance);
                 // HACK HACK HACK!!!
@@ -1608,14 +1608,14 @@ namespace AZ
             }
 
             /// Return number of elements in the container.
-            virtual size_t  Size(void* instance) const override
+            size_t  Size(void* instance) const override
             {
                 (void)instance;
                 return 1;
             }
             
             /// Returns the capacity of the container. Returns 0 for objects without fixed capacity.
-            virtual size_t Capacity(void* instance) const override
+            size_t Capacity(void* instance) const override
             {
                 (void)instance;
                 return 1;
@@ -1623,22 +1623,22 @@ namespace AZ
 
 
             /// Returns true if elements pointers don't change on add/remove. If false you MUST enumerate all elements.
-            virtual bool    IsStableElements() const override           { return true; }
+            bool    IsStableElements() const override           { return true; }
 
             /// Returns true if the container is fixed size, otherwise false.
-            virtual bool    IsFixedSize() const override                { return true; }
+            bool    IsFixedSize() const override                { return true; }
 
             /// Returns if the container is fixed capacity, otherwise false
-            virtual bool    IsFixedCapacity() const override            { return true; }
+            bool    IsFixedCapacity() const override            { return true; }
 
             /// Returns true if the container is a smart pointer.
-            virtual bool    IsSmartPointer() const override             { return true; }
+            bool    IsSmartPointer() const override             { return true; }
 
             /// Returns true if the container elements can be addressesd by index, otherwise false.
-            virtual bool    CanAccessElementsByIndex() const override   { return false; }
+            bool    CanAccessElementsByIndex() const override   { return false; }
 
             /// Reserve element
-            virtual void*   ReserveElement(void* instance, const  SerializeContext::ClassElement* classElement) override
+            void*   ReserveElement(void* instance, const  SerializeContext::ClassElement* classElement) override
             {
                 (void)classElement;
                 T* smartPtr = reinterpret_cast<T*>(instance);
@@ -1647,7 +1647,7 @@ namespace AZ
             }
 
             /// Get an element's address by its index (called before the element is loaded).
-            virtual void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
+            void*   GetElementByIndex(void* instance, const SerializeContext::ClassElement* classElement, size_t index) override
             {
                 (void)classElement;
                 (void)index;
@@ -1664,7 +1664,7 @@ namespace AZ
             }
 
             /// Store element
-            virtual void    StoreElement(void* instance, void* element) override
+            void    StoreElement(void* instance, void* element) override
             {
                 (void)element;
                 void* newElementAddress = *reinterpret_cast<void**>(instance);
@@ -1674,7 +1674,7 @@ namespace AZ
             }
 
             /// Remove element in the container.
-            virtual bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
+            bool    RemoveElement(void* instance, const void* element, SerializeContext* deletePointerDataContext) override
             {
                 (void)deletePointerDataContext;
                 (void)element;
@@ -1684,7 +1684,7 @@ namespace AZ
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
-            virtual size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
+            size_t  RemoveElements(void* instance, const void** elements, size_t numElements, SerializeContext* deletePointerDataContext) override
             {
                 (void)deletePointerDataContext;
                 (void)elements;
@@ -1695,7 +1695,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void    ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 (void)deletePointerDataContext;
                 T* smartPtr = reinterpret_cast<T*>(instance);
@@ -1848,7 +1848,7 @@ namespace AZ
             }
 
             /// Clear elements in the instance.
-            virtual void ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
+            void ClearElements(void* instance, SerializeContext* deletePointerDataContext) override
             {
                 (void)deletePointerDataContext;
                 T* optional = reinterpret_cast<T*>(instance);
@@ -2122,7 +2122,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2203,7 +2203,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2279,7 +2279,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2355,7 +2355,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2437,7 +2437,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2518,7 +2518,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2600,7 +2600,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2677,7 +2677,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2760,7 +2760,7 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2845,7 +2845,7 @@ namespace AZ
                 return AZ::AzTypeInfo<PairType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2929,7 +2929,7 @@ namespace AZ
                 return AZ::AzTypeInfo<TupleType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -2998,7 +2998,7 @@ namespace AZ
                 return azrtti_typeid<WrapperType>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
 
                 if (serializeContext)
@@ -3085,7 +3085,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3173,7 +3173,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3256,7 +3256,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3333,7 +3333,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3400,7 +3400,7 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3466,7 +3466,7 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3538,7 +3538,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3619,7 +3619,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3700,7 +3700,7 @@ namespace AZ
                 return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {
@@ -3776,7 +3776,7 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext* serializeContext)
+            void Reflect(SerializeContext* serializeContext) override
             {
                 if (serializeContext)
                 {

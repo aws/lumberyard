@@ -11,8 +11,12 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QColor>
 #include <QPixmap>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>

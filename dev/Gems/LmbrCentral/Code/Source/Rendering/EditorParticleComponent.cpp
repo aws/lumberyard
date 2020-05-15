@@ -249,6 +249,7 @@ Negative values will be ignored.\n")->
         EditorParticleComponentRequestBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
+        AZ::Data::AssetBus::Handler::BusDisconnect();
 
         if (!m_libNameToLoad.empty())
         {
@@ -445,7 +446,6 @@ Negative values will be ignored.\n")->
         {
             m_emitterFullNameToSelect.clear();
             m_settings.m_selectedEmitter.clear();
-            SetDirty();
         }
 
         EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);

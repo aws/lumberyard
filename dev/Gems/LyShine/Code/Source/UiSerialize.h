@@ -13,6 +13,8 @@
 
 #include <LyShine/IDraw2d.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <LyShine/Bus/UiTransform2dBus.h>
+#include <LyShine/Bus/UiLayoutBus.h>
 
 namespace UiSerialize
 {
@@ -52,4 +54,25 @@ namespace UiSerialize
         const char* colorElementName,
         const char* alphaElementName,
         const char* spriteElementName);
+
+    //! Setters for anchors
+    void SetAnchorLeft(UiTransform2dInterface::Anchors* anchor, float left);
+    void SetAnchorTop(UiTransform2dInterface::Anchors* anchor, float top);
+    void SetAnchorRight(UiTransform2dInterface::Anchors* anchor, float right);
+    void SetAnchorBottom(UiTransform2dInterface::Anchors* anchor, float bottom);
+    void SetAnchors(UiTransform2dInterface::Anchors* anchor, float left, float top, float right, float bottom);
+
+    //! Setters for offsets
+    void SetOffsetLeft(UiTransform2dInterface::Offsets* offset, float left);
+    void SetOffsetTop(UiTransform2dInterface::Offsets* offset, float top);
+    void SetOffsetRight(UiTransform2dInterface::Offsets* offset, float right);
+    void SetOffsetBottom(UiTransform2dInterface::Offsets* offset, float bottom);
+    void SetOffsets(UiTransform2dInterface::Offsets* offset, float left, float top, float right, float bottom);
+
+    //! Setters for padding
+    void SetPaddingLeft(UiLayoutInterface::Padding* anchor, int left);
+    void SetPaddingTop(UiLayoutInterface::Padding* anchor, int top);
+    void SetPaddingRight(UiLayoutInterface::Padding* anchor, int right);
+    void SetPaddingBottom(UiLayoutInterface::Padding* anchor, int bottom);
+    void SetPadding(UiLayoutInterface::Padding* anchor, int left, int top, int right, int bottom);
 }

@@ -15,14 +15,12 @@
 #include "LevelSystem.h"
 #include <IAudioSystem.h>
 #include "IMovieSystem.h"
-#include "IGameTokens.h"
 #include "IDialogSystem.h"
 #include "IMaterialEffects.h"
 #include <IResourceManager.h>
 #include <ILocalizationManager.h>
 #include "IDeferredCollisionEvent.h"
 #include "IPlatformOS.h"
-#include <ICustomActions.h>
 #include <IGameFramework.h>
 
 #include <LoadScreenBus.h>
@@ -35,6 +33,7 @@
 #include "MainThreadRenderRequestBus.h"
 #include <LyShine/ILyShine.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <IGameVolumes.h>
 
@@ -353,6 +352,7 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
             if (m_pSystem->IsMODValid(pModArg->GetValue()))
             {
                 m_levelsFolder.Format("Mods/%s/%s", pModArg->GetValue(), levelsFolder);
+                m_levelsFolder.clear();
                 ScanFolder(0, true, tag);
             }
         }
@@ -361,6 +361,7 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
     }
 
     CRY_ASSERT(!m_levelsFolder.empty());
+    m_levelsFolder.clear();
     m_levelInfos.reserve(64);
     ScanFolder(0, false, tag);
 
@@ -371,25 +372,9 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
     }
 }
 
-//------------------------------------------------------------------------
-void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint32 tag)
+//-----------------------------------------------------------------------
+void CLevelSystem::PopulateLevels(string searchPattern, string& folder, ICryPak* pPak, bool& modFolder, const uint32& tag, bool fromFileSystemOnly)
 {
-    //CryLog("[DLC] ScanFolder:'%s' tag:'%.4s'", subfolder, (char*)&tag);
-    string folder;
-    if (subfolder && subfolder[0])
-    {
-        folder = subfolder;
-    }
-
-    string search(m_levelsFolder);
-    if (!folder.empty())
-    {
-        search += string("/") + folder;
-    }
-    search += "/*.*";
-
-    ICryPak* pPak = gEnv->pCryPak;
-
     _finddata_t fd;
     intptr_t handle = 0;
 
@@ -397,7 +382,7 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
     // --kenzo
     // allow this find first to actually touch the file system
     // (causes small overhead but with minimal amount of levels this should only be around 150ms on actual DVD Emu)
-    handle = pPak->FindFirst(search.c_str(), &fd, 0, true);
+    handle = pPak->FindFirst(searchPattern.c_str(), &fd, 0, fromFileSystemOnly);
 
     if (handle > -1)
     {
@@ -461,6 +446,28 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
 
         pPak->FindClose(handle);
     }
+
+}
+
+//------------------------------------------------------------------------
+void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint32 tag)
+{
+    string folder;
+    if (subfolder && subfolder[0])
+    {
+        folder = subfolder;
+    }
+
+    string search(m_levelsFolder);
+    if (!folder.empty())
+    {
+        search += string("/") + folder;
+    }
+    search += AZ_FILESYSTEM_SEPARATOR_WILDCARD;
+
+    ICryPak* pPak = gEnv->pCryPak;
+
+    PopulateLevels(search, folder, pPak, modFolder, tag, true);
 }
 
 //------------------------------------------------------------------------
@@ -833,11 +840,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         {
             // bSeekAllToStart needs to be false here as it's only of interest in the editor
             movieSys->Reset(true, false);
-        }
-
-        if (gEnv->pFlowSystem)
-        {
-            gEnv->pFlowSystem->Reset(false);
         }
 
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START_PRECACHE);
@@ -1307,14 +1309,6 @@ void CLevelSystem::UnLoadLevel()
 
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
 
-    // One last update to execute pending requests.
-    // Do this before the EntitySystem resets!
-    if (gEnv->pFlowSystem)
-    {
-        gEnv->pFlowSystem->Update();
-        gEnv->pFlowSystem->Uninitialize();
-    }
-
     I3DEngine* p3DEngine = gEnv->p3DEngine;
     if (p3DEngine)
     {
@@ -1390,11 +1384,6 @@ void CLevelSystem::UnLoadLevel()
     Audio::SAudioManagerRequestData<Audio::eAMRT_CLEAR_PRELOADS_DATA> oAMData3(Audio::eADS_LEVEL_SPECIFIC);
     oAudioRequestData.pData = &oAMData3;
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-    if (gEnv->pFlowSystem)
-    {
-        gEnv->pFlowSystem->Reset(true);
-    }
 
     if (gEnv->pEntitySystem)
     {

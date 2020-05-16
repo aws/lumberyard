@@ -15,50 +15,8 @@
 #include "ObjectPhysicsManager.h"
 #include "BaseObject.h"
 #include "GameEngine.h"
-#include "Util/BoostPythonHelpers.h"
 
 #define MAX_OBJECTS_PHYS_SIMULATION_TIME (5)
-
-namespace
-{
-    void PyPhysicsResetState(const char* objectName)
-    {
-        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(objectName);
-        if (pObject)
-        {
-            pObject->OnEvent(EVENT_PHYSICS_RESETSTATE);
-        }
-    }
-
-    void PyPhysicsGetState(const char* objectName)
-    {
-        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(objectName);
-        if (pObject)
-        {
-            pObject->OnEvent(EVENT_PHYSICS_GETSTATE);
-        }
-    }
-
-    void PyPhysicsSimulateSelection()
-    {
-        CObjectPhysicsManager* pPhysicsManager
-            = static_cast<CObjectManager*>(GetIEditor()->GetObjectManager())->GetPhysicsManager();
-        if (pPhysicsManager)
-        {
-            pPhysicsManager->SimulateSelectedObjectsPositions();
-        }
-    }
-}
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyPhysicsResetState, physics, reset_state,
-    "Signals that physics state must be reset on the object.",
-    "physics.reset_state(str entityName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyPhysicsGetState, physics, get_state,
-    "Signals that the object should accept its physical state from game.",
-    "physics.get_state(str entityName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyPhysicsSimulateSelection, physics, simulate_selection,
-    "Applies the physics simulation to the selected objects.",
-    "physics.simulate_selection()");
 
 //////////////////////////////////////////////////////////////////////////
 CObjectPhysicsManager::CObjectPhysicsManager()

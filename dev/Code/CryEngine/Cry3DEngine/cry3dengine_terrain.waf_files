@@ -1,13 +1,18 @@
 {
     "Cry3DEngine_terrain_uber.cpp":
     {
-        "Terrain":
-        [
+        "Terrain": [
             "terrain.cpp",
             "terrain_det_tex.cpp",
             "terrain_hmap.cpp",
             "terrain_edit.cpp",
-            "terrain.h"
+            "terrain.h",
+            "Terrain/LegacyTerrainBase.h",
+            "Terrain/LegacyTerrainBase.cpp",
+            "Terrain/LegacyTerrainInstanceManager.h",
+            "Terrain/LegacyTerrainInstanceManager.cpp",
+            "Terrain/LegacyTerrainCVars.h",
+            "Terrain/LegacyTerrainCVars.cpp"
         ],
         "Terrain/Texture":
         [

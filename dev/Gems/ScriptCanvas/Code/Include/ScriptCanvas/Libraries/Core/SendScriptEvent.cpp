@@ -18,7 +18,8 @@
 #include <ScriptCanvas/Libraries/Core/MethodUtility.h>
 
 #include <ScriptEvents/ScriptEventsBus.h>
-#include <ScriptEvents/ScriptEventsAsset.h>
+
+#include <ScriptCanvas/Core/ModifiableDatumView.h>
 
 namespace ScriptCanvas
 {
@@ -26,21 +27,36 @@ namespace ScriptCanvas
     {
         namespace Core
         {
+            SendScriptEvent::~SendScriptEvent()
+            {
+                ScriptEvents::ScriptEventNotificationBus::Handler::BusDisconnect();
+            }
+
             void SendScriptEvent::OnInputSignal(const SlotId&)
             {
                 if (!m_method)
                 {
-                    AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId);
-                    CreateSender(asset);
+                    if (!m_asset.IsReady())
+                    {
+                        m_asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId, true, nullptr, true);
+                    }
+
+                    CreateSender(m_asset);
                 }
 
-                AZ_Error("Script Canvas", m_method, "Script Event sender node called with no initialized method!");
+                if (!m_method)
+                {
+                    AZStd::string error = AZStd::string::format("Script Event sender node called with no initialized method (%s::%s)!", m_busName.c_str(), m_eventName.c_str());
+                    SCRIPTCANVAS_REPORT_ERROR((*this), error.c_str());
+                }
 
                 if (m_method)
                 {
-                    if (m_method->GetNumArguments() != GetVarDatums().size())
+                    Node::DatumVector inputDatums = GatherDatumsForDescriptor(SlotDescriptors::DataIn());
+
+                    if (m_method->GetNumArguments() != inputDatums.size())
                     {
-                        SCRIPTCANVAS_REPORT_ERROR((*this), "The Script Event %s number of parameters %d do not correspond to the number of slots %zu in the Script Canvas node (%s). Make sure the node is updated in the Script Canvas graph.", m_method->m_name.c_str(), m_method->GetNumArguments(), GetVarDatums().size(), GetNodeName().c_str());
+                        SCRIPTCANVAS_REPORT_ERROR((*this), "The Script Event %s number of parameters %d do not correspond to the number of slots %zu in the Script Canvas node (%s). Make sure the node is updated in the Script Canvas graph.", m_method->m_name.c_str(), m_method->GetNumArguments(), inputDatums.size(), GetNodeName().c_str());
                         return;
                     }
 
@@ -50,9 +66,9 @@ namespace ScriptCanvas
                     {
                         // all input should have been pushed into this node already
                         int argIndex(0);
-                        for (const VariableDatumBase& varDatum : GetVarDatums())
+                        for (const Datum* datum : inputDatums)
                         {
-                            AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = varDatum.GetData().ToBehaviorValueParameter(*m_method->GetArgument(argIndex));
+                            AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = datum->ToBehaviorValueParameter(*m_method->GetArgument(argIndex));
                             if (!inputParameter.IsSuccess())
                             {
                                 SCRIPTCANVAS_REPORT_ERROR((*this), "BehaviorContext method input problem at parameter index %d: %s", argIndex, inputParameter.GetError().data());
@@ -66,7 +82,7 @@ namespace ScriptCanvas
 
                         AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::ScriptEvents::OnInputSignal::Call %s::%s", m_busName.c_str(), m_eventName.c_str());
                         {
-                            BehaviorContextMethodHelper::Call(*this, m_method, paramFirst, paramIter, m_resultSlotID);
+                            BehaviorContextMethodHelper::Call(*this, m_method, paramFirst, paramIter, m_resultSlotID); 
                         }
                     }
                 }
@@ -168,11 +184,12 @@ namespace ScriptCanvas
 
                     if (auto defaultValue = method->GetDefaultValue(argIndex))
                     {
-                        Datum* input = ModInput(*this, slotId);
+                        ModifiableDatumView datumView;                        
+                        FindModifiableDatumView(slotId, datumView);
 
-                        if (input && Data::IsValueType(input->GetType()))
+                        if (datumView.IsValid() && Data::IsValueType(datumView.GetDataType()))
                         {
-                            *input = Datum(defaultValue->m_value);
+                            datumView.AssignToDatum(AZStd::move(Datum(defaultValue->m_value)));
                         }
                     }
                 }
@@ -214,7 +231,7 @@ namespace ScriptCanvas
             {
                 m_scriptEventAssetId = assetId;
 
-                GraphRequestBus::Event(GetGraphId(), &GraphRequests::AddDependentAsset, GetEntityId(), azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), m_scriptEventAssetId);
+                GetGraph()->AddDependentAsset(GetEntityId(), azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), m_scriptEventAssetId);
 
                 m_ignoreReadyEvent = true;
                 AZ::Data::AssetBus::Handler::BusConnect(assetId);
@@ -335,8 +352,37 @@ namespace ScriptCanvas
                 PopulateNodeType();
             }
 
+            void SendScriptEvent::InitializeResultSlotId()
+            {
+                if (m_method && m_method->HasResult())
+                {
+                    if (const AZ::BehaviorParameter* result = m_method->GetResult())
+                    {
+                        if (!result->m_typeId.IsNull() && result->m_typeId != azrtti_typeid<void>())
+                        {
+                            Data::Type outputType(AZ::BehaviorContextHelper::IsStringParameter(*result) ? Data::Type::String() : Data::FromAZType(result->m_typeId));
+                            // multiple outs will need out value names
+                            const AZStd::string resultSlotName(AZStd::string::format("Result: %s", Data::GetName(outputType).c_str()));
+
+                            Slot* slot = GetSlotByName(resultSlotName);
+
+                            if (slot)
+                            {
+                                m_resultSlotID = slot->GetId();
+                            }
+                        }
+                    }
+                }
+            }
+
             void SendScriptEvent::OnScriptEventReady(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>& asset)
             {
+                if (!IsConfigured())
+                {
+                    m_asset = asset;
+                    CreateSender(asset);
+                }
+
                 if (!m_ignoreReadyEvent)
                 {
                     RegisterScriptEvent(asset);
@@ -355,6 +401,7 @@ namespace ScriptCanvas
                     ScriptEvents::ScriptEventBus::BroadcastResult(m_scriptEvent, &ScriptEvents::ScriptEventRequests::RegisterScriptEvent, m_scriptEventAssetId, m_version);
                     if (m_scriptEvent)
                     {
+                        m_scriptEvent->Init(m_scriptEventAssetId);
                         m_busName = m_scriptEvent->GetBusName();
                     }
 
@@ -388,6 +435,7 @@ namespace ScriptCanvas
                             if (FindEvent(method, m_namespaces, methodDefinition.GetName()))
                             {
                                 ConfigureMethod(*method);
+                                InitializeResultSlotId();
                             }
                         }
                     }
@@ -400,6 +448,8 @@ namespace ScriptCanvas
                             if (FindEvent(method, m_namespaces, methodDefinition.GetName()))
                             {
                                 ConfigureMethod(*method);
+                                InitializeResultSlotId();
+                                
                                 return true;
                             }
                         }
@@ -409,27 +459,33 @@ namespace ScriptCanvas
                 return false;
             }
 
-            void SendScriptEvent::OnWriteEnd()
-            {
-                if (!m_ebus)
-                {
-                    AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId, true, nullptr, true);
-
-                    CreateSender(asset);
-                }
-            }
-
             void SendScriptEvent::UpdateScriptEventAsset()
             {
                 AZStd::unordered_map< AZ::Uuid, Datum > slotDatumValues;
+                AZStd::unordered_map< AZ::Uuid, VariableId > slotVariableReferences;
 
                 for (auto mapPair : m_eventSlotMapping)
                 {
-                    Datum* datum = ModInput(mapPair.second);
+                    Slot* slot = GetSlot(mapPair.second);
 
-                    if (datum)
+                    if (slot == nullptr)
                     {
-                        slotDatumValues.insert(AZStd::make_pair(mapPair.first, Datum(*datum)));
+                        continue;
+                    }
+
+                    if (slot->IsVariableReference())
+                    {
+                        slotVariableReferences[mapPair.first] = slot->GetVariableReference();
+                    }
+                    else
+                    {
+                        ModifiableDatumView datumView;
+                        FindModifiableDatumView(mapPair.second, datumView);
+
+                        if (datumView.IsValid())
+                        {
+                            slotDatumValues.insert(AZStd::make_pair(mapPair.first, datumView.CloneDatum()));
+                        }
                     }
 
                     const bool removeConnections = false;
@@ -466,6 +522,21 @@ namespace ScriptCanvas
 
                 m_eventSlotMapping = AZStd::move(populationMapping);
 
+                for (auto referencePair : slotVariableReferences)
+                {
+                    auto slotIter = m_eventSlotMapping.find(referencePair.first);
+
+                    if (slotIter != m_eventSlotMapping.end())
+                    {
+                        Slot* slot = GetSlot(slotIter->second);
+                        
+                        if (slot && slot->ConvertToReference())
+                        {
+                            slot->SetVariableReference(referencePair.second);
+                        }
+                    }
+                }
+
                 for (auto datumPair : slotDatumValues)
                 {
                     auto slotIter = m_eventSlotMapping.find(datumPair.first);
@@ -473,12 +544,14 @@ namespace ScriptCanvas
                     if (slotIter != m_eventSlotMapping.end())
                     {
                         SlotId slotId = slotIter->second;
-                        Datum* datum = ModInput(slotId);
+
+                        ModifiableDatumView datumView;
+                        FindModifiableDatumView(slotId, datumView);
 
                         // If our types are the same. Maintain our connections.
-                        if (datum->GetType() == datumPair.second.GetType())
+                        if (datumView.GetDataType() == datumPair.second.GetType())
                         {
-                            *datum = datumPair.second;
+                            datumView.AssignToDatum(datumPair.second);
                         }
                         // Otherwise we'll want to try to update our type.
                         else
@@ -490,7 +563,7 @@ namespace ScriptCanvas
 
                         if (slot)
                         {
-                            slot->SetDisplayType(datum->GetType());
+                            slot->SetDisplayType(datumView.GetDataType());
                         }
                     }
                 }
@@ -502,6 +575,7 @@ namespace ScriptCanvas
                 m_scriptEvent = nullptr;
                 m_ebus = nullptr;
 
+                ScriptEvents::ScriptEventNotificationBus::Handler::BusDisconnect();
                 AZ::Data::AssetBus::Handler::BusDisconnect();
 
                 ScriptEventBase::OnDeactivate();

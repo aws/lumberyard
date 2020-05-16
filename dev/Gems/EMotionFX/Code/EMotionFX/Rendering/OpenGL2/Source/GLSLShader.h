@@ -18,6 +18,7 @@
 
 // include OpenGL
 #include "GLInclude.h"
+#include <MCore/Source/Array.h>
 
 
 namespace RenderGL
@@ -49,13 +50,12 @@ namespace RenderGL
         void SetUniform(const char* name, const AZ::Vector2& vector) override;
         void SetUniform(const char* name, const AZ::Vector3& vector) override;
         void SetUniform(const char* name, const AZ::Vector4& vector) override;
-        void SetUniform(const char* name, const MCore::Matrix& matrix) override;
-        void SetUniform(const char* name, const MCore::Matrix& matrix, bool transpose) override;
-        void SetUniform(const char* name, const MCore::Matrix* matrices, uint32 count) override;
+        void SetUniform(const char* name, const AZ::Matrix4x4& matrix) override;
+        void SetUniform(const char* name, const AZ::Matrix4x4& matrix, bool transpose) override;
+        void SetUniform(const char* name, const AZ::Matrix4x4* matrices, uint32 count) override;
         void SetUniform(const char* name, Texture* texture) override;
         void SetUniformTextureID(const char* name, uint32 textureID);
         void SetUniform(const char* name, const float* values, uint32 numFloats) override;
-        void SetUniform(const char* name, const AZ::PackedVector3f* values, uint32 numVectors) override;
 
         static const uint32 TypeID = 0x00000001;
 

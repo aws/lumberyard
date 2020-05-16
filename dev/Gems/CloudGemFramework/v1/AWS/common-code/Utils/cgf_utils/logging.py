@@ -7,12 +7,14 @@ class CloudCanvasLogger(object):
     instance = None
 
     class LogInitializer:
+        def __init__(self):
+            pass
+
         def __call__(self, *args, **kwargs):
             CloudCanvasLogger.instance = None
-            output = None
-            if not "output" in kwargs:
+            if "output" not in kwargs:
                 raise Exception("Cannot initialize CloudCanvasLogger, missing \"output\" arg")
-            if not "aws_request_id" in kwargs:
+            if "aws_request_id" not in kwargs:
                 raise Exception("Cannot initialize CloudCanvasLogger, missing \"aws_request_id\" arg")
 
             output = kwargs["output"]
@@ -21,8 +23,11 @@ class CloudCanvasLogger(object):
             sys.stdout = logger
 
     class LogOverrider:
+        def __init__(self):
+            pass
+
         def __call__(self, *args, **kwargs):
-            if not "aws_request_id" in kwargs:
+            if "aws_request_id" not in kwargs:
                 raise Exception(
                     "Cannot initialize CloudCanvasLogger, missing \"aws_request_id\" arg")
             CloudCanvasLogger.instance.override_call_id(kwargs["aws_request_id"])
@@ -37,6 +42,13 @@ class CloudCanvasLogger(object):
     def Log(self, message):
         if not message.isspace():
             self.output.write("Call ({}): {}\n".format(self.call_id, message))
+
+    def flush(self):
+        # See if output object has flush command
+        if self.output:
+            flush_op = getattr(self.output, "flush", None)
+            if callable(flush_op):
+                flush_op()
 
     def write(self, message):
         self.Log(message)

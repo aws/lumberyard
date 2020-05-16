@@ -15,6 +15,8 @@
 #include <Data/BehaviorContextObjectPtr.h>
 #include <Data/Data.h>
 
+#include <AzFramework/Entity/EntityContextBus.h>
+
 namespace ScriptCanvas
 {
     namespace Data
@@ -33,8 +35,8 @@ namespace ScriptCanvas
             static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::FromAZType(GetAZType()); }
             static AZStd::string GetName(const Data::Type& = {}) { return Data::GetName(Data::FromAZType(GetAZType())); }
             // The static_assert needs to rely on the template parameter in order to avoid the clang frontend from asserting when parsing the template declaration
-            static Type GetDefault(const Data::Type& = {}) { AZ_STATIC_ASSERT((!AZStd::is_same<t_Type, t_Type>::value), "implement in the typed function"); return {}; }
-            static bool IsDefault(const AZStd::any&, const Data::Type& = {}) { AZ_STATIC_ASSERT((!AZStd::is_same<t_Type, t_Type>::value), "implement in the typed function"); return {}; }
+            static Type GetDefault(const Data::Type& = {}) { static_assert((!AZStd::is_same<t_Type, t_Type>::value), "implement in the typed function"); return {}; }
+            static bool IsDefault(const AZStd::any&, const Data::Type& = {}) { static_assert((!AZStd::is_same<t_Type, t_Type>::value), "implement in the typed function"); return {}; }
         };
 
         
@@ -122,6 +124,22 @@ namespace ScriptCanvas
             static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::AABB(); }
             static AZStd::string GetName(const Data::Type& = {}) { return "AABB"; }
             static Type GetDefault(const Data::Type& = {}) { return Data::AABBType::CreateFromMinMax(Data::Vector3Type(-.5f, -.5f, -.5f), Data::Vector3Type(.5f, .5f, .5f)); }
+            static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
+        };
+
+        template<>
+        struct Traits<AssetIdType> : public TraitsBase<AssetIdType>
+        {
+            using Type = AssetIdType;
+            static const bool s_isAutoBoxed = false;
+            static const bool s_isKey = true;
+            static const bool s_isNative = true;
+            static const eType s_type = eType::AssetId;
+
+            static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<AssetIdType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::AssetId(); }
+            static AZStd::string GetName(const Data::Type& = {}) { return "AssetId"; }
+            static Type GetDefault(const Data::Type& = {}) { return Data::AssetIdType(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
         };
 
@@ -378,6 +396,22 @@ namespace ScriptCanvas
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
         };
 
+        template<>
+        struct Traits<AzFramework::SliceInstantiationTicket> : public TraitsBase<AzFramework::SliceInstantiationTicket>
+        {
+            using Type = AzFramework::SliceInstantiationTicket;
+            static const bool s_isAutoBoxed = true;
+            static const bool s_isNative = false;
+            static const bool s_isKey = true;
+            static const eType s_type = eType::BehaviorContextObject;
+
+            static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<AzFramework::SliceInstantiationTicket>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::BehaviorContextObject(AzFramework::SliceInstantiationTicket::TYPEINFO_Uuid()); }
+            static AZStd::string GetName(const Data::Type& = {}) { return "SliceInstantiationTicket"; }
+            static Type GetDefault(const Data::Type& = {}) { return AzFramework::SliceInstantiationTicket(); }
+            static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
+        };
+
         /**
         * Special Case Traits specialization for the string_view type
         * The C++ string_view class uses the StringType traits so that in ScriptCanvas string_view maps as
@@ -400,6 +434,9 @@ namespace ScriptCanvas
 
         template<>
         struct eTraits<eType::AABB> : Traits<AABBType> {};
+
+        template<>
+        struct eTraits<eType::AssetId> : Traits<AssetIdType> {};
 
         template<>
         struct eTraits<eType::Boolean> : Traits<BooleanType> {};

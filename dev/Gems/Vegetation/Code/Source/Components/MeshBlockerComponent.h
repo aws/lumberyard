@@ -22,7 +22,7 @@
 #include <SurfaceData/SurfaceDataSystemNotificationBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/std/containers/unordered_map.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
 #include <Vegetation/AreaComponentBase.h>
 
 namespace LmbrCentral
@@ -102,7 +102,7 @@ namespace Vegetation
 
         //////////////////////////////////////////////////////////////////////////
         // SurfaceData::SurfaceDataSystemNotificationBus
-        void OnSurfaceChanged(const AZ::EntityId& entityId, const AZ::Aabb& bounds) override;
+        void OnSurfaceChanged(const AZ::EntityId& entityId, const AZ::Aabb& oldBounds, const AZ::Aabb& newBounds) override;
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::TickBus

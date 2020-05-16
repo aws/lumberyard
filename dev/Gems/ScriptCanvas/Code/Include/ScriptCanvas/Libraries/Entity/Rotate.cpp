@@ -27,17 +27,7 @@ namespace ScriptCanvas
         {
             void Rotate::OnInputSignal(const SlotId&)
             {
-                AZ::EntityId targetEntity;
-                if (auto input = GetInput(RotateProperty::GetEntitySlotId(this)))
-                {
-                    if (auto entityId = input->GetAs<AZ::EntityId>())
-                    {
-                        if (entityId->IsValid())
-                        {
-                            targetEntity = *entityId;
-                        }
-                    }
-                }
+                AZ::EntityId targetEntity = RotateProperty::GetEntity(this);
 
                 if (!targetEntity.IsValid())
                 {
@@ -52,13 +42,7 @@ namespace ScriptCanvas
                     AZ::Vector3 angles = AZ::Vector3::CreateZero();
                     if (entity->GetState() == AZ::Entity::ES_ACTIVE)
                     {
-                        if (auto input = GetInput(RotateProperty::GetEulerAnglesSlotId(this)))
-                        {
-                            if (auto eulerAngles = input->GetAs<AZ::Vector3>())
-                            {
-                                angles = *eulerAngles;
-                            }
-                        }
+                        angles = RotateProperty::GetEulerAngles(this);
 
                         AZ::Quaternion rotation = AZ::ConvertEulerDegreesToQuaternion(angles);
 

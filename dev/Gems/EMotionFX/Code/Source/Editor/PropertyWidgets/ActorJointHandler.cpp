@@ -22,12 +22,12 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(ActorJointPicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorSingleJointHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiJointHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiWeightedJointHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorJointElementHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorWeightedJointElementHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorJointPicker, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorSingleJointHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiJointHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiWeightedJointHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorJointElementHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorWeightedJointElementHandler, EditorAllocator, 0)
 
     ActorJointPicker::ActorJointPicker(bool singleSelection, const QString& dialogTitle, const QString& dialogDescriptionLabelText, QWidget* parent)
         : QWidget(parent)
@@ -118,7 +118,14 @@ namespace EMotionFX
     void ActorJointPicker::UpdateInterface()
     {
         const size_t numJoints = m_weightedJointNames.size();
-        m_label->setText(QString("%1 joint%2 selected").arg(QString::number(numJoints), numJoints == 1 ? QString() : "s"));
+        if (numJoints == 1)
+        {
+            m_label->setText(QString::fromUtf8(m_weightedJointNames[0].first.c_str()));
+        }
+        else
+        {
+            m_label->setText(QString("%1 joint%2 selected").arg(QString::number(numJoints), numJoints == 1 ? QString() : "s"));
+        }
         m_resetButton->setVisible(numJoints > 0);
 
         // Build and set the tooltip containing all joints.

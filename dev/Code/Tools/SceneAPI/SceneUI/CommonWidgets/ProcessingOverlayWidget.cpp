@@ -33,6 +33,39 @@ namespace AZ
     {
         namespace SceneUI
         {
+            namespace Internal
+            {
+                QtWebEngineMessageFilter::QtWebEngineMessageFilter(QObject* parent)
+                    : QSortFilterProxyModel(parent)
+                {
+                }
+
+                QtWebEngineMessageFilter::~QtWebEngineMessageFilter()
+                {
+                }
+
+                bool QtWebEngineMessageFilter::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
+                {
+                    auto tableModel = qobject_cast<AzQtComponents::StyledDetailsTableModel*>(sourceModel());
+                    if (!tableModel)
+                    {
+                        return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
+                    }
+
+                    const int sourceColumn = tableModel->GetColumnIndex(QStringLiteral("message"));
+                    const QModelIndex index = tableModel->index(sourceRow, sourceColumn, sourceParent);
+                    const QVariant data = tableModel->data(index);
+
+                    static const QString filteredMessage = QStringLiteral("Qt WebEngine seems to be initialized from a plugin. Please set Qt::AA_ShareOpenGLContexts using QCoreApplication::setAttribute before constructing QGuiApplication.");
+                    if (data.toString() == filteredMessage)
+                    {
+                        return false;
+                    }
+
+                    return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
+                }
+            }
+
             ProcessingOverlayWidget::ProcessingOverlayWidget(UI::OverlayWidget* overlay, Layout layout, Uuid traceTag)
                 : QWidget()
                 , m_traceTag(traceTag)
@@ -61,9 +94,12 @@ namespace AZ
                 }
                 m_reportModel->AddColumn("Message");
                 m_reportModel->AddColumnAlias("message", "Message");
+
+                auto messageFilterModel = new Internal::QtWebEngineMessageFilter(this);
+                messageFilterModel->setSourceModel(m_reportModel);
                 
                 m_reportView = new AzQtComponents::StyledDetailsTableView();
-                m_reportView->setModel(m_reportModel);
+                m_reportView->setModel(messageFilterModel);
                 ui->m_reportArea->addWidget(m_reportView);
 
                 UpdateColumnSizes();

@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "CheckOutDialog.h"
 #include "ui_CheckOutDialog.h"
-#include "Util/BoostPythonHelpers.h"
 
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 

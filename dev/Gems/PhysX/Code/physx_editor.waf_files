@@ -1,7 +1,6 @@
 {
     "auto": {
         "Include": [
-            "Include/PhysX/EditorRigidBodyRequestBus.h",
             "Include/PhysX/EditorColliderComponentRequestBus.h"
         ],
         "Source/Components": [
@@ -31,6 +30,14 @@
             "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderWorker.cpp",
             "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h",
             "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.cpp"
+        ],
+        "Source/Pipeline/PrimitiveShapeFitter": [
+            "Source/Pipeline/PrimitiveShapeFitter/PrimitiveShapeFitter.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/PrimitiveShapeFitter.h",
+            "Source/Pipeline/PrimitiveShapeFitter/AbstractShapeParameterization.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/AbstractShapeParameterization.h",
+            "Source/Pipeline/PrimitiveShapeFitter/Utils.cpp",
+            "Source/Pipeline/PrimitiveShapeFitter/Utils.h"
         ],
         "Editor": [
             "Editor/ConfigurationWidget.h",
@@ -84,7 +91,9 @@
             "Editor/ColliderAssetScaleMode.h",
             "Editor/ColliderAssetScaleMode.cpp",
             "Editor/DebugDraw.cpp",
-            "Editor/DebugDraw.h"
+            "Editor/DebugDraw.h",
+            "Editor/PolygonPrismMeshUtils.cpp",
+            "Editor/PolygonPrismMeshUtils.h"
         ]
     }
 }

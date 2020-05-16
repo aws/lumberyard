@@ -50,7 +50,7 @@ namespace AssetProcessor
                 AZStd::to_lower(path.begin(), path.end());
                 bool isExactDependency = IsExactDependency(path);
 
-                auto& dependencyMap = GetDependencyProductMap(isExactDependency, unresolvedDep.m_dependencyType);
+                auto& dependencyMap = GetDependencyProductMap(isExactDependency, unresolvedDep.m_dependencyType, unresolvedDep.m_unresolvedPath.starts_with(ExcludedDependenciesSymbol));
                 dependencyMap[path].push_back(AZStd::move(idPair));
             }
         }
@@ -73,6 +73,7 @@ namespace AssetProcessor
                 0,
                 AZStd::bitset<64>(),
                 platform,
+                0,
                 // Use a string that will make it easy to route errors back here correctly. An empty string can be a symptom of many
                 // other problems. This string says that something went wrong in this function.
                 AZStd::string("INVALID_PATH"),
@@ -91,14 +92,14 @@ namespace AssetProcessor
                     {
                         auto* scanFolderInfo = m_platformConfig->GetScanFolderByPath(scanFolder);
 
-                        path = ToScanFolderPrefixedPath(scanFolderInfo->ScanFolderID(), relativePath.toUtf8().constData());
+                        path = ToScanFolderPrefixedPath(aznumeric_cast<int>(scanFolderInfo->ScanFolderID()), relativePath.toUtf8().constData());
 
                     }
                 }
             }
 
             SanitizeForDatabase(path);
-            auto& dependencyMap = GetDependencyProductMap(isExactDependency, unresolvedPathDep.m_dependencyType);
+            auto& dependencyMap = GetDependencyProductMap(isExactDependency, unresolvedPathDep.m_dependencyType, unresolvedPathDep.m_dependencyPath.starts_with(ExcludedDependenciesSymbol));
 
             // It's possible this job has been re-run for some reason, such as if the source file was modified while this
             // path was waiting to resolve. Check if the product dependency map already has this unmet path dependency, and remove it if so.
@@ -136,7 +137,7 @@ namespace AssetProcessor
         {
             AZStd::string path = entry.m_unresolvedPath;
             bool isExactDependency = IsExactDependency(path);
-            auto& dependencyMap = GetDependencyProductMap(isExactDependency, entry.m_dependencyType);
+            auto& dependencyMap = GetDependencyProductMap(isExactDependency, entry.m_dependencyType, entry.m_unresolvedPath.starts_with(ExcludedDependenciesSymbol));
 
             // Record the productDependencyId, productId, and job platform so we can rewrite once it is resolved
             DependencyProductIdInfo dependencyIds;
@@ -161,7 +162,7 @@ namespace AssetProcessor
             SanitizeForDatabase(dependencyName);
             bool isExactDependency = IsExactDependency(dependencyName);
 
-            auto& dependencyMap = GetDependencyProductMap(isExactDependency, productDependencyEntry.m_dependencyType);
+            auto& dependencyMap = GetDependencyProductMap(isExactDependency, productDependencyEntry.m_dependencyType, productDependencyEntry.m_unresolvedPath.starts_with(ExcludedDependenciesSymbol));
 
             auto dependencyIter = dependencyMap.find(dependencyName);
 
@@ -193,30 +194,60 @@ namespace AssetProcessor
 
     void PathDependencyManager::ProductFinished(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry)
     {
-        for (auto& pair : m_unresolvedWildcardProductPathDependencyIds)
+        AZStd::vector<DependencyProductIdInfo> matchedDependencies;
+        AZStd::vector<DependencyProductIdInfo> excludedDependencies;
+        // Get matched product wildcard dependencies
+        GetMatchedWildcardDependencies(sourceEntry, productEntry, matchedDependencies, excludedDependencies,
+            AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_ProductFile);
+        // Get matched source wildcard dependencies
+        GetMatchedWildcardDependencies(sourceEntry, productEntry, matchedDependencies, excludedDependencies,
+            AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_SourceFile);
+
+        // Remove any excluded dependencies from the unresolved dependency list since they're not supposed to be updated
+        AZStd::vector<DependencyProductIdInfo> conflicts;
+        ValidateUnresolvedDependencies(matchedDependencies, excludedDependencies, conflicts);
+
+        UpdateResolvedDependencies(matchedDependencies, sourceEntry, { productEntry }, false);
+    }
+
+    void PathDependencyManager::GetMatchedWildcardDependencies(
+        const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry,
+        const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry,
+        AZStd::vector<DependencyProductIdInfo>& matchedDependencies,
+        AZStd::vector<DependencyProductIdInfo>& excludedDependencies,
+        AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType)
+    {
+        bool handleProductDependencies = dependencyType == AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_ProductFile;
+        AZStd::string_view assetName = handleProductDependencies ? productEntry.m_productName : sourceEntry.m_sourceName;
+        DependencyProductMap& unresolvedWildcardPathDependencyIds = handleProductDependencies ? m_unresolvedWildcardProductPathDependencyIds : m_unresolvedWildcardSourcePathDependencyIds;
+        DependencyProductMap& excludedPathDependencyIds = handleProductDependencies ? m_excludedProductPathDependencyIds : m_excludedSourcePathDependencyIds;
+        DependencyProductMap& excludedWildcardPathDependencyIds = handleProductDependencies ? m_excludedWildcardProductPathDependencyIds : m_excludedWildcardSourcePathDependencyIds;
+
+        // strip path of /<platform>/<project>/
+        AZStd::string strippedPath = handleProductDependencies ? StripPlatformAndProject(assetName) : sourceEntry.m_sourceName;
+        SanitizeForDatabase(strippedPath);
+       
+        for (auto& pair : unresolvedWildcardPathDependencyIds)
         {
-            const AZStd::string& filter = pair.first;
-            AZStd::string_view productName = productEntry.m_productName;
-
-            // strip path of /<platform>/<project>/
-            AZStd::string strippedPath = StripPlatformAndProject(productName);
-            SanitizeForDatabase(strippedPath);
-
+            AZStd::string filter = pair.first;
             if (AZStd::wildcard_match(filter, strippedPath))
             {
-                UpdateResolvedDependencies(pair.second, sourceEntry, { productEntry }, false);
+                matchedDependencies.insert(matchedDependencies.end(), pair.second.begin(), pair.second.end());
             }
         }
-
-        for (auto& pair : m_unresolvedWildcardSourcePathDependencyIds)
+ 
+        auto unresolvedIter = excludedPathDependencyIds.find(ExcludedDependenciesSymbol + strippedPath);
+        if (unresolvedIter != excludedPathDependencyIds.end())
         {
-            const AZStd::string& filter = pair.first;
-            AZStd::string sourceName(sourceEntry.m_sourceName);
-            SanitizeForDatabase(sourceName);
+            excludedDependencies.insert(excludedDependencies.end(), unresolvedIter->second.begin(), unresolvedIter->second.end());
+        }
 
-            if (AZStd::wildcard_match(filter, sourceName))
+        for (auto& pair : excludedWildcardPathDependencyIds)
+        {
+            AZStd::string filter = pair.first.substr(1);
+            if (AZStd::wildcard_match(filter, strippedPath))
             {
-                UpdateResolvedDependencies(pair.second, sourceEntry, { productEntry }, false);
+                excludedDependencies.insert(excludedDependencies.end(), pair.second.begin(), pair.second.end());
             }
         }
     }
@@ -228,37 +259,39 @@ namespace AssetProcessor
         return productName.substr(nextSlash, productName.size() - nextSlash);
     }
 
-    PathDependencyManager::DependencyProductMap& PathDependencyManager::GetDependencyProductMap(bool exactMatch, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType)
+    PathDependencyManager::DependencyProductMap& PathDependencyManager::GetDependencyProductMap(bool exactMatch,
+        AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType, bool excludedDependencies)
     {
         if (dependencyType == AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_ProductFile)
         {
             if (exactMatch)
             {
-                return m_unresolvedProductPathDependencyIds;
+                return excludedDependencies ? m_excludedProductPathDependencyIds : m_unresolvedProductPathDependencyIds;
             }
             else
             {
-                return m_unresolvedWildcardProductPathDependencyIds;
+                return excludedDependencies ? m_excludedWildcardProductPathDependencyIds : m_unresolvedWildcardProductPathDependencyIds;
             }
         }
         else
         {
             if (exactMatch)
             {
-                return m_unresolvedSourcePathDependencyIds;
+                return excludedDependencies ? m_excludedSourcePathDependencyIds : m_unresolvedSourcePathDependencyIds;
             }
             else
             {
-                return m_unresolvedWildcardSourcePathDependencyIds;
+                return excludedDependencies ? m_excludedWildcardSourcePathDependencyIds : m_unresolvedWildcardSourcePathDependencyIds;
             }
         }
     }
 
-    PathDependencyManager::DependencyProductMap& PathDependencyManager::GetDependencyProductMap(bool exactMatch, AssetBuilderSDK::ProductPathDependencyType dependencyType)
+    PathDependencyManager::DependencyProductMap& PathDependencyManager::GetDependencyProductMap(bool exactMatch, AssetBuilderSDK::ProductPathDependencyType dependencyType, bool excludedDependencies)
     {
         return GetDependencyProductMap(exactMatch, dependencyType == AssetBuilderSDK::ProductPathDependencyType::SourceFile
             ? AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_SourceFile
-            : AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_ProductFile);
+            : AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType::ProductDep_ProductFile,
+            excludedDependencies);
     }
 
     void PathDependencyManager::RetryDeferredDependencies(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry)
@@ -289,10 +322,32 @@ namespace AssetProcessor
                 SanitizeForDatabase(strippedPath);
 
                 auto unresolvedIter = m_unresolvedProductPathDependencyIds.find(strippedPath);
+                auto excludedIter = m_excludedProductPathDependencyIds.find(ExcludedDependenciesSymbol + strippedPath);
 
+                // Resolve the product path dependency if it's not in the excluded path dependency list
                 if (unresolvedIter != m_unresolvedProductPathDependencyIds.end())
                 {
+                    AZStd::vector<DependencyProductIdInfo> conflicts;
+                    if (excludedIter != m_excludedProductPathDependencyIds.end())
+                    {
+                        ValidateUnresolvedDependencies(unresolvedIter->second, excludedIter->second, conflicts);
+                    }
+
                     UpdateResolvedDependencies(unresolvedIter->second, sourceEntry, { productEntry });
+
+                    for (const DependencyProductIdInfo& conflict : conflicts)
+                    {
+                        AzToolsFramework::AssetDatabase::ProductDatabaseEntry entry;
+                        m_stateData->GetProductByProductID(conflict.m_productId, entry);
+
+                        AZ_Error(AssetProcessor::DebugChannel, false,
+                            "Cannot resolve path dependency %s for product %s since there's a conflict\n",
+                            unresolvedIter->first.c_str(), entry.m_productName.c_str());
+
+                        // Leave the conflicted path dependencies unresolved
+                        unresolvedIter->second.emplace_back(conflict);
+                    }
+                    
                     if (unresolvedIter->second.empty())
                     {
                         m_unresolvedProductPathDependencyIds.erase(unresolvedIter);
@@ -301,22 +356,50 @@ namespace AssetProcessor
             }
         }
 
-        AZStd::string sourceNameWithScanFolder = ToScanFolderPrefixedPath(sourceEntry.m_scanFolderPK, sourceEntry.m_sourceName.c_str());
+        AZStd::string sourceNameWithScanFolder = ToScanFolderPrefixedPath(aznumeric_cast<int>(sourceEntry.m_scanFolderPK), sourceEntry.m_sourceName.c_str());
 
         // Check for dependencies on the source file
         SanitizeForDatabase(sourceNameWithScanFolder);
-        auto unresolvedIter = m_unresolvedSourcePathDependencyIds.find(sourceNameWithScanFolder);
 
-        if(unresolvedIter == m_unresolvedSourcePathDependencyIds.end())
+        AZStd::string santizedSourceName = sourceEntry.m_sourceName;
+        SanitizeForDatabase(santizedSourceName);
+
+        auto unresolvedIter = m_unresolvedSourcePathDependencyIds.find(sourceNameWithScanFolder);
+        if (unresolvedIter == m_unresolvedSourcePathDependencyIds.end())
         {
-            AZStd::string santizedSourceName = sourceEntry.m_sourceName;
-            SanitizeForDatabase(santizedSourceName);
             unresolvedIter = m_unresolvedSourcePathDependencyIds.find(santizedSourceName);
         }
 
+        auto excludedIter = m_excludedSourcePathDependencyIds.find(ExcludedDependenciesSymbol + sourceNameWithScanFolder);
+        if (excludedIter == m_excludedSourcePathDependencyIds.end())
+        {
+            excludedIter = m_excludedSourcePathDependencyIds.find(ExcludedDependenciesSymbol + santizedSourceName);
+        }
+
+        // Resolve the source path dependency if it's not in the excluded path dependency list
         if (unresolvedIter != m_unresolvedSourcePathDependencyIds.end())
         {
+            AZStd::vector<DependencyProductIdInfo> conflicts;
+            if (excludedIter != m_excludedSourcePathDependencyIds.end())
+            {
+                ValidateUnresolvedDependencies(unresolvedIter->second, excludedIter->second, conflicts);
+            }
+
             UpdateResolvedDependencies(unresolvedIter->second, sourceEntry, products);
+
+            for (const DependencyProductIdInfo& conflict : conflicts)
+            {
+                AzToolsFramework::AssetDatabase::ProductDatabaseEntry entry;
+                m_stateData->GetProductByProductID(conflict.m_productId, entry);
+
+                AZ_Error(AssetProcessor::DebugChannel, false,
+                    "Cannot resolve path dependency %s for product %s since there's a conflict\n",
+                    unresolvedIter->first.c_str(), entry.m_productName.c_str());
+
+                // Leave the conflicted path dependencies unresolved
+                unresolvedIter->second.emplace_back(conflict);
+            }
+
             if (unresolvedIter->second.empty())
             {
                 m_unresolvedSourcePathDependencyIds.erase(unresolvedIter);
@@ -402,6 +485,31 @@ namespace AssetProcessor
         }
     }
 
+    void PathDependencyManager::ValidateUnresolvedDependencies(
+        AZStd::vector<DependencyProductIdInfo>& unresolvedDependencies,
+        const AZStd::vector<DependencyProductIdInfo>& excludedDependencies,
+        AZStd::vector<DependencyProductIdInfo>& conflicts)
+    {
+        unresolvedDependencies.erase(AZStd::remove_if(unresolvedDependencies.begin(), unresolvedDependencies.end(),
+            [&excludedDependencies, &conflicts](const DependencyProductIdInfo& unresolvedDependency)
+        {
+            auto excludedDependencyItr = AZStd::find_if(excludedDependencies.begin(), excludedDependencies.end(),
+                [&unresolvedDependency](const auto& excludedDependency)
+            {
+                return unresolvedDependency.m_productId == excludedDependency.m_productId &&
+                    unresolvedDependency.m_platform == excludedDependency.m_platform;
+            });
+
+            if (excludedDependencyItr != excludedDependencies.end())
+            {
+                conflicts.emplace_back(unresolvedDependency);
+                return true;
+            }
+
+            return false;
+        }), unresolvedDependencies.end());
+    }
+
     void CleanupPathDependency(AssetBuilderSDK::ProductPathDependency& pathDependency)
     {
         if(pathDependency.m_dependencyType == AssetBuilderSDK::ProductPathDependencyType::SourceFile)
@@ -425,17 +533,49 @@ namespace AssetProcessor
         }
     }
 
-    void PathDependencyManager::ResolveDependencies(AssetBuilderSDK::ProductPathDependencySet& pathDeps, AZStd::vector<AssetBuilderSDK::ProductDependency>& resolvedDeps, const AZStd::string& platform)
+    void PathDependencyManager::ResolveDependencies(AssetBuilderSDK::ProductPathDependencySet& pathDeps, AZStd::vector<AssetBuilderSDK::ProductDependency>& resolvedDeps, const AZStd::string& platform, const AZStd::string& productName)
     {
         constexpr int productDependencyFlags = 0;
         const QString gameName = AssetUtilities::ComputeGameName();
+        AZStd::vector<AssetBuilderSDK::ProductDependency> excludedDeps;
+
+        // Check the path dependency set and find any conflict (include and exclude the same path dependency)
+        AssetBuilderSDK::ProductPathDependencySet conflicts;
+        for (const AssetBuilderSDK::ProductPathDependency pathDep : pathDeps)
+        {
+            auto conflictItr = AZStd::find_if(pathDeps.begin(), pathDeps.end(),
+                [&pathDep](const AssetBuilderSDK::ProductPathDependency& pathDepForComparison)
+            {
+                return (pathDep.m_dependencyPath == ExcludedDependenciesSymbol + pathDepForComparison.m_dependencyPath ||
+                    pathDepForComparison.m_dependencyPath == ExcludedDependenciesSymbol + pathDep.m_dependencyPath) &&
+                    pathDep.m_dependencyType == pathDepForComparison.m_dependencyType;
+            });
+
+            if (conflictItr != pathDeps.end())
+            {
+                conflicts.insert(pathDep);
+            }
+        }
 
         auto pathIter = pathDeps.begin();
         while (pathIter != pathDeps.end())
         {
+            if (conflicts.find(*pathIter) != conflicts.end())
+            {
+                // Ignore conflicted path dependencies
+                AZ_Error(AssetProcessor::DebugChannel, false,
+                    "Cannot resolve path dependency %s for product %s since there's a conflict\n",
+                    pathIter->m_dependencyPath.c_str(), productName.c_str());
+                pathIter++;
+                continue;
+            }
+
             AssetBuilderSDK::ProductPathDependency cleanedupDependency(*pathIter);
             CleanupPathDependency(cleanedupDependency);
             AZStd::string dependencyPathSearch = cleanedupDependency.m_dependencyPath;
+
+            bool isExcludedDependency = dependencyPathSearch.starts_with(ExcludedDependenciesSymbol);
+            dependencyPathSearch = isExcludedDependency ? dependencyPathSearch.substr(1) : dependencyPathSearch;
             bool isExactDependency = !AzFramework::StringFunc::Replace(dependencyPathSearch, '*', '%');
             SanitizeForDatabase(dependencyPathSearch);
 
@@ -470,7 +610,8 @@ namespace AssetProcessor
                     {
                         if (m_stateData->GetSourceByJobID(productDatabaseEntry.m_jobPK, sourceDatabaseEntry))
                         {
-                            resolvedDeps.emplace_back(AZ::Data::AssetId(sourceDatabaseEntry.m_sourceGuid, productDatabaseEntry.m_subID), productDependencyFlags);
+                            AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencyList = isExcludedDependency ? excludedDeps : resolvedDeps;
+                            productDependencyList.emplace_back(AZ::Data::AssetId(sourceDatabaseEntry.m_sourceGuid, productDatabaseEntry.m_subID), productDependencyFlags);
                         }
                         else
                         {
@@ -484,8 +625,8 @@ namespace AssetProcessor
                         }
                     }
 
-                    // Wildcard dependencies never get removed since they can be fulfilled by a future product
-                    if (isExactDependency)
+                    // Wildcard and excluded dependencies never get removed since they can be fulfilled by a future product
+                    if (isExactDependency && !isExcludedDependency)
                     {
                         pathIter = pathDeps.erase(pathIter);
                         continue;
@@ -525,7 +666,8 @@ namespace AssetProcessor
                             // Add a dependency on every product of this source file
                             for (const auto& productDatabaseEntry : productInfoContainer)
                             {
-                                resolvedDeps.emplace_back(AZ::Data::AssetId(sourceDatabaseEntry.m_sourceGuid, productDatabaseEntry.m_subID), productDependencyFlags);
+                                AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencyList = isExcludedDependency ? excludedDeps : resolvedDeps;;
+                                productDependencyList.emplace_back(AZ::Data::AssetId(sourceDatabaseEntry.m_sourceGuid, productDatabaseEntry.m_subID), productDependencyFlags);
                             }
                         }
 
@@ -536,7 +678,7 @@ namespace AssetProcessor
                         }
                     }
 
-                    if (isExactDependency && productsAvailable)
+                    if (isExactDependency && productsAvailable && !isExcludedDependency)
                     {
                         pathIter = pathDeps.erase(pathIter);
                         continue;
@@ -547,6 +689,20 @@ namespace AssetProcessor
             pathIter->m_dependencyType = cleanedupDependency.m_dependencyType;
             pathIter++;
         }
+
+        // Remove the excluded dependency from the resolved dependency list and leave them unresolved
+        resolvedDeps.erase(AZStd::remove_if(resolvedDeps.begin(), resolvedDeps.end(),
+            [&excludedDeps](const AssetBuilderSDK::ProductDependency& resolvedDependency)
+        {
+            auto excludedDependencyItr = AZStd::find_if(excludedDeps.begin(), excludedDeps.end(),
+                [&resolvedDependency](const AssetBuilderSDK::ProductDependency& excludedDependency)
+            {
+                return resolvedDependency.m_dependencyId == excludedDependency.m_dependencyId &&
+                    resolvedDependency.m_flags == excludedDependency.m_flags;
+            });
+
+            return excludedDependencyItr != excludedDeps.end();
+        }), resolvedDeps.end());
     }
 
     bool PathDependencyManager::ProcessInputPathToDatabasePathAndScanFolder(const char* dependencyPathSearch, QString& databaseName, QString& scanFolder)

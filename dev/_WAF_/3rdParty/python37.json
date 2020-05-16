@@ -1,0 +1,51 @@
+{
+  "name": "PYTHON37",
+  "source": "@ROOT@/Tools/Python/3.7.5",
+  "description": "Python 3.7.5 to be embedded into tools",
+  "non_release_only": "False",
+  "lib_required": "False",
+  "platform": {
+    "win_x64_vs2017": {
+      "includes": [
+        "@ROOT@/Tools/Python/3.7.5/windows/include"
+      ],
+      "libpath_release": [
+        "@ROOT@/Tools/Python/3.7.5/windows/libs"
+      ],
+      "importlibpath_release": [
+        "@ROOT@/Tools/Python/3.7.5/windows/libs"
+      ],
+      "sharedlibpath_release": [
+        "@ROOT@/Tools/Python/3.7.5/windows",
+        "@ROOT@/Tools/Python/3.7.5/windows/DLLs"
+      ],
+      "import_release": [
+        "python37.lib"
+      ],
+      "shared_release": [
+        "python3.dll",
+        "python37.dll",
+        "libcrypto-1_1-x64.dll",
+        "libssl-1_1-x64.dll"
+      ],
+      "libpath_debug": [
+        "@ROOT@/Tools/Python/3.7.5/windows/debug/libs"
+      ],
+      "importlibpath_debug": [
+        "@ROOT@/Tools/Python/3.7.5/windows/debug/libs"
+      ],
+      "sharedlibpath_debug": [
+        "@ROOT@/Tools/Python/3.7.5/windows/debug/DLLs"
+      ],
+      "import_debug": [
+        "python37_d.lib"
+      ],
+      "shared_debug": [
+        "python3_d.dll",
+        "python37_d.dll",
+        "libcrypto-1_1-x64.dll",
+        "libssl-1_1-x64.dll"
+      ]
+    }
+  }
+}

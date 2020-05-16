@@ -4,5 +4,5 @@
     "description": "RAD Telemetry libraries (internal only - not for distribution)",
     "non_release_only": "True",
     "lib_required": "True",
-    "includes": ["Code/Include", "External/Include"]
+    "system_includes": ["Code/Include", "External/Include"]
 }

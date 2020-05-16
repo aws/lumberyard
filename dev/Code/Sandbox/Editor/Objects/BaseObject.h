@@ -856,12 +856,14 @@ protected:
     Matrix33 GetWorldRotTM() const;
     Matrix33 GetWorldScaleTM() const;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //! World space object's position.
     Vec3 m_pos;
     //! Object's Rotation angles.
     Quat m_rotate;
     //! Object's scale value.
     Vec3 m_scale;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 private:
     friend class CUndoBaseObject;
@@ -903,6 +905,7 @@ private:
     // PRIVATE FIELDS
     //////////////////////////////////////////////////////////////////////////
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //Default ObjType
     ObjectType m_objType;
 
@@ -980,6 +983,7 @@ private:
     uint32 m_nMinSpec : 8;
 
     Vec3 m_vDrawIconPos;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     uint64 m_hideOrder;
 };

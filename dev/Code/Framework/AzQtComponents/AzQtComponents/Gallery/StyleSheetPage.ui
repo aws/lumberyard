@@ -118,23 +118,32 @@
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <widget class="Example::Widget" name="widget" native="true"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="toggleButton">
-            <property name="text">
-             <string>Toggle drawSimple</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
+         <widget class="Example::Widget" name="widget" native="true"/>
         </item>
        </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="AzQtComponents::TitleBar" name="titleBar" native="true"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="drawSimpleToggle">
+       <property name="text">
+        <string>Toggle drawSimple</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="tearEnabledToggle">
+       <property name="text">
+        <string>Toggle tearEnabled</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
@@ -171,6 +180,12 @@
    <class>Example::Widget</class>
    <extends>QWidget</extends>
    <header>Gallery/StyleSheetPage.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::TitleBar</class>
+   <extends>QWidget</extends>
+   <header>AzQtComponents/Components/Titlebar.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

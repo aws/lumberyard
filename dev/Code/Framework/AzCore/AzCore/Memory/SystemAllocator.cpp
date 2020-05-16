@@ -288,11 +288,12 @@ SystemAllocator::ReAllocate(pointer_type ptr, size_type newSize, size_type newAl
 {
     newSize = MemorySizeAdjustedUp(newSize);
 
+    AZ_MEMORY_PROFILE(ProfileReallocationBegin(ptr, newSize));
     AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
     pointer_type newAddress = m_allocator->ReAllocate(ptr, newSize, newAlignment);
     AZ_PROFILE_MEMORY_ALLOC(AZ::Debug::ProfileCategory::MemoryReserved, newAddress, newSize, "SystemAllocator realloc");
+    AZ_MEMORY_PROFILE(ProfileReallocationEnd(ptr, newAddress, newSize, newAlignment));
 
-    AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newAddress, newSize, newAlignment));
     return newAddress;
 }
 

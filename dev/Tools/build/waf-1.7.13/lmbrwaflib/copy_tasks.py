@@ -1,5 +1,6 @@
 #
-# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# All or portions of this file Cop
+# yright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
 # For complete copyright and license terms please see the LICENSE at the root of this
@@ -8,22 +9,30 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib.Task import Task, RUN_ME, SKIP_ME
-from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
-from cry_utils import flatten_list
-from utils import fast_copy2, should_overwrite_file, calculate_file_hash
-from waflib import Logs, Utils, Errors
+
+
+# System Imports
 import os
 import glob
 import shutil
 import time
 import stat
 import fnmatch
-
 try:
-    import _winreg
+    import winreg
 except ImportError:
     pass
+
+# waflib imports
+from waflib import Logs, Utils, Errors
+from waflib.Task import Task, RUN_ME, SKIP_ME
+from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import flatten_list
+from lmbrwaflib.utils import fast_copy2, should_overwrite_file, calculate_file_hash
+
+
 DEPENDENT_TARGET_BLACKLISTED_SUBFOLDERS = ['EditorPlugins', 'Builders']
 
 def hash_range(filename, start, size):
@@ -47,9 +56,9 @@ def fast_hash(fname):
     if stat.S_ISDIR(st[stat.ST_MODE]):
         raise IOError('not a file')
     m = Utils.md5()
-    m.update(str(st.st_mtime))
-    m.update(str(st.st_size))
-    m.update(fname)
+    m.update(str(st.st_mtime).encode('utf-8'))
+    m.update(str(st.st_size).encode('utf-8'))
+    m.update(fname.encode('utf-8'))
     return m.digest()
 
 # pdbs and dlls have a guid embedded in their header which should change
@@ -868,7 +877,14 @@ def add_copy_3rd_party_artifacts(self):
 
             target_folder = output_path_node.abspath()
 
-            for source_node in third_party_artifacts:
+            for artifact in third_party_artifacts:
+                if isinstance(artifact,tuple):
+                    source_node = artifact[0]
+                    full_symlink_path = os.path.join(target_folder, artifact[1])
+                else:
+                    source_node = artifact
+                    full_symlink_path = None
+
                 source_full_path = source_node.abspath()
                 source_filename = os.path.basename(source_full_path)
                 target_full_path = os.path.join(target_folder, source_filename)
@@ -877,12 +893,23 @@ def add_copy_3rd_party_artifacts(self):
                         # In case the file is readonly, we'll remove the existing file first
                         if os.path.exists(target_full_path):
                             os.chmod(target_full_path, stat.S_IWRITE)
+                        # In case the target folder doesn't exist yet
+                        if not os.path.exists(os.path.dirname(target_full_path)):
+                            os.makedirs(os.path.dirname(target_full_path))
                         fast_copy2(source_full_path, target_full_path)
                         copied_files += 1
                     except:
-                        Logs.warn('[WARN] Unable to copy {} to destination {}.  '
+                        Logs.warn('[WARN] Unable to copy {} to destination {}. '
                                   'Check the file permissions or any process that may be locking it.'
                                   .format(source_full_path, target_full_path))
+                try:
+                    if full_symlink_path:
+                        if not os.path.islink(full_symlink_path):
+                            os.symlink(source_filename, full_symlink_path)
+                except:
+                    Logs.warn('[WARN] Unable to link {}->{}. '
+                              'Check the file permissions or any process that may be locking it.'
+                              .format(full_symlink_path, target_full_path))
         if copied_files > 0 and Logs.verbose > 0:
             Logs.info('[INFO] {} External files copied.'.format(copied_files))
 
@@ -946,6 +973,7 @@ def copy_external_files(self):
     if copied_files > 0:
         Logs.info('[INFO] {} External files copied.'.format(copied_files))
 
+import fnmatch
 
 @feature('c', 'cxx', 'copy_3rd_party_binaries')
 @before_method('process_source')
@@ -959,17 +987,30 @@ def copy_3rd_party_binaries(self):
     if self.bld.cmd in ('msvs', 'android_studio'):
         return
 
-    def _process_filelist(source_files):
+    def _process_filelist(source_files, symlink_patterns = None):
 
         if 'COPY_3RD_PARTY_ARTIFACTS' not in self.env:
             self.env['COPY_3RD_PARTY_ARTIFACTS'] = []
 
         for source_file in source_files:
 
+            symlink_name = None
+            if symlink_patterns:
+                base_source_name = os.path.basename(source_file)
+                for symlink_pattern in symlink_patterns:
+                    search_pattern, replace_str = symlink_pattern.split(':')
+                    if fnmatch.fnmatch(base_source_name, search_pattern):
+                        symlink_name = replace_str % (base_source_name)
+                        break
+
+
             source_file_file_norm_path = os.path.normpath(source_file)
 
             source_node = self.bld.root.make_node(source_file_file_norm_path)
-            self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
+            if symlink_name:
+                self.env['COPY_3RD_PARTY_ARTIFACTS'] += [(source_node, symlink_name)]
+            else:
+                self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
 
     uselib_keys = []
     uselib_keys += getattr(self, 'uselib', [])
@@ -996,11 +1037,16 @@ def copy_3rd_party_binaries(self):
                                     fullpaths.append(sharedlib_fullpath)
                                     process_source_filename.add(source_file)
                 return fullpaths
+            def _get_symlink_patterns():
+                symlink_varname = "SYMLINK_PATTERNS_{}".format(uselib_key)
+                return self.env[symlink_varname]
+
 
             # Process the shared lib files if any
             shared_fullpaths = _extract_full_pathnames('SHAREDLIBPATH', 'SHAREDLIB')
+            _get_symlink_patterns = _get_symlink_patterns()
             if len(shared_fullpaths) > 0:
-                _process_filelist(shared_fullpaths)
+                _process_filelist(shared_fullpaths, _get_symlink_patterns)
 
             # Process the pdbs if any
 
@@ -1265,7 +1311,7 @@ def copy_module_dependent_files_keep_folder_tree(self):
 
 
 UNC_LONGPATH_THRESHOLD = 255
-UNC_LONGPATH_PREFIX = u'\\\\?\\'
+UNC_LONGPATH_PREFIX = '\\\\?\\'
 
 
 def preprocess_pathlen_for_windows(path):

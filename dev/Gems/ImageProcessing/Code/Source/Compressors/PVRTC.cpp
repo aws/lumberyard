@@ -12,8 +12,9 @@
 
 #include <ImageProcessing_precompiled.h>
 #include <ImageProcessing_Traits_Platform.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/PixelFormatInfo.h>
+#include <Processing/ImageFlags.h>
 #include <Compressors/PVRTC.h>
 
 #if AZ_TRAIT_IMAGEPROCESSING_PVRTEXLIB_USE_WINDLL_IMPORT
@@ -233,7 +234,9 @@ namespace ImageProcessing
 
             //compressing
             bool isSuccess = false;
+#if AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
             try
+#endif // AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
             {
                 isSuccess = pvrtexture::Transcode(
                     compressTexture,
@@ -242,11 +245,13 @@ namespace ImageProcessing
                     cspace,
                     internalQuality);
             }
+#if AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
             catch (...)
             {
                 AZ_Error("Image Processing", false, "Unknown exception in PVRTexLib");
                 return nullptr;
             }
+#endif // AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
 
             if (!isSuccess)
             {
@@ -330,20 +335,25 @@ namespace ImageProcessing
 
             // Decompress
             bool bOk = false;
+#if AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
             try
             {
+#endif // AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
                 bOk = pvrtexture::Transcode(
                     cTexture,
                     pvrtexture::PVRStandard8PixelType,
                     ePVRTVarTypeUnsignedByteNorm,
                     colorSpace,
                     pvrtexture::ePVRTCHigh);
+
+#if AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
             }
             catch (...)
             {
                 AZ_Error("Image Processing", false, "Unknown exception in PVRTexLib when decompressing");
                 return nullptr;
             }
+#endif // AZ_TRAIT_IMAGEPROCESSING_SUPPORT_TRY_CATCH
 
             if (!bOk)
             {

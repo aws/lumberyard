@@ -26,49 +26,23 @@ class QEvent;
 namespace GraphCanvas
 {
     class GraphCanvasLabel;
-    class ComboBoxNodePropertyDisplay;
-
-    class ComboBoxGraphicsEventFilter
-        : public QGraphicsItem
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(ComboBoxGraphicsEventFilter, AZ::SystemAllocator, 0);
-        ComboBoxGraphicsEventFilter(ComboBoxNodePropertyDisplay* propertyDisplay);
-
-        bool sceneEventFilter(QGraphicsItem* watched, QEvent* event);
-
-        // QGraphicsItem overrides
-        QRectF boundingRect() const override
-        {
-            return QRectF();
-        }
-
-        void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) override
-        {
-        }
-
-    private:
-        ComboBoxNodePropertyDisplay* m_owner;
-    };
+    class ComboBoxGraphicsEventFilter;
 
     class ComboBoxNodePropertyDisplay
         : public NodePropertyDisplay
         , public GeometryNotificationBus::Handler
         , public ViewNotificationBus::Handler
     {
-        enum class DragState
-        {
-            Idle,
-            Valid,
-            Invalid
-        };
-
         friend class ComboBoxGraphicsEventFilter;
 
     public:
         AZ_CLASS_ALLOCATOR(ComboBoxNodePropertyDisplay, AZ::SystemAllocator, 0);
         ComboBoxNodePropertyDisplay(ComboBoxDataInterface* dataInterface);
         virtual ~ComboBoxNodePropertyDisplay();
+
+        // Will color the outline of the label with the data type of the contained
+        // type when enabled.
+        void SetDataTypeOutlineEnabled(bool enableOutline);
 
         // NodePropertyDisplay
         void RefreshStyle() override;
@@ -79,10 +53,6 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
         ////
 
-        void dragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
-        void dragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
-        void dropEvent(QGraphicsSceneDragDropEvent* dragDropEvent);
-
         // GeometryNotificationBus
         void OnPositionChanged(const AZ::EntityId& targetEntity, const AZ::Vector2& position) override;
         ////
@@ -91,15 +61,19 @@ namespace GraphCanvas
         void OnZoomChanged(qreal zoomLevel) override;
         ////
 
+        // DataSlotNotifications
+        void OnDisplayTypeChanged(const AZ::Uuid& dataTypes, const AZStd::vector<AZ::Uuid>& containerTypes) override;
+        void OnDragDropStateStateChanged(const DragDropState& dragState) override;
+        ////
+
     protected:
 
-        void ShowContextMenu(const QPoint&);
-
-        void OnIdSet() override;
+        void OnSlotIdSet() override;
 
     private:
 
-        void ResetDragState();
+        void UpdateOutlineColor();
+        void ShowContextMenu(const QPoint&);
 
         void EditStart();
         void EditFinished();
@@ -110,6 +84,7 @@ namespace GraphCanvas
         void OnMenuAboutToDisplay();
         void UpdateMenuDisplay(const ViewId& viewId, bool forceUpdate = false);
 
+        bool m_valueDirty;
         bool m_menuDisplayDirty;
 
         ComboBoxDataInterface*          m_dataInterface;
@@ -120,6 +95,6 @@ namespace GraphCanvas
         QGraphicsProxyWidget*           m_proxyWidget;
         GraphCanvasLabel*               m_displayLabel;
 
-        DragState                       m_dragState;
+        bool                            m_dataTypeOutlineEnabled;
     };
 }

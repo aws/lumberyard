@@ -22,6 +22,7 @@
 #include "HeadingWidget.h"
 #include "IAWSResourceManager.h"
 #include "ResourceManagementView.h"
+#include "QtViewPaneManager.h"
 
 #include <DetailWidget/LoadingErrorWidget.moc>
 
@@ -105,6 +106,6 @@ void LoadingErrorWidget::OnRetryClicked()
 
 void LoadingErrorWidget::OnCancelClicked()
 {
-    GetIEditor()->ExecuteCommand("general.close_pane 'Cloud Canvas Resource Manager'");
+    QtViewPaneManager::instance()->ClosePane("Cloud Canvas Resource Manager");
 }
 

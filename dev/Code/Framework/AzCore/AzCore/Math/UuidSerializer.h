@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/Json/BaseJsonSerializer.h>
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/string/regex.h>
 
 namespace AZ
@@ -25,6 +26,14 @@ namespace AZ
         AZ_RTTI(JsonUuidSerializer, "{52D40D04-8B0D-44EA-A15D-92035C5F05E6}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
 
+        struct MessageResult
+        {
+            AZStd::string_view m_message;
+            JsonSerializationResult::ResultCode m_result;
+
+            MessageResult(AZStd::string_view message, JsonSerializationResult::ResultCode result);
+        };
+
         JsonUuidSerializer();
 
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
@@ -32,6 +41,14 @@ namespace AZ
         JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
             const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
             StackedString& path, const JsonSerializerSettings& settings) override;
+
+        //! Does the same as load, but doesn't report through the provided callback in the settings. Instead the final
+        //! ResultCode and message are returned and it's up to the caller to report if need needed.
+        MessageResult UnreportedLoad(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue);
+        //! Does the same as store, but doesn't report through the provided callback in the settings. Instead the final
+        //! ResultCode and message are returned and it's up to the caller to report if need needed.
+        MessageResult UnreportedStore(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
+            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, const JsonSerializerSettings& settings);
 
     private:
         AZStd::regex m_uuidFormat;

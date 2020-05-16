@@ -72,6 +72,7 @@ namespace AzToolsFramework
         , public AZ::Component
         , FrameworkMessages::Handler
         , LegacyFramework::CoreMessageBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
         Q_OBJECT
     public:
@@ -82,6 +83,8 @@ namespace AzToolsFramework
 
         Framework();
         virtual ~Framework(void);
+
+        void OnSystemTick();
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component

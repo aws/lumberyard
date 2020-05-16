@@ -427,7 +427,9 @@ void CModelViewport::ReleaseObject()
     if (GetCharacterBase())
     {
         m_pCharacterBase = 0;
+#if defined(EDITOR_PCDEBUGCODE)
         m_pAnimationSystem->DeleteDebugInstances();
+#endif // defined(EDITOR_PCDEBUGCODE)
     }
 
     if (m_weaponModel)

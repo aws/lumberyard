@@ -25,7 +25,8 @@
 namespace MCore
 {
     /**
-     * The quaternion class.
+     * Depracated. Please use AZ::Quaternion instead.
+     * The quaternion class in MCore. 
      * Quaternions are mostly used to represent rotations in 3D applications.
      * The advantages of quaternions over matrices are that they take up less space and that interpolation between
      * two quaternions is easier to perform. Instead of a 3x3 rotation matrix, which is 9 floats or doubles, a quaternion

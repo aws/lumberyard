@@ -21,6 +21,7 @@
 
 namespace EMotionFX
 {
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
     class AnimGraphStateMachine_MultiplePassesSingleFrameFixture : public AnimGraphFixture
         , public ::testing::WithParamInterface</*numStates*/int>
     {
@@ -87,4 +88,5 @@ namespace EMotionFX
          AnimGraphStateMachine_MultiplePassesSingleFrameFixture,
          ::testing::ValuesIn(animGraphStateMachinePassesTestData)
      );
+#endif
 } // EMotionFX

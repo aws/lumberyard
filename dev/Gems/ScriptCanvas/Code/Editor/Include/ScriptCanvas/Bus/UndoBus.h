@@ -69,7 +69,7 @@ namespace ScriptCanvasEditor
         /*!
         * Retrieves the undo cache for specific Script Canvas entity
         */
-        virtual UndoCache* GetSceneUndoCache(AZ::EntityId sceneId) = 0;
+        virtual UndoCache* GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasId) = 0;
 
         /*!
         * Start batch undo so we can add multiple undo to one undo step.
@@ -94,7 +94,7 @@ namespace ScriptCanvasEditor
         virtual void Redo() = 0;
         virtual void Reset() = 0;
 
-        virtual UndoData CreateUndoData(AZ::EntityId entityId) = 0;
+        virtual UndoData CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasId) = 0;
     };
     using UndoRequestBus = AZ::EBus<UndoRequests>;
 

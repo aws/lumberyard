@@ -15,48 +15,21 @@
 
 namespace EMotionFX
 {
-    // Implementation of the GetDescription methods. They are put here so they don't generate multiple
-    // strings in the binaries across compilation units
-#define EMOTION_FX_ALLOCATOR_IMPL(ALLOCATOR_SEQUENCE) \
-    const char* EMOTIONFX_ALLOCATOR_SEQ_GET_NAME(ALLOCATOR_SEQUENCE)::GetDescription() const         { return EMOTIONFX_ALLOCATOR_SEQ_GET_DESCRIPTION(ALLOCATOR_SEQUENCE); }
-    
-    // Here we create the "GetDescription" method implementation for all the items in the header's table (Step 3)
-    AZ_SEQ_FOR_EACH(EMOTION_FX_ALLOCATOR_IMPL, EMOTIONFX_ALLOCATORS)
-
-#undef EMOTION_FX_ALLOCATOR_IMPL
-
-    template <typename TAllocator, typename TSubAllocator>
-    class AllocatorCreator
-    {
-    public:
-        static void Create()
-        {
-            typename TAllocator::Descriptor descriptor;
-            descriptor.m_custom = &AZ::AllocatorInstance<TSubAllocator>::Get();
-            AZ::AllocatorInstance<TAllocator>::Create(descriptor);
-        }
-    };
-
-    template <typename TAllocator>
-    class AllocatorCreator<TAllocator, NoSubAllocator>
-    {
-    public:
-        static void Create()
-        {
-            AZ::AllocatorInstance<TAllocator>::Create();
-        }
-    };
-
     // Create all allocators
     void Allocators::Create()
     {
 #define EMOTION_FX_ALLOCATOR_CREATE(ALLOCATOR_SEQUENCE) \
-    AllocatorCreator<EMOTIONFX_ALLOCATOR_SEQ_GET_NAME(ALLOCATOR_SEQUENCE), EMOTIONFX_ALLOCATOR_SEQ_GET_SUBALLOCATOR(ALLOCATOR_SEQUENCE)>::Create();
+    AZ::AllocatorInstance<EMOTIONFX_ALLOCATOR_SEQ_GET_NAME(ALLOCATOR_SEQUENCE)>::Create();
 
         // Here we call the "Create" to create the allocator for all the items in the header's table (Step 4)
         AZ_SEQ_FOR_EACH(EMOTION_FX_ALLOCATOR_CREATE, EMOTIONFX_ALLOCATORS)
 
 #undef EMOTION_FX_ALLOCATOR_CREATE
+
+        // Create the pool allocators
+        AZ::AllocatorInstance<AnimGraphConditionAllocator>::Create();
+        AZ::AllocatorInstance<AnimGraphObjectDataAllocator>::Create();
+        AZ::AllocatorInstance<AnimGraphObjectUniqueDataAllocator>::Create();
     }
 
     // Destroy all allocators
@@ -69,13 +42,17 @@ namespace EMotionFX
         AZ_SEQ_FOR_EACH(EMOTION_FX_ALLOCATOR_DESTROY, EMOTIONFX_ALLOCATORS)
 
 #undef EMOTION_FX_ALLOCATOR_DESTROY
+
+        // Destroy the pool allocators
+        AZ::AllocatorInstance<AnimGraphConditionAllocator>::Destroy();
+        AZ::AllocatorInstance<AnimGraphObjectDataAllocator>::Destroy();
+        AZ::AllocatorInstance<AnimGraphObjectUniqueDataAllocator>::Destroy();
     }
 
     void Allocators::ShrinkPools()
     {
-        AZ::AllocatorInstance<AnimGraphObjectDataAllocator>::Get().GarbageCollect();
-        AZ::AllocatorInstance<AnimGraphObjectUniqueDataAllocator>::Get().GarbageCollect();
-        AZ::AllocatorInstance<AnimGraphConditionAllocator>::Get().GarbageCollect();
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GarbageCollect();
+        AZ::AllocatorInstance<AZ::PoolAllocator>::Get().GarbageCollect();
     }
 
 } // EMotionFX namespace

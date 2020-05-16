@@ -33,6 +33,7 @@ class CXmlArchive;
 
 #define OBJTYPE_ANY_DEFINED (OBJTYPE_GROUP | OBJTYPE_TAGPOINT | OBJTYPE_AIPOINT | OBJTYPE_ENTITY | OBJTYPE_SHAPE | OBJTYPE_VOLUME | OBJTYPE_BRUSH | OBJTYPE_PREFAB | OBJTYPE_SOLID)
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //! Virtual base class description of CBaseObject.
 //! Override this class to create specific Class descriptions for every base object class.
 //! Type name is specified like this:
@@ -40,6 +41,7 @@ class CXmlArchive;
 class SANDBOX_API CObjectClassDesc
     : public IClassDesc
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CObjectClassDesc()
     {

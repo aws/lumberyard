@@ -10,7 +10,7 @@ import functools
 
 from llvmlite import ir
 
-from . import utils
+from . import utils, config, types
 
 
 bool_t = ir.IntType(1)
@@ -51,6 +51,7 @@ def make_bytearray(buf):
 
 
 _struct_proxy_cache = {}
+
 
 def create_struct_proxy(fe_type, kind='value'):
     """
@@ -100,7 +101,8 @@ class _StructProxy(object):
         self._context = context
         self._datamodel = self._context.data_model_manager[self._fe_type]
         if not isinstance(self._datamodel, datamodel.StructModel):
-            raise TypeError("Not a structure model: {0}".format(self._datamodel))
+            raise TypeError(
+                "Not a structure model: {0}".format(self._datamodel))
         self._builder = builder
 
         self._be_type = self._get_be_type(self._datamodel)
@@ -177,7 +179,7 @@ class _StructProxy(object):
         value = self._cast_member_from_value(index, value)
         if value.type != ptr.type.pointee:
             if (is_pointer(value.type) and is_pointer(ptr.type.pointee)
-                and value.type.pointee == ptr.type.pointee.pointee):
+                    and value.type.pointee == ptr.type.pointee.pointee):
                 # Differ by address-space only
                 # Auto coerce it
                 value = self._context.addrspacecast(self._builder,
@@ -262,7 +264,7 @@ class Structure(object):
         self._context = context
         self._builder = builder
         if ref is None:
-            self._value = alloca_once(builder, self._type)
+            self._value = alloca_once(builder, self._type, zfill=True)
             if value is not None:
                 assert not is_pointer(value.type)
                 assert value.type == self._type, (value.type, self._type)
@@ -363,15 +365,20 @@ def alloca_once(builder, ty, size=None, name='', zfill=False):
     pointed by ``builder`` withe llvm type ``ty``.  The optional ``size`` arg
     set the number of element to allocate.  The default is 1.  The optional
     ``name`` arg set the symbol name inside the llvm IR for debugging.
-    If ``zfill`` is set, also filling zeros to the memory.
+    If ``zfill`` is set, fill the memory with zeros at the current
+    use-site location.  Note that the memory is always zero-filled after the
+    ``alloca`` at init-site (the entry block).
     """
     if isinstance(size, utils.INT_TYPES):
         size = ir.Constant(intp_t, size)
     with builder.goto_entry_block():
         ptr = builder.alloca(ty, size=size, name=name)
-        if zfill:
-            builder.store(ty(None), ptr)
-        return ptr
+        # Always zero-fill at init-site.  This is safe.
+        builder.store(ty(None), ptr)
+    # Also zero-fill at the use-site
+    if zfill:
+        builder.store(ty(None), ptr)
+    return ptr
 
 
 def alloca_once_value(builder, value, name=''):
@@ -440,6 +447,7 @@ def increment_index(builder, val):
 
 
 Loop = collections.namedtuple('Loop', ('index', 'do_break'))
+
 
 @contextmanager
 def for_range(builder, count, start=None, intp=None):
@@ -626,6 +634,17 @@ def pack_array(builder, values, ty=None):
     return ary
 
 
+def pack_struct(builder, values):
+    """
+    Pack a sequence of values into a LLVM struct.
+    """
+    structty = ir.LiteralStructType([v.type for v in values])
+    st = structty(ir.Undefined)
+    for i, v in enumerate(values):
+        st = builder.insert_value(st, v, i)
+    return st
+
+
 def unpack_tuple(builder, tup, count=None):
     """
     Unpack an array or structure of values, return a Python tuple.
@@ -638,16 +657,53 @@ def unpack_tuple(builder, tup, count=None):
     return vals
 
 
-def get_item_pointer(builder, aryty, ary, inds, wraparound=False):
+def get_item_pointer(context, builder, aryty, ary, inds, wraparound=False,
+                     boundscheck=False):
+    # Set boundscheck=True for any pointer access that should be
+    # boundschecked. do_boundscheck() will handle enabling or disabling the
+    # actual boundschecking based on the user config.
     shapes = unpack_tuple(builder, ary.shape, count=aryty.ndim)
     strides = unpack_tuple(builder, ary.strides, count=aryty.ndim)
-    return get_item_pointer2(builder, data=ary.data, shape=shapes,
+    return get_item_pointer2(context, builder, data=ary.data, shape=shapes,
                              strides=strides, layout=aryty.layout, inds=inds,
-                             wraparound=wraparound)
+                             wraparound=wraparound, boundscheck=boundscheck)
 
 
-def get_item_pointer2(builder, data, shape, strides, layout, inds,
-                      wraparound=False):
+def do_boundscheck(context, builder, ind, dimlen, axis=None):
+    def _dbg():
+        # Remove this when we figure out how to include this information
+        # in the error message.
+        if axis is not None:
+            if isinstance(axis, int):
+                printf(builder, "debug: IndexError: index %d is out of bounds "
+                       "for axis {} with size %d\n".format(axis), ind, dimlen)
+            else:
+                printf(builder, "debug: IndexError: index %d is out of bounds "
+                       "for axis %d with size %d\n".format(axis), ind, axis,
+                       dimlen)
+        else:
+            printf(builder,
+                   "debug: IndexError: index %d is out of bounds for size %d\n",
+                   ind, dimlen)
+
+    msg = "index is out of bounds"
+    out_of_bounds_upper = builder.icmp_signed('>=', ind, dimlen)
+    with if_unlikely(builder, out_of_bounds_upper):
+        if config.FULL_TRACEBACKS:
+            _dbg()
+        context.call_conv.return_user_exc(builder, IndexError, (msg,))
+    out_of_bounds_lower = builder.icmp_signed('<', ind, ind.type(0))
+    with if_unlikely(builder, out_of_bounds_lower):
+        if config.FULL_TRACEBACKS:
+            _dbg()
+        context.call_conv.return_user_exc(builder, IndexError, (msg,))
+
+
+def get_item_pointer2(context, builder, data, shape, strides, layout, inds,
+                      wraparound=False, boundscheck=False):
+    # Set boundscheck=True for any pointer access that should be
+    # boundschecked. do_boundscheck() will handle enabling or disabling the
+    # actual boundschecking based on the user config.
     if wraparound:
         # Wraparound
         indices = []
@@ -658,6 +714,10 @@ def get_item_pointer2(builder, data, shape, strides, layout, inds,
             indices.append(selected)
     else:
         indices = inds
+    if boundscheck:
+        for axis, (ind, dimlen) in enumerate(zip(indices, shape)):
+            do_boundscheck(context, builder, ind, dimlen, axis)
+
     if not indices:
         # Indexing with empty tuple
         return builder.gep(data, [int32_t(0)])
@@ -718,7 +778,7 @@ def is_scalar_zero(builder, value):
 
 def is_not_scalar_zero(builder, value):
     """
-    Return a predicate representin whether a *value* is not equal to zero.
+    Return a predicate representing whether a *value* is not equal to zero.
     (not exactly "not is_scalar_zero" because of nans)
     """
     return _scalar_pred_against_zero(
@@ -732,6 +792,7 @@ def is_scalar_zero_or_nan(builder, value):
     """
     return _scalar_pred_against_zero(
         builder, value, functools.partial(builder.fcmp_unordered, '=='), '==')
+
 
 is_true = is_not_scalar_zero
 is_false = is_scalar_zero
@@ -755,6 +816,7 @@ def guard_null(context, builder, value, exc_tuple):
         exc_args = exc_tuple[1:] or None
         context.call_conv.return_user_exc(builder, exc, exc_args)
 
+
 def guard_memory_error(context, builder, pointer, msg=None):
     """
     Guard against *pointer* being NULL (and raise a MemoryError).
@@ -763,6 +825,7 @@ def guard_memory_error(context, builder, pointer, msg=None):
     exc_args = (msg,) if msg else ()
     with builder.if_then(is_null(builder, pointer), likely=False):
         context.call_conv.return_user_exc(builder, MemoryError, exc_args)
+
 
 @contextmanager
 def if_zero(builder, value, likely=False):
@@ -838,13 +901,11 @@ def memset(builder, ptr, size, value):
     """
     Fill *size* bytes starting from *ptr* with *value*.
     """
-    sizety = size.type
-    memset = "llvm.memset.p0i8.i%d" % (sizety.width)
     fn = builder.module.declare_intrinsic('llvm.memset', (voidptr_t, size.type))
     ptr = builder.bitcast(ptr, voidptr_t)
     if isinstance(value, int):
         value = int8_t(value)
-    builder.call(fn, [ptr, value, size, int32_t(0), bool_t(0)])
+    builder.call(fn, [ptr, value, size, bool_t(0)])
 
 
 def global_constant(builder_or_module, name, value, linkage='internal'):
@@ -934,12 +995,10 @@ def _raw_memcpy(builder, func_name, dst, src, count, itemsize, align):
 
     memcpy = builder.module.declare_intrinsic(func_name,
                                               [voidptr_t, voidptr_t, size_t])
-    align = ir.Constant(ir.IntType(32), align)
     is_volatile = false_bit
     builder.call(memcpy, [builder.bitcast(dst, voidptr_t),
                           builder.bitcast(src, voidptr_t),
                           builder.mul(count, itemsize),
-                          align,
                           is_volatile])
 
 
@@ -950,12 +1009,14 @@ def raw_memcpy(builder, dst, src, count, itemsize, align=1):
     """
     return _raw_memcpy(builder, 'llvm.memcpy', dst, src, count, itemsize, align)
 
+
 def raw_memmove(builder, dst, src, count, itemsize, align=1):
     """
     Emit a raw memmove() call for `count` items of size `itemsize`
     from `src` to `dest`.
     """
-    return _raw_memcpy(builder, 'llvm.memmove', dst, src, count, itemsize, align)
+    return _raw_memcpy(builder, 'llvm.memmove', dst, src, count,
+                       itemsize, align)
 
 
 def muladd_with_overflow(builder, a, b, c):
@@ -998,11 +1059,50 @@ def printf(builder, format, *args):
     return builder.call(fn, [ptr_fmt] + list(args))
 
 
+def snprintf(builder, buffer, bufsz, format, *args):
+    """Calls libc snprintf(buffer, bufsz, format, ...args)
+    """
+    assert isinstance(format, str)
+    mod = builder.module
+    # Make global constant for format string
+    cstring = voidptr_t
+    fmt_bytes = make_bytearray((format + '\00').encode('ascii'))
+    global_fmt = global_constant(mod, "snprintf_format", fmt_bytes)
+    fnty = ir.FunctionType(
+        int32_t, [cstring, intp_t, cstring], var_arg=True,
+    )
+    # Actual symbol name of snprintf is different on win32.
+    symbol = 'snprintf'
+    if config.IS_WIN32:
+        symbol = '_' + symbol
+    # Insert snprintf()
+    try:
+        fn = mod.get_global(symbol)
+    except KeyError:
+        fn = ir.Function(mod, fnty, name=symbol)
+    # Call
+    ptr_fmt = builder.bitcast(global_fmt, cstring)
+    return builder.call(fn, [buffer, bufsz, ptr_fmt] + list(args))
+
+
+def snprintf_stackbuffer(builder, bufsz, format, *args):
+    """Similar to `snprintf()` but the buffer is stack allocated to size *bufsz*.
+
+    Returns the buffer pointer as i8*.
+    """
+    assert isinstance(bufsz, int)
+    spacety = ir.ArrayType(ir.IntType(8), bufsz)
+    space = alloca_once(builder, spacety, zfill=True)
+    buffer = builder.bitcast(space, voidptr_t)
+    snprintf(builder, buffer, intp_t(bufsz), format, *args)
+    return buffer
+
+
 if utils.PY3:
     def normalize_ir_text(text):
         """
-        Normalize the given string to latin1 compatible encoding that is suitable
-        for use in LLVM IR.
+        Normalize the given string to latin1 compatible encoding that is
+        suitable for use in LLVM IR.
         """
         # Just re-encoding to latin1 is enough
         return text.encode('utf8').decode('latin1')
@@ -1012,3 +1112,35 @@ else:
         No-op for python2. Assume there won't be unicode names.
         """
         return text
+
+
+def hexdump(builder, ptr, nbytes):
+    """Debug print the memory region in *ptr* to *ptr + nbytes*
+    as hex.
+    """
+    bytes_per_line = 16
+    nbytes = builder.zext(nbytes, intp_t)
+    printf(builder, "hexdump p=%p n=%zu",
+           ptr, nbytes)
+    byte_t = ir.IntType(8)
+    ptr = builder.bitcast(ptr, byte_t.as_pointer())
+    # Loop to print the bytes in *ptr* as hex
+    with for_range(builder, nbytes) as idx:
+        div_by = builder.urem(idx.index, intp_t(bytes_per_line))
+        do_new_line = builder.icmp_unsigned("==", div_by, intp_t(0))
+        with builder.if_then(do_new_line):
+            printf(builder, "\n")
+
+        offset = builder.gep(ptr, [idx.index])
+        val = builder.load(offset)
+        printf(builder, " %02x", val)
+    printf(builder, "\n")
+
+
+def is_nonelike(ty):
+    """ returns if 'ty' is none """
+    return (
+        ty is None or
+        isinstance(ty, types.NoneType) or
+        isinstance(ty, types.Omitted)
+    )

@@ -651,7 +651,7 @@ namespace UnitTest
             template <class T>
             ConstructsWithTupleLeaf(T)
             {
-                AZ_STATIC_ASSERT((!AZStd::is_same<T, T>::value), "Constructor instantiated for type other than int");
+                static_assert((!AZStd::is_same<T, T>::value), "Constructor instantiated for type other than int");
             }
         };
 

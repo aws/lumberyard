@@ -131,6 +131,9 @@ namespace AzToolsFramework
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         //////////////////////////////////////////////////////////////////////////
 
+        /// Determine the number of total references to this asset, providing an approximate
+        /// measurement of the impact of pushing changes to this slice.
+        static size_t CalculateReferenceCount(const AZ::Data::AssetId& assetId, const AZ::SliceComponent* levelSlice);
     Q_SIGNALS:
 
         void OnFinished();  ///< The push operation finished successfully.
@@ -232,10 +235,6 @@ namespace AzToolsFramework
         void PopulateFieldTreeAddedEntities(const EntityIdSet& entities, EntityIdSet& unpushableNewChildEntityIds, EntityIdSet& pushableNewChildEntityIds);
 
         void PopulateFieldTreeRemovedEntities();
-
-        /// Determine the number of total references to this asset, providing an approximate
-        /// measurement of the impact of pushing changes to this slice.
-        size_t CalculateReferenceCount(const AZ::Data::AssetId& assetId) const;
 
         /// Event filter for key presses.
         bool eventFilter(QObject* target, QEvent *event);

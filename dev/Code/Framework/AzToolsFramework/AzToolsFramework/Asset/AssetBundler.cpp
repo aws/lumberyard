@@ -13,6 +13,7 @@
 #include <AzToolsFramework/Asset/AssetBundler.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/std/hash.h>
 #include <AzCore/std/string/wildcard.h>
 #include <AzCore/std/string/regex.h>
 #include <AzCore/std/containers/unordered_map.h>
@@ -20,12 +21,35 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+namespace
+{
+    //! These struct are used because we have a use case where we only need to hash and
+    //! override the equals to method for AssetFileInfo class based only on AssetId, which might not be true for other usages of AssetFileInfo class.
+    struct AssetFileInfoComparatorByAssetId
+    {
+        bool operator()(const AzToolsFramework::AssetFileInfo& left, const AzToolsFramework::AssetFileInfo& right) const
+        {
+            return left.m_assetId == right.m_assetId;
+        }
+    };
+
+    struct AssetFileInfoHasherByAssetId
+    {
+        size_t operator() (const AzToolsFramework::AssetFileInfo& assetFileInfo) const
+        {
+            size_t hashValue = 0;
+            AZStd::hash_combine(hashValue, assetFileInfo.m_assetId);
+            return hashValue;
+        }
+    };
+}
 namespace AzToolsFramework
 {
     const char AssetBundleSettingsFileExtension[] = "bundlesettings";
     const char BundleFileExtension[] = "pak";
     const char ComparisonRulesFileExtension[] = "rules";
-    const char* AssetFileInfoListComparison::ComparisonTypeNames[] = { "delta", "union", "intersection", "complement", "filepattern"};
+    const char* AssetFileInfoListComparison::ComparisonTypeNames[] = { "delta", "union", "intersection", "complement", "filepattern", "intersectioncount"};
+    const char* AssetFileInfoListComparison::FilePatternTypeNames[] = { "wildcard", "regex" };
     void AssetBundleSettings::Reflect(AZ::ReflectContext * context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -129,9 +153,14 @@ namespace AzToolsFramework
         return GetPlatformIdentifier(assetBundleSettings.m_assetFileInfoListPath);
     }
 
+    bool AssetFileInfoListComparison::IsOutputPath(const AZStd::string& filePath)
+    {
+        return !filePath.empty() && !IsTokenFile(filePath);
+    }
+
     bool AssetFileInfoListComparison::IsTokenFile(const AZStd::string& filePath)
     {
-        return filePath[0] == '$';
+        return !filePath.empty() && filePath[0] == '$';
     }
 
     void AssetFileInfoListComparison::Reflect(AZ::ReflectContext* context)
@@ -192,11 +221,11 @@ namespace AzToolsFramework
     {
         for (auto iter = m_assetFileInfoMap.begin(); iter != m_assetFileInfoMap.end(); iter++)
         {
-            if (!IsTokenFile(iter->first))
+            if (IsOutputPath(iter->first))
             {
                 if (!AZ::Utils::SaveObjectToFile(iter->first, AZ::DataStream::StreamType::ST_XML, &iter->second))
                 {
-                    return AZ::Failure(AZStd::string::format("Failed to serialize AssetFileInfoList file ( %s )to disk.\n", iter->first.c_str()));
+                    return AZ::Failure(AZStd::string::format("Failed to serialize AssetFileInfoList file ( %s ) to disk.\n", iter->first.c_str()));
                 }
             }
         }
@@ -209,7 +238,7 @@ namespace AzToolsFramework
 
         for (auto iter = m_assetFileInfoMap.begin(); iter != m_assetFileInfoMap.end(); iter++)
         {
-            if (!IsTokenFile(iter->first) && AZ::IO::FileIOBase::GetInstance()->Exists(iter->first.c_str()))
+            if (IsOutputPath(iter->first) && AZ::IO::FileIOBase::GetInstance()->Exists(iter->first.c_str()))
             {
                 existingPaths.emplace_back(iter->first);
             }
@@ -234,14 +263,14 @@ namespace AzToolsFramework
         return ComparisonRulesFileExtension;
     }
 
-    AZ::Outcome<AssetFileInfoList, AZStd::string>  AssetFileInfoListComparison::PopulateAssetFileInfo(const AZStd::string& assetFileInfoPath)
+    AZ::Outcome<AssetFileInfoList, AZStd::string>  AssetFileInfoListComparison::PopulateAssetFileInfo(const AZStd::string& assetFileInfoPath) const
     {
         AssetFileInfoList assetFileInfoList;
         if (assetFileInfoPath.empty())
         {
             return AZ::Failure(AZStd::string::format("File path for the first asset file info list is empty.\n"));
         }
-        if (!IsTokenFile(assetFileInfoPath))
+        if (IsOutputPath(assetFileInfoPath))
         {
             if (!AZ::IO::FileIOBase::GetInstance()->Exists(assetFileInfoPath.c_str()))
             {
@@ -277,74 +306,88 @@ namespace AzToolsFramework
     AZ::Outcome<AssetFileInfoList, AZStd::string> AssetFileInfoListComparison::Compare(const AZStd::vector<AZStd::string>& firstAssetFileInfoPathList, const AZStd::vector<AZStd::string>& secondAssetFileInfoPathList)
     {
         AssetFileInfoList lastAssetFileInfoList;
-        int secondAssetFileInfoIndex = 0;
-        for (int index = 0; index < firstAssetFileInfoPathList.size(); index++)
+        AZ::Outcome<AssetFileInfoList, AZStd::string> result = AZ::Failure(AZStd::string());
+
+        //IntersectionCount Operation cannot be combined with other compare operations
+        if (m_comparisonDataList[0].m_comparisonType == ComparisonType::IntersectionCount)
         {
-            AZ::Outcome<AssetFileInfoList, AZStd::string> firstResult = PopulateAssetFileInfo(firstAssetFileInfoPathList[index]);
-            if (!firstResult.IsSuccess())
-            {
-                return AZ::Failure(firstResult.GetError());
-            }
-            AssetFileInfoList firstAssetFileInfoList = firstResult.TakeValue();
-            AssetFileInfoList secondAssetFileInfoList;
-            if (m_comparisonDataList[index].m_comparisonType != ComparisonType::FilePattern)
-            {
-                if (secondAssetFileInfoPathList.empty())
-                {
-                    return AZ::Failure(AZStd::string::format("Second Asset Info List is empty. Cannot perform comparison operation of type (%d).\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
-                }
-
-                if (secondAssetFileInfoIndex >= secondAssetFileInfoPathList.size())
-                {
-                    return AZ::Failure(AZStd::string::format("Second Asset Info List does not contain any entries to perform the comparison operation of type (%d).\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
-                }
-
-                AZ::Outcome<AssetFileInfoList, AZStd::string> secondResult = PopulateAssetFileInfo(secondAssetFileInfoPathList[secondAssetFileInfoIndex]);
-                secondAssetFileInfoIndex++;
-                if (!secondResult.IsSuccess())
-                {
-                    return AZ::Failure(secondResult.GetError());
-                }
-
-                secondAssetFileInfoList = secondResult.TakeValue();
-            }
-
-            AZ::Outcome<AssetFileInfoList, AZStd::string> result = AZ::Failure(AZStd::string());
-            switch (m_comparisonDataList[index].m_comparisonType)
-            {
-            case ComparisonType::Delta:
-            {
-                result = Delta(firstAssetFileInfoList, secondAssetFileInfoList);
-                break;
-            }
-            case ComparisonType::Union:
-            {
-                result = Union(firstAssetFileInfoList, secondAssetFileInfoList);
-                break;
-            }
-            case ComparisonType::Intersection:
-            {
-                result = Intersection(firstAssetFileInfoList, secondAssetFileInfoList);
-                break;
-            }
-            case ComparisonType::Complement:
-            {
-                result = Complement(firstAssetFileInfoList, secondAssetFileInfoList);
-                break;
-            }
-            case ComparisonType::FilePattern:
-            {
-                result = FilePattern(firstAssetFileInfoList, index);
-                break;
-            }
-            default:
-                return AZ::Failure(AZStd::string::format("Invalid comparison type %d specified.\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
-            }
-
+            result = IntersectionCount(firstAssetFileInfoPathList);
             if (result.IsSuccess())
             {
                 lastAssetFileInfoList = result.GetValue();
-                m_assetFileInfoMap[m_comparisonDataList[index].m_destinationPath] = result.TakeValue();
+                m_assetFileInfoMap[m_comparisonDataList[0].m_destinationPath] = result.TakeValue();
+            }
+        }
+        else
+        {
+            int secondAssetFileInfoIndex = 0;
+            for (int index = 0; index < firstAssetFileInfoPathList.size(); index++)
+            {
+                AZ::Outcome<AssetFileInfoList, AZStd::string> firstResult = PopulateAssetFileInfo(firstAssetFileInfoPathList[index]);
+                if (!firstResult.IsSuccess())
+                {
+                    return AZ::Failure(firstResult.GetError());
+                }
+                AssetFileInfoList firstAssetFileInfoList = firstResult.TakeValue();
+                AssetFileInfoList secondAssetFileInfoList;
+                if (m_comparisonDataList[index].m_comparisonType != ComparisonType::FilePattern)
+                {
+                    if (secondAssetFileInfoPathList.empty())
+                    {
+                        return AZ::Failure(AZStd::string::format("Second Asset Info List is empty. Cannot perform comparison operation of type (%d).\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
+                    }
+
+                    if (secondAssetFileInfoIndex >= secondAssetFileInfoPathList.size())
+                    {
+                        return AZ::Failure(AZStd::string::format("Second Asset Info List does not contain any entries to perform the comparison operation of type (%d).\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
+                    }
+
+                    AZ::Outcome<AssetFileInfoList, AZStd::string> secondResult = PopulateAssetFileInfo(secondAssetFileInfoPathList[secondAssetFileInfoIndex]);
+                    secondAssetFileInfoIndex++;
+                    if (!secondResult.IsSuccess())
+                    {
+                        return AZ::Failure(secondResult.GetError());
+                    }
+
+                    secondAssetFileInfoList = secondResult.TakeValue();
+                }
+
+                switch (m_comparisonDataList[index].m_comparisonType)
+                {
+                case ComparisonType::Delta:
+                {
+                    result = Delta(firstAssetFileInfoList, secondAssetFileInfoList);
+                    break;
+                }
+                case ComparisonType::Union:
+                {
+                    result = Union(firstAssetFileInfoList, secondAssetFileInfoList);
+                    break;
+                }
+                case ComparisonType::Intersection:
+                {
+                    result = Intersection(firstAssetFileInfoList, secondAssetFileInfoList);
+                    break;
+                }
+                case ComparisonType::Complement:
+                {
+                    result = Complement(firstAssetFileInfoList, secondAssetFileInfoList);
+                    break;
+                }
+                case ComparisonType::FilePattern:
+                {
+                    result = FilePattern(firstAssetFileInfoList, index);
+                    break;
+                }
+                default:
+                    return AZ::Failure(AZStd::string::format("Invalid comparison type %d specified.\n", static_cast<int>(m_comparisonDataList[index].m_comparisonType)));
+                }
+
+                if (result.IsSuccess())
+                {
+                    lastAssetFileInfoList = result.GetValue();
+                    m_assetFileInfoMap[m_comparisonDataList[index].m_destinationPath] = result.TakeValue();
+                }
             }
         }
         
@@ -495,12 +538,105 @@ namespace AzToolsFramework
         return assetFileInfoListResult;
     }
 
-    void AssetFileInfoListComparison::AddComparisonStep(const ComparisonData& comparisonData)
+    AZ::Outcome<AssetFileInfoList, AZStd::string> AssetFileInfoListComparison::IntersectionCount(const AZStd::vector<AZStd::string>& assetFileInfoPathList) const
     {
-        m_comparisonDataList.emplace_back(comparisonData);
+        AZStd::unordered_map<AssetFileInfo, unsigned int, AssetFileInfoHasherByAssetId, AssetFileInfoComparatorByAssetId> assetCountMap;
+        for (const auto& absoluteAssetFileInfoPath : assetFileInfoPathList)
+        {
+            AZ::Outcome<AssetFileInfoList, AZStd::string> firstResult = PopulateAssetFileInfo(absoluteAssetFileInfoPath);
+            if (!firstResult.IsSuccess())
+            {
+                return AZ::Failure(firstResult.GetError());
+            }
+            AssetFileInfoList firstAssetFileInfoList = firstResult.TakeValue();
+
+            for (const AssetFileInfo& assetFileInfo : firstAssetFileInfoList.m_fileInfoList)
+            {
+                auto assetFound = assetCountMap.find(assetFileInfo);
+
+                if (assetFound == assetCountMap.end())
+                {
+                    assetCountMap.insert(AZStd::make_pair(assetFileInfo, 1));
+                }
+                else
+                {
+                    assetFound->second++;
+                }
+            }
+        }
+
+
+        // Loop over the map and create a assetFileInfo of assets that appeared at least the number of times specified by the user    
+        AssetFileInfoList outputAssetFileInfoList;
+        for (auto iter = assetCountMap.begin(); iter != assetCountMap.end(); iter++)
+        {
+            if (iter->second >= m_comparisonDataList[0].m_intersectionCount)
+            {
+                outputAssetFileInfoList.m_fileInfoList.emplace_back(iter->first);
+            }
+        }
+
+        return AZ::Success(outputAssetFileInfoList);
+    }
+    bool AssetFileInfoListComparison::AddComparisonStep(const ComparisonData& comparisonData)
+    {
+        return AddComparisonStep(comparisonData, GetNumComparisonSteps());
     }
 
-    AZStd::vector<AssetFileInfoListComparison::ComparisonData> AzToolsFramework::AssetFileInfoListComparison::GetComparisonList() const
+    bool AssetFileInfoListComparison::AddComparisonStep(const ComparisonData& comparisonData, const size_t& destinationIndex)
+    {
+        if (destinationIndex >= m_comparisonDataList.size())
+        {
+            m_comparisonDataList.emplace_back(comparisonData);
+        }
+        else
+        {
+            m_comparisonDataList.insert(&m_comparisonDataList.at(destinationIndex), comparisonData);
+        }
+        return true;
+    }
+
+    bool AssetFileInfoListComparison::RemoveComparisonStep(const size_t& index)
+    {
+        if (index >= m_comparisonDataList.size())
+        {
+            AZ_Error("AssetBundler", false, "Input index ( %i ) is invalid.", index);
+            return false;
+        }
+
+        m_comparisonDataList.erase(&m_comparisonDataList.at(index));
+        return true;
+    }
+
+    bool AssetFileInfoListComparison::MoveComparisonStep(const size_t& initialIndex, const size_t& destinationIndex)
+    {
+        size_t comparisonDataListSize = m_comparisonDataList.size();
+        // No need to check the destinationIndex, if it is out of bounds it will just be appended to the end
+        if (initialIndex >= comparisonDataListSize)
+        {
+            AZ_Error("AssetBundler", false, "Input index ( %i,%i ) is invalid.", initialIndex, destinationIndex);
+            return false;
+        }
+
+        auto comparisonData = m_comparisonDataList.at(initialIndex);
+        m_comparisonDataList.erase(&m_comparisonDataList.at(initialIndex));
+
+        // Since we have modified the list, the indecies after the initialIndex have all shifted
+        size_t modifiedDestinationIndex = destinationIndex;
+        if (destinationIndex > initialIndex)
+        {
+            --modifiedDestinationIndex;
+        }
+
+        return AddComparisonStep(comparisonData, modifiedDestinationIndex);
+    }
+
+    size_t AssetFileInfoListComparison::GetNumComparisonSteps() const
+    {
+        return m_comparisonDataList.size();
+    }
+
+    AZStd::vector<AssetFileInfoListComparison::ComparisonData> AssetFileInfoListComparison::GetComparisonList() const
     {
         return m_comparisonDataList;
     }
@@ -514,11 +650,12 @@ namespace AzToolsFramework
         m_comparisonDataList[idx].m_destinationPath = path;
     }
 
-    AssetFileInfoListComparison::ComparisonData::ComparisonData(const ComparisonType& type, const AZStd::string& destinationPath, const AZStd::string& filePattern, FilePatternType filePatternType)
+    AssetFileInfoListComparison::ComparisonData::ComparisonData(const ComparisonType& type, const AZStd::string& destinationPath, const AZStd::string& filePattern, FilePatternType filePatternType, unsigned int intersectionCount)
         : m_comparisonType(type)
         , m_destinationPath(destinationPath)
         , m_filePattern(filePattern)
         , m_filePatternType(filePatternType)
+        , m_intersectionCount(intersectionCount)
     {
     }
 
@@ -527,11 +664,12 @@ namespace AzToolsFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ComparisonData>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("comparisonType", &ComparisonData::m_comparisonType)
                 ->Field("filePattern", &ComparisonData::m_filePattern)
                 ->Field("filePatternType", &ComparisonData::m_filePatternType)
-                ->Field("destinationPath", &ComparisonData::m_destinationPath);
+                ->Field("destinationPath", &ComparisonData::m_destinationPath)
+                ->Field("intersectionCount", &ComparisonData::m_intersectionCount);
         }
     }
 
@@ -543,7 +681,7 @@ namespace AzToolsFramework
         AZStd::string fileName;
         AzFramework::StringFunc::Path::GetFileName(filePath.c_str(), fileName);
 
-        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatforms(AzFramework::PlatformFlags::AllPlatforms))
+        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatformsInterpreted(AzFramework::PlatformFlags::AllNamedPlatforms))
         {
             AZStd::string appendedPlatform = AZStd::string::format("_%s", platformName.c_str());
             if (AzFramework::StringFunc::EndsWith(fileName, appendedPlatform))

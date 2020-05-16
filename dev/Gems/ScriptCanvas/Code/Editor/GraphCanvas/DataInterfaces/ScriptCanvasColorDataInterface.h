@@ -53,16 +53,16 @@ namespace ScriptCanvasEditor
                         switch (index)
                         {
                         case 0:
-                            resultValue = static_cast<int>(static_cast<float>(retVal->GetR()) * GetMaximum(index));
+                            resultValue = aznumeric_cast<float>(static_cast<int>(static_cast<float>(retVal->GetR()) * GetMaximum(index)));
                             break;
                         case 1:
-                            resultValue = static_cast<int>(static_cast<float>(retVal->GetG()) * GetMaximum(index));
+                            resultValue = aznumeric_cast<float>(static_cast<int>(static_cast<float>(retVal->GetG()) * GetMaximum(index)));
                             break;
                         case 2:
-                            resultValue = static_cast<int>(static_cast<float>(retVal->GetB()) * GetMaximum(index));
+                            resultValue = aznumeric_cast<float>(static_cast<int>(static_cast<float>(retVal->GetB()) * GetMaximum(index)));
                             break;
                         case 3:
-                            resultValue = static_cast<int>(static_cast<float>(retVal->GetA()) * GetMaximum(index));
+                            resultValue = aznumeric_cast<float>(static_cast<int>(static_cast<float>(retVal->GetA()) * GetMaximum(index)));
                             break;
                         default:
                             break;
@@ -80,29 +80,32 @@ namespace ScriptCanvasEditor
         {
             if (index < GetElementCount())
             {
-                ScriptCanvas::Datum* object = GetSlotObject();
+                ScriptCanvas::ModifiableDatumView datumView;
+                ModifySlotObject(datumView);
 
-                if (object)
-                {
-                    AZ::Color* currentType = const_cast<AZ::Color*>(object->GetAs<AZ::Color>());
+                if (datumView.IsValid())
+                {                    
+                    AZ::Color currentColor = (*datumView.GetAs<AZ::Color>());
                     
                     switch (index)
                     {
                     case 0:
-                        currentType->SetR(aznumeric_cast<float>(value / GetMaximum(index)));
+                        currentColor.SetR(aznumeric_cast<float>(value / GetMaximum(index)));
                         break;
                     case 1:
-                        currentType->SetG(aznumeric_cast<float>(value / GetMaximum(index)));
+                        currentColor.SetG(aznumeric_cast<float>(value / GetMaximum(index)));
                         break;
                     case 2:
-                        currentType->SetB(aznumeric_cast<float>(value / GetMaximum(index)));
+                        currentColor.SetB(aznumeric_cast<float>(value / GetMaximum(index)));
                         break;
                     case 3:
-                        currentType->SetA(aznumeric_cast<float>(value / GetMaximum(index)));
+                        currentColor.SetA(aznumeric_cast<float>(value / GetMaximum(index)));
                         break;
                     default:
                         break;
                     }
+
+                    datumView.SetAs(currentColor);
                     
                     PostUndoPoint();
                     PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);

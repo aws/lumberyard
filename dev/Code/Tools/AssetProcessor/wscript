@@ -48,9 +48,10 @@ def build(bld):
         target           = 'AssetProcessor',
         vs_filter        = 'Tools/AssetProcessor',
         file_list        = ['assetprocessor.waf_files', 'assetprocessor_gui.waf_files'],
-        platforms        = ['win', 'darwin'],
+        platforms        = ['win', 'darwin', 'linux'],
         configurations   = ['all'],
         exclude_monolithic = True,
+        client_only      = True,
         win_file_list    = ['assetprocessor_win.waf_files'],
         darwin_file_list = ['assetprocessor_gui_macos.waf_files'],
         disable_pch      = True,
@@ -69,8 +70,9 @@ def build(bld):
                            'QT5GUI',
                            'QT5NETWORK',
                            'QT5QML',
-                           'QT5WEBKITWIDGETS',
-                           'QT5WEBKIT',
+                           'QT5WEBENGINEWIDGETS',
+                           'QT5WEBENGINE',
+                           'QT5WEBENGINECORE',
                            'QT5WIDGETS',
                            'QT5WINEXTRAS',
                            'QT5CONCURRENT',
@@ -91,25 +93,50 @@ def build(bld):
         win_lib         = ['shell32'],
 
         darwin_rpath      = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/../Frameworks'],
-        darwin_frameworks = ['CoreServices'],
-        darwin_cxxflags   = [ '-x', 'objective-c++' ],
+        darwin_frameworks = ['ApplicationServices'], # used to make the GUI App foreground and allow input
         darwin_xcassets   = 'Code/Tools/AssetProcessor/qml/Images.xcassets',
         darwin_x64_framework = ['Security'],
-        darwin_lib        = ['bsm']
+        darwin_lib        = ['bsm'],
+
+        linux_file_list = ['assetprocessor_gui_linux.waf_files'],
+        linux_rpath     = ['@executable_path', '@executable_path/qtlibs/lib']
+    )
+    bld.LYToolLauncher(
+        target          = 'AssetProcessorLauncher',
+        vs_filter       = 'ToolLaunchers',
+        platforms       = ['win', 'darwin', 'linux'],
+        configurations  = ['debug', 'profile'],
+        launch_target   = 'AssetProcessor',
+        file_list       = ['assetprocessor_launcher.waf_files'],
+        use             = ['AzFramework'],
+
+        win_includes    = ['native'],  # for the resource.h file
+        win_file_list   = ['assetprocessor_win_launcher.waf_files'],
+    
+        includes        = bld.Path('Code/Tools/ToolsLauncher'),
+    
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+
     )
 
     ###########################################################################################################################################
-    
+    ap_batch_platform_filter = ['win', 'darwin']
+    if bld.should_build_experimental_targets():
+        ap_batch_platform_filter.append('linux')
+
     bld.CryQtConsoleApplication(
         # Settings
         target          = 'AssetProcessorBatch',
         vs_filter       = 'Tools/AssetProcessor',
-        file_list       = ['assetprocessor.waf_files'],
+        file_list       = ['assetprocessorbatch.waf_files'],
         win_file_list   = ['assetprocessor_win.waf_files'],
         darwin_file_list = ['assetprocessor_macos.waf_files'],
-        platforms       = ['win', 'darwin'],
+        linux_file_list = ['assetprocessor_linux.waf_files'],
+        platforms       = ['win', 'darwin', 'linux'],
         configurations  = ['all'],
         exclude_monolithic = True,
+        client_only      = True,
         disable_pch     = True,
         features        = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes        = [bld.Path('Code/Tools/GemRegistry/include'),
@@ -125,18 +152,39 @@ def build(bld):
                            'QT5GUI',
                            'QT5NETWORK',
                            'QT5WIDGETS',
-                           'SQLITE'] + metrics_uselib,
+                           'SQLITE',
+						   'QT5XML'] + metrics_uselib,
         defines         = console_defines,
 
         # Platform Specific
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworks = ['CoreServices'],
+
+        linux_rpath     = ['$ORIGIN/qtlibs/lib'],
 
         # ==============================
         # Testing
         # ==============================
 
         test_all_file_list = ['assetprocessor_test.waf_files']
+    )
+
+    bld.LYToolLauncher(
+        target          = 'AssetProcessorBatchLauncher',
+        vs_filter       = 'ToolLaunchers',
+        platforms       = ['win', 'darwin', 'linux'],
+        configurations  = ['debug', 'profile'],
+        launch_target   = 'AssetProcessorBatch',
+        includes        = bld.Path('Code/Tools/ToolsLauncher'),
+    
+        file_list       = ['assetprocessor_launcher.waf_files'],
+        use             = ['AzFramework'],
+    
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+    
+        win_includes    = ['native'],  # for the resource.h file
+        win_lib         = ['Shell32'],
+        win_file_list   = ['assetprocessor_win_launcher.waf_files']
     )
 
 
@@ -158,16 +206,4 @@ def copy_asset_builder(pkg, executable_dest_node):
         else:
             # Need 0755 permissions as rc is an exeutable. 
             pkg.bld.create_symlink_or_copy(file, rc_dest_node.abspath(), chmod=Utils.O755, postpone=False)
-
-
-def package(pkg):
-    build(pkg) # Need to call this to generate our task_generator
-    pkg.package_tool(
-        target           = 'AssetProcessor',
-        platforms        = ['darwin'],
-        configurations   = ['debug', 'profile'],
-        include_all_libs = True, 
-        dir_resources    = ['qtlibs','Builders'],
-        finalize_func    = copy_asset_builder,
-    )
 

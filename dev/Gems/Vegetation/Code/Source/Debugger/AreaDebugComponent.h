@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include <AZCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Asset/AssetCommon.h>
-#include <AZCore/Component/Component.h>
+#include <AzCore/Component/Component.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/TickBus.h>

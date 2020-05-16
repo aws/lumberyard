@@ -111,11 +111,13 @@ private:
 
     //Emitter
     IParticleEmitter* m_pEmitter = nullptr;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Matrix34 m_EmitterDefault = IDENTITY;
     Matrix34 m_EmitterSplineOffset = IDENTITY;
     Matrix34 m_EmitterGizmoOffset = IDENTITY;
     Matrix34 m_EmitterCurrent = IDENTITY;
     AABB m_EmitterAABB; //Using this to cache off the last valid bounding box for the emitter.
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     EmitterShape m_EmitterShape = EmitterShape::UNKNOWN;
 
     CAxisHelper* m_pMoveGizmo = nullptr;
@@ -134,5 +136,7 @@ private:
     bool m_IsSplinePlayForward = true;
 
     bool m_IsRequestingMenu = false;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Vec2i m_RightClickMousePos;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };

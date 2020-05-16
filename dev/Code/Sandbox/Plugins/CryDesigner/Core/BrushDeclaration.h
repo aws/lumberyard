@@ -96,7 +96,7 @@ namespace CD
     {
         if (sizeof(BrushFloat) == sizeof(float))
         {
-            return f;
+            return aznumeric_cast<float>(f);
         }
         return (float)f;
     }

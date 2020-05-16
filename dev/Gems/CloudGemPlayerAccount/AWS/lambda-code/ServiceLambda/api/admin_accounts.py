@@ -16,6 +16,7 @@ import CloudCanvas
 import errors
 from random import randint
 import service
+from six import iteritems # Python 2.7/3.7 Compatibility
 import uuid
 
 @service.api(logging_filter=account_utils.apply_logging_filter)
@@ -73,10 +74,10 @@ def put_account(AccountId, AccountRequest, create_account):
     if create_account:
         account_utils.create_account(account)
         updated_account = account
-        print 'Created account: ', account
+        print('Created account: {}'.format(account))
     elif account_updates or delete_keys:
         updated_account = account_utils.update_account(account, delete_keys, existing_account)
-        print 'Updated account: ', account
+        print('Updated account: {}'.format(account))
 
     # Create or update the Cognito user, and roll back the account changes if that fails.
     try:
@@ -87,14 +88,14 @@ def put_account(AccountId, AccountRequest, create_account):
                 UserAttributes=cognito_updates,
                 DesiredDeliveryMediums=['EMAIL']
             )
-            print 'Created: ', account_utils.logging_filter(cognito_updates)
+            print('Created: {}'.format(account_utils.logging_filter(cognito_updates)))
         elif cognito_updates:
             account_utils.get_user_pool_client().admin_update_user_attributes(
                 UserPoolId=account_utils.get_user_pool_id(),
                 Username=username,
                 UserAttributes=cognito_updates
             )
-            print 'Updated: ', account_utils.logging_filter(cognito_updates)
+            print('Updated: {}'.format(account_utils.logging_filter(cognito_updates)))
     except botocore.exceptions.ClientError as e:
         if updated_account:
             undo_account_changes(AccountId, create_account, existing_account, account_updates)
@@ -132,19 +133,19 @@ def load_user(account):
         except botocore.exceptions.ClientError as e:
             code = e.response.get('Error', {}).get('Code', None)
             if code == 'UserNotFoundException':
-                print 'User {} not found for account {}.'.format(account['CognitoUsername'], account.get('AccountId'))
+                print('User {} not found for account {}.'.format(account['CognitoUsername'], account.get('AccountId')))
                 return
             raise
 
 def undo_account_changes(AccountId, account_was_created, existingAccount, accountUpdates):
     if account_was_created:
         response = account_utils.get_account_table().delete_item(Key={'AccountId': AccountId}, ReturnValues='ALL_OLD')
-        print 'Rolled back account creation for {}'.format(response.get('Attributes'))
+        print('Rolled back account creation for {}'.format(response.get('Attributes')))
     else:
         delete_keys = set()
         account_rollback = {}
 
-        for k,v in accountUpdates.iteritems():
+        for k,v in iteritems(accountUpdates):
             if k in existingAccount:
                 account_rollback[k] = existingAccount[k]
             else:
@@ -152,7 +153,7 @@ def undo_account_changes(AccountId, account_was_created, existingAccount, accoun
 
         account_rollback['AccountId'] = AccountId
         account_utils.update_account(account_rollback, delete_keys)
-        print 'Rolled back account changes.'
+        print('Rolled back account changes.')
 
 # Determine the changes needed to make an existing account match the request.
 def get_account_updates(account_request, existing_account):
@@ -181,7 +182,7 @@ def get_account_updates(account_request, existing_account):
 # Convert the Cognito user request into the format needed by the Cognito client.
 def get_cognito_updates(cognito_request):
     cognito_updates = []
-    for key, value in cognito_request.iteritems():
+    for key, value in iteritems(cognito_request):
         if key in account_utils.COGNITO_ATTRIBUTES:
             cognito_updates.append({'Name': key, 'Value': value})
         else:

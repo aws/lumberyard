@@ -17,6 +17,14 @@
 
 struct RoadRenderNodeCompileInfo;
 
+namespace AzFramework
+{
+    namespace Terrain
+    {
+        class TerrainDataRequests;
+    }
+}
+
 class CRoadRenderNode
     : public IRoadRenderNode
     , public Cry3DEngineBase
@@ -68,7 +76,7 @@ public:
     virtual void SetLayerId(uint16 nLayerId) { m_nLayerId = nLayerId; }
     virtual uint16 GetLayerId() { return m_nLayerId; }
 
-    static void ClipTriangle(CPolygonClipContext& clipContext, PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, Plane* pPlanes);
+    static void ClipTriangle(CPolygonClipContext& clipContext, PodArray<Vec3>& lstVerts, const PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, const Plane* pPlanes);
     using IRenderNode::Physicalize;
     virtual void Dephysicalize(bool bKeepIfReferenced = false);
 
@@ -78,7 +86,7 @@ public:
     void NotifyCompileFinished();
 
     void ScheduleRebuild();
-    void OnTerrainChanged();
+    void OnTerrainChanged() override;
 
     _smart_ptr<IRenderMesh> m_pRenderMesh;
     _smart_ptr<IMaterial>       m_pMaterial;
@@ -98,6 +106,9 @@ public:
 
 private:
     void MakeRenderMesh();
+    //!Helper methods called during DoDeferredCompile
+    void BuildListOfIndicesLocked(AzFramework::Terrain::TerrainDataRequests* terrain, int x1, int y1, int dx, int dy, int nUnitSizeX, int nUnitSizeY);
+    void BuildTangentListLocked(AzFramework::Terrain::TerrainDataRequests* terrain, const Plane arrPlanes[6], const float arrTexCoors[2], const Vec3* pVerts);
 
     RoadRenderNodeCompileInfo* m_pCompileInfo;
 

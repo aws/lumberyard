@@ -75,6 +75,7 @@ namespace ScriptCanvas
                         slotConfiguration.m_name = Data::GetName(dataType);
                         slotConfiguration.SetType(dataType);
                         slotConfiguration.SetConnectionType(ConnectionType::Input);
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
 
                         m_inputSlots.insert(AddSlot(slotConfiguration));
                     }
@@ -89,50 +90,66 @@ namespace ScriptCanvas
                         slotConfiguration.m_toolTip = "The value at the specified index";
                         slotConfiguration.SetType(type);
                         slotConfiguration.SetConnectionType(ConnectionType::Output);
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
 
                         m_outputSlots.insert(AddSlot(slotConfiguration));
                     }
                 }
             }
 
+            void OperatorAt::KeyNotFound(const Datum* containerDatum)
+            {
+                Datum defaultDatum;
+                AZStd::vector<AZ::Uuid> types = ScriptCanvas::Data::GetContainedTypes(GetSourceAZType());
+
+                int index = Data::IsMapContainerType(containerDatum->GetType()) ? 1 : 0;
+
+                Data::Type type = Data::FromAZType(types[index]);
+                defaultDatum.SetType(type);
+
+                PushOutput(defaultDatum, *GetSlot(*m_outputSlots.begin()));
+                SignalOutput(GetSlotId("Key Not Found"));
+            }
+
             void OperatorAt::InvokeOperator()
             {
-                Slot* inputSlot = GetFirstInputSourceSlot();                
+                Slot* inputSlot = GetFirstInputSourceSlot();
 
                 if (inputSlot)
                 {
                     SlotId sourceSlotId = inputSlot->GetId();
-                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    const Datum* containerDatum = FindDatum(sourceSlotId);
                     
                     if (Datum::IsValidDatum(containerDatum))
                     {
-                        const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
+                        const Datum* inputKeyDatum = FindDatum(*m_inputSlots.begin());
                         AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatumUnpackOutcomeSuccess(*containerDatum, "At", *inputKeyDatum);
                         if (!valueOutcome.IsSuccess())
                         {
-                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get key in container: %s", valueOutcome.GetError().c_str());
+                            KeyNotFound(containerDatum);
                             return;
                         }
 
                         if (Data::IsVectorContainerType(containerDatum->GetType()))
                         {
                             PushOutput(valueOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
+                            SignalOutput(GetSlotId("Out"));
                         }
                         else if (Data::IsSetContainerType(containerDatum->GetType()) || Data::IsMapContainerType(containerDatum->GetType()))
                         {
                             Datum keyDatum = valueOutcome.TakeValue();
                             if (keyDatum.Empty())
                             {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Behavior Context call failed; unable to retrieve element from container.");
-                                return;
+                                KeyNotFound(containerDatum);
                             }
-
-                            PushOutput(keyDatum, *GetSlot(*m_outputSlots.begin()));
+                            else
+                            {
+                                PushOutput(keyDatum, *GetSlot(*m_outputSlots.begin()));
+                                SignalOutput(GetSlotId("Out"));
+                            }
                         }
                     }
                 }
-
-                SignalOutput(GetSlotId("Out"));
             }
 
             void OperatorAt::OnInputSignal(const SlotId& slotId)

@@ -406,14 +406,14 @@ namespace PhysX
             m_nameSet.erase(rowHeader->GetGroupName());
             m_mainLayout->removeItem(m_gridLayout); // Detach grid layout from main layout
 
-            for (AZ::u64 widgetIndex = 0; widgetIndex < m_widgets.size(); ++widgetIndex)
+            for (AZ::u32 widgetIndex = 0; aznumeric_cast<int>(widgetIndex) < m_widgets.size(); ++widgetIndex)
             {
                 if (m_widgets[widgetIndex] == rowHeader)
                 {
                     AZ::u64 columnCount = GetColumnCount() + 2; // +2 for RowHeader and last column for 'Remove' button
 
                     // Delete and remove references to widget pointers in deleted row
-                    for (AZ::u64 deleteIndex = 0; deleteIndex < columnCount; ++deleteIndex)
+                    for (AZ::u32 deleteIndex = 0; deleteIndex < columnCount; ++deleteIndex)
                     {
                         delete m_widgets[widgetIndex + deleteIndex];
                     }
@@ -429,7 +429,7 @@ namespace PhysX
             // Place widget pointers of undeleted rows in new grid layout, i.e. reuse them.
             auto rows = GetRows();
             auto columns = GetColumns();
-            AZ::u64 widgetIndex = 0;
+            AZ::u32 widgetIndex = 0;
             for (int row = 0; row <= rows.size(); ++row)
             {
                 for (int col = 0; col <= columns.size() + 1; ++col)

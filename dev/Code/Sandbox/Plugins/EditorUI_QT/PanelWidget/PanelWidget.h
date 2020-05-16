@@ -94,7 +94,9 @@ private:
 
     Ui::PanelWidget* ui;
     QByteArray m_defaultSettings;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QVector<QDockWidget*> m_widgets;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QDockWidget* m_correctionWidget;
     QDockWidget* m_topWidget;
 };

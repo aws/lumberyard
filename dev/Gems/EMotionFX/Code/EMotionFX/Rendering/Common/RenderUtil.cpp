@@ -11,9 +11,8 @@
 */
 
 #include "RenderUtil.h"
+#include <MCore/Source/Algorithms.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/Ray.h>
-#include <MCore/Source/PlaneEq.h>
 #include <EMotionFX/Source/SkinningInfoVertexAttributeLayer.h>
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/ActorManager.h>
@@ -21,6 +20,8 @@
 #include <EMotionFX/Source/Node.h>
 #include "OrthographicCamera.h"
 #include "OrbitCamera.h"
+
+#include <AzCore/Math/Plane.h>
 
 
 namespace MCommon
@@ -72,7 +73,7 @@ namespace MCommon
         delete      mFont;
 
         // get rid of the world space positions
-        mWorldSpacePositions.Clear();
+        mWorldSpacePositions.clear();
     }
 
 
@@ -132,9 +133,7 @@ namespace MCommon
         AZ::Vector3 gridLineStart, gridLineEnd;
         MCore::RGBAColor color;
 
-        MCore::Matrix matRotate;
-        matRotate.Identity();
-        matRotate.SetRotationMatrixTwoVectors(AZ::Vector3(0.0f, 1.0f, 0.0f), normal);
+        const AZ::Matrix3x3 matRotate = MCore::GetRotationMatrixFromTwoVectors(AZ::Vector3(0.0f, 1.0f, 0.0f), normal);
 
         const uint32    gridBlockSize       = 5;
         const uint32    numVerticalLines    = static_cast<uint32>((end.GetX() - start.GetX()) / scale);// x component
@@ -166,19 +165,12 @@ namespace MCommon
                 color = gridColor;
             }
 
-            gridLineStart = matRotate.Mul3x3(gridLineStart);
-            gridLineEnd   = matRotate.Mul3x3(gridLineEnd);
-            RenderLine(gridLineStart, gridLineEnd, color);
+            RenderLine(matRotate * gridLineStart, matRotate * gridLineEnd, color);
         }
 
         // render all horizontal grid lines
         for (uint32 y = 0; y <= numHorizontalLines; ++y)
         {
-            gridLineStart.SetZ(start.GetY() + y * scale);
-            gridLineStart.SetX(start.GetX());
-            gridLineEnd.SetZ(gridLineStart.GetZ());
-            gridLineEnd.SetX(end.GetX());
-
             gridLineStart.Set(start.GetX(), 0.0f, start.GetY() + y * scale);
             gridLineEnd.Set(end.GetX(), 0.0f, gridLineStart.GetZ());
 
@@ -200,10 +192,7 @@ namespace MCommon
                 color = gridColor;
             }
 
-            gridLineStart = matRotate.Mul3x3(gridLineStart);
-            gridLineEnd   = matRotate.Mul3x3(gridLineEnd);
-
-            RenderLine(gridLineStart, gridLineEnd, color);
+            RenderLine(matRotate * gridLineStart, matRotate * gridLineEnd, color);
         }
 
         if (directlyRender)
@@ -509,7 +498,7 @@ namespace MCommon
 
 
     // render wireframe mesh
-    void RenderUtil::RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender, float offsetScale)
+    void RenderUtil::RenderWireframe(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender, float offsetScale)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -519,8 +508,8 @@ namespace MCommon
 
         const float scale = 0.01f * offsetScale;
 
-        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+        AZ::Vector3*    normals     = (AZ::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::Vector3*    positions   = (AZ::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
         uint32*         indices     = (uint32*)mesh->GetIndices();
         uint8*          vtxCounts   = (uint8*)mesh->GetPolygonVertexCounts();
 
@@ -537,8 +526,8 @@ namespace MCommon
             {
                 indexA = indices[curIndex + i];
                 indexB = (i < numPolyVerts - 1) ? indices[curIndex + i + 1] : indices[curIndex];
-                posA = (AZ::Vector3(positions[indexA]) + AZ::Vector3(normals[indexA]) * scale) * worldTM;
-                posB = (AZ::Vector3(positions[indexB]) + AZ::Vector3(normals[indexB]) * scale) * worldTM;
+                posA = worldTM * (positions[indexA] + normals[indexA] * scale);
+                posB = worldTM * (positions[indexB] + normals[indexB] * scale);
                 RenderLine(posA, posB, color);
             }
 
@@ -570,7 +559,7 @@ namespace MCommon
 
 
     // render vertex and face normals
-    void RenderUtil::RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale, float faceNormalsScale, const MCore::RGBAColor& colorVertexNormals, const MCore::RGBAColor& colorFaceNormals, bool directlyRender)
+    void RenderUtil::RenderNormals(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale, float faceNormalsScale, const MCore::RGBAColor& colorVertexNormals, const MCore::RGBAColor& colorFaceNormals, bool directlyRender)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -586,7 +575,7 @@ namespace MCommon
 
         PrepareForMesh(mesh, worldTM);
 
-        AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::Vector3*    normals     = (AZ::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         uint32*         indices     = (uint32*)mesh->GetIndices();
         const uint32    numVertices = mesh->GetNumVertices();
         uint8*          vertCounts  = mesh->GetPolygonVertexCounts();
@@ -634,7 +623,7 @@ namespace MCommon
             AZ::Vector3 normal;
             for (uint32 j = 0; j < numVertices; ++j)
             {
-                normal = worldTM.Mul3x3(AZ::Vector3(normals[j])) * vertexNormalsScale;
+                normal = worldTM.Multiply3x3(normals[j]).GetNormalizedSafeExact() * vertexNormalsScale;
                 RenderLine(mWorldSpacePositions[j], mWorldSpacePositions[j] + normal, colorVertexNormals);
             }
         }
@@ -647,7 +636,7 @@ namespace MCommon
 
 
     // render tangents and bitangents of the mesh
-    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBitangentColor, const MCore::RGBAColor& colorBitangent, bool directlyRender)
+    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBitangentColor, const MCore::RGBAColor& colorBitangent, bool directlyRender)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -662,11 +651,11 @@ namespace MCommon
             return;
         }
 
-        AZ::PackedVector3f* bitangents = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
+        AZ::Vector3* bitangents = static_cast<AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
 
         PrepareForMesh(mesh, worldTM);
 
-        AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
+        AZ::Vector3* normals = (AZ::Vector3*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         const uint32 numVertices = mesh->GetNumVertices();
 
         // render the tangents and bitangents
@@ -674,17 +663,17 @@ namespace MCommon
         for (uint32 i = 0; i < numVertices; ++i)
         {
             orgTangent.Set(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());
-            tangent = worldTM.Mul3x3(orgTangent).GetNormalized();
+            tangent = (worldTM.Multiply3x3(orgTangent)).GetNormalized();
 
             if (bitangents)
             {
-                bitangent = AZ::Vector3(bitangents[i]);
+                bitangent = bitangents[i];
             }
             else
             {
-                bitangent = tangents[i].GetW() * (AZ::Vector3(normals[i]).Cross(orgTangent));
+                bitangent = tangents[i].GetW() * normals[i].Cross(orgTangent);
             }
-            bitangent = worldTM.Mul3x3(bitangent).GetNormalized();
+            bitangent = (worldTM.Multiply3x3(bitangent)).GetNormalizedSafeExact();
 
             RenderLine(mWorldSpacePositions[i], mWorldSpacePositions[i] + (tangent * scale), colorTangents);
 
@@ -706,7 +695,7 @@ namespace MCommon
 
 
     // precalculate data for rendering for the given mesh
-    void RenderUtil::PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM)
+    void RenderUtil::PrepareForMesh(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM)
     {
         // check if we have already prepared for the given mesh
         if (mCurrentMesh == mesh)
@@ -719,18 +708,18 @@ namespace MCommon
 
         // get the number of vertices and the data
         const uint32    numVertices = mCurrentMesh->GetNumVertices();
-        AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mCurrentMesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
+        AZ::Vector3*    positions   = (AZ::Vector3*)mCurrentMesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
 
         // check if the vertices fits in our buffer
-        if (mWorldSpacePositions.GetLength() < numVertices)
+        if (mWorldSpacePositions.size() < numVertices)
         {
-            mWorldSpacePositions.Resize(numVertices);
+            mWorldSpacePositions.resize(numVertices);
         }
 
         // pre-calculate the world space positions
         for (uint32 i = 0; i < numVertices; ++i)
         {
-            mWorldSpacePositions[i] = AZ::Vector3(positions[i]) * worldTM;
+            mWorldSpacePositions[i] = worldTM * positions[i];
         }
     }
 
@@ -865,7 +854,7 @@ namespace MCommon
                     axisRenderingSettings.mSelected = false;
                 }
 
-                axisRenderingSettings.mWorldTM = pose->GetWorldSpaceTransform(jointIndex).ToMatrix();
+                axisRenderingSettings.mWorldTM = pose->GetWorldSpaceTransform(jointIndex).ToAZTransform();
                 RenderLineAxis(axisRenderingSettings);
             }
         }
@@ -892,7 +881,7 @@ namespace MCommon
             // render node orientation
             const EMotionFX::Transform worldTransform = pose->GetWorldSpaceTransform(nodeIndex);
             axisRenderingSettings.mSize     = GetBoneScale(actorInstance, node) * 5.0f;
-            axisRenderingSettings.mWorldTM  = worldTransform.ToMatrix();
+            axisRenderingSettings.mWorldTM  = worldTransform.ToAZTransform();
             RenderLineAxis(axisRenderingSettings);// line based axis rendering
 
             // skip root nodes for the line based skeleton rendering, you could also use curNode->IsRootNode()
@@ -916,20 +905,12 @@ namespace MCommon
     // constructor
     RenderUtil::UtilMesh::UtilMesh()
     {
-        mNumVertices    = 0;
-        mNumIndices     = 0;
-        mPositions      = NULL;
-        mNormals        = NULL;
-        mIndices        = NULL;
     }
 
 
     // destructor
     RenderUtil::UtilMesh::~UtilMesh()
     {
-        delete[] mPositions;
-        delete[] mNormals;
-        delete[] mIndices;
     }
 
 
@@ -937,38 +918,40 @@ namespace MCommon
     void RenderUtil::UtilMesh::CalculateNormals(bool counterClockWise)
     {
         // check if the normals actually got allocated
-        if (mNormals == NULL)
+        if (mNormals.empty())
         {
             return;
         }
 
         // reset all normals to the zero vector
-        MCore::MemSet(mNormals, 0, sizeof(AZ::PackedVector3f) * mNumVertices);
+        const size_t numNormals = mNormals.size();
+        MCore::MemSet(&mNormals[0], 0, sizeof(AZ::Vector3) * numNormals);
 
         // iterate through all vertices and sum up the face normals
         uint32 i;
         uint32 indexA, indexB, indexC;
         AZ::Vector3 v1, v2, normal;
-        for (i = 0; i < mNumIndices; i += 3)
+
+        for (i = 0; i < numNormals; i += 3)
         {
             indexA = mIndices[i];
             indexB = mIndices[i + (counterClockWise ? 1 : 2)];
             indexC = mIndices[i + (counterClockWise ? 2 : 1)];
 
-            v1 = AZ::Vector3(mPositions[indexB]) - AZ::Vector3(mPositions[indexA]);
-            v2 = AZ::Vector3(mPositions[indexC]) - AZ::Vector3(mPositions[indexA]);
+            v1 = mPositions[indexB] - mPositions[indexA];
+            v2 = mPositions[indexC] - mPositions[indexA];
 
             normal = v1.Cross(v2);
 
-            mNormals[indexA] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexA]) + normal);
-            mNormals[indexB] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexB]) + normal);
-            mNormals[indexC] = AZ::PackedVector3f(AZ::Vector3(mNormals[indexC]) + normal);
+            mNormals[indexA] = mNormals[indexA] + normal;
+            mNormals[indexB] = mNormals[indexB] + normal;
+            mNormals[indexC] = mNormals[indexC] + normal;
         }
 
         // normalize all the normals
-        for (i = 0; i < mNumVertices; ++i)
+        for (i = 0; i < numNormals; ++i)
         {
-            mNormals[i] = AZ::PackedVector3f(AZ::Vector3(mNormals[i]).GetNormalized());
+            mNormals[i] = mNormals[i].GetNormalized();
         }
     }
 
@@ -976,19 +959,15 @@ namespace MCommon
     // allocate memory for the vertices, indices and normals
     void RenderUtil::UtilMesh::Allocate(uint32 numVertices, uint32 numIndices, bool hasNormals)
     {
-        assert(numVertices > 0 && numIndices % 3 == 0);
-        assert(mPositions == NULL && mIndices == NULL && mNormals == NULL);
-
-        // copy over the number of vertices and indices
-        mNumVertices = numVertices;
-        mNumIndices = numIndices;
+        AZ_Assert(numVertices > 0 && numIndices % 3 == 0, "Invalid numVertices or numIndices");
+        AZ_Assert(mPositions.empty() && mIndices.empty() && mNormals.empty(), "data already initialized");
 
         // allocate the buffers
-        mPositions  = new AZ::PackedVector3f[numVertices];
-        mIndices    = new uint32[numIndices];
+        mPositions.resize(numVertices);
+        mIndices.resize(numIndices);
         if (hasNormals)
         {
-            mNormals = new AZ::PackedVector3f[numVertices];
+            mNormals.resize(numVertices);
         }
     }
 
@@ -1015,13 +994,13 @@ namespace MCommon
     void RenderUtil::FillCylinder(UtilMesh* mesh, float baseRadius, float topRadius, float length, bool calculateNormals)
     {
         // check if the positions and the indices have been allocated already by the CreateCylinder() function
-        if (mesh->mPositions == NULL || mesh->mIndices == NULL)
+        if (mesh->mPositions.empty() || mesh->mIndices.empty())
         {
             return;
         }
 
         // number of segments/sides of the cylinder
-        const uint32 numSegments = mesh->mNumVertices / 2;
+        const uint32 numSegments = static_cast<uint32>(mesh->mPositions.size()) / 2;
 
         // fill in the vertices
         uint32 i;
@@ -1031,8 +1010,8 @@ namespace MCommon
             const float z = MCore::Math::Sin(p);
             const float y = MCore::Math::Cos(p);
 
-            mesh->mPositions[i]               = AZ::PackedVector3f(0.0f,    y * baseRadius, z * baseRadius);
-            mesh->mPositions[i + numSegments] = AZ::PackedVector3f(-length, y * topRadius,  z * topRadius);
+            mesh->mPositions[i]               = AZ::Vector3(0.0f,    y * baseRadius, z * baseRadius);
+            mesh->mPositions[i + numSegments] = AZ::Vector3(-length, y * topRadius,  z * topRadius);
         }
 
         // fill in the indices
@@ -1062,16 +1041,16 @@ namespace MCommon
     // render the given cylinder
     void RenderUtil::RenderCylinder(float baseRadius, float topRadius, float length, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
-        MCore::Matrix worldTM;
+        AZ::Transform worldTM;
 
         // rotate the cylinder to the desired direction
         if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            worldTM.SetRotationMatrixAxisAngle(AZ::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(-1.0f, 0.0f, 0.0f))));
+            worldTM = MCore::GetRotationMatrixAxisAngle(AZ::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(-1.0f, 0.0f, 0.0f))));
         }
         else
         {
-            worldTM.SetRotationMatrix(MCore::Quaternion(0.0f, 0.0f, MCore::Math::DegreesToRadians(180.0f)));
+            worldTM = AZ::Transform::CreateFromQuaternion(MCore::AzEulerAnglesToAzQuat(0.0f, 0.0f, MCore::Math::DegreesToRadians(180.0f)));
         }
 
         // set the cylinder to the given position
@@ -1113,18 +1092,19 @@ namespace MCommon
                 const float x = r * MCore::Math::Sin(p);
                 const float y = r * MCore::Math::Cos(p);
 
-                sphereMesh->mPositions[(i - 1) * numSegments + j] = AZ::PackedVector3f(x, y, z * radius);
+                sphereMesh->mPositions[(i - 1) * numSegments + j] = AZ::Vector3(x, y, z * radius);
             }
         }
 
         // the highest and lowest vertices
-        sphereMesh->mPositions[(numSegments - 2) * numSegments + 0]   = AZ::PackedVector3f(0.0f, 0.0f,  radius);
-        sphereMesh->mPositions[(numSegments - 2) * numSegments + 1]   = AZ::PackedVector3f(0.0f, 0.0f, -radius);
+        sphereMesh->mPositions[(numSegments - 2) * numSegments + 0]   = AZ::Vector3(0.0f, 0.0f,  radius);
+        sphereMesh->mPositions[(numSegments - 2) * numSegments + 1]   = AZ::Vector3(0.0f, 0.0f, -radius);
 
         // calculate normals
-        for (i = 0; i < sphereMesh->mNumVertices; ++i)
+        const size_t numPositions = sphereMesh->mPositions.size();
+        for (i = 0; i < numPositions; ++i)
         {
-            sphereMesh->mNormals[i] = AZ::PackedVector3f(-AZ::Vector3(sphereMesh->mPositions[i]).GetNormalized());
+            sphereMesh->mNormals[i] = -sphereMesh->mPositions[i].GetNormalized();
         }
 
         // fill the indices
@@ -1182,17 +1162,16 @@ namespace MCommon
     void RenderUtil::RenderSphere(const AZ::Vector3& position, float radius, const MCore::RGBAColor& color)
     {
         // setup the world space matrix of the sphere
-        MCore::Matrix sphereMatrix;
-        sphereMatrix.SetScaleMatrix(AZ::Vector3(radius, radius, radius));
-        sphereMatrix.SetTranslation(position);
+        AZ::Transform sphereTransform = AZ::Transform::CreateScale(AZ::Vector3(radius, radius, radius));
+        sphereTransform.SetTranslation(position);
 
         // render the sphere
-        RenderSphere(color, sphereMatrix);
+        RenderSphere(color, sphereTransform);
     }
 
 
     // render a circle using the RenderLine and RenderTriangles function
-    void RenderUtil::RenderCircle(const MCore::Matrix& worldTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const AZ::Vector3& camRollAxis)
+    void RenderUtil::RenderCircle(const AZ::Transform& worldTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const AZ::Vector3& camRollAxis)
     {
         // if culling is enabled but cam roll axis has not been set return without rendering
         if (cullFaces && camRollAxis == AZ::Vector3::CreateZero())
@@ -1227,8 +1206,8 @@ namespace MCommon
             AZ::Vector3 pos2(x2, y2, 0.0f);
 
             // perform world transformation
-            pos1 = worldTM.Mul3x3(pos1) + worldTM.GetTranslation();
-            pos2 = worldTM.Mul3x3(pos2) + worldTM.GetTranslation();
+            pos1 = worldTM * pos1;
+            pos2 = worldTM * pos2;
 
             // render line segment
             if (cullFaces == false ||
@@ -1257,50 +1236,61 @@ namespace MCommon
         mesh->Allocate(numVertices, numTriangles * 3, true);
 
         // define the vertices
-        mesh->mPositions[0] = AZ::PackedVector3f(AZ::Vector3(-0.5f, -0.5f, -0.5f) * size);
-        mesh->mPositions[1] = AZ::PackedVector3f(AZ::Vector3(0.5f, -0.5f, -0.5f) * size);
-        mesh->mPositions[2] = AZ::PackedVector3f(AZ::Vector3(0.5f, 0.5f, -0.5f) * size);
-        mesh->mPositions[3] = AZ::PackedVector3f(AZ::Vector3(-0.5f, 0.5f, -0.5f) * size);
-        mesh->mPositions[4] = AZ::PackedVector3f(AZ::Vector3(-0.5f, -0.5f, 0.5f) * size);
-        mesh->mPositions[5] = AZ::PackedVector3f(AZ::Vector3(0.5f, -0.5f, 0.5f) * size);
-        mesh->mPositions[6] = AZ::PackedVector3f(AZ::Vector3(0.5f, 0.5f, 0.5f) * size);
-        mesh->mPositions[7] = AZ::PackedVector3f(AZ::Vector3(-0.5f, 0.5f, 0.5f) * size);
+        mesh->mPositions[0] = AZ::Vector3(-0.5f, -0.5f, -0.5f) * size;
+        mesh->mPositions[1] = AZ::Vector3(0.5f, -0.5f, -0.5f) * size;
+        mesh->mPositions[2] = AZ::Vector3(0.5f, 0.5f, -0.5f) * size;
+        mesh->mPositions[3] = AZ::Vector3(-0.5f, 0.5f, -0.5f) * size;
+        mesh->mPositions[4] = AZ::Vector3(-0.5f, -0.5f, 0.5f) * size;
+        mesh->mPositions[5] = AZ::Vector3(0.5f, -0.5f, 0.5f) * size;
+        mesh->mPositions[6] = AZ::Vector3(0.5f, 0.5f, 0.5f) * size;
+        mesh->mPositions[7] = AZ::Vector3(-0.5f, 0.5f, 0.5f) * size;
 
         // define the indices
-        mesh->mIndices[0]   = 0;
+        mesh->mIndices[0]  = 0;
         mesh->mIndices[1]  = 1;
         mesh->mIndices[2]  = 2;
-        mesh->mIndices[3]   = 0;
+
+        mesh->mIndices[3]  = 0;
         mesh->mIndices[4]  = 2;
         mesh->mIndices[5]  = 3;
-        mesh->mIndices[6]   = 1;
+
+        mesh->mIndices[6]  = 1;
         mesh->mIndices[7]  = 5;
         mesh->mIndices[8]  = 6;
-        mesh->mIndices[9]   = 1;
+
+        mesh->mIndices[9]  = 1;
         mesh->mIndices[10] = 6;
         mesh->mIndices[11] = 2;
-        mesh->mIndices[12]  = 5;
+
+        mesh->mIndices[12] = 5;
         mesh->mIndices[13] = 4;
         mesh->mIndices[14] = 7;
-        mesh->mIndices[15]  = 5;
+
+        mesh->mIndices[15] = 5;
         mesh->mIndices[16] = 7;
         mesh->mIndices[17] = 6;
-        mesh->mIndices[18]  = 4;
+
+        mesh->mIndices[18] = 4;
         mesh->mIndices[19] = 0;
         mesh->mIndices[20] = 3;
-        mesh->mIndices[21]  = 4;
+
+        mesh->mIndices[21] = 4;
         mesh->mIndices[22] = 3;
         mesh->mIndices[23] = 7;
-        mesh->mIndices[24]  = 1;
+
+        mesh->mIndices[24] = 1;
         mesh->mIndices[25] = 0;
         mesh->mIndices[26] = 4;
-        mesh->mIndices[27]  = 1;
+
+        mesh->mIndices[27] = 1;
         mesh->mIndices[28] = 4;
         mesh->mIndices[29] = 5;
-        mesh->mIndices[30]  = 3;
+
+        mesh->mIndices[30] = 3;
         mesh->mIndices[31] = 2;
         mesh->mIndices[32] = 6;
-        mesh->mIndices[33]  = 3;
+
+        mesh->mIndices[33] = 3;
         mesh->mIndices[34] = 6;
         mesh->mIndices[35] = 7;
 
@@ -1316,12 +1306,11 @@ namespace MCommon
     void RenderUtil::RenderCube(const AZ::Vector3& size, const AZ::Vector3& position, const MCore::RGBAColor& color)
     {
         // setup the world space matrix of the cube
-        MCore::Matrix cubeMatrix;
-        cubeMatrix.SetScaleMatrix(size);
-        cubeMatrix.SetTranslation(position);
+        AZ::Transform cubeTransform = AZ::Transform::CreateScale(size);
+        cubeTransform.SetTranslation(position);
 
         // render the cube
-        RenderCube(color, cubeMatrix);
+        RenderCube(color, cubeTransform);
     }
 
 
@@ -1353,13 +1342,13 @@ namespace MCommon
     void RenderUtil::FillArrowHead(UtilMesh* mesh, float height, float radius, bool calculateNormals)
     {
         static AZ::Vector3      points[12];
-        uint32                  pointNr     = 0;
-        const uint32            numVertices = mesh->mNumVertices;
-        const uint32            numTriangles = numVertices / 3;
+        size_t                  pointNr     = 0;
+        const size_t            numVertices = mesh->mPositions.size();
+        const size_t            numTriangles = numVertices / 3;
         assert(numTriangles * 3 == numVertices);
-        const uint32            numSegments = numTriangles / 2;
+        const size_t            numSegments = numTriangles / 2;
         assert(numSegments * 2 == numTriangles);
-        const uint32            angleStep   = 30;
+        const size_t            angleStep   = 30;
         assert(360 / angleStep == numSegments);
 
         // check and prevent the radius being greater than 30% of the height
@@ -1369,7 +1358,7 @@ namespace MCommon
         }
 
         // construct the segment points
-        for (uint32 angle = angleStep; angle <= 360; angle += angleStep)
+        for (size_t angle = angleStep; angle <= 360; angle += angleStep)
         {
             float theta     = MCore::Math::DegreesToRadians(static_cast<float>(angle));
             float x         = MCore::Math::Cos(theta) * radius;
@@ -1379,28 +1368,28 @@ namespace MCommon
         }
 
         // get some data used for constructing the arrow head mesh
-        uint32  vertexNr;
+        size_t  vertexNr;
         AZ::Vector3 segmentPoint;
         //AZ::Vector3 center     = AZ::Vector3(0.0f, height * 0.25f, 0.0f);   // real arrow head
-        AZ::Vector3 center           = AZ::Vector3::CreateZero();     // normal cone
-        AZ::Vector3 top              = AZ::Vector3(0.0f, height, 0.0f);
+        const AZ::Vector3 center           = AZ::Vector3::CreateZero();     // normal cone
+        const AZ::Vector3 top              = AZ::Vector3(0.0f, height, 0.0f);
         AZ::Vector3 previousPoint    = points[(numSegments - 1)];
 
-        for (uint32 i = 0; i < numSegments; ++i)
+        for (size_t i = 0; i < numSegments; ++i)
         {
             // preprocess data
             segmentPoint    = points[i];
             vertexNr        = i * 6;
 
             // triangle 1
-            mesh->mPositions[vertexNr + 0] = AZ::PackedVector3f(segmentPoint);
-            mesh->mPositions[vertexNr + 1] = AZ::PackedVector3f(previousPoint);
-            mesh->mPositions[vertexNr + 2] = AZ::PackedVector3f(center);
+            mesh->mPositions[vertexNr + 0] = segmentPoint;
+            mesh->mPositions[vertexNr + 1] = previousPoint;
+            mesh->mPositions[vertexNr + 2] = center;
 
             // triangle 2
-            mesh->mPositions[vertexNr + 3] = AZ::PackedVector3f(previousPoint);
-            mesh->mPositions[vertexNr + 4] = AZ::PackedVector3f(segmentPoint);
-            mesh->mPositions[vertexNr + 5] = AZ::PackedVector3f(top);
+            mesh->mPositions[vertexNr + 3] = previousPoint;
+            mesh->mPositions[vertexNr + 4] = segmentPoint;
+            mesh->mPositions[vertexNr + 5] = top;
 
             // postprocess data
             previousPoint = segmentPoint;
@@ -1417,16 +1406,16 @@ namespace MCommon
     // render the given arrow head
     void RenderUtil::RenderArrowHead(float height, float radius, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
-        MCore::Matrix worldTM;
+        AZ::Transform worldTM;
 
         // rotate the arrow head to the desired direction
         if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(0.0f, -1.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            worldTM.SetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))));
+            worldTM = MCore::GetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))));
         }
         else
         {
-            worldTM.SetRotationMatrix(MCore::Quaternion(MCore::Math::DegreesToRadians(180.0f), 0.0f, 0.0f));
+            worldTM = AZ::Transform::CreateFromQuaternion(MCore::AzEulerAnglesToAzQuat(AZ::Vector3(MCore::Math::DegreesToRadians(180.0f), 0.0f, 0.0f)));
         }
 
         // translate the arrow head to the given position
@@ -1485,7 +1474,7 @@ namespace MCommon
     void RenderUtil::RenderLineAxis(const AxisRenderingSettings& settings)
     {
         const float             size                = settings.mSize;
-        const MCore::Matrix&    worldTM             = settings.mWorldTM;
+        const AZ::Transform&    worldTM             = settings.mWorldTM;
         const AZ::Vector3&      cameraRight         = settings.mCameraRight;
         const AZ::Vector3&      cameraUp            = settings.mCameraUp;
         const float             arrowHeadRadius     = size * 0.1f;
@@ -1508,7 +1497,7 @@ namespace MCommon
                 xSelectedColor = xAxisColor;
             }
 
-            const AZ::Vector3 xAxisDir = (AZ::Vector3(size, 0.0f, 0.0f) * worldTM - position).GetNormalized();
+            const AZ::Vector3       xAxisDir = (worldTM * AZ::Vector3(size, 0.0f, 0.0f) - position).GetNormalized();
             const AZ::Vector3 xAxisArrowStart = position + xAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, xAxisArrowStart, xAxisDir, xSelectedColor);
             RenderLine(position, xAxisArrowStart, xAxisColor);
@@ -1536,7 +1525,7 @@ namespace MCommon
                 ySelectedColor = yAxisColor;
             }
 
-            const AZ::Vector3       yAxisDir = (AZ::Vector3(0.0f, size, 0.0f) * worldTM - position).GetNormalized();
+            const AZ::Vector3       yAxisDir = (worldTM * AZ::Vector3(0.0f, size, 0.0f) - position).GetNormalized();
             const AZ::Vector3       yAxisArrowStart = position + yAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, yAxisArrowStart, yAxisDir, ySelectedColor);
             RenderLine(position, yAxisArrowStart, yAxisColor);
@@ -1565,7 +1554,7 @@ namespace MCommon
                 zSelectedColor = zAxisColor;
             }
 
-            const AZ::Vector3       zAxisDir = (AZ::Vector3(0.0f, 0.0f, size) * worldTM - position).GetNormalized();
+            const AZ::Vector3       zAxisDir = (worldTM * AZ::Vector3(0.0f, 0.0f, size) - position).GetNormalized();
             const AZ::Vector3       zAxisArrowStart = position + zAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, zAxisArrowStart, zAxisDir, zSelectedColor);
             RenderLine(position, zAxisArrowStart, zAxisColor);
@@ -1589,11 +1578,11 @@ namespace MCommon
         AZ::Vector2 gridEnd(0.0f, 0.0f);
         if (camera->GetType() == MCommon::OrthographicCamera::TYPE_ID)
         {
-            MCore::Matrix invProj = camera->GetProjectionMatrix();
-            MCore::Matrix invView = camera->GetViewMatrix();
+            AZ::Matrix4x4 proj = camera->GetProjectionMatrix();
+            AZ::Matrix4x4 view = camera->GetViewMatrix();
 
-            AZ::Vector3 a = UnprojectOrtho(0.0f, 0.0f, static_cast<float>(screenWidth), static_cast<float>(screenHeight), -1.0f, invProj, invView);
-            AZ::Vector3 b = UnprojectOrtho(static_cast<float>(screenWidth), static_cast<float>(screenHeight), static_cast<float>(screenWidth), static_cast<float>(screenHeight), 1.0f, invProj, invView);
+            AZ::Vector3 a = MCore::UnprojectOrtho(0.0f, 0.0f, static_cast<float>(screenWidth), static_cast<float>(screenHeight), -1.0f, proj, view);
+            AZ::Vector3 b = MCore::UnprojectOrtho(static_cast<float>(screenWidth), static_cast<float>(screenHeight), static_cast<float>(screenWidth), static_cast<float>(screenHeight), 1.0f, proj, view);
 
             OrthographicCamera* orthoCamera = static_cast<OrthographicCamera*>(camera);
             switch (orthoCamera->GetMode())
@@ -1601,9 +1590,9 @@ namespace MCommon
             case OrthographicCamera::VIEWMODE_FRONT:
             {
                 gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
-                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
                 gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
-                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_BACK:
@@ -1611,9 +1600,9 @@ namespace MCommon
                 a = AZ::Vector3(a.GetX(), -a.GetY(), a.GetZ());
                 b = AZ::Vector3(b.GetX(), -b.GetY(), b.GetZ());
                 gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
-                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
                 gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
-                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_LEFT:
@@ -1637,17 +1626,19 @@ namespace MCommon
             case OrthographicCamera::VIEWMODE_TOP:
             {
                 gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
-                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
                 gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
-                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
                 break;
             }
             case OrthographicCamera::VIEWMODE_BOTTOM:
             {
+                a = AZ::Vector3(a.GetX(), -a.GetY(), a.GetZ());
+                b = AZ::Vector3(b.GetX(), -b.GetY(), b.GetZ());
                 gridStart.SetX(MCore::Min(a.GetX(), b.GetX()) - unitSize);
-                gridStart.SetY(MCore::Min(a.GetZ(), b.GetZ()) - unitSize);
+                gridStart.SetY(MCore::Min(a.GetY(), b.GetY()) - unitSize);
                 gridEnd.SetX(MCore::Max(a.GetX(), b.GetX()) + unitSize);
-                gridEnd.SetY(MCore::Max(a.GetZ(), b.GetZ()) + unitSize);
+                gridEnd.SetY(MCore::Max(a.GetY(), b.GetY()) + unitSize);
                 break;
             }
             }
@@ -1659,19 +1650,22 @@ namespace MCommon
 
             // find the 4 corners of the frustum
             AZ::Vector3 corners[4];
-            corners[0] = MCore::Unproject(0.0f, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
-            corners[1] = MCore::Unproject(screenWidth, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
-            corners[2] = MCore::Unproject(screenWidth, screenHeight, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
-            corners[3] = MCore::Unproject(0.0f, screenHeight, screenWidth, screenHeight, camera->GetFarClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
+            const AZ::Matrix4x4 inversedProjectionMatrix = MCore::InvertProjectionMatrix(camera->GetProjectionMatrix());
+            const AZ::Matrix4x4 inversedViewMatrix = MCore::InvertProjectionMatrix(camera->GetViewMatrix());
+
+            corners[0] = MCore::Unproject(0.0f, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), inversedProjectionMatrix, inversedViewMatrix);
+            corners[1] = MCore::Unproject(screenWidth, 0.0f, screenWidth, screenHeight, camera->GetFarClipDistance(), inversedProjectionMatrix, inversedViewMatrix);
+            corners[2] = MCore::Unproject(screenWidth, screenHeight, screenWidth, screenHeight, camera->GetFarClipDistance(), inversedProjectionMatrix, inversedViewMatrix);
+            corners[3] = MCore::Unproject(0.0f, screenHeight, screenWidth, screenHeight, camera->GetFarClipDistance(), inversedProjectionMatrix, inversedViewMatrix);
 
             // calculate the intersection points with the ground plane and create an AABB around those
             // if there is no intersection point then use the ray target as point, which is the projection onto the far plane basically
             MCore::AABB aabb;
             AZ::Vector3 intersectionPoint;
-            MCore::PlaneEq groundPlane(AZ::Vector3(0.0f, 0.0f, 1.0f), AZ::Vector3::CreateZero());
-            for (uint32 i = 0; i < 4; ++i)
+            const AZ::Plane groundPlane = AZ::Plane::CreateFromNormalAndPoint(AZ::Vector3(0.0f, 0.0f, 1.0f), AZ::Vector3::CreateZero());
+            for (AZ::u32 i = 0; i < 4; ++i)
             {
-                if (MCore::Ray(camera->GetPosition(), corners[i]).Intersects(groundPlane, &intersectionPoint))
+                if (groundPlane.IntersectSegment(camera->GetPosition(), corners[i], intersectionPoint))
                 {
                     corners[i] = intersectionPoint;
                 }
@@ -1730,12 +1724,12 @@ namespace MCommon
 
 
     // visualize the trajectory
-    void RenderUtil::RenderTrajectory(const MCore::Matrix& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale)
+    void RenderUtil::RenderTrajectory(const AZ::Transform& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale)
     {
         // get the position and some direction vectors of the trajectory node matrix
         const AZ::Vector3 center        = worldTM.GetTranslation();
-        const AZ::Vector3 forward       = worldTM.GetRight().GetNormalized();
-        const AZ::Vector3 right         = worldTM.GetForward().GetNormalized();
+        const AZ::Vector3 forward       = MCore::GetRight(worldTM).GetNormalized();
+        const AZ::Vector3 right         = MCore::GetForward(worldTM).GetNormalized();
         const float trailWidthHalf      = 0.5f;
         const float trailLengh          = 2.0f;
         const float arrowWidthHalf      = 1.5f;
@@ -1798,7 +1792,7 @@ namespace MCommon
 
         // get the world TM for the trajectory
         EMotionFX::Transform transform = actorInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(nodeIndex).ProjectedToGroundPlane();
-        MCore::Matrix worldTM = transform.ToMatrix();
+        AZ::Transform worldTM = transform.ToAZTransform();
 
         // pass it down to the real rendering function
         RenderTrajectory(worldTM, innerColor, borderColor, scale);
@@ -1837,16 +1831,16 @@ namespace MCommon
         const float arrowLength             = 1.5f;
         const AZ::Vector3 liftFromGround(0.0f, 0.0f, 0.0001f);
 
-        const MCore::Matrix trajectoryWorldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
+        const AZ::Transform trajectoryWorldTM = actorInstance->GetWorldSpaceTransform().ToAZTransform();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // Render arrow head
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // get the position and some direction vectors of the trajectory node matrix
-        MCore::Matrix  worldTM = traceParticles[numTraceParticles - 1].mWorldTM;
-        AZ::Vector3 right = trajectoryWorldTM.GetRight().GetNormalized();
+        EMotionFX::Transform worldTM = traceParticles[numTraceParticles - 1].mWorldTM;
+        AZ::Vector3 right = MCore::GetRight(trajectoryWorldTM).GetNormalized();
         AZ::Vector3 center = trajectoryWorldTM.GetTranslation();
-        AZ::Vector3 forward = trajectoryWorldTM.GetForward().GetNormalized();
+        AZ::Vector3 forward = MCore::GetForward(trajectoryWorldTM).GetNormalized();
         AZ::Vector3 up(0.0f, 0.0f, 1.0f);
 
         AZ::Vector3 vertices[7];
@@ -1902,17 +1896,17 @@ namespace MCommon
             float normalizedDistance = (float)i / numTraceParticles;
 
             // get the start and end point of the line segment and calculate the delta between them
-            worldTM    = traceParticles[i].mWorldTM;
-            a           = worldTM.GetTranslation();
-            b           = traceParticles[i - 1].mWorldTM.GetTranslation();
-            right       = worldTM.GetRight().GetNormalized();
+            worldTM     = traceParticles[i].mWorldTM;
+            a           = worldTM.mPosition;
+            b           = traceParticles[i - 1].mWorldTM.mPosition;
+            right       = MCore::GetRight(worldTM.ToAZTransform()).GetNormalized();
 
             if (i > 1 && i < numTraceParticles - 3)
             {
-                const AZ::Vector3 deltaA = traceParticles[i - 2].mWorldTM.GetTranslation() - traceParticles[i - 1].mWorldTM.GetTranslation();
-                const AZ::Vector3 deltaB = traceParticles[i - 1].mWorldTM.GetTranslation() - traceParticles[i    ].mWorldTM.GetTranslation();
-                const AZ::Vector3 deltaC = traceParticles[i    ].mWorldTM.GetTranslation() - traceParticles[i + 1].mWorldTM.GetTranslation();
-                const AZ::Vector3 deltaD = traceParticles[i + 1].mWorldTM.GetTranslation() - traceParticles[i + 2].mWorldTM.GetTranslation();
+                const AZ::Vector3 deltaA = traceParticles[i - 2].mWorldTM.mPosition - traceParticles[i - 1].mWorldTM.mPosition;
+                const AZ::Vector3 deltaB = traceParticles[i - 1].mWorldTM.mPosition - traceParticles[i    ].mWorldTM.mPosition;
+                const AZ::Vector3 deltaC = traceParticles[i    ].mWorldTM.mPosition - traceParticles[i + 1].mWorldTM.mPosition;
+                const AZ::Vector3 deltaD = traceParticles[i + 1].mWorldTM.mPosition - traceParticles[i + 2].mWorldTM.mPosition;
                 AZ::Vector3 delta = deltaA + deltaB + deltaC + deltaD;
                 delta = MCore::SafeNormalize(delta);
 
@@ -1979,7 +1973,7 @@ namespace MCommon
     void RenderUtil::RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color)
     {
         // project the node world space position to the screen space
-        const AZ::Vector3 projectedPoint = Project(globalPos, camera->GetViewProjMatrix(), screenWidth, screenHeight);
+        const AZ::Vector3 projectedPoint = MCore::Project(globalPos, camera->GetViewProjMatrix(), screenWidth, screenHeight);
 
         // perform clipping and make sure the node is actually visible, if not skip rendering its name
         if (projectedPoint.GetX() < 0.0f || projectedPoint.GetX() > screenWidth || projectedPoint.GetY() < 0.0f || projectedPoint.GetY() > screenHeight)
@@ -2032,7 +2026,7 @@ namespace MCommon
     }
 
 
-    void RenderUtil::RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeBox(const AZ::Vector3& dimensions, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
         AZ::Vector3 min = AZ::Vector3(-dimensions.GetX() * 0.5f, -dimensions.GetY() * 0.5f, -dimensions.GetZ() * 0.5f);
         AZ::Vector3 max = AZ::Vector3(dimensions.GetX() * 0.5f,  dimensions.GetY() * 0.5f,  dimensions.GetZ() * 0.5f);
@@ -2049,7 +2043,7 @@ namespace MCommon
 
         for (int i = 0; i < 8; ++i)
         {
-            p[i] = p[i] * worldTM;
+            p[i] = worldTM * p[i];
         }
 
         RenderLine(p[0], p[1], color);
@@ -2074,7 +2068,7 @@ namespace MCommon
     }
 
 
-    void RenderUtil::RenderWireframeSphere(float radius, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeSphere(float radius, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
         const float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
 
@@ -2088,16 +2082,16 @@ namespace MCommon
             x2 = radius * cosf(i + stepSize);
             y2 = radius * sinf(i + stepSize);
 
-            pos1 = AZ::Vector3(x1, y1, 0.0f) * worldTM;
-            pos2 = AZ::Vector3(x2, y2, 0.0f) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, y1, 0.0f);
+            pos2 = worldTM * AZ::Vector3(x2, y2, 0.0f);
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(x1, 0.0f, y1) * worldTM;
-            pos2 = AZ::Vector3(x2, 0.0f, y2) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, 0.0f, y1);
+            pos2 = worldTM * AZ::Vector3(x2, 0.0f, y2);
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, y1) * worldTM;
-            pos2 = AZ::Vector3(0.0f, x2, y2) * worldTM;
+            pos1 = worldTM * AZ::Vector3(0.0f, x1, y1);
+            pos2 = worldTM * AZ::Vector3(0.0f, x2, y2);
             RenderLine(pos1, pos2, color);
         }
 
@@ -2110,7 +2104,7 @@ namespace MCommon
 
     // The capsule caps (for one aligned vertically) are rendered as one horizontal full circle (around y) and two vertically aligned half circles around the x and z axes.
     // The end points of these half circles connect the bottom cap to the top cap (the cylinder part in the middle).
-    void RenderUtil::RenderWireframeCapsule(float radius, float height, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeCapsule(float radius, float height, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
         float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
         const float cylinderHeight = height - 2.0f * radius;
@@ -2129,12 +2123,12 @@ namespace MCommon
             x2 = radius * cosf(i + stepSize);
             y2 = radius * sinf(i + stepSize);
 
-            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(x2, y2,  halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, y1, halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(x2, y2,  halfCylinderHeight);
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(x1, y1, -halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(x2, y2, -halfCylinderHeight) * worldTM;
+            pos2 = worldTM * AZ::Vector3(x2, y2, -halfCylinderHeight);
+            pos1 = worldTM * AZ::Vector3(x1, y1, -halfCylinderHeight);
             RenderLine(pos1, pos2, color);
         }
 
@@ -2149,21 +2143,21 @@ namespace MCommon
             y2 = radius * sinf(i + stepSize);
 
             // Upper cap
-            pos1 = AZ::Vector3(x1, 0.0f, y1 + halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(x2, 0.0f, y2 + halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, 0.0f, y1 + halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(x2, 0.0f, y2 + halfCylinderHeight);
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, y1 + halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(0.0f, x2, y2 + halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(0.0f, x1, y1 + halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(0.0f, x2, y2 + halfCylinderHeight);
             RenderLine(pos1, pos2, color);
 
             // Lower cap
-            pos1 = AZ::Vector3(x1, 0.0f, -y1 - halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(x2, 0.0f, -y2 - halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, 0.0f, -y1 - halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(x2, 0.0f, -y2 - halfCylinderHeight);
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, -y1 - halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(0.0f, x2, -y2 - halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(0.0f, x1, -y1 - halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(0.0f, x2, -y2 - halfCylinderHeight);
             RenderLine(pos1, pos2, color);
         }
 
@@ -2176,8 +2170,8 @@ namespace MCommon
             x1 = radius * cosf(i);
             y1 = radius * sinf(i);
 
-            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * worldTM;
-            pos2 = AZ::Vector3(x1, y1, -halfCylinderHeight) * worldTM;
+            pos1 = worldTM * AZ::Vector3(x1, y1,  halfCylinderHeight);
+            pos2 = worldTM * AZ::Vector3(x1, y1, -halfCylinderHeight);
             RenderLine(pos1, pos2, color);
         }
 

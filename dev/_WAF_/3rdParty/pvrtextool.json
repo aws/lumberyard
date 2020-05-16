@@ -2,7 +2,7 @@
     "name": "pvr_tex_tool",
     "source": "@3P:powerVRTexTool@",
     "description": "PVRTextTool Library",
-    "includes": [
+    "system_includes": [
         "Include"
     ],
     "lib_required": "True"

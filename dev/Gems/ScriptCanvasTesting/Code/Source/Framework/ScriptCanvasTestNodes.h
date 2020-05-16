@@ -159,8 +159,10 @@ namespace TestNodes
         AZ_COMPONENT(ConfigurableUnitTestNode, "{61BF3D66-809A-4AAE-B20A-DFA2B51BE4EE}", ScriptCanvas::Node);
         static void Reflect(AZ::ReflectContext* reflection);
 
-        ScriptCanvas::Slot* AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration);
-        ScriptCanvas::Datum* FindDatum(const ScriptCanvas::SlotId& slotId);
+        ScriptCanvas::Slot* AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration);        
+        ScriptCanvas::Slot* InsertTestingSlot(int index, const ScriptCanvas::SlotConfiguration& slotConfiguration);
+
+        AZStd::vector< const ScriptCanvas::Slot* > FindSlotsByDescriptor(const ScriptCanvas::SlotDescriptor& slotDescriptor) const;
 
         void TestClearDisplayType(const AZ::Crc32& dynamicGroup);
         void TestSetDisplayType(const AZ::Crc32& dynamicGroup, const ScriptCanvas::Data::Type& dataType);

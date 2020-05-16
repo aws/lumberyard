@@ -74,6 +74,7 @@ namespace Projects
         /// Save a document to the project settings. Pass in nullptr to erase the object.
         virtual Lyzard::StringOutcome SaveProjectSettingsValue(const char* key, const rapidjson::Document* value) = 0;
     };
+
     using ProjectRequestBus = AZ::EBus<ProjectRequests>;
 
     class ProjectNotifications
@@ -97,6 +98,7 @@ namespace Projects
         ///                         removed then currentValue will be nullptr.
         void OnProjectSettingsValueChanged(const char* key, const rapidjson::Value* previousValue, const rapidjson::Value* currentValue) {}
     };
+
     using ProjectNotificationBus = AZ::EBus<ProjectNotifications>;
 
     /**
@@ -110,6 +112,7 @@ namespace Projects
         Engines::EngineId m_engine;
 
         AZStd::string m_templateName;
+        AZStd::string m_logFileNameOverride;
     };
 
     /**
@@ -188,6 +191,7 @@ namespace Projects
         */
         virtual AZ::Outcome<AZStd::string, AZStd::string> SetExternalProjectToEngine(const AZStd::string& pathToProjectFolder, const AZStd::string& pathToEngineFolder, const AZStd::string& gameName) const = 0;
     };
+
     using ProjectManagerRequestBus = AZ::EBus<ProjectManagerRequests>;
 
     /**
@@ -201,6 +205,9 @@ namespace Projects
         // EBusTraits overrides
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        // lockless dispatch is necssary to allow manual cancellation of waf requests since
+        // they are all blocking calls
+        static const bool LocklessDispatch = true;
         //////////////////////////////////////////////////////////////////////////
 
         virtual ~ProjectManagerWAFRequests() = default;
@@ -257,7 +264,15 @@ namespace Projects
         */
         virtual Lyzard::StringOutcome DeleteProjectArtifacts(const AZStd::string& projectName, const Engines::EngineId& engineId) const = 0;
 
+        /**
+         * Cancels the last running WAF request
+         * 
+         * \returns     true if there is a request to cancel, false otherwise
+         */
+        virtual Lyzard::StringOutcome CancelWAFRequest() = 0;
+
     };
+
     using ProjectManagerWAFRequestsBus = AZ::EBus<ProjectManagerWAFRequests>;
 
 
@@ -278,6 +293,10 @@ namespace Projects
 
         /// Called when a new project instance is created or loaded.
         virtual void OnProjectLoaded(ProjectId project) = 0;
+
+        /// Called when a new project creation process fails
+        virtual void OnProjectUnloaded(ProjectId project) = 0;
     };
+
     using ProjectManagerNotificationBus = AZ::EBus<ProjectManagerNotifications>;
 }

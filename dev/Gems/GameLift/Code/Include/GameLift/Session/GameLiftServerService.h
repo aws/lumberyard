@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #include <GameLift/Session/GameLiftServerServiceBus.h>
 #include <GameLift/Session/GameLiftServerServiceEventsBus.h>
@@ -23,6 +23,7 @@
 namespace GridMate
 {
     class GameLiftSession;
+    class GameLiftServerSDKWrapper;
     struct GameLiftSessionParams;
     struct GameLiftSessionRequestParams;
 
@@ -58,26 +59,35 @@ namespace GridMate
         GRIDMATE_SERVICE_ID(GameLiftServerService);
 
         GameLiftServerService(const GameLiftServerServiceDesc& desc);
+        virtual ~GameLiftServerService();
 
         bool IsReady() const;
 
         // GameLiftServerServiceBus
         GridSession* HostSession(const GameLiftSessionParams& params, const CarrierDesc& carrierDesc) override;
+        void ShutdownSession(const GridSession* gridSession) override;
         GameLiftServerSession* QueryGameLiftSession(const GridSession* session) override;
+        bool StartMatchmakingBackfill(const GridSession* gameSession, AZStd::string& matchmakingTicketId, bool checkForAutoBackfill) override;
+        bool StopMatchmakingBackfill(const GridSession* gameSession, const AZStd::string& matchmakingTicketId) override;
 
         // GameLiftServerSystemEventsBus
-        void OnGameLiftGameSessionStarted(const Aws::GameLift::Server::Model::GameSession& gameSession) override;
+        void OnGameLiftGameSessionStarted(const Aws::GameLift::Server::Model::GameSession& gameSession) override;        
+        void OnGameLiftGameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) override;
         void OnGameLiftServerWillTerminate() override;
 
         // GridMateService interface
         void OnServiceRegistered(IGridMate* gridMate) override;
         void OnServiceUnregistered(IGridMate* gridMate) override;
 
+        virtual AZStd::weak_ptr<GameLiftServerSDKWrapper> GetGameLiftServerSDKWrapper();
+
     protected:
         // SessionService
         void Update() override;
 
         bool StartGameLiftServer();
+        GameLiftServerSession* FindGameLiftServerSession(const AZStd::string& id);
+        bool UpdateGameSession(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession);
 
         enum GameLiftStatus
         {
@@ -91,6 +101,8 @@ namespace GridMate
         GameLiftServerServiceDesc m_serviceDesc;
         GameLiftStatus m_serverStatus;
         Aws::GameLift::GenericOutcomeCallable* m_serverInitOutcome;
+        AZStd::shared_ptr<GameLiftServerSDKWrapper> m_gameLiftServerSDKWrapper;
+
     };
 } // namespace GridMate
 

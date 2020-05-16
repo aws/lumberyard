@@ -174,7 +174,12 @@ void* CGeneralMemoryHeap::Memalign(size_t boundary, size_t size, const char* sUs
 
 size_t CGeneralMemoryHeap::UsableSize(void* ptr) const
 {
-    return (*m_allocator)->AllocationSize(ptr);
+    // The client code using these heaps tend to use a guesswork algorithm to determine
+    // which heap owns the pointer.  Calls to UsableSize() are a part of this guesswork.
+    // The overrun detector doesn't play nicely on AllocationSize() lookups for pointers that
+    // don't belong to the heap, so validate that we're in the correct address range before trying
+    // to look up the size.
+    return IsInAddressRange(ptr) ? (*m_allocator)->AllocationSize(ptr) : 0;
 }
 
 AZ::IAllocator* CGeneralMemoryHeap::GetAllocator() const

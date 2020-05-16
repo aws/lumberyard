@@ -55,7 +55,7 @@
                 "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
                 "ConfigurationKey": { "Ref": "ConfigurationKey" },
                 "FunctionName": "Lambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "Settings": {
                 }
             }

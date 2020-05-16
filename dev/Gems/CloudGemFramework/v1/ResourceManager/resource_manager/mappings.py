@@ -10,31 +10,31 @@
 #
 # $Revision: #2 $
 
-from errors import HandledError
-
 import os
 import json
-import util
 import glob
-from resource_manager_common import constant
+import six
+
 from botocore.exceptions import ClientError
 from boto3.exceptions import S3UploadFailedError
 
+from resource_manager_common import constant
+from . import util
 from cgf_utils import aws_utils
 from cgf_utils import custom_resource_utils
-from resource_manager_common import resource_type_info
-from resource_manager_common import stack_info
+from .errors import HandledError
 
 _MAPPINGS_KEY_PREFIX = "mappings/"
 
+
 def list(context, args):
 
-    protected = context.config.user_default_deployment in context.config.get_protected_depolyment_names()
+    protected = context.config.user_default_deployment in context.config.get_protected_deployment_name()
     list = []
 
     mappings = context.config.user_settings.get('Mappings', {})
 
-    for key, value in mappings.iteritems():
+    for key, value in six.iteritems(mappings):
         value['Name'] = key
         list.append(value)
 
@@ -101,7 +101,7 @@ def update(context, args, force=False):
             for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
                 s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
         except S3UploadFailedError as e:
-            print "This client does not have upload permissions for the project configuration bucket. skipping upload"
+            print("This client does not have upload permissions for the project configuration bucket. skipping upload")
 
     elif args.deployment == context.config.default_deployment:
         # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
@@ -121,11 +121,11 @@ def set_launcher_deployment(context, deployment_name):
         return
 
     with open(launcher_deployment_file, 'w') as out_file:
-        json.dump({"LauncherDeployment" : deployment_name}, out_file)
+        json.dump({"LauncherDeployment": deployment_name}, out_file)
 
 def __update_with_deployment(context, args):
     deployment_name = args.deployment
-    if not deployment_name in context.config.deployment_names:
+    if deployment_name not in context.config.deployment_names:
         raise HandledError('The project has no {} deployment.'.format(deployment_name))
     __update_logical_mappings_files(context, deployment_name, args)
 
@@ -138,12 +138,13 @@ def __update_user_mappings_from_file(context, player_mappings_file):
 
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
-    ## AuthenticatedPlayer is a superset of general "Player" and "AuthenticatedPlayer" permissions
-    ## The Player mappings file should include both
+    # AuthenticatedPlayer is a superset of general "Player" and "AuthenticatedPlayer" permissions
+    # The Player mappings file should include both
     player_mappings = __get_mappings(context, deployment_name, exclusions, 'AuthenticatedPlayer', args)
 
-    #update the user-settings.json file if this is the default deployment stack or a explicit deployment stack parameter was received in the CLI args list.
-    #If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment regardless whether it is the default
+    # Update the user-settings.json file if this is the default deployment stack or a explicit deployment stack parameter was received in the CLI args list.
+    # If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment
+    # regardless whether it is the default
     if args:
         print("Deployment: ", args.deployment)
     else:
@@ -161,9 +162,10 @@ def __update_launcher(context, deployment_name, role, mappings=None, args=None):
         mappings = __get_mappings(context, deployment_name, __get_mapping_exclusions(context), role, args)
 
     kLogicalMappingsObjectName = 'LogicalMappings'
-    outData = {}
-    outData[kLogicalMappingsObjectName] = mappings
-    outData['Protected'] = deployment_name in context.config.get_protected_depolyment_names()
+    outData = {
+        kLogicalMappingsObjectName: mappings,
+        'Protected': deployment_name in context.config.get_protected_deployment_name()
+    }
 
     logicalMappingsFileName = '{}.{}.{}'.format(deployment_name, role.lower(), constant.MAPPING_FILE_SUFFIX)
     logicalMappingsPath = __logical_mapping_file_path(context)
@@ -179,7 +181,7 @@ def __logical_mapping_file_path(context):
     return logicalMappingsPath
 
 
-def __remove_old_mapping_files(context, deployment_name = None):
+def __remove_old_mapping_files(context, deployment_name=None):
     if deployment_name is None:
         __remove_all_old_mapping_files(context)
     logicalMappingsPath = __logical_mapping_file_path(context)
@@ -233,7 +235,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
 
     resources = context.stack.describe_resources(deployment_stack_id, recursive=True)
 
-    for logical_name, description in resources.iteritems():
+    for logical_name, description in six.iteritems(resources):
 
         if logical_name in exclusions:
             continue
@@ -244,7 +246,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                 mappings[logical_name] = {
                     'PhysicalResourceId': physical_resource_id,
                     'ResourceType': description['ResourceType'],
-                    'UserPoolClients': description['UserPoolClients'] # include client id / secret
+                    'UserPoolClients': description['UserPoolClients']  # include client id / secret
                 }
             else:
                 stack_id = description['StackId']
@@ -271,22 +273,21 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
     k_exchange_token_handler_name = 'PlayerAccessTokenExchange'
     if k_exchange_token_handler_name not in exclusions:
         login_exchange_handler = context.stack.get_physical_resource_id(context.config.project_stack_id, k_exchange_token_handler_name)
-        if login_exchange_handler != None:
+        if login_exchange_handler is not None:
             mappings[k_exchange_token_handler_name] = { 'PhysicalResourceId': login_exchange_handler, 'ResourceType': 'AWS::Lambda::Function' }
 
-    #now let's grab the player identity stuff and make sure we add it to the mappings.
+    # now let's grab the player identity stuff and make sure we add it to the mappings.
     access_stack_arn = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
-    if access_stack_arn != None:
+    if access_stack_arn is not None:
         access_resources = context.stack.describe_resources(access_stack_arn, recursive=True)
-        for logical_name, description in access_resources.iteritems():
+        for logical_name, description in six.iteritems(access_resources):
             if description['ResourceType'] == 'Custom::CognitoIdentityPool':
 
                 if logical_name in exclusions:
                     continue
 
                 mappings[logical_name] = {
-                    'PhysicalResourceId': custom_resource_utils.
-                        get_embedded_physical_id(description['PhysicalResourceId']),
+                    'PhysicalResourceId': custom_resource_utils.get_embedded_physical_id(description['PhysicalResourceId']),
                     'ResourceType': description['ResourceType']
                 }
 
@@ -314,7 +315,7 @@ def __add_service_api_mapping(context, logical_name, resource_description, mappi
     if stack_id:
         stack_description = context.stack.describe_stack(stack_id)
         outputs = stack_description.get('Outputs', [])
-        if outputs == None:
+        if outputs is None:
             outputs = []
         for output in outputs:
             if output.get('OutputKey', '') == 'ServiceUrl':
@@ -337,9 +338,9 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
     deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
     player_role_id = context.stack.get_physical_resource_id(deployment_access_stack_id, role, optional=True)
 
-    if player_role_id.startswith("{"): # same check that happens in custom_resource info class
+    if player_role_id.startswith("{"):  # same check that happens in custom_resource info class
         player_role_id = custom_resource_utils.get_embedded_physical_id(player_role_id).split("/")[-1]
-    if player_role_id == None:
+    if player_role_id is None:
         return {}
 
     iam = context.aws.client('iam')
@@ -357,7 +358,7 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
         policy_document = res.get('PolicyDocument', {})
 
         statements = policy_document.get('Statement', [])
-        if not isinstance(statements, type([])): # def list above hides list
+        if not isinstance(statements, type([])):  # def list above hides list
             statements = [ statements ]
 
         for statement in statements:
@@ -365,7 +366,7 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
                 continue
 
             resource_arns = statement.get('Resource', [])
-            if not isinstance(resource_arns, type([])): # def list above hides list
+            if not isinstance(resource_arns, type([])):  # def list above hides list
                 resource_arns = [ resource_arns ]
 
             for resource_arn in resource_arns:

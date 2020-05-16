@@ -12,6 +12,7 @@
 import json
 import os
 import re
+from six import iteritems
 
 from resource_manager.errors import HandledError
 
@@ -20,7 +21,7 @@ from resource_manager_common import service_interface
 import swagger_processor
 import swagger_json_navigator
 
-import lambda_dispatch
+from . import lambda_dispatch
 
 
 def process_interface_implementation_objects(context, swagger_navigator):
@@ -77,7 +78,7 @@ def insert_interface_definitions(target_swagger, source_swagger, interface_id, e
             target_name = source_name
 
             # If there is already a definition with the same name, and they are identical,
-            # them we can resue it. Otherwise, we need to generate an unique name for the
+            # them we can reuse it. Otherwise, we need to generate an unique name for the
             # source definition.
             target_definition = target_definitions.get_object(target_name, default = None)
             if not target_definition.is_none and target_definition.value != source_definition.value:
@@ -119,7 +120,7 @@ def increment_trailing_number(name):
 def insert_interface_paths(parent_path_object, interface_swagger, interface_id, mappings, lambda_dispatch_for_paths, external_parameters):
     for interface_path, interface_path_object in interface_swagger.get_object('paths').items():
 
-        # Swagger requires that paths start with an /, so no seperator needed. The
+        # Swagger requires that paths start with an /, so no separator needed. The
         # root path, '/', is handled specially to avoid duplicate leading /.
         if parent_path_object.selector == '/':
             path = interface_path 
@@ -137,7 +138,7 @@ def insert_interface_paths(parent_path_object, interface_swagger, interface_id, 
             parameters.extend(external_parameters)
 
         lambda_dispatch_for_path = lambda_dispatch_for_paths.get(interface_path, {})
-        for operation_name, operation_value in path_object_value.iteritems():
+        for operation_name, operation_value in iteritems(path_object_value):
             lambda_dispatch_for_operation = lambda_dispatch_for_path.get(operation_name, None)
             if lambda_dispatch_for_operation:
                 operation_value[lambda_dispatch.LAMBDA_DISPATCH_OBJECT_NAME] = lambda_dispatch_for_operation
@@ -216,7 +217,7 @@ def load_interface_swagger(context, interface_id):
             interface_swagger = json.load(file)
             swagger_processor.validate_swagger(interface_swagger)
     except Exception as e:
-        raise HandledError('Cloud not load the definition for interface {} from {}: {}'.format(interface_id, interface_file_path, e.message))
+        raise HandledError('Cloud not load the definition for interface {} from {}: {}'.format(interface_id, interface_file_path, str(e)))
 
     return swagger_json_navigator.SwaggerNavigator(interface_swagger)
 
@@ -226,4 +227,4 @@ def parse_interface_id(interface_id):
     try:
         return service_interface.parse_interface_id(interface_id)
     except Exception as e:
-        raise HandledError(e.message)
+        raise HandledError(str(e))

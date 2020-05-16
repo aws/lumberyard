@@ -139,7 +139,7 @@ bool CNULLRenderer::ChangeDisplay(unsigned int width, unsigned int height, unsig
 }
 
 //////////////////////////////////////////////////////////////////////
-void CNULLRenderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport)
+void CNULLRenderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport, float scaleWidth, float scaleHeight)
 {
 }
 

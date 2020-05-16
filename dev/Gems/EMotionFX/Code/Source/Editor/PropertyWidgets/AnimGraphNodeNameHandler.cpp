@@ -18,8 +18,8 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeNameLineEdit, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeNameHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeNameLineEdit, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeNameHandler, EditorAllocator, 0)
 
     AnimGraphNodeNameLineEdit::AnimGraphNodeNameLineEdit(QWidget* parent)
         : LineEditValidatable(parent)

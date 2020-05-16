@@ -161,7 +161,7 @@ static bool DirectoryExists(const wchar_t* szPathPart0, const wchar_t* szPathPar
 #if defined(AZ_PLATFORM_WINDOWS)
     const DWORD dwAttr = GetFileAttributesW(dir.c_str());
     return (dwAttr != INVALID_FILE_ATTRIBUTES) && ((dwAttr & FILE_ATTRIBUTE_DIRECTORY) != 0);
-#elif AZ_TRAIT_OS_PLATFORM_APPLE
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     char dirUTF8[MAX_PATH * 8];
     ConvertUtf16ToUtf8(dir.c_str(), SettingsManagerHelpers::CCharBuffer(dirUTF8, MAX_PATH * 8));
     struct stat sb;
@@ -351,7 +351,7 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
 #if defined(__APPLE__)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
 #elif defined(_WIN32)
-    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc"};
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc142/rc", L"Bin64vc141/rc"};
 #elif defined(LINUX64)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
 #else

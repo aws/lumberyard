@@ -53,6 +53,9 @@ namespace SandboxEditor
         //! @return if the trace handler is connected to the message bus.
         bool IsConnectedToMessageBus() const;
 
+        //! Sets whether to display the error window or not
+        void SetShowWindow(bool showWindow) { m_showWindow = showWindow; }
+
     private:
 
         /// The display behavior for messages.
@@ -81,6 +84,7 @@ namespace SandboxEditor
         AZStd::list<QString> m_errors; ///< The list of errors that occured while collecting.
         AZStd::list<QString> m_warnings; ///< The list of warnings that occured while collecting.
         bool m_isCollecting = false; ///< Tracks if the trace handler is collecting messages or displaying them as they occur.
+        bool m_showWindow = true; ///< Whether it should display the window
 
         ///< The list of messages that occured on a thread that can't display a Qt popup.
         ///< These are intended for 1 at a time popups.

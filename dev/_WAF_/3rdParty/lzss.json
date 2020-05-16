@@ -2,7 +2,7 @@
     "name": "lzss",
     "source": "@3P:LZSS@",
     "description": "A Data Compression library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

@@ -11,8 +11,10 @@
 */
 #pragma once
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzQtComponents/Buses/DragAndDrop.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/AssetBrowser/Previewer/PreviewerBus.h>
 
 namespace AZ
 {
@@ -24,9 +26,21 @@ namespace AzQtComponents
     class DragAndDropContextBase;
 }
 
+namespace AzToolsFramework
+{
+    namespace AssetBrowser
+    {
+        class AssetBrowserEntry;
+        class PreviewerFactory;
+    }
+}
+
+class LegacyPreviewerFactory;
+
 class AzAssetBrowserRequestHandler
     : protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     , protected AzQtComponents::DragAndDropEventsBus::Handler
+    , protected AzToolsFramework::AssetBrowser::PreviewerRequestBus::Handler
 {
 public:
     AzAssetBrowserRequestHandler();
@@ -50,5 +64,13 @@ protected:
     void DragLeave(QDragLeaveEvent* event) override;
     void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
 
+    //////////////////////////////////////////////////////////////////////////
+    // PreviewerRequestBus::Handler
+    //////////////////////////////////////////////////////////////////////////
+    const AzToolsFramework::AssetBrowser::PreviewerFactory* GetPreviewerFactory(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const override;
+
     bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
+
+private:
+    AZStd::unique_ptr<const LegacyPreviewerFactory> m_previewerFactory;
 };

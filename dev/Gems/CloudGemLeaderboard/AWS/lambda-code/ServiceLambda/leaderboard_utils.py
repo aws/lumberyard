@@ -12,7 +12,6 @@ from __future__ import print_function
 
 import ban_handler
 import stats_settings
-import math
 
 '''
 Validates whether the given score is allowed for that stat
@@ -20,7 +19,7 @@ Insert your own validation logic here
 '''
 def is_score_valid(score, stat):
     ok = True
-    ok = ok and isinstance(score, (int, long, float))
+    ok = ok and isinstance(score, (int, float))
     settings = stats_settings.get_stat(stat)
     if "min" in settings:
         ok = ok and float(score) >= float(settings["min"])

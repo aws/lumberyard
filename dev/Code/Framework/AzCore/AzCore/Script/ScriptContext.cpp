@@ -1981,7 +1981,7 @@ LUA_API const Node* lua_getDummyNode()
             template<class T>
             bool AllocateTempStorageLuaNative(BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator& tempAllocator, AZStd::allocator* backupAllocator = nullptr)
             {
-                AZ_STATIC_ASSERT((AZStd::is_pod<T>::value || AZStd::is_same<T, AZ::VectorFloat>::value), "This should be use only for POD data types, as not ctor/dtor is called!");
+                static_assert((AZStd::is_pod<T>::value || AZStd::is_same<T, AZ::VectorFloat>::value), "This should be use only for POD data types, as not ctor/dtor is called!");
                 (void)valueClass;
 
                 if (value.m_traits & BehaviorParameter::TR_POINTER)
@@ -4051,7 +4051,7 @@ LUA_API const Node* lua_getDummyNode()
             }
 
             //////////////////////////////////////////////////////////////////////////
-            ~ScriptContextImpl()
+            ~ScriptContextImpl() override
             {
                 for (LuaScriptCaller* binder : m_methods)
                 {

@@ -18,6 +18,13 @@
 
 namespace PhysX
 {
+    namespace JointConstants
+    {
+        // Setting swing limits to very small values can cause extreme stability problems, so clamp above a small
+        // threshold.
+        static const float MinSwingLimitDegrees = 1.0f;
+    } // namespace JointConstants
+
     Physics::WorldBody* Joint::GetParentBody() const
     {
         return m_parentBody;
@@ -226,8 +233,13 @@ namespace PhysX
             joint->setMotion(physx::PxD6Axis::eSWING1, physx::PxD6Motion::eLIMITED);
             joint->setMotion(physx::PxD6Axis::eSWING2, physx::PxD6Motion::eLIMITED);
 
-            float swingLimitY = AZ::DegToRad(d6Config->m_swingLimitY);
-            float swingLimitZ = AZ::DegToRad(d6Config->m_swingLimitZ);
+            AZ_Warning("PhysX Joint",
+                d6Config->m_swingLimitY >= JointConstants::MinSwingLimitDegrees && d6Config->m_swingLimitZ >= JointConstants::MinSwingLimitDegrees,
+                "Very small swing limit requested for joint between \"%s\" and \"%s\", increasing to %f degrees to improve stability",
+                parentActor ? parentActor->getName() : "world", childActor ? childActor->getName() : "world",
+                JointConstants::MinSwingLimitDegrees);
+            float swingLimitY = AZ::DegToRad(AZ::GetMax(JointConstants::MinSwingLimitDegrees, d6Config->m_swingLimitY));
+            float swingLimitZ = AZ::DegToRad(AZ::GetMax(JointConstants::MinSwingLimitDegrees, d6Config->m_swingLimitZ));
             physx::PxJointLimitCone limitCone(swingLimitY, swingLimitZ);
             joint->setSwingLimit(limitCone);
 
@@ -496,12 +508,12 @@ namespace PhysX
                     ->DataElement(AZ::Edit::UIHandlers::Default, &D6JointLimitConfiguration::m_swingLimitY, "Swing limit Y",
                         "Maximum angle from the Y axis of the joint frame")
                     ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                    ->Attribute(AZ::Edit::Attributes::Min, JointConstants::MinSwingLimitDegrees)
                     ->Attribute(AZ::Edit::Attributes::Max, 180.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &D6JointLimitConfiguration::m_swingLimitZ, "Swing limit Z",
                         "Maximum angle from the Z axis of the joint frame")
                     ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                    ->Attribute(AZ::Edit::Attributes::Min, JointConstants::MinSwingLimitDegrees)
                     ->Attribute(AZ::Edit::Attributes::Max, 180.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &D6JointLimitConfiguration::m_twistLimitLower, "Twist lower limit",
                         "Lower limit for rotation about the X axis of the joint frame")

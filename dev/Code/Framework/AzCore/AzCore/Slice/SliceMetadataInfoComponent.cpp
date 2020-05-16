@@ -147,7 +147,7 @@ namespace AZ
         return m_associatedEntities.find(entityId) != m_associatedEntities.end();
     }
 
-    void SliceMetadataInfoComponent::GetAssociatedEntities(AZStd::unordered_set<EntityId>& associatedEntityIds)
+    void SliceMetadataInfoComponent::GetAssociatedEntities(AZStd::set<EntityId>& associatedEntityIds)
     {
         associatedEntityIds.insert(m_associatedEntities.begin(), m_associatedEntities.end());
     }
@@ -172,10 +172,15 @@ namespace AZ
     void SliceMetadataInfoComponent::Reflect(AZ::ReflectContext* context)
     {
         SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+
         if (serializeContext)
         {
+            // m_associatedEntities is an unordered_set in v1. Therefore, we need to explicitly reflect unordered_set for it to be
+            // registered with the serializeContext rather than assume that the serializeContext will have it reflected by some
+            // other class
+            serializeContext->RegisterGenericType<AZStd::unordered_set<AZ::EntityId>>();
             serializeContext->Class<SliceMetadataInfoComponent, Component>()->
-                Version(1)->
+                Version(2, &VersionConverter)->
                 Field("AssociatedIds", &SliceMetadataInfoComponent::m_associatedEntities)->
                 Field("ParentId", &SliceMetadataInfoComponent::m_parent)->
                 Field("ChildrenIds", &SliceMetadataInfoComponent::m_children)->
@@ -192,6 +197,37 @@ namespace AZ
                     ;
             }
         }
+    }
+
+    bool SliceMetadataInfoComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // Conversion from version 1:
+        // - Change AssociatedIds(m_associatedEntities) to be a set of entityIds instead of an unordered_set
+        if (classElement.GetVersion() <= 1)
+        {
+            int associatedIdsIndex = classElement.FindElement(AZ_CRC("AssociatedIds", 0xb5dc95c6));
+
+            if (associatedIdsIndex < 0)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& associatedIds = classElement.GetSubElement(associatedIdsIndex);
+            AZStd::unordered_set<AZ::EntityId> associatedIdsUnorderedSet;
+            AZStd::set<AZ::EntityId> associatedIdsOrderedSet;
+            if (!associatedIds.GetData<AZStd::unordered_set<AZ::EntityId>>(associatedIdsUnorderedSet))
+            {
+                return false;
+            }
+            associatedIdsOrderedSet.insert(associatedIdsUnorderedSet.begin(), associatedIdsUnorderedSet.end());
+            associatedIds.Convert<AZStd::set<AZ::EntityId>>(context);
+            if (!associatedIds.SetData<AZStd::set<AZ::EntityId>>(context, associatedIdsOrderedSet))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     AZ::ExportedComponent SliceMetadataInfoComponent::ExportComponent(AZ::Component* /*thisComponent*/, const AZ::PlatformTagSet& /*platformTags*/)

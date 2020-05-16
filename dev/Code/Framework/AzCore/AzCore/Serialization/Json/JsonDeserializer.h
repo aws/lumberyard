@@ -83,11 +83,8 @@ namespace AZ
         static ResolvePointerResult ResolvePointer(void*& object, Uuid& objectType, JsonSerializationResult::ResultCode& status, const rapidjson::Value& pointerData,
             const AZ::IRttiHelper& rtti, StackedString& path, const JsonDeserializerSettings& settings);
 
-        static LoadTypeIdResult LoadTypeIdFromJsonObject(const rapidjson::Value& node, const AZ::IRttiHelper& rtti, StackedString& path,
-            const JsonDeserializerSettings& settings);
-
-        static LoadTypeIdResult LoadTypeIdFromJsonString(const rapidjson::Value& node, const AZ::IRttiHelper* baseClassRtti, StackedString& path,
-            const JsonDeserializerSettings& settings);
+        static LoadTypeIdResult LoadTypeIdFromJsonObject(const rapidjson::Value& node, const AZ::IRttiHelper& rtti, const JsonDeserializerSettings& settings);
+        static LoadTypeIdResult LoadTypeIdFromJsonString(const rapidjson::Value& node, const AZ::IRttiHelper* baseClassRtti, const JsonDeserializerSettings& settings);
 
         //! Searches the class data matching typeId at object for a child element that matches nameCrc
         //! Sets the outSubclassTypeId to the found element data's typeId, and returns the offset pointer within storageClass to the found element.

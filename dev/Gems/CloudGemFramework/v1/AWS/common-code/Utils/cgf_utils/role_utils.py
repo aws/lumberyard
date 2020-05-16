@@ -11,7 +11,6 @@
 # $Revision$
 
 import boto3
-import json
 import time
 
 from cgf_utils import aws_utils
@@ -39,25 +38,25 @@ PROPAGATION_DELAY_SECONDS = 30
 def get_assume_role_policy_document_for_service(service):
     return ASSUME_ROLE_POLICY_DOCUMENT.replace("{assume_role_service}", service)
 
-def create_access_control_role(stack_manager, id_data, stack_arn, logical_role_name, assume_role_service, delay_for_propagation = True, default_policy = None):
-    '''Create an IAM Role for a resource group stack. 
-    
-    Developers typlically do not have the IAM permissions necessary to create
+def create_access_control_role(stack_manager, id_data, stack_arn, logical_role_name, assume_role_service, delay_for_propagation=True, default_policy=None):
+    """Create an IAM Role for a resource group stack.
+
+    Developers typically do not have the IAM permissions necessary to create
     roles, either directly or indirectly via Cloud Formation. However, many
     resource require that a role be specified (e.g. the role assumed when a
-    Lambda function is invoked). 
-    
-    To overcome this delema, custom resource handlers can use this method and
-    act as a proxies for directly defining roles in resource-group-template.json 
+    Lambda function is invoked).
+
+    To overcome this dilemma, custom resource handlers can use this method and
+    act as a proxies for directly defining roles in resource-group-template.json
     files.
-        
-    The Custom::AcessControl resource handler will manage the policies attached
+
+    The Custom::AccessControl resource handler will manage the policies attached
     to this role.
-    
+
     Args:
         stack_manager: A stack_info.StackManager() instance that can be used to retrieve cached stack information.
 
-        resource_group_stack_arn: Identifies the stack that "owns" the role.
+        stack_arn: Identifies the stack that "owns" the role.
 
         logical_role_name: Appended to the stack name to construct the actual role name.
 
@@ -69,7 +68,7 @@ def create_access_control_role(stack_manager, id_data, stack_arn, logical_role_n
 
         The ARN of the created role.
 
-    '''
+    """
 
     role_name = get_access_control_role_name(stack_arn, logical_role_name)
     owning_stack_info = stack_manager.get_stack_info(stack_arn)
@@ -119,17 +118,13 @@ def create_access_control_role(stack_manager, id_data, stack_arn, logical_role_n
 
 
 def delete_access_control_role(id_data, logical_role_name):
-    '''Delete a role that was created using create_access_control_role.
-    
-    Args:
+    """Delete a role that was created using create_access_control_role.
 
-        stack_arn: Identifies the stack.
+    Args:
+        id_data:
 
         logical_role_name: Appended to the stack name to construct the actual role name.
-
-        policy_name: Identifies the metadata used to construct the policy and the name 
-        of the policy attached to the created role.
-    '''
+    """
 
     role_name = get_id_data_abstract_role_mapping(id_data, logical_role_name)
 
@@ -142,7 +137,7 @@ def delete_access_control_role(id_data, logical_role_name):
 
     policy_names = []
     if role_name is None:
-        print "WARNING: could not retrieve role name from mapping, possibly orphaning logical role {}".format(logical_role_name)
+        print("WARNING: could not retrieve role name from mapping, possibly orphaning logical role {}".format(logical_role_name))
     else:
         try:
             res = iam.list_role_policies(RoleName=role_name)
@@ -168,19 +163,16 @@ def delete_access_control_role(id_data, logical_role_name):
 
 
 def get_access_control_role_arn(id_data, logical_role_name):
-    '''Get the ARN of a role created using create_access_control_role.
-    
-    Args:
+    """Get the ARN of a role created using create_access_control_role.
 
-        resource_group_stack_arn: Identifies the stack.
+    Args:
+        id_data:
 
         logical_role_name: Appended to the stack name to construct the actual role name.
 
     Returns:
-
         The ARN of the role.
-
-    '''
+    """
 
     role_name = get_id_data_abstract_role_mapping(id_data, logical_role_name)
     if not role_name:
@@ -206,15 +198,14 @@ def sanitize_role_name(role_name):
 
 
 def get_access_control_role_name(stack_arn, logical_role_name):
-    '''Generates a role name based on a stack name and a logical role name.
+    """Generates a role name based on a stack name and a logical role name.
 
     Args:
-
         stack_arn - The arn of the stack.
 
         logical_role_name: Appended to the stack name to construct the actual role name.
 
-    '''
+    """
 
     # Expecting stack names like: {project-name}-{deployment-name}-{resource-group-name}-{random-stuff}.
     # In practice role names are truncated to the max allowable length.
@@ -237,19 +228,15 @@ def remove_id_data_abstract_role_mapping(id_data, logical_role_name):
     return role_mappings.pop(logical_role_name, None)
 
 def get_id_data_abstract_role_mappings(id_data):
-    '''Get the logical and physical names of the access control roles
+    """Get the logical and physical names of the access control roles
     defined by a resource group.
 
-    Args:
+    :param id_data: - Data extracted from a custom resource's physical id by
+        get_data_from_custom_physical_resource_id
 
-        id_data - Data extracted from a custom resource's physical id by 
-        get_data_from_custom_physical_resource_id 
-
-    Returns:
-
-        A dictonary mapping abstract role names to physical role names.
-            
-    '''
+    :returns
+        A dictionary mapping abstract role names to physical role names.
+    """
 
     return id_data.setdefault('AbstractRoleMappings', {})
 

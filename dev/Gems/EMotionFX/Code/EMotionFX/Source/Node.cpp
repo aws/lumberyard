@@ -552,6 +552,18 @@ namespace EMotionFX
         }
     }
 
+    void Node::SetIsCritical(bool isCritical)
+    {
+        if (isCritical)
+        {
+            mNodeFlags |= FLAG_CRITICAL;
+        }
+        else
+        {
+            mNodeFlags &= ~FLAG_CRITICAL;
+        }
+    }
+
 
     bool Node::GetIsAttachmentNode() const
     {

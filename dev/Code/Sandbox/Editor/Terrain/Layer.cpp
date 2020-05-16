@@ -666,7 +666,7 @@ void CLayer::AssignMaterial(const QString& materialName)
         if (m_pSurfaceType && m_pSurfaceType->GetLayerReferenceCount() == 1)
         {
             m_pSurfaceType->SetMaterial(materialName);
-            m_pSurfaceType->SetName(materialName);
+            m_pSurfaceType->SetName(m_strLayerName);
         }
         else if (terrainManager->GetSurfaceTypeCount() < MAX_SURFACE_TYPE_ID_COUNT)
         {
@@ -676,7 +676,7 @@ void CLayer::AssignMaterial(const QString& materialName)
             SetSurfaceType(pSrfType);
 
             pSrfType->SetMaterial(materialName);
-            pSrfType->SetName(materialName);
+            pSrfType->SetName(m_strLayerName);
             terrainManager->AddSurfaceType(pSrfType);
 
             pSrfType->AssignUnusedSurfaceTypeID();

@@ -42,6 +42,12 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Version(0)
                 );
 
+                // Node
+                void CollectVariableReferences(AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+                bool ContainsReferencesToVariables(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+                bool RemoveVariableReferences(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) override;
+                ////
+
                 //// VariableNodeRequestBus
                 void SetId(const VariableId& variableId) override;
                 const VariableId& GetId() const override;
@@ -52,10 +58,13 @@ namespace ScriptCanvas
 
             protected:
                 void OnInit() override;
+                void OnPostActivate() override;
                 void OnInputSignal(const SlotId&) override;
 
                 void AddOutputSlot();
                 void RemoveOutputSlot();
+
+                GraphScopedVariableId GetScopedVariableId() const;
 
                 AZStd::vector<AZStd::pair<VariableId, AZStd::string>> GetGraphVariables() const;
                 void OnIdChanged(const VariableId& oldVariableId);

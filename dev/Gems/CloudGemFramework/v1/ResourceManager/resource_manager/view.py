@@ -10,22 +10,27 @@
 #
 # $Revision: #1 $
 
-import util
-import dateutil
-from errors import HandledError
-import textwrap
-from datetime import datetime
 import json
+from datetime import datetime
+import six
+from six.moves import input
+
+from . import util
+from .errors import HandledError
+
 
 def date_time_formatter(v):
     if isinstance(v, datetime):
         return v.strftime('%c')
     return '--'
 
+
 class ViewContext(object):
 
     def __init__(self, context):
         self.context = context
+        self.__verbose = False
+        self.__args = {}
 
     def bootstrap(self, args):
         self.__verbose = args.verbose
@@ -35,17 +40,17 @@ class ViewContext(object):
         self.bootstrap(args)
 
     def _output(self, key, value):
-        print value
+        print(value)
 
     def _output_message(self, msg):
         self._output('message', msg)
 
     def importable_resource_list(self, importable_resources):
         self.__output_table(importable_resources,
-            [
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'ARN', 'Heading': 'ARN' }
-            ])
+                            [
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'ARN', 'Heading': 'ARN'}
+                            ])
 
     def import_resource(self, name):
         self._output_message('{name} imported successfully'.format(name=name))
@@ -86,7 +91,7 @@ class ViewContext(object):
 
     def file_exists(self, path):
         self._output_message('WARNING: an {} file already exists. Not creating.'.format(path))
-    
+
     def add_zip_content(self, description, destination):
         self._output_message('Adding {} to {}'.format(description, destination))
 
@@ -94,7 +99,7 @@ class ViewContext(object):
         self._output_message('Creating {}'.format(path))
 
     def emptying_bucket(self, bucket):
-         self._output_message('Deleting contents of bucket {}'.format(bucket))
+        self._output_message('Deleting contents of bucket {}'.format(bucket))
 
     def deleting_bucket(self, bucket):
         self._output_message('Deleting bucket {}'.format(bucket))
@@ -104,7 +109,8 @@ class ViewContext(object):
 
     def updating_stack(self, stack_name, template_url, parameters):
         if self.__verbose:
-            self._output_message('\nUpdating stack {} using template {} with parameters: {}'.format(stack_name, template_url, json.dumps(parameters, indent=4, sort_keys=True)))
+            self._output_message(
+                '\nUpdating stack {} using template {} with parameters: {}'.format(stack_name, template_url, json.dumps(parameters, indent=4, sort_keys=True)))
         else:
             self._output_message('\nUpdating stack {} using template {}'.format(stack_name, template_url))
 
@@ -130,7 +136,9 @@ class ViewContext(object):
         self._output_message('\nProcessing the {} Cloud Formation template.'.format(description))
 
     def version_update(self, from_version, to_version, json):
-        self._output_message('Converting local project settings from {} with a local project settings file defined by \n\'{}\'\n to {} format'.format(from_version, json, to_version))
+        self._output_message(
+            'Converting local project settings from {} with a local project settings file defined by \n\'{}\'\n to {} format'.format(
+                from_version, json, to_version))
 
     def version_update_complete(self, to_version, json):
         self._output_message('Local project settings for version {} is now \'{}\''.format(to_version, json))
@@ -163,7 +171,7 @@ class ViewContext(object):
             msg += '\''
 
         msg += ' '
-        msg += resource_status        
+        msg += resource_status
 
         if resource_status_reason is not None and resource_status_reason != 'User Initiated':
             msg += ': '
@@ -171,26 +179,22 @@ class ViewContext(object):
 
         self._output_message(msg)
 
-
     def stack_event_errors(self, errors, was_successful):
         if was_successful:
-            self._output_message('\nThe following errors occured during the stack operation (but the operation completed successfully):\n')
+            self._output_message('\nThe following errors occurred during the stack operation (but the operation completed successfully):\n')
         else:
-            self._output_message('\nThe following errors occured during the stack operation:\n')
+            self._output_message('\nThe following errors occurred during the stack operation:\n')
         for error in errors:
             self._output_message('    ' + error)
-
 
     def default_deployment(self, user_default, project_default):
         user_default = user_default or '(none)'
         project_default = project_default or '(none)'
         self._output_message('\nUser default:    {}\nProject default: {}\n'.format(user_default, project_default))
 
-
     def release_deployment(self, release_deployment_name):
         release_deployment_name = release_deployment_name or '(none)'
         self._output_message('\nRelease deployment: {}\n'.format(release_deployment_name))
-
 
     def retrieving_mappings(self, deployment_name, deployment_stack_id, role):
         self._output_message("Loading mappings for deployment '{}' with role '{}' from stack '{}'.".format(
@@ -198,44 +202,43 @@ class ViewContext(object):
             role,
             util.get_stack_name_from_arn(deployment_stack_id)))
 
-
     def this_may_take_a_while(self):
         self._output_message('\nThis operation may take a few minutes to complete...\n')
 
     def confirm_aws_usage(self):
         self.__confirm(
-'''There is no additional charge for Cloud Canvas or CloudFormation. You pay for AWS resources
-created using Cloud Canvas and CloudFormation in the same manner as if you created them manually.
-You only pay for what you use, as you use it; there are no minimum fees and no required upfront
-commitments, and most services include a free tier.
+            '''There is no additional charge for Cloud Canvas or CloudFormation. You pay for AWS resources
+            created using Cloud Canvas and CloudFormation in the same manner as if you created them manually.
+            You only pay for what you use, as you use it; there are no minimum fees and no required upfront
+            commitments, and most services include a free tier.
+            
+            Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-intro.html.''')
 
-Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-intro.html.''')
-
-    def confirm_resource_deletion(self, resources, stack_description = None):
-        '''Prompts the user to confirm that it is ok to delete the specified resources.
+    def confirm_resource_deletion(self, resources, stack_description=None):
+        """Prompts the user to confirm that it is ok to delete the specified resources.
 
         The resources parameter should be a dictionary as returned by StackContext.describe_resources.
-        '''
-        list = sorted(map(lambda e: '{} - {} ({})'.format(e[0],e[1]['ResourceType'],e[1].get('PhysicalResourceId', 'none')), resources.iteritems()))
+        """
+        list = sorted(map(lambda e: '{} - {} ({})'.format(e[0], e[1]['ResourceType'], e[1].get('PhysicalResourceId', 'none')), six.iteritems(resources)))
         if stack_description:
             prompt = 'The following resources will be deleted from the {} stack:\n\n\t{}'.format(stack_description, '\n\t'.join(list))
         else:
             prompt = 'The following resources will be deleted:\n\n\t{}'.format('\n\t'.join(list))
 
-        self.__confirm(prompt, default_to_yes = False)
+        self.__confirm(prompt, default_to_yes=False)
 
     def confirm_stack_resource_deletion(self):
-        self.__confirm('This operation will permamently DELETE some of the resources listed above.', default_to_yes = False)
+        self.__confirm('This operation will permanently DELETE some of the resources listed above.', default_to_yes=False)
 
     def confirm_stack_security_change(self):
-        self.__confirm('This operation may create or update the SECURITY configuration for some of the resources listed above.', default_to_yes = False)
+        self.__confirm('This operation may create or update the SECURITY configuration for some of the resources listed above.', default_to_yes=False)
 
     def confirm_file_replacements(self, file_paths):
         prompt = 'The contents of the following files will be replaced:\n\n\t{}'.format('\n\t'.join(file_paths))
-        self.__confirm(prompt, default_to_yes = False)
+        self.__confirm(prompt, default_to_yes=False)
 
-    def __confirm(self, prompt = None, confirm_string = 'Is this OK', default_to_yes=True):
-        '''Prompts the user to confirm an action and raises an error if they don't.'''
+    def __confirm(self, prompt=None, confirm_string='Is this OK', default_to_yes=True):
+        """Prompts the user to confirm an action and raises an error if they don't."""
 
         yes_answers = ['y', 'yes']
 
@@ -257,17 +260,17 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
         else:
 
-            answer = raw_input('{}\n\n{} {}? '.format(prompt, confirm_string, options))
-            print ''
+            answer = input('{}\n\n{} {}? '.format(prompt, confirm_string, options))
+            print('')
 
             if answer.lower() not in yes_answers:
                 raise HandledError('Needed confirmation not provided.')
 
             return True
-        
+
     def confirm_writable_try_again(self, file_list):
         self._output_message('\nFiles not writable:\n\n\t{}'.format('\n\t'.join(file_list)))
-        return self.__confirm(None,'Try again')
+        return self.__confirm(None, 'Try again')
 
     def adding_resource(self, template_path, resource_name):
         self._output_message('Adding resource {} to template {}.'.format(resource_name, template_path))
@@ -302,14 +305,16 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def removing_parameter(self, template_path, parameter_name):
         self._output_message('Removing parameter {} from template {}.'.format(parameter_name, template_path))
 
-    def parameter_not_found(self, template_path, parameter_name):
-        self._output_message('WARNING: no {} parameter was found in the template {}.'.format(parameter_name, template_path))
-
     def resource_group_enabled(self, resource_group_name):
-        self._output_message('\n{} resource group has been enabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to create the resource group\'s resources in AWS.'.format(resource_group_name, resource_group_name))
+        self._output_message(
+            '\n{} resource group has been enabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to create the resource group\'s resources in AWS.'.format(
+                resource_group_name, resource_group_name))
 
     def resource_group_disabled(self, resource_group_name):
-        self._output_message('\n{} resource group has been disabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to delete the resource group\'s resouces from AWS.'.format(resource_group_name, resource_group_name))
+        self._output_message(
+            '\n{} resource group has been disabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to delete the resource '
+            'group\'s resources from AWS.'.format(
+                resource_group_name, resource_group_name))
 
     def deployment_stack_created(self, deployment_name, deployment_stack_id, deployment_access_stack_id):
         self._output_message('\n{} deployment stack {} and access stack {} have been created.'.format(
@@ -327,33 +332,35 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
         if self.__verbose:
             self._output_message('Retrieving resource descriptions for stack {}.'.format(util.get_stack_name_from_arn(stack_id)))
 
-    def describing_stack(self, stack_id):
+    def describing_stack(self, stack_id, identifier=None):
         if self.__verbose:
-            self._output_message('Retrieving description of stack {}.'.format(util.get_stack_name_from_arn(stack_id)))
+            self._output_message('Retrieving description of stack {}.{}'.format(util.get_stack_name_from_arn(stack_id), identifier))
 
     def mapping_list(self, deployment_name, mappings, protected):
         self._output_message('\nMapping Protected: {}'.format(protected))
-        self._output_message('\nMappings for deployment {}:\n'.format(deployment_name))        
+        self._output_message('\nMappings for deployment {}:\n'.format(deployment_name))
         self.__output_table(mappings,
-            [
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'ResourceType', 'Heading': 'Type' },
-                { 'Field': 'PhysicalResourceId', 'Heading': 'Id' }
-            ])
-    
-    def path_list(self, mappings):        
-        self._output_message('\nPath mappings for the Cloud Gem Framework:')        
-        self.__output_table(mappings,
-            [
-                { 'Field': 'Type', 'Heading': 'Type' },
-                { 'Field': 'Path', 'Heading': 'Path' },                
-            ])
+                            [
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'ResourceType', 'Heading': 'Type'},
+                                {'Field': 'PhysicalResourceId', 'Heading': 'Id'}
+                            ])
 
-    def mapping_update(self, deployment_name, args):        
-        self._output_message("Updating mappings for deployment '{}'. Release mode is set to '{}'".format(            
-            deployment_name,                        
+    def deployment_updated(self, deployment_name):
+        self._output_message('\nFinished updating for deployment: {}'.format(deployment_name))
+
+    def path_list(self, mappings):
+        self._output_message('\nPath mappings for the Cloud Gem Framework:')
+        self.__output_table(mappings,
+                            [
+                                {'Field': 'Type', 'Heading': 'Type'},
+                                {'Field': 'Path', 'Heading': 'Path'},
+                            ])
+
+    def mapping_update(self, deployment_name, args):
+        self._output_message("Updating mappings for deployment '{}'. Release mode is set to '{}'".format(
+            deployment_name,
             args.release))
-        
 
     def resource_group_list(self, deployment_name, resource_groups):
 
@@ -364,16 +371,16 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
             resource_group['Reason'] = self.__get_resource_reason(resource_group)
 
         self.__output_table(resource_groups,
-            [
-                { 'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True },
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'ResourceStatus', 'Heading': 'Status', 'Default': '--' },
-                { 'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--' },
-                { 'Field': 'PhysicalResourceId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--' },
-                { 'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True }
-            ],
-            first_sort_column = 1
-        )
+                            [
+                                {'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True},
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'ResourceStatus', 'Heading': 'Status', 'Default': '--'},
+                                {'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--'},
+                                {'Field': 'PhysicalResourceId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--'},
+                                {'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True}
+                            ],
+                            first_sort_column=1
+                            )
 
     def deployment_list(self, deployments):
 
@@ -381,30 +388,28 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
             deployment['Reason'] = self.__get_stack_reason(deployment)
 
         self.__output_table(deployments,
-            [
-                { 'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True },
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'StackStatus', 'Heading': 'Status', 'Default': '--' },
-                { 'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--' },
-                { 'Field': 'Protected', 'Heading': 'Protected', 'Default': '--' },
-                { 'Field': 'StackId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--' },
-                { 'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True }
-            ],
-            first_sort_column = 1
-        )
+                            [
+                                {'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True},
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'StackStatus', 'Heading': 'Status', 'Default': '--'},
+                                {'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--'},
+                                {'Field': 'Protected', 'Heading': 'Protected', 'Default': '--'},
+                                {'Field': 'StackId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--'},
+                                {'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True}
+                            ],
+                            first_sort_column=1
+                            )
 
         def get_deployment_name(property_name):
-            return next((deployment for deployment in deployments if deployment[property_name]), { 'Name': '(none)' })['Name']
+            return next((deployment for deployment in deployments if deployment[property_name]), {'Name': '(none)'})['Name']
 
         self._output_message('\n')
         self._output_message('User Default Deployment:    {}'.format(get_deployment_name('UserDefault')))
         self._output_message('Project Default Deployment: {}'.format(get_deployment_name('ProjectDefault')))
         self._output_message('Release Deployment:         {}'.format(get_deployment_name('Release')))
 
-
     def protected_deployment_list(self, deployment_names):
         self._output_message('Currently Protected Deployments:\n\n\t{}'.format('\n\t'.join(deployment_names)))
-
 
     def deprecated_resource_list(self, stack_id, resources_map):
         self._output_message('\nResources for stack {}:'.format(stack_id))
@@ -452,28 +457,27 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
                 return ''
 
         resources_list = []
-        for key, resource in resources_map.iteritems():
+        for key, resource in six.iteritems(resources_map):
             resource['Name'] = key
             resource['Reason'] = self.__get_resource_reason(resource)
             resources_list.append(resource)
 
         self.__output_table(resources_list,
-            [
-                { 'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True },
-                { 'Field': 'IsPendingSecurityChange', 'Heading': 'Impacts', 'Formatter': security_formatter, 'HideWhenEmpty': True },
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'ResourceType', 'Heading': 'Type' },
-                { 'Field': 'ResourceStatus', 'Heading': 'Status', 'Default': '--' },
-                { 'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--' },
-                { 'Field': 'PhysicalResourceId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--' },
-                { 'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True }
-            ],
-            first_sort_column = 2
-        )
-
+                            [
+                                {'Field': 'PendingAction', 'Heading': 'Pending', 'HideWhenEmpty': True},
+                                {'Field': 'IsPendingSecurityChange', 'Heading': 'Impacts', 'Formatter': security_formatter, 'HideWhenEmpty': True},
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'ResourceType', 'Heading': 'Type'},
+                                {'Field': 'ResourceStatus', 'Heading': 'Status', 'Default': '--'},
+                                {'Field': 'Timestamp', 'Heading': 'Timestamp', 'Formatter': date_time_formatter, 'Default': '--'},
+                                {'Field': 'PhysicalResourceId', 'Heading': 'Id', 'Hidden': not self.__args.show_id, 'Default': '--'},
+                                {'Field': 'Reason', 'Heading': 'Reason', 'HideWhenEmpty': True}
+                            ],
+                            first_sort_column=2
+                            )
 
     def stack_changes(self, stack_id, stack_description, change_map):
-        
+
         if stack_id:
             full_stack_description = '{} stack ({})'.format(stack_description, util.get_stack_name_from_arn(stack_id))
         else:
@@ -486,39 +490,34 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
         else:
             self._output_message('\n(no changes detected)')
 
-        print ''
-
+        print('')
 
     def profile_list(self, profiles, credentials_file_path):
 
         self._output_message('\nAWS Credentials from {}:'.format(credentials_file_path))
 
         self.__output_table(profiles,
-            [
-                { 'Field': 'Name', 'Heading': 'Name' },
-                { 'Field': 'AccessKey', 'Heading': 'Access Key' },
-                { 'Field': 'SecretKey', 'Heading': 'Secret Key' },
-                { 'Field': 'Account', 'Heading': 'Account' },
-                { 'Field': 'UserName', 'Heading': 'User Name' },
-                { 'Field': 'Default', 'Heading': 'Default' }
-            ])
+                            [
+                                {'Field': 'Name', 'Heading': 'Name'},
+                                {'Field': 'AccessKey', 'Heading': 'Access Key'},
+                                {'Field': 'SecretKey', 'Heading': 'Secret Key'},
+                                {'Field': 'Account', 'Heading': 'Account'},
+                                {'Field': 'UserName', 'Heading': 'User Name'},
+                                {'Field': 'Default', 'Heading': 'Default'}
+                            ])
 
-        default_profile_name = next((profile for profile in profiles if profile['Default']), { 'Name': '(none)' })['Name']
+        default_profile_name = next((profile for profile in profiles if profile['Default']), {'Name': '(none)'})['Name']
 
         self._output_message('\nDefault Profile: {}'.format(default_profile_name))
-
 
     def added_profile(self, profile_name):
         self._output_message('\nAdded Profile: {}'.format(profile_name))
 
-
     def removed_profile(self, profile_name):
         self._output_message('\nRemoved Profile: {}'.format(profile_name))
 
-
     def removed_default_profile(self, profile_name):
         self._output_message('\nRemoved Profile: {}\nWarning: this was your default profile.'.format(profile_name))
-
 
     def updated_profile(self, profile_name):
         self._output_message('\nUpdated Profile: {}'.format(profile_name))
@@ -527,7 +526,8 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
         self._output_message('\nRenamed profile {} to {}'.format(old_name, new_name))
 
     def default_profile(self, profile_name):
-        if profile_name is None: profile_name = '(none)'
+        if profile_name is None:
+            profile_name = '(none)'
         self._output_message('\nDefault Profile: {}'.format(profile_name))
 
     def getting_stack_template(self, stack_id):
@@ -551,11 +551,11 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
         self._output_message('Warning: a bootstrap.cfg file was not found at {}, using "Game" as the project directory name.'.format(path))
 
     def loaded_project_settings(self, settings):
-        if self.__verbose: 
+        if self.__verbose:
             self._output_message('Loaded project settings: {}'.format(json.dumps(settings, indent=4, sort_keys=True)))
 
     def saved_project_settings(self, settings):
-        if self.__verbose: 
+        if self.__verbose:
             self._output_message('Saved project settings: {}'.format(json.dumps(settings, indent=4, sort_keys=True)))
 
     def log_event(self, timestamp, message):
@@ -563,11 +563,11 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
     def parameter_list(self, parameter_list):
         self.__output_table(parameter_list, [
-            { 'Field': 'deployment_name', 'Heading': 'Deployment' },
-            { 'Field': 'resource_group_name', 'Heading': 'Resource Group' },
-            { 'Field': 'parameter_name', 'Heading': 'Parameter' },
-            { 'Field': 'parameter_value', 'Heading': 'Value' }
-        ], sort_column_count = 3)
+            {'Field': 'deployment_name', 'Heading': 'Deployment'},
+            {'Field': 'resource_group_name', 'Heading': 'Resource Group'},
+            {'Field': 'parameter_name', 'Heading': 'Parameter'},
+            {'Field': 'parameter_value', 'Heading': 'Value'}
+        ], sort_column_count=3)
 
     def parameter_changed(self, deployment_name, resource_group_name, parameter_name, new_parameter_value, old_parameter_value):
         parameter_change_list = [
@@ -580,11 +580,11 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
             }
         ]
         self.__output_table(parameter_change_list, [
-            { 'Field': 'deployment_name', 'Heading': 'Deployment' },
-            { 'Field': 'resource_group_name', 'Heading': 'Resource Group' },
-            { 'Field': 'parameter_name', 'Heading': 'Parameter' },
-            { 'Field': 'old_parameter_value', 'Heading': 'Old Value', 'Default': '(none)' },
-            { 'Field': 'new_parameter_value', 'Heading': 'New Value', 'Default': '(none)' }
+            {'Field': 'deployment_name', 'Heading': 'Deployment'},
+            {'Field': 'resource_group_name', 'Heading': 'Resource Group'},
+            {'Field': 'parameter_name', 'Heading': 'Parameter'},
+            {'Field': 'old_parameter_value', 'Heading': 'Old Value', 'Default': '(none)'},
+            {'Field': 'new_parameter_value', 'Heading': 'New Value', 'Default': '(none)'}
         ])
         self._output_message('\n')
 
@@ -593,11 +593,11 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
         self._output_message("\nThe following parameter values will be deleted:")
 
         self.__output_table(change_list, [
-            { 'Field': 'deployment_name', 'Heading': 'Deployment' },
-            { 'Field': 'resource_group_name', 'Heading': 'Resource Group' },
-            { 'Field': 'parameter_name', 'Heading': 'Parameter' },
-            { 'Field': 'parameter_value', 'Heading': 'Value' }
-        ], sort_column_count = 3, indent=True)
+            {'Field': 'deployment_name', 'Heading': 'Deployment'},
+            {'Field': 'resource_group_name', 'Heading': 'Resource Group'},
+            {'Field': 'parameter_name', 'Heading': 'Parameter'},
+            {'Field': 'parameter_value', 'Heading': 'Value'}
+        ], sort_column_count=3, indent=True)
 
         if len(change_list) > 1:
             self.__confirm()
@@ -612,9 +612,13 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def no_such_resource_group_parameter_warning(self, name):
         self._output_message('\nWARNING: The {} resource group does not exist. A parameter value will still be set.\n'.format(name))
 
+    def parameter_not_found_in_template(self, template_path, parameter_name):
+        self._output_message('WARNING: no {} parameter was found in the template {}.'.format(parameter_name, template_path))
+
     def parameter_not_found(self, deployment_name, resource_group_name, parameter_name):
         if deployment_name and resource_group_name:
-            self._output_message('\nWARNING: No {} parameter for the {} deployment and {} resource group was found.\n'.format(parameter_name, deployment_name, resource_group_name))
+            self._output_message('\nWARNING: No {} parameter for the {} deployment and {} resource group was found.\n'.format(parameter_name, deployment_name,
+                                                                                                                              resource_group_name))
         elif deployment_name:
             self._output_message('\nWARNING: No {} parameter for the {} deployment was found.\n'.format(parameter_name, deployment_name))
         elif resource_group_name:
@@ -645,10 +649,10 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
     def role_list(self, role_list):
         self.__output_table(role_list, [
-            { 'Field': 'Scope', 'Heading': 'Scope' },
-            { 'Field': 'Name', 'Heading': 'Name' }
-        ], sort_column_count = 2)
-                                                      
+            {'Field': 'Scope', 'Heading': 'Scope'},
+            {'Field': 'Name', 'Heading': 'Name'}
+        ], sort_column_count=2)
+
     def role_mapping_added(self, scope, role, abstract_role_pattern):
         self._output_message('\nAdded {} role {} mapping for {}.\n'.format(scope, role, abstract_role_pattern))
 
@@ -657,17 +661,20 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
     def role_mapping_list(self, role_list):
         self.__output_table(role_list, [
-            { 'Field': 'Scope', 'Heading': 'Scope' },
-            { 'Field': 'Role', 'Heading': 'Actual Role' },
-            { 'Field': 'Pattern', 'Heading': 'Abstract Role' },
-            { 'Field': 'Effect', 'Heading': 'Effect' }
-        ], sort_column_count = 3)
-                                                      
+            {'Field': 'Scope', 'Heading': 'Scope'},
+            {'Field': 'Role', 'Heading': 'Actual Role'},
+            {'Field': 'Pattern', 'Heading': 'Abstract Role'},
+            {'Field': 'Effect', 'Heading': 'Effect'}
+        ], sort_column_count=3)
+
+    def updating_role(self, role):
+        self._output_message('Updating role {}.'.format(role))
+
     def permission_added(self, resource_group, resource, abstract_role):
         self._output_message(
             '\nAdded {} resource {} permission for role {}.\n'.format(
-                resource_group, 
-                resource, 
+                resource_group,
+                resource,
                 abstract_role
             )
         )
@@ -675,7 +682,7 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def access_control_dependency_changed(self, resource_group, resource):
         self._output_message(
             '\nAdded {} resource AccessControl dependency on resource {}.\n'.format(
-                resource_group, 
+                resource_group,
                 resource
             )
         )
@@ -683,21 +690,21 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def permission_removed(self, resource_group, resource, abstract_role):
         self._output_message(
             '\nRemoved {} resource {} permission for role {}.\n'.format(
-                resource_group, 
-                resource, 
+                resource_group,
+                resource,
                 abstract_role
             )
         )
 
     def permission_list(self, permission_list):
         self.__output_table(permission_list, [
-            { 'Field': 'ResourceGroup', 'Heading': 'Resource Group' },
-            { 'Field': 'ResourceName', 'Heading': 'Resource' },
-            { 'Field': 'ResourceType', 'Heading': 'Resource Type' },
-            { 'Field': 'Roles', 'Heading': 'Roles' },
-            { 'Field': 'Actions', 'Heading': 'Actions' },
-            { 'Field': 'Suffixes', 'Heading': 'ARN Suffixes' }
-        ], sort_column_count = 3)
+            {'Field': 'ResourceGroup', 'Heading': 'Resource Group'},
+            {'Field': 'ResourceName', 'Heading': 'Resource'},
+            {'Field': 'ResourceType', 'Heading': 'Resource Type'},
+            {'Field': 'Roles', 'Heading': 'Roles'},
+            {'Field': 'Actions', 'Heading': 'Actions'},
+            {'Field': 'Suffixes', 'Heading': 'ARN Suffixes'}
+        ], sort_column_count=3)
 
     def calling_hook(self, module, handler_name):
         if self.__verbose:
@@ -706,14 +713,16 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def calling_deprecated_hook(self, module, handler_name):
         self._output_message('WARNING: calling deprecated hook function {} in module {}.'.format(handler_name, module.__file__))
 
-    def using_deprecated_lambda_code_path(self, function_name, path, prefered_path):
-        self._output_message('WARNING: using deprecated Lambda Function code directory path naming convention for {} at {}. The prefered path is {}.'.format(function_name, path, prefered_path))
+    def using_deprecated_lambda_code_path(self, function_name, path, preferred_path):
+        self._output_message(
+            'WARNING: using deprecated Lambda Function code directory path naming convention for {} at {}. The preferred path is {}.'.format(
+                function_name, path, preferred_path))
 
     def invalid_user_default_deployment_clearing(self, name):
         self._output_message('\nWARNING: The {} user default deployment is invalid.  Setting default to none.\n'.format(name))
-        
+
     def invalid_project_default_deployment_clearing(self, name):
-        self._output_message('\nWARNING: The {} project default deployment is invalid.  Setting default to none.\n'.format(name))    
+        self._output_message('\nWARNING: The {} project default deployment is invalid.  Setting default to none.\n'.format(name))
 
     def updating_framework_version(self, from_version, to_version):
         self._output_message('Updating the CloudGemFramework used by the project from version {} to {}.'.format(from_version, to_version))
@@ -736,20 +745,23 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
     def gem_disabled(self, gem_name):
         self._output_message('\nGem {} has been disabled.'.format(gem_name))
 
-    def backing_up_file(self, origional_file_path, backup_file_path):
-        self._output_message('Backing up {} to {}.'.format(origional_file_path, backing_up_file)) 
+    def backing_up_file(self, original_file_path, backup_file_path):
+        self._output_message('Backing up {} to {}.'.format(original_file_path, backup_file_path))
 
     def using_deprecated_command(self, old, new):
         if isinstance(new, list):
             # ['a', 'b', 'c'] --> '"a", "b", or "c"'
-            new_msg = ', '.join([ '"' + i + '"' for i in new[:-1]]) + ', or ' + '"' + new[-1:][0] + '"'
-            self._output_message('\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the {} commands instead.\n'.format(old, new_msg))
+            new_msg = ', '.join(['"' + i + '"' for i in new[:-1]]) + ', or ' + '"' + new[-1:][0] + '"'
+            self._output_message(
+                '\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the {} commands instead.\n'.format(
+                    old, new_msg))
         else:
-            self._output_message('\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the "{}" command instead.\n'.format(old, new))
+            self._output_message(
+                '\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the "{}" command instead.\n'.format(
+                    old, new))
 
-    def __output_table(self, items, specs, sort_column_count = 1, indent = False, first_sort_column=0):
-
-        ''' Displays a table containing data from items formatted as defined by specs.
+    def __output_table(self, items, specs, sort_column_count=1, indent=False, first_sort_column=0):
+        """ Displays a table containing data from items formatted as defined by specs.
 
         items is an array of dict. The properties shown are determined by specs.
 
@@ -762,13 +774,12 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
             Hidden -- If present and True, the column is not displayed.
             HideWhenEmpty -- If present and True, the column is not displayed if there are no values.
 
-        The columns are arranged in the order of the specs. The column widths are automatically determiend.
+        The columns are arranged in the order of the specs. The column widths are automatically determined.
 
         The items are sorted in ascending order by the formatted value of the first n columns, where n
-        is specified by the sort_column_count parameter (which defaults to 1, causing the the table to 
+        is specified by the sort_column_count parameter (which defaults to 1, causing the the table to
         be sorted by the first column only).
-
-        '''
+        """
 
         def default_formatter(v):
             return str(v) if v is not None else ''
@@ -781,10 +792,10 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
         # For simplicity we generate the formatted value multiple times. If this
         # ends up being used to display large tables this may need to be changed.
-        # We sort working up to the first column and python guarnetees that a
+        # We sort working up to the first column and python guarantees that a
         # stable sort is used, so things work out how we want.
 
-        for sort_column in range((sort_column_count+first_sort_column)-1, first_sort_column-1, -1):
+        for sort_column in range((sort_column_count + first_sort_column) - 1, first_sort_column - 1, -1):
             items = sorted(items, key=lambda item: get_formatted_value(item, specs[sort_column]))
 
         # determine width of each column
@@ -798,8 +809,8 @@ Learn more at https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canv
 
         def is_hidden(spec):
             return spec.get('Hidden', False) or (spec.get('HideWhenEmpty', False) and lengths.get(spec['Field'], 0) == 0)
-        
-        specs = [ spec for spec in specs if not is_hidden(spec) ]
+
+        specs = [spec for spec in specs if not is_hidden(spec)]
 
         for spec in specs:
             field = spec['Field']

@@ -57,6 +57,21 @@ namespace AzToolsFramework
             void FollowPathHelper(
                 const AZStd::vector<AZ::EntityId>& entities, const AZStd::vector<AZStd::string>& tokenizedPath,
                 EntityIdSet* result, bool caseSensitive, size_t pathSize, size_t currentIndex = 0);
+
+            bool IsPositionContained(
+                AZ::EntityId entityId,
+                const AZ::Aabb& aabb) const;
+
+            bool AreComponentsMatched(
+                AZ::EntityId entityId,
+                const EntitySearchFilter::Components& components,
+                bool mustMatchAllComponents) const;
+
+            bool ArePropertyValuesOfComponentMatched(
+                AZ::EntityId entityId,
+                AZ::Uuid componentTypeId,
+                const EntitySearchFilter::ComponentProperties& componentProperties,
+                bool mustMatchAllComponents) const;
         };
 
     } // Components

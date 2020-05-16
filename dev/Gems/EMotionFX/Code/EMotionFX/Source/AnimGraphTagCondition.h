@@ -57,16 +57,18 @@ namespace EMotionFX
 
         void SetFunction(EFunction function);
         void SetTags(const AZStd::vector<AZStd::string>& tags);
+        const AZStd::vector<size_t>& GetTagParameterIndices() const;
 
         // ParameterDrivenPorts
         AZStd::vector<AZStd::string> GetParameters() const override;
         AnimGraph* GetParameterAnimGraph() const override;
         void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
         void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
-        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterAdded(const AZStd::string& newParameterName) override;
         void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
         void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
         void ParameterRemoved(const AZStd::string& oldParameterName) override;
+        void BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved) override;
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -2,11 +2,14 @@
   <qresource prefix="/">
     <file>AssetProcessor_checkbox_blue_checked.png</file>
     <file>AssetProcessor_checkbox_blue_unchecked.png</file>
+    <file>AssetProcessor_goto.svg</file>
+    <file>AssetProcessor_goto_hover.svg</file>
     <file>AssetProcessor_arrow_left.png</file>
     <file>AssetProcessor_arrow_right.png</file>
     <file>AssetProcessor_plus.png</file>
     <file>AssetProcessor_arrow_down.png</file>
     <file>AssetProcessor_arrow_up.png</file>
+    <file>AssetProcessor_refresh.png</file>
     <file>qml/main.qml</file>
     <file>qml/ConnectionTab.qml</file>
     <file>qml/ConnectionsTabView.qml</file>

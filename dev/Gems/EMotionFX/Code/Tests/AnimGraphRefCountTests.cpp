@@ -141,13 +141,6 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /*
-    This test fails at frame 362 where the root state machine leaves the transition from the sub state machine and fully blends into the end state.
-    Why is this failing? The transition in the sub-state machine is active at frame 362 while it sets to is-done on the beginning of the update. This means that the current state
-    has not been adjusted yet, even though the transition has ended as this happens further down in the state machine update. This also means that we update the source node (sub-sm)
-    while we don't call output or post update to decrease the ref count. We can't first update and end transitions and then update the states as this will introduce one frame delay
-    and make other tests fail again. This only happens with sub-state machines and only at the last frame when transitioning out of sub-state machines.
-    */
     class AnimGraphRefCountTest_SimpleEntryExit
         : public AnimGraphRefCountFixture
     {
@@ -189,58 +182,8 @@ namespace EMotionFX
         }
     };
 
-    TEST_F(AnimGraphRefCountTest_SimpleEntryExit, DISABLED_AnimGraphRefCountTest_SimpleEntryExit)
+    TEST_F(AnimGraphRefCountTest_SimpleEntryExit, AnimGraphRefCountTest_SimpleEntryExit)
     {
         Run();
     }
-
-    ///////////////////////////////////////////////////////////////////////////
-
-    class NodeDataAutoRefCountMixinFixture
-        : public AnimGraphRefCountTest_SimpleChain
-    {
-    };
-
-    TEST_P(NodeDataAutoRefCountMixinFixture, NodeDataAutoRefCountMixinTest)
-    {
-        AnimGraphStateMachine::UniqueData* uniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(m_rootStateMachine->FindUniqueNodeData(m_animGraphInstance));
-        ASSERT_TRUE(m_rootStateMachine->GetNumChildNodes() > 1);
-        AnimGraphNode* firstState = m_rootStateMachine->GetChildNode(0);
-        AnimGraphNode* secondState = m_rootStateMachine->GetChildNode(1);
-        
-        GetEMotionFX().Update(1.0f/60.0f);
-
-        // Artificially increase the ref count for the second, non-active and non-transitioning state.
-        uniqueData->IncreaseDataRefCountForNode(secondState, m_animGraphInstance);
-        uniqueData->IncreasePoseRefCountForNode(secondState, m_animGraphInstance);
-
-        m_animGraphInstance->DisableObjectFlags(m_rootStateMachine->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_UPDATE_READY);
-        m_rootStateMachine->PerformUpdate(m_animGraphInstance, 1.0f/60.0f);
-
-        // Make sure the first state is still the active one.
-        const AZStd::vector<AnimGraphNode*>& activeStates = m_rootStateMachine->GetActiveStates(m_animGraphInstance);
-        EXPECT_EQ(activeStates.size(), 1);
-        EXPECT_TRUE(activeStates[0] == firstState) << "We should have not transitioned into the second state yet.";
-
-        const AZStd::vector<AnimGraphNode*>& dataRefIncreased = uniqueData->GetDataRefIncreasedNodes();
-        const AZStd::vector<AnimGraphNode*>& poseRefIncreased = uniqueData->GetPoseRefIncreasedNodes();
-        EXPECT_EQ(dataRefIncreased.size(), 1) << "The artificially increased ref counts were not reset correctly.";
-        EXPECT_EQ(poseRefIncreased.size(), 1);
-        EXPECT_TRUE(dataRefIncreased[0] == firstState);
-        EXPECT_TRUE(poseRefIncreased[0] == firstState);
-    }
-
-    std::vector<AnimGraphRefCountData_SimpleChain> nodeDataAutoRefCountMixinTestData
-    {
-        {
-            /*m_numStates*/3,
-            /*m_blendTime*/1.0,
-            /*m_countDownTime*/1.0
-        },
-    };
-
-    INSTANTIATE_TEST_CASE_P(NodeDataAutoRefCountMixinTest,
-        NodeDataAutoRefCountMixinFixture,
-        ::testing::ValuesIn(nodeDataAutoRefCountMixinTestData)
-    );
-} // EMotionFX
+} // namespace EMotionFX

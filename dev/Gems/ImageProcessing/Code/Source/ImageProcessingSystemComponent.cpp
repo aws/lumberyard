@@ -73,7 +73,6 @@ namespace ImageProcessing
         // Call to allocate BuilderSettingManager
         BuilderSettingManager::CreateInstance();
 
-        ImageProcessingRequestBus::Handler::BusConnect();
         ImageProcessingEditor::ImageProcessingEditorRequestBus::Handler::BusConnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         AzToolsFramework::AssetBrowser::AssetBrowserTexturePreviewRequestsBus::Handler::BusConnect();
@@ -81,7 +80,6 @@ namespace ImageProcessing
 
     void ImageProcessingSystemComponent::Deactivate()
     {
-        ImageProcessingRequestBus::Handler::BusDisconnect();
         ImageProcessingEditor::ImageProcessingEditorRequestBus::Handler::BusDisconnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::AssetBrowser::AssetBrowserTexturePreviewRequestsBus::Handler::BusDisconnect();
@@ -111,65 +109,35 @@ namespace ImageProcessing
         }
     }
 
-    void ImageProcessingSystemComponent::AddContextMenuActions(QWidget* /*caller*/, QMenu* menu, const AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>& entries)
+    void ImageProcessingSystemComponent::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
     {
-        // Load Texture Settings
-        static bool isSettingLoaded = false;
-
-        if (!isSettingLoaded)
+        if (HandlesSource(fullSourceFileName))
         {
-            // Load the preset settings before editor open
-            auto outcome = ImageProcessing::BuilderSettingManager::Instance()->LoadBuilderSettings();
-            
-            if (outcome.IsSuccess())
-            {
-                isSettingLoaded = true;
-            }
-            else
-            {
-                AZ_Error("Image Processing", false, "Failed to load default preset settings!");
-                return;
-            }
-        }
-
-        // Register right click menu
-        using namespace AzToolsFramework::AssetBrowser;
-        auto entryIt = AZStd::find_if
-            (
-                entries.begin(),
-                entries.end(),
-                [](const AssetBrowserEntry* entry) -> bool
+            openers.push_back(
                 {
-                    return entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source;
-                }
-            );
+                    "Image_Processing_Editor",
+                    "Edit Image Settings...",
+                    QIcon(),
+                [&](const char* fullSourceFileNameInCallback, const AZ::Uuid& sourceUUID)
+                    {
+                        AZ_UNUSED(fullSourceFileNameInCallback);
 
-        if (entryIt == entries.end())
-        {
-            return;
+                        if (!LoadTextureSettings())
+                        {
+                            return;
+                        }
+
+                        ImageProcessingEditor::ImageProcessingEditorRequestBus::Broadcast(&ImageProcessingEditor::ImageProcessingEditorRequests::OpenSourceTextureFile, sourceUUID);
+                    }
+                });
         }
-        SourceAssetBrowserEntry* source = azrtti_cast<SourceAssetBrowserEntry*>(*entryIt);
-
-        if (!HandlesSource(source))
-        {
-            return;
-        }
-
-        AZ::Uuid sourceId = source->GetSourceUuid();
-       
-        QAction* editImportSettingsAction = menu->addAction("Edit Texture Settings...", [sourceId, this]()
-        {
-            OpenSourceTextureFile(sourceId);
-        });
     }
 
-    bool ImageProcessingSystemComponent::HandlesSource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* entry) const
+    bool ImageProcessingSystemComponent::HandlesSource(AZStd::string_view fileName) const
     {
-        AZStd::string targetExtension = entry->GetExtension();
-
         for (int i = 0; i < s_TotalSupportedImageExtensions; i ++ )
         {
-            if (AZStd::wildcard_match(s_SupportedImageExtensions[i], targetExtension.c_str()))
+            if (AZStd::wildcard_match(s_SupportedImageExtensions[i], fileName.data()))
             {
                 return true;
             }
@@ -182,5 +150,24 @@ namespace ImageProcessing
     {
         return ImagePreview::GetProductTexturePreview(fullProductFileName, previewImage, productInfo, productAlphaInfo);
     }
-    
+
+    bool ImageProcessingSystemComponent::LoadTextureSettings()
+    {
+        if (m_textureSettingsLoaded)
+        {
+            return true;
+        }
+
+        // Load the preset settings before opening the editor
+        auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings();
+        if (outcome.IsSuccess())
+        {
+            m_textureSettingsLoaded = true;
+            return true;
+        }
+
+        AZ_Error("Image Processing", false, "Failed to load default preset settings!");
+        return false;
+    }
+
 } // namespace ImageProcessing

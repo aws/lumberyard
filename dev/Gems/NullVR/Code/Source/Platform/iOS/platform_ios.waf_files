@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "NullVR_Traits_Platform.h",
+            "NullVR_Traits_iOS.h"
+        ]
+    }
+}

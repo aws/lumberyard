@@ -24,7 +24,7 @@ namespace ScriptCanvas
             {
                 if (rootElement.GetVersion() < Version::RemoveInputsContainers)
                 {
-                    rootElement.RemoveElementByName(AZ::Crc32("m_inputs"));
+                    rootElement.RemoveElementByName(AZ::Crc32("m_inputSlots"));
                 }
 
                 return true;
@@ -39,38 +39,30 @@ namespace ScriptCanvas
                     AddInputSlot();
                 }
             }
+
+            void Any::ConfigureVisualExtensions()
+            {
+                {
+                    VisualExtensionSlotConfiguration visualExtensions(VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot);
+
+                    visualExtensions.m_name = "Add Input";
+                    visualExtensions.m_tooltip = "Adds a new input to the Any Node";
+
+                    // DisplayGroup Taken from GraphCanvas
+                    visualExtensions.m_displayGroup = "SlotGroup_Execution";
+
+                    visualExtensions.m_connectionType = ConnectionType::Input;
+                    visualExtensions.m_identifier = GetInputExtensionId();
+
+                    RegisterExtension(visualExtensions);
+                }
+            }
             
             void Any::OnInputSignal(const SlotId& slotId)
             {
                 const SlotId outSlotId = AnyProperty::GetOutSlotId(this);
                 SignalOutput(outSlotId);
-            }
-
-            bool Any::IsNodeExtendable() const
-            {
-                return true;
-            }
-
-            int Any::GetNumberOfExtensions() const
-            {
-                return 1;
-            }
-
-            ExtendableSlotConfiguration Any::GetExtensionConfiguration(int extensionIndex) const
-            {
-                ExtendableSlotConfiguration extendableConfiguration;
-
-                extendableConfiguration.m_name = "Add Input";
-                extendableConfiguration.m_tooltip = "Adds a new input to the Any Node";
-
-                // DisplayGroup Taken from GraphCanvas
-                extendableConfiguration.m_displayGroup = "SlotGroup_Execution";
-
-                extendableConfiguration.m_connectionType = ConnectionType::Input;
-                extendableConfiguration.m_identifier = GetInputExtensionId();
-
-                return extendableConfiguration;
-            }
+            }            
 
             SlotId Any::HandleExtension(AZ::Crc32 extensionId)
             {

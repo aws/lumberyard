@@ -11,17 +11,19 @@
 */
 #pragma once
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #include <GridMate/Session/Session.h>
 #include <GameLift/Session/GameLiftServerServiceEventsBus.h>
 #include <GameLift/Session/GameLiftSessionDefs.h>
 
-#include <AzCore/std/chrono/types.h>
+#include <AzCore/JSON/rapidjson.h>
+#include <AzCore/JSON/document.h>
 
 namespace GridMate
 {
-    class GameLiftSessionReplica;
+    class GameLiftServerSessionReplica;
+    class GameLiftServerSDKWrapper;
 
     /*!
     * GameLift server session, returned on HostSession calls
@@ -30,18 +32,21 @@ namespace GridMate
         : public GridSession
     {
         friend class GameLiftServerService;
-        friend class GameLiftSessionReplica;
-        friend class GameLiftMember;
+        friend class GameLiftServerSessionReplica;
+        friend class GameLiftServerMember;
 
     public:
         GM_CLASS_ALLOCATOR(GameLiftServerSession);
 
     protected:
         explicit GameLiftServerSession(GameLiftServerService* service);
+        ~GameLiftServerSession();
 
         // Hosting a session
         bool Initialize(const GameLiftSessionParams& params, const CarrierDesc& carrierDesc);
         GridMember* CreateLocalMember(bool isHost, bool isInvited, RemotePeerMode peerMode);
+
+        bool GameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession);
 
         // GridSession overrides
         void Shutdown() override;
@@ -55,6 +60,17 @@ namespace GridMate
         static void RegisterReplicaChunks();
 
         GameLiftSessionParams m_sessionParams;
+        Aws::GameLift::Server::Model::GameSession* m_gameLiftSession;
+        bool StartMatchmakingBackfill(AZStd::string& matchmakingTicketId, bool checkForAutoBackfill);
+        bool UpdateMatchmakerData();
+        bool StopMatchmakingBackfill(const AZStd::string& matchmakingTicketId);
+        AZStd::weak_ptr<GameLiftServerSDKWrapper> GetGameLiftServerSDKWrapper();
+
+        rapidjson::Document m_matchmakerDataDocument;
+
+    private:
+        bool GetTeamForPlayerFromMatchmakerData(const char* playerId, AZStd::string& teamName);
+        const std::vector<Aws::GameLift::Server::Model::PlayerSession> GetGameLiftPlayerSessions(const char* gameSessionId, Aws::GameLift::Server::Model::PlayerSessionStatus playerSessionStatus);
     };
 } // namespace GridMate
 

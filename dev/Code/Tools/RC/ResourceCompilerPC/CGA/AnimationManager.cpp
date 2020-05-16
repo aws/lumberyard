@@ -12,6 +12,11 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+#include <AzCore/PlatformDef.h>
+#if defined (AZ_PLATFORM_LINUX)
+#include "Linux64Specific.h"
+#endif // defined (AZ_PLATFORM_LINUX)
+
 #include "FileUtil.h"
 #include "AnimationManager.h"
 #include "AnimationCompiler.h" // for SEndiannessWrapper
@@ -59,7 +64,7 @@ bool CAnimationManager::SaveAIMImage(const char* name, FILETIME timeStamp, bool 
     chunkFile.Write(name);
 
     FileUtil::SetFileTimes(name, timeStamp);
-    const __int64 fileSize = FileUtil::GetFileSize(name);
+    const int64 fileSize = FileUtil::GetFileSize(name);
     if (fileSize < 0)
     {
         RCLogError("Failed to get file size of '%s'", name);
@@ -112,7 +117,7 @@ bool CAnimationManager::SaveCAFImage(const char* name, FILETIME timeStamp, bool 
     chunkFile.Write(name);
 
     FileUtil::SetFileTimes(name, timeStamp);
-    const __int64 fileSize = FileUtil::GetFileSize(name);
+    const int64 fileSize = FileUtil::GetFileSize(name);
     if (fileSize < 0)
     {
         RCLogError("Failed to get file size of '%s'", name);

@@ -23,6 +23,7 @@
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/time.h>
 #include <AzCore/IO/SystemFile.h>
 
 #include <platform.h>
@@ -204,6 +205,8 @@ namespace CloudCanvas
         void DynamicContentTransferManager::GotPresignedURLResult(const AZStd::string& requestURL, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile)
         {
             DynamicFileInfoPtr requestPtr = GetAndRemovePresignedRequest(requestURL);
+            AZStd::string fileName = requestPtr->GetKeyName();
+
             if(!requestPtr)
             {
                 AZ_Warning("CloudCanvas", false,"Could not find URL entry for %s!", requestURL.c_str());
@@ -217,8 +220,27 @@ namespace CloudCanvas
             else
             {
                 AZ_Warning("CloudCanvas", false, "Signed download failed: %d : %s", responseCode, resultString.c_str());
+
+                if (requestPtr->GetRequestType() == DynamicContentFileInfo::RequestType::STANDALONE)
+                {
+                    if (m_bucketKeyToDownloadRetryCount[fileName] < fileDownloadRetryMax)
+                    {
+                        AZ_TracePrintf("CloudCanvas", "Retry signed download for %s", fileName.c_str());
+                        UpdateFileStatus(fileName.c_str(), true);
+
+                        ++m_bucketKeyToDownloadRetryCount[fileName];
+                        return;
+                    }
+                    else
+                    {
+                        AZ_TracePrintf("CloudCanvas", "Reached the max retry times for %s", fileName.c_str());
+                    }
+                }
+
                 OnDownloadFailure(requestPtr);
             }
+
+            m_bucketKeyToDownloadRetryCount.erase(fileName);
         }
 
         void DynamicContentTransferManager::OnDownloadSuccess(DynamicFileInfoPtr requestPtr)
@@ -1320,11 +1342,11 @@ namespace CloudCanvas
             return (stringLength * 3 / 4 - padding);
         }
 
-        bool DynamicContentTransferManager::UpdateFileStatus(const char* fileName)
+        bool DynamicContentTransferManager::UpdateFileStatus(const char* fileName, bool autoDownload)
         {
             AZStd::vector<AZStd::string> requestList;
             requestList.push_back(fileName);
-            return UpdateFileStatusList(requestList);
+            return UpdateFileStatusList(requestList, autoDownload);
         }
 
         bool DynamicContentTransferManager::RequestDownload(const AZStd::string& fileName, bool forceDownload)
@@ -1342,6 +1364,26 @@ namespace CloudCanvas
                 AZ_Warning("CloudCanvas", false, "%s doesn't have a known request URL", fileName.c_str());
                 return false;
             }
+
+            // Check whether the presigned URL is expired and retry the download
+            if (RequestUrlExpired(fileName.c_str()))
+            {
+                if (m_bucketKeyToDownloadRetryCount[fileName] < fileDownloadRetryMax)
+                {
+                    AZ_Warning("CloudCanvas", false, "Presigned URL for %s expired. Retry signed download", fileName.c_str());
+                    ++m_bucketKeyToDownloadRetryCount[fileName];
+
+                    return UpdateFileStatus(fileName.c_str(), true);
+                }
+                else
+                {
+                    AZ_Error("CloudCanvas", false, "Presigned URL for %s expired. Reached the max retry times", fileName.c_str());
+                    m_bucketKeyToDownloadRetryCount.erase(fileName);
+
+                    return false;
+                }
+            }
+
             AddPresignedURLRequest(requestPtr->GetRequestURL(), requestPtr);
 
             AZStd::string localFile = requestPtr->GetFullLocalFileName();
@@ -1359,9 +1401,33 @@ namespace CloudCanvas
             return true;
         }
 
-        bool DynamicContentTransferManager::UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList)
+        bool DynamicContentTransferManager::RequestUrlExpired(const AZStd::string& fileName)
         {
-            auto requestJob = PostClientContentRequestJob::Create([this](PostClientContentRequestJob* job)
+            DynamicFileInfoPtr requestPtr = GetLocalEntryFromBucketKey(fileName.c_str());
+            if (!requestPtr && !requestPtr->GetRequestURL().length())
+            {
+                return true;
+            }
+
+            AZStd::unordered_map<AZStd::string, AZStd::string> queryParameters;
+            CloudCanvas::PresignedURLRequestBus::BroadcastResult(queryParameters, &CloudCanvas::IPresignedURLRequest::GetQueryParameters, requestPtr->GetRequestURL());
+
+            if (queryParameters[presignedUrlLifeTimeKey].empty())
+            {
+                AZ_Warning("CloudCanvas", false, "Failed to find the life time of the request URL %s", requestPtr->GetRequestURL().c_str());
+                return true;
+            }
+
+            AZ::u64 presignedUrlLifeTime = strtoll(queryParameters[presignedUrlLifeTimeKey].c_str(), nullptr, 0);
+            presignedUrlLifeTime = presignedUrlLifeTime * 1000;
+
+            // Check whether the presigned URL is expired and retry the download
+            return AZStd::GetTimeUTCMilliSecond() >= requestPtr->GetUrlCreationTimestamp() + presignedUrlLifeTime;
+        }
+
+        bool DynamicContentTransferManager::UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList, bool autoDownload)
+        {
+            auto requestJob = PostClientContentRequestJob::Create([autoDownload, this](PostClientContentRequestJob* job)
             {
                 auto resultList = job->result.ResultList;
                 for (auto thisResult : resultList)
@@ -1387,7 +1453,14 @@ namespace CloudCanvas
                     requestPtr->SetResultData(thisResult); 
                     AZ_TracePrintf("CloudCanvas", "IsUpdated %d", requestPtr->IsUpdated());
 
-                    DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadReady, requestFile, requestPtr->GetFileSize());
+                    if (autoDownload)
+                    {
+                        RequestDownload(requestFile.c_str(), false);
+                    }
+                    else
+                    {
+                        DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadReady, requestFile, requestPtr->GetFileSize());
+                    }
                 }
             },
                 [this](PostClientContentRequestJob* job)

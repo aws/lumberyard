@@ -68,7 +68,6 @@ namespace AZ
 
         UserSettingsProvider    m_provider;
         u32                     m_providerId;
-        bool                    m_saveOnShutdown = true;
         bool                    m_saveOnFinalize = true;
     };
 }   // namespace AZ

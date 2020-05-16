@@ -112,57 +112,57 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(base_stack_test.BaseStackTes
     def __010_test_get_survey_metadata_sort_desc(self):
         response = self.__service_get('/survey_metadata', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 2)
-        self.assertEquals(survey_metadata_list[0]['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
-        self.assertEquals(survey_metadata_list[0]['published'], False)
-        self.assertEquals(survey_metadata_list[0]['num_responses'], 0)
+        self.assertEqual(len(survey_metadata_list), 2)
+        self.assertEqual(survey_metadata_list[0]['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
+        self.assertEqual(survey_metadata_list[0]['published'], False)
+        self.assertEqual(survey_metadata_list[0]['num_responses'], 0)
 
-        self.assertEquals(survey_metadata_list[1]['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
-        self.assertEquals(survey_metadata_list[1]['published'], False)
-        self.assertEquals(survey_metadata_list[1]['num_responses'], 0)
+        self.assertEqual(survey_metadata_list[1]['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
+        self.assertEqual(survey_metadata_list[1]['published'], False)
+        self.assertEqual(survey_metadata_list[1]['num_responses'], 0)
 
     def __015_test_get_survey_metadata_sort_asc(self):
         response = self.__service_get('/survey_metadata?sort=ASC', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 2)
-        self.assertEquals(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
-        self.assertEquals(survey_metadata_list[0]['published'], False)
-        self.assertEquals(survey_metadata_list[0]['num_responses'], 0)
+        self.assertEqual(len(survey_metadata_list), 2)
+        self.assertEqual(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
+        self.assertEqual(survey_metadata_list[0]['published'], False)
+        self.assertEqual(survey_metadata_list[0]['num_responses'], 0)
 
-        self.assertEquals(survey_metadata_list[1]['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
-        self.assertEquals(survey_metadata_list[1]['published'], False)
-        self.assertEquals(survey_metadata_list[1]['num_responses'], 0)
+        self.assertEqual(survey_metadata_list[1]['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
+        self.assertEqual(survey_metadata_list[1]['published'], False)
+        self.assertEqual(survey_metadata_list[1]['num_responses'], 0)
 
     def __020_test_admin_get_survey1(self):
         response = self.__service_get('/surveys/{}'.format(self.context['survey1']['survey_id']), admin_auth=True)
-        self.assertEquals(response['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(len(response['questions']), len(self.SURVEY1['questions']))
+        self.assertEqual(response['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(len(response['questions']), len(self.SURVEY1['questions']))
         for i, question in enumerate(response['questions']):
-            self.assertEquals(question['enabled'], True)
+            self.assertEqual(question['enabled'], True)
             del question['enabled']
-            self.assertEquals(question['question_id'], self.context['survey1']['question_ids'][i])
+            self.assertEqual(question['question_id'], self.context['survey1']['question_ids'][i])
             del question['question_id']
-        self.assertEquals(response['questions'], self.SURVEY1['questions'])
+        self.assertEqual(response['questions'], self.SURVEY1['questions'])
 
     def __025_test_admin_get_survey2(self):
         response = self.__service_get('/surveys/{}'.format(self.context['survey2']['survey_id']), admin_auth=True)
-        self.assertEquals(response['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(len(response['questions']), len(self.SURVEY2['questions']))
+        self.assertEqual(response['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(len(response['questions']), len(self.SURVEY2['questions']))
         for i, question in enumerate(response['questions']):
-            self.assertEquals(question['enabled'], True)
+            self.assertEqual(question['enabled'], True)
             del question['enabled']
-            self.assertEquals(question['question_id'], self.context['survey2']['question_ids'][i])
+            self.assertEqual(question['question_id'], self.context['survey2']['question_ids'][i])
             del question['question_id']
-        self.assertEquals(response['questions'], self.SURVEY2['questions'])
+        self.assertEqual(response['questions'], self.SURVEY2['questions'])
 
     def __030_test_get_active_survey_metadata_return_nothing(self):
         response = self.__service_get('/active/survey_metadata', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 0)
+        self.assertEqual(len(survey_metadata_list), 0)
 
     def __035_test_get_active_survey1_forbidden(self):
         self.__service_get('/active/surveys/{}'.format(self.context['survey1']['survey_id']), admin_auth=True, expected_status_code=403)
@@ -177,44 +177,44 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(base_stack_test.BaseStackTes
     def __050_test_get_active_survey_metadata_sort_desc(self):
         response = self.__service_get('/active/survey_metadata', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 2)
-        self.assertEquals(survey_metadata_list[0]['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
-        self.assertEquals(survey_metadata_list[0]['num_responses'], 0)
+        self.assertEqual(len(survey_metadata_list), 2)
+        self.assertEqual(survey_metadata_list[0]['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
+        self.assertEqual(survey_metadata_list[0]['num_responses'], 0)
 
-        self.assertEquals(survey_metadata_list[1]['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
-        self.assertEquals(survey_metadata_list[1]['num_responses'], 0)
+        self.assertEqual(survey_metadata_list[1]['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
+        self.assertEqual(survey_metadata_list[1]['num_responses'], 0)
 
     def __055_test_get_active_survey_metadata_sort_asc(self):
         response = self.__service_get('/active/survey_metadata?sort=ASC', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 2)
-        self.assertEquals(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
-        self.assertEquals(survey_metadata_list[0]['num_responses'], 0)
+        self.assertEqual(len(survey_metadata_list), 2)
+        self.assertEqual(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY1['questions']))
+        self.assertEqual(survey_metadata_list[0]['num_responses'], 0)
 
-        self.assertEquals(survey_metadata_list[1]['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
-        self.assertEquals(survey_metadata_list[1]['num_responses'], 0)
+        self.assertEqual(survey_metadata_list[1]['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], len(self.SURVEY2['questions']))
+        self.assertEqual(survey_metadata_list[1]['num_responses'], 0)
 
     def __060_test_get_active_survey1(self):
         response = self.__service_get('/active/surveys/{}'.format(self.context['survey1']['survey_id']), admin_auth=True)
-        self.assertEquals(response['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(len(response['questions']), len(self.SURVEY1['questions']))
+        self.assertEqual(response['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(len(response['questions']), len(self.SURVEY1['questions']))
         for i, question in enumerate(response['questions']):
-            self.assertEquals(question['question_id'], self.context['survey1']['question_ids'][i])
+            self.assertEqual(question['question_id'], self.context['survey1']['question_ids'][i])
             del question['question_id']
-        self.assertEquals(response['questions'], self.SURVEY1['questions'])
+        self.assertEqual(response['questions'], self.SURVEY1['questions'])
 
     def __065_test_get_active_survey2(self):
         response = self.__service_get('/active/surveys/{}'.format(self.context['survey2']['survey_id']), admin_auth=True)
-        self.assertEquals(response['survey_name'], self.SURVEY2['survey_name'])
-        self.assertEquals(len(response['questions']), len(self.SURVEY2['questions']))
+        self.assertEqual(response['survey_name'], self.SURVEY2['survey_name'])
+        self.assertEqual(len(response['questions']), len(self.SURVEY2['questions']))
         for i, question in enumerate(response['questions']):
-            self.assertEquals(question['question_id'], self.context['survey2']['question_ids'][i])
+            self.assertEqual(question['question_id'], self.context['survey2']['question_ids'][i])
             del question['question_id']
-        self.assertEquals(response['questions'], self.SURVEY2['questions'])
+        self.assertEqual(response['questions'], self.SURVEY2['questions'])
 
     def __070_disable_survey1_question1(self):
         self.__service_put('/surveys/{}/questions/{}/status'.format(self.context['survey1']['survey_id'], self.context['survey1']['question_ids'][0]), {"enabled": False}, admin_auth=True)
@@ -222,20 +222,20 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(base_stack_test.BaseStackTes
     def __075_test_get_active_survey1_metadata_1_question_left(self):
         response = self.__service_get('/active/survey_metadata?sort=ASC', admin_auth=True)
         survey_metadata_list = response['metadata_list']
-        self.assertEquals(len(survey_metadata_list), 2)
-        self.assertEquals(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(survey_metadata_list[0]['num_active_questions'], 1)
+        self.assertEqual(len(survey_metadata_list), 2)
+        self.assertEqual(survey_metadata_list[0]['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(survey_metadata_list[0]['num_active_questions'], 1)
 
     def __080_test_get_active_survey1_1_question_left(self):
         response = self.__service_get('/active/surveys/{}'.format(self.context['survey1']['survey_id']), admin_auth=True)
-        self.assertEquals(response['survey_name'], self.SURVEY1['survey_name'])
-        self.assertEquals(len(response['questions']), 1)
+        self.assertEqual(response['survey_name'], self.SURVEY1['survey_name'])
+        self.assertEqual(len(response['questions']), 1)
         del response['questions'][0]['question_id']
-        self.assertEquals(response['questions'][0], self.SURVEY1['questions'][1])
+        self.assertEqual(response['questions'][0], self.SURVEY1['questions'][1])
 
     def __999_cleanup(self):
         if self.FAST_TEST_RERUN:
-            print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
+            print('Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.')
             self.assertFalse(self.FAST_TEST_RERUN)
         self.teardown_base_stack()
 
@@ -289,7 +289,7 @@ class IntegrationTest_CloudGemInGameSurvey_EndToEnd(base_stack_test.BaseStackTes
 
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
-        self.assertEquals(response.status_code, expected_status_code,
+        self.assertEqual(response.status_code, expected_status_code,
             'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:

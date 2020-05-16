@@ -25,6 +25,7 @@ class CScreenSpaceSSSPass;
 class CMotionBlurPass;
 class DepthOfFieldPass;
 class PostAAPass;
+class VideoRenderPass;
 class CCamera;
 
 struct DepthOfFieldParameters;
@@ -120,6 +121,8 @@ public:
     void RenderPostAA();
     void RenderTemporalAA(CTexture* sourceTexture, CTexture* outputTarget, const DepthOfFieldParameters& depthOfFieldParameters);
 
+    void RenderVideo(const AZ::VideoRenderer::DrawArguments& drawArguments);
+
     AzRHI::ConstantBufferPtr GetPerViewConstantBuffer() const      { return m_PerViewConstantBuffer; }
     CDeviceResourceSetPtr GetDefaultMaterialResources() const      { return m_pDefaultMaterialResources; }
     CDeviceResourceSetPtr GetDefaultInstanceExtraResources() const { return m_pDefaultInstanceExtraResources; }
@@ -135,6 +138,7 @@ private:
     CMotionBlurPass*              m_pMotionBlurPass;
     DepthOfFieldPass*            m_pDepthOfFieldPass;
     PostAAPass*                  m_pPostAAPass;
+    VideoRenderPass*              m_pVideoRenderPass;
 
     AzRHI::ConstantBufferPtr      m_PerFrameConstantBuffer;
     AzRHI::ConstantBufferPtr      m_PerViewConstantBuffer;

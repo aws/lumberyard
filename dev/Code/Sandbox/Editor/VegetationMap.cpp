@@ -18,6 +18,8 @@
 #include "Terrain/Heightmap.h"
 #include "Terrain/Layer.h"
 #endif //#ifdef LY_TERRAIN_EDITOR
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "VegetationBrush.h"
 #include "VegetationObject.h"
@@ -471,7 +473,7 @@ private:
 //////////////////////////////////////////////////////////////////////////
 // class CVegetationMap
 //////////////////////////////////////////////////////////////////////////
-CVegetationMap::CVegetationMap()
+CVegetationMap::CVegetationMap(int maxVegetationInstances)
 {
     m_sectors = 0;
     m_sectorSize = 0;
@@ -484,17 +486,20 @@ CVegetationMap::CVegetationMap()
     m_nVersion = 1;
     m_uiFilterLayerId = -1;
     m_storeBaseUndoState = eStoreUndo_Normal;
+    m_maxVegetationInstances = maxVegetationInstances;
 
     // Initialize the random number generator
     srand(GetTickCount());
 
     AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler::BusConnect(this);
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 CVegetationMap::~CVegetationMap()
 {
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler::BusDisconnect();
     ClearAll();
 }
@@ -617,16 +622,20 @@ float CVegetationMap::GenerateRotation(CVegetationObject* pObject, const Vec3& v
     }
     else if (nRotationRange > 0)
     {
-        const Vec3 vTerrainNormal = GetIEditor()->Get3DEngine()->GetTerrainSurfaceNormal(vPos);
+        AZ::Vector3 terrainNormal = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainNormal();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainNormal, &AzFramework::Terrain::TerrainDataRequests::GetNormalFromFloats,
+            vPos.x, vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+        const float normalX = terrainNormal.GetX();
+        const float normalY = terrainNormal.GetY();
 
-        if (abs(vTerrainNormal.x) == 0.f && abs(vTerrainNormal.y) == 0.f)
+        if (abs(normalX) == 0.f && abs(normalY) == 0.f)
         {
             return (float)rand();
         }
         else
         {
             const float rndDegree = (float)-nRotationRange * 0.5f + (float)(rand() % nRotationRange);
-            const float finaleDegree = RAD2DEG(atan2f(vTerrainNormal.y, vTerrainNormal.x)) + rndDegree;
+            const float finaleDegree = RAD2DEG(atan2f(normalY, normalX)) + rndDegree;
             return DEG2RAD(finaleDegree);
         }
     }
@@ -707,7 +716,8 @@ void CVegetationMap::PlaceObjectsOnTerrain()
     // We'll adjust object heights only if terrain exists.  However, we still need to do all the logic below
     // regardless because it's used in some places to register the vegetation with the engine, not just to 
     // adjust heights.
-    bool terrainExists = (p3DEngine->GetTerrainSize() > 0);
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
 
     // Clear all objects from 3d Engine.
     RemoveObjectsFromTerrain();
@@ -722,9 +732,9 @@ void CVegetationMap::PlaceObjectsOnTerrain()
             if (!obj->object->IsHidden())
             {
                 // Stick vegetation to terrain if it exists.
-                if (terrainExists && !obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
+                if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                 {
-                    obj->pos.z = p3DEngine->GetTerrainElevation(obj->pos.x, obj->pos.y);
+                    obj->pos.z = terrain ? terrain->GetHeightFromFloats(obj->pos.x, obj->pos.y) : defaultTerrainHeight;
                 }
                 obj->pRenderNode = 0;
                 SAFE_RELEASE_NODE(obj->pRenderNodeGroundDecal);
@@ -755,7 +765,7 @@ void CVegetationMap::HideObject(CVegetationObject* object, bool bHide)
 
     if (object->GetNumInstances() > 0)
     {
-        I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
+        auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
         // Iterate over all sectors.
         for (int i = 0; i < m_numSectors * m_numSectors; i++)
         {
@@ -776,7 +786,7 @@ void CVegetationMap::HideObject(CVegetationObject* object, bool bHide)
                         // Stick vegetation to terrain.
                         if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                         {
-                            obj->pos.z = p3DEngine->GetTerrainElevation(obj->pos.x, obj->pos.y);
+                            obj->pos.z = terrain ? terrain->GetHeightFromFloats(obj->pos.x, obj->pos.y) : 0.0f;
                         }
                         RegisterInstance(obj);
                     }
@@ -950,7 +960,7 @@ CVegetationInstance* CVegetationMap::CreateObjInstance(CVegetationObject* object
         return 0;
     }
 
-    if (m_numInstances >= MAX_VEGETATION_INSTANCES)
+    if (m_numInstances >= m_maxVegetationInstances)
     {
         return nullptr;
     }
@@ -1249,10 +1259,14 @@ bool CVegetationMap::MoveInstance(CVegetationInstance* obj, const Vec3& newPos, 
     {
         if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
         {
-            obj->pos.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(obj->pos.x, obj->pos.y);
+            float terrainElevation = 0.0;
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , obj->pos.x, obj->pos.y
+                , AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+            obj->pos.z = terrainElevation;
         }
     }
-    //GetIEditor()->Get3DEngine()->AddStaticObject( obj->object->GetId(),newPos,obj->scale,obj->brightness );
 
     RegisterInstance(obj);
 
@@ -1332,7 +1346,13 @@ CVegetationInstance* CVegetationMap::PlaceObjectInstance(const Vec3& worldPos, C
             // Stick vegetation to terrain.
             if (!obj->object->IsAffectedByBrushes())
             {
-                obj->pos.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(obj->pos.x, obj->pos.y);
+                float terrainElevation = 0.0;
+                AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+                    , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                    , obj->pos.x, obj->pos.y
+                    , AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+                    , nullptr);
+                obj->pos.z = terrainElevation;
             }
 
             RegisterInstance(obj);
@@ -1341,7 +1361,6 @@ CVegetationInstance* CVegetationMap::PlaceObjectInstance(const Vec3& worldPos, C
     }
     return 0;
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos)
@@ -1360,13 +1379,15 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     int unitSize = pHeightmap->GetUnitSize();
 #else
-    int unitSize = GetIEditor()->Get3DEngine()->GetHeightMapUnitSize();
+    AZ::Vector2 gridResolution = AZ::Vector2::CreateZero();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+    int unitSize = static_cast<int>(gridResolution.GetX());
 
     // If we're trying to flood fill and there's no terrain, just return.  There's no work for us to do.
     // Note:  This is because we only allow painting on "brushes" (static meshes) in the non-flood-fill
     // case.  If we ever change that, we'll need to short-circuit the "IsAffectedByTerrain()" case below
     // instead.
-    if (floodFill)
+    if (floodFill || (unitSize <= 0))
     {
         return true;
     }
@@ -1416,6 +1437,8 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
     float cy = (rc.bottom() + 1 + rc.top()) / 2.0f;
 
     // Calculate the vegetation for every point in the area marked by the brush
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
     bool success = true;
     for (int i = 0; i < count; i++)
     {
@@ -1453,7 +1476,8 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 #ifdef LY_TERRAIN_EDITOR
         float currHeight = pHeightmap->GetSafeXY(hx, hy);
 #else
-        float currHeight = GetIEditor()->Get3DEngine()->GetTerrainZ(hx, hy);
+        const AzFramework::Terrain::TerrainDataRequests::Sampler sampler = AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP;
+        float currHeight = terrain ? terrain->GetHeightFromFloats((float)hx, (float)hy, sampler) : defaultTerrainHeight;
 #endif //#ifdef LY_TERRAIN_EDITOR
 
         // Check if height value is within brush min/max altitude.
@@ -1466,7 +1490,8 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 #ifdef LY_TERRAIN_EDITOR
         float slope = pHeightmap->GetSlope(hx, hy);
 #else
-        float slope = GetIEditor()->Get3DEngine()->GetTerrainSlope(x, y);
+        float slope = 0.0f;
+        LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(slope, &LegacyTerrain::LegacyTerrainDataRequests::GetSlope, x, y);
 #endif //#ifdef LY_TERRAIN_EDITOR
 
         // Check if slope is within brush min/max slope.
@@ -1495,7 +1520,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
         }
         else if (object->IsAffectedByTerrain())
         {
-            p.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(p.x, p.y);
+            p.z = terrain ? terrain->GetHeightFromFloats(p.x, p.y) : defaultTerrainHeight;
         }
         else
         {
@@ -1862,50 +1887,19 @@ void CVegetationMap::RepositionObject(CVegetationObject* object)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CVegetationMap::OnHeightMapChanged()
+void CVegetationMap::OnTerrainDataCreateEnd()
 {
-    // Iterator over all sectors.
-    I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-    for (int i = 0; i < m_numSectors * m_numSectors; i++)
-    {
-        SectorInfo* si = &m_sectors[i];
-        // Iterate on every object in sector.
-        for (CVegetationInstance* obj = si->first; obj; obj = obj->next)
-        {
-            if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
-            {
-                obj->pos.z = p3DEngine->GetTerrainElevation(obj->pos.x, obj->pos.y);
-            }
-
-            if (obj->pRenderNode && !obj->object->IsAutoMerged())
-            {
-                // fix vegetation position
-                {
-                    p3DEngine->UnRegisterEntityAsJob(obj->pRenderNode);
-                    Matrix34 mat;
-                    mat.SetIdentity();
-                    mat.SetTranslation(obj->pos);
-                    obj->pRenderNode->SetMatrix(mat);
-                    p3DEngine->RegisterEntity(obj->pRenderNode);
-                }
-
-                // fix ground decal position
-                if (obj->pRenderNodeGroundDecal)
-                {
-                    p3DEngine->UnRegisterEntityAsJob(obj->pRenderNodeGroundDecal);
-                    Matrix34 wtm;
-                    wtm.SetIdentity();
-                    Vec3 vSize = obj->pRenderNode->GetBBox().GetSize();
-                    float fRadiusXY = max(vSize.x, vSize.y) * .125f;
-                    wtm.SetScale(Vec3(fRadiusXY, fRadiusXY, fRadiusXY));
-                    wtm.SetTranslation(obj->pos);
-                    obj->pRenderNodeGroundDecal->SetMatrix(wtm);
-                    p3DEngine->RegisterEntity(obj->pRenderNodeGroundDecal);
-                }
-            }
-        }
-    }
+    // Terrain has been added, so "replant" vegetation on the terrain
+    PlaceObjectsOnTerrain();
 }
+
+//////////////////////////////////////////////////////////////////////////
+void CVegetationMap::OnTerrainDataDestroyEnd()
+{
+    // Terrain has been removed, so "replant" vegetation at default terrain height
+    PlaceObjectsOnTerrain();
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 void CVegetationMap::ScaleObjectInstances(CVegetationObject* object, float fScale, AABB* outModifiedArea)
@@ -2534,6 +2528,8 @@ void CVegetationMap::LoadOldStuff(CXmlArchive& xmlAr)
             usedObjects[m_objects[i]->GetIndex()] = m_objects[i];
         }
 
+        auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
         Vec3 pos;
         uint8* pMap = (uint8*)pData;
         for (int y = 0; y < 2048; ++y)
@@ -2555,7 +2551,7 @@ void CVegetationMap::LoadOldStuff(CXmlArchive& xmlAr)
                 //Swap x/y
                 pos.x = y;
                 pos.y = x;
-                pos.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(pos.x, pos.y);
+                pos.z = terrain ? terrain->GetHeightFromFloats(pos.x, pos.y) : 0.0f;
                 CVegetationInstance* obj = CreateObjInstance(usedObjects[objIndex], pos);
                 if (obj)
                 {
@@ -2583,8 +2579,11 @@ void CVegetationMap::GenerateShadowMap(CByteImage& shadowmap, float shadowAmmoun
     int unitSize = pHeightmap->GetUnitSize();
     int numSectors = (pHeightmap->GetWidth() * unitSize) / sectorSizeInMeters;
 #else
-    int terrainSizeInMeters = GetIEditor()->Get3DEngine()->GetTerrainSize();
-    int sectorSizeInMeters = GetIEditor()->Get3DEngine()->GetTerrainSectorSize();
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    int terrainSizeInMeters = static_cast<int>(terrainAabb.GetWidth());
+    int sectorSizeInMeters = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(sectorSizeInMeters, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
     int numSectors = terrainSizeInMeters / sectorSizeInMeters;
 #endif //#ifdef LY_TERRAIN_EDITOR
 
@@ -2776,7 +2775,13 @@ void CVegetationMap::ImportObject(XmlNodeRef node, const Vec3& offset)
                 // Stick vegetation to terrain.
                 if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                 {
-                    obj->pos.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(obj->pos.x, obj->pos.y);
+                    float terrainElevation = 0.0;
+                    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+                        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                        , obj->pos.x, obj->pos.y
+                        , AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+                        , nullptr);
+                    obj->pos.z = terrainElevation;
                 }
             }
         }
@@ -2942,6 +2947,8 @@ void CVegetationMap::RepositionArea(const AABB& box, const Vec3& offset, ImageRo
 
     CVegetationInstance* next = 0;
 
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     // Change sector
     // cycle trough sectors under source
     for (int y = sy1; y <= sy2; y++)
@@ -2967,13 +2974,16 @@ void CVegetationMap::RepositionArea(const AABB& box, const Vec3& offset, ImageRo
                     {
                         if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                         {
-                            newPos.z = GetIEditor()->Get3DEngine()->GetTerrainElevation(newPos.x, newPos.y);
+                            newPos.z = terrain ? terrain->GetHeightFromFloats(newPos.x, newPos.y) : 0.0f;
                         }
 
                         if (CanPlace(obj->object, newPos, m_minimalDistance))
                         {
                             CVegetationInstance* pInst = CreateObjInstance(obj->object, newPos, obj);
-                            RegisterInstance(pInst);
+                            if (pInst)
+                            {
+                                RegisterInstance(pInst);
+                            }
                         }
                     }
                     else // if move instances
@@ -3029,7 +3039,7 @@ void CVegetationMap::RepositionArea(const AABB& box, const Vec3& offset, ImageRo
                         float newz = newPos.z;
                         if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                         {
-                            newz = GetIEditor()->Get3DEngine()->GetTerrainElevation(newPos.x, newPos.y);
+                            newz = terrain ? terrain->GetHeightFromFloats(newPos.x, newPos.y) : 0.0f;
                         }
                         newPos.z = newz;
                         if (newPos.z != newz)

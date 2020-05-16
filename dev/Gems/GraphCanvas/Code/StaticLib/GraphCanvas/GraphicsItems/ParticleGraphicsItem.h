@@ -11,10 +11,15 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
+// qbrush.h(118): warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QBrush>
 #include <QGraphicsItem>
 #include <QPen>
 #include <QTransform>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Math/Vector2.h>
@@ -66,14 +71,20 @@ namespace GraphCanvas
     class ParticleGraphicsItem
         : public GraphicsEffect<QGraphicsItem>
         , public AZ::TickBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ParticleGraphicsItem, AZ::SystemAllocator, 0);
         
-        ParticleGraphicsItem(const ParticleConfiguration& particleConfiguration);        
+        ParticleGraphicsItem(const ParticleConfiguration& particleConfiguration);
+        ~ParticleGraphicsItem();
         
         // TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;
+        ////
+
+        // SystemTickBus
+        void OnSystemTick() override;
         ////
         
         // GraphicsItem

@@ -182,6 +182,11 @@ public:
 
 private:
 
+    // quadtree min/max height map data request
+    // heightmapDataReadyCallback is guaranteed to be called from a separate thread
+    void RequestMinMaxHeightmapData(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, AZ::u32 metersPerLeafNode, AZ::u32 leafNodesPerRow, AZ::Vector2 bufferOrigin, AZStd::shared_ptr<CDLODMinMaxHeightData> minMaxData) const;
+    void BuildMinMaxMap(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, AZ::u32 metersPerLeafNode, AZ::u32 leafNodesPerRow, AZ::Vector2 bufferOrigin, float* dstBuffer) const;
+
     CreateDesc        m_desc;
 
     AZ::u32 m_nodeSizes[Terrain::TerrainRenderingParameters::c_TerrainMaxLODLevels];
@@ -215,7 +220,7 @@ public:
     void RequestMinMaxHeightData(int topNodeX, int topNodeY) const;
 
     // Terrain::HeightmapDataNotificationBus::Handler Impl
-    void HeightmapVersionUpdate() override;
+    void OnTerrainHeightDataChanged(const AZ::Aabb& dirtyRegion) override;
 };
 
 

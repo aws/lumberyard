@@ -168,7 +168,7 @@ namespace EditorUtils
     {
     public:
         AzWarningAbsorber(const char* window);
-        ~AzWarningAbsorber() = default;
+        ~AzWarningAbsorber();
 
         bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override;
 
@@ -325,25 +325,25 @@ inline QColor String2Color(const QString& val)
 // Converts QColor to Vector.
 inline Vec3 Rgb2Vec(const QColor& color)
 {
-    return Vec3(color.redF(), color.greenF(), color.blueF());
+    return Vec3(aznumeric_cast<float>(color.redF()), aznumeric_cast<float>(color.greenF()), aznumeric_cast<float>(color.blueF()));
 }
 
 // Converts QColor to ColorF.
 inline ColorF Rgb2ColorF(const QColor& color)
 {
-    return ColorF(color.redF(), color.greenF(), color.blueF(), 1.0f);
+    return ColorF(aznumeric_cast<float>(color.redF()), aznumeric_cast<float>(color.greenF()), aznumeric_cast<float>(color.blueF()), 1.0f);
 }
 
 // Converts QColor to Vector.
 inline QColor Vec2Rgb(const Vec3& color)
 {
-    return QColor(color.x * 255, color.y * 255, color.z * 255);
+    return QColor(aznumeric_cast<int>(color.x * 255), aznumeric_cast<int>(color.y * 255), aznumeric_cast<int>(color.z * 255));
 }
 
 // Converts ColorF to QColor.
 inline QColor ColorF2Rgb(const ColorF& color)
 {
-    return QColor(color.r * 255, color.g * 255, color.b * 255);
+    return QColor(aznumeric_cast<int>(color.r * 255), aznumeric_cast<int>(color.g * 255), aznumeric_cast<int>(color.b * 255));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -646,12 +646,12 @@ static inline CArchive& operator>>(CArchive& ar, QString& str)
         {
             ushort* shortAlignedData = new ushort[length];
             memcpy(shortAlignedData, raw, length * 2);
-            str = QString::fromUtf16(shortAlignedData, length);
+            str = QString::fromUtf16(shortAlignedData, aznumeric_cast<int>(length));
             delete[] shortAlignedData;
         }
         else
         {
-            str = QString::fromUtf16(reinterpret_cast<ushort*>(raw), length);
+            str = QString::fromUtf16(reinterpret_cast<ushort*>(raw), aznumeric_cast<int>(length));
         }
     }
     

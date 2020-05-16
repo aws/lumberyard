@@ -37,6 +37,8 @@ AZ_POP_DISABLE_WARNING
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <AzCore/std/string/tokenize.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
@@ -69,6 +71,35 @@ namespace CloudCanvas
         }
     }
 
+    AZStd::unordered_map<AZStd::string, AZStd::string> PresignedURLManager::GetQueryParameters(const AZStd::string& signedURL)
+    {
+        size_t queryParametersStartPosition = signedURL.find("?");
+        if (queryParametersStartPosition == AZStd::string::npos)
+        {
+            return AZStd::unordered_map<AZStd::string, AZStd::string>();
+        }
+
+        AZStd::vector<AZStd::string> queryParameters;
+        AZStd::tokenize(signedURL.substr(queryParametersStartPosition), AZStd::string("&"), queryParameters);
+
+        AZStd::unordered_map<AZStd::string, AZStd::string> keyValuePairs;
+        for (const AZStd::string& keyValuePairStr : queryParameters)
+        {
+            AZStd::vector<AZStd::string> queryParameterKeyAndValue;
+            AZStd::tokenize(keyValuePairStr, AZStd::string("="), queryParameterKeyAndValue);
+
+            if (queryParameterKeyAndValue.size() != 2)
+            {
+                AZ_Error("CloudCanvas", false, "Invalid query parameter %s", keyValuePairStr.c_str());
+                return AZStd::unordered_map<AZStd::string, AZStd::string>();
+            }
+
+            keyValuePairs[queryParameterKeyAndValue[0]] = queryParameterKeyAndValue[1];
+        }
+
+        return keyValuePairs;
+    }
+
     AZ::Job* PresignedURLManager::CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) const
     {
         if (!signedURL.length())
@@ -93,6 +124,7 @@ namespace CloudCanvas
          job = AZ::CreateJobFunction([signedURL, outputFile, id]()
         {
             Aws::Client::ClientConfiguration presignedConfig;
+            presignedConfig.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
             // This timeout value is not always used consistently across http clients - it can mean "how long between packets" or 
             // "How long does the entire request take" - we're transferring files over sometimes spotty networks and don't want 
             // this arbitrarily limited.

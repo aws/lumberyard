@@ -147,7 +147,9 @@ namespace Vegetation
 
             behaviorContext->EBus<SurfaceMaskDepthFilterRequestBus>("SurfaceMaskDepthFilterRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "vegetation")
                 ->Event("GetAllowOverrides", &SurfaceMaskDepthFilterRequestBus::Events::GetAllowOverrides)
                 ->Event("SetAllowOverrides", &SurfaceMaskDepthFilterRequestBus::Events::SetAllowOverrides)
                 ->VirtualProperty("AllowOverrides", "GetAllowOverrides", "SetAllowOverrides")

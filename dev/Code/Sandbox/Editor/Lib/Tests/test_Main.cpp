@@ -17,28 +17,17 @@
 
 #include <QApplication>
 
-// Handle asserts
-class EditorLibHook
-    : public AZ::Test::ITestEnvironment
-{
-public:
-    void SetupEnvironment() override
-    {
-    }
-
-    void TeardownEnvironment() override
-    {
-    }
-};
-
 AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)
 {
     ::testing::InitGoogleMock(&argc, argv);
+    // NOTE - these lines are what make this code different from AZ_UNIT_TEST_HOOK()
     AzQtComponents::PrepareQtPaths();
     QApplication app(argc, argv);
+    // end
     AZ::Test::excludeIntegTests();
+    AZ::Test::ApplyGlobalParameters(&argc, argv);
     AZ::Test::printUnusedParametersWarning(argc, argv);
-    AZ::Test::addTestEnvironments({ new EditorLibHook });
+    AZ::Test::addTestEnvironments({});
     int result = RUN_ALL_TESTS();
     return result;
 }

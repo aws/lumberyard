@@ -343,7 +343,7 @@ except:
 
 def stealth_write(self, data, flags='wb'):
 	try:
-		x = unicode
+		x = str
 	except:
 		data = data.encode('utf-8') # python 3
 	else:

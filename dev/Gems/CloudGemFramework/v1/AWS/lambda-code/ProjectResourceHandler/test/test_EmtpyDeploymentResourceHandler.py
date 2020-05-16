@@ -11,10 +11,11 @@
 # $Revision: #4 $
 
 import unittest
-import mock
+from unittest import mock
 
 from resource_types import Custom_EmptyDeployment
 from cgf_utils import custom_resource_response
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_EmptyDeploymentResourceHandler(unittest.TestCase):
 

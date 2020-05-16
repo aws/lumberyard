@@ -47,16 +47,18 @@
 #include <AzCore/Debug/ProfilerDriller.h>
 #include <AzCore/Debug/EventTraceDriller.h>
 #include <AzCore/Debug/Profiler.h>
-
 #include <AzCore/Script/ScriptSystemBus.h>
 
 #include <AzCore/Math/PolygonPrism.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/VertexContainer.h>
 
+#include <AzCore/Name/NameDictionary.h>
+
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 
 #include <AzCore/XML/rapidxml.h>
+#include <AzCore/Math/Sfmt.h>
 
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #include <AzCore/Debug/StackTracer.h>
@@ -154,16 +156,6 @@ namespace AZ
 
         return true;
     };
-
-    //=========================================================================
-    // ReflectSerialize
-    // [5/30/2012]
-    //=========================================================================
-    void ComponentApplication::Descriptor::ReflectSerialize(SerializeContext* serializeContext, ComponentApplication* app)
-    {
-        AZ_Warning("Application", false, "ComponentApplication::Descriptor::ReflectSerialize() is deprecated, use Reflect() instead.");
-        ComponentApplication::Descriptor::Reflect(serializeContext, app);
-    }
 
     void ComponentApplication::Descriptor::AllocatorRemapping::Reflect(ReflectContext* context, ComponentApplication* app)
     {
@@ -397,7 +389,7 @@ namespace AZ
                 classId.ToString(idStr, AZ_ARRAY_SIZE(idStr));
                 AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
             }
-        }, 
+        },
             ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         // we cannot load assets during system bootstrap since we haven't even got the catalog yet.  But we can definitely read their IDs.
 
@@ -432,6 +424,15 @@ namespace AZ
             m_osAllocator = startupParameters.m_allocator;
         }
 
+        // Az Console initialization..
+        // Our unit tests are special, and don't always construct an AzFramework application prior to loading modules.. most do, but some don't
+        // So we have to duplicate subsystem initialization here in order to guarantee module loading functions correctly for all unit tests
+        if (AZ::Interface<AZ::IConsole>::Get() == nullptr)
+        {
+            new AZ::Console;
+            AZ::Interface<AZ::IConsole>::Get()->LinkDeferredFunctors(AZ::ConsoleFunctorBase::GetDeferredHead());
+        }
+
         m_descriptor = descriptor;
         m_startupParameters = startupParameters;
         CreateCommon();
@@ -451,9 +452,13 @@ namespace AZ
 
         CreateDrillers();
 
+        Sfmt::Create();
+
         CreateSystemAllocator();
 
         CreateReflectionManager();
+
+        NameDictionary::Create();
 
         // Call this and child class's reflects
         ReflectionEnvironment::GetReflectionManager()->Reflect(azrtti_typeid(this), AZStd::bind(&ComponentApplication::Reflect, this, AZStd::placeholders::_1));
@@ -506,10 +511,10 @@ namespace AZ
     {
         // Finish all queued work
         AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
-        
+
         TickBus::ExecuteQueuedEvents();
         TickBus::AllowFunctionQueuing(false);
-        
+
         SystemTickBus::ExecuteQueuedEvents();
         SystemTickBus::AllowFunctionQueuing(false);
 
@@ -557,11 +562,15 @@ namespace AZ
 
         // Uninit and unload any dynamic modules.
         m_moduleManager.reset();
+        
+        NameDictionary::Destroy();
 
         if (systemEntity)
         {
             delete systemEntity;
         }
+
+        Sfmt::Destroy();
 
         // delete all descriptors left for application clean up
         EBUS_EVENT(ComponentDescriptorBus, ReleaseDescriptor);
@@ -579,6 +588,19 @@ namespace AZ
         // Clear the descriptor to deallocate all strings (owned by ModuleDescriptor)
         m_descriptor = Descriptor();
 
+        DestroyAllocator();
+
+        m_isStarted = false;
+
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        // Unregister module listeners after allocators are destroyed
+        // so that symbol/stack trace information is available at shutdown
+        Debug::SymbolStorage::UnregisterModuleListeners();
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
+    }
+
+    void ComponentApplication::DestroyAllocator()
+    {
         // kill the system allocator if we created it
         if (m_isSystemAllocatorOwner)
         {
@@ -602,14 +624,6 @@ namespace AZ
         }
 
         m_osAllocator = nullptr;
-
-        m_isStarted = false;
-
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-        // Unregister module listeners after allocators are destroyed
-        // so that symbol/stack trace information is available at shutdown
-        Debug::SymbolStorage::UnregisterModuleListeners();
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
     }
 
     //=========================================================================
@@ -1212,6 +1226,8 @@ namespace AZ
         SplineReflect(context);
         // reflect polygon prism
         PolygonPrismReflect(context);
+        // reflect name dictionary.
+        Name::Reflect(context);
     }
 
 } // namespace AZ

@@ -344,43 +344,21 @@ AZ::Entity* UiElementComponent::CreateChildElement(const LyShine::NameType& name
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::DestroyElement()
 {
-    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-    EBUS_EVENT_ID_RESULT(contextId, GetEntityId(), AzFramework::EntityIdContextQueryBus, GetOwningContextId);
+    PrepareElementForDestroy();
 
-    // destroy child elements, this is complicated by the fact that the child elements
-    // will attempt to remove themselves from the m_childEntityIdOrder list in their DestroyElement method.
-    // But, if the entities are not initialized yet the child parent pointer will be null.
-    // So the child may or may not remove itself from the list.
-    // So make a local copy of the list and iterate on that
-    if (AreChildPointersValid())
+    DestroyElementEntity(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::DestroyElementOnFrameEnd()
+{
+    PrepareElementForDestroy();
+
+    if (m_canvas)
     {
-        auto childElementComponents = m_childElementComponents;
-        for (auto child : childElementComponents)
-        {
-            // destroy the child
-            child->DestroyElement();
-        }
+        // Delay deletion of elements to ensure a script canvas can safely destroy its parent
+        m_canvas->ScheduleElementDestroy(GetEntityId());
     }
-    else
-    {
-        auto children = m_childEntityIdOrder;   // need a copy
-        for (auto& child : children)
-        {
-            // destroy the child
-            EBUS_EVENT_ID(child.m_entityId, UiElementBus, DestroyElement);
-        }
-    }
-
-    // remove this element from parent
-    if (m_parent)
-    {
-        GetParentElementComponent()->RemoveChild(GetEntity());
-    }
-
-    // Notify listeners that the element is being destroyed
-    EBUS_EVENT_ID(GetEntityId(), UiElementNotificationBus, OnUiElementBeingDestroyed);
-
-    EBUS_EVENT_ID(contextId, UiEntityContextRequestBus, DestroyUiEntity, GetEntityId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1413,7 +1391,7 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetChild", &UiElementBus::Events::GetChildEntityId)
             ->Event("GetIndexOfChildByEntityId", &UiElementBus::Events::GetIndexOfChildByEntityId)
             ->Event("GetChildren", &UiElementBus::Events::GetChildEntityIds)
-            ->Event("DestroyElement", &UiElementBus::Events::DestroyElement)
+            ->Event("DestroyElement", &UiElementBus::Events::DestroyElementOnFrameEnd)
             ->Event("Reparent", &UiElementBus::Events::ReparentByEntityId)
             ->Event("FindChildByName", &UiElementBus::Events::FindChildEntityIdByName)
             ->Event("FindDescendantByName", &UiElementBus::Events::FindDescendantEntityIdByName)
@@ -1639,7 +1617,11 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
     // Build the address of the "Children" element within this UiElementComponent
     AZ::DataPatch::AddressType childrenAddress = address;
     childrenAddress.push_back(AZ_CRC("Children", 0xa197b1ba));
-    
+
+    // Get the serialize context for use in the LoadObjectFromStreamInPlace calls
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
     // childPatchLookup contains all addresses in the patch that are within the UiElementComponent so
     // it is slightly faster to iterate over that than over "patch" directly.
     for (auto& childPatchPair : childPatchLookup)
@@ -1663,7 +1645,7 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                 }
 
                 // the last part of the address is the index in the m_children array
-                AZ::u64 index = childPatchAddress.back();
+                AZ::u64 index = childPatchAddress.back().GetAddressElement();
 
                 if (foundPatchIt->second.empty())
                 {
@@ -1676,13 +1658,40 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                     // This is an addition
 
                     // get the EntityId out of the patch value
-                    AZ::IO::MemoryStream stream(foundPatchIt->second.data(), foundPatchIt->second.size());
-                    AZ::EntityId* entityIdPtr = AZ::Utils::LoadObjectFromStream<AZ::EntityId>(stream);
-                    if (entityIdPtr)
+                    AZ::EntityId entityId;
+                    bool entityIdLoaded = false;
+
+                    // If the patch originated in a Legacy DataPatch then we must first load the EntityId from the legacy stream
+                    if (foundPatchIt->second.type() == azrtti_typeid<AZ::DataPatch::LegacyStreamWrapper>())
+                    {
+                        const AZ::DataPatch::LegacyStreamWrapper* wrapper = AZStd::any_cast<AZ::DataPatch::LegacyStreamWrapper>(&foundPatchIt->second);
+
+                        if (wrapper)
+                        {
+                            AZ::IO::MemoryStream stream(wrapper->m_stream.data(), wrapper->m_stream.size());
+                            entityIdLoaded = AZ::Utils::LoadObjectFromStreamInPlace<AZ::EntityId>(stream, entityId, serializeContext);
+                        }
+                    }
+                    else
+                    {
+                        // Otherwise we can acquire the EntityId from the patch directly
+                        const AZ::EntityId* entityIdPtr = AZStd::any_cast<AZ::EntityId>(&foundPatchIt->second);
+
+                        if (entityIdPtr)
+                        {
+                            entityId = *entityIdPtr;
+                            entityIdLoaded = true;
+                        }
+                    }
+                    
+                    if (entityIdLoaded)
                     {
                         oldChildrenDataPatchFound = true;
-                        elementsAdded.push_back({index, *entityIdPtr});
-                        azdestroy(entityIdPtr);   // azdestroy required rather than delete to ensure AZ::SystemAlocator is used
+                        elementsAdded.push_back({index, entityId});
+                    }
+                    else
+                    {
+                        AZ_Error("UI", false, "UiElement::OnPatchEnd: Failed to load a child entity Id from DataPatch");
                     }
                 }
             }
@@ -1726,20 +1735,48 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                 }
 
                 // This should be the u64 "Id" element of the EntityId, if not ignore.
-                if (childPatchAddress.back() == AZ_CRC("Id", 0xbf396750))
+                if (childPatchAddress.back().GetAddressElement() == AZ_CRC("Id", 0xbf396750))
                 {
                     // the second to last part of the address is the index in the m_children array
-                    AZ::u64 index = childPatchAddress[childPatchAddress.size() - 2];
+                    AZ::u64 index = childPatchAddress[childPatchAddress.size() - 2].GetAddressElement();
 
                     // extract the u64 from the patch value
-                    AZ::IO::MemoryStream stream(foundPatchIt->second.data(), foundPatchIt->second.size());
-                    AZ::u64* idPtr = AZ::Utils::LoadObjectFromStream<AZ::u64>(stream);
-                    if (idPtr)
+                    AZ::u64 id = 0;
+                    bool idLoaded = false;
+
+                    // If the patch originated in a Legacy DataPatch then we must first load the u64 from the legacy stream
+                    if (foundPatchIt->second.type() == azrtti_typeid<AZ::DataPatch::LegacyStreamWrapper>())
                     {
-                        AZ::EntityId entityId(*idPtr);
+                        const AZ::DataPatch::LegacyStreamWrapper* wrapper = AZStd::any_cast<AZ::DataPatch::LegacyStreamWrapper>(&foundPatchIt->second);
+
+                        if (wrapper)
+                        {
+                            AZ::IO::MemoryStream stream(wrapper->m_stream.data(), wrapper->m_stream.size());
+
+                            idLoaded = AZ::Utils::LoadObjectFromStreamInPlace<AZ::u64>(stream, id, serializeContext);
+                        }
+                    }
+                    else
+                    {
+                        // Otherwise we can acquire the EntityId from the patch directly
+                        const AZ::u64* idPtr = AZStd::any_cast<AZ::u64>(&foundPatchIt->second);
+
+                        if (idPtr)
+                        {
+                            id = *idPtr;
+                            idLoaded = true;
+                        }
+                    }
+
+                    if (idLoaded)
+                    {
+                        AZ::EntityId entityId(id);
                         oldChildrenDataPatchFound = true;
                         elementsChanged.push_back({index, entityId});
-                        azdestroy(idPtr);   // azdestroy required rather than delete to ensure AZ::SystemAlocator is used
+                    }
+                    else
+                    {
+                        AZ_Error("UI", false, "UiElement::OnPatchEnd: Failed to load a child entity Id from DataPatch");
                     }
                 }
             }
@@ -1814,6 +1851,43 @@ void UiElementComponent::ResetChildEntityIdSortOrders()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::PrepareElementForDestroy()
+{
+    // destroy child elements, this is complicated by the fact that the child elements
+    // will attempt to remove themselves from the m_childEntityIdOrder list in their DestroyElement method.
+    // But, if the entities are not initialized yet the child parent pointer will be null.
+    // So the child may or may not remove itself from the list.
+    // So make a local copy of the list and iterate on that
+    if (AreChildPointersValid())
+    {
+        auto childElementComponents = m_childElementComponents;
+        for (auto child : childElementComponents)
+        {
+            // destroy the child
+            child->DestroyElement();
+        }
+    }
+    else
+    {
+        auto children = m_childEntityIdOrder;   // need a copy
+        for (auto& child : children)
+        {
+            // destroy the child
+            UiElementBus::Event(child.m_entityId, &UiElementBus::Events::DestroyElement);
+        }
+    }
+
+    // remove this element from parent
+    if (m_parent)
+    {
+        GetParentElementComponent()->RemoveChild(GetEntity());
+    }
+
+    // Notify listeners that the element is being destroyed
+    UiElementNotificationBus::Event(GetEntityId(), &UiElementNotificationBus::Events::OnUiElementBeingDestroyed);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1874,4 +1948,13 @@ bool UiElementComponent::VersionConverter(AZ::SerializeContext& context,
     }
 
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::DestroyElementEntity(AZ::EntityId entityId)
+{
+    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+    AzFramework::EntityIdContextQueryBus::EventResult(contextId, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+
+    UiEntityContextRequestBus::Event(contextId, &UiEntityContextRequestBus::Events::DestroyUiEntity, entityId);
 }

@@ -292,8 +292,8 @@ namespace GridMate
         //@}
 
     protected:
-        DataSet(const DataSet& rhs) AZ_DELETE_METHOD;
-        DataSet& operator=(const DataSet&) AZ_DELETE_METHOD;
+        DataSet(const DataSet& rhs) = delete;
+        DataSet& operator=(const DataSet&) = delete;
 
         void SetDirty() override
         {

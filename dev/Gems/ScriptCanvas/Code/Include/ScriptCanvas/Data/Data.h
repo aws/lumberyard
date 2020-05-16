@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Color.h>
@@ -66,9 +67,11 @@ namespace ScriptCanvas
             NamedEntityID,
             // Function, 
             // List,
+            AssetId,
         };
 
         using AABBType = AZ::Aabb;
+        using AssetIdType = AZ::Data::AssetId;
         using BooleanType = bool;
         using CRCType = AZ::Crc32;
         using ColorType = AZ::Color;
@@ -94,6 +97,7 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext* reflection);
 
             static Type AABB();
+            static Type AssetId();
             static Type BehaviorContextObject(const AZ::Uuid& aztype);
             static Type Boolean();
             static Type Color();
@@ -211,6 +215,8 @@ namespace ScriptCanvas
 
         bool IsAABB(const AZ::Uuid& type);
         bool IsAABB(const Type& type);
+        bool IsAssetId(const AZ::Uuid& type);
+        bool IsAssetId(const Type& type);
         bool IsBoolean(const AZ::Uuid& type);
         bool IsBoolean(const Type& type);
         bool IsColor(const AZ::Uuid& type);
@@ -261,6 +267,16 @@ namespace ScriptCanvas
         AZ_INLINE bool IsAABB(const Type& type)
         {
             return type.GetType() == eType::AABB;
+        }
+
+        AZ_INLINE bool IsAssetId(const AZ::Uuid& type)
+        {
+            return type == azrtti_typeid<AssetIdType>();
+        }
+
+        AZ_INLINE bool IsAssetId(const Type& type)
+        {
+            return type.GetType() == eType::AssetId;
         }
 
         AZ_INLINE bool IsBoolean(const AZ::Uuid& type)
@@ -441,6 +457,9 @@ namespace ScriptCanvas
             case eType::AABB:
                 return azrtti_typeid<AABBType>();
 
+            case eType::AssetId:
+                return azrtti_typeid<AssetIdType>();
+
             case eType::Boolean:
                 return azrtti_typeid<bool>();
 
@@ -551,27 +570,7 @@ namespace ScriptCanvas
 
         AZ_INLINE bool IsValueType(const Type& type)
         {
-            static const AZ::u32 s_valueTypes =
-            {
-                  1 << static_cast<AZ::u32>(eType::AABB)
-                | 1 << static_cast<AZ::u32>(eType::Boolean)
-                | 1 << static_cast<AZ::u32>(eType::Color)
-                | 1 << static_cast<AZ::u32>(eType::CRC)
-                | 1 << static_cast<AZ::u32>(eType::EntityID)
-                | 1 << static_cast<AZ::u32>(eType::NamedEntityID)
-                | 1 << static_cast<AZ::u32>(eType::Matrix3x3)
-                | 1 << static_cast<AZ::u32>(eType::Matrix4x4)
-                | 1 << static_cast<AZ::u32>(eType::Number)
-                | 1 << static_cast<AZ::u32>(eType::OBB)
-                | 1 << static_cast<AZ::u32>(eType::Quaternion)
-                | 1 << static_cast<AZ::u32>(eType::String)
-                | 1 << static_cast<AZ::u32>(eType::Transform)
-                | 1 << static_cast<AZ::u32>(eType::Vector3)
-                | 1 << static_cast<AZ::u32>(eType::Vector2)
-                | 1 << static_cast<AZ::u32>(eType::Vector4)                
-            };
-
-            return ((1 << static_cast<AZ::u32>(type.GetType())) & s_valueTypes) != 0;
+            return type.GetType() != eType::BehaviorContextObject;
         }
 
         AZ_FORCE_INLINE Type::Type()
@@ -594,6 +593,11 @@ namespace ScriptCanvas
         AZ_FORCE_INLINE Type Type::AABB()
         {
             return Type(eType::AABB);
+        }
+
+        AZ_FORCE_INLINE Type Type::AssetId()
+        {
+            return Type(eType::AssetId);
         }
 
         AZ_FORCE_INLINE Type Type::BehaviorContextObject(const AZ::Uuid& aztype)

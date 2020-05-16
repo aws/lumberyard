@@ -14,40 +14,20 @@
 
 #include "UiCanvasFileObject.h"
 #include "UiCanvasComponent.h"
-#include "UiElementComponent.h"
-#include "UiTransform2dComponent.h"
-#include "UiSerialize.h"
 #include "UiGameEntityContext.h"
 
 #include <IRenderer.h>
-#include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiInitializationBus.h>
-#include <LyShine/Bus/UiNavigationBus.h>
-#include <LyShine/Bus/UiTooltipDisplayBus.h>
-#include <LyShine/Bus/UiEntityContextBus.h>
 #include <LyShine/UiSerializeHelpers.h>
 
 #include <AzCore/Debug/AssetTracking.h>
-#include <AzCore/Math/Crc.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/TickBus.h>
-#include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Serialization/Utils.h>
-#include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/IO/SystemFile.h>
-#include <AzCore/std/sort.h>
-#include <AzCore/std/time.h>
-#include <AzCore/std/string/conversions.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/StringFunc/StringFunc.h>
-
-#include "Animation/UiAnimationSystem.h"
 
 #include <LyShine/Bus/UiCursorBus.h>
 #include <LyShine/Bus/World/UiCanvasOnMeshBus.h>
@@ -225,11 +205,16 @@ void UiCanvasManager::UnloadCanvas(AZ::EntityId canvasEntityId)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiCanvasManager::FindLoadedCanvasByPathName(const AZStd::string& assetIdPathname)
+AZ::EntityId UiCanvasManager::FindLoadedCanvasByPathName(const AZStd::string& assetIdPathName, bool loadIfNotFound)
 {
     // this is only used for finding canvases loaded in game
-    UiCanvasComponent* canvasComponent = FindCanvasComponentByPathname(assetIdPathname.c_str());
-    return canvasComponent ? canvasComponent->GetEntityId() : AZ::EntityId();
+    UiCanvasComponent* canvasComponent = FindCanvasComponentByPathname(assetIdPathName.c_str());
+    AZ::EntityId canvasId = canvasComponent ? canvasComponent->GetEntityId() : AZ::EntityId();
+    if (!canvasId.IsValid() && loadIfNotFound)
+    {
+        canvasId = LoadCanvas(assetIdPathName);
+    }
+    return canvasId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

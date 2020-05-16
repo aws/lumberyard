@@ -2,6 +2,8 @@
 Implementation of the range object for fixed-size integers.
 """
 
+import operator
+
 import llvmlite.llvmpy.core as lc
 
 from numba import types, cgutils, prange
@@ -10,8 +12,8 @@ from .arrayobj import make_array
 from .imputils import (lower_builtin, lower_cast,
                        iterator_impl, impl_ret_untracked)
 from numba.typing import signature
-from numba.extending import intrinsic
-
+from numba.extending import intrinsic, overload, overload_attribute, register_jitable
+from numba.parfor import internal_prange
 
 def make_range_iterator(typ):
     """
@@ -26,6 +28,7 @@ def make_range_impl(int_type, range_state_type, range_iter_type):
 
     @lower_builtin(range, int_type)
     @lower_builtin(prange, int_type)
+    @lower_builtin(internal_prange, int_type)
     def range1_impl(context, builder, sig, args):
         """
         range(stop: int) -> range object
@@ -42,6 +45,7 @@ def make_range_impl(int_type, range_state_type, range_iter_type):
 
     @lower_builtin(range, int_type, int_type)
     @lower_builtin(prange, int_type, int_type)
+    @lower_builtin(internal_prange, int_type, int_type)
     def range2_impl(context, builder, sig, args):
         """
         range(start: int, stop: int) -> range object
@@ -58,6 +62,7 @@ def make_range_impl(int_type, range_state_type, range_iter_type):
 
     @lower_builtin(range, int_type, int_type, int_type)
     @lower_builtin(prange, int_type, int_type, int_type)
+    @lower_builtin(internal_prange, int_type, int_type, int_type)
     def range3_impl(context, builder, sig, args):
         """
         range(start: int, stop: int, step: int) -> range object
@@ -207,3 +212,68 @@ def range_iter_len(typingctx, val):
             # array iterates along the outer dimension
             return impl_ret_untracked(context, builder, intp_t, shape[0])
         return signature(types.intp, val), codegen
+
+
+def make_range_attr(index, attribute):
+    @intrinsic
+    def rangetype_attr_getter(typingctx, a):
+        if isinstance(a, types.RangeType):
+            def codegen(context, builder, sig, args):
+                (val,) = args
+                items = cgutils.unpack_tuple(builder, val, 3)
+                return impl_ret_untracked(context, builder, sig.return_type,
+                                          items[index])
+            return signature(a.dtype, a), codegen
+
+    @overload_attribute(types.RangeType, attribute)
+    def range_attr(rnge):
+        def get(rnge):
+            return rangetype_attr_getter(rnge)
+        return get
+
+
+@register_jitable
+def impl_contains_helper(robj, val):
+    if robj.step > 0 and (val < robj.start or val >= robj.stop):
+        return False
+    elif robj.step < 0 and (val <= robj.stop or val > robj.start):
+        return False
+
+    return ((val - robj.start) % robj.step) == 0
+
+
+@overload(operator.contains)
+def impl_contains(robj, val):
+    def impl_false(robj, val):
+        return False
+
+    if not isinstance(robj, types.RangeType):
+        return
+
+    elif isinstance(val, (types.Integer, types.Boolean)):
+        return impl_contains_helper
+
+    elif isinstance(val, types.Float):
+        def impl(robj, val):
+            if val % 1 != 0:
+                return False
+            else:
+                return impl_contains_helper(robj, int(val))
+        return impl
+
+    elif isinstance(val, types.Complex):
+        def impl(robj, val):
+            if val.imag != 0:
+                return False
+            elif val.real % 1 != 0:
+                return False
+            else:
+                return impl_contains_helper(robj, int(val.real))
+        return impl
+
+    elif not isinstance(val, types.Number):
+        return impl_false
+
+
+for ix, attr in enumerate(('start', 'stop', 'step')):
+    make_range_attr(index=ix, attribute=attr)

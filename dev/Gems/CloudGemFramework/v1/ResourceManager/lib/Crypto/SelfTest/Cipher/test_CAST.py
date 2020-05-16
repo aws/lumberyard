@@ -24,9 +24,11 @@
 
 """Self-test suite for Crypto.Cipher.CAST"""
 
-__revision__ = "$Id$"
+import unittest
 
-from Crypto.Util.py3compat import *
+from Crypto.Util.py3compat import bchr
+
+from Crypto.Cipher import CAST
 
 # This is a list of (plaintext, ciphertext, key) tuples.
 test_data = [
@@ -44,14 +46,58 @@ test_data = [
         '40-bit key'),
 ]
 
+
+class KeyLength(unittest.TestCase):
+
+    def runTest(self):
+        self.assertRaises(ValueError, CAST.new, bchr(0) * 4, CAST.MODE_ECB)
+        self.assertRaises(ValueError, CAST.new, bchr(0) * 17, CAST.MODE_ECB)
+
+
+class TestOutput(unittest.TestCase):
+
+    def runTest(self):
+        # Encrypt/Decrypt data and test output parameter
+
+        cipher = CAST.new(b'4'*16, CAST.MODE_ECB)
+
+        pt = b'5' * 16
+        ct = cipher.encrypt(pt)
+
+        output = bytearray(16)
+        res = cipher.encrypt(pt, output=output)
+        self.assertEqual(ct, output)
+        self.assertEqual(res, None)
+        
+        res = cipher.decrypt(ct, output=output)
+        self.assertEqual(pt, output)
+        self.assertEqual(res, None)
+
+        import sys
+        if sys.version[:3] != '2.6':
+            output = memoryview(bytearray(16))
+            cipher.encrypt(pt, output=output)
+            self.assertEqual(ct, output)
+        
+            cipher.decrypt(ct, output=output)
+            self.assertEqual(pt, output)
+
+        self.assertRaises(TypeError, cipher.encrypt, pt, output=b'0'*16)
+        self.assertRaises(TypeError, cipher.decrypt, ct, output=b'0'*16)
+
+        shorter_output = bytearray(7)
+        self.assertRaises(ValueError, cipher.encrypt, pt, output=shorter_output)
+        self.assertRaises(ValueError, cipher.decrypt, ct, output=shorter_output)
+
+
 def get_tests(config={}):
-    from Crypto.Cipher import CAST
-    from common import make_block_tests
-    return make_block_tests(CAST, "CAST", test_data)
+    from .common import make_block_tests
+
+    tests = make_block_tests(CAST, "CAST", test_data)
+    tests.append(KeyLength())
+    tests.append(TestOutput())
+    return tests
 
 if __name__ == '__main__':
-    import unittest
     suite = lambda: unittest.TestSuite(get_tests())
     unittest.main(defaultTest='suite')
-
-# vim:set ts=4 sw=4 sts=4 expandtab:

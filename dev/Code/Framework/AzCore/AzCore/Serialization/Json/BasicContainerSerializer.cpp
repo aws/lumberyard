@@ -171,6 +171,22 @@ namespace AZ
 
         JSR::ResultCode retVal(JSR::Tasks::ReadField);
         size_t containerSize = container->Size(outputValue);
+        if (containerSize > 0 && settings.m_clearContainers)
+        {
+            JSR::Result result = JSR::Result(settings, "Clearing basic container.", JSR::Tasks::Clear, JSR::Outcomes::Success, path);
+            if (result.GetResultCode().GetOutcome() == JSR::Outcomes::Success)
+            {
+                container->ClearElements(outputValue, settings.m_serializeContext);
+                containerSize = container->Size(outputValue);
+                result = JSR::Result(settings, containerSize == 0 ? "Cleared basic container." : "Failed to clear basic container.",
+                    JSR::Tasks::Clear, containerSize == 0 ? JSR::Outcomes::Success : JSR::Outcomes::Unsupported, path);
+            }
+            if (result.GetResultCode().GetProcessing() != JSR::Processing::Completed)
+            {
+                return result;
+            }
+            retVal.Combine(result);
+        }
         rapidjson::SizeType arraySize = inputValue.Size();
         for (rapidjson::SizeType i = 0; i < arraySize; ++i)
         {
@@ -181,7 +197,7 @@ namespace AZ
             if (!elementAddress)
             {
                 return JSR::Result(settings, "Failed to allocate an item in the basic container.",
-                    JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Catastrophic), path);
+                    JSR::Tasks::ReadField, JSR::Outcomes::Catastrophic, path);
             }
             if (classElement->m_flags & SerializeContext::ClassElement::Flags::FLG_POINTER)
             {

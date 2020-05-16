@@ -161,7 +161,9 @@ protected:
     virtual void DeleteThis() = 0;
 
 protected:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     _smart_ptr<CEditTool> m_pParentTool; // Pointer to parent edit tool.
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QString m_statusText;
     IClassDesc* m_pClassDesc;
     int m_nRefCount;

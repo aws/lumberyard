@@ -12,6 +12,7 @@
 @argumentname="debug_views",type="string"
 '''
 import sys
+import azlmbr.legacy.general as general
 
 # GLOBALS - Need to avoid clobbering the global vars every execution
 DEBUG = False

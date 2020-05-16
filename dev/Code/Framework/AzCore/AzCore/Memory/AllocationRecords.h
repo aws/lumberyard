@@ -30,18 +30,18 @@ namespace AZ
         */
         struct AllocationInfo
         {
-            size_t          m_byteSize;
-            unsigned int    m_alignment;
-            const char*     m_name;
+            size_t          m_byteSize{};
+            unsigned int    m_alignment{};
+            const char*     m_name{};
 
-            const char*     m_fileName;
-            int             m_lineNum;
-            void*           m_namesBlock; ///< Memory block if m_name and m_fileName have been allocated specifically for this allocation record
-            size_t          m_namesBlockSize;
+            const char*     m_fileName{};
+            int             m_lineNum{};
+            void*           m_namesBlock{}; ///< Memory block if m_name and m_fileName have been allocated specifically for this allocation record
+            size_t          m_namesBlockSize{};
 
-            AZ::Debug::StackFrame*  m_stackFrames;
+            AZ::Debug::StackFrame*  m_stackFrames{};
 
-            AZ::u64         m_timeStamp = 0; ///< Timestamp for sorting/tracking allocations
+            AZ::u64         m_timeStamp{}; ///< Timestamp for sorting/tracking allocations
         };
 
         // We use OSAllocator which uses system calls to allocate memory, they are not recorded or tracked!

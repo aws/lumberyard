@@ -23,7 +23,6 @@
             "Source/UiCustomImageComponent.h",
             "Source/UiDynamicContentDatabase.cpp",
             "Source/UiDynamicContentDatabase.h",
-            "Source/UiDynamicContentDatabaseFlowNodes.cpp",
             "Source/UiTestScrollBoxDataProviderComponent.h",
             "Source/UiTestScrollBoxDataProviderComponent.cpp"
        ]

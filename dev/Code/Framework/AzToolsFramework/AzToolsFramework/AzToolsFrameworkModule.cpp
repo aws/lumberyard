@@ -19,6 +19,7 @@
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/AssetBundle/AssetBundleComponent.h>
 #include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
+#include <AzToolsFramework/Component/EditorLevelComponentAPIComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
@@ -29,6 +30,7 @@
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
+#include <AzToolsFramework/ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
@@ -84,8 +86,10 @@ namespace AzToolsFramework
             AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor(),
             AzToolsFramework::EditorInteractionSystemComponent::CreateDescriptor(),
             AzToolsFramework::Components::EditorComponentAPIComponent::CreateDescriptor(),
+            AzToolsFramework::Components::EditorLevelComponentAPIComponent::CreateDescriptor(),
             AzToolsFramework::Components::PropertyTreeEditorComponent::CreateDescriptor(),
             AzToolsFramework::Components::EditorEntitySearchComponent::CreateDescriptor(),
+            AzToolsFramework::AzToolsFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
     }
 }

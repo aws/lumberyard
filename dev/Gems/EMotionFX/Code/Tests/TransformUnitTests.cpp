@@ -20,8 +20,9 @@
 #include <Tests/Matchers.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/MathUtils.h>
-#include <MCore/Source/Quaternion.h>
+#include <AzCore/Math/Quaternion.h>
 #include <MCore/Source/Matrix4.h>
+#include <MCore/Source/AzCoreConversions.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
 
 #include <EMotionFX/Source/Transform.h>
@@ -56,7 +57,7 @@ namespace EMotionFX
     {
         const Transform transform;
         EXPECT_TRUE(transform.mPosition.IsZero());
-        EXPECT_EQ(transform.mRotation, MCore::Quaternion());
+        EXPECT_EQ(transform.mRotation, AZ::Quaternion::CreateIdentity());
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateOne());
@@ -65,9 +66,9 @@ namespace EMotionFX
 
     TEST(TransformFixture, ConstructFromVec3Quat)
     {
-        const Transform transform(AZ::Vector3(6.0f, 7.0f, 8.0f), MCore::Quaternion(AZ::Constants::HalfPi, 0.0f, 0.0f));
+        const Transform transform(AZ::Vector3(6.0f, 7.0f, 8.0f), AZ::Quaternion::CreateRotationX(AZ::Constants::HalfPi));
         EXPECT_EQ(transform.mPosition, AZ::Vector3(6.0f, 7.0f, 8.0f));
-        EXPECT_THAT(transform.mRotation, IsClose(MCore::Quaternion(AZ::Constants::HalfPi, 0.0f, 0.0f)));
+        EXPECT_THAT(transform.mRotation, IsClose(AZ::Quaternion(sqrt2over2, 0.0f, 0.0f, sqrt2over2)));
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateOne());
@@ -83,13 +84,13 @@ namespace EMotionFX
         {
             return ::testing::get<0>(GetParam());
         }
-        MCore::Quaternion ExpectedRotation() const
+        AZ::Quaternion ExpectedRotation() const
         {
-            return {
+            return MCore::AzEulerAnglesToAzQuat(
                 ::testing::get<0>(::testing::get<1>(GetParam())),
                 ::testing::get<1>(::testing::get<1>(GetParam())),
                 ::testing::get<2>(::testing::get<1>(GetParam()))
-            };
+            );
         }
         const AZ::Vector3& ExpectedScale() const
         {
@@ -111,7 +112,7 @@ namespace EMotionFX
 
             AZ::Vector3 extractedAxis;
             float extractedAngle;
-            ExpectedRotation().ToAxisAngle(&extractedAxis, &extractedAngle);
+            ExpectedRotation().ConvertToAxisAngle(extractedAxis, extractedAngle);
             const AZ::Quaternion mirrorRotation = AZ::Quaternion::CreateFromAxisAngleExact(
                 mirrorMatrix * AZ::Vector3(extractedAxis.GetX(), extractedAxis.GetY(), extractedAxis.GetZ()),
                 -extractedAngle
@@ -133,38 +134,9 @@ namespace EMotionFX
         )
     }
 
-    TEST_P(TransformConstructFromVec3QuatVec3Fixture, ConstructFromMatrix)
-    {
-        MCore::Matrix matrix;
-        matrix.InitFromPosRotScale(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-        const Transform transform(matrix);
-        EXPECT_THAT(transform.mPosition, IsClose(ExpectedPosition()));
-        EXPECT_THAT(transform.mRotation, IsClose(ExpectedRotation()));
-        EMFX_SCALECODE
-        (
-            EXPECT_THAT(transform.mScale, IsClose(ExpectedScale()));
-        )
-    }
-
-    TEST_P(TransformConstructFromVec3QuatVec3Fixture, DifferentCtorsActTheSame)
-    {
-        const Transform transformA(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-
-        MCore::Matrix matrix;
-        matrix.InitFromPosRotScale(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-        const Transform transformB(matrix);
-
-        const AZ::Vector3 point = AZ::Vector3(5.0f, 6.0f, 7.0f);
-
-        EXPECT_THAT(
-            transformA.TransformPoint(point),
-            IsClose(transformB.TransformPoint(point))
-        );
-    }
-
     TEST_P(TransformConstructFromVec3QuatVec3Fixture, SetFromVec3QuatVec3)
     {
-        Transform transform(AZ::Vector3(5.0f, 6.0f, 7.0f), MCore::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(8.0f, 9.0f, 10.0f));
+        Transform transform(AZ::Vector3(5.0f, 6.0f, 7.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(8.0f, 9.0f, 10.0f));
         transform.Set(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
         EXPECT_THAT(transform.mPosition, IsClose(ExpectedPosition()));
         EXPECT_THAT(transform.mRotation, IsClose(ExpectedRotation()));
@@ -195,58 +167,22 @@ namespace EMotionFX
 
     TEST(TransformFixture, SetFromVec3Quat)
     {
-        Transform transform(AZ::Vector3(5.0f, 6.0f, 7.0f), MCore::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(8.0f, 9.0f, 10.0f));
-        transform.Set(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(AZ::Constants::HalfPi, sqrt2over2, 0.0f));
+        Transform transform(AZ::Vector3(5.0f, 6.0f, 7.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(8.0f, 9.0f, 10.0f));
+        transform.Set(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi));
         EXPECT_EQ(transform.mPosition, AZ::Vector3(1.0f, 2.0f, 3.0f));
-        EXPECT_THAT(transform.mRotation, IsClose(MCore::Quaternion(AZ::Constants::HalfPi, sqrt2over2, 0.0f)));
+        EXPECT_THAT(transform.mRotation, IsClose(AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi)));
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateOne());
         )
     }
 
-    TEST_P(TransformConstructFromVec3QuatVec3Fixture, InitFromMatrix)
-    {
-        MCore::Matrix matrix;
-        matrix.InitFromPosRotScale(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-
-        Transform transform;
-        transform.InitFromMatrix(matrix);
-
-        EXPECT_THAT(transform.mPosition, IsClose(ExpectedPosition()));
-        EXPECT_THAT(transform.mRotation, IsClose(ExpectedRotation()));
-        EMFX_SCALECODE
-        (
-            EXPECT_THAT(transform.mScale, IsClose(ExpectedScale()));
-        );
-    }
-
-    TEST_P(TransformConstructFromVec3QuatVec3Fixture, ToMatrix)
-    {
-        MCore::Matrix matrix;
-        matrix.InitFromPosRotScale(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-        EXPECT_THAT(
-            Transform(ExpectedPosition(), ExpectedRotation(), ExpectedScale()).ToMatrix(),
-            IsClose(matrix)
-        );
-    }
-
-    TEST_P(TransformConstructFromVec3QuatVec3Fixture, ToMatrixWithOutputParam)
-    {
-        MCore::Matrix matrix;
-        matrix.InitFromPosRotScale(ExpectedPosition(), ExpectedRotation(), ExpectedScale());
-
-        MCore::Matrix gotMatrix;
-        Transform(ExpectedPosition(), ExpectedRotation(), ExpectedScale()).ToMatrix(gotMatrix);
-        EXPECT_THAT(gotMatrix, IsClose(matrix));
-    }
-
     TEST(TransformFixture, Identity)
     {
-        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         transform.Identity();
         EXPECT_EQ(transform.mPosition, AZ::Vector3::CreateZero());
-        EXPECT_EQ(transform.mRotation, MCore::Quaternion());
+        EXPECT_EQ(transform.mRotation, AZ::Quaternion::CreateIdentity());
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateOne());
@@ -255,10 +191,10 @@ namespace EMotionFX
 
     TEST(TransformFixture, Zero)
     {
-        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         transform.Zero();
         EXPECT_EQ(transform.mPosition, AZ::Vector3::CreateZero());
-        EXPECT_EQ(transform.mRotation, MCore::Quaternion(0.0f, 0.0f, 0.0f, 0.0f));
+        EXPECT_EQ(transform.mRotation, AZ::Quaternion(0.0f, 0.0f, 0.0f, 0.0f));
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateZero());
@@ -267,10 +203,10 @@ namespace EMotionFX
 
     TEST(TransformFixture, ZeroWithIdentityQuaternion)
     {
-        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform transform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         transform.ZeroWithIdentityQuaternion();
         EXPECT_EQ(transform.mPosition, AZ::Vector3::CreateZero());
-        EXPECT_EQ(transform.mRotation, MCore::Quaternion());
+        EXPECT_EQ(transform.mRotation, AZ::Quaternion::CreateIdentity());
         EMFX_SCALECODE
         (
             EXPECT_EQ(transform.mScale, AZ::Vector3::CreateZero());
@@ -290,11 +226,6 @@ namespace EMotionFX
         multiply.Multiply(inputB);
 
         EXPECT_THAT(multiply, IsClose(expected));
-
-        EXPECT_THAT(
-            (inputA.ToMatrix() * inputB.ToMatrix()).GetTranslation(),
-            IsClose(expected.mPosition)
-        );
     }
 
     TEST_P(TransformMultiplyFixture, Multiplied)
@@ -406,81 +337,81 @@ namespace EMotionFX
             // symmetric cases (where a*b == b*a) -----------------------------
             TransformMultiplyParams {
                 // just translation
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                /* a * b = */{AZ::Vector3(2.0f, 2.0f, 2.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                /* b * a = */{AZ::Vector3(2.0f, 2.0f, 2.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()}
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                /* a * b = */{AZ::Vector3(2.0f, 2.0f, 2.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                /* b * a = */{AZ::Vector3(2.0f, 2.0f, 2.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()}
             },
             TransformMultiplyParams {
                 // just rotation
-                /* input a */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
-                /* a * b = */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()},
-                /* b * a = */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()}
+                /* input a */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* a * b = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()},
+                /* b * a = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()}
             },
             TransformMultiplyParams {
                 // just scale
-                /* input a */{AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* input b */{AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* a * b = */{AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(4.0f, 4.0f, 4.0f)},
-                /* b * a = */{AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(4.0f, 4.0f, 4.0f)}
+                /* input a */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input b */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(4.0f, 4.0f, 4.0f)},
+                /* b * a = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(4.0f, 4.0f, 4.0f)}
             },
             TransformMultiplyParams {
                 // translation and rotation
-                /* input a */{AZ::Vector3::CreateAxisY(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateAxisY(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
-                /* a * b = */{AZ::Vector3(0.0f, 1.0f + sqrt2over2, sqrt2over2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()},
-                /* b * a = */{AZ::Vector3(0.0f, 1.0f + sqrt2over2, sqrt2over2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()}
+                /* input a */{AZ::Vector3::CreateAxisY(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateAxisY(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* a * b = */{AZ::Vector3(0.0f, 1.0f + sqrt2over2, sqrt2over2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()},
+                /* b * a = */{AZ::Vector3(0.0f, 1.0f + sqrt2over2, sqrt2over2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3::CreateOne()}
             },
             TransformMultiplyParams {
                 // rotation and scale
-                /* input a */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* input b */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* a * b = */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)},
-                /* b * a = */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)}
+                /* input a */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input b */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)},
+                /* b * a = */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)}
             },
             TransformMultiplyParams {
                 // translation and scale
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* input b */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* a * b = */{AZ::Vector3(3.0f, 3.0f, 3.0f), MCore::Quaternion(), AZ::Vector3(4.0f, 4.0f, 4.0f)},
-                /* b * a = */{AZ::Vector3(3.0f, 3.0f, 3.0f), MCore::Quaternion(), AZ::Vector3(4.0f, 4.0f, 4.0f)}
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input b */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3(3.0f, 3.0f, 3.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(4.0f, 4.0f, 4.0f)},
+                /* b * a = */{AZ::Vector3(3.0f, 3.0f, 3.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(4.0f, 4.0f, 4.0f)}
             },
             TransformMultiplyParams {
                 // translation, rotation, and scale
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* input b */{AZ::Vector3::CreateOne(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                /* a * b = */{AZ::Vector3(3.0f, 1.0f, 1.0f + 2*sqrt2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)},
-                /* b * a = */{AZ::Vector3(3.0f, 1.0f, 1.0f + 2*sqrt2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)}
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input b */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3(3.0f, 1.0f, 1.0f + 2*sqrt2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)},
+                /* b * a = */{AZ::Vector3(3.0f, 1.0f, 1.0f + 2*sqrt2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(4.0f, 4.0f, 4.0f)}
             },
             // asymmetric cases (where a*b != b*a) -----------------------------
             TransformMultiplyParams {
                 // translation and rotation
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
                 // translate then rotate
-                /* a * b = */{AZ::Vector3(1.0f, 0.0f, sqrt2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* a * b = */{AZ::Vector3(1.0f, 0.0f, sqrt2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
                 // rotate then translate
-                /* b * a = */{AZ::Vector3::CreateOne(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()}
+                /* b * a = */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()}
             },
             TransformMultiplyParams {
                 // translation and scale
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
                 // translate then scale
-                /* a * b = */{AZ::Vector3(2.0f, 2.0f, 2.0f), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3(2.0f, 2.0f, 2.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
                 // scale then translate
-                /* b * a = */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)}
+                /* b * a = */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)}
             },
             TransformMultiplyParams {
                 // rotation and scale
                 // rotation * scale are only asymmetric when there is a translation involved as well
-                /* input a */{AZ::Vector3::CreateOne(), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
-                /* input b */{AZ::Vector3::CreateOne(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* input a */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                /* input b */{AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
                 // rotate then scale
-                /* a * b = */{AZ::Vector3(3.0f, 3.0f, 3.0f), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* a * b = */{AZ::Vector3(3.0f, 3.0f, 3.0f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
                 // scale then rotate
-                /* b * a = */{AZ::Vector3(2.0f, 1.0f, 1.0f + sqrt2), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                /* b * a = */{AZ::Vector3(2.0f, 1.0f, 1.0f + sqrt2), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 2.0f, 2.0f)},
             }
         )
     );
@@ -488,31 +419,31 @@ namespace EMotionFX
     TEST(TransformFixture, TransformPoint)
     {
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion())
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity())
                 .TransformPoint(AZ::Vector3::CreateZero()),
             IsClose(AZ::Vector3(5.0f, 0.0f, 0.0f))
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion(), AZ::Vector3(2.5f, 1.0f, 1.0f))
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.5f, 1.0f, 1.0f))
                 .TransformPoint(AZ::Vector3::CreateAxisX()),
             IsClose(EMFX_SCALE ? AZ::Vector3(7.5f, 0.0f, 0.0f) : AZ::Vector3(6.0f, 0.0f, 0.0f))
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3::CreateOne())
+            Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3::CreateOne())
                 .TransformPoint(AZ::Vector3(0.0f, 1.0f, 0.0f)),
             IsClose(AZ::Vector3(0.0f, sqrt2over2, sqrt2over2))
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3(1.0f, 2.0f, 3.0f))
+            Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3(1.0f, 2.0f, 3.0f))
                 .TransformPoint(AZ::Vector3::CreateOne()),
             IsClose(AZ::Vector3(1.0f, -sqrt2over2, sqrt2over2 * 5.0f))
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 6.0f, 7.0f), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3(1.0f, 2.0f, 3.0f))
+            Transform(AZ::Vector3(5.0f, 6.0f, 7.0f), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3(1.0f, 2.0f, 3.0f))
                 .TransformPoint(AZ::Vector3::CreateOne()),
             IsClose(AZ::Vector3(6.0f, 6.0f - sqrt2over2, 7.0f + sqrt2over2 * 5.0f))
         );
@@ -521,25 +452,25 @@ namespace EMotionFX
     TEST(TransformFixture, TransformVector)
     {
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion())
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity())
                 .TransformVector(AZ::Vector3::CreateZero()),
             IsClose(AZ::Vector3::CreateZero())
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion(), AZ::Vector3(2.5f, 1.0f, 1.0f))
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.5f, 1.0f, 1.0f))
                 .TransformVector(AZ::Vector3::CreateAxisX()),
             IsClose(EMFX_SCALE ? AZ::Vector3(2.5f, 0.0f, 0.0f) : AZ::Vector3::CreateAxisX())
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3::CreateOne())
+            Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3::CreateOne())
                 .TransformVector(AZ::Vector3::CreateAxisY()),
             IsClose(AZ::Vector3(0.0f, sqrt2over2, sqrt2over2))
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3(1.0f, 2.0f, 3.0f))
+            Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3(1.0f, 2.0f, 3.0f))
                 .TransformVector(AZ::Vector3::CreateOne()),
             IsClose(AZ::Vector3(1.0f, -sqrt2over2, sqrt2over2 * 5.0f))
         );
@@ -548,19 +479,19 @@ namespace EMotionFX
     TEST(TransformFixture, RotateVector)
     {
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion())
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity())
                 .RotateVector(AZ::Vector3::CreateZero()),
             IsClose(AZ::Vector3::CreateZero())
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), MCore::Quaternion(), AZ::Vector3(2.5f, 1.0f, 1.0f))
+            Transform(AZ::Vector3(5.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.5f, 1.0f, 1.0f))
                 .RotateVector(AZ::Vector3::CreateAxisX()),
             IsClose(AZ::Vector3::CreateAxisX())
         );
 
         EXPECT_THAT(
-            Transform(AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::DegToRad(45.0f), 0.0f, 0.0f), AZ::Vector3::CreateOne())
+            Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi), AZ::Vector3::CreateOne())
                 .RotateVector(AZ::Vector3::CreateAxisY()),
             IsClose(AZ::Vector3(0.0f, sqrt2over2, sqrt2over2))
         );
@@ -609,7 +540,7 @@ namespace EMotionFX
 
         const Transform someTransform(
             AZ::Vector3(20.0f, 30.0f, 40.0f),
-            MCore::Quaternion(AZ::Constants::QuarterPi / 2.0f, AZ::Constants::QuarterPi / 2.0f, AZ::Constants::QuarterPi / 2.0f),
+            AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3(0.2f, 0.4f, 0.7f).GetNormalizedExact(), 0.25f),
             AZ::Vector3(2.0f, 3.0f, 4.0f)
         );
 
@@ -628,7 +559,7 @@ namespace EMotionFX
 
         const Transform someTransform(
             AZ::Vector3(20.0f, 30.0f, 40.0f),
-            MCore::Quaternion(AZ::Constants::QuarterPi / 2.0f, AZ::Constants::QuarterPi / 2.0f, AZ::Constants::QuarterPi / 2.0f),
+            AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3(0.2f, 0.4f, 0.7f).GetNormalizedExact(), 0.25f),
             AZ::Vector3(2.0f, 3.0f, 4.0f)
         );
 
@@ -769,44 +700,44 @@ namespace EMotionFX
         ::testing::ValuesIn(std::vector<ApplyDeltaParams>{
             {
                 {},
-                {AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3(2.0f, 3.0f, 4.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3(0.5f, 0.5f, 0.5f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(2.0f, 3.0f, 4.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(0.5f, 0.5f, 0.5f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
                 0.5f,
             },
             {
                 {},
-                {AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3(2.0f, 3.0f, 4.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3(1.0f, 1.0f, 1.0f), MCore::Quaternion(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(2.0f, 3.0f, 4.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3(1.0f, 1.0f, 1.0f), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
                 1.0f,
             },
             {
                 {},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi / 2.0f, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi / 4.0f, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi / 2.0f), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi / 4.0f), AZ::Vector3::CreateOne()},
                 0.5f,
             },
             {
                 {},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi / 2.0f, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(AZ::Constants::QuarterPi / 2.0f, 0.0f, 0.0f), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi / 2.0f), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi / 2.0f), AZ::Vector3::CreateOne()},
                 1.0f,
             },
             {
                 {},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(1.5f, 1.5f, 1.5f)},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(1.5f, 1.5f, 1.5f)},
                 0.5f,
             },
             {
                 {},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3::CreateOne()},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
-                {AZ::Vector3::CreateZero(), MCore::Quaternion(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3::CreateOne()},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
+                {AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity(), AZ::Vector3(2.0f, 2.0f, 2.0f)},
                 1.0f,
             },
         })
@@ -823,35 +754,35 @@ namespace EMotionFX
     {
         const Transform transform = Transform(
             AZ::Vector3::CreateOne(),
-            MCore::Quaternion(2.0f, 0.0f, 0.0f, 2.0f),
+            AZ::Quaternion(2.0f, 0.0f, 0.0f, 2.0f),
             AZ::Vector3::CreateOne()
         ).Normalize();
-        EXPECT_FLOAT_EQ(transform.mRotation.Length(), 1.0f);
+        EXPECT_FLOAT_EQ(transform.mRotation.GetLengthExact(), 1.0f);
     }
 
     TEST(TransformFixture, Normalized)
     {
         const Transform transform = Transform(
             AZ::Vector3::CreateOne(),
-            MCore::Quaternion(2.0f, 0.0f, 0.0f, 2.0f),
+            AZ::Quaternion(2.0f, 0.0f, 0.0f, 2.0f),
             AZ::Vector3::CreateOne()
         ).Normalized();
-        EXPECT_FLOAT_EQ(transform.mRotation.Length(), 1.0f);
+        EXPECT_FLOAT_EQ(transform.mRotation.GetLengthExact(), 1.0f);
     }
 
     TEST(TransformFixture, BlendAdditive)
     {
         {
             const Transform result =
-                Transform(AZ::Vector3(5.0f, 6.0f, 7.0f), MCore::Quaternion(AZ::Vector3::CreateOne(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()).BlendAdditive(
-                    /*dest=*/Transform(AZ::Vector3(11.0f, 12.0f, 13.0f), MCore::Quaternion(AZ::Vector3::CreateOne(), AZ::Constants::HalfPi), AZ::Vector3(2.0f, 2.0f, 2.0f)),
-                    /*orgTransform=*/Transform(AZ::Vector3(8.0f, 10.0f, 12.0f), MCore::Quaternion(AZ::Vector3::CreateOne(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 3.0f, 2.0f)),
+                Transform(AZ::Vector3(5.0f, 6.0f, 7.0f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3::CreateOne()).BlendAdditive(
+                    /*dest=*/Transform(AZ::Vector3(11.0f, 12.0f, 13.0f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi), AZ::Vector3(2.0f, 2.0f, 2.0f)),
+                    /*orgTransform=*/Transform(AZ::Vector3(8.0f, 10.0f, 12.0f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi), AZ::Vector3(2.0f, 3.0f, 2.0f)),
                     0.5f
                 );
 
             EXPECT_THAT(
                 result,
-                IsClose(Transform(AZ::Vector3(6.5f, 7.0f, 7.5f), MCore::Quaternion(AZ::Vector3::CreateOne(), AZ::Constants::Pi * 3.0f / 8.0f), AZ::Vector3(1.0f, 0.5f, 1.0f)))
+                IsClose(Transform(AZ::Vector3(6.5f, 7.0f, 7.5f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 3.0f / 8.0f), AZ::Vector3(1.0f, 0.5f, 1.0f)))
             );
         }
     }
@@ -861,11 +792,11 @@ namespace EMotionFX
     {
     protected:
         const AZ::Vector3 translationA{5.0f, 6.0f, 7.0f};
-        const MCore::Quaternion rotationA{AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi};
+        const AZ::Quaternion rotationA = AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::QuarterPi);
         const AZ::Vector3 scaleA = AZ::Vector3::CreateOne();
 
         const AZ::Vector3 translationB{11.0f, 12.0f, 13.0f};
-        const MCore::Quaternion rotationB{AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi};
+        const AZ::Quaternion rotationB = AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::HalfPi);
         const AZ::Vector3 scaleB{3.0f, 4.0f, 5.0f};
 
     };
@@ -881,15 +812,15 @@ namespace EMotionFX
         );
         EXPECT_THAT(
             Transform(translationA, rotationA, scaleA).Blend(transformB, 0.25f),
-            IsClose(Transform(AZ::Vector3(6.5f, 7.5f, 8.5f), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 5.0f / 16.0f), AZ::Vector3(1.5f, 1.75f, 2.0f)))
+            IsClose(Transform(AZ::Vector3(6.5f, 7.5f, 8.5f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 5.0f / 16.0f), AZ::Vector3(1.5f, 1.75f, 2.0f)))
         );
         EXPECT_THAT(
             Transform(translationA, rotationA, scaleA).Blend(transformB, 0.5f),
-            IsClose(Transform(AZ::Vector3(8.0f, 9.0f, 10.0f), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 3.0f / 8.0f), AZ::Vector3(2.0f, 2.5f, 3.0f)))
+            IsClose(Transform(AZ::Vector3(8.0f, 9.0f, 10.0f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 3.0f / 8.0f), AZ::Vector3(2.0f, 2.5f, 3.0f)))
         );
         EXPECT_THAT(
             Transform(translationA, rotationA, scaleA).Blend(transformB, 0.75f),
-            IsClose(Transform(AZ::Vector3(9.5f, 10.5f, 11.5f), MCore::Quaternion(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 7.0f / 16.0f), AZ::Vector3(2.5f, 3.25f, 4.0f)))
+            IsClose(Transform(AZ::Vector3(9.5f, 10.5f, 11.5f), AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisX(), AZ::Constants::Pi * 7.0f / 16.0f), AZ::Vector3(2.5f, 3.25f, 4.0f)))
         );
         EXPECT_THAT(
             Transform(translationA, rotationA, scaleA).Blend(transformB, 1.0f),
@@ -959,7 +890,7 @@ namespace EMotionFX
                 transform,
                 IsClose(Transform(
                     AZ::Vector3(ExpectedPosition().GetX(), ExpectedPosition().GetY(), zValue),
-                    MCore::Quaternion(AZ::Vector3::CreateAxisZ(), ::testing::get<2>(::testing::get<1>(GetParam()))),
+                    AZ::Quaternion::CreateFromAxisAngleExact(AZ::Vector3::CreateAxisZ(), ::testing::get<2>(::testing::get<1>(GetParam()))),
                     ExpectedScale()
                 ))
             );

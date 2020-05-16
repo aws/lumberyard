@@ -15,17 +15,41 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/RigidBody.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <PhysX/ConfigurationBus.h>
+#include <PhysX/ColliderShapeBus.h>
 #include <Editor/DebugDraw.h>
+#include <Editor/PolygonPrismMeshUtils.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
+#include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 
 namespace PhysX
 {
-    /// Editor PhysX Shape Collider Component.
-    /// This component is used together with a shape component, and uses the shape information contained in that
-    /// component to create geometry in the PhysX simulation.
+    enum class ShapeType
+    {
+        None,
+        Box,
+        Capsule,
+        Sphere,
+        PolygonPrism,
+        Unsupported
+    };
+
+    //! Cached data for generating sample points inside the attached shape.
+    struct GeometryCache
+    {
+        float m_height = 1.0f; //!< Caches height for capsule and polygon prism shapes.
+        float m_radius = 1.0f; //!< Caches radius for capsule and sphere shapes.
+        AZ::Vector3 m_boxDimensions = AZ::Vector3::CreateOne(); //!< Caches dimensions for box shapes.
+        AZStd::vector<AZ::Vector3> m_cachedSamplePoints; //!< Stores a cache of points sampled from the shape interior.
+        bool m_cachedSamplePointsDirty = true; //!< Marks whether the cached sample points need to be recalculated.
+    };
+
+    //! Editor PhysX Shape Collider Component.
+    //! This component is used together with a shape component, and uses the shape information contained in that
+    //! component to create geometry in the PhysX simulation.
     class EditorShapeColliderComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , protected AzFramework::EntityDebugDisplayEventBus::Handler
@@ -34,6 +58,7 @@ namespace PhysX
         , private PhysX::ConfigurationNotificationBus::Handler
         , protected DebugDraw::DisplayCallback
         , protected LmbrCentral::ShapeComponentNotificationsBus::Handler
+        , private PhysX::ColliderShapeRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorShapeColliderComponent, "{2389DDC7-871B-42C6-9C95-2A679DDA0158}",
@@ -45,16 +70,24 @@ namespace PhysX
 
         EditorShapeColliderComponent();
 
-        // this function is made virtual because we call it from other modules
+        const AZStd::vector<AZ::Vector3>& GetSamplePoints() const;
+
+        // These functions are made virtual because we call them from other modules
         virtual const Physics::ColliderConfiguration& GetColliderConfiguration() const;
+        virtual const AZStd::vector<AZStd::shared_ptr<Physics::ShapeConfiguration>>& GetShapeConfigurations() const;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-
     private:
+        void UpdateCachedSamplePoints() const;
         void CreateStaticEditorCollider();
         AZ::u32 OnConfigurationChanged();
-        void CheckSupportedShapeTypes();
+        void UpdateShapeConfigs();
+        void UpdateBoxConfig(const AZ::Vector3& scale);
+        void UpdateCapsuleConfig(const AZ::Vector3& scale);
+        void UpdateSphereConfig(const AZ::Vector3& scale);
+        void UpdatePolygonPrismDecomposition();
+        void UpdatePolygonPrismDecomposition(const AZ::PolygonPrismPtr polygonPrismPtr);
 
         // AZ::Component
         void Activate() override;
@@ -68,7 +101,7 @@ namespace PhysX
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         // PhysX::ConfigurationNotificationBus
-        void OnConfigurationRefreshed(const Configuration& configuration) override;
+        void OnPhysXConfigurationRefreshed(const PhysXConfiguration& configuration) override;
         void OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId& defaultMaterialLibrary) override;
 
         // LmbrCentral::ShapeComponentNotificationBus
@@ -77,10 +110,19 @@ namespace PhysX
         // DisplayCallback
         void Display(AzFramework::DebugDisplayRequests& debugDisplay) const;
 
-        Physics::ColliderConfiguration m_colliderConfig;
-        DebugDraw::Collider m_colliderDebugDraw;
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
-        AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorBody;
-        bool m_shapeTypeWarningIssued = false;
+        // ColliderShapeRequestBus
+        AZ::Aabb GetColliderShapeAabb() override;
+        bool IsTrigger() override;
+
+        Physics::ColliderConfiguration m_colliderConfig; //!< Stores collision layers, whether the collider is a trigger, etc.
+        DebugDraw::Collider m_colliderDebugDraw; //!< Handles drawing the collider based on global and local
+        AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorBody; //!< Body in the editor physics world if there is no rigid body component.
+        bool m_shapeTypeWarningIssued = false; //!< Records whether a warning about unsupported shapes has been previously issued.
+        PolygonPrismMeshUtils::Mesh2D m_mesh; //!< Used for storing decompositions of the polygon prism.
+        AZStd::vector<AZStd::shared_ptr<Physics::ShapeConfiguration>> m_shapeConfigs; //!< Stores the physics shape configuration(s).
+        bool m_simplePolygonErrorIssued = false; //!< Records whether an error about invalid polygon prisms has been previously raised.
+        ShapeType m_shapeType = ShapeType::None; //!< Caches the current type of shape.
+
+        mutable GeometryCache m_geometryCache; //!< Cached data for generating sample points inside the attached shape.
     };
 } // namespace PhysX

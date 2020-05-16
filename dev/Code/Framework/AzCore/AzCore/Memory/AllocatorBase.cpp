@@ -78,6 +78,11 @@ void AllocatorBase::PostCreate()
         }
     }
 
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+    m_platformMemoryInstrumentationGroupId = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+    AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationGroupId, GetDescription(), AZ::PlatformMemoryInstrumentation::m_groupRoot);
+#endif
+
     m_isReady = true;
 }
 
@@ -129,7 +134,11 @@ void AllocatorBase::ProfileAllocation(void* ptr, size_t byteSize, size_t alignme
 
     if (m_isProfilingActive)
     {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+        AZ::PlatformMemoryInstrumentation::Alloc(ptr, byteSize, 0, m_platformMemoryInstrumentationGroupId);
+#else
         EBUS_EVENT(AZ::Debug::MemoryDrillerBus, RegisterAllocation, this, ptr, byteSize, alignment, name, fileName, lineNum, suppressStackRecord);
+#endif
     }
 }
 
@@ -137,16 +146,43 @@ void AllocatorBase::ProfileDeallocation(void* ptr, size_t byteSize, size_t align
 {
     if (m_isProfilingActive)
     {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+        AZ::PlatformMemoryInstrumentation::Free(ptr);
+#else
         EBUS_EVENT(AZ::Debug::MemoryDrillerBus, UnregisterAllocation, this, ptr, byteSize, alignment, info);
+#endif
+    }
+}
+
+void AllocatorBase::ProfileReallocationBegin(void* ptr, size_t newSize)
+{
+    if (m_isProfilingActive)
+    {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+        AZ::PlatformMemoryInstrumentation::ReallocBegin(ptr, newSize, m_platformMemoryInstrumentationGroupId);
+#else
+        // Driller API intensionally not called, only End is required.
+        AZ_UNUSED(ptr);
+        AZ_UNUSED(newSize);
+#endif
+    }
+}
+
+void AllocatorBase::ProfileReallocationEnd(void* ptr, void* newPtr, size_t newSize, size_t newAlignment)
+{
+    if (m_isProfilingActive)
+    {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+        AZ::PlatformMemoryInstrumentation::ReallocEnd(newPtr, newSize, 0);
+#else
+        EBUS_EVENT(AZ::Debug::MemoryDrillerBus, ReallocateAllocation, this, ptr, newPtr, newSize, newAlignment);
+#endif
     }
 }
 
 void AllocatorBase::ProfileReallocation(void* ptr, void* newPtr, size_t newSize, size_t newAlignment)
 {
-    if (m_isProfilingActive)
-    {
-        EBUS_EVENT(AZ::Debug::MemoryDrillerBus, ReallocateAllocation, this, ptr, newPtr, newSize, newAlignment);
-    }
+    ProfileReallocationEnd(ptr, newPtr, newSize, newAlignment);
 }
 
 void AllocatorBase::ProfileResize(void* ptr, size_t newSize)

@@ -39,6 +39,9 @@
 #include "TableViewPage.h"
 #include "StyledDockWidgetPage.h"
 #include "TitleBarPage.h"
+#include "SliderComboPage.h"
+#include "MenuPage.h"
+#include "ScrollBarPage.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -66,6 +69,7 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
     sortedPages.insert("ProgressIndicators", new ProgressIndicatorPage(this));
     sortedPages.insert("RadioButtons", new RadioButtonPage(this));
     sortedPages.insert("Sliders", new SliderPage(this));
+    sortedPages.insert("SliderCombo", new SliderComboPage(this));
     sortedPages.insert("GradientSliders", new GradientSliderPage(this));
     sortedPages.insert("Color Picker", new ColorPickerPage(this));
     sortedPages.insert("BrowseEdits", new BrowseEditPage(this));
@@ -83,6 +87,8 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
     sortedPages.insert("TableView", new TableViewPage(this));
     sortedPages.insert("StyledDockWidget", new StyledDockWidgetPage(this));
     sortedPages.insert("TitleBar", new TitleBarPage(this));
+    sortedPages.insert("Menu", new MenuPage(this));
+    sortedPages.insert("ScrollBar", new ScrollBarPage(this));
 
     for (const auto& title : sortedPages.keys())
     {

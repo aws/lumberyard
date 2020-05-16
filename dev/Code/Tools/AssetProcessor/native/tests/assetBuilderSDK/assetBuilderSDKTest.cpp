@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "AssetBuilderSDKTest.h"
+#include "assetBuilderSDKTest.h"
 #include "native/tests/BaseAssetProcessorTest.h"
 #include "native/unittests/UnitTestRunner.h"
 #include <AssetBuilderSDK/AssetBuilderSDK.h>

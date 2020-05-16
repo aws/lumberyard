@@ -97,6 +97,10 @@ namespace AzToolsFramework
     {
         if (color.isValid())
         {
+            // Don't update the color if this color was just broadcast out or the picker will loose its initial color state.
+            updateDialogColor &= color != m_lastSetColor;
+            m_lastSetColor = color;
+
             m_color = color;
             QPixmap pixmap(m_pDefaultButton->iconSize());
             pixmap.fill(color);
@@ -121,6 +125,7 @@ namespace AzToolsFramework
     void PropertyColorCtrl::openColorDialog()
     {
         m_originalColor = m_color;
+        m_lastSetColor = m_color;
 
         CreateColorDialog();
 

@@ -106,7 +106,13 @@ namespace EMotionFX
         };
 
         AnimGraphStateTransition();
-        virtual ~AnimGraphStateTransition();
+        AnimGraphStateTransition(
+            AnimGraphNode* source,
+            AnimGraphNode* target,
+            AZStd::vector<AnimGraphTransitionCondition*> conditions = {},
+            float duration = 0.3f
+        );
+        ~AnimGraphStateTransition() override;
 
         void Reinit() override;
         void RecursiveReinit() override;
@@ -221,7 +227,7 @@ namespace EMotionFX
 
         MCORE_INLINE size_t GetNumConditions() const                                            { return mConditions.size(); }
         MCORE_INLINE AnimGraphTransitionCondition* GetCondition(size_t index) const            { return mConditions[index]; }
-        size_t FindConditionIndex(AnimGraphTransitionCondition* condition) const;
+        AZ::Outcome<size_t> FindConditionIndex(AnimGraphTransitionCondition* condition) const;
 
         void AddCondition(AnimGraphTransitionCondition* condition);
         void InsertCondition(AnimGraphTransitionCondition* condition, size_t index);
@@ -256,36 +262,36 @@ namespace EMotionFX
         AZ::Crc32 GetVisibilityCanBeInterruptedBy() const;
         AZ::Crc32 GetVisibilityMaxInterruptionBlendWeight() const;
 
-        AZStd::vector<AnimGraphTransitionCondition*>    mConditions;
+        AZStd::vector<AnimGraphTransitionCondition*>    mConditions{};
         StateFilterLocal                                m_allowTransitionsFrom;
 
         TriggerActionSetup                              m_actionSetup;
-        AnimGraphNode*                                  mSourceNode;
-        AnimGraphNode*                                  mTargetNode;
-        AZ::u64                                         m_sourceNodeId;
-        AZ::u64                                         m_targetNodeId;
-        AZ::u64                                         m_id;                        /**< The unique identification number. */
+        AnimGraphNode*                                  mSourceNode = nullptr;
+        AnimGraphNode*                                  mTargetNode = nullptr;
+        AZ::u64                                         m_sourceNodeId = AnimGraphNodeId::InvalidId;
+        AZ::u64                                         m_targetNodeId = AnimGraphNodeId::InvalidId;
+        AZ::u64                                         m_id = AnimGraphConnectionId::Create();                        /**< The unique identification number. */
 
-        float                                           m_transitionTime;
-        float                                           m_easeInSmoothness;
-        float                                           m_easeOutSmoothness;
-        AZ::s32                                         mStartOffsetX;
-        AZ::s32                                         mStartOffsetY;
-        AZ::s32                                         mEndOffsetX;
-        AZ::s32                                         mEndOffsetY;
-        AZ::u32                                         m_priority;
-        AnimGraphObject::ESyncMode                      m_syncMode;
-        AnimGraphObject::EEventMode                     m_eventMode;
-        AnimGraphObject::EExtractionMode                m_extractionMode;
-        EInterpolationType                              m_interpolationType;
-        bool                                            mIsWildcardTransition;      /**< Flag which indicates if the state transition is a wildcard transition or not. */
-        bool                                            m_isDisabled;
-        bool                                            m_canBeInterruptedByOthers;
-        AZStd::vector<AZ::u64>                          m_canBeInterruptedByTransitionIds;
-        float                                           m_maxInterruptionBlendWeight;
-        bool                                            m_canInterruptOtherTransitions;
-        bool                                            m_allowSelfInterruption;
-        EInterruptionBlendBehavior                      m_interruptionBlendBehavior;
-        EInterruptionMode                               m_interruptionMode;
+        float                                           m_transitionTime = 0.3f;
+        float                                           m_easeInSmoothness = 0.0f;
+        float                                           m_easeOutSmoothness = 1.0f;
+        AZ::s32                                         mStartOffsetX = 0;
+        AZ::s32                                         mStartOffsetY = 0;
+        AZ::s32                                         mEndOffsetX = 0;
+        AZ::s32                                         mEndOffsetY = 0;
+        AZ::u32                                         m_priority = 0;
+        AnimGraphObject::ESyncMode                      m_syncMode = AnimGraphObject::SYNCMODE_DISABLED;
+        AnimGraphObject::EEventMode                     m_eventMode = AnimGraphObject::EVENTMODE_BOTHNODES;
+        AnimGraphObject::EExtractionMode                m_extractionMode = AnimGraphObject::EXTRACTIONMODE_BLEND;
+        EInterpolationType                              m_interpolationType = INTERPOLATIONFUNCTION_LINEAR;
+        bool                                            mIsWildcardTransition = false;      /**< Flag which indicates if the state transition is a wildcard transition or not. */
+        bool                                            m_isDisabled = false;
+        bool                                            m_canBeInterruptedByOthers = false;
+        AZStd::vector<AZ::u64>                          m_canBeInterruptedByTransitionIds{};
+        float                                           m_maxInterruptionBlendWeight = 1.0f;
+        bool                                            m_canInterruptOtherTransitions = false;
+        bool                                            m_allowSelfInterruption = false;
+        EInterruptionBlendBehavior                      m_interruptionBlendBehavior = Continue;
+        EInterruptionMode                               m_interruptionMode = AlwaysAllowed;
     };
 }   // namespace EMotionFX

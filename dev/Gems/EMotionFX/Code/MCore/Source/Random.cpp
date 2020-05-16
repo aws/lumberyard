@@ -11,7 +11,7 @@
 */
 
 #include "Random.h"
-#include "MemoryManager.h"
+#include "Vector.h"
 
 namespace MCore
 {
@@ -179,16 +179,16 @@ namespace MCore
 
 
     // stratisfied random direction vectors
-    Array<AZ::Vector3> Random::RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
+    AZStd::vector<AZ::Vector3> Random::RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
     {
-        Array<AZ::Vector3> result;
+        AZStd::vector<AZ::Vector3> result;
 
         uint32 num = (uint32)Math::Sqrt((float)numVectors);
         for (uint32 y = 0; y < num; ++y)
         {
             for (uint32 x = 0; x < num; ++x)
             {
-                result.Add(RandomDirVec(dir, coneAngle, num, num, x, y));
+                result.emplace_back(RandomDirVec(dir, coneAngle, num, num, x, y));
             }
         }
 
@@ -197,9 +197,9 @@ namespace MCore
 
 
 
-    Array<AZ::Vector3> Random::RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
+    AZStd::vector<AZ::Vector3> Random::RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors)
     {
-        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        AZStd::vector<AZ::Vector3> arrayResult(numVectors);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1]; // TODO: use memory manager instead
@@ -246,9 +246,9 @@ namespace MCore
 
 
 
-    Array<AZ::Vector3> Random::RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base)
+    AZStd::vector<AZ::Vector3> Random::RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base)
     {
-        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        AZStd::vector<AZ::Vector3> arrayResult(numVectors);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];

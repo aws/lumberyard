@@ -58,7 +58,7 @@ public:
 
     QRect GetRect() const
     {
-        return QRect(GetScreenPosition().x() - (m_VisualSize / 2), GetScreenPosition().y() - (m_VisualSize / 2), m_VisualSize, m_VisualSize);
+        return QRect(aznumeric_cast<int>(GetScreenPosition().x() - (m_VisualSize / 2)), aznumeric_cast<int>(GetScreenPosition().y() - (m_VisualSize / 2)), m_VisualSize, m_VisualSize);
     }
 
     void SetIconShapeColor(QColor color);

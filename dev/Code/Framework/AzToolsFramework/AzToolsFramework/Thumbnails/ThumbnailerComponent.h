@@ -44,6 +44,8 @@ namespace AzToolsFramework
             // ThumbnailerRequests
             //////////////////////////////////////////////////////////////////////////
             void RegisterContext(const char* contextName, int thumbnailSize) override;
+            void UnregisterContext(const char* contextName) override;
+            bool HasContext(const char* contextName) const override;
             void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) override;
             SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) override;
 

@@ -1,122 +1,199 @@
 """ pickle compat """
+import pickle
+from typing import Any, Optional
+import warnings
 
-import numpy as np
-from numpy.lib.format import read_array, write_array
-from pandas.compat import BytesIO, cPickle as pkl, pickle_compat as pc, PY3
-from pandas.core.dtypes.common import is_datetime64_dtype, _NS_DTYPE
-from pandas.io.common import _get_handle, _infer_compression
+from pandas._typing import FilePathOrBuffer
+from pandas.compat import pickle_compat as pc
+
+from pandas.io.common import get_filepath_or_buffer, get_handle
 
 
-def to_pickle(obj, path, compression='infer'):
+def to_pickle(
+    obj: Any,
+    filepath_or_buffer: FilePathOrBuffer,
+    compression: Optional[str] = "infer",
+    protocol: int = pickle.HIGHEST_PROTOCOL,
+):
     """
-    Pickle (serialize) object to input file path
+    Pickle (serialize) object to file.
 
     Parameters
     ----------
     obj : any object
-    path : string
-        File path
-    compression : {'infer', 'gzip', 'bz2', 'xz', None}, default 'infer'
-        a string representing the compression to use in the output file
+        Any python object.
+    filepath_or_buffer : str, path object or file-like object
+        File path, URL, or buffer where the pickled object will be stored.
 
-        .. versionadded:: 0.20.0
+        .. versionchanged:: 1.0.0
+           Accept URL. URL has to be of S3 or GCS.
+
+    compression : {'infer', 'gzip', 'bz2', 'zip', 'xz', None}, default 'infer'
+        If 'infer' and 'path_or_url' is path-like, then detect compression from
+        the following extensions: '.gz', '.bz2', '.zip', or '.xz' (otherwise no
+        compression) If 'infer' and 'path_or_url' is not path-like, then use
+        None (= no decompression).
+    protocol : int
+        Int which indicates which protocol should be used by the pickler,
+        default HIGHEST_PROTOCOL (see [1], paragraph 12.1.2). The possible
+        values for this parameter depend on the version of Python. For Python
+        2.x, possible values are 0, 1, 2. For Python>=3.0, 3 is a valid value.
+        For Python >= 3.4, 4 is a valid value. A negative value for the
+        protocol parameter is equivalent to setting its value to
+        HIGHEST_PROTOCOL.
+
+        .. [1] https://docs.python.org/3/library/pickle.html
+        .. versionadded:: 0.21.0
+
+    See Also
+    --------
+    read_pickle : Load pickled pandas object (or any object) from file.
+    DataFrame.to_hdf : Write DataFrame to an HDF5 file.
+    DataFrame.to_sql : Write DataFrame to a SQL database.
+    DataFrame.to_parquet : Write a DataFrame to the binary parquet format.
+
+    Examples
+    --------
+    >>> original_df = pd.DataFrame({"foo": range(5), "bar": range(5, 10)})
+    >>> original_df
+       foo  bar
+    0    0    5
+    1    1    6
+    2    2    7
+    3    3    8
+    4    4    9
+    >>> pd.to_pickle(original_df, "./dummy.pkl")
+
+    >>> unpickled_df = pd.read_pickle("./dummy.pkl")
+    >>> unpickled_df
+       foo  bar
+    0    0    5
+    1    1    6
+    2    2    7
+    3    3    8
+    4    4    9
+
+    >>> import os
+    >>> os.remove("./dummy.pkl")
     """
-    inferred_compression = _infer_compression(path, compression)
-    f, fh = _get_handle(path, 'wb',
-                        compression=inferred_compression,
-                        is_text=False)
+    fp_or_buf, _, compression, should_close = get_filepath_or_buffer(
+        filepath_or_buffer, compression=compression, mode="wb"
+    )
+    if not isinstance(fp_or_buf, str) and compression == "infer":
+        compression = None
+    f, fh = get_handle(fp_or_buf, "wb", compression=compression, is_text=False)
+    if protocol < 0:
+        protocol = pickle.HIGHEST_PROTOCOL
     try:
-        pkl.dump(obj, f, protocol=pkl.HIGHEST_PROTOCOL)
+        f.write(pickle.dumps(obj, protocol=protocol))
     finally:
+        f.close()
         for _f in fh:
             _f.close()
+        if should_close:
+            try:
+                fp_or_buf.close()
+            except ValueError:
+                pass
 
 
-def read_pickle(path, compression='infer'):
+def read_pickle(
+    filepath_or_buffer: FilePathOrBuffer, compression: Optional[str] = "infer"
+):
     """
-    Load pickled pandas object (or any other pickled object) from the specified
-    file path
+    Load pickled pandas object (or any object) from file.
 
-    Warning: Loading pickled data received from untrusted sources can be
-    unsafe. See: http://docs.python.org/2.7/library/pickle.html
+    .. warning::
+
+       Loading pickled data received from untrusted sources can be
+       unsafe. See `here <https://docs.python.org/3/library/pickle.html>`__.
 
     Parameters
     ----------
-    path : string
-        File path
-    compression : {'infer', 'gzip', 'bz2', 'xz', 'zip', None}, default 'infer'
-        For on-the-fly decompression of on-disk data. If 'infer', then use
-        gzip, bz2, xz or zip if path is a string ending in '.gz', '.bz2', 'xz',
-        or 'zip' respectively, and no decompression otherwise.
-        Set to None for no decompression.
+    filepath_or_buffer : str, path object or file-like object
+        File path, URL, or buffer where the pickled object will be loaded from.
 
-        .. versionadded:: 0.20.0
+        .. versionchanged:: 1.0.0
+           Accept URL. URL is not limited to S3 and GCS.
+
+    compression : {'infer', 'gzip', 'bz2', 'zip', 'xz', None}, default 'infer'
+        If 'infer' and 'path_or_url' is path-like, then detect compression from
+        the following extensions: '.gz', '.bz2', '.zip', or '.xz' (otherwise no
+        compression) If 'infer' and 'path_or_url' is not path-like, then use
+        None (= no decompression).
 
     Returns
     -------
-    unpickled : type of object stored in file
+    unpickled : same type as object stored in file
+
+    See Also
+    --------
+    DataFrame.to_pickle : Pickle (serialize) DataFrame object to file.
+    Series.to_pickle : Pickle (serialize) Series object to file.
+    read_hdf : Read HDF5 file into a DataFrame.
+    read_sql : Read SQL query or database table into a DataFrame.
+    read_parquet : Load a parquet object, returning a DataFrame.
+
+    Notes
+    -----
+    read_pickle is only guaranteed to be backwards compatible to pandas 0.20.3.
+
+    Examples
+    --------
+    >>> original_df = pd.DataFrame({"foo": range(5), "bar": range(5, 10)})
+    >>> original_df
+       foo  bar
+    0    0    5
+    1    1    6
+    2    2    7
+    3    3    8
+    4    4    9
+    >>> pd.to_pickle(original_df, "./dummy.pkl")
+
+    >>> unpickled_df = pd.read_pickle("./dummy.pkl")
+    >>> unpickled_df
+       foo  bar
+    0    0    5
+    1    1    6
+    2    2    7
+    3    3    8
+    4    4    9
+
+    >>> import os
+    >>> os.remove("./dummy.pkl")
     """
+    fp_or_buf, _, compression, should_close = get_filepath_or_buffer(
+        filepath_or_buffer, compression=compression
+    )
+    if not isinstance(fp_or_buf, str) and compression == "infer":
+        compression = None
+    f, fh = get_handle(fp_or_buf, "rb", compression=compression, is_text=False)
 
-    inferred_compression = _infer_compression(path, compression)
+    # 1) try standard library Pickle
+    # 2) try pickle_compat (older pandas version) to handle subclass changes
+    # 3) try pickle_compat with latin-1 encoding upon a UnicodeDecodeError
 
-    def read_wrapper(func):
-        # wrapper file handle open/close operation
-        f, fh = _get_handle(path, 'rb',
-                            compression=inferred_compression,
-                            is_text=False)
-        try:
-            return func(f)
-        finally:
-            for _f in fh:
-                _f.close()
-
-    def try_read(path, encoding=None):
-        # try with cPickle
-        # try with current pickle, if we have a Type Error then
-        # try with the compat pickle to handle subclass changes
-        # pass encoding only if its not None as py2 doesn't handle
-        # the param
-
-        # cpickle
-        # GH 6899
-        try:
-            return read_wrapper(lambda f: pkl.load(f))
-        except Exception:
-            # reg/patched pickle
-            try:
-                return read_wrapper(
-                    lambda f: pc.load(f, encoding=encoding, compat=False))
-            # compat pickle
-            except:
-                return read_wrapper(
-                    lambda f: pc.load(f, encoding=encoding, compat=True))
     try:
-        return try_read(path)
-    except:
-        if PY3:
-            return try_read(path, encoding='latin1')
-        raise
-
-
-# compat with sparse pickle / unpickle
-
-
-def _pickle_array(arr):
-    arr = arr.view(np.ndarray)
-
-    buf = BytesIO()
-    write_array(buf, arr)
-
-    return buf.getvalue()
-
-
-def _unpickle_array(bytes):
-    arr = read_array(BytesIO(bytes))
-
-    # All datetimes should be stored as M8[ns].  When unpickling with
-    # numpy1.6, it will read these as M8[us].  So this ensures all
-    # datetime64 types are read as MS[ns]
-    if is_datetime64_dtype(arr):
-        arr = arr.view(_NS_DTYPE)
-
-    return arr
+        excs_to_catch = (AttributeError, ImportError, ModuleNotFoundError)
+        try:
+            with warnings.catch_warnings(record=True):
+                # We want to silence any warnings about, e.g. moved modules.
+                warnings.simplefilter("ignore", Warning)
+                return pickle.load(f)
+        except excs_to_catch:
+            # e.g.
+            #  "No module named 'pandas.core.sparse.series'"
+            #  "Can't get attribute '__nat_unpickle' on <module 'pandas._libs.tslib"
+            return pc.load(f, encoding=None)
+    except UnicodeDecodeError:
+        # e.g. can occur for files written in py27; see GH#28645 and GH#31988
+        return pc.load(f, encoding="latin-1")
+    finally:
+        f.close()
+        for _f in fh:
+            _f.close()
+        if should_close:
+            try:
+                fp_or_buf.close()
+            except ValueError:
+                pass

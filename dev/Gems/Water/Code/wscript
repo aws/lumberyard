@@ -18,7 +18,7 @@ def build(bld):
                        ],
         win_features = ['crcfix'],
         editor = dict(
-            platforms  = ['win', 'darwin'],
+            platforms  = ['win', 'darwin', 'linux'],
             defines    = ['WATER_GEM_EDITOR'],
             uselib     = ['QT5CORE',
                           'QT5GUI',

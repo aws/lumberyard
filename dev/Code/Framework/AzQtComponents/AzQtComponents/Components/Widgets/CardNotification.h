@@ -28,11 +28,12 @@ namespace AzQtComponents
     class AZ_QT_COMPONENTS_API CardNotification
         : public QFrame
     {
+        Q_OBJECT
     public:
         CardNotification(QWidget* parent, const QString& title, const QIcon& icon);
 
         void addFeature(QWidget* feature);
-        QPushButton* addButtonFeature(QString buttonText);
+        QPushButton* addButtonFeature(const QString& buttonText);
 
     private:
         QVBoxLayout* m_featureLayout = nullptr;

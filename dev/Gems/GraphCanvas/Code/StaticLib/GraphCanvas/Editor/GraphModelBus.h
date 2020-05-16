@@ -122,11 +122,116 @@ namespace GraphCanvas
         virtual void OnRemoveUnusedNodes() = 0;
         virtual void OnRemoveUnusedElements() = 0;
 
-        virtual void ResetSlotToDefaultValue(const NodeId& nodeId, const SlotId& slotId) = 0;
+        virtual bool AllowReset(const Endpoint& endpoint) const
+        {
+            return true;
+        }
 
-        virtual void RemoveSlot(const NodeId& nodeId, const SlotId& slotId) = 0;
+        virtual void ResetSlotToDefaultValue(const Endpoint& endpoint) = 0;
 
-        virtual bool IsSlotRemovable(const NodeId& nodeId, const SlotId& slotId) const = 0;        
+        virtual void ResetReference(const Endpoint& endpoint)
+        {
+        }
+
+        virtual void RemoveSlot(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+        }
+
+        virtual bool IsSlotRemovable(const Endpoint& endpoint) const
+        {
+            AZ_UNUSED(endpoint);
+            return false;
+        }
+
+        virtual bool ConvertSlotToReference(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+            return false;
+        }
+
+        virtual bool CanConvertSlotToReference(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+            return false;
+        }
+
+        virtual bool CanHandleReferenceMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        {
+            AZ_UNUSED(endpoint);
+            AZ_UNUSED(mimeData);
+
+            return false;
+        }
+
+        virtual bool HandleReferenceMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        {
+            AZ_UNUSED(endpoint);
+            AZ_UNUSED(mimeData);
+
+            return false;
+        }
+
+        virtual bool CanPromoteToVariable(const Endpoint& endpoint) const
+        {
+            AZ_UNUSED(endpoint);
+
+            return false;
+        }
+
+        virtual bool PromoteToVariableAction(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+
+            return false;
+        }
+
+        virtual bool SynchronizeReferences(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
+        {
+            AZ_UNUSED(sourceEndpoint);
+            AZ_UNUSED(targetEndpoint);
+
+            return false;
+        }
+
+        virtual bool ConvertSlotToValue(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+            return false;
+        }
+
+        virtual bool CanConvertSlotToValue(const Endpoint& endpoint)
+        {
+            AZ_UNUSED(endpoint);
+
+            return false;
+        }
+
+        virtual bool CanConvertSlotAndConnect(const Endpoint& endpoint, const Endpoint& synchronizeEndpoint)
+        {
+            AZ_UNUSED(endpoint);
+
+            AZ_UNUSED(synchronizeEndpoint);
+
+            return false;
+        }
+
+        virtual bool CanHandleValueMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        {
+            AZ_UNUSED(endpoint);
+            AZ_UNUSED(mimeData);
+
+            return false;
+        }
+
+        // Returns whether or not the mime event was successsfully handled.
+        virtual bool HandleValueMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        {
+            AZ_UNUSED(endpoint);
+            AZ_UNUSED(mimeData);
+
+            return false;
+        }
 
         //////////////////////////////////////
         // Extender Slot Optional Overrides
@@ -139,6 +244,18 @@ namespace GraphCanvas
             AZ_UNUSED(nodeId);
             AZ_UNUSED(extenderId);
             return SlotId();
+        }
+
+        virtual void ExtensionCancelled(const NodeId& nodeId, const ExtenderId& extenderId)
+        {
+            AZ_UNUSED(nodeId);
+            AZ_UNUSED(extenderId);
+        }
+
+        virtual void FinalizeExtension(const NodeId& nodeId, const ExtenderId& extenderId)
+        {
+            AZ_UNUSED(nodeId);
+            AZ_UNUSED(extenderId);
         }
         ////
         

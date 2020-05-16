@@ -470,6 +470,10 @@ void SRenderLight::CalculateScissorRect()
         vWin.x = (1.0f + vScreenPoint.x) *  0.5f;
         vWin.y = (1.0f + vScreenPoint.y) *  0.5f;  //flip coords for y axis
 
+        // clamp to [0.0, 1.0]
+        vWin.x = clamp_tpl<float>(vWin.x, 0.0f, 1.0f);
+        vWin.y = clamp_tpl<float>(vWin.y, 0.0f, 1.0f);
+
         assert(vWin.x >= 0.0f && vWin.x <= 1.0f);
         assert(vWin.y >= 0.0f && vWin.y <= 1.0f);
 
@@ -1028,6 +1032,11 @@ void CDeferredShading::FilterGBuffer()
     PostProcessUtils().StretchRect(CTexture::s_ptexSceneSpecular, CTexture::s_ptexStereoR);
     CTexture* pSceneSpecular = CTexture::s_ptexStereoR;
 #endif
+
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     rd->FX_PushRenderTarget(0, CTexture::s_ptexSceneSpecular, NULL);
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, tech, FEF_DONTSETSTATES);
@@ -1929,6 +1938,11 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
     }
 
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
+    
     uint64 currentSample2MaskBit = rRP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_SAMPLE2];
     if (isGmemEnabled)
     {
@@ -2832,6 +2846,10 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
         bHasSpecular = true;
     }
 
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
     {
@@ -3089,12 +3107,22 @@ void CDeferredShading::ScreenSpaceReflectionPass()
 
     const uint64 shaderFlags = rd->m_RP.m_FlagsShader_RT;
 
+    if(CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
+
     // Get current viewport
     int prevVpX, prevVpY, prevVpWidth, prevVpHeight;
     gRenDev->GetViewport(&prevVpX, &prevVpY, &prevVpWidth, &prevVpHeight);
 
     {
         PROFILE_LABEL_SCOPE("SSR_RAYTRACE");
+
+        if (CRenderer::CV_r_SlimGBuffer == 1)
+        {
+            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+        }
 
         CTexture* dstTex = CRenderer::CV_r_SSReflHalfRes ? CTexture::s_ptexHDRTargetScaled[0] : CTexture::s_ptexHDRTarget;
 
@@ -3162,6 +3190,11 @@ void CDeferredShading::ScreenSpaceReflectionPass()
 
     {
         PROFILE_LABEL_SCOPE("SSR_COMPOSE");
+
+        if (CRenderer::CV_r_SlimGBuffer == 1)
+        {
+            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+        }
 
         static CCryNameTSCRC tech("SSReflection_Comp");
 
@@ -3239,6 +3272,12 @@ void CDeferredShading::ApplySSReflections()
     CTexture* pSSRTarget = CTexture::s_ptexHDRTargetScaledTmp[0];
 
     PROFILE_LABEL_SCOPE("SSR_APPLY");
+
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
+    if (CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
@@ -3655,6 +3694,11 @@ void CDeferredShading::DeferredSubsurfaceScattering(CTexture* tmpTex)
     const uint64 nFlagsShaderRT = rd->m_RP.m_FlagsShader_RT;
     rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_DEBUG0]);
 
+    if (CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
+
     static CCryNameTSCRC techBlur("SSSSS_Blur");
     static CCryNameR blurParamName("SSSBlurDir");
     static CCryNameR viewspaceParamName("ViewSpaceParams");
@@ -3812,6 +3856,11 @@ void CDeferredShading::DeferredShadingPass()
     if (rd->m_RP.m_pSunLight)
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+    
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
     }
 
     if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
@@ -4659,7 +4708,15 @@ void CDeferredShading::CreateDeferredMaps()
         }
 
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneDiffuse", CTexture::s_ptexSceneDiffuse, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
-        SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecular", CTexture::s_ptexSceneSpecular, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
+        
+        // Slimming of GBuffer requires only one channel for specular due to packing of RGB values into YPbPr and
+        // specular components into less channels
+        ETEX_Format rtTextureFormat = eTF_R8G8B8A8;
+        if (CRenderer::CV_r_SlimGBuffer == 1)
+        {
+            rtTextureFormat = eTF_R8;
+        }
+        SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecular", CTexture::s_ptexSceneSpecular, nWidth, nHeight, Clr_Empty, true, false, rtTextureFormat, -1, nMsaaAndSrgbFlag);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_4
     #if defined(AZ_PLATFORM_XENIA)
@@ -5012,11 +5069,6 @@ void CDeferredShading::Render()
     TArray<SRenderLight>& rDeferredCubemaps                 = m_pLights[eDLT_DeferredCubemap][m_nThreadID][m_nRecurseLevel];
     TArray<SRenderLight>& rDeferredAmbientLights        = m_pLights[eDLT_DeferredAmbientLight][m_nThreadID][m_nRecurseLevel];
 
-    if (CRenderer::CV_r_DeferredShadingScissor)
-    {
-        rd->EF_Scissor(false, 0, 0, 0, 0);
-    }
-
     if (CRenderer::CV_r_DeferredShadingDepthBoundsTest)
     {
         rd->SetDepthBoundTest(0.f, DBT_SKY_CULL_DEPTH, true); // skip sky for ambient and deferred cubemaps
@@ -5030,6 +5082,11 @@ void CDeferredShading::Render()
     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
         rd->FX_GmemTransition(CD3D9Renderer::eGT_POST_Z_PRE_DEFERRED);
+    }
+
+    if (CRenderer::CV_r_DeferredShadingScissor)
+    {
+        rd->EF_Scissor(false, 0, 0, 0, 0);
     }
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))

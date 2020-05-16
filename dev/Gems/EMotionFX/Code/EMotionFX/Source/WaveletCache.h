@@ -118,7 +118,7 @@ namespace EMotionFX
 
         public:
             MCore::Compressed16BitQuaternion*   mRotations;         /**< The quantized, but decompressed rotation values. */
-            AZ::PackedVector3f*                 mPositions;         /**< The decompressed position values. */
+            AZ::Vector3*                        mPositions;         /**< The decompressed position values. */
             float*                              mMorphWeights;      /**< The decompressed morph values. */
             float                               mStartTime;         /**< The start time of the decompressed chunk. */
             float                               mTimeUnused;        /**< The total time, in seconds, that this decompressed chunk was not accessed. */
@@ -129,7 +129,7 @@ namespace EMotionFX
             EMFX_SCALECODE
             (
                 //MCore::Compressed16BitQuaternion* mScaleRotations;    /**< The decompressed, but quantized scale rotation values. */
-                AZ::PackedVector3f *             mScales;               /**< The decompressed scale values. */
+                AZ::Vector3 *                   mScales;               /**< The decompressed scale values. */
             )
 
             DecompressedChunk();

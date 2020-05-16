@@ -27,13 +27,13 @@ namespace ScriptCanvasEditor
         , public ScriptCanvas::VariableNotificationBus::Handler
         , public ScriptCanvas::VariableNodeNotificationBus::Handler
         , public VariableNodeDescriptorRequestBus::Handler
-        , public VariableGraphMemberRefCountRequestBus::Handler
     {
     public:
         AZ_COMPONENT(VariableNodeDescriptorComponent, "{80CB9400-E40D-4DC7-B185-412F766C8565}", NodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
 
-        VariableNodeDescriptorComponent();
+        VariableNodeDescriptorComponent() = default;
+        VariableNodeDescriptorComponent(NodeDescriptorType descriptorType);
         ~VariableNodeDescriptorComponent() = default;
 
         // Component
@@ -58,10 +58,6 @@ namespace ScriptCanvasEditor
         // VariableNodeDescriptorBus
         ScriptCanvas::VariableId GetVariableId() const;
         ////
-
-        // VariableGraphMemberRefCountRequestBus
-        AZ::EntityId GetGraphMemberId() const override;
-        ////
         
     protected:
 
@@ -71,6 +67,6 @@ namespace ScriptCanvasEditor
 
     private:
         
-        void SetVariableId(const ScriptCanvas::VariableId& variableId);
+        void SetVariableId(const ScriptCanvas::VariableId& variableId);        
     };
 }

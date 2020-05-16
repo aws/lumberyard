@@ -345,7 +345,7 @@ namespace GraphCanvas
             return;
         }        
 
-        if (m_sourceEndpoint.IsValid())
+        if (m_targetEndpoint.IsValid())
         {
             SlotRequestBus::Event(m_targetEndpoint.GetSlotId(), &SlotRequests::RemoveConnectionId, GetEntityId(), m_sourceEndpoint);
         }
@@ -566,7 +566,7 @@ namespace GraphCanvas
         {
             connectionResult = ConnectionMoveResult::ConnectionMove;
         }
-        else if (!acceptConnection && !m_previousEndPoint.IsValid() && m_dragContext != DragContext::TryConnection)
+        else if (!acceptConnection && !m_previousEndPoint.IsValid() && m_dragContext != DragContext::TryConnection && AllowNodeCreation())
         {
             Endpoint knownEndpoint = m_sourceEndpoint;
 
@@ -600,6 +600,11 @@ namespace GraphCanvas
         }
 
         return connectionResult;
+    }
+
+    bool ConnectionComponent::AllowNodeCreation() const
+    {
+        return true;
     }
 
     void ConnectionComponent::StartMove()

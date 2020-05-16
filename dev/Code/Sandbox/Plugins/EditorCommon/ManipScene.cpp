@@ -1177,7 +1177,7 @@ namespace Manip
             if (ev.viewport->ScreenToWorldRay(&ray, ev.x, ev.y))
             {
                 Vec3 hitPoint;
-                m_highlightedItem = HitSelectionWithRay(&hitPoint, m_elements, ray, m_customTracer, this);
+                m_highlightedItem = aznumeric_cast<int>(HitSelectionWithRay(&hitPoint, m_elements, ray, m_customTracer, this));
             }
         }
     }
@@ -1263,7 +1263,7 @@ namespace Manip
                         ElementId selected_id = HitSelectionWithRay(&hitPoint, m_elements, ray, m_customTracer, this);
                         if (selected_id != 0)
                         {
-                            if (!m_selection.Contains(selected_id) || m_selection.Size() > 1)
+                            if (!m_selection.Contains(aznumeric_cast<int>(selected_id)) || m_selection.Size() > 1)
                             {
                                 if (ev.control)
                                 {
@@ -1528,7 +1528,7 @@ namespace Manip
                 m_lastIdByLayer.push_back(m_lastIdByLayer.size() << 24);
             }
         }
-        m_elements.back().id = id;
+        m_elements.back().id = aznumeric_cast<int>(id);
 
         ElementId& lastId = m_lastIdByLayer[element.layer];
         lastId = max(lastId, id) + 1;

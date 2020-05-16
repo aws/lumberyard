@@ -24,6 +24,7 @@
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Module/ModuleManager.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -248,7 +249,7 @@ namespace CloudGemWebCommunicator
             }
 
             m_endpoint = thisResult.Endpoint;
-            m_endpointPort = thisResult.EndpointPort;
+            m_endpointPort = aznumeric_caster(thisResult.EndpointPort);
             m_connectionType = thisResult.ConnectionType;
 
             AZ_TracePrintf("CloudCanvas","Device successfully registered - %s", resultStr.c_str());
@@ -555,7 +556,7 @@ namespace CloudGemWebCommunicator
     {
         awsiotsdk::ResponseCode returnCode{ awsiotsdk::ResponseCode::SUCCESS };
 
-        if (m_iotClient)
+        if (!m_iotClient)
         {
             AZ_Warning("CloudCanvas", false, "Attempted to disconnect when there is no existing connection.");
             return returnCode;

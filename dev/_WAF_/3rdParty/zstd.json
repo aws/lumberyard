@@ -2,7 +2,7 @@
     "name": "zstd",
     "source": "@3P:zstd@",
     "description": "ZStandard Library",
-    "includes": [
+    "system_includes": [
         "lib",
         "lib/common",
         "lib/compress",

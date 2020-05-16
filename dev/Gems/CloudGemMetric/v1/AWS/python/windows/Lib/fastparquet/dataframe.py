@@ -1,21 +1,46 @@
+import re
+from collections import OrderedDict
+from distutils.version import LooseVersion
 import numpy as np
-from pandas.core.index import _ensure_index, CategoricalIndex, Index
-from pandas.core.internals import BlockManager, _block_shape
-from pandas.core.generic import NDFrame
-from pandas.core.frame import DataFrame
-from pandas.core.index import RangeIndex, Index
-from pandas.core.categorical import Categorical, CategoricalDtype
-try:
-    from pandas.api.types import is_categorical_dtype
-except ImportError:
-    # Pandas <= 0.18.1
-    from pandas.core.common import is_categorical_dtype
+from pandas.core.internals import BlockManager
+from pandas import (
+    Categorical, DataFrame, Series,
+    CategoricalIndex, RangeIndex, Index, MultiIndex,
+    __version__ as pdver
+)
+from pandas.api.types import is_categorical_dtype
+import six
+import warnings
 from .util import STR_TYPE
 
 
-def empty(types, size, cats=None, cols=None, index_type=None, index_name=None):
+class Dummy(object):
+    pass
+
+
+def empty(types, size, cats=None, cols=None, index_types=None, index_names=None,
+          timezones=None):
     """
     Create empty DataFrame to assign into
+
+    In the simplest case, will return a Pandas dataframe of the given size,
+    with columns of the given names and types. The second return value `views`
+    is a dictionary of numpy arrays into which you can assign values that
+    show up in the dataframe.
+
+    For categorical columns, you get two views to assign into: if the
+    column name is "col", you get both "col" (the category codes) and
+    "col-catdef" (the category labels).
+
+    For a single categorical index, you should use the `.set_categories`
+    method of the appropriate "-catdef" columns, passing an Index of values
+
+    ``views['index-catdef'].set_categories(pd.Index(newvalues), fastpath=True)``
+
+    Multi-indexes work a lot like categoricals, even if the types of each
+    index are not themselves categories, and will also have "-catdef" entries
+    in the views. However, these will be Dummy instances, providing only a
+    ``.set_categories`` method, to be used as above.
 
     Parameters
     ----------
@@ -32,6 +57,15 @@ def empty(types, size, cats=None, cols=None, index_type=None, index_name=None):
         is missing, will assume 16-bit integers (a reasonable default).
     cols: list of labels
         assigned column names, including categorical ones.
+    index_types: list of str
+        For one of more index columns, make them have this type. See general
+        description, above, for caveats about multi-indexing. If None, the
+        index will be the default RangeIndex.
+    index_names: list of str
+        Names of the index column(s), if using
+    timezones: dict {col: timezone_str}
+        for timestamp type columns, apply this timezone to the pandas series;
+        the numpy view will be UTC.
 
     Returns
     -------
@@ -39,55 +73,98 @@ def empty(types, size, cats=None, cols=None, index_type=None, index_name=None):
     - list of numpy views, in order, of the columns of the dataframe. Assign
         to this.
     """
-    df = DataFrame()
     views = {}
+    timezones = timezones or {}
 
-    cols = cols if cols is not None else range(cols)
     if isinstance(types, STR_TYPE):
         types = types.split(',')
+    cols = cols if cols is not None else range(len(types))
+
+    def cat(col):
+        if cats is None or col not in cats:
+            return RangeIndex(0, 2**14)
+        elif isinstance(cats[col], int):
+            return RangeIndex(0, cats[col])
+        else:  # explicit labels list
+            return cats[col]
+
+    df = OrderedDict()
     for t, col in zip(types, cols):
         if str(t) == 'category':
-            if cats is None or col not in cats:
-                df[str(col)] = Categorical(
-                        [], categories=RangeIndex(0, 2**14),
-                        fastpath=True)
-            elif isinstance(cats[col], int):
-                df[str(col)] = Categorical(
-                        [], categories=RangeIndex(0, cats[col]),
-                        fastpath=True)
-            else:  # explicit labels list
-                df[str(col)] = Categorical([], categories=cats[col],
-                                           fastpath=True)
+            df[six.text_type(col)] = Categorical([], categories=cat(col),
+                                                 fastpath=True)
         else:
-            df[str(col)] = np.empty(0, dtype=t)
+            if hasattr(t, 'base'):
+                # funky pandas not-dtype
+                t = t.base
+            d = np.empty(0, dtype=t)
+            if d.dtype.kind == "M" and six.text_type(col) in timezones:
+                try:
+                    d = Series(d).dt.tz_localize(timezones[six.text_type(col)])
+                except:
+                    warnings.warn("Inferring time-zone from %s in column %s "
+                                  "failed, using time-zone-agnostic"
+                                  "" % (timezones[six.text_type(col)], col))
+            df[six.text_type(col)] = d
 
-    if index_type is not None and index_type is not False:
-        if index_name is None:
+    df = DataFrame(df)
+    if not index_types:
+        index = RangeIndex(size)
+    elif len(index_types) == 1:
+        t, col = index_types[0], index_names[0]
+        if col is None:
             raise ValueError('If using an index, must give an index name')
-        if str(index_type) == 'category':
-            if cats is None or index_name not in cats:
-                c = Categorical(
-                        [], categories=RangeIndex(0, 2**14),
-                        fastpath=True)
-            elif isinstance(cats[index_name], int):
-                c = Categorical(
-                        [], categories=RangeIndex(0, cats[index_name]),
-                        fastpath=True)
-            else:  # explicit labels list
-                c = Categorical([], categories=cats[index_name],
-                                           fastpath=True)
-            print(cats, index_name, c)
-            vals = np.empty(size, dtype=c.codes.dtype)
+        if str(t) == 'category':
+            c = Categorical([], categories=cat(col), fastpath=True)
+            vals = np.zeros(size, dtype=c.codes.dtype)
             index = CategoricalIndex(c)
             index._data._codes = vals
-            views[index_name] = vals
+            views[col] = vals
+            views[col+'-catdef'] = index._data
         else:
-            index = Index(np.empty(size, dtype=index_type))
-            views[index_name] = index.values
-
-        axes = [df._data.axes[0], index]
+            if hasattr(t, 'base'):
+                # funky pandas not-dtype
+                t = t.base
+            d = np.empty(size, dtype=t)
+            if d.dtype.kind == "M" and six.text_type(col) in timezones:
+                try:
+                    d = Series(d).dt.tz_localize(timezones[six.text_type(col)])
+                except:
+                    warnings.warn("Inferring time-zone from %s in column %s "
+                                  "failed, using time-zone-agnostic"
+                                  "" % (timezones[six.text_type(col)], col))
+            index = Index(d)
+            views[col] = index.values
     else:
-        axes = [df._data.axes[0], RangeIndex(size)]
+        index = MultiIndex([[]], [[]])
+        # index = MultiIndex.from_arrays(indexes)
+        index._levels = list()
+        index._labels = list()
+        index._codes = list()
+        index._names = list(index_names)
+        for i, col in enumerate(index_names):
+            index._levels.append(Index([None]))
+
+            def set_cats(values, i=i, col=col, **kwargs):
+                values.name = col
+                if index._levels[i][0] is None:
+                    index._levels[i] = values
+                elif not index._levels[i].equals(values):
+                    raise RuntimeError("Different dictionaries encountered"
+                                       " while building categorical")
+
+            x = Dummy()
+            x._set_categories = set_cats
+
+            d = np.zeros(size, dtype=int)
+            if LooseVersion(pdver) >= LooseVersion("0.24.0"):
+                index._codes = list(index._codes) + [d]
+            else:
+                index._labels.append(d)
+            views[col] = d
+            views[col+'-catdef'] = x
+
+    axes = [df._data.axes[0], index]
 
     # allocate and create blocks
     blocks = []
@@ -97,11 +174,18 @@ def empty(types, size, cats=None, cols=None, index_type=None, index_name=None):
             code = np.zeros(shape=size, dtype=block.values.codes.dtype)
             values = Categorical(values=code, categories=categories,
                                  fastpath=True)
+            new_block = block.make_block_same_class(values=values)
+        elif getattr(block.dtype, 'tz', None):
+            new_shape = (size, )
+            values = np.empty(shape=new_shape, dtype='M8[ns]')
+            new_block = block.make_block_same_class(
+                type(block.values)(values, dtype=block.values.dtype)
+            )
         else:
             new_shape = (block.values.shape[0], size)
             values = np.empty(shape=new_shape, dtype=block.values.dtype)
+            new_block = block.make_block_same_class(values=values)
 
-        new_block = block.make_block_same_class(values=values)
         blocks.append(new_block)
 
     # create block manager
@@ -118,11 +202,14 @@ def empty(types, size, cats=None, cols=None, index_type=None, index_name=None):
             if is_categorical_dtype(dtype):
                 views[col] = block.values._codes
                 views[col+'-catdef'] = block.values
+            elif getattr(block.dtype, 'tz', None):
+                views[col] = np.asarray(block.values, dtype='M8[ns]')
             else:
                 views[col] = block.values[i]
 
-    if index_name is not None and index_name is not False:
-        df.index.name = index_name
-    if str(index_type) == 'category':
-        views[index_name+'-catdef'] = df._data.axes[1].values
+    if index_names:
+        df.index.names = [
+            None if re.match(r'__index_level_\d+__', n) else n
+            for n in index_names
+        ]
     return df, views

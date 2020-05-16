@@ -148,6 +148,7 @@ namespace GradientSignal
         AZ::u32 GetPreviewConstrainToShapeVisibility() const;
         AZ::u32 PreviewSettingsAndSettingsVisibilityChanged() const;
         void UpdatePreviewSettings() const;
+        void CancelPreviewRendering() const;
     private:
         AZ::EntityId m_previewEntityId;
         AZ::Vector3 m_previewPosition = AZ::Vector3(0.0f);

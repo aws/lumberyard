@@ -32,7 +32,7 @@ namespace ImageProcessing
 
     uint8 F32ToU8(float in)
     {
-        return round(AZ::GetClamp<float>(in, 0.f, 1.f) * 255);
+        return aznumeric_cast<uint8>(round(AZ::GetClamp(in, 0.f, 1.f) * 255));
     }
 
     float U16ToF32(uint16 in)
@@ -42,7 +42,7 @@ namespace ImageProcessing
 
     uint16 F32ToU16(float in)
     {
-        return round(AZ::GetClamp<float>(in, 0.f, 1.f) * 65535.f);
+        return aznumeric_cast<uint16>(round(AZ::GetClamp(in, 0.f, 1.f) * 65535.f));
     }
 
     float HalfToF32(SHalf in)
@@ -84,7 +84,7 @@ namespace ImageProcessing
         void GetRGBF(float& outR, float& outG, float& outB) const
         {
             int exponent = e - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
-            float scale = powf(2.0f, exponent);
+            float scale = powf(2.0f, aznumeric_cast<float>(exponent));
             outR = r * scale;
             outG = g * scale;
             outB = b * scale;
@@ -100,7 +100,7 @@ namespace ImageProcessing
             e = AZStd::GetMax(0, log2(mf) + (RGB9E5_EXP_BIAS + 1));
 
             int exponent = e - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
-            float scale = powf(2.0f, exponent);
+            float scale = powf(2.0f, aznumeric_cast<float>(exponent));
 
             r = AZStd::GetMin(511, (int)floorf(rf / scale + 0.5f));
             g = AZStd::GetMin(511, (int)floorf(gf / scale + 0.5f));

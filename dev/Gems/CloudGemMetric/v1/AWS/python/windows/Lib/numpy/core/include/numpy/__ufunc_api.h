@@ -8,7 +8,7 @@ extern NPY_NO_EXPORT PyTypeObject PyUFunc_Type;
 NPY_NO_EXPORT  PyObject * PyUFunc_FromFuncAndData \
        (PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, int);
 NPY_NO_EXPORT  int PyUFunc_RegisterLoopForType \
-       (PyUFuncObject *, int, PyUFuncGenericFunction, int *, void *);
+       (PyUFuncObject *, int, PyUFuncGenericFunction, const int *, void *);
 NPY_NO_EXPORT  int PyUFunc_GenericFunction \
        (PyUFuncObject *, PyObject *, PyObject *, PyArrayObject **);
 NPY_NO_EXPORT  void PyUFunc_f_f_As_d_d \
@@ -64,7 +64,7 @@ NPY_NO_EXPORT  int PyUFunc_getfperr \
 NPY_NO_EXPORT  int PyUFunc_handlefperr \
        (int, PyObject *, int, int *);
 NPY_NO_EXPORT  int PyUFunc_ReplaceLoopBySignature \
-       (PyUFuncObject *, PyUFuncGenericFunction, int *, PyUFuncGenericFunction *);
+       (PyUFuncObject *, PyUFuncGenericFunction, const int *, PyUFuncGenericFunction *);
 NPY_NO_EXPORT  PyObject * PyUFunc_FromFuncAndDataAndSignature \
        (PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, int, const char *);
 NPY_NO_EXPORT  int PyUFunc_SetUsesArraysAsData \
@@ -87,6 +87,8 @@ NPY_NO_EXPORT  int PyUFunc_ValidateCasting \
        (PyUFuncObject *, NPY_CASTING, PyArrayObject **, PyArray_Descr **);
 NPY_NO_EXPORT  int PyUFunc_RegisterLoopForDescr \
        (PyUFuncObject *, PyArray_Descr *, PyUFuncGenericFunction, PyArray_Descr **, void *);
+NPY_NO_EXPORT  PyObject * PyUFunc_FromFuncAndDataAndSignatureAndIdentity \
+       (PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, const int, const char *, PyObject *);
 
 #else
 
@@ -109,7 +111,7 @@ static void **PyUFunc_API=NULL;
         (*(PyObject * (*)(PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, int)) \
          PyUFunc_API[1])
 #define PyUFunc_RegisterLoopForType \
-        (*(int (*)(PyUFuncObject *, int, PyUFuncGenericFunction, int *, void *)) \
+        (*(int (*)(PyUFuncObject *, int, PyUFuncGenericFunction, const int *, void *)) \
          PyUFunc_API[2])
 #define PyUFunc_GenericFunction \
         (*(int (*)(PyUFuncObject *, PyObject *, PyObject *, PyArrayObject **)) \
@@ -193,7 +195,7 @@ static void **PyUFunc_API=NULL;
         (*(int (*)(int, PyObject *, int, int *)) \
          PyUFunc_API[29])
 #define PyUFunc_ReplaceLoopBySignature \
-        (*(int (*)(PyUFuncObject *, PyUFuncGenericFunction, int *, PyUFuncGenericFunction *)) \
+        (*(int (*)(PyUFuncObject *, PyUFuncGenericFunction, const int *, PyUFuncGenericFunction *)) \
          PyUFunc_API[30])
 #define PyUFunc_FromFuncAndDataAndSignature \
         (*(PyObject * (*)(PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, int, const char *)) \
@@ -228,15 +230,19 @@ static void **PyUFunc_API=NULL;
 #define PyUFunc_RegisterLoopForDescr \
         (*(int (*)(PyUFuncObject *, PyArray_Descr *, PyUFuncGenericFunction, PyArray_Descr **, void *)) \
          PyUFunc_API[41])
+#define PyUFunc_FromFuncAndDataAndSignatureAndIdentity \
+        (*(PyObject * (*)(PyUFuncGenericFunction *, void **, char *, int, int, int, int, const char *, const char *, const int, const char *, PyObject *)) \
+         PyUFunc_API[42])
 
 static NPY_INLINE int
 _import_umath(void)
 {
-  PyObject *numpy = PyImport_ImportModule("numpy.core.umath");
+  PyObject *numpy = PyImport_ImportModule("numpy.core._multiarray_umath");
   PyObject *c_api = NULL;
 
   if (numpy == NULL) {
-      PyErr_SetString(PyExc_ImportError, "numpy.core.umath failed to import");
+      PyErr_SetString(PyExc_ImportError,
+                      "numpy.core._multiarray_umath failed to import");
       return -1;
   }
   c_api = PyObject_GetAttrString(numpy, "_UFUNC_API");

@@ -22,7 +22,6 @@
 
 EMFX_FORWARD_DECLARE(AnimGraphNodeGroup);
 
-
 namespace EMStudio
 {
     // forward declarations
@@ -31,7 +30,7 @@ namespace EMStudio
     class StateFilterSelectionWindow
         : public QDialog
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(StateFilterSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
     public:

@@ -18,9 +18,8 @@ namespace AzToolsFramework
 {
     namespace Components
     {
-        /**
-         * Controls whether an Entity is shown or hidden in the Editor.
-         */
+        //! Controls whether an Entity is shown or hidden in the Editor.
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         class EditorVisibilityComponent
             : public AzToolsFramework::Components::EditorComponentBase
             , public EditorVisibilityRequestBus::Handler
@@ -30,31 +29,21 @@ namespace AzToolsFramework
             static void Reflect(AZ::ReflectContext* context);
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services);
-            
+
             ~EditorVisibilityComponent();
 
-            ////////////////////////////////////////////////////////////////////
-            // EditorVisibilityRequestBus
-            void SetCurrentVisibility(bool visibility) override;
-            bool GetCurrentVisibility() override;
+            // EditorVisibilityRequestBus ...
             void SetVisibilityFlag(bool flag) override;
             bool GetVisibilityFlag() override;
-            ////////////////////////////////////////////////////////////////////
+            void SetCurrentVisibility(bool visibility) override;
+            bool GetCurrentVisibility() override;
 
         private:
-            ////////////////////////////////////////////////////////////////////
-            // AZ::Entity
+            // AZ::Entity ...
             void Init() override;
-            void Activate() override;
-            void Deactivate() override;
-            ////////////////////////////////////////////////////////////////////
 
-            /// Whether this entity can ever be shown.
-            bool m_visibilityFlag = true;
-
-            /// Whether the entity is currently shown.
-            /// This is not saved to disk.
-            bool m_currentVisibility = true;
+            bool m_visibilityFlag = true; //!< Whether this entity is individually set to be shown.
         };
-    }
-}
+        AZ_POP_DISABLE_WARNING
+    } // namespace Components
+} // namespace AzToolsFramework

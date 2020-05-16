@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <smartptr.h>
 #include "Util.h"
 #include "ZipFileFormat.h"
@@ -94,7 +94,7 @@ struct PackFileJob
     unsigned long uncompressedSize;
     unsigned long uncompressedSizePreviously;
 
-    __int64 modTime;
+    int64 modTime;
     ZipDir::ErrorEnum zdError;
     PackFileStatus status;
     PackFileCompressionPolicy compressionPolicy;
@@ -901,7 +901,7 @@ void ZipDir::CacheRW::StorePackedFile(PackFileJob* job)
 // Adds a new file to the zip or update an existing one
 // adds a directory (creates several nested directories if needed)
 ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFile (const char* szRelativePathSrc, void* pUncompressed, unsigned nSize,
-    unsigned nCompressionMethod, int nCompressionLevel, __time64_t modTime)
+    unsigned nCompressionMethod, int nCompressionLevel, int64 modTime)
 {
     char str[_MAX_PATH];
     char* szRelativePath = UnifyPath(str, szRelativePathSrc);

@@ -8,10 +8,13 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib import Errors, Logs
-from waflib.Configure import conf
-from lumberyard import deprecated
+
+# System Imports
 import subprocess
+import sys
+
+# waflib imports
+from waflib.Configure import conf
 
 
 PLATFORM = 'appletv'
@@ -26,15 +29,10 @@ def load_appletv_common_settings(ctx):
     env = ctx.env
     
     # Set Minimum appletv version and the path to the current sdk
-    settings_file = ctx.path.make_node(['_WAF_', 'apple', 'appletv_settings.json'])
-    try:
-        settings = ctx.parse_json_file(settings_file)
-    except Exception as e:
-        ctx.cry_file_error(str(e), settings_file.abspath())
-
+    settings = ctx.get_appletv_xcode_settings()
     min_appletvos_version = '-mappletvos-version-min={}'.format(settings['TVOS_DEPLOYMENT_TARGET'])
 
-    sdk_path = subprocess.check_output(['xcrun', '--sdk', 'appletvos', '--show-sdk-path']).strip()
+    sdk_path = subprocess.check_output(['xcrun', '--sdk', 'appletvos', '--show-sdk-path']).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip()
     sysroot = '-isysroot{}'.format(sdk_path)
 
     common_flags = [
@@ -95,3 +93,15 @@ def load_appletv_configuration_settings(ctx, platform_configuration):
 @conf
 def is_appletv_available(ctx):
     return True
+
+
+@conf
+def get_appletv_xcode_settings(self):
+    """" Helper function for getting appletv settings """
+    self.load_apple_arm_settings('appletv_settings')
+    return self.appletv_settings
+
+
+@conf
+def get_appletv_project_name(self):
+    return '{}/{}'.format(self.options.appletv_project_folder, self.options.appletv_project_name)

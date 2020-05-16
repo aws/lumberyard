@@ -21,6 +21,7 @@
 #include "AnimGraphManager.h"
 #include "Node.h"
 #include "EMotionFXManager.h"
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace EMotionFX
@@ -192,11 +193,12 @@ namespace EMotionFX
                 MCORE_ASSERT(false);
             }
 
-            const MCore::Quaternion targetRot(axis, MCore::Math::DegreesToRadians(360.0f * (inputAmount - 0.5f) * invertFactor));
-            MCore::Quaternion deltaRot = MCore::LinearInterpolate<MCore::Quaternion>(MCore::Quaternion(), targetRot, uniqueData->mDeltaTime * factor);
+            const AZ::Quaternion targetRot = MCore::CreateFromAxisAndAngle(axis, MCore::Math::DegreesToRadians(360.0f * (inputAmount - 0.5f) * invertFactor));
+            AZ::Quaternion deltaRot = MCore::LinearInterpolate<AZ::Quaternion>(AZ::Quaternion::CreateIdentity(), targetRot, uniqueData->mDeltaTime * factor);
             deltaRot.Normalize();
             uniqueData->mAdditiveTransform.mRotation = uniqueData->mAdditiveTransform.mRotation * deltaRot;
-            outputTransform.mRotation = (inputTransform.mRotation * uniqueData->mAdditiveTransform.mRotation).Normalize();
+            outputTransform.mRotation = (inputTransform.mRotation * uniqueData->mAdditiveTransform.mRotation);
+            outputTransform.mRotation.Normalize();
         }
 
         // process the translation

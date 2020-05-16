@@ -25,7 +25,7 @@ def handler(event, context):
 
     buckets = properties.get("Buckets", [])
     if not buckets:
-        print "There were no buckets in the resource properties, returning early"
+        print("There were no buckets in the resource properties, returning early")
         return custom_resource_response.success_response({}, physical_resource_id)
 
     if event["RequestType"] != "Delete":
@@ -38,11 +38,11 @@ def handler(event, context):
 
 def clear_bucket(bucket_name):
     try:
-        print "clearing bucket {}".format(bucket_name)
+        print("clearing bucket {}".format(bucket_name))
         bucket = boto3.resource('s3').Bucket(bucket_name)
         bucket.object_versions.delete()
     except ClientError as err:
         if err.response['Error']['Code'] in ['NoSuchBucket']:
-            print "Bucket does not exist"
+            print("Bucket does not exist")
         else:
             raise err

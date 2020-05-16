@@ -175,7 +175,6 @@ namespace AzToolsFramework
         void OnStartPlayInEditor() override;
         void OnStopPlayInEditor() override;
         void OnContextReset() override;
-        void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
         //////////////////////////////////////////////////////////////////////////
 
         void OnEntityComponentPropertyChanged(AZ::ComponentId /*componentId*/) override;
@@ -580,6 +579,7 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override;
     void showPopup() override;
+    void wheelEvent(QWheelEvent* e) override;
 
     QString m_headerOverride = "";
 };

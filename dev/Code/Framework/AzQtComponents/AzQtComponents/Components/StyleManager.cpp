@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Debug/Trace.h>
 #include <AzQtComponents/Components/StyleManager.h>
 #include <QTextStream>
 #include <QApplication>
@@ -25,7 +26,10 @@ AZ_POP_DISABLE_WARNING
 #include <QStyle>
 #include <QWidget>
 #include <QDebug>
+
+#if !defined(AZ_PLATFORM_LINUX)
 #include <QtWidgets/private/qstylesheetstyle_p.h>
+#endif // !defined(AZ_PLATFORM_LINUX)
 
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
@@ -37,6 +41,8 @@ AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
+#if !defined(AZ_PLATFORM_LINUX)
+
 // UI 1.0
 #define STYLE_SHEET_VARIABLES_PATH_DARK "Code/Sandbox/Editor/Style/EditorStylesheetVariables_Dark.json" // file path on disk
 #define STYLE_SHEET_VARIABLES_PATH_DARK_ALT ":Editor/Style/EditorStylesheetVariables_Dark.json" // in our qrc file as a fallback
@@ -53,22 +59,35 @@ namespace AzQtComponents
     const QString g_searchPathPrefix = QStringLiteral("AzQtComponentWidgets");
 
     StyleManager* StyleManager::s_instance = nullptr;
+#endif // !defined(AZ_PLATFORM_LINUX)
 
     static QString FindPath(QApplication* application, const QString& path)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         QDir rootDir(FindEngineRootDir(application));
 
         // for now, assume the executable is in the dev/Bin64 directory. We'll find our resources relative to the dev directory
         return rootDir.absoluteFilePath(path);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return QString();
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     static QStyle* createBaseStyle()
     {
+#if !defined(AZ_PLATFORM_LINUX)
         return QStyleFactory::create("Fusion");
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return nullptr;
+#endif // !defined(AZ_PLATFORM_LINUX)
+
     }
 
     void StyleManager::addSearchPaths(const QString& searchPrefix, const QString& pathOnDisk, const QString& qrcPrefix)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (!s_instance)
         {
             qFatal("StyleManager::addSearchPaths called before instance was created");
@@ -76,10 +95,14 @@ namespace AzQtComponents
         }
 
         s_instance->m_stylesheetCache->addSearchPaths(searchPrefix, pathOnDisk, qrcPrefix);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     bool StyleManager::setStyleSheet(QWidget* widget, QString styleFileName)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (!s_instance)
         {
             qFatal("StyleManager::setStyleSheet called before instance was created");
@@ -114,10 +137,15 @@ namespace AzQtComponents
         }
 
         return true;
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return false;
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     QStyleSheetStyle* StyleManager::styleSheetStyle(const QWidget* widget)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         Q_UNUSED(widget);
         // widget is currently unused, but would be required if Qt::AA_ManualStyleSheetStyle was
         // not set.
@@ -135,12 +163,21 @@ namespace AzQtComponents
         }
 
         return s_instance->m_useUI10 ? s_instance->m_styleSheetStyle10 : s_instance->m_styleSheetStyle20;
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return nullptr;
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     QStyle *StyleManager::baseStyle(const QWidget *widget)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         const auto sss = styleSheetStyle(widget);
         return sss ? sss->baseStyle() : nullptr;
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return nullptr;
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     StyleManager::StyleManager(QObject* parent)
@@ -148,14 +185,19 @@ namespace AzQtComponents
         , m_stylesheetPreprocessor(new StylesheetPreprocessor(this))
         , m_stylesheetCache(new StyleSheetCache(this))
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (s_instance)
         {
             qFatal("A StyleManager already exists");
         }
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     StyleManager::~StyleManager()
     {
+#if !defined(AZ_PLATFORM_LINUX)
         delete m_stylesheetPreprocessor;
         s_instance = nullptr;
 
@@ -172,10 +214,14 @@ namespace AzQtComponents
             m_style20.clear();
             m_styleSheetStyle20 = nullptr;
         }
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::initialize(QApplication* application, bool useUI10)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (s_instance)
         {
             qFatal("StyleManager::Initialize called more than once");
@@ -185,6 +231,7 @@ namespace AzQtComponents
 
         application->setAttribute(Qt::AA_ManualStyleSheetStyle, true);
         application->setAttribute(Qt::AA_PropagateStyleToChildren, true);
+
         connect(application, &QCoreApplication::aboutToQuit, this, &StyleManager::cleanupStyles);
 
         initializeSearchPaths(application);
@@ -217,10 +264,14 @@ namespace AzQtComponents
         {
             refresh(application);
         });
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::switchUI(QApplication* application, bool useUI10)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (m_useUI10 == useUI10)
         {
             // only switch if necessary
@@ -228,10 +279,14 @@ namespace AzQtComponents
         }
 
         switchUIInternal(application, useUI10);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::switchUIInternal(QApplication* application, bool useUI10)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         const bool wasUI20 = !m_useUI10;
         m_useUI10 = useUI10;
 
@@ -266,18 +321,26 @@ namespace AzQtComponents
             newStyle->setParent(this);
         }
         refresh(application);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::cleanupStyles()
     {
+#if !defined(AZ_PLATFORM_LINUX)
         if (auto application = qobject_cast<QApplication*>(sender()))
         {
             application->setStyle(createBaseStyle());
         }
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::stopTrackingWidget(QObject* object)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         const auto widget = qobject_cast<QWidget* const>(object);
         if (!widget)
         {
@@ -288,10 +351,14 @@ namespace AzQtComponents
 
         // Remove any old stylesheet
         widget->setStyleSheet(QString());
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::initializeFonts()
     {
+#if !defined(AZ_PLATFORM_LINUX)
         // yes, the path specifier could've included OpenSans- and .ttf, but I
         // wanted anyone searching for OpenSans-Bold.ttf to find something so left it this way
         QString openSansPathSpecifier = QStringLiteral(":/AzQtFonts/Fonts/Open_Sans/%1");
@@ -309,10 +376,14 @@ namespace AzQtComponents
         QString amazonEmberPathSpecifier = QStringLiteral(":/AzQtFonts/Fonts/AmazonEmber/%1");
         QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("amazon_ember_lt-webfont.ttf"));
         QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("amazon_ember_rg-webfont.ttf"));
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::initializeSearchPaths(QApplication* application)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         // now that QT is initialized, we can use its path manipulation functions to set the rest up:
         QString rootDir = FindEngineRootDir(application);
 
@@ -334,10 +405,14 @@ namespace AzQtComponents
             QDir::addSearchPath("UI", appPath.filePath("Editor/UI"));
             QDir::addSearchPath("EDITOR", appPath.filePath("Editor"));
         }
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     static bool WriteStylesheetForQtDesigner(const QString& processedStyle)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         QString outputStylePath = QDir::cleanPath(QDir::homePath() + QDir::separator() + "lumberyard_stylesheet.qss");
         QFile outputStyleFile(outputStylePath);
         bool successfullyWroteStyleFile = false;
@@ -350,10 +425,15 @@ namespace AzQtComponents
         }
 
         return successfullyWroteStyleFile;
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        return false;
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     static void RefreshUI_1_0_Style(QApplication* application, QStyleSheetStyle* styleSheetStyle10, StylesheetPreprocessor* stylesheetPreprocessor)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         QFile styleSheetVariablesFile;
         styleSheetVariablesFile.setFileName(FindPath(application, STYLE_SHEET_VARIABLES_PATH_DARK));
 
@@ -400,10 +480,14 @@ namespace AzQtComponents
         QPalette newPal(application->palette());
         newPal.setColor(QPalette::Link, stylesheetPreprocessor->GetColorByName(QString("LinkColor")));
         application->setPalette(newPal);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     void StyleManager::refresh(QApplication* application)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         //////////////////////////////////////////////////////////////////////////
         // DEPRECATED UI 1.0
         if (m_useUI10)
@@ -425,11 +509,20 @@ namespace AzQtComponents
             i.key()->setStyleSheet(styleSheet);
             ++i;
         }
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 
     const QColor& StyleManager::getColorByName(const QString& name)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         return m_stylesheetPreprocessor->GetColorByName(name);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+        static QColor dummy;
+        return dummy;
+#endif // !defined(AZ_PLATFORM_LINUX)
     }
 } // namespace AzQtComponents
 

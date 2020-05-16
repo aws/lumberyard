@@ -51,7 +51,6 @@ namespace MNM
 }
 class CMNMPathfinder;
 class CNavigation;
-class CAIActionManager;
 class CSmartObjectManager;
 class CPerceptionManager;
 class CCommunicationManager;
@@ -69,9 +68,6 @@ class CollisionAvoidanceSystem;
 class CAIObjectManager;
 class WalkabilityCacheManager;
 class NavigationSystem;
-namespace AIActionSequence {
-    class SequenceManager;
-}
 class ClusterDetector;
 
 #ifdef CRYAISYSTEM_DEBUG
@@ -106,7 +102,6 @@ struct SAIEnvironment
     MNM::PathfinderNavigationSystemUser* pPathfinderNavigationSystemUser;
     CMNMPathfinder* pMNMPathfinder; // superseded by NavigationSystem - remove when all links are cut
     CNavigation* pNavigation; // superseded by NavigationSystem - remove when all links are cut
-    CAIActionManager* pAIActionManager;
     CSmartObjectManager* pSmartObjectManager;
 
     CPerceptionManager* pPerceptionManager;
@@ -122,7 +117,6 @@ struct SAIEnvironment
     CGroupManager* pGroupManager;
     CollisionAvoidanceSystem* pCollisionAvoidanceSystem;
     struct IMovementSystem* pMovementSystem;
-    AIActionSequence::SequenceManager* pSequenceManager;
     ClusterDetector* pClusterDetector;
 
 #ifdef CRYAISYSTEM_DEBUG

@@ -8,7 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import mock
+try:
+    import mock
+except ImportError:
+    import unittest.mock as mock
 import unittest
 from aztest.filters import FileApprover
 from aztest.errors import AzTestError
@@ -394,19 +397,28 @@ class FileApproverTests(unittest.TestCase):
             patterns = FileApprover.get_patterns_from_file("path/to/list")
 
     @mock.patch('os.path.exists')
-    @mock.patch('__builtin__.open')
-    def test_GetPatternsFromFile_FilenameGiven_OpenCalledWithFilenameAndReturnsList(self, mock_open, mock_path_exists):
+    def test_GetPatternsFromFile_FilenameGiven_OpenCalledWithFilenameAndReturnsList(self, mock_path_exists):
         mock_path_exists.return_value = True
         test_filename = "path/to/list"
-        test_file = ["line1\n", "line2\n", "line3\n"]
-        mock_open.return_value.__enter__.return_value.__iter__.return_value = iter(test_file)
+        test_data = "line1\nline2\nline3\n"
+        mock_open = mock.mock_open(read_data=test_data)
+        
+        try:
+            patcher = mock.patch('__builtin__.open', mock_open)
+            patcher.start()
+            mock_open.return_value.__iter__.return_value = test_data.splitlines()
+        except ImportError:  # py3
+            patcher = mock.patch('builtins.open', mock_open)
+            patcher.start()
+            
         expected_patterns = set(["line1", "line2", "line3"])
 
         patterns = FileApprover.get_patterns_from_file(test_filename)
 
         mock_open.assert_called_with(test_filename, 'r')
         self.assertSetEqual(expected_patterns, patterns)
-
+        patcher.stop()
+    
     def test_IsInList_FilenameIsNone_ReturnsFalse(self):
         in_list = FileApprover.is_in_list(None, ['pattern1'])
 

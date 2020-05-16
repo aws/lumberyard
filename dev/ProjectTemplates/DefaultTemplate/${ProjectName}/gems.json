@@ -14,12 +14,6 @@
             "_comment": "PBSreferenceMaterials"
         },
         {
-            "Path": "Gems/AWS",
-            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
-            "Version": "0.1.0",
-            "_comment": "AWS"
-        },
-        {
             "Path": "Gems/CloudCanvasCommon",
             "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
             "Version": "0.1.0",
@@ -72,12 +66,6 @@
             "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
             "Version": "0.1.0",
             "_comment": "LyShine"
-        },
-        {
-            "Path": "Gems/CloudCanvasCommon",
-            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
-            "Version": "0.1.0",
-            "_comment": "CloudCanvasCommon"
         },
         {
             "Path": "Gems/HttpRequestor",
@@ -224,16 +212,22 @@
             "_comment": "PrimitiveAssets"
         },
         {
-            "Path": "Gems/ImageProcessing",
-            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
-            "Version": "0.1.0",
-            "_comment": "ImageProcessing"
-        },
-        {
             "Path": "Gems/SliceFavorites",
             "Uuid": "1bfc7270d4a1490daac8aa8b072c4489",
             "Version": "0.1.0",
             "_comment": "SliceFavorites"
+        },
+        {
+            "Path": "Gems/ExpressionEvaluation",
+            "Uuid": "4c6f9df57ca2468f93c8d860ee6a1167",
+            "Version": "0.1.0",
+            "_comment": "ExpressionEvaluation"
+        },
+        {
+            "Path": "Gems/LegacyTerrain",
+            "Uuid": "c87f9fc3e7054f3482311da444e84456",
+            "Version": "0.1.0",
+            "_comment": "LegacyTerrain"
         },
         {
             "Path" : "${ProjectName}/Gem",

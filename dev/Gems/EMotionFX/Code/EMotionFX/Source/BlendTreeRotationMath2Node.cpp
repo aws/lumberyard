@@ -109,10 +109,12 @@ namespace EMotionFX
         }
 
         // If both x and y inputs have connections
-        MCore::Quaternion x = MCore::AzQuatToEmfxQuat(m_defaultValue);
-        MCore::Quaternion y = x;
+        //MCore::Quaternion x = MCore::AzQuatToEmfxQuat(m_defaultValue);
+        AZ::Quaternion x = m_defaultValue;
+        AZ::Quaternion y = x;
         if (mConnections.size() == 2)
         {
+
             x = GetInputQuaternion(animGraphInstance, INPUTPORT_X)->GetValue();
             y = GetInputQuaternion(animGraphInstance, INPUTPORT_Y)->GetValue();
         }
@@ -131,7 +133,7 @@ namespace EMotionFX
         }
 
         // Apply the operation
-        MCore::Quaternion quaternionResult;
+        AZ::Quaternion quaternionResult;
         m_calculateFunc(x, y, &quaternionResult);
 
         // Update the output value
@@ -151,25 +153,20 @@ namespace EMotionFX
     // The math functions
     //-----------------------------------------------
     // Multiply
-    void BlendTreeRotationMath2Node::CalculateMultiply(const MCore::Quaternion& inputA, const MCore::Quaternion& inputB, MCore::Quaternion* quaternionOutput)
+    void BlendTreeRotationMath2Node::CalculateMultiply(const AZ::Quaternion& inputA, const AZ::Quaternion& inputB, AZ::Quaternion* quaternionOutput)
     {
         *quaternionOutput = inputA * inputB;
     }
 
     // Inverse Multiply : X * Y^(-1)
-    void BlendTreeRotationMath2Node::CalculateInverseMultiply(const MCore::Quaternion& inputA, const MCore::Quaternion& inputB, MCore::Quaternion* quaternionOutput)
+    void BlendTreeRotationMath2Node::CalculateInverseMultiply(const AZ::Quaternion& inputA, const AZ::Quaternion& inputB, AZ::Quaternion* quaternionOutput)
     {
-        MCore::Quaternion invB = inputB;
-        invB.Inverse();
-        *quaternionOutput = inputA * invB;
+        *quaternionOutput = inputA * inputB.GetInverseFull();
     }
 
-    void BlendTreeRotationMath2Node::SetDefaultValue(const MCore::Quaternion& value)
+    void BlendTreeRotationMath2Node::SetDefaultValue(const AZ::Quaternion& value)
     {
-        m_defaultValue.SetW(value.w);
-        m_defaultValue.SetX(value.x);
-        m_defaultValue.SetY(value.y);
-        m_defaultValue.SetZ(value.z);
+        m_defaultValue = value;
     }
 
     void BlendTreeRotationMath2Node::Reflect(AZ::ReflectContext* context)

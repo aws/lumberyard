@@ -98,6 +98,7 @@ namespace Physics
                 ->Field("StepHeight", &CharacterConfiguration::m_stepHeight)
                 ->Field("MinDistance", &CharacterConfiguration::m_minimumMovementDistance)
                 ->Field("DirectControl", &CharacterConfiguration::m_directControl)
+                ->Field("ColliderTag", &CharacterConfiguration::m_colliderTag)
             ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -125,6 +126,8 @@ namespace Physics
                     "Minimum Movement Distance", "To avoid jittering, the controller will not attempt to move distances below this")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.001f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_colliderTag,
+                        "Collider Tag", "Used to identify the collider associated with the character controller")
                 ;
             }
         }

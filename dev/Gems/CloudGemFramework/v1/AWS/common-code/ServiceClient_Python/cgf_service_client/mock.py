@@ -12,14 +12,12 @@
 
 # Python
 import functools
-import imp
-import sys
 
 # import the real mock module even though this module is also named mock
-# sys.path[1:] removes '.' from the path, so the local module isn't found
-f, pathname, desc = imp.find_module('mock', sys.path[1:])
-real_mock = imp.load_module('real_mock', f, pathname, desc)
-if f: f.close() 
+from unittest import mock as real_mock
+
+# Python 3 Compatibility
+import six  # For iteritems
 
 # ServiceClient
 import cgf_service_client
@@ -57,20 +55,18 @@ def patch():
     '''
     return MockServiceClient()
 
-class MockServiceClient(object):
 
+class MockServiceClient(object):
 
     def __init__(self):
         # We maintain a mapping from url to MockPathContext objects. Each
         # unique url gets an unique context. The context provides the
         # MagicMock used to mock the http methods (GET, etc.) in all Path 
-        # objects initialied with that url.
+        # objects initialized with that url.
         self.__context_map = {}
-
 
     # when used as a function decorator
     def __call__(self, func):
-
         my_self = self
 
         @functools.wraps(func)
@@ -81,14 +77,12 @@ class MockServiceClient(object):
 
         return wrapper
 
-
     # when used as a context object
     def __enter__(self):
         self.__patchers = self.__make_patchers()
         for patcher in self.__patchers: 
             patcher.start()
         return self
-
 
     # when used as a context object
     def __exit__(self, *args, **kwargs):
@@ -98,11 +92,10 @@ class MockServiceClient(object):
 
 
     def __make_patchers(self):
-
-        # Method that will be calld to create new instances of Path objcets
+        # Method that will be called to create new instances of Path objects
         def new_path(url, **kwargs):
 
-            # Get the context for the url, creting them as necessary.
+            # Get the context for the url, creating them as necessary.
             mock_context = self.__context_map.get(url)
             if mock_context is None:
                 mock_context = MockPathContext(url)
@@ -113,13 +106,12 @@ class MockServiceClient(object):
 
         # Patch the Path constructor method so that it calls the method above instead.
         return (
-            real_mock.patch('cgf_service_client.path.Path', side_effect = new_path),
-            real_mock.patch('cgf_service_client.Path', side_effect = new_path)
+            real_mock.patch('cgf_service_client.path.Path', side_effect=new_path),
+            real_mock.patch('cgf_service_client.Path', side_effect=new_path)
         )
 
-
     def for_url(self, url):
-        return cgf_service_client.Path(url) # should be patched by now, so a Mockpath is created
+        return cgf_service_client.Path(url)  # should be patched by now, so a Mockpath is created
 
 
 class MockPathContext(object):
@@ -159,9 +151,7 @@ class MockPathContext(object):
 
 class HttpMethodMock(object):
 
-
     def __init__(self, mock_path, call_configs, shared_mock):
-
         # completely wrap the shared_mock
         # from https://stackoverflow.com/questions/1443129/completely-wrap-an-object-in-python
 
@@ -178,48 +168,40 @@ class HttpMethodMock(object):
         self.__shared_mock = shared_mock
         self.__return_data = None
 
-
     def _get_child_mock(self, **kw):
         # Override so that any mock objects created by the mock are real MagicMock 
-        # objects, not our warapper.
+        # objects, not our wrapper.
         return real_mock.MagicMock(**kw)
-
 
     @property
     def return_json(self):
-        '''Dict that will be wrapped by a Data object and returned when the method is called,
-        or a list of dict that will be returned by a sequence of calls.'''
+        """Dict that will be wrapped by a Data object and returned when the method is called,
+        or a list of dict that will be returned by a sequence of calls."""
         return self.__return_data
-
 
     @return_json.setter
     def return_json(self, value):
         self.__return_data = value
         if isinstance(value, list):
-            self.side_effect = [ Data(entry, read_only = True, PATH = self.__mock_path, RESPONSE = real_mock.MagicMock(name='response')) for entry in value ]
+            self.side_effect = [Data(entry, read_only=True, PATH = self.__mock_path, RESPONSE=real_mock.MagicMock(name='response')) for entry in value]
         else:
-            self.return_value = Data(value, read_only = True, PATH = self.__mock_path, RESPONSE = real_mock.MagicMock(name='response')) 
-
+            self.return_value = Data(value, read_only=True, PATH = self.__mock_path, RESPONSE=real_mock.MagicMock(name='response'))
 
     def __call__(self, *args, **kwargs):
         self.__call_configs.append(self.__mock_path.config)
         result = self.__shared_mock(*args, **kwargs)
         return result
 
-
     @property
     def mock_call_configs(self):
         return self.__call_configs
-
 
     def assert_all_calls_have_config_containing(self, **kwargs):
         for call_config in self.__call_configs:
             self.__assert_call_config_contains(call_config, kwargs)
 
-
     def __assert_call_config_contains(self, call_config, kwargs):
-
-        for k, v in kwargs.iteritems():
+        for k, v in six.iteritems(kwargs):
             
             assert k in call_config.DATA, 'Expected {} configuration to include a value for {}, but there is no value.'.format(
                 self._mock_name,
@@ -234,7 +216,6 @@ class HttpMethodMock(object):
             )
 
 
-
 class MockPath(cgf_service_client.Path):
 
     def __init__(self, mock_context, url, **kwargs):
@@ -243,5 +224,3 @@ class MockPath(cgf_service_client.Path):
 
     def __repr__(self):
         return 'MockPath({})'.format(str(self))
-
-    

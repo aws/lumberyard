@@ -13,7 +13,9 @@
 
 #include <AzQtComponents/Components/StyleManager.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // disable warnings spawned by QT
 #include <QtWidgets/private/qstylesheetstyle_p.h>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
@@ -45,6 +47,8 @@ namespace AzQtComponents
         template <typename T, typename ...Args>
         void repolishWhenPropertyChanges(T* widget, void (T::*signal)(Args...))
         {
+#if !defined(AZ_PLATFORM_LINUX)
+            
             QObject::connect(widget, signal, widget, [widget]() {
                 if (auto styleSheet = StyleManager::styleSheetStyle(widget))
                 {
@@ -55,6 +59,7 @@ namespace AzQtComponents
                     styleSheet->repolish(widget);
                 }
             });
+#endif // !defined(AZ_PLATFORM_LINUX)
         }
     } // namespace StyleHelpers
 } // namespace AzQtComponents

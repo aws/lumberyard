@@ -124,7 +124,7 @@ namespace AZ
                     // The Mesh Advanced Rules were previously invalidly applied to any group containing a vertex color stream, and should be cleaned up if unnecessarily added to existing data.
                     // We use a list to track indices of rules to remove in a separate pass since the RuleContainer does not have direct iterator access.
                     bool isValidGroupType = group.RTTI_IsTypeOf(DataTypes::IMeshGroup::TYPEINFO_Uuid()) || group.RTTI_IsTypeOf(DataTypes::ISkinGroup::TYPEINFO_Uuid());
-                    AZStd::list<size_t> rulesToRemove;
+                    AZStd::vector<size_t> rulesToRemove;
 
                     for (size_t index = 0; index < ruleCount; ++index)
                     {
@@ -142,9 +142,11 @@ namespace AZ
                         }
                     }
 
-                    for (size_t index : rulesToRemove)
-                    {
-                        rules.RemoveRule(index);
+                    // Remove in reversed order, as otherwise the indices will be wrong. For example if we remove index 3, then index 6 would really be 5 afterwards.
+                    // By doing this in reversed order we remove items at the end of the list first so it won't impact the indices of previous ones.
+                    for (AZStd::vector<size_t>::reverse_iterator it = rulesToRemove.rbegin(); it != rulesToRemove.rend(); ++it)
+                    { 
+                        rules.RemoveRule(*it);
                     }
                 }
             }

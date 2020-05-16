@@ -258,7 +258,7 @@ namespace AZ
             ///
             /// Retrieves the current index into the VR system's swapchain that should be used. 
             /// This only really need to be overridden by VR implementations that keep track
-            /// of an internal swapchain like Oculus. OpenVR and OSVR will handle swapchains 
+            /// of an internal swapchain like Oculus. OpenVR will handle swapchains 
             /// internally and can just return 0.
             ///
             virtual AZ::u32 GetSwapchainIndex(const EStereoEye& eye) { return 0; }

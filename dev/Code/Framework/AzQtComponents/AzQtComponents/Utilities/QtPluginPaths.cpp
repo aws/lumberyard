@@ -36,6 +36,12 @@
 #include <unistd.h>
 #endif
 
+#if defined(AZ_PLATFORM_LINUX)
+#include <libgen.h>
+#include <unistd.h>
+#endif
+
+
 namespace AzQtComponents
 {
 
@@ -78,6 +84,20 @@ namespace AzQtComponents
         azstrcpy(appPath, AZ_MAX_PATH_LEN, applicationDir.toUtf8().data());
         azstrcat(appPath, AZ_MAX_PATH_LEN, "/qtlibs/plugins");
         QCoreApplication::addLibraryPath(appPath);
+#elif defined(AZ_PLATFORM_LINUX)
+
+        char appPath[AZ_MAX_PATH_LEN] = { 0 };
+        unsigned int bufSize = AZ_MAX_PATH_LEN;
+        // http://man7.org/linux/man-pages/man5/proc.5.html
+        size_t pathLen = readlink("/proc/self/exe", appPath, bufSize);
+
+        const char* exedir = dirname(appPath);
+        QString applicationDir = exedir;
+
+        azstrcpy(appPath, AZ_MAX_PATH_LEN, applicationDir.toUtf8().data());
+        azstrcat(appPath, AZ_MAX_PATH_LEN, "/qtlibs/plugins");
+        QCoreApplication::addLibraryPath(appPath);
+
 #else
 #error need to call QApplication::addLibraryPath with the path to where the platform-specific qt plugins folder is.
 #endif

@@ -170,17 +170,29 @@ namespace EMotionFX
                 }
 
                 subMotion->CreatePosTrack();
-                subMotion->CreateScaleTrack();
                 subMotion->CreateRotTrack();
 
-                EMotionFX::KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* posTrack = subMotion->GetPosTrack();
-                EMotionFX::KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* scaleTrack = subMotion->GetScaleTrack();
-                EMotionFX::KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* rotTrack = subMotion->GetRotTrack();
+                EMFX_SCALECODE
+                (
+                    subMotion->CreateScaleTrack();
+                )
 
-                if (!posTrack || !scaleTrack || !rotTrack)
-                {
-                    return SceneEvents::ProcessingResult::Failure;
-                }
+                EMotionFX::KeyTrackLinear<AZ::Vector3, AZ::Vector3>* posTrack = subMotion->GetPosTrack();
+                EMotionFX::KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>* rotTrack = subMotion->GetRotTrack();
+
+                #ifndef EMFX_SCALE_DISABLED
+                    EMotionFX::KeyTrackLinear<AZ::Vector3, AZ::Vector3>* scaleTrack = subMotion->GetScaleTrack();
+                    if (!posTrack || !scaleTrack || !rotTrack)
+                    {
+                        return SceneEvents::ProcessingResult::Failure;
+                    }
+                #else
+                    if (!posTrack || !rotTrack)
+                    {
+                        return SceneEvents::ProcessingResult::Failure;
+                    }
+                #endif
+
 
                 const AZ::u32 sceneFrameCount = aznumeric_caster(animation->GetKeyFrameCount());
                 AZ::u32 startFrame, endFrame;
@@ -210,8 +222,12 @@ namespace EMotionFX
                 const AZ::u32 numFrames = (endFrame - startFrame) + 1;
 
                 posTrack->SetNumKeys(numFrames);
-                scaleTrack->SetNumKeys(numFrames);
                 rotTrack->SetNumKeys(numFrames);
+
+                EMFX_SCALECODE
+                (
+                    scaleTrack->SetNumKeys(numFrames);
+                )
 
                 // Get the bind pose transform in local space.
                 AZ::Transform bindSpaceLocalTransform;
@@ -254,21 +270,28 @@ namespace EMotionFX
                     
                     AZ::Transform boneTransformNoScale(boneTransform);
                     AZ::Vector3    position = coordSysConverter.ConvertVector3(boneTransform.GetTranslation());
-                    AZ::Vector3    scale    = coordSysConverter.ConvertScale(boneTransformNoScale.ExtractScaleExact());
                     AZ::Quaternion rotation = coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(boneTransformNoScale));
+                    AZ::Vector3 scale = coordSysConverter.ConvertScale(boneTransformNoScale.ExtractScaleExact());
                     
                     // Set the pose when this is the first frame.
                     // This is used as optimization so that poses or non-animated submotions do not need any key tracks.
                     if (frame == 0)
                     {
                         subMotion->SetPosePos(position);
-                        subMotion->SetPoseRot(MCore::AzQuatToEmfxQuat(rotation));
-                        subMotion->SetPoseScale(scale);
+                        subMotion->SetPoseRot(rotation);
+
+                        EMFX_SCALECODE
+                        (
+                            subMotion->SetPoseScale(scale);
+                        )
                     }
 
-                    posTrack->SetKey(frame, time, AZ::PackedVector3f(position));
-                    rotTrack->SetKey(frame, time, MCore::AzQuatToEmfxQuat(rotation));
-                    scaleTrack->SetKey(frame, time, AZ::PackedVector3f(scale));
+                    posTrack->SetKey(frame, time, position);
+                    rotTrack->SetKey(frame, time, rotation);
+                    EMFX_SCALECODE
+                    (
+                        scaleTrack->SetKey(frame, time, scale);
+                    )
                 }
 
                 // Set the bind pose transform.
@@ -277,11 +300,15 @@ namespace EMotionFX
                 const AZ::Vector3    bindScale = coordSysConverter.ConvertScale(bindBoneTransformNoScale.ExtractScaleExact());
                 const AZ::Quaternion bindRot   = coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(bindBoneTransformNoScale));
                 subMotion->SetBindPosePos(bindPos);
-                subMotion->SetBindPoseRot(MCore::AzQuatToEmfxQuat(bindRot));
-                subMotion->SetBindPoseScale(bindScale);
+                subMotion->SetBindPoseRot(bindRot);
+
+                EMFX_SCALECODE
+                (
+                    subMotion->SetBindPoseScale(bindScale);
+                )
 
                 posTrack->Init();
-                if (!posTrack->CheckIfIsAnimated(AZ::PackedVector3f(subMotion->GetPosePos()), MCore::Math::epsilon))
+                if (!posTrack->CheckIfIsAnimated(subMotion->GetPosePos(), MCore::Math::epsilon))
                 {
                     subMotion->RemovePosTrack();
                 }
@@ -306,18 +333,21 @@ namespace EMotionFX
                     }
                 }
 
-                scaleTrack->Init();
-                if (!scaleTrack->CheckIfIsAnimated(AZ::PackedVector3f(subMotion->GetPoseScale()), MCore::Math::epsilon))
-                {
-                    subMotion->RemoveScaleTrack();
-                }
-                else
-                {
-                    if (maxScaleError > 0.0f)
+                EMFX_SCALECODE
+                (
+                    scaleTrack->Init();
+                    if (!scaleTrack->CheckIfIsAnimated(subMotion->GetPoseScale(), MCore::Math::epsilon))
                     {
-                        scaleTrack->Optimize(maxScaleError);
+                        subMotion->RemoveScaleTrack();
                     }
-                }
+                    else
+                    {
+                        if (maxScaleError > 0.0f)
+                        {
+                            scaleTrack->Optimize(maxScaleError);
+                        }
+                    }
+                )
 
                 context.m_motion.AddSubMotion(subMotion);
             }

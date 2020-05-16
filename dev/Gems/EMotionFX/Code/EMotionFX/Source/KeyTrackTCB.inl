@@ -370,15 +370,15 @@ MCORE_INLINE ReturnType KeyTrackTCB<ReturnType, StorageType>::Interpolate(uint32
 
 
 template <>
-MCORE_INLINE MCore::Quaternion KeyTrackTCB<MCore::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
+MCORE_INLINE AZ::Quaternion KeyTrackTCB<AZ::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
 {
     // get the keys to interpolate between
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
 
     // get the two quaternions
-    MCore::Quaternion a = firstKey.GetValue();
-    MCore::Quaternion b = nextKey.GetValue();
+    AZ::Quaternion a = firstKey.GetValue();
+    AZ::Quaternion b = nextKey.GetValue();
 
     // check if both quaternions are on the same hypersphere or not, if not, invert one
     if (a.Dot(b) < 0.0f)
@@ -397,10 +397,10 @@ MCORE_INLINE MCore::Quaternion KeyTrackTCB<MCore::Quaternion, MCore::Compressed1
     const float t2 = t * t;
     const float t3 = t2  * t;
 
-    return ((2 * t3 + -3 * t2 + 1) * a.LogN()  +
-            (-2 * t3 +  3 * t2)     * b.LogN()  +
+    return MCore::Exp((2 * t3 + -3 * t2 + 1) * MCore::LogN(a)  +
+            (-2 * t3 +  3 * t2)     * MCore::LogN(b)  +
             (t3 + -2 * t2 + t) * mTangents[startKey] +
-            (t3 + -t2)       * mTangents[startKey + 1]).Exp().Normalize();
+            (t3 + -t2)       * mTangents[startKey + 1]).GetNormalized();
 }
 
 

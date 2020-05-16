@@ -36,6 +36,8 @@ namespace WinWidget
         WinWidgetCreateCall GetCreateCall(WinWidgetId thisId) const;
         size_t GetIndexForId(WinWidgetId thisId) const;
 
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         std::vector<WinWidgetCreateCall> m_createCalls;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     };
 }

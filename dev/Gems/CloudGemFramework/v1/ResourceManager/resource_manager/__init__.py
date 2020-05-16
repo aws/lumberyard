@@ -10,15 +10,5 @@
 #
 # $Revision: #1 $
 
-# These imports alias various submodules. They are used
-# by the Lumberyard IDE.
-
-from context import Context
-from util import Args
-
-import project
-import deployment
-import mappings
-
 
 

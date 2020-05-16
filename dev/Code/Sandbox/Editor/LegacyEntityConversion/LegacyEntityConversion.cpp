@@ -18,6 +18,9 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Components/CameraBus.h>
+#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/SystemBus.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
@@ -25,6 +28,7 @@
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 
 #include <QDateTime>
+#include <QElapsedTimer>
 
 #include <LmbrCentral/Ai/NavigationAreaBus.h>
 #include <LmbrCentral/Rendering/DecalComponentBus.h>
@@ -1393,7 +1397,7 @@ namespace LegacyConversionInternal
         AZ::ComponentTypeList componentList = { "{FC315B86-3280-4D03-B4F0-5553D7D08432}" }; //EditorMeshComponent
         AZ::LegacyConversion::LegacyConversionRequestBus::BroadcastResult(result, &AZ::LegacyConversion::LegacyConversionRequests::CreateConvertedEntity, entityToConvert, true, componentList);
 
-        AZ::Entity *entity = result.GetValue();
+        AZ::Entity* entity = result.GetValue();
         AZ::EntityId entityId = entity->GetId();
 
         //Change name to something reasonable like "GeomCache2_FirstFrameStandin"
@@ -1460,7 +1464,7 @@ namespace LegacyConversionInternal
             return (result.GetError() == AZ::LegacyConversion::CreateEntityResult::FailedNoParent) ? AZ::LegacyConversion::LegacyConversionResult::Ignored : AZ::LegacyConversion::LegacyConversionResult::Failed;
         }
 
-        AZ::Entity *entity = result.GetValue();
+        AZ::Entity* entity = result.GetValue();
         AZ::EntityId entityId = entity->GetId();
 
         //Retrieve geom cache asset
@@ -1624,6 +1628,66 @@ namespace LegacyConversionInternal
             
         return LegacyConversionResult::HandledDeleteEntity;
     }
+
+    static AZStd::string Utf8FromQString(const QString& qt)
+    {
+        const QByteArray utf8 = qt.toUtf8();
+        return AZStd::string(utf8.constData(), utf8.size());
+    }
+
+    // Set the material selection in the collider configuration based the surface type name
+    static void SetColliderMaterialSelection(IMaterial* cryMaterial, Physics::ColliderConfiguration& configuration)
+    {
+        const AZ::Data::Asset<Physics::MaterialLibraryAsset>* defaultMaterialLibrary = AZ::Interface<Physics::System>::Get()->GetDefaultMaterialLibraryAssetPtr();
+
+        if (!cryMaterial)
+        {
+            AZ_Error("LegacyConversion", false,
+                "Invalid material when converting object");
+            return;
+        }
+
+        ISurfaceType* crySurfaceType = cryMaterial->GetSurfaceType();
+        if (!crySurfaceType)
+        {
+            AZ_Error("LegacyConversion", false,
+                "SetColliderMaterialSelection: No surface type for material %s", cryMaterial->GetName());
+            return;
+        }
+
+        if (!defaultMaterialLibrary->GetId().IsValid() || !defaultMaterialLibrary->Get())
+        {
+            AZ_Error("LegacyConversion", false,
+                "SetColliderMaterialSelection: Invalid physics default material library: %s, check if loaded", defaultMaterialLibrary->GetHint().c_str());
+            return;
+        }
+
+        AZStd::string_view surfaceNameLY = crySurfaceType->GetName();
+
+        // CryMaterials start with "mat_", we removed this part in our Physics Materials
+        const AZStd::string_view matStr = "mat_";
+        if (surfaceNameLY.starts_with(matStr))
+        {
+            surfaceNameLY.remove_prefix(matStr.size());
+        }
+
+        Physics::MaterialFromAssetConfiguration material;
+        if (defaultMaterialLibrary->Get()->GetDataForMaterialName(surfaceNameLY, material))
+        {
+            configuration.m_materialSelection.SetMaterialLibrary(defaultMaterialLibrary->GetId());
+            configuration.m_materialSelection.SetMaterialId(material.m_id);
+        }
+        else
+        {
+            AZ_Error("LegacyConversion", false,
+                "SetColliderMaterialSelection: Unable to find physics material with same crysurface name: %s", crySurfaceType->GetName());
+        }
+    }
+
+    static void SetCollisionParamsForCollider(Physics::ColliderConfiguration& colliderConfig)
+    {
+        // Set up your own Collision parameters here
+    }
 }
 
 namespace AZ
@@ -1634,7 +1698,8 @@ namespace AZ
 
         Converter::Converter()
         {
-            BusConnect();
+            LegacyConversionEventBus::Handler::BusConnect();
+            AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
         }
 
         typedef LegacyConversionResult(* EntityConvertFunc)(CBaseObject* entityToConvert);
@@ -1692,6 +1757,115 @@ namespace AZ
         bool Converter::AfterConversionEnds()
         {
             return true;
+        }
+
+        void Converter::OnSaveStreamForGameBegin(AZ::IO::GenericStream& gameStream, AZ::DataStream::StreamType streamType, AZStd::vector<AZStd::unique_ptr<AZ::Entity>>& levelEntities)
+        {
+            Physics::System* physSystem = AZ::Interface<Physics::System>::Get();
+            if (!physSystem)
+            {
+                AZ_Error("LegacyConversion", false,
+                    "Can't convert CryPhysics object, no Physics system is available. Make sure a Physics Gem is enabled(ex: PhysX)");
+                return;
+            }
+
+            ConvertIngameDesignerObjects(levelEntities);
+        }
+
+        // Conversion of Designer objects to entities that live in the Game mode only
+        void Converter::ConvertIngameDesignerObjects(AZStd::vector<AZStd::unique_ptr<AZ::Entity>>& levelEntities)
+        {
+            QElapsedTimer timer;
+            timer.start();
+
+            AZ::u32 designerObjectsCounter = 0;
+
+            DynArray<CBaseObject*> objects;
+            GetIEditor()->GetObjectManager()->GetObjects(objects);
+            for (CBaseObject* entityToConvert : objects)
+            {
+                CObjectClassDesc* classDesc = entityToConvert->GetClassDesc();
+                if (!classDesc)
+                {
+                    continue;
+                }
+
+                if (GetIEditor()->GetClassFactory()->FindClass("Designer") == classDesc)
+                {
+                    IStatObj* statObj = entityToConvert->GetIStatObj();
+                    if (statObj == nullptr)
+                    {
+                        continue;
+                    }
+
+                    const QString designerObjectName = entityToConvert->GetName();
+
+                    // Create the run time entity with required components
+                    AZ::Entity* exportEntity = aznew AZ::Entity(designerObjectName.toUtf8().data());
+
+                    // Set Transform
+                    const Vec3 position = entityToConvert->GetPos();
+                    const Quat rotation = entityToConvert->GetRotation();
+                    const Vec3 scale = entityToConvert->GetScale();
+
+                    AZ::Transform newEntityTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                        LYQuaternionToAZQuaternion(rotation),
+                        LYVec3ToAZVec3(position));
+                    newEntityTransform.MultiplyByScale(LYVec3ToAZVec3(scale));
+
+                    auto transformComponent = exportEntity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+                    transformComponent->SetWorldTM(newEntityTransform);
+
+                    // Set the transform component to be static.
+                    SetVarHierarchy(exportEntity, AZ::AzTypeInfo<AzToolsFramework::Components::TransformComponent>::Uuid(),
+                        { AZ_CRC("IsStatic", 0x460427c9) }, true);
+
+                    exportEntity->Init();
+
+                    // Retrieve and convert mesh data to LY
+                    IIndexedMesh* mesh = statObj->GetIndexedMesh(true);
+                    AZStd::vector<AZ::Vector3> vertexData;
+                    AZStd::vector<AZ::u32> faceIndexValues;
+                    int vertCount = mesh->GetMesh()->GetVertexCount();
+                    vertexData.resize(vertCount);
+                    for (int i = 0; i < vertCount; ++i)
+                    {
+                        vertexData[i] = LYVec3ToAZVec3(mesh->GetMesh()->m_pPositions[i]);
+                    }
+
+                    // Cook it, Bon appetit
+                    AZStd::vector<AZ::u8> cookedData;
+                    bool cookSuccess = AZ::Interface<Physics::System>::Get()->CookTriangleMeshToMemory(vertexData.data(), vertexData.size(), mesh->GetMesh()->m_pIndices, mesh->GetMesh()->GetIndexCount(), cookedData);
+
+                    if (cookSuccess)
+                    {
+                        Physics::ColliderConfiguration colliderConfiguration;
+                        SetColliderMaterialSelection(statObj->GetMaterial(), colliderConfiguration);
+                        SetCollisionParamsForCollider(colliderConfiguration);
+
+                        Physics::CookedMeshShapeConfiguration shapeConfiguration;
+                        shapeConfiguration.SetCookedMeshData(cookedData.data(), cookedData.size(), Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh);
+
+                        AZ::Interface<Physics::SystemRequests>::Get()->AddColliderComponentToEntity(exportEntity, colliderConfiguration, shapeConfiguration, true);
+                    }
+                    else
+                    {
+                        AZ_Error("PhysX", false, "Failed to convert the Designer object %s to a pxmesh.",
+                            Utf8FromQString(designerObjectName).c_str());
+                    }
+
+                    exportEntity->Activate();
+                    levelEntities.push_back(AZStd::unique_ptr<AZ::Entity>(AZStd::move(exportEntity)));
+
+                    designerObjectsCounter++;
+                }
+            }
+
+            if (designerObjectsCounter > 0)
+            {
+                AZ_TracePrintf("PhysX", "PreProcessExportSlice: Conversion %d designer objects took %f seconds.",
+                    designerObjectsCounter, timer.elapsed() / 1000.0f);
+            }
         }
 
     }

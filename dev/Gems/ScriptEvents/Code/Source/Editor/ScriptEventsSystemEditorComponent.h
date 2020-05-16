@@ -18,10 +18,17 @@
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 #include <ScriptEvents/ScriptEventsAsset.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <ScriptEvents/ScriptEventsAssetRef.h>
+
+namespace AzToolsFramework { class PropertyHandlerBase; }
+
+#if defined(SCRIPTEVENTS_EDITOR)
 
 namespace ScriptEventsEditor
 {
 
+    // This is the ScriptEvent asset handler used by the Asset Editor, it does additional validation that is not
+    // needed when saving the asset through the builder
     class ScriptEventAssetHandler 
         : public AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>
         , AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::MultiHandler
@@ -33,13 +40,21 @@ namespace ScriptEventsEditor
 
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
 
+        bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
+        {
+            return AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>::LoadAssetData(asset, stream, assetLoadFilterCB);
+        }
+
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
         bool SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream) override;
+
 
         // AssetEditorValidationRequestBus::Handler
         AZ::Outcome<bool, AZStd::string> IsAssetDataValid(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void PreAssetSave(AZ::Data::Asset<AZ::Data::AssetData> asset);
         void BeforePropertyEdit(AzToolsFramework::InstanceDataNode* node, AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+
+        void SetSaveAsBinary(bool saveAsBinary) { m_saveAsBinary = saveAsBinary; }
 
     private:
 
@@ -50,16 +65,24 @@ namespace ScriptEventsEditor
         };
 
         AZStd::unordered_map< AZ::Data::AssetId, PreviousNameSettings > m_previousEbusNames;
+
+        bool m_saveAsBinary;
     };
 
-
-    class SystemComponent 
-        : public ScriptEvents::SystemComponent
+    class ScriptEventEditorSystemComponent
+        : public AZ::Component
     {
     public:
-        AZ_COMPONENT(SystemComponent, "{8BAD5292-56C3-4657-99F2-515A2BDE23C1}", ScriptEvents::SystemComponent);
+        AZ_COMPONENT(ScriptEventEditorSystemComponent, "{8BAD5292-56C3-4657-99F2-515A2BDE23C1}");
+
+        ScriptEventEditorSystemComponent() = default;
+        ScriptEventEditorSystemComponent(const ScriptEventEditorSystemComponent&) = delete;
 
     protected:
+
+        static void Reflect(AZ::ReflectContext* context);
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
@@ -68,32 +91,12 @@ namespace ScriptEventsEditor
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-        void RegisterAssetHandler() override
-        {
-            m_editorAssetHandler = AZStd::make_unique<ScriptEventsEditor::ScriptEventAssetHandler>(ScriptEvents::ScriptEventsAsset::GetDisplayName(), ScriptEvents::ScriptEventsAsset::GetGroup(), ScriptEvents::ScriptEventsAsset::GetFileFilter(), AZ::AzTypeInfo<ScriptEventsEditor::SystemComponent>::Uuid());
-
-            AZ::Data::AssetType assetType(azrtti_typeid<ScriptEvents::ScriptEventsAsset>());
-            if (AZ::Data::AssetManager::Instance().GetHandler(assetType))
-            {
-                return; // Asset Type already handled
-            }
-
-            AZ::Data::AssetManager::Instance().RegisterHandler(m_editorAssetHandler.get(), assetType);
-
-            // Use AssetCatalog service to register ScriptEvent asset type and extension
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddAssetType, assetType);
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptEvents::ScriptEventsAsset::GetFileFilter());
-        }
-
-        void UnregisterAssetHandler() override
-        {
-            AZ::Data::AssetManager::Instance().UnregisterHandler(m_editorAssetHandler.get());
-        }
-
         AZStd::vector<AZStd::unique_ptr<AzToolsFramework::PropertyHandlerBase>> m_propertyHandlers;
 
-        AZStd::unique_ptr<AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>> m_editorAssetHandler;
+        // Script Event Assets
+        AZStd::unordered_map<ScriptEvents::ScriptEventKey, AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>> m_scriptEvents;
 
     };
 }
+
+#endif

@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #include <AzCore/EBus/EBus.h>
 
@@ -38,6 +38,11 @@ namespace GridMate
         * Called when new GameLift session is initiated on a local , you can start hosting new session at this point
         */
         virtual void OnGameLiftGameSessionStarted(GameLiftServerService*, const Aws::GameLift::Server::Model::GameSession&) {}
+
+        /*!
+        * Called when GameLift session is updated with matchmaker event
+        */
+        virtual void OnGameLiftGameSessionUpdated(GameLiftServerService*, const Aws::GameLift::Server::Model::UpdateGameSession&) {}
 
         /*!
         * Called when GameLift server forced to terminate (via web dashboard or other admin tools)

@@ -20,6 +20,7 @@
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/std/string/wildcard.h>
+#include <AzCore/Component/TransformBus.h>
 
 namespace AzToolsFramework
 {
@@ -29,16 +30,17 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<EditorEntitySearchComponent>();
+                serializeContext->Class<EditorEntitySearchComponent, AZ::Component>();
 
                 serializeContext->Class<EntitySearchFilter>()
                     ->Version(1)
                     ->Field("Names", &EntitySearchFilter::m_names)
                     ->Field("NamesCaseSensitive", &EntitySearchFilter::m_namesCaseSensitive)
-                    ->Field("ComponentTypeIds", &EntitySearchFilter::m_componentTypeIds)
+                    ->Field("Components", &EntitySearchFilter::m_components)
                     ->Field("ComponentMatchAll", &EntitySearchFilter::m_mustMatchAllComponents)
                     ->Field("Roots", &EntitySearchFilter::m_roots)
                     ->Field("NameIsRootBased", &EntitySearchFilter::m_namesAreRootBased)
+                    ->Field("Aabb", &EntitySearchFilter::m_aabb)
                     ;
             }
 
@@ -52,7 +54,7 @@ namespace AzToolsFramework
                         ->Attribute(AZ::Script::Attributes::Alias, "names")
                     ->Property("NamesCaseSensitive", BehaviorValueProperty(&EntitySearchFilter::m_namesCaseSensitive))
                         ->Attribute(AZ::Script::Attributes::Alias, "names_case_sensitive")
-                    ->Property("ComponentTypeIds", BehaviorValueProperty(&EntitySearchFilter::m_componentTypeIds))
+                    ->Property("Components", BehaviorValueProperty(&EntitySearchFilter::m_components))
                         ->Attribute(AZ::Script::Attributes::Alias, "components")
                     ->Property("ComponentMatchAll", BehaviorValueProperty(&EntitySearchFilter::m_mustMatchAllComponents))
                         ->Attribute(AZ::Script::Attributes::Alias, "components_match_all")
@@ -60,6 +62,8 @@ namespace AzToolsFramework
                         ->Attribute(AZ::Script::Attributes::Alias, "roots")
                     ->Property("NamesAreRootBased", BehaviorValueProperty(&EntitySearchFilter::m_namesAreRootBased))
                         ->Attribute(AZ::Script::Attributes::Alias, "names_are_root_based")
+                    ->Property("Aabb", BehaviorValueProperty(&EntitySearchFilter::m_aabb))
+                        ->Attribute(AZ::Script::Attributes::Alias, "aabb")
                     ;
 
                 behaviorContext->EBus<EditorEntitySearchBus>("SearchBus")
@@ -68,6 +72,7 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Script::Attributes::Module, "entity")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Event("SearchEntities", &EditorEntitySearchRequests::SearchEntities)
+                    ->Event("GetRootEditorEntities", &EditorEntitySearchRequests::GetRootEditorEntities)
                     ;
             }
         }
@@ -191,9 +196,17 @@ namespace AzToolsFramework
         void EditorEntitySearchComponent::FilterEntity(AZ::EntityId entityId, const SearchConditions& conditions, EntityIdSet& filteredEntities)
         {
             EntityIdSet tempEntities;
-
+            
             // Ignore root entity
             if (!entityId.IsValid() || entityId == AZ::EntityId(0))
+            {
+                return;
+            }
+
+            // Only return Editor Entities (for now)
+            bool isEditorEntity = false;
+            EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &EditorEntityContextRequests::IsEditorEntity, entityId);
+            if (!isEditorEntity)
             {
                 return;
             }
@@ -218,53 +231,12 @@ namespace AzToolsFramework
             // Note: it's early out, so order checks from least to most expensive
             for (AZ::EntityId tempEntityId : tempEntities)
             {
-                // Component Types
-                if (!conditions.m_filter.m_componentTypeIds.empty())
+                if (IsPositionContained(tempEntityId, conditions.m_filter.m_aabb) // AABB
+                    && AreComponentsMatched(tempEntityId, conditions.m_filter.m_components, conditions.m_filter.m_mustMatchAllComponents) // Component Types and Property Values
+                    )
                 {
-                    if (conditions.m_filter.m_mustMatchAllComponents)
-                    {
-                        bool doesMatch = true;
-
-                        for (AZ::Uuid componentTypeId : conditions.m_filter.m_componentTypeIds)
-                        {
-                            bool hasComponent = false;
-                            EditorComponentAPIBus::BroadcastResult(hasComponent, &EditorComponentAPIRequests::HasComponentOfType, tempEntityId, componentTypeId);
-                            if (!hasComponent)
-                            {
-                                doesMatch = false;
-                                break;
-                            }
-                        }
-
-                        if (!doesMatch)
-                        {
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        bool doesMatch = false;
-
-                        for (AZ::Uuid componentTypeId : conditions.m_filter.m_componentTypeIds)
-                        {
-                            bool hasComponent = false;
-                            EditorComponentAPIBus::BroadcastResult(hasComponent, &EditorComponentAPIRequests::HasComponentOfType, tempEntityId, componentTypeId);
-
-                            if (hasComponent)
-                            {
-                                doesMatch = true;
-                                break;
-                            }
-                        }
-
-                        if (!doesMatch)
-                        {
-                            continue;
-                        }
-                    }
+                    filteredEntities.insert(tempEntityId);
                 }
-
-                filteredEntities.insert(tempEntityId);
             }
         }
 
@@ -313,6 +285,90 @@ namespace AzToolsFramework
                     FollowPathHelper(nextStep, tokenizedPath, result, caseSensitive, pathSize, ++currentIndex);
                 }
             }
+        }
+
+        bool EditorEntitySearchComponent::IsPositionContained(
+            AZ::EntityId entityId,
+            const AZ::Aabb& aabb) const
+        {
+            if (!aabb.IsValid())
+            {
+                return true;
+            }
+
+            AZ::Vector3 entityWorldPosition;
+            AZ::TransformBus::EventResult(entityWorldPosition, entityId, &AZ::TransformBus::Events::GetWorldTranslation);
+            return aabb.Contains(entityWorldPosition);
+        }
+
+        bool EditorEntitySearchComponent::AreComponentsMatched(
+            AZ::EntityId entityId,
+            const EntitySearchFilter::Components& components,
+            bool mustMatchAllComponents) const
+        {
+            if (components.empty())
+            {
+                return true;
+            }
+
+            bool doesMatch = !mustMatchAllComponents;
+
+            // check each component type/property values filter
+            for (auto& componentProperties : components)
+            {
+                // check if entity has any component matching the type       
+                bool hasComponent = false;
+                AZ::Uuid componentTypeId = componentProperties.first;
+                EditorComponentAPIBus::BroadcastResult(hasComponent, &EditorComponentAPIRequests::HasComponentOfType, entityId, componentTypeId);
+
+                // If must match all components, return false if any component's type/property values are not matched.
+                // If not must match all components, return true if any component's type/property value is matched.
+                doesMatch = hasComponent
+                    && (componentProperties.second.empty()
+                        || ArePropertyValuesOfComponentMatched(entityId, componentTypeId, componentProperties.second, mustMatchAllComponents));
+
+                if (doesMatch != mustMatchAllComponents)
+                {
+                    break;
+                }
+            }
+
+            return doesMatch;
+        }
+
+        bool EditorEntitySearchComponent::ArePropertyValuesOfComponentMatched(
+            AZ::EntityId entityId,
+            AZ::Uuid componentTypeId,
+            const EntitySearchFilter::ComponentProperties& componentProperties,
+            bool mustMatchAllComponents) const
+        {
+            EditorComponentAPIRequests::GetComponentsOutcome getComponentsOutcome;
+            EditorComponentAPIBus::BroadcastResult(getComponentsOutcome, &EditorComponentAPIRequests::GetComponentsOfType, entityId, componentTypeId);
+            const AZStd::vector<AZ::EntityComponentIdPair>& componentInstances = getComponentsOutcome.GetValueOr(AZStd::vector<AZ::EntityComponentIdPair>());
+
+            bool doesMatch = true;
+
+            // If must match all components, return false if one component's property value is not matched.
+            // If not must match all components, return true if one component's property value is matched.
+            for (auto& componentProperty : componentProperties)
+            {
+                doesMatch = componentInstances.end() != AZStd::find_if(componentInstances.begin(), componentInstances.end(),
+                    [&componentProperty](auto& componentInstance)
+                    {
+                        bool propertyMatched = false;
+                        EditorComponentAPIBus::BroadcastResult(propertyMatched, &EditorComponentAPIRequests::CompareComponentProperty,
+                            componentInstance, componentProperty.first.c_str(), componentProperty.second);
+                        return propertyMatched;
+                    }
+                );
+
+                if (doesMatch != mustMatchAllComponents)
+                {
+                    break;
+                }
+            }
+
+            return doesMatch;            
         }
 
     } // Components

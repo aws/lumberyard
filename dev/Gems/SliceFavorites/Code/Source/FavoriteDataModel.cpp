@@ -736,6 +736,23 @@ namespace SliceFavorites
         endInsertRows();
     }
 
+    void FavoriteDataModel::ProcessRemovedAssets()
+    {
+        if (m_removedAssets.empty())
+        {
+            return;
+        }
+
+        for (AZ::Data::AssetId assetId : m_removedAssets)
+        {
+            RemoveFavorite(assetId);
+        }
+
+        m_removedAssets.clear();
+
+        UpdateFavorites();
+    }
+
     void FavoriteDataModel::RemoveFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
     {
         if (!product)
@@ -979,6 +996,14 @@ namespace SliceFavorites
         {
             parentData = m_rootItem.get();
         }
+        else
+        {
+            // Don't allow drops onto entries that aren't folders
+            if (parentData->m_type != FavoriteData::FavoriteType::DataType_Folder)
+            {
+                return true;
+            }
+        }
 
         if (!parentData)
         {
@@ -1002,6 +1027,15 @@ namespace SliceFavorites
             GetSelectedIndicesFromMimeData(mimeList, data->data(FavoriteData::GetMimeType()));
 
             int rowOffset = 0;
+
+            // Preliminary check to avoid dropping entries on themselves
+            for (FavoriteData* movedChild : mimeList)
+            {
+                if (movedChild == parentData)
+                {
+                    return true;
+                }
+            }
 
             for (FavoriteData* movedChild : mimeList)
             {
@@ -1247,6 +1281,31 @@ namespace SliceFavorites
         return createIndex(favorite->row(), 0, const_cast<FavoriteData*>(favorite));
     }
 
+    bool FavoriteDataModel::IsDescendentOf(QModelIndex index, QModelIndex potentialAncestor)
+    {
+        if (!index.isValid() || !potentialAncestor.isValid())
+        {
+            return false;
+        }
+
+        if (index == potentialAncestor)
+        {
+            return false;
+        }
+
+        QModelIndex parent = index.parent();
+        while (parent.isValid())
+        {
+            if (parent == potentialAncestor)
+            {
+                return true;
+            }
+            parent = parent.parent();
+        }
+
+        return false;
+    }
+
     FavoriteData* FavoriteDataModel::GetFavoriteDataFromModelIndex(const QModelIndex& modelIndex) const
     {
         if (modelIndex.isValid())
@@ -1411,7 +1470,10 @@ namespace SliceFavorites
     {
         if (assetId.IsValid())
         {
-            RemoveFavorite(assetId);
+            // Add the asset to the removed list so that the removal is processed in the main thread.
+            m_removedAssets.push_back(assetId);
+            
+            QMetaObject::invokeMethod(this, "ProcessRemovedAssets", Qt::QueuedConnection);
         }
     }
 

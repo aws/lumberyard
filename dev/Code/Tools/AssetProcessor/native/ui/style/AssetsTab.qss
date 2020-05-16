@@ -16,11 +16,18 @@ QSplitter#jobDialogSplitter {
 
 /* FilteredSearchWidget */
 
-AzQtComponents--FilteredSearchWidget {
+AzQtComponents--FilteredSearchWidget#jobFilteredSearchWidget,
+AzQtComponents--FilteredSearchWidget#detailsFilterWidget,
+AzQtComponents--FilteredSearchWidget#assetDataFilteredSearchWidget {
     padding: 8px;
     background-color: rgb(40,40,40);
-
     qproperty-textFilterFillsWidth: False;
+}
+
+AzQtComponents--FilteredSearchWidget#assetDataFilteredSearchWidget {
+    padding: 8px;
+    background-color: rgb(40,40,40);
+    qproperty-textFilterFillsWidth: True;
 }
 
 AzQtComponents--FilteredSearchWidget #textSearchContainer,

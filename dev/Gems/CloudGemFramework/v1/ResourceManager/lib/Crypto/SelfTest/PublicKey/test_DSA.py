@@ -24,12 +24,7 @@
 
 """Self-test suite for Crypto.PublicKey.DSA"""
 
-__revision__ = "$Id$"
-
-import sys
 import os
-if sys.version_info[0] == 2 and sys.version_info[1] == 1:
-    from Crypto.Util.py21compat import *
 from Crypto.Util.py3compat import *
 
 import unittest
@@ -107,19 +102,30 @@ class DSATest(unittest.TestCase):
         self._test_signing(dsaObj)
         self._test_verification(dsaObj)
 
+    def test_construct_bad_key4(self):
+        (y, g, p, q) = [bytes_to_long(a2b_hex(param)) for param in (self.y, self.g, self.p, self.q)]
+        tup = (y, g, p+1, q)
+        self.assertRaises(ValueError, self.dsa.construct, tup)
+
+        tup = (y, g, p, q+1)
+        self.assertRaises(ValueError, self.dsa.construct, tup)
+
+        tup = (y, 1, p, q)
+        self.assertRaises(ValueError, self.dsa.construct, tup)
+
+    def test_construct_bad_key5(self):
+        (y, g, p, q, x) = [bytes_to_long(a2b_hex(param)) for param in (self.y, self.g, self.p, self.q, self.x)]
+        tup = (y, g, p, q, x+1)
+        self.assertRaises(ValueError, self.dsa.construct, tup)
+
+        tup = (y, g, p, q, q+10)
+        self.assertRaises(ValueError, self.dsa.construct, tup)
+
     def _check_private_key(self, dsaObj):
         # Check capabilities
         self.assertEqual(1, dsaObj.has_private())
         self.assertEqual(1, dsaObj.can_sign())
         self.assertEqual(0, dsaObj.can_encrypt())
-        self.assertEqual(0, dsaObj.can_blind())
-
-        # Check dsaObj.[ygpqx] -> dsaObj.key.[ygpqx] mapping
-        self.assertEqual(dsaObj.y, dsaObj.key.y)
-        self.assertEqual(dsaObj.g, dsaObj.key.g)
-        self.assertEqual(dsaObj.p, dsaObj.key.p)
-        self.assertEqual(dsaObj.q, dsaObj.key.q)
-        self.assertEqual(dsaObj.x, dsaObj.key.x)
 
         # Sanity check key data
         self.assertEqual(1, dsaObj.p > dsaObj.q)            # p > q
@@ -129,24 +135,16 @@ class DSATest(unittest.TestCase):
         self.assertEqual(1, 0 < dsaObj.x < dsaObj.q)       # 0 < x < q
 
     def _check_public_key(self, dsaObj):
-        k = a2b_hex(self.k)
-        m_hash = a2b_hex(self.m_hash)
+        k = bytes_to_long(a2b_hex(self.k))
+        m_hash = bytes_to_long(a2b_hex(self.m_hash))
 
         # Check capabilities
         self.assertEqual(0, dsaObj.has_private())
         self.assertEqual(1, dsaObj.can_sign())
         self.assertEqual(0, dsaObj.can_encrypt())
-        self.assertEqual(0, dsaObj.can_blind())
-
-        # Check dsaObj.[ygpq] -> dsaObj.key.[ygpq] mapping
-        self.assertEqual(dsaObj.y, dsaObj.key.y)
-        self.assertEqual(dsaObj.g, dsaObj.key.g)
-        self.assertEqual(dsaObj.p, dsaObj.key.p)
-        self.assertEqual(dsaObj.q, dsaObj.key.q)
 
         # Check that private parameters are all missing
         self.assertEqual(0, hasattr(dsaObj, 'x'))
-        self.assertEqual(0, hasattr(dsaObj.key, 'x'))
 
         # Sanity check key data
         self.assertEqual(1, dsaObj.p > dsaObj.q)            # p > q
@@ -154,87 +152,90 @@ class DSATest(unittest.TestCase):
         self.assertEqual(0, (dsaObj.p - 1) % dsaObj.q)      # q is a divisor of p-1
 
         # Public-only key objects should raise an error when .sign() is called
-        self.assertRaises(TypeError, dsaObj.sign, m_hash, k)
+        self.assertRaises(TypeError, dsaObj._sign, m_hash, k)
 
         # Check __eq__ and __ne__
         self.assertEqual(dsaObj.publickey() == dsaObj.publickey(),True) # assert_
         self.assertEqual(dsaObj.publickey() != dsaObj.publickey(),False) # failIf
 
     def _test_signing(self, dsaObj):
-        k = a2b_hex(self.k)
-        m_hash = a2b_hex(self.m_hash)
+        k = bytes_to_long(a2b_hex(self.k))
+        m_hash = bytes_to_long(a2b_hex(self.m_hash))
         r = bytes_to_long(a2b_hex(self.r))
         s = bytes_to_long(a2b_hex(self.s))
-        (r_out, s_out) = dsaObj.sign(m_hash, k)
+        (r_out, s_out) = dsaObj._sign(m_hash, k)
         self.assertEqual((r, s), (r_out, s_out))
 
     def _test_verification(self, dsaObj):
-        m_hash = a2b_hex(self.m_hash)
+        m_hash = bytes_to_long(a2b_hex(self.m_hash))
         r = bytes_to_long(a2b_hex(self.r))
         s = bytes_to_long(a2b_hex(self.s))
-        self.assertEqual(1, dsaObj.verify(m_hash, (r, s)))
-        self.assertEqual(0, dsaObj.verify(m_hash + b("\0"), (r, s)))
+        self.failUnless(dsaObj._verify(m_hash, (r, s)))
+        self.failIf(dsaObj._verify(m_hash + 1, (r, s)))
 
-class DSAFastMathTest(DSATest):
-    def setUp(self):
-        DSATest.setUp(self)
-        self.dsa = DSA.DSAImplementation(use_fast_math=True)
+    def test_repr(self):
+        (y, g, p, q) = [bytes_to_long(a2b_hex(param)) for param in (self.y, self.g, self.p, self.q)]
+        dsaObj = self.dsa.construct((y, g, p, q))
+        repr(dsaObj)
 
-    def test_generate_1arg(self):
-        """DSA (_fastmath implementation) generated key (1 argument)"""
-        DSATest.test_generate_1arg(self)
 
-    def test_generate_2arg(self):
-        """DSA (_fastmath implementation) generated key (2 arguments)"""
-        DSATest.test_generate_2arg(self)
+class DSADomainTest(unittest.TestCase):
 
-    def test_construct_4tuple(self):
-        """DSA (_fastmath implementation) constructed key (4-tuple)"""
-        DSATest.test_construct_4tuple(self)
+    def test_domain1(self):
+        """Verify we can generate new keys in a given domain"""
+        dsa_key_1 = DSA.generate(1024)
+        domain_params = dsa_key_1.domain()
 
-    def test_construct_5tuple(self):
-        """DSA (_fastmath implementation) constructed key (5-tuple)"""
-        DSATest.test_construct_5tuple(self)
+        dsa_key_2 = DSA.generate(1024, domain=domain_params)
+        self.assertEqual(dsa_key_1.p, dsa_key_2.p)
+        self.assertEqual(dsa_key_1.q, dsa_key_2.q)
+        self.assertEqual(dsa_key_1.g, dsa_key_2.g)
 
-class DSASlowMathTest(DSATest):
-    def setUp(self):
-        DSATest.setUp(self)
-        self.dsa = DSA.DSAImplementation(use_fast_math=False)
+        self.assertEqual(dsa_key_1.domain(), dsa_key_2.domain())
 
-    def test_generate_1arg(self):
-        """DSA (_slowmath implementation) generated key (1 argument)"""
-        DSATest.test_generate_1arg(self)
+    def _get_weak_domain(self):
 
-    def test_generate_2arg(self):
-        """DSA (_slowmath implementation) generated key (2 arguments)"""
-        DSATest.test_generate_2arg(self)
+        from Crypto.Math.Numbers import Integer
+        from Crypto.Math import Primality
 
-    def test_construct_4tuple(self):
-        """DSA (_slowmath implementation) constructed key (4-tuple)"""
-        DSATest.test_construct_4tuple(self)
+        p = Integer(4)
+        while p.size_in_bits() != 1024 or Primality.test_probable_prime(p) != Primality.PROBABLY_PRIME:
+            q1 = Integer.random(exact_bits=80)
+            q2 = Integer.random(exact_bits=80)
+            q = q1 * q2
+            z = Integer.random(exact_bits=1024-160)
+            p = z * q + 1
 
-    def test_construct_5tuple(self):
-        """DSA (_slowmath implementation) constructed key (5-tuple)"""
-        DSATest.test_construct_5tuple(self)
+        h = Integer(2)
+        g = 1
+        while g == 1:
+            g = pow(h, z, p)
+            h += 1
+
+        return (p, q, g)
+
+
+    def test_generate_error_weak_domain(self):
+        """Verify that domain parameters with composite q are rejected"""
+
+        domain_params = self._get_weak_domain()
+        self.assertRaises(ValueError, DSA.generate, 1024, domain=domain_params)
+
+
+    def test_construct_error_weak_domain(self):
+        """Verify that domain parameters with composite q are rejected"""
+
+        from Crypto.Math.Numbers import Integer
+
+        p, q, g = self._get_weak_domain()
+        y =  pow(g, 89, p)
+        self.assertRaises(ValueError, DSA.construct, (y, g, p, q))
 
 
 def get_tests(config={}):
     tests = []
     tests += list_test_cases(DSATest)
-    try:
-        from Crypto.PublicKey import _fastmath
-        tests += list_test_cases(DSAFastMathTest)
-    except ImportError:
-        from distutils.sysconfig import get_config_var
-        import inspect
-        _fm_path = os.path.normpath(os.path.dirname(os.path.abspath(
-            inspect.getfile(inspect.currentframe())))
-            +"/../../PublicKey/_fastmath"+get_config_var("SO"))
-        if os.path.exists(_fm_path):
-            raise ImportError("While the _fastmath module exists, importing "+
-                "it failed. This may point to the gmp or mpir shared library "+
-                "not being in the path. _fastmath was found at "+_fm_path)
-    tests += list_test_cases(DSASlowMathTest)
+    tests += list_test_cases(DSADomainTest)
     return tests
 
 if __name__ == '__main__':

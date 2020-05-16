@@ -10,7 +10,6 @@
 #
 
 import unittest
-import mock
 import copy
 
 import component_gen_utils
@@ -37,8 +36,9 @@ TEST_SWAGGER = \
     "definitions": {
     }
 }
-class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.TestCase):
 
+
+class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.TestCase):
 
     def __find_object_index(self, jinja_json, object_name):
         for index in range(0, len(jinja_json["otherClasses"])):
@@ -68,8 +68,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.T
 
         return swagger
 
-
-    def test_order_of_definititions(self):
+    def test_order_of_definitions(self):
         swagger = self.__setup_swagger()
         # given two definitions where the first depends on the second
         swagger["definitions"]["objectA"] = {
@@ -95,8 +94,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.T
         self.assertEquals(1, self.__find_object_index(test_jinja_json, "objectA"))
         self.assertEquals(0, self.__find_object_index(test_jinja_json, "objectB"))
 
-
-    def test_undefinied_ref_fails(self):
+    def test_undefined_ref_fails(self):
         swagger = self.__setup_swagger()
         hit_error = False
         # Given a swagger with a reference to #/definitions/objectA
@@ -130,6 +128,6 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.T
         # make sure that the inline is defined first (because of objectA's dependency on it)
         self.assertEquals(0, self.__find_object_index(test_jinja_json, AUTO_GENERATED_PROPERTY_NAME))
         # make sure it is an array
-        self.assertTrue(test_jinja_json["otherClasses"][0]["isArray"], "inline definied array was not marked as array")
+        self.assertTrue(test_jinja_json["otherClasses"][0]["isArray"], "inline defined array was not marked as array")
         # make sure object A is defined
         self.assertEquals(1, self.__find_object_index(test_jinja_json, "objectA"))

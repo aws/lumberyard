@@ -43,6 +43,7 @@ namespace CommandSystem
         AZStd::string                       mSourcePortName;
         AZStd::string                       mTargetPortName;
         bool                                mOldDirtyFlag;
+        bool                                mUpdateParamFlag;
 
     public:
         EMotionFX::AnimGraphConnectionId GetConnectionId() const{ return m_connectionId; }
@@ -101,13 +102,11 @@ namespace CommandSystem
 
     class CommandAnimGraphAdjustTransition
         : public MCore::Command
-        , public EMotionFX::ParameterMixinAnimGraphId
         , public EMotionFX::ParameterMixinTransitionId
         , public EMotionFX::ParameterMixinAttributesString
     {
     public:
         AZ_RTTI(CommandAnimGraphAdjustTransition, "{B7EA2F2E-8C89-435B-B75A-92840E0A81B1}",
-            MCore::Command, ParameterMixinAnimGraphId,
             EMotionFX::ParameterMixinTransitionId,
             EMotionFX::ParameterMixinAttributesString)
         AZ_CLASS_ALLOCATOR_DECL

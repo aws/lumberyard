@@ -26,7 +26,15 @@
         "lib_prefix"              : "lib",
         "qt_supported"            : true,
         "qt_platform_dir"         : "gcc_64",
-        "qtga_subfolders"         : [],
+        "qtga_subfolders"         : [
+            "linux/libqtga.so"
+        ],
+        "cc_compiler"             : "clang",
+        "cxx_compiler"            : "clang++",
+        "compiler_search_paths"   : [
+             "/usr/lib/llvm-6.0/bin",
+             "/usr/bin"
+        ],
         "default_launcher_name"   : "LinuxLauncher",
         "platform_folder"         : "Linux",
         "platform_keyword"        : "linux"
@@ -45,7 +53,8 @@
         "CFLAGS,CXXFLAGS": [
             "-m64",
             "-fPIC",
-            "-msse3"
+            "-msse3",
+            "-frtti"
         ],
         "CXXFLAGS": [
             "-stdlib=libc++"
@@ -56,7 +65,8 @@
         "LIB": [
             "pthread", 
             "dl", 
-            "c++abi"
+            "c++abi",
+            "rt"
         ]
     }
 }

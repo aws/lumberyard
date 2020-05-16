@@ -12,6 +12,7 @@
 #ifndef AZCORE_MATH_VECTOR2_H
 #define AZCORE_MATH_VECTOR2_H 1
 
+#include <AzCore/std/algorithm.h>
 #include <AzCore/Math/Internal/MathTypes.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/VectorFloat.h>
@@ -180,6 +181,37 @@ namespace AZ
         AZ_MATH_FORCE_INLINE float GetDistance(const Vector2& v) const
         {
             return ((*this) - v).GetLength();
+        }
+
+        ///Calculates the closest angle(radians) towards the given vector with in the [0, pi] range
+        ///Note: It's unsafe if any of the vectors are (0, 0)
+        AZ_MATH_FORCE_INLINE float Angle(const Vector2& v) const
+        {
+            float cos = Dot(v) / sqrtf(GetLengthSq() * v.GetLengthSq());
+            // secure against any float precision error, cosine must be between [-1, 1]
+            cos = AZStd::clamp(cos, -1.f, 1.f);
+            float res = acosf(cos);
+            AZ_Assert(std::isfinite(res) && (res >= 0.f) && (res <= Constants::Pi), "Calculated an invalid angle");
+            return res;
+        }
+
+        ///Calculates the closest angle(degrees) towards the given vector with in the [0, 180] range
+        ///Note: It's unsafe if any of the vectors are (0, 0)
+        AZ_MATH_FORCE_INLINE float AngleDeg(const Vector2& v) const
+        {
+            return RadToDeg(Angle(v));
+        }
+
+        ///Calculates the closest angle(radians) towards the given vector with in the [0, pi] range
+        AZ_MATH_FORCE_INLINE float AngleSafe(const Vector2& v) const
+        {
+            return (!IsZero() && !v.IsZero()) ? Angle(v) : 0.f;
+        }
+
+        ///Calculates the closest angle(degrees) towards the given vector with in the [0, 180] range
+        AZ_MATH_FORCE_INLINE float AngleSafeDeg(const Vector2& v) const
+        {
+            return (!IsZero() && !v.IsZero()) ? AngleDeg(v) : 0.f;
         }
 
         /**

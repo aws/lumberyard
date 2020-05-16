@@ -16,6 +16,7 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LmbrCentral/Physics/WaterNotificationBus.h>
 
@@ -90,7 +91,7 @@ namespace Water
 
     /**
       * Used when going into game mode from the editor, or when the game entity is being created for exporting a game package
-      */      
+      */
     void WaterOceanEditor::BuildGameEntity(AZ::Entity* gameEntity)
     {
         const bool isActive = GetEntity() ? (GetEntity()->GetState() == AZ::Entity::ES_ACTIVE) : false;
@@ -113,10 +114,12 @@ namespace Water
         m_data.Activate();
 
         // the ocean is visible if the entity (in editing mode) is also visible
-        bool entityVisible = true;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisible, GetEntityId(), &AzToolsFramework::EditorVisibilityRequests::GetCurrentVisibility);
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
-        OnEntityVisibilityChanged(entityVisible);
+        OnEntityVisibilityChanged(visible);
 
         AzToolsFramework::Components::EditorComponentBase::Activate();
 

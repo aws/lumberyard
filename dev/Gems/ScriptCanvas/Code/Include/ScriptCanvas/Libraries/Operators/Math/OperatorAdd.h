@@ -36,7 +36,7 @@ namespace ScriptCanvas
                 OperatorAdd() = default;
 
                 void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result) override;
-                AZStd::unordered_set< Data::Type > GetSupportedNativeDataTypes() const override;                
+                AZStd::unordered_set< Data::Type > GetSupportedNativeDataTypes() const override;
 
             protected:
 

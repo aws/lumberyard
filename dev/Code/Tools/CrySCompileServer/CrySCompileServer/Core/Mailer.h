@@ -21,6 +21,7 @@
 #include <set>
 #include <list>
 #include <memory>
+#include <AzCore/std/parallel/atomic.h>
 
 class CSMTPMailer
 {
@@ -31,7 +32,7 @@ public:
     typedef std::list<tattachment> tattachlist;
 
     static const int DEFAULT_PORT = 25;
-    static volatile AtomicCountType             ms_OpenSockets;
+    static AZStd::atomic_long ms_OpenSockets;
 
 public:
     CSMTPMailer(const tstr& username, const tstr& password, const tstr& server, int port = DEFAULT_PORT);
@@ -40,7 +41,7 @@ public:
     bool Send(const tstr& from, const tstrcol& to, const tstrcol& cc, const tstrcol& bcc, const tstr& subject, const tstr& body, const tattachlist& attachments);
     const char* GetResponse() const;
 
-    static volatile AtomicCountType             GetOpenSockets() { return ms_OpenSockets; }
+    static long             GetOpenSockets() { return ms_OpenSockets; }
 
 private:
     void ReceiveLine(SOCKET connection);

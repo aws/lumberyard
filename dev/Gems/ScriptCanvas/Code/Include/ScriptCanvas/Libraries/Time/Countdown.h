@@ -12,16 +12,16 @@
 
 #pragma once
 
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/RTTI/TypeInfo.h>
+
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Graph.h>
 
 #include <ScriptCanvas/CodeGen/CodeGen.h>
-
-#include <AzCore/Component/TickBus.h>
+#include <ScriptCanvas/Internal/Nodes/BaseTimerNode.h>
 
 #include <Include/ScriptCanvas/Libraries/Time/Countdown.generated.h>
-
-#include <AzCore/RTTI/TypeInfo.h>
 
 namespace ScriptCanvas
 {
@@ -29,6 +29,31 @@ namespace ScriptCanvas
     {
         namespace Time
         {
+            class TimeDelay
+                : public ScriptCanvas::Nodes::Internal::BaseTimerNode
+            {
+                ScriptCanvas_Node(TimeDelay,
+                    ScriptCanvas_Node::Name("Time Delay")
+                    ScriptCanvas_Node::Uuid("{364F5AC9-8351-44B6-A069-03367B21F7AA}")
+                    ScriptCanvas_Node::Description("Delays all incoming execution for the specified number of ticks")
+                );
+
+            public:
+                TimeDelay() = default;
+
+                void OnInputSignal(const SlotId&) override;
+
+                bool AllowInstantResponse() const override;
+                void OnTimeElapsed() override;
+
+                // Inputs
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled, execution is delayed at this node for the specified amount of times.")
+                    ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
+
+                // Outputs
+                ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled after waiting for the specified amount of times."));
+            };
+
             class TickDelay
                 : public Node
                 , AZ::TickBus::Handler
@@ -38,10 +63,13 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Tick Delay")
                     ScriptCanvas_Node::Uuid("{399A2608-77E3-41F9-90FA-58A9B6E0E34D}")
                     ScriptCanvas_Node::Description("Delays all incoming execution for the specified number of ticks")
+                    ScriptCanvas_Node::Deprecated("Tick Delay has been replaced with the generic Time Delay")
                 );
             public:
+
                 TickDelay();
 
+                void OnDeactivate() override;
                 void OnInputSignal(const SlotId&) override;
 
                 // SystemTickBus

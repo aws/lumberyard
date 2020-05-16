@@ -50,7 +50,8 @@ namespace CopyDependencyBuilder
 
         // Iterate through each file in the asset safe folder and check whether it matches the schema matching rules
         AzFramework::XmlSchemaAsset schemaAsset;
-        if (!AZ::Utils::LoadObjectFromFileInPlace(request.m_fullPath, schemaAsset))
+        AZ::ObjectStream::FilterDescriptor loadFilter = AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+        if (!AZ::Utils::LoadObjectFromFileInPlace(request.m_fullPath, schemaAsset, nullptr, loadFilter))
         {
             return AZ::Failure(AZStd::string::format("Failed to load schema file: %s.", request.m_fullPath.c_str()));
         }

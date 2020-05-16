@@ -151,25 +151,33 @@ namespace Vegetation
 
     void AreaComponentBase::Activate()
     {
-        m_refreshPending = false;
+        m_areaRegistered = false;
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AreaNotificationBus::Handler::BusConnect(GetEntityId());
         AreaInfoBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::DependencyNotificationBus::Handler::BusConnect(GetEntityId());
-        AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::RegisterArea, GetEntityId());
+
+        UpdateRegistration();
     }
 
     void AreaComponentBase::Deactivate()
     {
-        AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::UnregisterArea, GetEntityId());
+        if (m_areaRegistered)
+        {
+            m_areaRegistered = false;
+            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::UnregisterArea, GetEntityId());
+
+            // Let area subclasses know that we've just unregistered the area
+            OnUnregisterArea();
+        }
+
         AreaNotificationBus::Handler::BusDisconnect();
         AreaInfoBus::Handler::BusDisconnect();
         AreaRequestBus::Handler::BusDisconnect();
         LmbrCentral::DependencyNotificationBus::Handler::BusDisconnect();
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
-        m_refreshPending = false;
     }
 
     bool AreaComponentBase::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -207,13 +215,52 @@ namespace Vegetation
         return m_changeIndex;
     }
 
+    void AreaComponentBase::UpdateRegistration()
+    {
+        // Area "valid" lifetimes can be shorter than the time in which the area components are active.
+        // This can occur due to the chain of entity dependencies, or dependencies on asset loading, etc.
+        // This method ensures that we update our registration status so that the area is only registered with
+        // the vegetation system once the area is completely valid, and the area is unregistered the moment
+        // it becomes invalid.  Right now, we're defining "completely valid" as "has a well-defined valid AABB",
+        // since that's the minimum requirement for a vegetation area.
+
+        AZ::u32 layer = GetLayer();
+        AZ::u32 priority = GetPriority();
+        AZ::Aabb bounds = GetEncompassingAabb();
+        bool areaIsValid = bounds.IsValid();
+
+        if (m_areaRegistered && areaIsValid)
+        {
+            // Area is already registered, we're just updating information, so Refresh the area
+            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::RefreshArea, GetEntityId(), layer, priority, bounds);
+        }
+        else if (!m_areaRegistered && areaIsValid)
+        {
+            // We've gone from an invalid to valid state, so Register the area
+            m_areaRegistered = true;
+            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::RegisterArea, GetEntityId(), layer, priority, bounds);
+
+            // Let area subclasses know that we've just registered the area
+            OnRegisterArea();
+        }
+        else if (m_areaRegistered && !areaIsValid)
+        {
+            // We've gone from a valid to invalid state, so Unregister the area
+            m_areaRegistered = false;
+            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::UnregisterArea, GetEntityId());
+
+            // Let area subclasses know that we've just unregistered the area
+            OnUnregisterArea();
+        }
+        else
+        {
+            // Our state before and after were both invalid, so do nothing.
+        }
+    }
+
     void AreaComponentBase::OnCompositionChanged()
     {
-        if (!m_refreshPending)
-        {
-            m_refreshPending = true;
-            AreaSystemRequestBus::Broadcast(&AreaSystemRequestBus::Events::RefreshArea, GetEntityId());
-        }
+        UpdateRegistration();
         ++m_changeIndex;
     }
 
@@ -229,7 +276,6 @@ namespace Vegetation
 
     void AreaComponentBase::OnAreaRefreshed()
     {
-        m_refreshPending = false;
     }
 
     void AreaComponentBase::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)

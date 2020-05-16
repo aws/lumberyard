@@ -47,13 +47,11 @@
 #include <IItemSystem.h>
 #include <IViewSystem.h>
 #include <IVehicleSystem.h>
-#include <IFlowSystem.h>
 #include <IGameplayRecorder.h>
 #include <GameWarning.h>
 #include <GameUtils.h>
 #include <Cry_Geo.h>
 #include <ISerialize.h>
-#include <IAIAction.h>
 #include <IPhysics.h>
 #include <I3DEngine.h>
 #include <IAgent.h>
@@ -66,7 +64,6 @@
 #include <Random.h>
 #include <XMLUtils.h>
 #include <VehicleSystem.h>
-#include <FlowSystem/FlowSystem.h>
 
 #ifdef CRYAISYSTEM_VERBOSITY
 # define AIWarningID gEnv->pAISystem->Warning

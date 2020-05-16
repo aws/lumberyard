@@ -129,12 +129,6 @@ public: // member functions
     //! are calculated up front rather than when becoming visible
     virtual void SetEstimatedVariableHeaderSize(float estimatedSize) = 0;
 
-    //! Deprecated. Use GetChildAtElementIndex instead
-    virtual AZ::EntityId GetChildElementAtLocationIndex(int index) = 0;
-
-    //! Deprecated. Use GetElementIndexOfChild instead
-    virtual int GetLocationIndexOfChild(AZ::EntityId childElement) = 0;
-
 public: // static member data
 
     //! Only one component on a entity can implement the events

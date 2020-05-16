@@ -76,11 +76,6 @@ namespace GraphCanvas
         virtual GraphicsEffectId CreateParticle(const ParticleConfiguration& configuration) = 0;
         virtual AZStd::vector< GraphicsEffectId > ExplodeSceneMember(const AZ::EntityId& memberId, float fillPercent) = 0;
 
-        AZ_DEPRECATED(void CancelPulse(const AZ::EntityId& pulseId), "CancelPulse renamed to CancelGraphicsEffect")
-        {
-            CancelGraphicsEffect(pulseId);
-        }
-
         virtual void CancelGraphicsEffect(const GraphicsEffectId& effectId) = 0;
 
         //! Add a node to the scene.
@@ -113,42 +108,9 @@ namespace GraphCanvas
         //! Get the entity IDs of all selected nodes known to the scene.
         virtual AZStd::vector<AZ::EntityId> GetSelectedNodes() const = 0;
 
-        //! Will attempt to splice the node onto the given connection.
-        //! Will fully connect all valid connections that can be made.
-        // Deprecated in v 1.xx
-        AZ_DEPRECATED(bool TrySpliceNodeOntoConnection(const AZ::EntityId& node, const AZ::EntityId& connectionId), "Function moved to GraphUtils and renamed to SpliceNodeOntoConnection.")
-        {
-            ConnectionSpliceConfig spliceConfig;
-            spliceConfig.m_allowOpportunisticConnections = false;
-
-            return GraphUtils::SpliceNodeOntoConnection(node, connectionId, spliceConfig);
-        }
-
-        //! Will attempt to splice the node onto the given connection.
-        //! Will fully connect all valid connections that can be made.
-        // Deprecated in v 1.xx
-        AZ_DEPRECATED(bool TrySpliceNodeTreeOntoConnection(const AZStd::unordered_set< NodeId >& entryNodes, const AZStd::unordered_set< NodeId >& exitNodes, const ConnectionId& connectionId), "Function moved to GraphUtils and renamed to SpliceSubGraphOntoConnection. Method signature now expects a GraphSubGraph instead of disparrate parts")
-        {
-            GraphSubGraph subGraph;
-
-            subGraph.m_entryNodes = entryNodes;
-            subGraph.m_exitNodes = exitNodes;
-
-            return GraphUtils::SpliceSubGraphOntoConnection(subGraph, connectionId);
-        }
-
         //! Will remove a node from the graph, and attempt to stitch together as many
         //! connections were severed as is possible. Any ambiguous connections will be thrown out.
         virtual void DeleteNodeAndStitchConnections(const AZ::EntityId& node) = 0;
-        
-        //! Will attempt to create as many connections between the specified endpoints and the target node as possible.
-        // Returns whether or not a connection was made.
-        // Deprecated in v 1.xx
-        AZ_DEPRECATED(bool TryCreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode), "Function moved to GraphUtils and renamed to CreateConnectionsBetween")
-        {
-            CreateConnectionsBetweenConfig config;            
-            return GraphUtils::CreateConnectionsBetween(endpoints, targetNode, config);
-        }
 
         //! Create a default connection (between two endpoints).
         //! The connection will link the specified endpoints and have a default visual. It will be styled.
@@ -184,12 +146,6 @@ namespace GraphCanvas
         //! Get the IDs of the endpoint forming the other ends of all the connections this endpoint is apart of.
         virtual AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& endpoint) const = 0;
 
-        //! Creates a connection using both endpoints
-        AZ_DEPRECATED(bool Connect(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint), "Connect renamed to CreateConnection for Lexical Consistency")
-        {
-            return CreateConnection(sourceEndpoint, targetEndpoint);
-        }
-
         //! Creates a connection between two endpoints. Will also create a connection with the underlying model.
         virtual bool CreateConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
 
@@ -205,15 +161,6 @@ namespace GraphCanvas
         //! Finds a connection using the specified endpoints
         //! A reference to the found connection is returned in the connectionEntity parameter
         virtual bool FindConnection(AZ::Entity*& connectionEntity, const Endpoint& firstEndpoint, const Endpoint& otherEndpoint) const = 0;
-        
-        //! Find connections in which either one or both ends of the connection are part of the selected node set
-        //! \param nodeIds Entity Ids of nodes to find within the supplied connection set
-        //! \param internalConnectionsOnly If true only connections between nodes in the node set will be considered when searching. 
-        //! otherwise a node will only need to be in one of two endpoints of a connection in order for the connection to be considered found.
-        AZ_DEPRECATED(AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const, "FindConnections moved from SceneBus to GraphUtils and renamed to FindConnectionsForNodes.")
-        {
-            return GraphUtils::FindConnectionsForNodes(nodeIds, internalConnectionsOnly);
-        }
 
         //! Adds a Bookmark Anchor
         virtual bool AddBookmarkAnchor(const AZ::EntityId& bookmarkAnchorId, const AZ::Vector2& position) = 0;
@@ -417,6 +364,10 @@ namespace GraphCanvas
 
         virtual void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) = 0;
 
+        virtual void StartNudging(const AZStd::unordered_set<AZ::EntityId>& fixedNodes) = 0;
+        virtual void FinalizeNudging() = 0;
+        virtual void CancelNudging() = 0;
+
         // Signals used to managge the state around the generic add position
         virtual QPointF SignalGenericAddPositionUseBegin() = 0;
         virtual void SignalGenericAddPositionUseEnd() = 0;
@@ -613,13 +564,6 @@ namespace GraphCanvas
         //! When the entity is added to a scene, this event is emitted.
         virtual void OnSceneSet(const AZ::EntityId& /*sceneId*/) {}
 
-        //! When the entity is removed from a scene, this event is emitted.
-        //! Includes the previously-set scene ID.
-        AZ_DEPRECATED(virtual void OnSceneCleared(const AZ::EntityId& sceneId), "OnSceneCleared renamed to OnRemovedFromScene.")
-        {
-            OnRemovedFromScene(sceneId);
-        }
-        
         virtual void PreOnRemovedFromScene(const AZ::EntityId& /*sceneId*/) {}
         virtual void OnRemovedFromScene(const AZ::EntityId& /*sceneId*/) {}
 

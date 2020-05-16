@@ -26,8 +26,8 @@ struct CryPakMock
     MOCK_METHOD1(Init, bool(const char* szBasePath));
     MOCK_METHOD0(Release, void());
     MOCK_CONST_METHOD1(IsInstalledToHDD, bool(const char* acFilePath));
-    MOCK_METHOD4(OpenPack, bool(const char* pName, unsigned nFlags, IMemoryBlock * pData, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath));
-    MOCK_METHOD5(OpenPack, bool(const char* pBindingRoot, const char* pName, unsigned nFlags, IMemoryBlock * pData, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath));
+    MOCK_METHOD5(OpenPack, bool(const char* pName, unsigned nFlags, IMemoryBlock * pData, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath, bool addLevels));
+    MOCK_METHOD6(OpenPack, bool(const char* pBindingRoot, const char* pName, unsigned nFlags, IMemoryBlock * pData, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath, bool addLevels));
     MOCK_METHOD2(ClosePack, bool(const char* pName, unsigned nFlags));
     MOCK_METHOD3(OpenPacks, bool(const char* pWildcard, unsigned nFlags, std::vector< CryFixedStringT<ICryPak::g_nMaxPath> >* pFullPaths));
     MOCK_METHOD4(OpenPacks, bool(const char* pBindingRoot, const char* pWildcard, unsigned nFlags, std::vector< CryFixedStringT<ICryPak::g_nMaxPath> >* pFullPaths));

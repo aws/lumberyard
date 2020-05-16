@@ -33,7 +33,6 @@ namespace PythonScripting
         std::list<std::string> GetScripts() const;
     private:
         void InitializePython(char* programName);
-        void ExtendPython();
 
         std::string m_programName;
 #endif // #if ENABLE_PYTHON

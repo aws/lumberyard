@@ -20,7 +20,7 @@
 
 namespace Multiplayer
 {
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
     GameLiftListener::GameLiftListener()
     {
         CRY_ASSERT(gEnv->pNetwork);
@@ -62,7 +62,7 @@ namespace Multiplayer
         sp.m_flags = 0;
         sp.m_numParams = 0;
         sp.m_numPrivateSlots = 1; // One slot for server member.
-        sp.m_gameSession = &gameSession;        
+        sp.m_gameSession = &gameSession;
 
         GridMate::GridSession* session = nullptr;
         EBUS_EVENT_ID_RESULT(session,gEnv->pNetwork->GetGridMate(),GridMate::GameLiftServerServiceBus, HostSession, sp, carrierDesc);
@@ -73,6 +73,12 @@ namespace Multiplayer
         }
     }
 
+    void GameLiftListener::OnGameLiftGameSessionUpdated(GridMate::GameLiftServerService* service, const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession)
+    {
+        AZ_UNUSED(service);
+        AZ_UNUSED(updateGameSession);
+    }
+
     void GameLiftListener::OnGameLiftServerWillTerminate(GridMate::GameLiftServerService* service)
     {
         (void)service;
@@ -80,5 +86,6 @@ namespace Multiplayer
 
         gEnv->pSystem->Quit();
     }
+
 #endif
 }

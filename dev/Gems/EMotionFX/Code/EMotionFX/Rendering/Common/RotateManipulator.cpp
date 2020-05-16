@@ -11,6 +11,7 @@
 */
 
 #include "RotateManipulator.h"
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace MCommon
@@ -21,7 +22,7 @@ namespace MCommon
     {
         mMode               = ROTATE_NONE;
         mRotation           = AZ::Vector3::CreateZero();
-        mRotationQuat       = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+        mRotationQuat       = AZ::Quaternion::CreateIdentity();
         mClickPosition      = AZ::Vector3::CreateZero();
     }
 
@@ -176,19 +177,20 @@ namespace MCommon
 
         // get the view matrix of the camera and calculate inverse,
         // which is used for the transformation of the cam axis rotation manipulator
-        MCore::Matrix camViewMat = camera->GetViewMatrix();
-        camViewMat.Inverse();
+        AZ::Matrix4x4 camViewMat = camera->GetViewMatrix();
+        camViewMat.InvertFull();
 
         // set the translation part of the matrix
         camViewMat.SetTranslation(mPosition);
 
         // render the view axis rotation manipulator
-        renderUtil->RenderCircle(camViewMat, mOuterRadius, 64, camRollAxisColor);
-        renderUtil->RenderCircle(camViewMat, mInnerRadius, 64, grey);
+        const AZ::Transform camViewTransform = AZ::Transform::CreateFromRows(camViewMat.GetRow(0), camViewMat.GetRow(1), camViewMat.GetRow(2));
+        renderUtil->RenderCircle(camViewTransform, mOuterRadius, 64, camRollAxisColor);
+        renderUtil->RenderCircle(camViewTransform, mInnerRadius, 64, grey);
 
         if (mMode == ROTATE_CAMPITCHYAW)
         {
-            renderUtil->RenderCircle(camViewMat, mInnerRadius, 64, grey, 0.0f, MCore::Math::twoPi, true, greyTransparent);
+            renderUtil->RenderCircle(camViewTransform, mInnerRadius, 64, grey, 0.0f, MCore::Math::twoPi, true, greyTransparent);
         }
 
         // handle the rotation around the camera roll axis
@@ -223,8 +225,7 @@ namespace MCommon
         const float angleZ = MCore::Math::ACos(mClickPosition.Dot(AZ::Vector3(0.0f, 0.0f, 1.0f)));
 
         // transformation matrix for the circle for rotation around the x axis
-        MCore::Matrix rotMatrixX;
-        rotMatrixX.SetRotationMatrixAxisAngle(AZ::Vector3(0, 1, 0), signX * MCore::Math::halfPi);
+        AZ::Transform rotMatrixX = MCore::GetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), signX * MCore::Math::halfPi);
 
         // set the translation part of the matrix
         rotMatrixX.SetTranslation(mPosition);
@@ -243,11 +244,11 @@ namespace MCommon
             // handle different dot product results (necessary because dot product only handles a range of [0, pi])
             if (angleZ > MCore::Math::halfPi)
             {
-                rotMatrixX.RotateZ(-1.0f * signX * angleY);
+                rotMatrixX = AZ::Transform::CreateRotationZ(-1.0f * signX * angleY) * rotMatrixX;
             }
             else
             {
-                rotMatrixX.RotateZ(signX * angleY);
+                rotMatrixX = AZ::Transform::CreateRotationZ(signX * angleY) * rotMatrixX;
             }
 
             // set the translation part of the matrix
@@ -258,8 +259,7 @@ namespace MCommon
         }
 
         // rotation matrix for rotation around the y axis
-        MCore::Matrix rotMatrixY;
-        rotMatrixY.SetRotationMatrixAxisAngle(AZ::Vector3(1, 0, 0), MCore::Math::halfPi);
+        AZ::Transform rotMatrixY = MCore::GetRotationMatrixAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::halfPi);
 
         // set the translation part of the matrix
         rotMatrixY.SetTranslation(mPosition);
@@ -278,21 +278,21 @@ namespace MCommon
             // render current rotation angle depending on the dot product results calculated above
             if (signY > 0)
             {
-                rotMatrixY.RotateY(MCore::Math::pi);
+                rotMatrixY = AZ::Transform::CreateRotationY(MCore::Math::pi) * rotMatrixY;
             }
 
             // handle different dot product results (necessary because dot product only handles a range of [0, pi])
             if (angleX > MCore::Math::halfPi)
             {
-                rotMatrixY.RotateZ(-1.0f * signY * angleZ);
+                rotMatrixY = AZ::Transform::CreateRotationZ(-1.0f * signY * angleZ) * rotMatrixY;
             }
             else if ((angleZ < MCore::Math::halfPi) && (angleX < MCore::Math::halfPi))
             {
-                rotMatrixY.RotateZ(MCore::Math::twoPi + signY * angleZ);
+                rotMatrixY = AZ::Transform::CreateRotationZ(MCore::Math::twoPi + signY * angleZ) * rotMatrixY;
             }
             else
             {
-                rotMatrixY.RotateZ(signY * angleZ);
+                rotMatrixY = AZ::Transform::CreateRotationZ(signY * angleZ) * rotMatrixY;
             }
 
             // set the translation part of the matrix
@@ -303,8 +303,7 @@ namespace MCommon
         }
 
         // the circle for rotation around the z axis
-        MCore::Matrix rotMatrixZ;
-        rotMatrixZ.Identity();
+        AZ::Transform rotMatrixZ = AZ::Transform::CreateIdentity();
 
         // set the translation part of the matrix
         rotMatrixZ.SetTranslation(mPosition);
@@ -323,21 +322,21 @@ namespace MCommon
             // render current rotation angle depending on the dot product results calculated above
             if (signZ < 0.0f)
             {
-                rotMatrixZ.SetRotationMatrixAxisAngle(AZ::Vector3(0, 1, 0), MCore::Math::pi);
+                rotMatrixZ = MCore::GetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::pi);
             }
 
             // handle different dot product results (necessary because dot product only handles a range of [0, pi])
             if (angleX > MCore::Math::halfPi)
             {
-                rotMatrixZ.RotateZ(signZ * angleY);
+                rotMatrixZ = AZ::Transform::CreateRotationZ(signZ * angleY) * rotMatrixZ;
             }
             else if ((angleX < MCore::Math::halfPi) && (angleY < MCore::Math::halfPi))
             {
-                rotMatrixZ.RotateZ(MCore::Math::twoPi - signZ * angleY);
+                rotMatrixZ = AZ::Transform::CreateRotationZ(MCore::Math::twoPi - signZ * angleY) * rotMatrixZ;
             }
             else
             {
-                rotMatrixZ.RotateZ(-1.0f * signZ * angleY);
+                rotMatrixZ = AZ::Transform::CreateRotationZ(-1.0f * signZ * angleY) * rotMatrixZ;
             }
 
             // set the translation part of the matrix
@@ -356,7 +355,7 @@ namespace MCommon
         // render the absolute rotation if gizmo is hit
         if (mMode != ROTATE_NONE)
         {
-            const AZ::Vector3& currRot = mCallback->GetCurrValueQuat().ToEuler();
+            const AZ::Vector3 currRot = MCore::AzQuaternionToEulerAngles(mCallback->GetCurrValueQuat());
             mTempString = AZStd::string::format("Abs. Rotation X: %.3f, Y: %.3f, Z: %.3f", MCore::Math::RadiansToDegrees(currRot.GetX() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetY() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetZ() + MCore::Math::epsilon));
             renderUtil->RenderText(10, 10, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f);
         }
@@ -420,7 +419,7 @@ namespace MCommon
         //MCore::Ray mousePrevPosRay    = camera->Unproject( mousePosX-mouseMovementX, mousePosY-mouseMovementY );
         MCore::Ray camRollRay           = camera->Unproject(screenWidth / 2, screenHeight / 2);
         AZ::Vector3 camRollAxis         = camRollRay.GetDirection();
-        mRotationQuat                   = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+        mRotationQuat                   = AZ::Quaternion::CreateIdentity();
 
         // check for the selected axis/plane
         if (mSelectionLocked == false || mMode == ROTATE_NONE)
@@ -563,11 +562,11 @@ namespace MCommon
             float anglePitch    = projDirClickPosPitch.Dot(mouseMovementV3) * mScalingFactor * movementLength * 0.00005f;
 
             // perform rotation arround the cam yaw and pitch axis
-            MCore::Quaternion rotation(upVector, -angleYaw);
-            rotation = rotation * MCore::Quaternion(leftVector, anglePitch);
+            AZ::Quaternion rotation = MCore::CreateFromAxisAndAngle(upVector, -angleYaw);
+            rotation = rotation * MCore::CreateFromAxisAndAngle(leftVector, anglePitch);
 
             // set euler angles of the rotation variable
-            mRotation += rotation.ToEuler();
+            mRotation += MCore::AzQuaternionToEulerAngles(rotation);
             mRotationQuat = rotation;
         }
         else
@@ -605,13 +604,13 @@ namespace MCommon
             // adjust rotation
             mRotation += mRotationAxis * angle;
             //mRotation = Vector3( MCore::Clamp(mRotation.x, -Math::twoPi, Math::twoPi), MCore::Clamp(mRotation.y, -Math::twoPi, Math::twoPi), MCore::Clamp(mRotation.z, -Math::twoPi, Math::twoPi) );
-            mRotationQuat = MCore::Quaternion(mRotationAxis, MCore::Math::FMod(-angle, MCore::Math::twoPi)); //MCore::Clamp(-angle*movementLength, -Math::twoPi, Math::twoPi) );
+            mRotationQuat = MCore::CreateFromAxisAndAngle(mRotationAxis, MCore::Math::FMod(-angle, MCore::Math::twoPi)); //MCore::Clamp(-angle*movementLength, -Math::twoPi, Math::twoPi) );
         }
 
         // update the callback
         if (mCallback)
         {
-            mCallback->Update(mRotationQuat.Normalize());
+            mCallback->Update(mRotationQuat.GetNormalized());
         }
     }
 } // namespace MCommon

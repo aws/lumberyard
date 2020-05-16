@@ -152,7 +152,19 @@ protected:
     bool ParseConfig(const char* filename)
     {
         int nLen = 0;
+#if defined(AZ_PLATFORM_LINUX)
+        // For linux, the filename must be resolved to a real path before processing
+        char resolvedPathBuffer[PATH_MAX] = { '\0' };
+        const char* sourceFileName = realpath(filename, resolvedPathBuffer);
+        if (sourceFileName==NULL)
+        {
+            // If we can't resolve, then the path is invalid or doesnt exist
+            return false;
+        }
+        char* sAllText = OpenAndReadCFG(sourceFileName, nLen);
+#else
         char* sAllText = OpenAndReadCFG(filename, nLen);
+#endif
 
         if (sAllText == nullptr)
         {

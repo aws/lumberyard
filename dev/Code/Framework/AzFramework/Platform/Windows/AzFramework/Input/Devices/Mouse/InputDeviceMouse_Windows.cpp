@@ -110,6 +110,10 @@ namespace AzFramework
         // https://msdn.microsoft.com/en-us/library/windows/desktop/ms646294(v=vs.85).aspx
         bool m_hasFocus;
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! The client rect of the window obtained the last time this input device was ticked.
+        RECT m_lastClientRect;
+
         //! The flags sent with the last received MOUSE_MOVE_RELATIVE or MOUSE_MOVE_ABSOLUTE event.
         USHORT m_lastMouseMoveEventFlags;
 
@@ -136,6 +140,8 @@ namespace AzFramework
         , m_lastMouseMoveEventFlags(0)
         , m_lastMouseMoveEventAbsolutePosition()
     {
+        memset(&m_lastClientRect, 0, sizeof(m_lastClientRect));
+
         if (s_instanceCount++ == 0)
         {
             // Register for raw mouse input
@@ -276,11 +282,24 @@ namespace AzFramework
         m_hasFocus = ::GetFocus() != nullptr;
         if (m_hasFocus)
         {
-            // We have to refresh the system cursor clip rect each frame this application has focus
-            // to combat the cursor being unclipped by the system or another application (which can
-            // happen in a variety of ways due to the cursor being a shared resource), and also for
-            // when this application transitions between fullscreen and windowed mode.
-            RefreshSystemCursorClippingConstraint();
+            RECT clientRect;
+            HWND focusWindow = GetSystemCursorFocusWindow();
+            ::GetClientRect(focusWindow, &clientRect);
+            ::ClientToScreen(focusWindow, (LPPOINT)&clientRect.left);  // Converts the top-left point
+            ::ClientToScreen(focusWindow, (LPPOINT)&clientRect.right); // Converts the bottom-right point
+            if (!hadFocus ||
+                clientRect.top != m_lastClientRect.top ||
+                clientRect.left != m_lastClientRect.left ||
+                clientRect.right != m_lastClientRect.right ||
+                clientRect.bottom != m_lastClientRect.bottom)
+            {
+                // We have to refresh the system cursor clip rect each time the application gains
+                // focus, changes resolution, or transitions between fullscreen and windowed mode.
+                // This is in order to combat the cursor being unclipped by the system or another
+                // application which can happen as a result of the cursor being a shared resource.
+                RefreshSystemCursorClippingConstraint();
+            }
+            memcpy(&m_lastClientRect, &clientRect, sizeof(m_lastClientRect));
 
             // Process raw event queues once each frame while this thread's message queue has focus
             ProcessRawEventQueues();

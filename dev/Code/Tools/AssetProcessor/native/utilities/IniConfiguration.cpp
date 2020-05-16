@@ -47,7 +47,7 @@ void IniConfiguration::parseCommandLine(QStringList args)
         if (arg.startsWith("--port="))
         {
             bool converted = false;
-            quint16 port = arg.replace("--port=", "").toUInt(&converted);
+            quint16 port = arg.replace("--port=", "").toUShort(&converted);
             m_listeningPort = converted ? port : m_listeningPort;
         }
     }

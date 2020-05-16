@@ -11,10 +11,12 @@
 */
 #pragma once
 
+ 
 #include "IGizmoMouseDragHandler.h"
 #include "GizmoTransformConstraint.h"
 
-class QViewport;
+#include "../../EditorCommon/EditorCommonAPI.h"
+class EDITOR_COMMON_API QViewport;
 
 struct GizmoMoveHandler
     : IGizmoMouseDragHandler

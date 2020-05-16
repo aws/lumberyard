@@ -756,10 +756,11 @@ namespace AssetProcessor
         // Test 2: Asset in database, not registered as source asset
         // note that when asking for products, a performance improvement causes the catalog to use its REGISTRY
         // rather than the database to ask for products, so to set this up the registry must be present and must have the asset registered within it
-        AzFramework::AssetSystem::AssetNotificationMessage message(m_customDataMembers->m_assetAProductRelPath.c_str(), AssetNotificationMessage::AssetChanged, m_customDataMembers->m_assetAType);
+        AzFramework::AssetSystem::AssetNotificationMessage message(m_customDataMembers->m_assetAProductRelPath.c_str(), AssetNotificationMessage::AssetChanged, m_customDataMembers->m_assetAType, "pc");
         message.m_sizeBytes = m_customDataMembers->m_productTestString.size();
         message.m_assetId = AZ::Data::AssetId(m_customDataMembers->m_assetA.m_guid, 0);
-        m_data->m_assetCatalog->OnAssetMessage("pc", message);
+        message.m_platform = "pc";
+        m_data->m_assetCatalog->OnAssetMessage(message);
 
         // also of note:  When looking up products, you don't get a root path since they are all in the cache.
         // its important here that we specifically get an empty root path.
@@ -889,12 +890,12 @@ namespace AssetProcessor
             }, &threadDesc
         );
 
-        AssetNotificationMessage message("some/path/image.png", AssetNotificationMessage::NotificationType::AssetChanged, AZ::Data::AssetType::CreateRandom());
+        AssetNotificationMessage message("some/path/image.png", AssetNotificationMessage::NotificationType::AssetChanged, AZ::Data::AssetType::CreateRandom(), "pc");
         message.m_assetId = { "{C1A73521-E770-475F-8D91-30DF88E4D4C9}" };
 
         for (int i = 0; i < NumUpdateIterations; ++i)
         {
-            m_data->m_assetCatalog->OnAssetMessage("pc", message);
+            m_data->m_assetCatalog->OnAssetMessage(message);
         }
 
         catalogThread.join();
@@ -988,9 +989,10 @@ namespace AssetProcessor
                 ProductDependencyDatabaseEntry productDependency(
                     productIdForPlatform,
                     m_sourceFileWithDifferentProductsPerPlatform,
-                    subIdAndProductIndex,
+                    aznumeric_cast<AZ::u32>(subIdAndProductIndex),
                     /*dependencyFlags*/ 0,
-                    platform);
+                    platform,
+                    true);
                 bool result = m_data->m_dbConn.SetProductDependency(productDependency);
                 EXPECT_TRUE(result);
                 // Don't need to cache anything at this point, the dependency ID isn't tracked in the catalog.
@@ -1033,6 +1035,7 @@ namespace AssetProcessor
                     /*subId*/ 0,
                     /*dependencyFlags*/ 0,
                     platform,
+                    false,
                     relativeProductPath);
                 bool result = m_data->m_dbConn.SetProductDependency(productDependency);
                 EXPECT_TRUE(result);
@@ -1049,6 +1052,8 @@ namespace AssetProcessor
         {
             platformToProductIdIndex[platform] = 0;
         }
+        QDir cacheRoot;
+        EXPECT_TRUE(AssetUtilities::ComputeProjectCacheRoot(cacheRoot));
         for (ProductDependencyDatabaseEntry& productDependency : productDependencies)
         {
             // These were generated in this same order previously, but it also doesn't
@@ -1057,10 +1062,23 @@ namespace AssetProcessor
             AZ::s64 subId = m_sourceWithMultipleProductsPlatformToProductIds[productDependency.m_platform][platformToProductIdIndex[productDependency.m_platform]];
             platformToProductIdIndex[productDependency.m_platform]++;
 
-            productDependency.m_dependencySubID = subId;
+            productDependency.m_dependencySubID = aznumeric_cast<AZ::u32>(subId);
             productDependency.m_dependencySourceGuid = m_sourceFileWithDifferentProductsPerPlatform;
             productDependency.m_unresolvedPath = AZStd::string();
+
+            QString platformGameDir = QDir(cacheRoot.absoluteFilePath(productDependency.m_platform.c_str())).filePath(AssetUtilities::ComputeGameName().toLower());
+            QString assetCatalogFile = QDir(platformGameDir).filePath("assetcatalog.xml");
+            QFileInfo fileInfo(assetCatalogFile);
+
+            EXPECT_FALSE(fileInfo.exists());
+
             m_data->m_assetCatalog->OnDependencyResolved(m_sourceFileWithDependency, productDependency);
+
+            // process all events
+            QCoreApplication::processEvents(QEventLoop::AllEvents);
+
+            // This ensures that no save catalog event was queued when we resolve dependency 
+            EXPECT_FALSE(fileInfo.exists());
         }
 
         // Verify the catalog is correct.

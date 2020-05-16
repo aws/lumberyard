@@ -29,5 +29,5 @@ namespace LUAEditor
         BlockState m_blockState;
         int m_qtBlockState;
     };
-    AZ_STATIC_ASSERT(sizeof(QTBlockState) == sizeof(int), "QT stores block state in an int");
+    static_assert(sizeof(QTBlockState) == sizeof(int), "QT stores block state in an int");
 }

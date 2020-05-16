@@ -17,6 +17,7 @@
 #include <GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h>
 
 #include "ScriptCanvas/Bus/NodeIdPair.h"
+#include <ScriptCanvas/Core/Core.h>
 
 namespace ScriptCanvasEditor
 {
@@ -38,7 +39,7 @@ namespace ScriptCanvasEditor
         AZ::EntityId CreateSplicingNode(const AZ::EntityId& graphCanvasGraphId) override;
         
     protected:
-        virtual ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& scriptCanvasGraphId) const = 0;
+        virtual ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const = 0;
 
         NodeIdPair m_nodeIdPair;
     };

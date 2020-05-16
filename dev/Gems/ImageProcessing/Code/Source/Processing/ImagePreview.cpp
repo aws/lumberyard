@@ -18,6 +18,7 @@
 #include <Processing/ImageConvert.h>
 #include <Processing/PixelFormatInfo.h>
 #include <Editor/EditorCommon.h>
+#include <Processing/ImageFlags.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 

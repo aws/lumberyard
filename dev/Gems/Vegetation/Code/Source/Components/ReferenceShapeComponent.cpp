@@ -115,6 +115,14 @@ namespace Vegetation
             AZ::TransformNotificationBus::Handler::BusConnect(m_configuration.m_shapeEntityId);
             LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(m_configuration.m_shapeEntityId);
         }
+
+        // Broadcast out a "ShapeChanged" event.  In some cases, this might be excessive, but in the specific
+        // case that the entity ID gets cleared out of this component in the Editor, there are no other events
+        // that fire to notify upstream shape consumers that something has changed about the shape.
+        LmbrCentral::ShapeComponentNotificationsBus::Event(
+            GetEntityId(),
+            &LmbrCentral::ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     void ReferenceShapeComponent::Activate()
@@ -319,11 +327,6 @@ namespace Vegetation
         {
             m_configuration.m_shapeEntityId = entityId;
             SetupDependencies();
-
-            LmbrCentral::ShapeComponentNotificationsBus::Event(
-                GetEntityId(),
-                &LmbrCentral::ShapeComponentNotificationsBus::Events::OnShapeChanged,
-                LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
         }
     }
 }

@@ -97,10 +97,10 @@ def __validate_request_content(request_content):
     if request_content is None:
         raise errors.ClientError('Invalid request_content (Empty)')
 
-    if not request_content.has_key('NumberOfEncryptedPosts'):
+    if 'NumberOfEncryptedPosts' not in request_content:
         raise errors.ClientError('Invalid request_content (Does not contain necessary keys. Found these keys: {})'.format(request_content.keys()))
 
-    if not request_content.has_key('NumberOfUnencryptedPosts'):
+    if 'NumberOfUnencryptedPosts' not in request_content:
         raise errors.ClientError('Invalid request_content (Does not contain necessary keys. Found these keys: {})'.format(request_content.keys()))
 
 

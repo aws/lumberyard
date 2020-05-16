@@ -509,18 +509,18 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
-            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
+            const AZ::Vector3* positions   = static_cast<const AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::Vector3* normals     = static_cast<const AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4* tangents    = static_cast<const AZ::Vector4*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2* uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
 
             const uint32 numVertices = mesh->GetNumVertices();
             if (uvsA)
             {
                 for (uint32 v = 0; v < numVertices; ++v)
                 {
-                    dynamicVertices[globalVert].mPosition   = AZ::Vector3(positions[v]);
-                    dynamicVertices[globalVert].mNormal     = AZ::Vector3(normals[v]);
+                    dynamicVertices[globalVert].mPosition   = positions[v];
+                    dynamicVertices[globalVert].mNormal     = normals[v];
                     dynamicVertices[globalVert].mUV         = uvsA[v];
                     dynamicVertices[globalVert].mTangent    = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -530,8 +530,8 @@ namespace RenderGL
             {
                 for (uint32 v = 0; v < numVertices; ++v)
                 {
-                    dynamicVertices[globalVert].mPosition   = AZ::Vector3(positions[v]);
-                    dynamicVertices[globalVert].mNormal     = AZ::Vector3(normals[v]);
+                    dynamicVertices[globalVert].mPosition   = positions[v];
+                    dynamicVertices[globalVert].mNormal     = normals[v];
                     dynamicVertices[globalVert].mUV         = AZ::Vector2(0.0f, 0.0f);
                     dynamicVertices[globalVert].mTangent    = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -757,18 +757,18 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
-            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
+            const AZ::Vector3* positions   = static_cast<const AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::Vector3* normals     = static_cast<const AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4* tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2* uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
 
             if (uvsA)
             {
                 const uint32 numVerts = mesh->GetNumVertices();
                 for (uint32 v = 0; v < numVerts; ++v)
                 {
-                    staticVertices[globalVert].mPosition    = AZ::Vector3(positions[v]);
-                    staticVertices[globalVert].mNormal      = AZ::Vector3(normals[v]);
+                    staticVertices[globalVert].mPosition    = positions[v];
+                    staticVertices[globalVert].mNormal      = normals[v];
                     staticVertices[globalVert].mUV          = uvsA[v];
                     staticVertices[globalVert].mTangent     = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -779,8 +779,8 @@ namespace RenderGL
                 const uint32 numVerts = mesh->GetNumVertices();
                 for (uint32 v = 0; v < numVerts; ++v)
                 {
-                    staticVertices[globalVert].mPosition    = AZ::Vector3(positions[v]);
-                    staticVertices[globalVert].mNormal      = AZ::Vector3(normals[v]);
+                    staticVertices[globalVert].mPosition    = positions[v];
+                    staticVertices[globalVert].mNormal      = normals[v];
                     staticVertices[globalVert].mUV          = AZ::Vector2(0.0f, 0.0f);
                     staticVertices[globalVert].mTangent     = (tangents) ? tangents[v] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     globalVert++;
@@ -847,11 +847,11 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
-            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
-            const AZ::u32*            orgVerts    = static_cast<const AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
+            const AZ::Vector3* positions   = static_cast<const AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::Vector3* normals     = static_cast<const AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4* tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2* uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
+            const AZ::u32*     orgVerts    = static_cast<const AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
 
             // find the skinning layer
             EMotionFX::SkinningInfoVertexAttributeLayer* skinningInfo = (EMotionFX::SkinningInfoVertexAttributeLayer*)mesh->FindSharedVertexAttributeLayer(EMotionFX::SkinningInfoVertexAttributeLayer::TYPE_ID);
@@ -873,8 +873,8 @@ namespace RenderGL
                     const uint32 orgVertex = orgVerts[meshVertexNr];
 
                     // copy position and normal
-                    skinnedVertices[globalVert].mPosition   = AZ::Vector3(positions[meshVertexNr]);
-                    skinnedVertices[globalVert].mNormal     = AZ::Vector3(normals[meshVertexNr]);
+                    skinnedVertices[globalVert].mPosition   = positions[meshVertexNr];
+                    skinnedVertices[globalVert].mNormal     = normals[meshVertexNr];
                     skinnedVertices[globalVert].mTangent    = (tangents) ? tangents[meshVertexNr] : AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
                     skinnedVertices[globalVert].mUV         = (uvsA == nullptr) ? AZ::Vector2(0.0f, 0.0f) : uvsA[meshVertexNr];
 

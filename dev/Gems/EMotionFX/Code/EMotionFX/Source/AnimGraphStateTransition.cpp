@@ -174,31 +174,22 @@ namespace EMotionFX
 
     AnimGraphStateTransition::AnimGraphStateTransition()
         : AnimGraphObject(nullptr)
-        , mSourceNode(nullptr)
-        , mTargetNode(nullptr)
-        , m_sourceNodeId(AnimGraphNodeId::InvalidId)
-        , m_targetNodeId(AnimGraphNodeId::InvalidId)
-        , m_id(AnimGraphConnectionId::Create())
-        , m_transitionTime(0.3f)
-        , m_easeInSmoothness(0.0f)
-        , m_easeOutSmoothness(1.0f)
-        , mStartOffsetX(0)
-        , mStartOffsetY(0)
-        , mEndOffsetX(0)
-        , mEndOffsetY(0)
-        , m_priority(0)
-        , m_syncMode(AnimGraphObject::SYNCMODE_DISABLED)
-        , m_eventMode(AnimGraphObject::EVENTMODE_BOTHNODES)
-        , m_extractionMode(AnimGraphObject::EXTRACTIONMODE_BLEND)
-        , m_interpolationType(INTERPOLATIONFUNCTION_LINEAR)
-        , mIsWildcardTransition(false)
-        , m_isDisabled(false)
-        , m_canBeInterruptedByOthers(false)
-        , m_interruptionMode(AlwaysAllowed)
-        , m_maxInterruptionBlendWeight(1.0f)
-        , m_interruptionBlendBehavior(Continue)
-        , m_canInterruptOtherTransitions(false)
-        , m_allowSelfInterruption(false)
+    {
+    }
+
+    AnimGraphStateTransition::AnimGraphStateTransition(
+        AnimGraphNode* source,
+        AnimGraphNode* target,
+        AZStd::vector<AnimGraphTransitionCondition*> conditions,
+        float duration
+    )
+        : AnimGraphObject()
+        , mConditions(AZStd::move(conditions))
+        , mSourceNode(source)
+        , mTargetNode(target)
+        , m_sourceNodeId(source ? source->GetId() : ObjectId::InvalidId)
+        , m_targetNodeId(target ? target->GetId() : ObjectId::InvalidId)
+        , m_transitionTime(duration)
     {
     }
 
@@ -256,6 +247,7 @@ namespace EMotionFX
 
         for (AnimGraphTransitionCondition* condition : mConditions)
         {
+            condition->SetTransition(this);
             condition->InitAfterLoading(animGraph);
         }
 
@@ -383,11 +375,13 @@ namespace EMotionFX
 
     void AnimGraphStateTransition::AddCondition(AnimGraphTransitionCondition* condition)
     {
+        condition->SetTransition(this);
         mConditions.push_back(condition);
     }
 
     void AnimGraphStateTransition::InsertCondition(AnimGraphTransitionCondition* condition, size_t index)
     {
+        condition->SetTransition(this);
         mConditions.insert(mConditions.begin() + index, condition);
     }
 
@@ -860,15 +854,15 @@ namespace EMotionFX
         return false;
     }
 
-    size_t AnimGraphStateTransition::FindConditionIndex(AnimGraphTransitionCondition* condition) const
+    AZ::Outcome<size_t> AnimGraphStateTransition::FindConditionIndex(AnimGraphTransitionCondition* condition) const
     {
         const auto iterator = AZStd::find(mConditions.begin(), mConditions.end(), condition);
         if (iterator == mConditions.end())
         {
-            return MCORE_INVALIDINDEX32;
+            return AZ::Failure();
         }
 
-        return iterator - mConditions.begin();
+        return AZ::Success(static_cast<size_t>(AZStd::distance(mConditions.begin(), iterator)));
     }
 
     AnimGraphStateMachine* AnimGraphStateTransition::GetStateMachine() const

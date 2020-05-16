@@ -941,7 +941,7 @@ _smart_ptr<IMaterial> CMatMan::GetDefaultHelperMaterial()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMatMan::GetLoadedMaterials(std::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const
+void CMatMan::GetLoadedMaterials(AZStd::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const
 {
     AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
     nObjCount = m_mtlNameMap.size();

@@ -202,20 +202,6 @@ namespace MaterialEffectsUtils
                         }
                     }
 
-                    //Flow graphs
-                    SMFXFlowGraphListNode* pFlowgraphNode = pFxResources->m_flowGraphList;
-                    if (pFlowgraphNode)
-                    {
-                        textOffsetCount += 1.0f;
-                        gEnv->pRenderer->DrawLabelEx(baseText - (textLineOffset * textOffsetCount), 1.35f, titleColor, true, false, "** Flow graphs **");
-                        while (pFlowgraphNode)
-                        {
-                            textOffsetCount += 1.0f;
-                            gEnv->pRenderer->DrawLabelEx(baseText - (textLineOffset * textOffsetCount), 1.25f, textColor, true, false, "  %s", pFlowgraphNode->m_flowGraphParams.name);
-                            pFlowgraphNode = pFlowgraphNode->pNext;
-                        }
-                    }
-
                     //Force feedback
                     SMFXForceFeedbackListNode* pForceFeedbackNode = pFxResources->m_forceFeedbackList;
                     if (pForceFeedbackNode)

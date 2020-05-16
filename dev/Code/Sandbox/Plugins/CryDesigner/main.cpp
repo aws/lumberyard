@@ -23,7 +23,6 @@
 #include "Util/Converter.h"
 #include "Util/Exporter.h"
 #include "GameExporter.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Core/BrushHelper.h"
 #include "DisplaySettings.h"
 #include "UIs/UVMappingMainWnd.h"
@@ -32,9 +31,6 @@
 
 #include <QMessageBox>
 
-#ifndef AZ_TESTS_ENABLED
-DECLARE_PYTHON_MODULE(designer);
-#endif
 
 class CEditorDesigner
     : public IPlugin

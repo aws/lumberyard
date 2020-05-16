@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>574</width>
+    <width>648</width>
     <height>29</height>
    </rect>
   </property>
@@ -54,6 +54,9 @@
      </property>
      <property name="text">
       <string>Static</string>
+     </property>
+     <property name="indent">
+      <number>11</number>
      </property>
     </widget>
    </item>

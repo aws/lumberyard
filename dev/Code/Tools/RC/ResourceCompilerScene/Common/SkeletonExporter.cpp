@@ -183,6 +183,7 @@ namespace AZ
                     // We need to remove scale from transform matrix (so the root bone's rotation matrix is identity) to satisfy the
                     // input requirement of AssetWriter
                     AZ::Transform transformNoScale = boneData->GetWorldTransform();
+                    AZ_Assert(transformNoScale.RetrieveScale().GetLength() >= g_fltEps, "Transform on bone %s has 0 scale", it->second.GetName());
                     transformNoScale.ExtractScale();
                     AddBoneDescriptor(skinningInfo, it->second.GetName(), it->second.GetNameLength(), transformNoScale);
                     if (!AddBoneEntity(skinningInfo, graph, graph.ConvertToNodeIndex(it.GetHierarchyIterator()), boneNameIdMap,
@@ -243,7 +244,13 @@ namespace AZ
         void SkeletonExporter::AddBoneDescriptor(CSkinningInfo& skinningInfo, const char* boneName, size_t boneNameLength, const Transform& worldTransform) const
         {
             CryBoneDescData boneDesc;
-            boneDesc.m_DefaultB2W = AssetExportUtilities::ConvertToCryMatrix34(worldTransform);
+            auto convertedTransform{ AssetExportUtilities::ConvertToCryMatrix34(worldTransform) };
+
+            AZ_Assert(convertedTransform.IsValid(), "Bone %s has invalid world transform", boneName);
+
+            // Invalid transform will set off an assertion in the equals operator below - the check above is so
+            // in case of that assertion AP will give a hint of what to look at in the logs
+            boneDesc.m_DefaultB2W = convertedTransform;
             boneDesc.m_DefaultW2B = boneDesc.m_DefaultB2W.GetInverted();
 
             SetBoneName(boneName, boneNameLength, boneDesc);

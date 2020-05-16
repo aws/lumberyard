@@ -15,14 +15,17 @@
 
 #include <AzQtComponents/Buses/ShortcutDispatch.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Widgets/NodePropertyBus.h>
+AZ_POP_DISABLE_WARNING
 
 // qpainter.h(465): warning C4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
 // qpainter.h(450) : warning C4800 : 'QFlags<QPainter::RenderHint>::Int' : forcing value to bool 'true' or 'false' (performance warning)
-AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QGraphicsScene>
 #include <QGraphicsView>
 AZ_POP_DISABLE_WARNING
@@ -31,6 +34,10 @@ class QGraphicsLayoutItem;
 
 namespace GraphCanvas
 {
+    class DataInterface;
+    class NodePropertyDisplay;
+    class GraphCanvasLabel;
+
     // Base class for displaying a NodeProperty.
     //
     // Main idea is that in QGraphics, we want to use QWidgets
@@ -41,51 +48,10 @@ namespace GraphCanvas
     // on state(thus letting us have a QWidget editable field, with a QGraphicsWidget display).
     class NodePropertyDisplay
         : public AzQtComponents::ShortcutDispatchTraits::Bus::Handler
+        , public DataSlotNotificationBus::Handler
+        , public DataSlotDragDropInterface
     {
     public:
-        NodePropertyDisplay() = default;
-        virtual ~NodePropertyDisplay()
-        {
-            NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
-        }
-        
-        void SetId(const AZ::EntityId& id)
-        {
-            m_id = id;
-            OnIdSet();
-        }
-
-        const AZ::EntityId& GetId() const { return m_id; }
-        
-        void SetNodeId(const AZ::EntityId& nodeId)
-        {
-            m_nodeId = nodeId;
-        }
-        
-        const AZ::EntityId& GetNodeId() const
-        {
-            return m_nodeId;
-        }        
-
-        AZ::EntityId GetSceneId() const
-        {
-            AZ::EntityId sceneId;
-            SceneMemberRequestBus::EventResult(sceneId, m_nodeId, &SceneMemberRequests::GetScene);
-            return sceneId;
-        }
-
-        void TryAndSelectNode() const
-        {
-            bool isSelected = false;
-            SceneMemberUIRequestBus::EventResult(isSelected, m_nodeId, &SceneMemberUIRequests::IsSelected);
-
-            if (!isSelected)
-            {
-                SceneRequestBus::Event(GetSceneId(), &SceneRequests::ClearSelection);
-                SceneMemberUIRequestBus::Event(GetNodeId(), &SceneMemberUIRequests::SetSelected, true);
-            }
-        }
-
         static AZStd::string CreateDisabledLabelStyle(const AZStd::string& type)
         {
             return AZStd::string::format("%sPropertyDisabledLabel", type.data());
@@ -95,6 +61,41 @@ namespace GraphCanvas
         {
             return AZStd::string::format("%sPropertyDisplayLabel", type.data());
         }
+
+        NodePropertyDisplay(DataInterface* dataInterface);
+        virtual ~NodePropertyDisplay();
+        
+        AZ_DEPRECATED(void SetId(const AZ::EntityId& id), "Function deprecated. Use SetSlotId instead")
+        {
+            SetSlotId(id);
+        }
+
+        void SetSlotId(const SlotId& slotId);
+
+        AZ_DEPRECATED(const AZ::EntityId& GetId() const, "Function deprecated. Use GetSlotId instead.") { return GetSlotId(); }
+        const SlotId& GetSlotId() const { return m_slotId; }
+        
+        void SetNodeId(const AZ::EntityId& nodeId);        
+        const AZ::EntityId& GetNodeId() const;
+
+        AZ::EntityId GetSceneId() const;
+
+        void TryAndSelectNode() const;
+
+        bool EnableDropHandling() const;
+
+        // DataSlotDragDropInterface
+        AZ::Outcome<DragDropState> OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
+        void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
+        void OnDropEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
+        ////
+
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragDropState) override { AZ_UNUSED(dragDropState); }
+        ////
+
+        void RegisterShortcutDispatcher(QWidget* widget);
+        void UnregisterShortcutDispatcher(QWidget* widget);
 
         virtual void RefreshStyle() = 0;
         virtual void UpdateDisplay() = 0;
@@ -108,44 +109,22 @@ namespace GraphCanvas
         // Display Widgets handles displaying the data in an editable way
         virtual QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() = 0;
 
-        void RegisterShortcutDispatcher(QWidget* widget)
-        {
-            AzQtComponents::ShortcutDispatchBus::Handler::BusConnect(widget);
-        }
-        
-        void UnregisterShortcutDispatcher(QWidget* widget)
-        {
-            AzQtComponents::ShortcutDispatchBus::Handler::BusDisconnect(widget);
-        }
-
     protected:
 
-        virtual void OnIdSet() { }
+        virtual void OnIdSet() {}
+        virtual void OnSlotIdSet() { OnIdSet(); }
 
         // AzQtComponents::ShortcutDispatchBus::Handler
-        virtual QWidget* GetShortcutDispatchScopeRoot(QWidget*)
-        {
-            QGraphicsScene* graphicsScene = nullptr;
-            SceneRequestBus::EventResult(graphicsScene, GetSceneId(), &SceneRequests::AsQGraphicsScene);
+        QWidget* GetShortcutDispatchScopeRoot(QWidget*) override;
+        ////
 
-            if (graphicsScene)
-            {
-                // Get the list of views. Which one it uses shouldn't matter.
-                // Since they should all be parented to the same root window.
-                QList<QGraphicsView*> graphicViews = graphicsScene->views();
-
-                if (!graphicViews.empty())
-                {
-                    return graphicViews.front();
-                }
-            }
-
-            return nullptr;
-        }
+        void UpdateStyleForDragDrop(const DragDropState& dragDropState, Styling::StyleHelper& styleHelper);
 
     private:
+
+        DataInterface* m_dataInterface;
         
-        AZ::EntityId m_nodeId;
-        AZ::EntityId m_id;
+        NodeId m_nodeId;
+        SlotId m_slotId;
     };
 }

@@ -23,6 +23,7 @@
 #include <ui_upload_packages.h>
 
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+#include <CloudCanvasPythonWorkerInterface.h>
 
 namespace DynamicContent
 {
@@ -32,7 +33,7 @@ namespace DynamicContent
     class QDynamicContentEditorMainWindow
         : public QMainWindow
         , public Ui_QDynamicContentEditorMainWindow
-        , private PythonWorkerEvents::Bus::Handler
+        , protected PythonWorkerEventsInterface
     {
         Q_OBJECT
 
@@ -142,7 +143,7 @@ namespace DynamicContent
 
     private:
         //////////////////////////////////////////////////////////////////////////
-        // PythonWorkerEvents
+        // PythonWorkerEventsInterface
         bool OnPythonWorkerOutput(PythonWorkerRequestId requestId, const QString& key, const QVariant& value) override;
         //////////////////////////////////////////////////////////////////////////
 

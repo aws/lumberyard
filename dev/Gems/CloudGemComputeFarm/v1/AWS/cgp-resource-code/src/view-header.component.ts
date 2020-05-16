@@ -123,7 +123,7 @@ export class ViewHeaderComponent {
     private downloadResult(): void {
         let merge_key = this.workflowConfig.s3_dir.length ? (this.workflowConfig.s3_dir + "/") : "";
 
-        merge_key += this.workflowConfig.s3_zip.substring(0, this.workflowConfig.s3_zip.indexOf(".zip"));
+        merge_key += this.workflowConfig.s3_file.substring(0, this.workflowConfig.s3_file.indexOf(".zip"));
         merge_key += "/merge/merge_final.zip";
 
         var params = {

@@ -176,11 +176,27 @@ namespace EMStudio
         OnCatalogAssetChanged(assetId);
     }
 
-
     void FileManager::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
     {
     }
 
+    void FileManager::SourceAssetChanged(AZStd::string filename)
+    {
+        if (!DidSourceAssetGetSaved(filename))
+        {
+            m_savedSourceAssets.emplace_back(AZStd::move(filename));
+        }
+    }
+
+    void FileManager::RemoveFromSavedSourceAssets(AZStd::string filename)
+    {
+        m_savedSourceAssets.erase(AZStd::remove(m_savedSourceAssets.begin(), m_savedSourceAssets.end(), filename), m_savedSourceAssets.end());
+    }
+
+    bool FileManager::DidSourceAssetGetSaved(const AZStd::string& filename) const
+    {
+        return (AZStd::find(m_savedSourceAssets.begin(), m_savedSourceAssets.end(), filename) != m_savedSourceAssets.end());
+    }
 
     bool FileManager::IsSourceAssetLoaded(const char* filename)
     {
@@ -226,7 +242,6 @@ namespace EMStudio
         return false;
     }
 
-
     void FileManager::SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::TypeId sourceTypeId)
     {
         AZStd::string filename;
@@ -237,6 +252,15 @@ namespace EMStudio
         // Skip re-loading the file, in case it not loaded currently.
         if (!IsSourceAssetLoaded(filename.c_str()))
         {
+            return;
+        }
+
+        if (DidSourceAssetGetSaved(filename))
+        {
+            // Remove the saved source asset from the queue as we just registered that the file changed.
+            RemoveFromSavedSourceAssets(filename);
+
+            // Don't reload the file in case it just got saved.
             return;
         }
 

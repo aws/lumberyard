@@ -103,7 +103,7 @@ namespace AZ
             /// Remove a catalog from our delta list and rebuild the catalog from remaining items
             virtual bool RemoveDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> /*deltaCatalog*/) { return true; }
             /// Creates a manifest with the given DeltaCatalog name
-            virtual bool CreateBundleManifest(const AZStd::string& /*deltaCatalogPath*/, const AZStd::vector<AZStd::string>& /*dependentBundleNames*/, const AZStd::string& /*fileDirectory*/, int /*bundleVersion*/) { return false; }
+            virtual bool CreateBundleManifest(const AZStd::string& /*deltaCatalogPath*/, const AZStd::vector<AZStd::string>& /*dependentBundleNames*/, const AZStd::string& /*fileDirectory*/, int /*bundleVersion*/, const AZStd::vector<AZStd::string>& /*levelDirs*/) { return false; }
             /// Creates an instance of a registry containing info for just the specified files, and writes it out to a file at the specified path
             virtual bool CreateDeltaCatalog(const AZStd::vector<AZStd::string>& /*files*/, const AZStd::string& /*filePath*/) { return false; }
 
@@ -160,6 +160,13 @@ namespace AZ
             /// \param id - the id of the asset to look up the dependencies for
             /// \return AZ::Success containing a list of dependencies
             virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependencies(const AssetId& /*id*/) { return AZ::Failure<AZStd::string>("Not implemented"); }
+
+
+            /// Retrieves a list of all products the given (product) asset depends on (recursively).
+            /// \param id - the id of the asset to look up the dependencies for
+            /// \param exclusionList - list of AssetIds to ignore (recursively).  If a match is found, it and all its dependencies are skipped.
+            /// \return AZ::Success containing a list of dependencies
+            virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependenciesFilter([[maybe_unused]] const AssetId& id, [[maybe_unused]] const AZStd::unordered_set<AssetId>& exclusionList) { return AZ::Failure<AZStd::string>("Not implemented"); }
 
             using BeginAssetEnumerationCB = AZStd::function< void() >;
             using AssetEnumerationCB = AZStd::function< void(const AZ::Data::AssetId /*id*/, const AZ::Data::AssetInfo& /*info*/) >;

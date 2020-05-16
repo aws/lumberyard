@@ -37,8 +37,10 @@ namespace PhysX
             explicit ConfigurationWidget(QWidget* parent = nullptr);
             ~ConfigurationWidget() override;
 
-            void SetConfiguration(const PhysX::Configuration& configuration);
-            const PhysX::Configuration& GetConfiguration() const;
+            void SetConfiguration(const PhysX::PhysXConfiguration& physxConfiguration,
+                                  const Physics::CollisionConfiguration& collisionConfiguration,
+                                  const Physics::WorldConfiguration& worldConfiguration,
+                                  const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary);
 
             // ConfigurationWindowRequestBus
             void ShowCollisionLayersTab() override;
@@ -46,10 +48,17 @@ namespace PhysX
             void ShowGlobalSettingsTab() override;
 
         signals:
-            void onConfigurationChanged(const PhysX::Configuration&);
+            void onConfigurationChanged(const PhysX::PhysXConfiguration& physxConfiguration,
+                                        const Physics::CollisionConfiguration& collisionConfiguration,
+                                        const Physics::WorldConfiguration& worldConfiguration,
+                                        const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary);
 
         private:
-            PhysX::Configuration m_configuration;
+            Physics::CollisionConfiguration m_collisionConfiguration;
+            Physics::WorldConfiguration m_worldConfiguration;
+            AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary 
+                = AZ::Data::AssetLoadBehavior::NoLoad;
+            PhysX::PhysXConfiguration m_physxConfiguration;
 
             QTabWidget* m_tabs;
             SettingsWidget* m_settings;

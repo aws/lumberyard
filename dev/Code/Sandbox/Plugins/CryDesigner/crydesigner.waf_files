@@ -27,15 +27,6 @@
 			"Objects/ClipVolumeObjectPanel.ui",
 			"Objects/ClipVolumeObjectPanel.h",
 			"Objects/ClipVolumeObjectPanel.cpp"
-		],
-		"Scripts":
-		[
-			"Scripts/BasicScripts.cpp",
-			"Scripts/BasicScripts.h",
-			"Scripts/CreateShapesScripts.cpp",
-			"Scripts/EditScripts.cpp",
-			"Scripts/ModifyScripts.cpp",
-			"Scripts/SelectionScripts.cpp"
 		]
 	},
 

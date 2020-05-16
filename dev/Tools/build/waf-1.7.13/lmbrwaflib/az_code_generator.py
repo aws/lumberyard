@@ -12,20 +12,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib.TaskGen import feature, after_method, before_method, taskgen_method
-from waflib.Context import BOTH
-from waflib.Configure import conf
-from waflib import Node, Task, Utils, Logs, Errors, Options
-from cry_utils import append_to_unique_list
-from lumberyard import multi_conf
+# System Imports
+import itertools
+import json
+import os
+import threading
+
 from binascii import hexlify
 from collections import defaultdict
 from pipes import quote
-import os
-import json
+
+# waflib imports
+from waflib import Node, Task, Utils, Logs, Errors, Options
 import waflib.Build
-import threading
-import itertools
+from waflib.Configure import conf
+from waflib.Context import BOTH
+from waflib.TaskGen import feature, after_method, before_method, taskgen_method
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_to_unique_list
+from lmbrwaflib.lumberyard import multi_conf
+
 
 #  Code Generator Settings
 code_generator_ignore_includes = False
@@ -106,8 +113,10 @@ def add_codegen_includes(self):
 @feature('az_code_gen')
 @after_method('apply_incpaths')
 def create_code_generator_tasks(self):
-    # Skip during project generation
-    if self.bld.env['PLATFORM'] == 'project_generator':
+    # Skip during project generation. Also skip if the 'az_code_gen_group' is not available on the BuildContext
+    # the 'az_code_gen_group' is only added during the build step from <dev_root>/wscript
+    # during package and deploy the 'az_code_gen_group' isn't set
+    if self.bld.env['PLATFORM'] == 'project_generator' or 'az_code_gen_group' not in self.bld.group_names:
         return
 
     # promote raw entries to list
@@ -222,7 +231,7 @@ def hash_node_list(list, up):
         if isinstance(item, waflib.Node.Node):
             up(item.abspath().encode())
         else:
-            up(item)
+            up(item.encode('utf-8'))
 
 # ported from msvcdeps.py
 def path_to_node(base_node, path, cached_nodes):
@@ -533,7 +542,7 @@ class az_code_gen(Task.Task):
             Logs.error('az_code_gen: Failed to json.loads output with error "{}" - output string was:\n{}'.format(str(value_error), code_gen_output))
             import traceback
             import sys
-            tb_list = traceback.extract_tb(sys.exc_traceback)
+            tb_list = traceback.extract_tb(sys.exc_info()[2])
             for filename, lineno, name, line in tb_list:
                 Logs.error(
                     '{}({}): error {}: in {}: {}'.format(filename, lineno,

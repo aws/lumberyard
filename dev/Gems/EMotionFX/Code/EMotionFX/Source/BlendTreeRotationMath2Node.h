@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
@@ -65,12 +66,12 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        void SetDefaultValue(const MCore::Quaternion& value);
+        void SetDefaultValue(const AZ::Quaternion& value);
 
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        typedef void (MCORE_CDECL * BlendTreeRotationMath2Function)(const MCore::Quaternion& inputX, const MCore::Quaternion& inputY, MCore::Quaternion* quaternionOutput);
+        typedef void (MCORE_CDECL * BlendTreeRotationMath2Function)(const AZ::Quaternion& inputX, const AZ::Quaternion& inputY, AZ::Quaternion* quaternionOutput);
 
         AZ::Quaternion                  m_defaultValue;
         EMathFunction                   m_mathFunction;
@@ -80,7 +81,7 @@ namespace EMotionFX
 
         void ExecuteMathLogic(EMotionFX::AnimGraphInstance * animGraphInstance);
 
-        static void MCORE_CDECL CalculateMultiply(const MCore::Quaternion& inputA, const MCore::Quaternion& inputB, MCore::Quaternion* quaternionOutput);
-        static void MCORE_CDECL CalculateInverseMultiply(const MCore::Quaternion& inputA, const MCore::Quaternion& inputB, MCore::Quaternion* quaternionOutput);
+        static void MCORE_CDECL CalculateMultiply(const AZ::Quaternion& inputA, const AZ::Quaternion& inputB, AZ::Quaternion* quaternionOutput);
+        static void MCORE_CDECL CalculateInverseMultiply(const AZ::Quaternion& inputA, const AZ::Quaternion& inputB, AZ::Quaternion* quaternionOutput);
     };
 }   // namespace EMotionFX

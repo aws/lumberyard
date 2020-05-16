@@ -9,12 +9,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
 import os
 import metric_constant as c
 import errors
 from dynamodb import DynamoDb
 from decimal import Decimal
+from cgf_lambda_service import ClientError
 
 @service.api
 def get(request, filter=[]):    
@@ -39,7 +41,7 @@ def get_settings(request, data = None):
 def update_settings(request, data = None):       
     for entry in data:        
         if entry in c.NON_SETTINGS:
-            raise errors.ClientError("The '{}' key can not be updated through this API.  It is an object type and must be updated using its corresponding service API.".format(entry))     
+            raise ClientError("The '{}' key can not be updated through this API.  It is an object type and must be updated using its corresponding service API.".format(entry))     
         
     update_context(request, data)
     return data
@@ -83,20 +85,20 @@ def get_client_context(request):
 @service.api
 def update_custom_partition(request, data = None):        
     if len(data) != 1:
-        raise errors.ClientError("An attempt to update more than just the partitions has been made.  The length of the data set exceeds 1.")
+        raise ClientError("An attempt to update more than just the partitions has been made.  The length of the data set exceeds 1.")
 
     if c.KEY_PARTITIONS not in data:
-        raise errors.ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_PARTITIONS, data))
+        raise ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_PARTITIONS, data))
 
     for partition in data['partitions']:
         if 'key' not in partition:
-            raise errors.ClientError("The partition '{}' is missing the attribute 'key'.".format(partition))      
+            raise ClientError("The partition '{}' is missing the attribute 'key'.".format(partition))      
         if 'type' not in partition:
-            raise errors.ClientError("The partition '{}' is missing the attribute 'type'.".format(partition))      
+            raise ClientError("The partition '{}' is missing the attribute 'type'.".format(partition))      
         
         key = partition['key']
         if key in c.PREDEFINED_PARTITIONS:
-            raise errors.ClientError("The '{}' partition is a predefined partition and can't be updated with this API.".format(key))              
+            raise ClientError("The '{}' partition is a predefined partition and can't be updated with this API.".format(key))              
     predefined = get_predefined_partition(request)
     data[c.KEY_PARTITIONS] = predefined + data[c.KEY_PARTITIONS]
     update_context(request, data)
@@ -109,18 +111,18 @@ def get_filter(request):
 @service.api
 def update_filter(request, data = None):    
     if len(data) != 1:
-        raise errors.ClientError("An attempt to update more than just the filter has been made.  The length of the data set exceeds 1.")
+        raise ClientError("An attempt to update more than just the filter has been made.  The length of the data set exceeds 1.")
 
     if c.KEY_FILTERS not in data:
-        raise errors.ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_FILTERS, data))
+        raise ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_FILTERS, data))
 
     for filter in data[c.KEY_FILTERS]:
         if 'event' not in filter:
-            raise errors.ClientError("The filter '{}' is missing the attribute 'event'.".format(filter))      
+            raise ClientError("The filter '{}' is missing the attribute 'event'.".format(filter))      
         if 'attributes' not in filter:
-            raise errors.ClientError("The filter '{}' is missing the attribute 'attributes'.".format(filter))      
+            raise ClientError("The filter '{}' is missing the attribute 'attributes'.".format(filter))      
         if 'type' not in filter:
-            raise errors.ClientError("The filter '{}' is missing the attribute 'type'.".format(filter))                              
+            raise ClientError("The filter '{}' is missing the attribute 'type'.".format(filter))                              
         
     update_context(request, data)
     return data
@@ -132,10 +134,10 @@ def get_priority(request):
 @service.api
 def update_priority(request, data = None):    
     if len(data) != 1:
-        raise errors.ClientError("An attempt to update more than just the priority has been made.  The length of the data set exceeds 1.")
+        raise ClientError("An attempt to update more than just the priority has been made.  The length of the data set exceeds 1.")
 
     if c.KEY_PRIORITIES not in data:
-        raise errors.ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_PRIORITIES, data))
+        raise ClientError("The '{}' key is not present in the data '{}'.".format(c.KEY_PRIORITIES, data))
                  
     update_context(request, data)
     return data
@@ -145,7 +147,7 @@ def update_context(request, data = None):
     for item in data:
         key = item
         value = data[item]
-        print "Updating '{}' with value '{}'".format(key, value)
+        print("Updating '{}' with value '{}'".format(key, value))
         params = dict({})
         params["UpdateExpression"]= "SET #val = :val"       
         params["ExpressionAttributeNames"]={
@@ -160,7 +162,7 @@ def update_context(request, data = None):
         try:
             db.update(db.context_table.update_item, params)        
         except Exception as e:
-            raise errors.ClientError("Error updating the context parameter '{}' with value '{}'.\nError: {}".format(key, value, e))
+            raise ClientError("Error updating the context parameter '{}' with value '{}'.\nError: {}".format(key, value, e))
         
     return data
 
@@ -177,5 +179,5 @@ def cli(context, args):
     os.environ[c.ENV_REGION] = context.config.project_region
     os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
     os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
-    print eval(args.function)( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}))
+    print(eval(args.function)(type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]})))
 

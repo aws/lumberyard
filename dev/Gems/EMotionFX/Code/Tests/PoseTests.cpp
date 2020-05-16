@@ -13,7 +13,7 @@
 #include <AzCore/Math/Random.h>
 #include <Tests/SystemComponentFixture.h>
 #include <Tests/Matchers.h>
-#include <MCore/Source/AzCoreConversions.h>
+#include <MCore/Source/MemoryObject.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Mesh.h>
@@ -31,80 +31,48 @@
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/Transform.h>
 
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+
 
 namespace EMotionFX
 {
-    class DISABLED_PoseTests
+    class PoseTests
         : public SystemComponentFixture
     {
-    public:
-        Node* AddJoint(const AZStd::string& name, Node* parent, const AZ::Vector3& pos, const AZ::Quaternion& rot = AZ::Quaternion::CreateIdentity(), const AZ::Vector3& scale = AZ::Vector3::CreateOne())
+        class ActorWithMorphs
+            : public SimpleJointChainActor
         {
-            Skeleton* skeleton = m_actor->GetSkeleton();
-
-            Node* newJoint = Node::Create(name.c_str(), skeleton);
-            m_actor->AddNode(newJoint);
-
-            if (parent)
+        public:
+            explicit ActorWithMorphs(size_t numMorphTargets, const char* name = "Test actor")
+                : SimpleJointChainActor(5, name)
             {
-                newJoint->SetParentIndex(parent->GetNodeIndex());
+                SetMotionExtractionNodeIndex(0);
+
+                MorphSetup* morphSetup = MorphSetup::Create();
+                SetMorphSetup(0, morphSetup);
+
+                for (size_t i = 0; i < numMorphTargets; ++i)
+                {
+                    MorphTargetStandard* morphTarget = MorphTargetStandard::Create(AZStd::string::format("MT#%d", i).c_str());
+                    morphTarget->SetRangeMin(0.0f);
+                    morphTarget->SetRangeMax(1.0f);
+                    morphSetup->AddMorphTarget(morphTarget);
+                }
             }
+        };
 
-            skeleton->UpdateNodeIndexValues();
-            const AZ::u32 jointIndex = newJoint->GetNodeIndex();
-
-            if (parent)
-            {
-                parent->AddChild(jointIndex);
-            }
-            else
-            {
-                skeleton->AddRootNode(jointIndex);
-            }
-
-            Pose& actorBindPose = *m_actor->GetBindPose();
-            actorBindPose.SetModelSpaceTransform(jointIndex, Transform(pos, MCore::AzQuatToEmfxQuat(rot), scale));
-
-            return newJoint;
-        }
-
+    public:
         void SetUp() override
         {
             SystemComponentFixture::SetUp();
 
-            m_actor = Actor::Create("TestActor");
-            Skeleton* skeleton = m_actor->GetSkeleton();
-
-            Node* parentJoint = nullptr;
-            for (AZ::u32 i = 0; i < m_numJoints; ++i)
-            {
-                Node* joint = AddJoint(AZStd::string::format("joint%d", i),
-                    parentJoint,
-                    AZ::Vector3(0.0f, 0.0f, static_cast<float>(i)));
-                parentJoint = joint;
-            }
-            m_actor->SetMotionExtractionNodeIndex(0);
-
-            MorphSetup* morphSetup = MorphSetup::Create();
-            m_actor->SetMorphSetup(0, morphSetup);
-
-            for (size_t i = 0; i < m_numMorphTargets; ++i)
-            {
-                MorphTargetStandard* morphTarget = MorphTargetStandard::Create(AZStd::string::format("MT#%d", i).c_str());
-                morphTarget->SetRangeMin(0.0f);
-                morphTarget->SetRangeMax(1.0f);
-                morphSetup->AddMorphTarget(morphTarget);
-            }
-
-            m_actor->ResizeTransformData();
-            m_actor->PostCreateInit();
-
-            m_actorInstance = ActorInstance::Create(m_actor);
+            m_actor = ActorFactory::CreateAndInit<ActorWithMorphs>(m_numMorphTargets);
+            m_actorInstance = ActorInstance::Create(m_actor.get());
         }
 
         void TearDown() override
         {
-            m_actor->Destroy();
             m_actorInstance->Destroy();
             SystemComponentFixture::TearDown();
         }
@@ -140,10 +108,10 @@ namespace EMotionFX
             }
         }
 
-        void CheckIfRotationIsNormalized(const MCore::Quaternion& rotation)
+        void CheckIfRotationIsNormalized(const AZ::Quaternion& rotation)
         {
-            const float epsilon = 0.01;
-            const float length = MCore::EmfxQuatToAzQuat(rotation).GetLength();
+            const float epsilon = 0.01f;
+            const float length = rotation.GetLengthExact();
             EXPECT_TRUE(AZ::IsClose(length, 1.0f, epsilon))
                 << "Rotation quaternion not normalized. Length is " << length << ".";
         }
@@ -175,41 +143,40 @@ namespace EMotionFX
         }
 
     public:
-        Actor* m_actor = nullptr;
+        AZStd::unique_ptr<Actor> m_actor{};
         ActorInstance* m_actorInstance = nullptr;
         const AZ::u32 m_numMorphTargets = 5;
-        const AZ::u32 m_numJoints = 5;
 
         const float m_testOffset = 10.0f;
     };
 
-    class DISABLED_PoseTestsBoolParam
-        : public DISABLED_PoseTests
+    class PoseTestsBoolParam
+        : public PoseTests
         , public ::testing::WithParamInterface<bool>
     {
     };
-    INSTANTIATE_TEST_CASE_P(PoseTests, DISABLED_PoseTestsBoolParam, ::testing::Bool());
+    INSTANTIATE_TEST_CASE_P(PoseTests, PoseTestsBoolParam, ::testing::Bool());
 
-    TEST_F(DISABLED_PoseTests, Clear)
+    TEST_F(PoseTests, Clear)
     {
         Pose pose;
 
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         EXPECT_EQ(pose.GetNumTransforms(), m_actor->GetNumNodes());
         pose.Clear();
         EXPECT_EQ(pose.GetNumTransforms(), 0);
 
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         EXPECT_EQ(pose.GetNumTransforms(), m_actor->GetNumNodes());
         pose.Clear(/*clearMem*/false);
         EXPECT_EQ(pose.GetNumTransforms(), 0);
     }
 
-    TEST_F(DISABLED_PoseTests, ClearFlags)
+    TEST_F(PoseTests, ClearFlags)
     {
         Pose pose;
 
-        pose.LinkToActor(m_actor, 100);
+        pose.LinkToActor(m_actor.get(), 100);
         EXPECT_EQ(pose.GetNumTransforms(), m_actor->GetNumNodes());
         CompareFlags(pose, 100);
 
@@ -217,10 +184,10 @@ namespace EMotionFX
         CompareFlags(pose, 200);
     }
 
-    TEST_F(DISABLED_PoseTests, GetSetFlags)
+    TEST_F(PoseTests, GetSetFlags)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
 
         const AZ::u32 numTransforms = pose.GetNumTransforms();
         for (AZ::u32 i = 0; i < numTransforms; ++i)
@@ -233,11 +200,11 @@ namespace EMotionFX
         }
     }
 
-    TEST_F(DISABLED_PoseTests, InitFromBindPose)
+    TEST_F(PoseTests, InitFromBindPose)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
         const Pose* bindPose = m_actor->GetBindPose();
         ComparePoseTransforms(pose, *bindPose);
@@ -245,15 +212,15 @@ namespace EMotionFX
         CompareMorphTargets(pose, *bindPose);
     }
 
-    TEST_F(DISABLED_PoseTests, InitFromPose)
+    TEST_F(PoseTests, InitFromPose)
     {
         Pose poseA;
-        poseA.LinkToActor(m_actor);
+        poseA.LinkToActor(m_actor.get());
         const Pose* bindPose = m_actor->GetBindPose();
         poseA.InitFromPose(bindPose);
 
         Pose poseB;
-        poseB.LinkToActor(m_actor);
+        poseB.LinkToActor(m_actor.get());
         poseB.InitFromPose(&poseA);
 
         ComparePoseTransforms(poseA, poseB);
@@ -261,26 +228,26 @@ namespace EMotionFX
         CompareMorphTargets(poseA, poseB);
     }
 
-    TEST_F(DISABLED_PoseTests, LinkToActorInstance)
+    TEST_F(PoseTests, LinkToActorInstance)
     {
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
         EXPECT_EQ(pose.GetNumTransforms(), m_actor->GetNumNodes());
-        EXPECT_EQ(pose.GetActor(), m_actor);
+        EXPECT_EQ(pose.GetActor(), m_actor.get());
         EXPECT_EQ(pose.GetSkeleton(), m_actor->GetSkeleton());
         EXPECT_EQ(pose.GetActorInstance(), m_actorInstance);
     }
 
-    TEST_F(DISABLED_PoseTests, LinkToActor)
+    TEST_F(PoseTests, LinkToActor)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         EXPECT_EQ(pose.GetNumTransforms(), m_actor->GetNumNodes());
-        EXPECT_EQ(pose.GetActor(), m_actor);
+        EXPECT_EQ(pose.GetActor(), m_actor.get());
         EXPECT_EQ(pose.GetSkeleton(), m_actor->GetSkeleton());
     }
 
-    TEST_F(DISABLED_PoseTests, SetNumTransforms)
+    TEST_F(PoseTests, SetNumTransforms)
     {
         Pose pose;
 
@@ -297,7 +264,7 @@ namespace EMotionFX
         EXPECT_EQ(pose.GetNumTransforms(), 100);
     }
 
-    TEST_F(DISABLED_PoseTests, ApplyMorphWeightsToActorInstance)
+    TEST_F(PoseTests, ApplyMorphWeightsToActorInstance)
     {
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
@@ -328,10 +295,10 @@ namespace EMotionFX
         }
     }
 
-    TEST_F(DISABLED_PoseTests, SetGetZeroMorphWeights)
+    TEST_F(PoseTests, SetGetZeroMorphWeights)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         EXPECT_EQ(pose.GetNumMorphWeights(), m_numMorphTargets);
 
         // Set and get tests.
@@ -350,24 +317,24 @@ namespace EMotionFX
         }
     }
 
-    TEST_F(DISABLED_PoseTests, ResizeNumMorphs)
+    TEST_F(PoseTests, ResizeNumMorphs)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         EXPECT_EQ(pose.GetNumMorphWeights(), m_numMorphTargets);
 
         pose.ResizeNumMorphs(10);
         EXPECT_EQ(pose.GetNumMorphWeights(), 10);
     }
 
-    TEST_F(DISABLED_PoseTests, GetSetLocalSpaceTransform)
+    TEST_F(PoseTests, GetSetLocalSpaceTransform)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         const AZ::u32 jointIndex = 0;
 
         // Set the new transform.
-        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f)), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         pose.SetLocalSpaceTransform(jointIndex, newTransform);
 
         EXPECT_TRUE(pose.GetFlags(jointIndex) & Pose::FLAG_LOCALTRANSFORMREADY);
@@ -389,26 +356,26 @@ namespace EMotionFX
         EXPECT_EQ(compareTransform, newTransform);
     }
 
-    TEST_F(DISABLED_PoseTests, GetSetLocalSpaceTransformDirect)
+    TEST_F(PoseTests, GetSetLocalSpaceTransformDirect)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         const AZ::u32 jointIndex = 0;
 
-        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f)), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         pose.SetLocalSpaceTransformDirect(jointIndex, newTransform);
         EXPECT_TRUE(pose.GetFlags(jointIndex) & Pose::FLAG_LOCALTRANSFORMREADY);
         EXPECT_EQ(pose.GetLocalSpaceTransformDirect(jointIndex), newTransform);
     }
 
-    TEST_F(DISABLED_PoseTests, GetSetModelSpaceTransform)
+    TEST_F(PoseTests, GetSetModelSpaceTransform)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         const AZ::u32 jointIndex = 0;
 
         // Set the new transform.
-        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f)), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
 
         // Test accessor that returns the transform.
         pose.SetModelSpaceTransform(jointIndex, newTransform);
@@ -432,46 +399,46 @@ namespace EMotionFX
         EXPECT_EQ(compareTransform, newTransform);
     }
 
-    TEST_F(DISABLED_PoseTests, GetSetModelSpaceTransformDirect)
+    TEST_F(PoseTests, GetSetModelSpaceTransformDirect)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         const AZ::u32 jointIndex = 0;
 
-        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f)), AZ::Vector3(4.0f, 5.0f, 6.0f));
+        Transform newTransform(AZ::Vector3(1.0f, 2.0f, 3.0f), AZ::Quaternion(0.1f, 0.2f, 0.3f, 0.4f), AZ::Vector3(4.0f, 5.0f, 6.0f));
         pose.SetModelSpaceTransformDirect(jointIndex, newTransform);
         EXPECT_TRUE(pose.GetFlags(jointIndex) & Pose::FLAG_MODELTRANSFORMREADY);
         EXPECT_EQ(pose.GetModelSpaceTransformDirect(jointIndex), newTransform);
     }
 
-    TEST_F(DISABLED_PoseTests, SetLocalGetModelSpaceTransform)
+    TEST_F(PoseTests, SetLocalGetModelSpaceTransform)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
-        const Transform newTransform(AZ::Vector3(1.0f, 1.0f, 1.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+        const Transform newTransform(AZ::Vector3(1.0f, 1.0f, 1.0f), AZ::Quaternion::CreateIdentity());
 
         // Iterate through the joints, adjust their local space transforms and check if the model space transform adjusts automatically, accordingly.
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             pose.SetLocalSpaceTransform(i, newTransform);
             EXPECT_EQ(pose.GetLocalSpaceTransform(i), newTransform);
             const float floatI = static_cast<float>(i + 1);
-            EXPECT_EQ(pose.GetModelSpaceTransform(i), Transform(AZ::Vector3(floatI, floatI, floatI), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetModelSpaceTransform(i), Transform(AZ::Vector3(floatI, floatI, floatI), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_F(DISABLED_PoseTests, SetLocalDirectGetModelSpaceTransform)
+    TEST_F(PoseTests, SetLocalDirectGetModelSpaceTransform)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
-        const Transform newTransform(AZ::Vector3(1.0f, 1.0f, 1.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+        const Transform newTransform(AZ::Vector3(1.0f, 1.0f, 1.0f), AZ::Quaternion::CreateIdentity());
 
         // Same as the previous test, but this time we use the direct call which does not automatically invalidate the model space transform.
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldModelSpaceTransform = pose.GetModelSpaceTransform(i);
 
@@ -485,21 +452,21 @@ namespace EMotionFX
             // Manually invalidate the model space transform and check the result.
             pose.InvalidateModelSpaceTransform(i);
             const float floatI = static_cast<float>(i + 1);
-            EXPECT_EQ(pose.GetModelSpaceTransform(i), Transform(AZ::Vector3(floatI, floatI, floatI), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetModelSpaceTransform(i), Transform(AZ::Vector3(floatI, floatI, floatI), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_F(DISABLED_PoseTests, SetModelDirectGetLocalSpaceTransform)
+    TEST_F(PoseTests, SetModelDirectGetLocalSpaceTransform)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
         // Similar to previous test, model space and local space operations are switched.
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldLocalSpaceTransform = pose.GetLocalSpaceTransform(i);
-            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), AZ::Quaternion::CreateIdentity()));
 
             // Set the model space transform without invalidating the local space transform.
             pose.SetModelSpaceTransformDirect(i, newTransform);
@@ -510,20 +477,20 @@ namespace EMotionFX
 
             // Manually invalidate the local space transform and check the result.
             pose.InvalidateLocalSpaceTransform(i);
-            EXPECT_THAT(pose.GetLocalSpaceTransform(i), IsClose(Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()))));
+            EXPECT_THAT(pose.GetLocalSpaceTransform(i), IsClose(Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity())));
         }
     }
 
-    TEST_P(DISABLED_PoseTestsBoolParam, UpdateLocalSpaceTranforms)
+    TEST_P(PoseTestsBoolParam, UpdateLocalSpaceTranforms)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldLocalSpaceTransform = pose.GetLocalSpaceTransform(i);
-            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), AZ::Quaternion::CreateIdentity()));
 
             // Set the model space transform directly, so that it won't automatically be updated.
             pose.SetModelSpaceTransformDirect(i, newTransform);
@@ -541,29 +508,29 @@ namespace EMotionFX
         }
         else
         {
-            for (AZ::u32 i = 0; i < m_numJoints; ++i)
+            for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
             {
                 pose.UpdateLocalSpaceTransform(i);
             }
         }
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             // Get the local space transform without auto-updating them, to see if update call worked.
-            EXPECT_EQ(pose.GetLocalSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetLocalSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_F(DISABLED_PoseTests, ForceUpdateFullLocalSpacePose)
+    TEST_F(PoseTests, ForceUpdateFullLocalSpacePose)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldLocalSpaceTransform = pose.GetLocalSpaceTransform(i);
-            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            const Transform newTransform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), AZ::Quaternion::CreateIdentity());
 
             // Set the local space without invalidating the model space transform.
             pose.SetModelSpaceTransformDirect(i, newTransform);
@@ -574,23 +541,23 @@ namespace EMotionFX
         // Update all local space transforms regardless of the invalidate flag.
         pose.ForceUpdateFullLocalSpacePose();
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             // Get the local space transform without auto-updating them, to see if update call worked.
-            EXPECT_EQ(pose.GetLocalSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetLocalSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_P(DISABLED_PoseTestsBoolParam, UpdateModelSpaceTranforms)
+    TEST_P(PoseTestsBoolParam, UpdateModelSpaceTranforms)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
         
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldModelSpaceTransform = pose.GetModelSpaceTransform(i);
-            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            const Transform newTransform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity());
 
             // Set the local space and invalidate the model space transform.
             pose.SetLocalSpaceTransform(i, newTransform);
@@ -605,29 +572,30 @@ namespace EMotionFX
         }
         else
         {
-            for (AZ::u32 i = 0; i < m_numJoints; ++i)
+            for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
             {
                 pose.UpdateModelSpaceTransform(i);
             }
         }
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             // Get the model space transform without auto-updating them, to see if the update call worked.
-            EXPECT_EQ(pose.GetModelSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetModelSpaceTransformDirect(i),
+                Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_F(DISABLED_PoseTests, ForceUpdateAllModelSpaceTranforms)
+    TEST_F(PoseTests, ForceUpdateAllModelSpaceTranforms)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform oldModelSpaceTransform = pose.GetModelSpaceTransform(i);
-            const Transform newTransform(Transform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            const Transform newTransform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity());
 
             // Set the local space without invalidating the model space transform.
             pose.SetLocalSpaceTransformDirect(i, newTransform);
@@ -638,28 +606,28 @@ namespace EMotionFX
         // Update all model space transforms regardless of the invalidate flag.
         pose.ForceUpdateFullModelSpacePose();
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             // Get the model space transform without auto-updating them, to see if the ForceUpdateFullModelSpacePose() worked.
-            EXPECT_EQ(pose.GetModelSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity())));
+            EXPECT_EQ(pose.GetModelSpaceTransformDirect(i), Transform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 1) * m_testOffset)), AZ::Quaternion::CreateIdentity()));
         }
     }
 
-    TEST_P(DISABLED_PoseTestsBoolParam, GetWorldSpaceTransform)
+    TEST_P(PoseTestsBoolParam, GetWorldSpaceTransform)
     {
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
-        pose.InitFromBindPose(m_actor);
+        pose.InitFromBindPose(m_actor.get());
 
-        const Transform offsetTransform(AZ::Vector3(0.0f, 0.0f, m_testOffset), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+        const Transform offsetTransform(AZ::Vector3(0.0f, 0.0f, m_testOffset), AZ::Quaternion::CreateIdentity());
         m_actorInstance->SetLocalSpaceTransform(offsetTransform);
         m_actorInstance->UpdateWorldTransform();
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             pose.SetLocalSpaceTransform(i, offsetTransform);
 
-            const Transform expectedWorldTransform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 2) * m_testOffset)), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+            const Transform expectedWorldTransform(AZ::Vector3(0.0f, 0.0f, static_cast<float>((i + 2) * m_testOffset)), AZ::Quaternion::CreateIdentity());
             if (GetParam())
             {
                 EXPECT_EQ(pose.GetWorldSpaceTransform(i), expectedWorldTransform);
@@ -673,7 +641,7 @@ namespace EMotionFX
         }
     }
 
-    TEST_F(DISABLED_PoseTests, GetMeshNodeWorldSpaceTransform)
+    TEST_F(PoseTests, GetMeshNodeWorldSpaceTransform)
     {
         const AZ::u32 lodLevel = 0;
         const AZ::u32 jointIndex = 0;
@@ -686,16 +654,20 @@ namespace EMotionFX
 
         // Link the actor instance and move it so that the model and world space transforms differ.
         pose.LinkToActorInstance(m_actorInstance);
-        pose.InitFromBindPose(m_actor);
+        pose.InitFromBindPose(m_actor.get());
 
         const Transform offsetTransform(AZ::Vector3(0.0f, 0.0f, m_testOffset),
-            MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset)));
-        const Transform doubleOffsetTransform = offsetTransform * offsetTransform;
+            AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset));
+
         m_actorInstance->SetLocalSpaceTransform(offsetTransform);
         pose.SetLocalSpaceTransform(jointIndex, offsetTransform);
         m_actorInstance->UpdateWorldTransform();
-        EXPECT_EQ(m_actorInstance->GetWorldSpaceTransform(), offsetTransform);
-        EXPECT_THAT(pose.GetWorldSpaceTransform(jointIndex), IsClose(doubleOffsetTransform));
+        EXPECT_THAT(m_actorInstance->GetWorldSpaceTransform(), IsClose(offsetTransform));
+        EXPECT_THAT(pose.GetLocalSpaceTransform(jointIndex), IsClose(offsetTransform));
+        EXPECT_THAT(pose.GetModelSpaceTransform(jointIndex), IsClose(offsetTransform));
+
+        const Transform expextedWorldSpaceTransform = pose.GetModelSpaceTransform(jointIndex).Multiplied(m_actorInstance->GetWorldSpaceTransform());
+        EXPECT_THAT(pose.GetWorldSpaceTransform(jointIndex), IsClose(expextedWorldSpaceTransform));
 
         // Create a mesh and mesh defomer stack (should equal the world space transform of the joint for non-skinned meshes).
         Mesh* mesh = Mesh::Create();
@@ -710,7 +682,7 @@ namespace EMotionFX
         EXPECT_EQ(pose.GetMeshNodeWorldSpaceTransform(lodLevel, jointIndex), m_actorInstance->GetWorldSpaceTransform());
     }
 
-    TEST_P(DISABLED_PoseTestsBoolParam, CompensateForMotionExtraction)
+    TEST_P(PoseTestsBoolParam, CompensateForMotionExtraction)
     {
         const AZ::u32 motionExtractionJointIndex = m_actor->GetMotionExtractionNodeIndex();
         ASSERT_NE(motionExtractionJointIndex, MCORE_INVALIDINDEX32)
@@ -718,18 +690,18 @@ namespace EMotionFX
 
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
-        pose.InitFromBindPose(m_actor);
+        pose.InitFromBindPose(m_actor.get());
 
         const TransformData* transformData = m_actorInstance->GetTransformData();
 
         // Adjust the default bind pose transform for the motion extraction node in order to see if the compensation
         // for motion extraction actually works.
         Pose* bindPose = transformData->GetBindPose();
-        const Transform bindPoseTransform(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+        const Transform bindPoseTransform(AZ::Vector3(1.0f, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity());
         bindPose->SetLocalSpaceTransform(motionExtractionJointIndex, bindPoseTransform);
 
         const Transform preTransform(AZ::Vector3(0.0f, 0.0f, 1.0f), 
-            MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset)));
+            AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset));
         pose.SetLocalSpaceTransform(motionExtractionJointIndex, preTransform);
 
         if (GetParam())
@@ -748,7 +720,7 @@ namespace EMotionFX
         EXPECT_THAT(transformResult, IsClose(expectedResult));
     }
 
-    TEST_F(DISABLED_PoseTests, CalcTrajectoryTransform)
+    TEST_F(PoseTests, CalcTrajectoryTransform)
     {
         const AZ::u32 motionExtractionJointIndex = m_actor->GetMotionExtractionNodeIndex();
         ASSERT_NE(motionExtractionJointIndex, MCORE_INVALIDINDEX32)
@@ -756,10 +728,10 @@ namespace EMotionFX
 
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
-        pose.InitFromBindPose(m_actor);
+        pose.InitFromBindPose(m_actor.get());
 
         pose.SetLocalSpaceTransform(motionExtractionJointIndex, Transform(AZ::Vector3(1.0f, 1.0f, 1.0f),
-            MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset))));
+            AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), m_testOffset)));
 
         const Transform transformResult = pose.CalcTrajectoryTransform();
         const Transform expectedResult = pose.GetWorldSpaceTransform(motionExtractionJointIndex).ProjectedToGroundPlane();
@@ -769,14 +741,14 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
-    class DISABLED_PoseTestsBlendWeightParam
-        : public DISABLED_PoseTests
+    class PoseTestsBlendWeightParam
+        : public PoseTests
         , public ::testing::WithParamInterface<float>
     {
     };
-    INSTANTIATE_TEST_CASE_P(PoseTests, DISABLED_PoseTestsBlendWeightParam, ::testing::ValuesIn({0.0f, 0.1f, 0.25f, 0.33f, 0.5f, 0.77f, 1.0f}));
+    INSTANTIATE_TEST_CASE_P(PoseTests, PoseTestsBlendWeightParam, ::testing::ValuesIn({0.0f, 0.1f, 0.25f, 0.33f, 0.5f, 0.77f, 1.0f}));
 
-    TEST_P(DISABLED_PoseTestsBlendWeightParam, Blend)
+    TEST_P(PoseTestsBlendWeightParam, Blend)
     {
         const float blendWeight = GetParam();
         const Pose* sourcePose = m_actorInstance->GetTransformData()->GetBindPose();
@@ -784,12 +756,12 @@ namespace EMotionFX
         // Create a destination pose and adjust the transforms.
         Pose destPose;
         destPose.LinkToActorInstance(m_actorInstance);
-        destPose.InitFromBindPose(m_actor);
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        destPose.InitFromBindPose(m_actor.get());
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
             Transform transform(AZ::Vector3(0.0f, 0.0f, -floatI),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI));
             EMFX_SCALECODE
             (
                 transform.mScale = AZ::Vector3(floatI, floatI, floatI);
@@ -800,11 +772,11 @@ namespace EMotionFX
         // Blend between the bind and the destination pose.
         Pose blendedPose;
         blendedPose.LinkToActorInstance(m_actorInstance);
-        blendedPose.InitFromBindPose(m_actor);
+        blendedPose.InitFromBindPose(m_actor.get());
         blendedPose.Blend(&destPose, blendWeight);
 
         // Check the blended result.
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform& sourceTransform = sourcePose->GetLocalSpaceTransform(i);
             const Transform& destTransform = destPose.GetLocalSpaceTransform(i);
@@ -817,7 +789,7 @@ namespace EMotionFX
         }
     }
 
-    TEST_P(DISABLED_PoseTestsBlendWeightParam, BlendAdditiveUsingBindPose)
+    TEST_P(PoseTestsBlendWeightParam, BlendAdditiveUsingBindPose)
     {
         const float blendWeight = GetParam();
         const Pose* bindPose = m_actorInstance->GetTransformData()->GetBindPose();
@@ -825,12 +797,12 @@ namespace EMotionFX
         // Create a source pose and adjust the transforms.
         Pose sourcePose;
         sourcePose.LinkToActorInstance(m_actorInstance);
-        sourcePose.InitFromBindPose(m_actor);
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        sourcePose.InitFromBindPose(m_actor.get());
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
             Transform transform(AZ::Vector3(floatI, 0.0f, 0.0f),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI));
             EMFX_SCALECODE
             (
                 transform.mScale = AZ::Vector3(floatI, floatI, floatI);
@@ -842,12 +814,12 @@ namespace EMotionFX
         // Create a destination pose and adjust the transforms.
         Pose destPose;
         destPose.LinkToActorInstance(m_actorInstance);
-        destPose.InitFromBindPose(m_actor);
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        destPose.InitFromBindPose(m_actor.get());
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
             Transform transform(AZ::Vector3(0.0f, 0.0f, -floatI),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI));
             EMFX_SCALECODE
             (
                 transform.mScale = AZ::Vector3(floatI, floatI, floatI);
@@ -862,7 +834,7 @@ namespace EMotionFX
         blendedPose.InitFromPose(&sourcePose);
         blendedPose.BlendAdditiveUsingBindPose(&destPose, blendWeight);
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform& bindPoseTransform = bindPose->GetLocalSpaceTransform(i);
             const Transform& sourceTransform = sourcePose.GetLocalSpaceTransform(i);
@@ -885,31 +857,31 @@ namespace EMotionFX
         MultiplyInverse
     };
 
-    class DISABLED_PoseTestsMultiply
-        : public DISABLED_PoseTests
+    class PoseTestsMultiply
+        : public PoseTests
         , public ::testing::WithParamInterface<PoseTestsMultiplyFunction>
     {
     };
-    INSTANTIATE_TEST_CASE_P(PoseTests, DISABLED_PoseTestsMultiply, ::testing::ValuesIn({
+    INSTANTIATE_TEST_CASE_P(PoseTests, PoseTestsMultiply, ::testing::ValuesIn({
         PreMultiply, Multiply, MultiplyInverse}));
 
-    TEST_P(DISABLED_PoseTestsMultiply, Multiply)
+    TEST_P(PoseTestsMultiply, Multiply)
     {
         Pose poseA;
         poseA.LinkToActorInstance(m_actorInstance);
-        poseA.InitFromBindPose(m_actor);
+        poseA.InitFromBindPose(m_actor.get());
 
         Pose poseB;
         poseB.LinkToActorInstance(m_actorInstance);
-        poseB.InitFromBindPose(m_actor);
+        poseB.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
             const Transform transformA(AZ::Vector3(floatI, 0.0f, 0.0f),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI));
             const Transform transformB(AZ::Vector3(floatI, floatI, 0.0f),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI));
             poseA.SetLocalSpaceTransform(i, transformA);
             poseB.SetLocalSpaceTransform(i, transformB);
         }
@@ -926,7 +898,7 @@ namespace EMotionFX
             default: { ASSERT_TRUE(false) << "Case not handled."; }
         }
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform& transformA = poseA.GetLocalSpaceTransform(i);
             const Transform& transformB = poseB.GetLocalSpaceTransform(i);
@@ -947,30 +919,30 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
-    class DISABLED_PoseTestsSum
-        : public DISABLED_PoseTests
+    class PoseTestsSum
+        : public PoseTests
         , public ::testing::WithParamInterface<float>
     {
     };
-    INSTANTIATE_TEST_CASE_P(PoseTests, DISABLED_PoseTestsSum, ::testing::ValuesIn({0.0f, 0.1f, 0.25f, 0.33f, 0.5f, 0.77f, 1.0f}));
+    INSTANTIATE_TEST_CASE_P(PoseTests, PoseTestsSum, ::testing::ValuesIn({0.0f, 0.1f, 0.25f, 0.33f, 0.5f, 0.77f, 1.0f}));
 
-    TEST_P(DISABLED_PoseTestsSum, Sum)
+    TEST_P(PoseTestsSum, Sum)
     {
         const float weight = GetParam();
 
         Pose poseA;
         poseA.LinkToActorInstance(m_actorInstance);
-        poseA.InitFromBindPose(m_actor);
+        poseA.InitFromBindPose(m_actor.get());
 
         Pose poseB;
         poseB.LinkToActorInstance(m_actorInstance);
-        poseB.InitFromBindPose(m_actor);
+        poseB.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
-            const Transform transformA(AZ::Vector3(floatI, 0.0f, 0.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
-            const Transform transformB(AZ::Vector3(floatI, floatI, 0.0f), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+            const Transform transformA(AZ::Vector3(floatI, 0.0f, 0.0f), AZ::Quaternion::CreateIdentity());
+            const Transform transformB(AZ::Vector3(floatI, floatI, 0.0f), AZ::Quaternion::CreateIdentity());
             poseA.SetLocalSpaceTransform(i, transformA);
             poseB.SetLocalSpaceTransform(i, transformB);
         }
@@ -988,7 +960,7 @@ namespace EMotionFX
         poseSum.InitFromPose(&poseA);
         poseSum.Sum(&poseB, weight);
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform& transformA = poseA.GetLocalSpaceTransform(i);
             const Transform& transformB = poseB.GetLocalSpaceTransform(i);
@@ -1008,21 +980,21 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
-    TEST_F(DISABLED_PoseTests, MakeRelativeTo)
+    TEST_F(PoseTests, MakeRelativeTo)
     {
         Pose poseA;
         poseA.LinkToActorInstance(m_actorInstance);
-        poseA.InitFromBindPose(m_actor);
+        poseA.InitFromBindPose(m_actor.get());
 
         Pose poseB;
         poseB.LinkToActorInstance(m_actorInstance);
-        poseB.InitFromBindPose(m_actor);
+        poseB.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
-            const Transform transformA(AZ::Vector3(floatI, floatI, floatI), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
-            const Transform transformB(AZ::Vector3(floatI, floatI, floatI) - AZ::Vector3::CreateOne(), MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateIdentity()));
+            const Transform transformA(AZ::Vector3(floatI, floatI, floatI), AZ::Quaternion::CreateIdentity());
+            const Transform transformB(AZ::Vector3(floatI, floatI, floatI) - AZ::Vector3::CreateOne(), AZ::Quaternion::CreateIdentity());
             poseA.SetLocalSpaceTransform(i, transformA);
             poseB.SetLocalSpaceTransform(i, transformB);
         }
@@ -1032,14 +1004,11 @@ namespace EMotionFX
         poseRel.InitFromPose(&poseA);
         poseRel.MakeRelativeTo(poseB);
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
-            const Transform& transformA = poseA.GetLocalSpaceTransform(i);
-            const Transform& transformB = poseB.GetLocalSpaceTransform(i);
             const Transform& transformRel = poseRel.GetLocalSpaceTransform(i);
 
             const AZ::Vector3& result = transformRel.mPosition;
-            const AZ::Vector3 expectedResult = transformA.mPosition - transformB.mPosition;
             EXPECT_TRUE(result.IsClose(AZ::Vector3::CreateOne()));
         }
     }
@@ -1060,13 +1029,13 @@ namespace EMotionFX
         float m_weight;
     };
 
-    class DISABLED_PoseTestsAdditive
-        : public DISABLED_PoseTests
+    class PoseTestsAdditive
+        : public PoseTests
         , public ::testing::WithParamInterface<PoseTestAdditiveParam>
     {
     };
 
-    std::vector<PoseTestAdditiveParam> poseTestsAdditiveData
+    static const std::vector<PoseTestAdditiveParam> poseTestsAdditiveData
     {
         {true, MakeAdditive, 0.0f}, {true, ApplyAdditive, 0.0f},
         {false, MakeAdditive, 0.0f}, {false, ApplyAdditive, 0.0f},
@@ -1074,9 +1043,9 @@ namespace EMotionFX
         {true, ApplyAdditiveWeight, 0.0f}, {true, ApplyAdditiveWeight, 0.25f}, {true, ApplyAdditiveWeight, 0.5f}, {true, ApplyAdditiveWeight, 1.0f}
     };
 
-    INSTANTIATE_TEST_CASE_P(PoseTests, DISABLED_PoseTestsAdditive, ::testing::ValuesIn(poseTestsAdditiveData));
+    INSTANTIATE_TEST_CASE_P(PoseTests, PoseTestsAdditive, ::testing::ValuesIn(poseTestsAdditiveData));
 
-    TEST_P(DISABLED_PoseTestsAdditive, Additive)
+    TEST_P(PoseTestsAdditive, Additive)
     {
         const bool linkToActorInstance = GetParam().m_linkToActorInstance;
         const int additiveFunction = GetParam().m_additiveFunction;
@@ -1089,9 +1058,9 @@ namespace EMotionFX
         }
         else
         {
-            poseA.LinkToActor(m_actor);
+            poseA.LinkToActor(m_actor.get());
         }
-        poseA.InitFromBindPose(m_actor);
+        poseA.InitFromBindPose(m_actor.get());
 
         Pose poseB;
         if (linkToActorInstance)
@@ -1100,17 +1069,17 @@ namespace EMotionFX
         }
         else
         {
-            poseB.LinkToActor(m_actor);
+            poseB.LinkToActor(m_actor.get());
         }
-        poseB.InitFromBindPose(m_actor);
+        poseB.InitFromBindPose(m_actor.get());
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const float floatI = static_cast<float>(i);
             const Transform transformA(AZ::Vector3(floatI, 0.0f, 0.0f),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), floatI));
             const Transform transformB(AZ::Vector3(floatI, floatI, 0.0f),
-                MCore::AzQuatToEmfxQuat(AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI)));
+                AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f), floatI));
             poseA.SetLocalSpaceTransform(i, transformA);
             poseB.SetLocalSpaceTransform(i, transformB);
         }
@@ -1130,7 +1099,7 @@ namespace EMotionFX
         }
         else
         {
-            poseResult.LinkToActor(m_actor);
+            poseResult.LinkToActor(m_actor.get());
         }
         poseResult.InitFromPose(&poseA);
 
@@ -1142,7 +1111,7 @@ namespace EMotionFX
             default: { ASSERT_TRUE(false) << "Case not handled."; }
         }
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             const Transform& transformA = poseA.GetLocalSpaceTransform(i);
             const Transform& transformB = poseB.GetLocalSpaceTransform(i);
@@ -1152,7 +1121,7 @@ namespace EMotionFX
             if (additiveFunction == MakeAdditive)
             {
                 expectedResult.mPosition = transformA.mPosition - transformB.mPosition;
-                expectedResult.mRotation = transformB.mRotation.Conjugated() * transformA.mRotation;
+                expectedResult.mRotation = transformB.mRotation.GetConjugate() * transformA.mRotation;
 
                 EMFX_SCALECODE
                 (
@@ -1225,17 +1194,17 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
-    TEST_F(DISABLED_PoseTests, Zero)
+    TEST_F(PoseTests, Zero)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
         pose.Zero();
 
         // Check if local space transforms are correctly zeroed.
         Transform zeroTransform;
         zeroTransform.Zero();
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
             EXPECT_EQ(pose.GetLocalSpaceTransform(i), zeroTransform);
         }
@@ -1248,19 +1217,19 @@ namespace EMotionFX
         }
     }
 
-    TEST_F(DISABLED_PoseTests, NormalizeQuaternions)
+    TEST_F(PoseTests, NormalizeQuaternions)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
         AZ::SimpleLcgRandom random;
         random.SetSeed(875960);
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
-            const AZ::Quaternion randomRot = CreateRandomUnnormalizedQuaternion(random);
-            Transform transformRandomRot(AZ::Vector3::CreateZero(), MCore::AzQuatToEmfxQuat(randomRot));
+            Transform transformRandomRot(AZ::Vector3::CreateZero(),
+                CreateRandomUnnormalizedQuaternion(random));
 
             pose.SetLocalSpaceTransform(i, transformRandomRot);
             EXPECT_EQ(pose.GetLocalSpaceTransform(i), transformRandomRot);
@@ -1268,21 +1237,20 @@ namespace EMotionFX
 
         pose.NormalizeQuaternions();
 
-        for (AZ::u32 i = 0; i < m_numJoints; ++i)
+        for (AZ::u32 i = 0; i < m_actor->GetSkeleton()->GetNumNodes(); ++i)
         {
-            const AZ::Quaternion normalizedRot = MCore::EmfxQuatToAzQuat(pose.GetLocalSpaceTransform(i).mRotation);
-            EXPECT_TRUE(AZ::IsClose(normalizedRot.GetLength(), 1.0f, AZ::g_fltEps));
+            CheckIfRotationIsNormalized(pose.GetLocalSpaceTransform(i).mRotation);
         }
     }
 
-    TEST_F(DISABLED_PoseTests, AssignmentOperator)
+    TEST_F(PoseTests, AssignmentOperator)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
-        pose.InitFromBindPose(m_actor);
+        pose.LinkToActor(m_actor.get());
+        pose.InitFromBindPose(m_actor.get());
 
         Pose poseCopy;
-        poseCopy.LinkToActor(m_actor);
+        poseCopy.LinkToActor(m_actor.get());
         poseCopy = pose;
 
         const Pose* bindPose = m_actor->GetBindPose();
@@ -1291,10 +1259,10 @@ namespace EMotionFX
         CompareMorphTargets(poseCopy, *bindPose);
     }
 
-    TEST_F(DISABLED_PoseTests, GetAndPreparePoseDataType)
+    TEST_F(PoseTests, GetAndPreparePoseDataType)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         PoseData* poseData = pose.GetAndPreparePoseData(azrtti_typeid<PoseDataRagdoll>(), m_actorInstance);
 
         EXPECT_NE(poseData, nullptr);
@@ -1303,10 +1271,10 @@ namespace EMotionFX
         EXPECT_EQ(poseData->IsUsed(), true);
     }
 
-    TEST_F(DISABLED_PoseTests, GetAndPreparePoseDataTemplate)
+    TEST_F(PoseTests, GetAndPreparePoseDataTemplate)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         PoseData* poseData = pose.GetAndPreparePoseData<PoseDataRagdoll>(m_actorInstance);
 
         EXPECT_NE(poseData, nullptr);
@@ -1315,10 +1283,10 @@ namespace EMotionFX
         EXPECT_EQ(poseData->IsUsed(), true);
     }
 
-    TEST_F(DISABLED_PoseTests, GetHasPoseData)
+    TEST_F(PoseTests, GetHasPoseData)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         PoseData* poseData = pose.GetAndPreparePoseData(azrtti_typeid<PoseDataRagdoll>(), m_actorInstance);
 
         EXPECT_NE(poseData, nullptr);
@@ -1328,10 +1296,10 @@ namespace EMotionFX
         EXPECT_EQ(pose.GetPoseData<PoseDataRagdoll>(), poseData);
     }
 
-    TEST_F(DISABLED_PoseTests, AddPoseData)
+    TEST_F(PoseTests, AddPoseData)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         PoseData* poseData = PoseDataFactory::Create(&pose, azrtti_typeid<PoseDataRagdoll>());
         pose.AddPoseData(poseData);
 
@@ -1342,10 +1310,10 @@ namespace EMotionFX
         EXPECT_EQ(pose.GetPoseData<PoseDataRagdoll>(), poseData);
     }
 
-    TEST_F(DISABLED_PoseTests, ClearPoseDatas)
+    TEST_F(PoseTests, ClearPoseDatas)
     {
         Pose pose;
-        pose.LinkToActor(m_actor);
+        pose.LinkToActor(m_actor.get());
         PoseData* poseData = PoseDataFactory::Create(&pose, azrtti_typeid<PoseDataRagdoll>());
         pose.AddPoseData(poseData);
         EXPECT_NE(poseData, nullptr);

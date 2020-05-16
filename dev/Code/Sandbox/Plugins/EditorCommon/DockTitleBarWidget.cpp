@@ -14,14 +14,15 @@
 #include "DockTitleBarWidget.h"
 #include <QStyle>
 #include <QStyleOptionToolButton>
+#include <AzCore/Casting/numeric_cast.h>
 
 static QColor Interpolate(const QColor& a, const QColor& b, float k)
 {
     float mk = 1.0f - k;
-    return QColor(a.red() * mk  + b.red() * k,
-        a.green() * mk + b.green() * k,
-        a.blue() * mk + b.blue() * k,
-        a.alpha() * mk + b.alpha() * k);
+    return QColor(aznumeric_cast<int>(a.red() * mk  + b.red() * k),
+        aznumeric_cast<int>(a.green() * mk + b.green() * k),
+        aznumeric_cast<int>(a.blue() * mk + b.blue() * k),
+        aznumeric_cast<int>(a.alpha() * mk + b.alpha() * k));
 }
 
 class CDockWidgetTitleButton

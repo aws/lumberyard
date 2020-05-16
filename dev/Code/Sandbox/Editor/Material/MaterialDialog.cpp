@@ -2084,28 +2084,30 @@ CMaterial* CMaterialDialog::GetSelectedMaterial()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnAssignMaterialToSelection()
 {
-    GetIEditor()->ExecuteCommand("material.assign_to_selection");
+    CUndo undo("Assign Material To Selection");
+    GetIEditor()->GetMaterialManager()->Command_AssignToSelection();
     UpdateActions();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnSelectAssignedObjects()
 {
-    GetIEditor()->ExecuteCommand("material.select_assigned_objects");
+    CUndo undo("Select Objects With Current Material");
+    GetIEditor()->GetMaterialManager()->Command_SelectAssignedObjects();
     UpdateActions();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnResetMaterialOnSelection()
 {
-    GetIEditor()->ExecuteCommand("material.reset_selection");
+    GetIEditor()->GetMaterialManager()->Command_ResetSelection();
     UpdateActions();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnGetMaterialFromSelection()
 {
-    GetIEditor()->ExecuteCommand("material.select_from_object");
+    GetIEditor()->GetMaterialManager()->Command_SelectFromObject();
     UpdateActions();
 }
 

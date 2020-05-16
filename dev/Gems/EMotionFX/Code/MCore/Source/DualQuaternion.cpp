@@ -19,12 +19,12 @@ namespace MCore
     // calculate the inverse
     DualQuaternion& DualQuaternion::Inverse()
     {
-        const float realLength = mReal.Length();
+        const float realLength = mReal.GetLength();
         const float dotProduct = mReal.Dot(mDual);
         const float dualFactor = realLength - 2.0f * dotProduct;
 
-        mReal.Set(-mReal.x * realLength, -mReal.y * realLength, -mReal.z * realLength, mReal.w * realLength);
-        mDual.Set(-mDual.x * dualFactor, -mDual.y * dualFactor, -mDual.z * dualFactor, mDual.w * dualFactor);
+        mReal.Set(-mReal.GetX() * realLength, -mReal.GetY() * realLength, -mReal.GetZ() * realLength, mReal.GetW() * realLength);
+        mDual.Set(-mDual.GetX() * dualFactor, -mDual.GetY() * dualFactor, -mDual.GetZ() * dualFactor, mDual.GetW() * dualFactor);
 
         return *this;
     }
@@ -33,59 +33,56 @@ namespace MCore
     // calculate the inversed version
     DualQuaternion DualQuaternion::Inversed() const
     {
-        const float realLength = mReal.Length();
+        const float realLength = mReal.GetLength();
         const float dotProduct = mReal.Dot(mDual);
         const float dualFactor = realLength - 2.0f * dotProduct;
-        return DualQuaternion(Quaternion(-mReal.x * realLength, -mReal.y * realLength, -mReal.z * realLength, mReal.w * realLength),
-            Quaternion(-mDual.x * dualFactor, -mDual.y * dualFactor, -mDual.z * dualFactor, mDual.w * dualFactor));
+        return DualQuaternion(AZ::Quaternion(-mReal.GetX() * realLength, -mReal.GetY() * realLength, -mReal.GetZ() * realLength, mReal.GetW() * realLength),
+            AZ::Quaternion(-mDual.GetX() * dualFactor, -mDual.GetY() * dualFactor, -mDual.GetZ() * dualFactor, mDual.GetW() * dualFactor));
     }
 
 
     // convert the dual quaternion to a matrix
-    Matrix DualQuaternion::ToMatrix() const
+    AZ::Transform DualQuaternion::ToTransform() const
     {
-        Matrix m;
         const float sqLen   = mReal.Dot(mReal);
-        const float x       = mReal.x;
-        const float y       = mReal.y;
-        const float z       = mReal.z;
-        const float w       = mReal.w;
-        const float t0      = mDual.w;
-        const float t1      = mDual.x;
-        const float t2      = mDual.y;
-        const float t3      = mDual.z;
+        const float x       = mReal.GetX();
+        const float y       = mReal.GetY();
+        const float z       = mReal.GetZ();
+        const float w       = mReal.GetW();
+        const float t0      = mDual.GetW();
+        const float t1      = mDual.GetX();
+        const float t2      = mDual.GetY();
+        const float t3      = mDual.GetZ();
 
-        MMAT(m, 0, 0) = w * w + x * x - y * y - z * z;
-        MMAT(m, 1, 0) = 2.0f * x * y - 2.0f * w * z;
-        MMAT(m, 2, 0) = 2.0f * x * z + 2.0f * w * y;
-        MMAT(m, 0, 1) = 2.0f * x * y + 2.0f * w * z;
-        MMAT(m, 1, 1) = w * w + y * y - x * x - z * z;
-        MMAT(m, 2, 1) = 2.0f * y * z - 2.0f * w * x;
-        MMAT(m, 0, 2) = 2.0f * x * z - 2.0f * w * y;
-        MMAT(m, 1, 2) = 2.0f * y * z + 2.0f * w * x;
-        MMAT(m, 2, 2) = w * w + z * z - x * x - y * y;
+        AZ::Transform transform;
+        transform.SetElement(0, 0, w * w + x * x - y * y - z * z);
+        transform.SetElement(0, 1, 2.0f * x * y - 2.0f * w * z);
+        transform.SetElement(0, 2, 2.0f * x * z + 2.0f * w * y);
+        transform.SetElement(1, 0, 2.0f * x * y + 2.0f * w * z);
+        transform.SetElement(1, 1, w * w + y * y - x * x - z * z);
+        transform.SetElement(1, 2, 2.0f * y * z - 2.0f * w * x);
+        transform.SetElement(2, 0, 2.0f * x * z - 2.0f * w * y);
+        transform.SetElement(2, 1, 2.0f * y * z + 2.0f * w * x);
+        transform.SetElement(2, 2, w * w + z * z - x * x - y * y);
 
-        MMAT(m, 3, 0) = -2.0f * t0 * x + 2.0f * w * t1 - 2.0f * t2 * z + 2.0f * y * t3;
-        MMAT(m, 3, 1) = -2.0f * t0 * y + 2.0f * t1 * z - 2.0f * x * t3 + 2.0f * w * t2;
-        MMAT(m, 3, 2) = -2.0f * t0 * z + 2.0f * x * t2 + 2.0f * w * t3 - 2.0f * t1 * y;
-
-        MMAT(m, 0, 3) = 0.0f;
-        MMAT(m, 1, 3) = 0.0f;
-        MMAT(m, 2, 3) = 0.0f;
-        MMAT(m, 3, 3) = sqLen;
+        transform.SetElement(0, 3, -2.0f * t0 * x + 2.0f * w * t1 - 2.0f * t2 * z + 2.0f * y * t3);
+        transform.SetElement(1, 3, -2.0f * t0 * y + 2.0f * t1 * z - 2.0f * x * t3 + 2.0f * w * t2);
+        transform.SetElement(2, 3, -2.0f * t0 * z + 2.0f * x * t2 + 2.0f * w * t3 - 2.0f * t1 * y);
 
         const float invSqLen = 1.0f / sqLen;
-        m *= invSqLen;
-        return m;
+        for (int i = 0; i < 3; ++i)
+        {
+            transform.SetRow(0, transform.GetRow(0) * invSqLen);
+        }
+        return transform;
     }
 
 
     // construct the dual quaternion from a given non-scaled matrix
-    DualQuaternion DualQuaternion::ConvertFromMatrix(const Matrix& m)
+    DualQuaternion DualQuaternion::ConvertFromTransform(const AZ::Transform& transform)
     {
-        AZ::Vector3 pos;
-        Quaternion rot;
-        m.Decompose(&pos, &rot); // does not allow scale
+        const AZ::Vector3 pos = transform.GetTranslation();
+        const AZ::Quaternion rot = AZ::Quaternion::CreateFromTransform(transform); // does not allow scale
         return DualQuaternion(rot, pos);
     }
 
@@ -93,41 +90,41 @@ namespace MCore
     // normalizes the dual quaternion
     DualQuaternion& DualQuaternion::Normalize()
     {
-        const float length = mReal.Length();
+        const float length = mReal.GetLength();
         const float invLength = 1.0f / length;
 
-        mReal.Set(mReal.x * invLength, mReal.y * invLength, mReal.z * invLength, mReal.w * invLength);
-        mDual.Set(mDual.x * invLength, mDual.y * invLength, mDual.z * invLength, mDual.w * invLength);
+        mReal.Set(mReal.GetX() * invLength, mReal.GetY() * invLength, mReal.GetZ() * invLength, mReal.GetW() * invLength);
+        mDual.Set(mDual.GetX() * invLength, mDual.GetY() * invLength, mDual.GetZ() * invLength, mDual.GetW() * invLength);
         mDual += mReal * (mReal.Dot(mDual) * -1.0f);
         return *this;
     }
 
 
     // convert back into rotation and translation
-    void DualQuaternion::ToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const
+    void DualQuaternion::ToRotationTranslation(AZ::Quaternion* outRot, AZ::Vector3* outPos) const
     {
-        const float invLength = 1.0f / mReal.Length();
+        const float invLength = 1.0f / mReal.GetLength();
         *outRot = mReal * invLength;
-        outPos->Set(2.0f * (-mDual.w * mReal.x + mDual.x * mReal.w - mDual.y * mReal.z + mDual.z * mReal.y) * invLength,
-            2.0f * (-mDual.w * mReal.y + mDual.x * mReal.z + mDual.y * mReal.w - mDual.z * mReal.x) * invLength,
-            2.0f * (-mDual.w * mReal.z - mDual.x * mReal.y + mDual.y * mReal.x + mDual.z * mReal.w) * invLength);
+        outPos->Set(2.0f * (-mDual.GetW() * mReal.GetX() + mDual.GetX() * mReal.GetW() - mDual.GetY() * mReal.GetZ() + mDual.GetZ() * mReal.GetY()) * invLength,
+            2.0f * (-mDual.GetW() * mReal.GetY() + mDual.GetX() * mReal.GetZ() + mDual.GetY() * mReal.GetW() - mDual.GetZ() * mReal.GetX()) * invLength,
+            2.0f * (-mDual.GetW() * mReal.GetZ() - mDual.GetX() * mReal.GetY() + mDual.GetY() * mReal.GetX() + mDual.GetZ() * mReal.GetW()) * invLength);
     }
 
 
     // special case version for conversion into rotation and translation
     // only works with normalized dual quaternions
-    void DualQuaternion::NormalizedToRotationTranslation(Quaternion* outRot, AZ::Vector3* outPos) const
+    void DualQuaternion::NormalizedToRotationTranslation(AZ::Quaternion* outRot, AZ::Vector3* outPos) const
     {
         *outRot = mReal;
-        outPos->Set(2.0f * (-mDual.w * mReal.x + mDual.x * mReal.w - mDual.y * mReal.z + mDual.z * mReal.y),
-            2.0f * (-mDual.w * mReal.y + mDual.x * mReal.z + mDual.y * mReal.w - mDual.z * mReal.x),
-            2.0f * (-mDual.w * mReal.z - mDual.x * mReal.y + mDual.y * mReal.x + mDual.z * mReal.w));
+        outPos->Set(2.0f * (-mDual.GetW() * mReal.GetX() + mDual.GetX() * mReal.GetW() - mDual.GetY() * mReal.GetZ() + mDual.GetZ() * mReal.GetY()),
+            2.0f * (-mDual.GetW() * mReal.GetY() + mDual.GetX() * mReal.GetZ() + mDual.GetY() * mReal.GetW() - mDual.GetZ() * mReal.GetX()),
+            2.0f * (-mDual.GetW() * mReal.GetZ() - mDual.GetX() * mReal.GetY() + mDual.GetY() * mReal.GetX() + mDual.GetZ() * mReal.GetW()));
     }
 
 
     // convert into a dual quaternion from a translation and rotation
-    DualQuaternion DualQuaternion::ConvertFromRotationTranslation(const Quaternion& rotation, const AZ::Vector3& translation)
+    DualQuaternion DualQuaternion::ConvertFromRotationTranslation(const AZ::Quaternion& rotation, const AZ::Vector3& translation)
     {
-        return DualQuaternion(rotation,  0.5f * (Quaternion(translation.GetX(), translation.GetY(), translation.GetZ(), 0.0f) * rotation));
+        return DualQuaternion(rotation,  0.5f * (AZ::Quaternion(translation.GetX(), translation.GetY(), translation.GetZ(), 0.0f) * rotation));
     }
 }   // namespace MCore

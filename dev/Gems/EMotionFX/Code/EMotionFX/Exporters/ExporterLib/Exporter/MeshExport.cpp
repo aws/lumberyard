@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
 #include <EMotionFX/Source/Node.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace ExporterLib

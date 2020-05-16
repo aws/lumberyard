@@ -42,26 +42,28 @@ def build(bld):
 
     exclude_monolithic_dx11 = True
     exclude_monolithic_dx12 = True
-    extended = False
-    if bld.env['PLATFORM'] == 'project_generator':
-    	exclude_monolithic_dx11 = False
-    	exclude_monolithic_dx12 = False
-        extended = True
-    elif 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
-        extended = True
-        if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
-            Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
+
+    if not bld.is_option_true('use_other_in_monolithic'):
+        extended = False
+        if bld.env['PLATFORM'] == 'project_generator':
             exclude_monolithic_dx11 = False
-        else:
             exclude_monolithic_dx12 = False
-    else:
-        for p in restricted_scripts:
-            if 'restricted_dx12_configuration' in restricted_scripts[p]:
-                if restricted_scripts[p]['restricted_dx12_configuration'](bld):
-                    exclude_monolithic_dx12 = False
-                    extended = True
-    if not extended:
-        exclude_monolithic_dx11 = False
+            extended = True
+        elif 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
+            extended = True
+            if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
+                Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
+                exclude_monolithic_dx11 = False
+            else:
+                exclude_monolithic_dx12 = False
+        else:
+            for p in restricted_scripts:
+                if 'restricted_dx12_configuration' in restricted_scripts[p]:
+                    if restricted_scripts[p]['restricted_dx12_configuration'](bld):
+                        exclude_monolithic_dx12 = False
+                        extended = True
+        if not extended:
+            exclude_monolithic_dx11 = False
 
     kw = dict(
         #==============================

@@ -22,7 +22,7 @@
 #include <QMessageBox>
 #include <QPainter>
 #include <QtCore/QPropertyAnimation>
-#include <QtCore/qtimer>
+#include <QtCore/QTimer>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 
@@ -104,9 +104,33 @@ namespace SliceFavorites
 
             if (result == QMessageBox::Ok)
             {
+                // Only delete the highest-level items from the current selection
+                // Their children will be automatically removed
+                AZStd::vector<QModelIndex> toDelete;
                 for (const auto& selectedIndex : currentSelection.indexes())
                 {
-                    m_dataModel->RemoveFavorite(selectedIndex);
+                    bool child = false;
+                    for (const auto& potentialAncestor : currentSelection.indexes())
+                    {
+                        if (m_dataModel->IsDescendentOf(selectedIndex, potentialAncestor))
+                        {
+                            child = true;
+                            break;
+                        }
+                    }   
+
+                    if (!child)
+                    {
+                        toDelete.push_back(selectedIndex);
+                    }
+                }
+
+                for (const auto& selectedIndex : toDelete)
+                {
+                    if (selectedIndex.isValid())
+                    {
+                        m_dataModel->RemoveFavorite(selectedIndex);
+                    }
                 }
             }
         }

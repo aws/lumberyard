@@ -15,9 +15,11 @@
 AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 AZ_POP_DISABLE_WARNING
-#include <AzQtComponents/Components/FilteredSearchWidget.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <QSharedPointer>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

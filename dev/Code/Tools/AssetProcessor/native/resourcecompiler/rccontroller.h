@@ -88,7 +88,10 @@ namespace AssetProcessor
         void QuitRequested();
 
         //! This will be called in order to create a compile group and start tracking it.
-        void OnRequestCompileGroup(AssetProcessor::NetworkRequestID groupID, QString platform, QString searchTerm, bool isStatusRequest = true);
+        void OnRequestCompileGroup(AssetProcessor::NetworkRequestID groupID, QString platform, QString searchTerm, AZ::Data::AssetId assetId, bool isStatusRequest = true);
+
+        void OnEscalateJobsBySearchTerm(QString platform, QString searchTerm);
+        void OnEscalateJobsBySourceUUID(QString platform, AZ::Uuid sourceUuid);
 
         void DispatchJobs();
         void DispatchJobsImpl();
@@ -99,11 +102,14 @@ namespace AssetProcessor
         //! All jobs which match this source will be cancelled or removed.  Note that relSourceFile should have any applicable output prefixes!
         void RemoveJobsBySource(QString relSourceFileDatabaseName);
 
-        void OnFinishedProcessingJob(JobEntry jobEntry);
+        // when the AP is truly done with a particular job and its going to be deleted and nothing more cares about it,
+        // this function is called. this allows us to synchronize the various threads (catalog, queue, etc) to know that
+        // its completely done.
+        void OnJobComplete(JobEntry completeEntry, AzToolsFramework::AssetSystem::JobStatus status);
+        void OnAddedToCatalog(JobEntry jobEntry);
 
     private:
         void FinishJob(AssetProcessor::RCJob* rcJob);
-        void CheckCompileAssetsGroup(const AssetProcessor::QueueElementID& queuedElement, AssetProcessor::RCJob::JobState state);
 
         unsigned int m_maxJobs;
 
@@ -128,6 +134,7 @@ namespace AssetProcessor
         };
 
         QList<AssetCompileGroup> m_activeCompileGroups;
+        
     };
 } // namespace AssetProcessor
 

@@ -1,0 +1,33 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+    bld.DefineGem(
+        # General
+        disable_pch = True,
+
+        # This is an Editor only gem
+        Editor = dict(
+            disable_pch = True,
+            platforms = ['win', 'darwin'],
+            file_list = ['editorpythonbindings_editor_common.waf_files'],
+            win_file_list = ['editorpythonbindings_editor.waf_files'],
+            win_test_all_file_list = ['editorpythonbindings_editor.waf_files', 'editorpythonbindings_editor_tests.waf_files'],
+            win_uselib = ['PYTHON37', 'PYBIND11'],
+            win_defines = ["HAVE_ROUND", # defined for Windows since http://p-nand-q.com/python/building-python-33-with-vs2013.html
+                           "PY_PLATFORM=\"windows\""],
+            win_features = ['crcfix'],
+            darwin_file_list = ['editorpythonbindings_editor_stub.waf_files'],
+            darwin_disable_tests = True,
+            enable_rtti = True
+         )
+    )

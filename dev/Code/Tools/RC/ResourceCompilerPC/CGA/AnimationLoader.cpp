@@ -12,6 +12,10 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+#include <AzCore/PlatformDef.h>
+#if defined (AZ_PLATFORM_LINUX)
+#include "Linux64Specific.h"
+#endif // defined (AZ_PLATFORM_LINUX)
 
 #include "FileUtil.h"
 #include "AnimationLoader.h"
@@ -120,7 +124,7 @@ uint32 CAnimationCompressor::AddCompressedChunksToFile(const char* name, bool bi
 
     FileUtil::SetFileTimes(name, oldTimeStamp);
 
-    const __int64 fileSize = FileUtil::GetFileSize(name);
+    const int64 fileSize = FileUtil::GetFileSize(name);
     if (fileSize < 0)
     {
         RCLogError("Failed to get file size of '%s'", name);
@@ -173,7 +177,7 @@ uint32 CAnimationCompressor::SaveOnlyCompressedChunksInFile(const char* name, FI
 
     FileUtil::SetFileTimes(name, timeStamp);
 
-    const __int64 fileSize = FileUtil::GetFileSize(name);
+    const int64 fileSize = FileUtil::GetFileSize(name);
     if (fileSize < 0)
     {
         RCLogError("Failed to get file size of '%s'", name);

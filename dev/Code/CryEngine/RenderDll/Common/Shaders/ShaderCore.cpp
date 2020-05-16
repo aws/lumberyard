@@ -58,6 +58,7 @@ CShader* CShaderMan::s_ShaderOcclTest;
 CShader* CShaderMan::s_ShaderDXTCompress = nullptr;
 CShader* CShaderMan::s_ShaderStereo = nullptr;
 CShader* CShaderMan::s_ShaderFur = nullptr;
+CShader* CShaderMan::s_ShaderVideo = nullptr;
 #else
 SShaderItem CShaderMan::s_DefaultShaderItem;
 #endif
@@ -1492,6 +1493,11 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_SRGB2] = gb->m_Mask;
             }
             else
+            if (gb->m_ParamName == "%_RT_SLIM_GBUFFER")
+            {
+                g_HWSR_MaskBit[HWSR_SLIM_GBUFFER] = gb->m_Mask;
+            }
+            else
             if (gb->m_ParamName == "%_RT_DEFERRED_RENDER_TARGET_OPTIMIZATION")
             {
                 g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION] = gb->m_Mask;
@@ -2029,6 +2035,7 @@ void CShaderMan::mfReleaseSystemShaders ()
     SAFE_RELEASE_FORCE(s_ShaderDeferredSnow);
     SAFE_RELEASE_FORCE(s_ShaderStars);
     SAFE_RELEASE_FORCE(s_ShaderFur);
+    SAFE_RELEASE_FORCE(s_ShaderVideo);
     m_bLoadedSystem = false;
 #endif
 }
@@ -2043,13 +2050,14 @@ void CShaderMan::mfLoadBasicSystemShaders()
         s_DefaultShader->m_Flags |= EF_SYSTEM;
     }
 #ifndef NULL_RENDERER
-    if (!m_bLoadedSystem)
+    if (!m_bLoadedSystem && !gRenDev->IsShaderCacheGenMode())
     {
         sLoadShader("Fallback", s_ShaderFallback);
         sLoadShader("FixedPipelineEmu", s_ShaderFPEmu);
         sLoadShader("UI", s_ShaderUI);
 
         mfRefreshSystemShader("Stereo", CShaderMan::s_ShaderStereo);
+        mfRefreshSystemShader("Video", CShaderMan::s_ShaderVideo);
     }
 #endif
 }

@@ -207,6 +207,7 @@ bool CShaderSerialize::CreateSResource(CShader* pSH, SSShaderRes* pSR, CCryNameT
     dstName += ".fxb";
 
     bool bRes = OpenSResource(dstName.c_str(), pSR, pSH, bDontUseUserFolder, bReadOnly);
+    AZ_Error("CShaderSerialize", bRes, "Failed to open '%s' with bDontUseUserFolder=%s and bReadOnly=%s", dstName.c_str(), bDontUseUserFolder ? "True" : "False", bReadOnly ? "True" : "False");
 
     return bRes;
 }

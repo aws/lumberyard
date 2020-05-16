@@ -12,8 +12,10 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+#include <QColor>
 
 class QLabel;
+class QSettings;
 
 namespace AzQtComponents
 {
@@ -37,6 +39,20 @@ namespace AzQtComponents
     class AZ_QT_COMPONENTS_API Text
     {
     public:
+        struct Config
+        {
+            QColor hyperlinkColor;
+        };
+
+        /*!
+         * Loads the Text config data from a settings object.
+         */
+        static Config loadConfig(QSettings& settings);
+
+        /*!
+         * Returns default Text config data.
+         */
+        static Config defaultConfig();
 
         /*!
         * Applies the Headline styling to a QLabel.
@@ -60,11 +76,39 @@ namespace AzQtComponents
         static void addSubtitleStyle(QLabel* text);
         
         /*!
+         * Applies the Data/Menu styling to a QLabel.
+         * Same as
+         *   AzQtComponents::Style::addClass(label, "Menu");
+         */
+        static void addMenuStyle(QLabel* text);
+
+        /*!
+         * Applies the Label styling to a QLabel.
+         * Same as
+         *   AzQtComponents::Style::addClass(label, "Label");
+         */
+        static void addLabelStyle(QLabel* text);
+
+        /*!
         * Applies the Paragraph styling to a QLabel.
         * Same as
         *   AzQtComponents::Style::addClass(label, "Paragraph");
         */
         static void addParagraphStyle(QLabel* text);
+
+        /*!
+         * Applies the Tooltip styling to a QLabel.
+         * Same as
+         *   AzQtComponents::Style::addClass(label, "Tooltip");
+         */
+        static void addTooltipStyle(QLabel* text);
+
+        /*!
+         * Applies the Button styling to a QLabel.
+         * Same as
+         *   AzQtComponents::Style::addClass(label, "Button");
+         */
+        static void addButtonStyle(QLabel* text);
 
         /*!
         * Applies the Primary color styling to a QLabel.

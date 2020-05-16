@@ -62,7 +62,7 @@ void CylinderTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point
     if (m_CylinderPhase == eCylinderPhase_Radius)
     {
         BrushVec2 vSpotPos2D = GetPlane().W2P(GetCurrentSpotPos());
-        m_CylinderParameter.m_Radius = (vSpotPos2D - m_vCenterOnPlane).GetLength();
+        m_CylinderParameter.m_Radius = aznumeric_cast<float>((vSpotPos2D - m_vCenterOnPlane).GetLength());
         const BrushFloat kSmallestRadius = 0.05f;
         if (m_CylinderParameter.m_Radius < kSmallestRadius)
         {
@@ -74,7 +74,7 @@ void CylinderTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point
     }
     else if (m_CylinderPhase == eCylinderPhase_RaiseHeight)
     {
-        m_CylinderParameter.m_Height = s_HeightManipulator.UpdateHeight(GetWorldTM(), view, point);
+        m_CylinderParameter.m_Height = aznumeric_cast<float>(s_HeightManipulator.UpdateHeight(GetWorldTM(), view, point));
         if (m_CylinderParameter.m_Height < kInitialPrimitiveHeight)
         {
             m_CylinderParameter.m_Height = 0;
@@ -84,7 +84,7 @@ void CylinderTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point
             CD::PolygonPtr pAlignedPolygon = s_SnappingHelper.FindAlignedPolygon(m_pCapPolygon, GetWorldTM(), view, point);
             if (pAlignedPolygon)
             {
-                m_CylinderParameter.m_Height = GetPlane().Distance() - pAlignedPolygon->GetPlane().Distance();
+                m_CylinderParameter.m_Height = aznumeric_cast<float>(GetPlane().Distance() - pAlignedPolygon->GetPlane().Distance());
             }
         }
         UpdateHeightWithBoundaryCheck(m_CylinderParameter.m_Height);
@@ -219,12 +219,12 @@ void CylinderTool::UpdateBasePolygon(float fRadius, int nNumOfSubdivision)
 
 void CylinderTool::UpdateHeightWithBoundaryCheck(BrushFloat fHeight)
 {
-    UpdateHeight(fHeight);
+    UpdateHeight(aznumeric_cast<float>(fHeight));
     m_bIsOverOpposite = m_pCapPolygon && s_SnappingHelper.IsOverOppositePolygon(m_pCapPolygon, CD::ePP_Pull);
     if (m_bIsOverOpposite)
     {
         fHeight = s_SnappingHelper.GetNearestDistanceToOpposite(CD::ePP_Pull);
-        UpdateHeight(fHeight);
+        UpdateHeight(aznumeric_cast<float>(fHeight));
     }
 }
 

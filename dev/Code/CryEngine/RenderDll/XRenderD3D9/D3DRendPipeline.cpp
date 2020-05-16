@@ -4648,6 +4648,10 @@ void CRenderer::FX_Start(CShader* ef, int nTech, CShaderResources* Res, IRenderE
     {
         m_RP.m_FlagsShader_RT |= tiled;
     }
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     SThreadInfo* const pShaderThreadInfo = &(m_RP.m_TI[m_RP.m_nProcessThreadID]);
     if (pShaderThreadInfo->m_PersFlags & RBPF_REVERSE_DEPTH)
@@ -5315,7 +5319,7 @@ void CD3D9Renderer::InvalidateCoverageBufferData()
         "$ZTargetReadBack2"
     };
 
-    AZ_STATIC_ASSERT(s_numOcclusionReadbackTextures == 3, "Change the initialization of occlusionDataTextureName if you change s_numOcclusionReadbackTextures!");
+    static_assert(s_numOcclusionReadbackTextures == 3, "Change the initialization of occlusionDataTextureName if you change s_numOcclusionReadbackTextures!");
 
     for (size_t i = 0; i < s_numOcclusionReadbackTextures; i++)
     {
@@ -5442,7 +5446,7 @@ void CD3D9Renderer::FX_ZTargetReadBackOnCPU()
 
     // Readback index for the depth buffer in our ring buffer
     AZ::u8 occlusionReadbackIndex = 0;
-    AZ_STATIC_ASSERT(s_numOcclusionReadbackTextures <= 3, "Maximum of 3 occlusion readback textures currently supported");
+    static_assert(s_numOcclusionReadbackTextures <= 3, "Maximum of 3 occlusion readback textures currently supported");
     switch (latency)
     {
     case 0:
@@ -5965,7 +5969,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                 cause tracking to de-sync from rendering causing all frames to render with out
                 of date tracking. Updating tracking here significantly reduces GPU bubbles.
 
-                For Oculus, OSVR, PSVR etc this is still the best place to request a tracking
+                For Oculus, PSVR etc this is still the best place to request a tracking
                 update in a multi-threaded scenario. It ensures that any prediction will be done
                 for this frame that we want to render rather than the next frame.
             */

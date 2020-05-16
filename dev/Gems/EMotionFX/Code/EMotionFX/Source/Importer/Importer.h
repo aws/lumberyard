@@ -13,8 +13,10 @@
 #pragma once
 
 #include "../EMotionFXConfig.h"
+#include <MCore/Source/Array.h>
 #include <MCore/Source/Endian.h>
 #include <EMotionFX/Source/BaseObject.h>
+#include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/std/string/string.h>
 
 
@@ -96,7 +98,6 @@ namespace EMotionFX
          */
         struct EMFX_API ActorSettings
         {
-            bool mForceLoading;                             /**< Set to true in case you want to load the actor even if an actor with the given filename is already inside the actor manager. */
             bool mLoadMeshes;                               /**< Set to false if you wish to disable loading any meshes. */
             bool mLoadCollisionMeshes;                      /**< Set to false if you wish to disable loading any collision meshes. */
             bool mLoadStandardMaterialLayers;               /**< Set to false if you wish to disable loading any standard material layers. */
@@ -110,6 +111,8 @@ namespace EMotionFX
             bool mDualQuatSkinning;                         /**< Set to true  if you wish to enable software skinning using dual quaternions. */
             bool mMakeGeomLODsCompatibleWithSkeletalLODs;   /**< Set to true if you wish to disable the process that makes sure no skinning influences are mapped to disabled bones. Default is false. */
             bool mUnitTypeConvert;                          /**< Set to false to disable automatic unit type conversion (between cm, meters, etc). On default this is enabled. */
+            bool mLoadSimulatedObjects;                     /**< Set to false if you wish to disable loading of simulated objects. */
+            bool mOptimizeForServer;                        /**< Set to true if you witsh to optimize this actor to be used on server. */
             uint32 mThreadIndex;
             MCore::Array<uint32>    mChunkIDsToIgnore;      /**< Add chunk ID's to this array. Chunks with these ID's will not be processed. */
             MCore::Array<uint32>    mLayerIDsToIgnore;      /**< Add vertex attribute layer ID's to ignore. */
@@ -120,7 +123,6 @@ namespace EMotionFX
              */
             ActorSettings()
             {
-                mForceLoading                           = false;
                 mLoadMeshes                             = true;
                 mLoadCollisionMeshes                    = true;
                 mLoadStandardMaterialLayers             = true;
@@ -134,11 +136,30 @@ namespace EMotionFX
                 mDualQuatSkinning                       = false;
                 mMakeGeomLODsCompatibleWithSkeletalLODs = false;
                 mUnitTypeConvert                        = true;
+                mLoadSimulatedObjects                   = true;
+                mOptimizeForServer                      = false;
                 mThreadIndex                            = 0;
                 mLayerConvertFunction                   = StandardLayerConvert;
 
                 mChunkIDsToIgnore.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
                 mLayerIDsToIgnore.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
+            }
+
+            /**
+             * If the actor need to be optimized for server, will overwrite a few other actor settings.
+             */
+            void OptimizeForServer()
+            {
+                mLoadMeshes = false;
+                mLoadCollisionMeshes = false;
+                mLoadStandardMaterialLayers = false;
+                mLoadSkinningInfo = false;
+                mLoadGeometryLODs = false;
+                mLoadSkeletalLODs = false;
+                mLoadTangents = false;
+                mAutoGenTangents = false;
+                mLoadMorphTargets = false;
+                mLoadSimulatedObjects = false;
             }
         };
 
@@ -304,7 +325,7 @@ namespace EMotionFX
          * @param filename The file name to set inside the Actor object. This is not going to load the actor from the file specified to this parameter, but just updates the value returned by actor->GetFileName().
          * @result Returns a pointer to the loaded actor, or nullptr when something went wrong and the actor could not be loaded.
          */
-        Actor* LoadActor(MCore::File* f, ActorSettings* settings = nullptr, const char* filename = "");
+        AZStd::unique_ptr<Actor> LoadActor(MCore::File* f, ActorSettings* settings = nullptr, const char* filename = "");
 
         /**
          * Loads an actor from a file on disk.
@@ -312,7 +333,7 @@ namespace EMotionFX
          * @param settings The settings to use for loading. When set to nullptr, all defaults will be used and everything will be loaded.
          * @result Returns a pointer to the loaded actor, or nullptr when something went wrong and the actor could not be loaded.
          */
-        Actor* LoadActor(AZStd::string filename, ActorSettings* settings = nullptr);
+        AZStd::unique_ptr<Actor> LoadActor(AZStd::string filename, ActorSettings* settings = nullptr);
 
         /**
          * Loads an actor from memory.
@@ -322,7 +343,7 @@ namespace EMotionFX
          * @param filename The file name to set inside the Actor object. This is not going to load the actor from the file specified to this parameter, but just updates the value returned by actor->GetFileName().
          * @result Returns a pointer to the loaded actor, or nullptr when something went wrong and the actor could not be loaded.
          */
-        Actor* LoadActor(uint8* memoryStart, size_t lengthInBytes, ActorSettings* settings = nullptr, const char* filename = "");
+        AZStd::unique_ptr<Actor> LoadActor(uint8* memoryStart, size_t lengthInBytes, ActorSettings* settings = nullptr, const char* filename = "");
 
         bool ExtractActorFileInfo(FileInfo* outInfo, const char* filename) const;
 
@@ -371,9 +392,10 @@ namespace EMotionFX
          * Load a anim graph file by filename.
          * @param filename The filename to load from.
          * @param settings The anim graph importer settings, or nullptr to use default settings.
+         * @param loadFilter The filter descriptor for loading anim graph from file
          * @result The anim graph object, or nullptr in case loading failed.
          */
-        AnimGraph* LoadAnimGraph(AZStd::string, AnimGraphSettings* settings = nullptr);
+        AnimGraph* LoadAnimGraph(AZStd::string, AnimGraphSettings* settings = nullptr, const AZ::ObjectStream::FilterDescriptor& loadFilter = AZ::ObjectStream::FilterDescriptor(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
 
         /**
          * Load a anim graph file from a memory location.
@@ -399,9 +421,10 @@ namespace EMotionFX
          * Loads a motion set from a file on disk.
          * @param filename The name of the file on disk.
          * @param settings The motion set importer settings, or nullptr to use default settings.
+         * @param loadFilter The filter descriptor for loading motion set from file
          * @result The motion set object, or nullptr in case loading failed.
          */
-        MotionSet* LoadMotionSet(AZStd::string filename, MotionSetSettings* settings = nullptr);
+        MotionSet* LoadMotionSet(AZStd::string filename, MotionSetSettings* settings = nullptr, const AZ::ObjectStream::FilterDescriptor& loadFilter = AZ::ObjectStream::FilterDescriptor(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
 
         /**
          * Loads a motion set from memory.

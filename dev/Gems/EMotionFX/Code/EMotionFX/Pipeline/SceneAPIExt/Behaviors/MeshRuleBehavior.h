@@ -15,6 +15,10 @@
 #include <AzCore/Memory/Memory.h>
 #include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 #include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
+#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
+#include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
+#include <SceneAPIExt/Rules/MeshRule.h>
+
 
 namespace EMotionFX
 {
@@ -24,7 +28,8 @@ namespace EMotionFX
         {
             class MeshRuleBehavior
                 : public AZ::SceneAPI::SceneCore::BehaviorComponent
-                , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler
+                , public AZ::SceneAPI::Events::AssetImportRequestBus::Handler
+                , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler                
             {
             public:
                 AZ_COMPONENT(MeshRuleBehavior, "{8C5599B9-C46D-40F5-BC29-880415973654}", AZ::SceneAPI::SceneCore::BehaviorComponent);
@@ -37,6 +42,13 @@ namespace EMotionFX
                 static void Reflect(AZ::ReflectContext* context);
 
                 void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;
+
+                AZ::SceneAPI::Events::ProcessingResult UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action, RequestingApplication requester) override;
+
+            private:
+                bool IsValidGroupType(const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group) const;
+                bool UpdateMeshRules(AZ::SceneAPI::Containers::Scene& scene);
+                bool UpdateMeshRule(const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group, EMotionFX::Pipeline::Rule::MeshRule& meshRule);
             };
         } // Behavior
     } // Pipeline

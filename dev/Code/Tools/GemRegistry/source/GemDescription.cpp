@@ -518,8 +518,16 @@ namespace Gems
                 {
                     if (!foundDefaultModule)
                     {
-                        modulePtr->m_fileName = AZStd::string::format("Gem.%s.%s.v%s", gem.GetName().c_str(), idStr, gem.GetVersion().ToString().c_str());
                         foundDefaultModule = true;
+                        // if the module name for 'GameModule' type is specified, such as 'Private' then it needs to be appended into the gem name
+                        if (modulePtr->m_name != moduleTypeStr)
+                        {
+                            modulePtr->m_fileName = AZStd::string::format("Gem.%s.%s.%s.v%s", gem.GetName().c_str(), modulePtr->m_name.c_str(), idStr, gem.GetVersion().ToString().c_str());
+                        }
+                        else
+                        {
+                            modulePtr->m_fileName = AZStd::string::format("Gem.%s.%s.v%s", gem.GetName().c_str(), idStr, gem.GetVersion().ToString().c_str());
+                        }
                     }
 
                     // If LinkType is specified, read and validate it.

@@ -51,6 +51,26 @@ namespace JsonSerializationTests
         EXPECT_EQ(combined.GetTask(), second.GetTask());
     }
 
+    TEST_F(JsonSerializationResultTest, Combine_SuccessAndSkipped_PartialSkip)
+    {
+        using namespace AZ::JsonSerializationResult;
+        ResultCode first(Tasks::ReadField, Outcomes::Success);
+        ResultCode second(Tasks::ReadField, Outcomes::Skipped);
+        ResultCode combined = ResultCode::Combine(first, second);
+
+        EXPECT_EQ(combined.GetOutcome(), Outcomes::PartialSkip);
+    }
+
+    TEST_F(JsonSerializationResultTest, Combine_SkippedAndSuccess_PartialSkip)
+    {
+        using namespace AZ::JsonSerializationResult;
+        ResultCode first(Tasks::ReadField, Outcomes::Skipped);
+        ResultCode second(Tasks::ReadField, Outcomes::Success);
+        ResultCode combined = ResultCode::Combine(first, second);
+
+        EXPECT_EQ(combined.GetOutcome(), Outcomes::PartialSkip);
+    }
+
     TEST_F(JsonSerializationResultTest, Combine_OnlyOutComeDiffers_HighestOutcome)
     {
         using namespace AZ::JsonSerializationResult;

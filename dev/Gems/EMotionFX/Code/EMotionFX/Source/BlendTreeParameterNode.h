@@ -44,7 +44,7 @@ namespace EMotionFX
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
         const AZStd::vector<AZ::u32>& GetParameterIndices() const;
-        uint32 GetParameterIndex(uint32 portNr) const;
+        uint32 GetParameterIndex(size_t portNr) const;
 
         /// Add a parameter to the parameter mask and also add a port for it.
         void AddParameter(const AZStd::string& parameterName);
@@ -71,7 +71,7 @@ namespace EMotionFX
         AnimGraph* GetParameterAnimGraph() const override;
         void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
         void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
-        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterAdded(const AZStd::string& newParameterName) override;
         void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
         void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
         void ParameterRemoved(const AZStd::string& oldParameterName) override;
@@ -81,6 +81,7 @@ namespace EMotionFX
 
         AZStd::vector<AZStd::string>    m_parameterNames;
         AZStd::vector<AZ::u32>          m_parameterIndices;              /**< The indices of the visible and available parameters. */
+        AZStd::stack<AZStd::string>     m_deletedParameterNames;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
     };

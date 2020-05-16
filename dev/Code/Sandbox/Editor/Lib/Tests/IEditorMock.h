@@ -106,18 +106,14 @@ public:
     MOCK_METHOD0(GetParticleUtils, IEditorParticleUtils* ());
     MOCK_METHOD0(GetMusicManager, CMusicManager* ());
     MOCK_METHOD0(GetPrefabManager, CPrefabManager* ());
-    MOCK_METHOD0(GetGameTokenManager, CGameTokenManager* ());
     MOCK_METHOD0(GetLensFlareManager, CLensFlareManager* ());
     MOCK_METHOD2(GetTerrainElevation, float(float , float ));
     MOCK_METHOD0(GetHeightmap, class CHeightmap* ());
+    MOCK_METHOD0(GetIHeightmap, class IHeightmap* ());
     MOCK_METHOD0(GetVegetationMap, class CVegetationMap* ());
     MOCK_METHOD0(GetAI, class CAIManager* ());
     MOCK_METHOD0(GetEditorQtApplication, Editor::EditorQtApplication* ());
     MOCK_METHOD1(GetColorByName, const QColor& (const QString&));
-    MOCK_METHOD0(GetCustomActionManager, class CCustomActionsEditorManager*());
-    MOCK_METHOD0(GetMatFxGraphManager, class CMaterialFXGraphMan*  ());
-    MOCK_METHOD0(GetFlowGraphModuleManager, class CEditorFlowGraphModuleManager* ());
-    MOCK_METHOD0(GetFlowGraphDebuggerEditor, class CFlowGraphDebuggerEditor* ());
     MOCK_METHOD0(GetMovieSystem, struct IMovieSystem* ());
     MOCK_METHOD0(GetEquipPackLib, class CEquipPackLib* ());
     MOCK_METHOD0(GetPluginManager, class CPluginManager*());
@@ -203,6 +199,7 @@ public:
     MOCK_METHOD0(GetToolBoxManager, CToolBoxManager* ());
     MOCK_METHOD0(GetErrorReport, IErrorReport* ());
     MOCK_METHOD0(GetLastLoadedLevelErrorReport, IErrorReport* ());
+    MOCK_METHOD0(StartLevelErrorReportRecording, void());
     MOCK_METHOD0(CommitLevelErrorReport, void());
     MOCK_METHOD0(GetFileUtil, IFileUtil* ());
     MOCK_METHOD1(Notify, void(EEditorNotifyEvent));
@@ -214,7 +211,6 @@ public:
     MOCK_METHOD0(GetSourceControl, ISourceControl* ());
     MOCK_METHOD0(IsSourceControlAvailable, bool());
     MOCK_METHOD0(IsSourceControlConnected, bool());
-    MOCK_METHOD0(GetFlowGraphManager, CFlowGraphManager* ());
     MOCK_METHOD0(GetUIEnumsDatabase, CUIEnumsDatabase* ());
     MOCK_METHOD0(AddUIEnums, void());
     MOCK_METHOD1(GetMemoryUsage, void(ICrySizer* ));

@@ -197,7 +197,7 @@ public:
 
             double startPower = log10(fabs(double(incrementStartValue_)) + 1.0) - 3.0;
             double power = startPower + fabs(screenFraction) * 10.0f;
-            double delta = powf(10.0f, power) - powf(10.0f, startPower) + screenFractionMultiplier * fabsf(screenFraction);
+            double delta = pow(10.0, power) - pow(10.0, startPower) + screenFractionMultiplier * fabs(screenFraction);
             double newValue;
             if (screenFraction > 0.0f)
                 newValue = double(incrementStartValue_) + delta;

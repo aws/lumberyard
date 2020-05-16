@@ -13,6 +13,7 @@
 #include <Gallery/ui_AssetBrowserFolderPage.h>
 
 #include <AzToolsFramework/AssetBrowser/Views/AssetBrowserFolderWidget.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
@@ -83,7 +84,7 @@ namespace
                 });
                 if (it != m_data.end())
                 {
-                    return createIndex(std::distance(m_data.begin(), it), 0);
+                    return createIndex(aznumeric_cast<int>(std::distance(m_data.begin(), it)), 0);
                 }
             }
             return {};

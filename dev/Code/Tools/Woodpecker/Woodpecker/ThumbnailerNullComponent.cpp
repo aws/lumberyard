@@ -58,6 +58,15 @@ namespace LUAEditor
         {
         }
 
+        void ThumbnailerNullComponent::UnregisterContext(const char* /*contextName*/)
+        {
+        }
+
+        bool ThumbnailerNullComponent::HasContext(const char* /*contextName*/) const
+        {
+            return false;
+        }
+
         void ThumbnailerNullComponent::RegisterThumbnailProvider(AzToolsFramework::Thumbnailer::SharedThumbnailProvider /*provider*/, const char* /*contextName*/)
         {
         }

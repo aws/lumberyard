@@ -19,7 +19,7 @@ class UiImageSequenceInterface
 {
 public: // types
 
-    enum class ImageType
+    enum class ImageType : int32_t
     {
         Stretched,      //!< the texture is stretched to fit the rect without maintaining aspect ratio
         Fixed,          //!< the texture is not stretched at all

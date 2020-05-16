@@ -10,73 +10,90 @@
 #
 # $Revision: #5 $
 
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
 from cgf_utils import custom_resource_response
 from cgf_utils import custom_resource_utils
-from cgf_utils import aws_utils
 from cgf_utils import properties
+
 from resource_manager_common import stack_info
+from resource_manager_common import constant
 from resource_types.cognito import user_pool
 from resource_types.cognito import identity_pool
+
 import json
 
-def handler(event, context):
-    props = properties.load(event, {
-            'ClientApps': properties.StringOrListOfString(),
-            'ExplicitAuthFlows': properties.StringOrListOfString(default=[]),
-            'RefreshTokenValidity': properties.String('30'),
-            'ConfigurationKey': properties.String(), ##this is only here to force the resource handler to execute on each update to the deployment
-            'LambdaConfig': properties.Dictionary({}),
-            'PoolName': properties.String(),
-            'Groups': properties.ObjectOrListOfObject(default=[],
-                                                      schema={
-                                                          'Name': properties.String(),
-                                                          'Description': properties.String(''),
-                                                          'Role': properties.String(),
-                                                          'Precedence': properties.String('99')
-                                                      }),
-            'AllowAdminCreateUserOnly': properties.String('')
-        })
 
-    #give the identity pool a unique name per stack
+def handler(event, context):
+    """Entry point for the Custom::CognitoUserPool resource handler."""
+    stack_id = event['StackId']
+
+    props = properties.load(event, {
+        'ClientApps': properties.StringOrListOfString(),
+        'ExplicitAuthFlows': properties.StringOrListOfString(default=[]),
+        'RefreshTokenValidity': properties.String('30'),
+        'ConfigurationKey': properties.String(),  # this is only here to force the resource handler to execute on each update to the deployment
+        'LambdaConfig': properties.Dictionary({}),
+        'PoolName': properties.String(),
+        'Groups': properties.ObjectOrListOfObject(default=[],
+                                                  schema={
+                                                      'Name': properties.String(),
+                                                      'Description': properties.String(''),
+                                                      'Role': properties.String(),
+                                                      'Precedence': properties.String('99')
+                                                  }),
+        'AllowAdminCreateUserOnly': properties.String('')
+    })
+
+    # give the identity pool a unique name per stack
     stack_manager = stack_info.StackInfoManager()
-    stack_name = aws_utils.get_stack_name_from_stack_arn(event['StackId'])
-    stack_name = stack_name.replace('-', ' ') # Prepare stack_name to be used by _associate_user_pool_with_player_access
+    stack = stack_manager.get_stack_info(stack_id)
+
+    stack_name = stack.stack_name
     pool_name = props.PoolName.replace('-', ' ')
-    pool_name = stack_name+pool_name
+    pool_name = stack_name + pool_name
     cognito_idp_client = user_pool.get_idp_client()
     pool_id = custom_resource_utils.get_embedded_physical_id(event.get('PhysicalResourceId'))
     found_pool = user_pool.get_user_pool(pool_id)
 
+    # Set up tags for all resources created
+    tags = {
+        constant.PROJECT_NAME_TAG: stack.project_stack.project_name,
+        constant.STACK_ID_TAG: stack_id
+    }
+
     request_type = event['RequestType']
 
     if request_type == 'Delete':
-        if found_pool != None:
-            cognito_idp_client.delete_user_pool(UserPoolId = pool_id) 
+        if found_pool is not None:
+            cognito_idp_client.delete_user_pool(UserPoolId=pool_id)
         data = {}
 
     else:
-        #if the pool exists just update it, otherwise create a new one
-        
-        mfaConfig = 'OFF'   # MFA is currently unsupported by Lumberyard
+        # if the pool exists just update it, otherwise create a new one
+
+        mfa_config = 'OFF'  # MFA is currently unsupported by Lumberyard
         # Users are automatically prompted to verify these things. 
         # At least one auto-verified thing (email or phone) is required to allow password recovery.
-        auto_verified_attributes = [ 'email' ]
-        
-        client_app_data = {};
+        auto_verified_attributes = ['email']
+
+        client_app_data = {}
         lambda_config = props.LambdaConfig
 
-        user_pool.validate_identity_metadata(stack_manager, event['StackId'], event['LogicalResourceId'], props.ClientApps)
+        user_pool.validate_identity_metadata(stack_manager, stack_id, event['LogicalResourceId'], props.ClientApps)
         admin_create_user_config = __get_admin_create_user_config(props.AllowAdminCreateUserOnly)
-        print json.dumps(admin_create_user_config)
+        print(json.dumps(admin_create_user_config))
 
-        if found_pool != None:  # Update
+        if found_pool is not None:  # Update
             response = cognito_idp_client.update_user_pool(
-                    UserPoolId=pool_id,
-                    MfaConfiguration=mfaConfig,
-                    AutoVerifiedAttributes=auto_verified_attributes,
-                    LambdaConfig=lambda_config,
-                    AdminCreateUserConfig=admin_create_user_config
-                )
+                UserPoolId=pool_id,
+                MfaConfiguration=mfa_config,
+                AutoVerifiedAttributes=auto_verified_attributes,
+                LambdaConfig=lambda_config,
+                AdminCreateUserConfig=admin_create_user_config,
+                UserPoolTags=tags
+            )
 
             existing_client_apps = user_pool.get_client_apps(pool_id)
             client_app_data = update_client_apps(pool_id, props.ClientApps, existing_client_apps, False, props.ExplicitAuthFlows, props.RefreshTokenValidity)
@@ -94,66 +111,71 @@ def handler(event, context):
                         found_groups.update({group_name: True})
                         break
 
-
-                #delete the group as it is no longer in the resource template
+                # delete the group as it is no longer in the resource template
                 if group_name not in found_groups:
                     cognito_idp_client.delete_group(
                         GroupName=actual_group['GroupName'],
                         UserPoolId=pool_id
                     )
 
-            print "Found groups=>", json.dumps(found_groups)
-            #iterate the groups defined in the user pool resource template
+            print("Found groups=>{}".format(json.dumps(found_groups)))
+            # iterate the groups defined in the user pool resource template
             for group in props.Groups:
-                #update the group as it is currently a group in the user pool
-                group_definition = __generate_group_defintion(pool_id, group)
-                print "Group '{}' is defined by {}".format(group.Name, json.dumps(group_definition))
+                # update the group as it is currently a group in the user pool
+                group_definition = __generate_group_definition(pool_id, group)
+                print("Group '{}' is defined by {}".format(group.Name, json.dumps(group_definition)))
                 if group.Name in found_groups:
                     cognito_idp_client.update_group(**group_definition)
                 else:
-                    #group is a new group on the user pool
+                    # group is a new group on the user pool
                     cognito_idp_client.create_group(**group_definition)
 
-        else: # Create
+        else:  # Create
             response = cognito_idp_client.create_user_pool(
-                    PoolName=pool_name,
-                    MfaConfiguration=mfaConfig,
-                    AutoVerifiedAttributes=auto_verified_attributes,
-                    LambdaConfig=lambda_config,
-                    AdminCreateUserConfig=admin_create_user_config
-                )
+                PoolName=pool_name,
+                MfaConfiguration=mfa_config,
+                AutoVerifiedAttributes=auto_verified_attributes,
+                LambdaConfig=lambda_config,
+                AdminCreateUserConfig=admin_create_user_config,
+                UserPoolTags=tags
+            )
             pool_id = response['UserPool']['Id']
-            print 'User pool creation response: ', response
+            print('User pool creation response: {}'.format(response))
             for group in props.Groups:
-                group_definition = __generate_group_defintion(pool_id, group)
-                print "Group '{}' is defined by {}".format(group.Name, json.dumps(group_definition))
+                group_definition = __generate_group_definition(pool_id, group)
+                print("Group '{}' is defined by {}".format(group.Name, json.dumps(group_definition)))
                 cognito_idp_client.create_group(**group_definition)
 
             client_app_data = update_client_apps(pool_id, props.ClientApps, [], False, props.ExplicitAuthFlows, props.RefreshTokenValidity)
 
         updated_resources = {
-            event['StackId']: {
+            stack_id: {
                 event['LogicalResourceId']: {
                     'physical_id': pool_id,
-                    'client_apps': {client_app['ClientName']: {'client_id': client_app['ClientId']} for client_app in client_app_data['Created'] + client_app_data['Updated']}
+                    'client_apps': {
+                        client_app['ClientName']: {
+                            'client_id': client_app['ClientId']
+                        } for client_app in client_app_data['Created'] + client_app_data['Updated']
+                    }
                 }
             }
         }
 
-        identity_pool.update_cognito_identity_providers(stack_manager, event['StackId'], pool_id, updated_resources)
+        identity_pool.update_cognito_identity_providers(stack_manager, stack_id, pool_id, updated_resources)
 
         data = {
             'UserPoolName': pool_name,
             'UserPoolId': pool_id,
             'ClientApps': client_app_data,
         }
-    
+
     physical_resource_id = pool_id
 
     return custom_resource_response.success_response(data, physical_resource_id)
 
-def update_client_apps(user_pool_id, new_client_name_list, existing_clients, should_generate_secret, explicitauthflows, refreshtokenvalidity):
-    client_changes = {'Created':[], 'Deleted':[], 'Updated':[]}
+
+def update_client_apps(user_pool_id, new_client_name_list, existing_clients, should_generate_secret, explicit_auth_flows, refresh_token_validity):
+    client_changes = {'Created': [], 'Deleted': [], 'Updated': []}
 
     new_client_names = set(new_client_name_list)
 
@@ -166,15 +188,15 @@ def update_client_apps(user_pool_id, new_client_name_list, existing_clients, sho
             updated = user_pool.get_idp_client().update_user_pool_client(
                 UserPoolId=user_pool_id,
                 ClientId=client_id,
-                ExplicitAuthFlows=explicitauthflows,
-                RefreshTokenValidity=int(refreshtokenvalidity)
+                ExplicitAuthFlows=explicit_auth_flows,
+                RefreshTokenValidity=int(refresh_token_validity)
             )
             client_changes['Updated'].append({
                 'UserPoolId': user_pool_id,
                 'ClientName': updated['UserPoolClient']['ClientName'],
                 'ClientId': client_id,
-                'ExplicitAuthFlows': explicitauthflows,
-                'RefreshTokenValidity': int(refreshtokenvalidity)
+                'ExplicitAuthFlows': explicit_auth_flows,
+                'RefreshTokenValidity': int(refresh_token_validity)
             })
         else:
             deleted = user_pool.get_idp_client().delete_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
@@ -191,16 +213,16 @@ def update_client_apps(user_pool_id, new_client_name_list, existing_clients, sho
             UserPoolId=user_pool_id,
             ClientName=client_name,
             GenerateSecret=should_generate_secret,
-            ExplicitAuthFlows=explicitauthflows,
-            RefreshTokenValidity=int(refreshtokenvalidity)
+            ExplicitAuthFlows=explicit_auth_flows,
+            RefreshTokenValidity=int(refresh_token_validity)
         )
 
         client_data = {
             'UserPoolId': user_pool_id,
             'ClientName': created['UserPoolClient']['ClientName'],
             'ClientId': created['UserPoolClient']['ClientId'],
-            'ExplicitAuthFlows': explicitauthflows,
-            'RefreshTokenValidity': int(refreshtokenvalidity)
+            'ExplicitAuthFlows': explicit_auth_flows,
+            'RefreshTokenValidity': int(refresh_token_validity)
         }
         if 'ClientSecret' in created['UserPoolClient']:
             client_data['ClientSecret'] = created['UserPoolClient']['ClientSecret']
@@ -208,7 +230,8 @@ def update_client_apps(user_pool_id, new_client_name_list, existing_clients, sho
 
     return client_changes
 
-def __generate_group_defintion(user_pool_id, props):
+
+def __generate_group_definition(user_pool_id, props):
     return {
         'GroupName': props.Name,
         'UserPoolId': user_pool_id,
@@ -217,8 +240,12 @@ def __generate_group_defintion(user_pool_id, props):
         'Precedence': int(props.Precedence)
     }
 
+
 def __get_admin_create_user_config(allow_admin_create_user_only):
     admin_create_user_only = allow_admin_create_user_only.lower() == 'true'
     return {
         'AllowAdminCreateUserOnly': admin_create_user_only
-    } if allow_admin_create_user_only else {}
+    } if allow_admin_create_user_only else {
+
+    }
+

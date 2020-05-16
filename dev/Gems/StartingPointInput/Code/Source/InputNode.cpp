@@ -25,11 +25,15 @@
 
 namespace InputNodes
 {
-    void InputNode::OnActivate()
+    void InputNode::OnPostActivate()
     {
-        const ScriptCanvas::SlotId eventNameSlotId = InputNodeProperty::GetEventNameSlotId(this);
-        m_eventName = *GetInput(eventNameSlotId)->GetAs<ScriptCanvas::Data::StringType>();
-        AZ::InputEventNotificationBus::Handler::BusConnect(AZ::InputEventNotificationId(m_eventName.c_str()));
+        if (GetExecutionType() == ScriptCanvas::ExecutionType::Runtime)
+        {
+            const ScriptCanvas::SlotId eventNameSlotId = InputNodeProperty::GetEventNameSlotId(this);
+
+            m_eventName = (*(FindDatum(eventNameSlotId)->GetAs<ScriptCanvas::Data::StringType>()));
+            AZ::InputEventNotificationBus::Handler::BusConnect(AZ::InputEventNotificationId(m_eventName.c_str()));
+        }
     }
 
     void InputNode::OnDeactivate()
@@ -37,14 +41,18 @@ namespace InputNodes
         AZ::InputEventNotificationBus::Handler::BusDisconnect();
     }
 
-    void InputNode::OnInputSignal(const ScriptCanvas::SlotId& slotId)
+    void InputNode::OnInputChanged(const ScriptCanvas::Datum& input, const ScriptCanvas::SlotId& slotId)
     {
         // we got a new event name, we need to drop our connection to the old and connect to the new event
         const ScriptCanvas::SlotId eventNameSlotId = InputNodeProperty::GetEventNameSlotId(this);
-        AZ::InputEventNotificationBus::Handler::BusDisconnect();
 
-        m_eventName = *GetInput(eventNameSlotId)->GetAs<ScriptCanvas::Data::StringType>();
-        AZ::InputEventNotificationBus::Handler::BusConnect(AZ::InputEventNotificationId(m_eventName.c_str()));
+        if (slotId == eventNameSlotId)
+        {
+            AZ::InputEventNotificationBus::Handler::BusDisconnect();
+
+            m_eventName = (*input.GetAs<ScriptCanvas::Data::StringType>());
+            AZ::InputEventNotificationBus::Handler::BusConnect(AZ::InputEventNotificationId(m_eventName.c_str()));
+        }
     }
     
     void InputNode::OnPressed(float value)

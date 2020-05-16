@@ -556,6 +556,11 @@ namespace AZ
          * @return True if the transform is static, false if the transform is movable.
          */
         virtual bool IsStaticTransform() = 0;
+        /**
+         * Set the transform to isStatic. This is needed to set a layer as static.
+         * A static transform is unmovable and does not respond to requests that would move it.
+         */
+        virtual void SetIsStaticTransform(bool /* isStatic */) {}
 
         /**
          * Returns whether position of transform is interpolated via network sync.

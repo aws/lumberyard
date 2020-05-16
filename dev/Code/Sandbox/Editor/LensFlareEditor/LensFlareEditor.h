@@ -44,6 +44,9 @@ public:
     CLensFlareEditor(QWidget* pParent = nullptr);
     ~CLensFlareEditor();
 
+    // CDatabaseFrameWnd overrides...
+    virtual void SelectItem(CBaseLibraryItem* item, bool bForceReload = false) override;
+
     CLensFlareItem* GetSelectedLensFlareItem() const;
     bool GetSelectedLensFlareName(QString& outName) const;
     void UpdateLensFlareItem(CLensFlareItem* pLensFlareItem);

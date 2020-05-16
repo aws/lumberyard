@@ -15,8 +15,8 @@
 namespace PhysX
 {
     static const float s_forceRegionZeroValue = 0.0f;
-    static const float s_forceRegionMaxDamping = 200.0f;
-    static const float s_forceRegionMaxDensity = 1500.0f;
+    static const float s_forceRegionMaxDamping = 100.0f; // Large values create an oscillation that sends the body too far out. Legacy renderer's Octree may throw errors.
+    static const float s_forceRegionMaxDensity = 400.0f; // Large values create an oscillation that sends the body too far out. Legacy renderer's Octree may throw errors. Maximum density is defined as a value capable of slowing down a radius 1 ball weighing 1 ton.
     static const float s_forceRegionMaxValue = 1000000.0f;
     static const float s_forceRegionMinValue = -s_forceRegionMaxValue;
     static const float s_forceRegionMaxDampingRatio = 1.5f;
@@ -59,6 +59,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForceWorldSpaceRequestBus>("ForceWorldSpaceRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetDirection", &ForceWorldSpaceRequestBus::Events::SetDirection)
@@ -108,6 +110,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForceLocalSpaceRequestBus>("ForceLocalSpaceRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetDirection", &ForceLocalSpaceRequestBus::Events::SetDirection)
@@ -152,6 +156,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForcePointRequestBus>("ForcePointRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetMagnitude", &ForcePointRequestBus::Events::SetMagnitude)
@@ -162,7 +168,7 @@ namespace PhysX
 
     AZ::Vector3 ForcePoint::CalculateForce(const EntityParams& entity, const RegionParams& region) const
     {
-        return (entity.m_position - region.m_aabb.GetCenter()) * m_magnitude;
+        return (entity.m_position - region.m_aabb.GetCenter()).GetNormalizedSafe() * m_magnitude;
     }
 
     ForceSplineFollow::ForceSplineFollow(float dampingRatio
@@ -212,6 +218,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForceSplineFollowRequestBus>("ForceSplineFollowRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetDampingRatio", &ForceSplineFollowRequestBus::Events::SetDampingRatio)
@@ -310,6 +318,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForceSimpleDragRequestBus>("ForceSimpleDragRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetDensity", &ForceSimpleDragRequestBus::Events::SetDensity)
@@ -337,7 +347,7 @@ namespace PhysX
         // down.
         const AZ::Vector3 direction(-entity.m_velocity.GetX().GetSign(), -entity.m_velocity.GetY().GetSign(), -entity.m_velocity.GetZ().GetSign());
 
-        return dragForce * direction;
+        return dragForce * direction.GetNormalized();
     }
 
     ForceLinearDamping::ForceLinearDamping(float damping) 
@@ -369,6 +379,8 @@ namespace PhysX
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<ForceLinearDampingRequestBus>("ForceLinearDampingRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("SetDamping", &ForceLinearDampingRequestBus::Events::SetDamping)

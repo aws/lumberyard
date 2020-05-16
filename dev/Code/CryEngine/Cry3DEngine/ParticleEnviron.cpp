@@ -22,6 +22,8 @@
 #ifdef LY_TERRAIN_RUNTIME
 #include <Terrain/Bus/TerrainProviderBus.h>
 #endif
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 // SPhysEnviron implementation.
@@ -60,11 +62,9 @@ void SPhysEnviron::GetWorldPhysAreas(uint32 nFlags, bool bNonUniformAreas)
     // Mark areas as queried.
     m_nNonUniformFlags |= EFF_LOADED;
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    Vec3 vWorldSize(GetTerrain() ? float(GetTerrain()->GetTerrainSize()) : 0.f);
-#else
-    Vec3 vWorldSize(0.f);
-#endif
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    Vec3 vWorldSize(terrainAabb.GetWidth(), terrainAabb.GetHeight(), terrainAabb.GetDepth());
 
     // Atomic iteration.
     for (IPhysicalEntity* pArea = 0; pArea = GetPhysicalWorld()->GetNextArea(pArea); )
@@ -363,39 +363,37 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
     ZeroStruct(hit);
     hit.dist = 1.f;
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // Collide terrain first (if set as separately colliding).
     // NEW-TERRAIN LY-103227:  Need to make particle collisions work with new terrain system
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-#ifdef LY_TERRAIN_RUNTIME
-    if ((nEnvFlags & ~ENV_COLLIDE_PHYSICS & ENV_TERRAIN) && !pTestEntity && GetTerrain() && !Terrain::TerrainProviderRequestBus::HasHandlers())
-#else
-    if ((nEnvFlags & ~ENV_COLLIDE_PHYSICS & ENV_TERRAIN) && !pTestEntity && GetTerrain())
-#endif
+    if ((nEnvFlags & ~ENV_COLLIDE_PHYSICS & ENV_TERRAIN) && !pTestEntity)
     {
-        nEnvFlags &= ~ENV_TERRAIN;
-        CTerrain::SRayTrace rt;
-        if (GetTerrain()->RayTrace(vStart, vStart + vMove, &rt))
+        auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+        if (legacyTerrain)
         {
-            if ((fMoveNorm = rt.hitNormal * vMove) < 0.f)
+            nEnvFlags &= ~ENV_TERRAIN;
+            LegacyTerrain::SRayTrace rt;
+            if (legacyTerrain->RayTrace(vStart, vStart + vMove, &rt))
             {
-                bHit = true;
-                hit.dist = rt.t;
-                hit.pt = rt.hitPoint;
-                hit.n = rt.hitNormal;
-                if (rt.material)
+                if ((fMoveNorm = rt.hitNormal * vMove) < 0.f)
                 {
-                    hit.surface_idx = rt.material->GetSurfaceTypeId();
+                    bHit = true;
+                    hit.dist = rt.t;
+                    hit.pt = rt.hitPoint;
+                    hit.n = rt.hitNormal;
+                    if (rt.material)
+                    {
+                        hit.surface_idx = rt.material->GetSurfaceTypeId();
+                    }
+                    else
+                    {
+                        hit.surface_idx = 0;
+                    }
+                    hit.bTerrain = true;
                 }
-                else
-                {
-                    hit.surface_idx = 0;
-                }
-                hit.bTerrain = true;
             }
         }
     }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
     if (pTestEntity)
     {

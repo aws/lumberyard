@@ -16,7 +16,7 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <ScriptCanvasDiagnosticLibrary/DebugDrawBus.h>
-#include <Debug.h>
+#include "DebugLibraryDefinition.h"
 
 namespace ScriptCanvasDiagnostics
 {

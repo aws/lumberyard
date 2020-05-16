@@ -31,7 +31,7 @@ namespace ScriptCanvasEditor
         ~CreateEntityRefNodeMimeEvent() = default;
 
     protected:
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         AZ::EntityId m_entityId;
@@ -91,8 +91,8 @@ namespace ScriptCanvasEditor
         CreateNodeGroupMimeEvent() = default;
         ~CreateNodeGroupMimeEvent() = default;
 
-        NodeIdPair ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition);
-        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId) override;
+        NodeIdPair ConstructNode(const GraphCanvas::GraphId& sceneId, const AZ::Vector2& scenePosition);
+        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const GraphCanvas::GraphId& sceneId) override;
     };
 
     class NodeGroupNodePaletteTreeItem

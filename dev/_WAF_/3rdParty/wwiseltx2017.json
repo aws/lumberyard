@@ -2,7 +2,7 @@
     "name": "wwiseltx2017",
     "source": "@3P:wwiseLtx@",
     "description": "Wwise LTX Audio Middleware",
-    "includes": [
+    "system_includes": [
         "SDK/include"
     ],
     "aliases": {

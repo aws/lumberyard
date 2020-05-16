@@ -18,15 +18,6 @@
         "lambda": "$ServiceLambdaArn$"
     },
     "paths": {
-        "/loadtest": {
-            "x-cloud-gem-framework-interface-implementation": {
-                "description": "Enables X-Gem Communication between Cloud Gem Metric & Cloud Gem Load Test",
-                "interface": "CloudGemMetric_LoadTest_1_0_0"
-            },
-            "x-amazon-cloud-canvas-client-generation": {
-                "no-client": true
-            }
-        },
         "/service/status": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
                 "module": "service_status"

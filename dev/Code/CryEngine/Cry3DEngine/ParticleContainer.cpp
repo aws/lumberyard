@@ -52,7 +52,10 @@ CParticleContainer::CParticleContainer(CParticleContainer* pParent, CParticleEmi
     , m_LodOverlap(0.f)
 {
     assert(pEffect);
-    assert(pEffect->IsActive() || gEnv->IsEditing());
+
+    // Assert effect is active if it's not in editing or not in preview mode
+    assert(pEffect->IsActive() || gEnv->IsEditing() || m_pMainEmitter->GetPreviewMode());
+
     m_pParams = &m_pEffect->GetParams();
     assert(m_pParams->nEnvFlags & EFF_LOADED);
 

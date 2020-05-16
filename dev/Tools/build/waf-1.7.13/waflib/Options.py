@@ -40,6 +40,26 @@ try: cache_global = os.path.abspath(os.environ['WAFCACHE'])
 except KeyError: cache_global = ''
 platform = Utils.unversioned_sys_platform()
 
+# List of commands that we want to suppress from the '--help' argument due to various (documented below) reasons.
+suppress_command_help = {'options',							# Always suppress 'options'
+						 'clean_stale_cached_artifacts',	# Internal command
+						 'build',							# Default 'build' not supported in favor of platform/config targeted build
+						 'clean',							# Default 'clean' not supported in favor of platform/config targeted clean
+						 'dist',							# Default Waf command not supported
+						 'distcheck',						# Default Waf command not supported
+						 'distclean',						# Default Waf command not supported
+						 'doxygen',							# Default Waf command not supported
+						 'generate_uber_files',				# Internal command
+						 'info',							# Default Waf command not supported
+						 'install',							# Default Waf command not supported
+						 'legacy_msvs',						# Internal command
+						 'list',							# Default Waf command not supported
+						 'msvs',							# Internal command
+						 'run_test',						# Internal command
+						 'step',							# Default Waf command not supported
+						 'uninstall',						# Default Waf command not supported
+						 'update'							# Default Waf command not supported
+						 }
 
 class opt_parser(optparse.OptionParser):
 	"""
@@ -102,31 +122,31 @@ class opt_parser(optparse.OptionParser):
 		"""
 		cmds_str = {}
 		for cls in Context.classes:
-			if not cls.cmd or cls.cmd == 'options':
+			if not cls.cmd or cls.cmd in suppress_command_help:
 				continue
-
-			s = cls.__doc__ or ''
+				
+			s = cls.__doc__ or getattr(cls, 'doc', '')
 			cmds_str[cls.cmd] = s
 
 		if Context.g_module:
-			for (k, v) in Context.g_module.__dict__.items():
+			for (k, v) in list(Context.g_module.__dict__.items()):
 				if k in ['options', 'init', 'shutdown']:
 					continue
 
 				if type(v) is type(Context.create_context):
-					if v.__doc__ and not k.startswith('_') and k != 'conf' and k != 'wrap_execute':
+					if v.__doc__ and not k.startswith('_') and k != 'conf' and k != 'wrap_execute' and k not in suppress_command_help:
 						cmds_str[k] = v.__doc__
 
 		just = 0
 		for k in cmds_str:
 			just = max(just, len(k))
 
-		lst = ['  %s: %s' % (k.ljust(just), v) for (k, v) in cmds_str.items()]
+		lst = ['  %s: %s' % (k.ljust(just), v) for (k, v) in list(cmds_str.items())]
 		lst.sort()
 		ret = '\n'.join(lst)
-		return '''waf [commands] [options]
+		return '''lmbr_waf [commands] [options]
 
-Main commands (example: ./waf build -j4)
+Main commands (example: ./lmbr_waf configure)
 %s
 ''' % ret
 

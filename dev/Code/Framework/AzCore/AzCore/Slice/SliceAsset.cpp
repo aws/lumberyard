@@ -12,6 +12,8 @@
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Slice/SliceBus.h>
+#include <AzCore/Asset/AssetManager.h>
 
 namespace AZ
 {
@@ -22,6 +24,7 @@ namespace AZ
         : AssetData(assetId)
         , m_entity(nullptr)
         , m_component(nullptr)
+        , m_ignoreNextAutoReload(false)
     {
     }
 
@@ -71,6 +74,18 @@ namespace AZ
     SliceAsset* SliceAsset::Clone()
     {
         return aznew SliceAsset(GetId());
+    }
+
+    bool SliceAsset::HandleAutoReload()
+    {
+        bool isAutoReloadable = !m_ignoreNextAutoReload;
+
+        // We have handled this reload
+        // We must set this flag to true again
+        // to prevent further reloads
+        m_ignoreNextAutoReload = false;
+
+        return isAutoReloadable;
     }
 
     namespace Data

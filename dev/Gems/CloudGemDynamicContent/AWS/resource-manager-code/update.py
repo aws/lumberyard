@@ -13,13 +13,14 @@
 import content_manifest
 import dynamic_content_settings
 
+
 def after_this_resource_group_updated(hook, deployment_name, **kwargs):
 
     if not content_manifest.validate_writable(hook.context, None):
         # Not raising here - we want to continue and let the user upload after
         return
 
-    ## Pass None to upload whatever is set in the startup/bootstrap manifest and immediately stage it as PUBLIC
+    # Pass None to upload whatever is set in the startup/bootstrap manifest and immediately stage it as PUBLIC
     staging_args = {}
     staging_args['StagingStatus'] = 'PUBLIC'
     
@@ -30,6 +31,7 @@ def after_this_resource_group_updated(hook, deployment_name, **kwargs):
         auto_upload_name = resource_group.get_editor_setting('DynamicContentDefaultManifest')
 
     content_manifest.upload_manifest_content(hook.context, auto_upload_name, deployment_name, staging_args)
+
 
 def gather_writable_check_list(hook, check_list, **kwargs):
     this_path = content_manifest.determine_manifest_path(hook.context, None)

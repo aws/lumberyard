@@ -47,6 +47,8 @@ namespace AzFramework
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<GameEntityContextRequestBus>("GameEntityContextRequestBus")
+                ->Attribute(AZ::Script::Attributes::Module, "entity")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Event("CreateGameEntity", &GameEntityContextRequestBus::Events::CreateGameEntityForBehaviorContext)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("DestroyGameEntity", &GameEntityContextRequestBus::Events::DestroyGameEntity)
@@ -58,9 +60,13 @@ namespace AzFramework
 
                 // Deprecated-renamed APIs. These will warn if used.
                 ->Event("ActivateGameEntityById", &GameEntityContextRequestBus::Events::ActivateGameEntityById)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DeactivateGameEntityById", &GameEntityContextRequestBus::Events::DeactivateGameEntityById)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DestroySliceByEntityId", &GameEntityContextRequestBus::Events::DestroySliceByEntityId)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ->Event("DestroySliceByEntity", &GameEntityContextRequestBus::Events::DestroySliceByEntity)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                 ;
         }
     }

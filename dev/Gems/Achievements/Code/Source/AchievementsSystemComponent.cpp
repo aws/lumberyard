@@ -169,7 +169,7 @@ namespace Achievements
     void AchievementsSystemComponent::UnlockAchievement(const UnlockAchievementParams& params)
     {
         AchievementNotificationBus::Broadcast(&AchievementNotifications::OnAchievementUnlockRequested, params.achievementId, params.localUserId);
-        AZ_Printf("Achievements", "Unlock Achievement request for localuserId %u, achievement ID %s", params.localUserId, params.achievementId.c_str());
+        AZ_Printf("Achievements", "Unlock Achievement request for localuserId %s, achievement ID %s", AzFramework::LocalUserIdToString(params.localUserId).c_str(), params.achievementId.c_str());
         if (m_pimpl)
         {
             m_pimpl->UnlockAchievement(params);
@@ -179,7 +179,7 @@ namespace Achievements
     ////////////////////////////////////////////////////////////////////////////////////////
     void AchievementsSystemComponent::QueryAchievementDetails(const QueryAchievementParams& params)
     {
-        AZ_Printf("Achievements", "Query Achievement request for localuserId %u, achievement ID %s", params.localUserId, params.achievementId.c_str());
+        AZ_Printf("Achievements", "Query Achievement request for localuserId %s, achievement ID %s", AzFramework::LocalUserIdToString(params.localUserId).c_str(), params.achievementId.c_str());
         if (m_pimpl)
         {
             m_pimpl->QueryAchievementDetails(params);

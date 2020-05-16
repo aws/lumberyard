@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "Multiplayer_precompiled.h"
 
 #include <AzCore/Serialization/EditContext.h>
@@ -23,152 +24,30 @@
 #include <GridMate/Carrier/Driver.h>
 #include <GridMate/NetworkGridMate.h>
 
-#include <LyShine/Bus/UiButtonBus.h>
 #include <LyShine/Bus/UiCursorBus.h>
-#include <LyShine/Bus/UiElementBus.h>
-#include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiTextBus.h>
-#include <LyShine/Bus/UiTextInputBus.h>
-
-#include "Multiplayer/MultiplayerLobbyComponent.h"
 
 #include "Multiplayer/IMultiplayerGem.h"
 #include "Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.h"
+#include "Source/Canvas/MultiplayerDedicatedHostTypeSelectionCanvas.h"
+#include "Source/Canvas/MultiplayerGameLiftLobbyCanvas.h"
+#include "Source/Canvas/MultiplayerLANGameLobbyCanvas.h"
+#include "Source/Canvas/MultiplayerBusyAndErrorCanvas.h"
+
+#include "Multiplayer/MultiplayerLobbyComponent.h"
 
 #include <Multiplayer_Traits_Platform.h>
+
+#include "Multiplayer/MultiplayerUtils.h"
+
+#include <Source/Canvas/MultiplayerCanvasHelper.h>
 
 namespace Platform
 {
     bool ListServers(const AZStd::string& actionName, const AZ::EntityId& entityId, Multiplayer::MultiplayerLobbyServiceWrapper*& multiplayerLobbyServiceWrapper);
 }
 
-#include "Multiplayer/MultiplayerUtils.h"
-
 namespace Multiplayer
 {
-    ///////////////////////////
-    // ServerListingResultRow
-    ///////////////////////////
-
-    MultiplayerLobbyComponent::ServerListingResultRow::ServerListingResultRow(const AZ::EntityId& canvas, int row, int text, int highlight)
-        : m_canvas(canvas)
-        , m_row(row)
-        , m_text(text)
-        , m_highlight(highlight)
-    {
-    }
-
-    int MultiplayerLobbyComponent::ServerListingResultRow::GetRowID()
-    {
-        return m_row;
-    }
-
-    void MultiplayerLobbyComponent::ServerListingResultRow::Select()
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,m_canvas,UiCanvasBus, FindElementById, m_highlight);
-
-        if (element != nullptr)
-        {
-            EBUS_EVENT_ID(element->GetId(), UiElementBus, SetIsEnabled, true);
-        }
-    }
-
-    void MultiplayerLobbyComponent::ServerListingResultRow::Deselect()
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,m_canvas,UiCanvasBus, FindElementById, m_highlight);
-
-        if (element != nullptr)
-        {
-            EBUS_EVENT_ID(element->GetId(), UiElementBus, SetIsEnabled, false);
-        }
-    }
-
-    void MultiplayerLobbyComponent::ServerListingResultRow::DisplayResult(const GridMate::SearchInfo* searchInfo)
-    {
-        char displayString[64];
-
-        const char* serverName = nullptr;
-
-        for (unsigned int i=0; i < searchInfo->m_numParams; ++i)
-        {
-            const GridMate::GridSessionParam& param = searchInfo->m_params[i];
-
-            if (param.m_id == "sv_name")
-            {
-                serverName = param.m_value.c_str();
-                break;
-            }
-        }
-
-        azsnprintf(displayString,AZ_ARRAY_SIZE(displayString),"%s (%u/%u)",serverName,searchInfo->m_numUsedPublicSlots,searchInfo->m_numFreePublicSlots + searchInfo->m_numUsedPublicSlots);
-
-        AZ::Entity* element = nullptr;
-
-        EBUS_EVENT_ID_RESULT(element,m_canvas,UiCanvasBus, FindElementById, m_text);
-
-        if (element != nullptr)
-        {
-            LyShine::StringType textString(displayString);
-            EBUS_EVENT_ID(element->GetId(),UiTextBus,SetText,textString);
-        }
-    }
-
-    void MultiplayerLobbyComponent::ServerListingResultRow::ResetDisplay()
-    {
-        SetTitle("");
-        Deselect();
-    }
-
-    void MultiplayerLobbyComponent::ServerListingResultRow::SetTitle(const char* title)
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,m_canvas,UiCanvasBus, FindElementById, m_text);
-
-        if (element != nullptr)
-        {
-            LyShine::StringType textString(title);
-            EBUS_EVENT_ID(element->GetId(),UiTextBus,SetText,textString);
-        }
-    }
-
-    //////////////////////////////
-    // MultiplayerLobbyComponent
-    //////////////////////////////
-
-    // List of widgets we want to specifically references
-
-    // Lobby Selection
-    static const char* k_lobbySelectionLANButton = "LANButton";
-    static const char* k_lobbySelectionGameliftButton = "GameliftButton";
-    static const char* k_lobbySelectionXeniaButton = "XeniaLiveButton";
-    static const char* k_lobbySelectionProvoButton = "ProvoButton";
-    static const char* k_lobbySelectionErrorWindow = "ErrorWindow";
-    static const char* k_lobbySelectionErrorMessage = "ErrorMessage";
-    static const char* k_lobbySelectionBusyScreen = "BusyScreen";
-    static const char* k_lobbySelectionGameLiftConfigWindow = "GameLiftConfig";
-
-    // Gamelift Config Controls
-    static const char* k_lobbySelectionGameliftAWSAccesKeyInput = "AWSAccessKey";
-    static const char* k_lobbySelectionGameliftAWSSecretKeyInput = "AWSSecretKey";
-    static const char* k_lobbySelectionGameliftAWSRegionInput = "AWSRegion";
-    static const char* k_lobbySelectionGameliftFleetIDInput = "FleetId";
-    static const char* k_lobbySelectionGameliftEndPointInput = "EndPoint";
-    static const char* k_lobbySelectionGameliftAliasIDInput = "AliasId";
-    static const char* k_lobbySelectionGameliftPlayerIDInput = "PlayerId";
-    static const char* k_lobbySelectionGameliftConnectButton = "GameliftConnectButton";
-    static const char* k_lobbySelectionGameliftCancelButton = "GameliftCancelButton";
-
-    // ServerListing Lobby
-    static const char* k_serverListingServerNameTextBox = "ServerNameTextBox";
-    static const char* k_serverListingMapNameTextBox = "MapNameTextBox";
-    static const char* k_serverListingErrorWindow = "ErrorWindow";
-    static const char* k_serverListingErrorMessage = "ErrorMessage";
-    static const char* k_serverListingBusyScreen = "BusyScreen";
-    static const char* k_serverListingJoinButton = "JoinButton";
-    static const char* k_serverListingTitle = "Title";
-
     void MultiplayerLobbyComponent::Reflect(AZ::ReflectContext* reflectContext)
     {
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(reflectContext);
@@ -183,6 +62,7 @@ namespace Multiplayer
                 ->Field("ConnectionTimeout",&MultiplayerLobbyComponent::m_connectionTimeoutMS)
                 ->Field("DefaultMap",&MultiplayerLobbyComponent::m_defaultMap)
                 ->Field("DefaultServer",&MultiplayerLobbyComponent::m_defaultServerName)
+                ->Field("DefaultMatchmakingConfig",&MultiplayerLobbyComponent::m_defaultMatchmakingConfig)
             ;
 
             AZ::EditContext* editContext = serialize->GetEditContext();
@@ -206,6 +86,7 @@ namespace Multiplayer
                         ->Attribute(AZ::Edit::Attributes::Max,60000)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MultiplayerLobbyComponent::m_defaultMap,"DefaultMap", "The default value that will be added to the map field when loading the lobby.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MultiplayerLobbyComponent::m_defaultServerName,"DefaultServerName","The default value that will be added to the server name field when loading the lobby.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &MultiplayerLobbyComponent::m_defaultMatchmakingConfig,"DefaultMatchmaking","The default value that will be used for matchmaking in the GameLift lobby.")
                 ;
             }
         }
@@ -218,16 +99,10 @@ namespace Multiplayer
         , m_connectionTimeoutMS(500)
         , m_defaultMap("")
         , m_defaultServerName("MyServer")
-        , m_selectionLobbyID()
-        , m_serverListingID()
+        , m_defaultMatchmakingConfig("MyConfig")
         , m_unregisterGameliftServiceOnErrorDismiss(false)
         , m_hasGameliftSession(false)
-        , m_isShowingBusy(true)
-        , m_isShowingError(true)
-        , m_isShowingGameLiftConfig(true)
         , m_lobbyMode(LobbyMode::Unknown)
-        , m_selectedServerResult(-1)
-        , m_joinSearch(nullptr)
         , m_listSearch(nullptr)
         , m_multiplayerLobbyServiceWrapper(nullptr)
         , m_gameliftCreationSearch(nullptr)
@@ -238,48 +113,44 @@ namespace Multiplayer
     {
     }
 
-    void MultiplayerLobbyComponent::Init()
-    {
-    }
-
     void MultiplayerLobbyComponent::Activate()
     {
         Multiplayer::MultiplayerLobbyBus::Handler::BusConnect(GetEntityId());
 
-        IGameFramework* pGameFramework = gEnv->pGame ? gEnv->pGame->GetIGameFramework() : nullptr;
-        IActionMapManager* actionMapManager = pGameFramework ? pGameFramework->GetIActionMapManager() : nullptr;
+        MultiplayerDedicatedHostTypeSelectionCanvasContext dedicatedHostTypeSelectionCanvasContext;
+        dedicatedHostTypeSelectionCanvasContext.OnLANButtonClicked = std::bind(&MultiplayerLobbyComponent::SelectLANServerType, this);
+        dedicatedHostTypeSelectionCanvasContext.OnGameLiftConnectButtonClicked = std::bind(&MultiplayerLobbyComponent::SelectGameLiftServerType, this);
+        m_dedicatedHostTypeSelectionCanvas = aznew MultiplayerDedicatedHostTypeSelectionCanvas(dedicatedHostTypeSelectionCanvasContext);
 
-        if (actionMapManager)
-        {
-            actionMapManager->EnableActionMap("lobby",true);
-            actionMapManager->AddExtraActionListener(this, "lobby");
-        }
+        MultiplayerLANGameLobbyCanvasContext lanGameLobbyCanvasContext;
+        lanGameLobbyCanvasContext.CreateServerViewContext.OnCreateServerButtonClicked = std::bind(&MultiplayerLobbyComponent::CreateServer, this);
+        lanGameLobbyCanvasContext.OnReturnButtonClicked = std::bind(&MultiplayerLobbyComponent::ShowSelectionLobby, this);
+        lanGameLobbyCanvasContext.JoinServerViewContext.OnJoinButtonClicked = std::bind(&MultiplayerLobbyComponent::JoinServer, this);
+        lanGameLobbyCanvasContext.JoinServerViewContext.OnRefreshButtonClicked = std::bind(&MultiplayerLobbyComponent::ListServers, this);
+        lanGameLobbyCanvasContext.CreateServerViewContext.DefaultMapName = m_defaultMap;
+        lanGameLobbyCanvasContext.CreateServerViewContext.DefaultServerName = m_defaultServerName;
+        m_lanGameLobbyCanvas = aznew MultiplayerLANGameLobbyCanvas(lanGameLobbyCanvasContext);
+        m_lanGameLobbyCanvas->Hide();
 
-        m_selectionLobbyID = LoadCanvas("ui/Canvases/selection_lobby.uicanvas");
-        AZ_Error("MultiplayerLobbyComponent",m_selectionLobbyID.IsValid(),"Missing UI file for ServerType Selection Lobby.");
+        MultiplayerGameLiftLobbyCanvasContext gameLiftLobbyCanvasContext;
+        gameLiftLobbyCanvasContext.CreateServerViewContext.OnCreateServerButtonClicked = std::bind(&MultiplayerLobbyComponent::CreateServer, this);
+        gameLiftLobbyCanvasContext.OnReturnButtonClicked = std::bind(&MultiplayerLobbyComponent::ShowSelectionLobby, this);
+        gameLiftLobbyCanvasContext.JoinServerViewContext.OnJoinButtonClicked = std::bind(&MultiplayerLobbyComponent::JoinServer, this);
+        gameLiftLobbyCanvasContext.JoinServerViewContext.OnRefreshButtonClicked = std::bind(&MultiplayerLobbyComponent::ListServers, this);
 
-        m_serverListingID = LoadCanvas("ui/Canvases/listing_lobby.uicanvas");
-        AZ_Error("MultiplayerLobbyComponent",m_serverListingID.IsValid(),"Missing UI file for Server Listing Lobby.");
-
-        if (m_serverListingID.IsValid())
-        {
-            m_listingRows.emplace_back(m_serverListingID,10,11,32);
-            m_listingRows.emplace_back(m_serverListingID,12,13,33);
-            m_listingRows.emplace_back(m_serverListingID,14,15,34);
-            m_listingRows.emplace_back(m_serverListingID,16,17,35);
-            m_listingRows.emplace_back(m_serverListingID,18,19,36);
-        }
-
-        SetElementInputEnabled(m_selectionLobbyID,k_lobbySelectionLANButton,true);
-
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
-        SetElementInputEnabled(m_selectionLobbyID,k_lobbySelectionGameliftButton,true);
-#else
-        SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionGameliftButton, false);
+ #if defined(BUILD_GAMELIFT_CLIENT)
+        gameLiftLobbyCanvasContext.GameLiftFlexMatchViewContext.OnStartMatchmakingButtonClicked = std::bind(&MultiplayerLobbyComponent::StartGameLiftMatchmaking, this);
 #endif
 
-        SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionXeniaButton, AZ_TRAIT_MULTIPLAYER_LOBBY_SERVICE_ENABLE_XENIA_BUTTON);
-        SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionProvoButton, AZ_TRAIT_MULTIPLAYER_LOBBY_SERVICE_ENABLE_PROVO_BUTTON);
+        gameLiftLobbyCanvasContext.CreateServerViewContext.DefaultMapName = m_defaultMap;
+        gameLiftLobbyCanvasContext.CreateServerViewContext.DefaultServerName = m_defaultServerName;
+        gameLiftLobbyCanvasContext.GameLiftFlexMatchViewContext.DefaultMatchmakingConfig = m_defaultMatchmakingConfig;
+        m_gameLiftLobbyCanvas = aznew MultiplayerGameLiftLobbyCanvas(gameLiftLobbyCanvasContext);
+        m_gameLiftLobbyCanvas->Hide();
+
+        MultiplayerBusyAndErrorCanvasContext busyAndErrorCanvasContext;
+        busyAndErrorCanvasContext.OnDismissErrroWindowButtonClicked = std::bind(&MultiplayerLobbyComponent::DismissError, this, false);
+        m_busyAndErrorCanvas = aznew MultiplayerBusyAndErrorCanvas(busyAndErrorCanvasContext);
 
         ShowSelectionLobby();
 
@@ -299,27 +170,14 @@ namespace Multiplayer
 
     void MultiplayerLobbyComponent::Deactivate()
     {
-        UiCanvasNotificationBus::Handler::BusDisconnect();
         GridMate::SessionEventBus::Handler::BusDisconnect();
 
-        if (m_selectionLobbyID.IsValid())
-        {
-            gEnv->pLyShine->ReleaseCanvas(m_selectionLobbyID, false);
-        }
-
-        if (m_serverListingID.IsValid())
-        {
-            gEnv->pLyShine->ReleaseCanvas(m_serverListingID, false);
-        }
-
-        IGameFramework* pGameFramework = gEnv->pGame ? gEnv->pGame->GetIGameFramework() : nullptr;
-        IActionMapManager* actionMapManager = pGameFramework ? pGameFramework->GetIActionMapManager() : nullptr;
-
-        if (actionMapManager)
-        {
-            actionMapManager->EnableActionMap("lobby",false);
-            actionMapManager->RemoveExtraActionListener(this, "lobby");
-        }
+        delete m_dedicatedHostTypeSelectionCanvas;
+        m_dedicatedHostTypeSelectionCanvas = nullptr;
+        delete m_lanGameLobbyCanvas;
+        m_lanGameLobbyCanvas = nullptr;
+        delete m_gameLiftLobbyCanvas;
+        m_gameLiftLobbyCanvas = nullptr;
 
         UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
 
@@ -329,119 +187,25 @@ namespace Multiplayer
         m_multiplayerLobbyServiceWrapper = nullptr;
     }
 
-    void MultiplayerLobbyComponent::OnAction(AZ::EntityId entityId, const LyShine::ActionName& actionName)
+    void MultiplayerLobbyComponent::SelectLANServerType()
     {
-        // Enforcing modality here, because there is currently not a good way to do modality in the UI System.
-        // Once that gets entered, most of this should be condensed down for just a safety measure.
-        if (m_isShowingBusy)
+        if (m_multiplayerLobbyServiceWrapper)
         {
-            return;
-        }
-        else if (m_isShowingError)
-        {
-            if (actionName == "OnDismissErrorMessage")
-            {
-                if (m_unregisterGameliftServiceOnErrorDismiss)
-                {
-                    m_unregisterGameliftServiceOnErrorDismiss = false;
-
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
-                    StopGameLiftSession();
-#endif
-                }
-
-                DismissError();
-            }
-
-            return;
-        }
-        else if (m_isShowingGameLiftConfig)
-        {
-            if (actionName == "OnGameliftConnect")
-            {
-                SaveGameLiftConfig();
-                DismissGameLiftConfig();
-
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
-                ShowLobby(LobbyMode::GameliftLobby);
-#else
-                AZ_Assert(false,"Trying to use GameLift on unsupported Platform.");
-#endif
-            }
-            else if (actionName == "OnGameliftCancel")
-            {
-                DismissGameLiftConfig();
-            }
-
-            return;
+            delete m_multiplayerLobbyServiceWrapper;
         }
 
-        if (actionName == "OnCreateServer")
-        {
-            CreateServer();
-        }
-        else if (actionName == "OnSelectServer")
-        {
-            LyShine::ElementId elementId = 0;
-            EBUS_EVENT_ID_RESULT(elementId, entityId, UiElementBus, GetElementId);
+        m_multiplayerLobbyServiceWrapper = aznew MultiplayerLobbyLANServiceWrapper(GetEntityId());
 
-            SelectId(elementId);
-        }
-        else if (actionName == "OnJoinServer")
-        {
-            JoinServer();
-        }
-        else if (actionName == "OnRefresh")
-        {
-            ListServers();
-        }
-        else if (actionName == "OnListGameliftServers")
-        {
-            ShowGameLiftConfig();
-
-        }
-        else if (actionName == "OnListLANServers")
-        {
-            RegisterServiceWrapper<MultiplayerLobbyLANServiceWrapper>();
-            ShowLobby(LobbyMode::ServiceWrapperLobby);
-        }
-        else if (actionName == "OnDismissErrorMessage")
-        {
-
-        }
-        else if (actionName == "OnReturn")
-        {
-            ShowSelectionLobby();
-        }
-        else
-        {
-            MultiplayerLobbyServiceWrapper* multiplayerLobbyServiceWrapperPointer = nullptr;
-            if(Platform::ListServers(actionName, GetEntityId(), multiplayerLobbyServiceWrapperPointer))
-            {
-                if (m_multiplayerLobbyServiceWrapper)
-                {
-                    delete m_multiplayerLobbyServiceWrapper;
-                }
-                m_multiplayerLobbyServiceWrapper = multiplayerLobbyServiceWrapperPointer;
-            }
-        }
+        ShowLobby(LobbyMode::ServiceWrapperLobby);
     }
 
-    void MultiplayerLobbyComponent::OnAction(const ActionId& action, int activationMode, float value)
+    void MultiplayerLobbyComponent::SelectGameLiftServerType()
     {
-        if (m_isShowingBusy)
-        {
-            return;
-        }
-
-        if (m_lobbyMode == LobbyMode::LobbySelection)
-        {
-            OnLobbySelectionAction(action,activationMode,value);
-        }
-        else
-        {
-            OnServerListingAction(action, activationMode, value);
-        }
+#if defined(BUILD_GAMELIFT_CLIENT)
+        ShowLobby(LobbyMode::GameliftLobby);
+#else
+        AZ_Assert(false, "Trying to use GameLift on unsupported Platform.");
+#endif
     }
 
     void MultiplayerLobbyComponent::OnSessionCreated(GridMate::GridSession* session)
@@ -486,22 +250,14 @@ namespace Multiplayer
         }
         else if (search == m_listSearch)
         {
-            for (unsigned int i=0; i < search->GetNumResults(); ++i)
+            if (m_lobbyMode == LobbyMode::ServiceWrapperLobby)
             {
-                // Screen is currently not dynamically populated, so we are stuck with a fixed size
-                // amount of results for now.
-                if (i >= m_listingRows.size())
-                {
-                    break;
-                }
-
-                const GridMate::SearchInfo* searchInfo = search->GetResult(i);
-
-                ServerListingResultRow& resultRow = m_listingRows[i];
-
-                resultRow.DisplayResult(searchInfo);
+                m_lanGameLobbyCanvas->DisplaySearchResults(m_listSearch);
             }
-
+            else if(m_lobbyMode == LobbyMode::GameliftLobby)
+            {
+                m_gameLiftLobbyCanvas->DisplaySearchResults(m_listSearch);
+            }
             DismissBusyScreen();
         }
     }
@@ -509,137 +265,6 @@ namespace Multiplayer
     int MultiplayerLobbyComponent::GetGamePort() const
     {
         return m_port;
-    }
-
-    void MultiplayerLobbyComponent::ShowError(const char* message)
-    {
-        if (m_isShowingBusy)
-        {
-            DismissBusyScreen();
-        }
-
-        if (!m_isShowingError)
-        {
-            const char* errorWindow = nullptr;
-            const char* errorMessage = nullptr;
-            AZ::EntityId canvasID;
-
-            m_isShowingError = true;
-
-            if (m_lobbyMode == LobbyMode::GameliftLobby || m_lobbyMode == LobbyMode::ServiceWrapperLobby)
-            {
-                errorWindow = k_serverListingErrorWindow;
-                errorMessage = k_serverListingErrorMessage;
-                canvasID = m_serverListingID;
-            }
-            else if (m_lobbyMode == LobbyMode::LobbySelection)
-            {
-                errorWindow = k_lobbySelectionErrorWindow;
-                errorMessage = k_lobbySelectionErrorMessage;
-                canvasID = m_selectionLobbyID;
-            }
-
-            SetElementEnabled(canvasID,errorWindow,true);
-
-            AZ::Entity* element = nullptr;
-            EBUS_EVENT_ID_RESULT(element,canvasID,UiCanvasBus,FindElementByName,errorMessage);
-
-            if (element != nullptr)
-            {
-                LyShine::StringType textString(message);
-                EBUS_EVENT_ID(element->GetId(),UiTextBus,SetText,textString);
-            }
-            else
-            {
-                AZ_Error("MultiplayerLobby",false,"Failed to show error message(%s)", message);
-                m_isShowingError = false;
-            }
-        }
-        else
-        {
-            m_errorMessageQueue.emplace_back(message);
-        }
-    }
-
-    void MultiplayerLobbyComponent::DismissError(bool force)
-    {
-        if (m_isShowingError || force)
-        {
-            const char* errorWindow = nullptr;
-            AZ::EntityId canvasID;
-
-            m_isShowingError = false;
-
-            if (m_lobbyMode == LobbyMode::GameliftLobby || m_lobbyMode == LobbyMode::ServiceWrapperLobby)
-            {
-                errorWindow = k_serverListingErrorWindow;
-                canvasID = m_serverListingID;
-            }
-            else if (m_lobbyMode == LobbyMode::LobbySelection)
-            {
-                errorWindow = k_lobbySelectionErrorWindow;
-                canvasID = m_selectionLobbyID;
-            }
-
-            SetElementEnabled(canvasID,errorWindow,false);
-
-            if (force)
-            {
-                m_errorMessageQueue.clear();
-            }
-            else
-            {
-                ShowQueuedErrorMessage();
-            }
-        }
-    }
-
-    void MultiplayerLobbyComponent::ShowBusyScreen()
-    {
-        if (!m_isShowingBusy)
-        {
-            const char* busyWindow = nullptr;
-            AZ::EntityId canvasID;
-
-            m_isShowingBusy = true;
-
-            if (m_lobbyMode == LobbyMode::GameliftLobby || m_lobbyMode == LobbyMode::ServiceWrapperLobby)
-            {
-                busyWindow = k_serverListingBusyScreen;
-                canvasID = m_serverListingID;
-            }
-            else if (m_lobbyMode == LobbyMode::LobbySelection)
-            {
-                busyWindow = k_lobbySelectionBusyScreen;
-                canvasID = m_selectionLobbyID;
-            }
-
-            SetElementEnabled(canvasID,busyWindow,true);
-        }
-    }
-
-    void MultiplayerLobbyComponent::DismissBusyScreen(bool force)
-    {
-        if (m_isShowingBusy || force)
-        {
-            const char* busyWindow = nullptr;
-            AZ::EntityId canvasID;
-
-            m_isShowingBusy = false;
-
-            if (m_lobbyMode == LobbyMode::GameliftLobby || m_lobbyMode == LobbyMode::ServiceWrapperLobby)
-            {
-                busyWindow = k_serverListingBusyScreen;
-                canvasID = m_serverListingID;
-            }
-            else if (m_lobbyMode == LobbyMode::LobbySelection)
-            {
-                busyWindow = k_lobbySelectionBusyScreen;
-                canvasID = m_selectionLobbyID;
-            }
-
-            SetElementEnabled(canvasID,busyWindow,false);
-        }
     }
 
     void MultiplayerLobbyComponent::ConfigureSessionParams(GridMate::SessionParams& sessionParams)
@@ -677,11 +302,8 @@ namespace Multiplayer
 
             HideLobby();
             m_lobbyMode = LobbyMode::LobbySelection;
-            UiCanvasNotificationBus::Handler::BusConnect(m_selectionLobbyID);
+            m_dedicatedHostTypeSelectionCanvas->Show();
 
-            EBUS_EVENT_ID(m_selectionLobbyID, UiCanvasBus, SetEnabled, true);
-
-            DismissGameLiftConfig();
             DismissError(forceHide);
             DismissBusyScreen(forceHide);
         }
@@ -701,27 +323,44 @@ namespace Multiplayer
             {
                 HideLobby();
                 m_lobbyMode = lobbyMode;
-                UiCanvasNotificationBus::Handler::BusConnect(m_serverListingID);
 
-                ClearServerListings();
-                EBUS_EVENT_ID(m_serverListingID, UiCanvasBus, SetEnabled, true);
+                if (lobbyMode == LobbyMode::ServiceWrapperLobby)
+                {
+                    m_lanGameLobbyCanvas->ClearSearchResults();
+                    m_lanGameLobbyCanvas->Show();
+                }
+                else if (lobbyMode == LobbyMode::GameliftLobby)
+                {
+                    m_gameLiftLobbyCanvas->ClearSearchResults();
+                    m_gameLiftLobbyCanvas->Show();
+                }
 
                 const bool forceHide = true;
                 DismissError(forceHide);
                 DismissBusyScreen(forceHide);
-
-                SetupServerListingDisplay();
             }
         }
     }
 
     void MultiplayerLobbyComponent::HideLobby()
     {
-        UiCanvasNotificationBus::Handler::BusDisconnect();
-        m_lobbyMode = LobbyMode::Unknown;
+        switch (m_lobbyMode)
+        {
+        case LobbyMode::ServiceWrapperLobby:
+            m_lanGameLobbyCanvas->Hide();
+            break;
 
-        EBUS_EVENT_ID(m_selectionLobbyID, UiCanvasBus, SetEnabled, false);
-        EBUS_EVENT_ID(m_serverListingID, UiCanvasBus, SetEnabled, false);
+        case LobbyMode::GameliftLobby:
+            m_gameLiftLobbyCanvas->Hide();
+            break;
+
+        case LobbyMode::LobbySelection:
+            m_dedicatedHostTypeSelectionCanvas->Hide();
+            break;
+        default:
+            break;
+        }
+        m_lobbyMode = LobbyMode::Unknown;
     }
 
     bool MultiplayerLobbyComponent::StartSessionService(LobbyMode lobbyMode)
@@ -740,7 +379,7 @@ namespace Multiplayer
         }
         else if (lobbyMode == LobbyMode::GameliftLobby)
         {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             startedService = StartGameLiftSession();
 #else
             startedService = false;
@@ -765,7 +404,7 @@ namespace Multiplayer
         }
         else if (m_lobbyMode == LobbyMode::GameliftLobby)
         {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             StopGameLiftSession();
             m_hasGameliftSession = false;
 #else
@@ -806,7 +445,7 @@ namespace Multiplayer
 
                 if (m_lobbyMode == LobbyMode::GameliftLobby)
                 {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
                     if (SanityCheckGameLift())
                     {
                         CreateServerForGameLift();
@@ -828,11 +467,18 @@ namespace Multiplayer
 
     void MultiplayerLobbyComponent::ListServers()
     {
-        ClearServerListings();
+        if (m_lobbyMode == LobbyMode::ServiceWrapperLobby)
+        {
+            m_lanGameLobbyCanvas->ClearSearchResults();
+        }
+        else if (m_lobbyMode == LobbyMode::GameliftLobby)
+        {
+            m_gameLiftLobbyCanvas->ClearSearchResults();
+        }
 
         if (m_lobbyMode == LobbyMode::GameliftLobby)
         {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             if (SanityCheckGameLift())
             {
                 ListServersForGameLift();
@@ -845,18 +491,6 @@ namespace Multiplayer
         {
             ListServersForWrappedService();
         }
-    }
-
-    void MultiplayerLobbyComponent::ClearServerListings()
-    {
-        m_selectedServerResult = -1;
-
-        for (ServerListingResultRow& serverResultRow : m_listingRows)
-        {
-            serverResultRow.ResetDisplay();
-        }
-
-        SetElementInputEnabled(m_serverListingID,k_serverListingJoinButton,false);
     }
 
     void MultiplayerLobbyComponent::ClearSearches()
@@ -884,47 +518,6 @@ namespace Multiplayer
         }
     }
 
-    void MultiplayerLobbyComponent::SelectId(int rowId)
-    {
-        if (m_listSearch == nullptr || !m_listSearch->IsDone())
-        {
-            return;
-        }
-
-        SetElementInputEnabled(m_serverListingID,k_serverListingJoinButton,false);
-        int lastSelection = m_selectedServerResult;
-
-        m_selectedServerResult = -1;
-        for (int i=0; i < static_cast<int>(m_listingRows.size()); ++i)
-        {
-            ServerListingResultRow& resultRow = m_listingRows[i];
-
-            if (resultRow.GetRowID() == rowId)
-            {
-                if (i < m_listSearch->GetNumResults())
-                {
-                    SetElementInputEnabled(m_serverListingID,k_serverListingJoinButton,true);
-                    m_selectedServerResult = i;
-                    resultRow.Select();
-                }
-                else
-                {
-                    resultRow.Deselect();
-                }
-            }
-            else
-            {
-                resultRow.Deselect();
-            }
-        }
-
-        // Double click to join.
-        if (m_selectedServerResult >= 0 && lastSelection == m_selectedServerResult)
-        {
-            JoinServer();
-        }
-    }
-
     void MultiplayerLobbyComponent::JoinServer()
     {
         if (m_lobbyMode == LobbyMode::LobbySelection)
@@ -932,16 +525,25 @@ namespace Multiplayer
             return;
         }
 
+        int selectedServerResult = -1;
+        if (m_lobbyMode == LobbyMode::ServiceWrapperLobby)
+        {
+            selectedServerResult = m_lanGameLobbyCanvas->GetSelectedServerResult();
+        }
+        else if (m_lobbyMode == LobbyMode::GameliftLobby)
+        {
+            selectedServerResult = m_gameLiftLobbyCanvas->GetSelectedServerResult();
+        }
         if (   m_listSearch == nullptr
             || !m_listSearch->IsDone()
-            || m_selectedServerResult < 0
-            || m_listSearch->GetNumResults() <= m_selectedServerResult)
+            || selectedServerResult < 0
+            || m_listSearch->GetNumResults() <= selectedServerResult)
         {
             ShowError("No Server Selected to Join.");
             return;
         }
 
-        const GridMate::SearchInfo* searchInfo = m_listSearch->GetResult(m_selectedServerResult);
+        const GridMate::SearchInfo* searchInfo = m_listSearch->GetResult(selectedServerResult);
 
         if (!SanityCheck())
         {
@@ -975,7 +577,7 @@ namespace Multiplayer
             }
             else if (m_lobbyMode == LobbyMode::GameliftLobby)
             {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
                 if (!SanityCheckGameLift())
                 {
                     return;
@@ -1014,7 +616,7 @@ namespace Multiplayer
         }
         else if (m_lobbyMode == LobbyMode::GameliftLobby)
         {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             const GridMate::GameLiftSearchInfo& gameliftSearchInfo = static_cast<const GridMate::GameLiftSearchInfo&>(*searchInfo);
             EBUS_EVENT_ID_RESULT(session, gEnv->pNetwork->GetGridMate(), GridMate::GameLiftClientServiceBus, JoinSessionBySearchInfo, gameliftSearchInfo, carrierDesc);
 #endif
@@ -1056,155 +658,6 @@ namespace Multiplayer
         }
 
         return true;
-    }
-
-    void MultiplayerLobbyComponent::ShowQueuedErrorMessage()
-    {
-        if (!m_errorMessageQueue.empty())
-        {
-            AZStd::string errorMessage = m_errorMessageQueue.front();
-            m_errorMessageQueue.erase(m_errorMessageQueue.begin());
-
-            ShowError(errorMessage.c_str());
-        }
-    }
-
-    AZ::EntityId MultiplayerLobbyComponent::LoadCanvas(const char* canvasName) const
-    {
-        if (gEnv->pLyShine)
-        {
-            AZ::EntityId canvasEntityId = gEnv->pLyShine->LoadCanvas(canvasName);
-
-            return canvasEntityId;
-        }
-        return AZ::EntityId();
-    }
-
-    void MultiplayerLobbyComponent::SetElementEnabled(const AZ::EntityId& canvasID, const char* elementName, bool enabled)
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,canvasID,UiCanvasBus, FindElementByName, elementName);
-
-        if (element != nullptr)
-        {
-            EBUS_EVENT_ID(element->GetId(),UiElementBus,SetIsEnabled,enabled);
-        }
-    }
-
-    void MultiplayerLobbyComponent::SetElementInputEnabled(const AZ::EntityId& canvasID, const char* elementName, bool enabled)
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,canvasID,UiCanvasBus, FindElementByName, elementName);
-
-        if (element != nullptr)
-        {
-            EBUS_EVENT_ID(element->GetId(),UiInteractableBus,SetIsHandlingEvents,enabled);
-        }
-    }
-
-    void MultiplayerLobbyComponent::SetElementText(const AZ::EntityId& canvasID, const char* elementName, const char* text)
-    {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,canvasID,UiCanvasBus, FindElementByName, elementName);
-
-        if (element != nullptr)
-        {
-            if (UiTextInputBus::FindFirstHandler(element->GetId()))
-            {
-                EBUS_EVENT_ID(element->GetId(),UiTextInputBus,SetText,text);
-            }
-            else if (UiTextBus::FindFirstHandler(element->GetId()))
-            {
-                EBUS_EVENT_ID(element->GetId(),UiTextBus,SetText,text);
-            }
-        }
-    }
-
-    LyShine::StringType MultiplayerLobbyComponent::GetElementText(const AZ::EntityId& canvasID, const char* elementName) const
-    {
-        LyShine::StringType retVal;
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element,canvasID,UiCanvasBus, FindElementByName, elementName);
-
-        if (element != nullptr)
-        {
-            if (UiTextInputBus::FindFirstHandler(element->GetId()))
-            {
-                EBUS_EVENT_ID_RESULT(retVal,element->GetId(),UiTextInputBus,GetText);
-            }
-            else if (UiTextBus::FindFirstHandler(element->GetId()))
-            {
-                EBUS_EVENT_ID_RESULT(retVal,element->GetId(),UiTextBus,GetText);
-            }
-        }
-
-        return retVal;
-    }
-
-    void MultiplayerLobbyComponent::OnLobbySelectionAction(const ActionId& action, int activationMode, float value)
-    {
-
-    }
-
-    void MultiplayerLobbyComponent::OnServerListingAction(const ActionId& action, int activationMode, float value)
-    {
-
-    }
-
-    void MultiplayerLobbyComponent::SetupServerListingDisplay()
-    {
-        AZ::Entity* element = nullptr;
-        LyShine::StringType textString;
-
-        EBUS_EVENT_ID_RESULT(element,m_serverListingID,UiCanvasBus,FindElementByName,k_serverListingTitle);
-        if (element)
-        {
-            if (m_lobbyMode == LobbyMode::GameliftLobby)
-            {
-                textString = "GameLift Servers";
-            }
-            else if (m_lobbyMode == LobbyMode::ServiceWrapperLobby && SanityCheckWrappedSessionService())
-            {
-                textString = m_multiplayerLobbyServiceWrapper->GetLobbyTitle();
-            }
-            else
-            {
-                textString = "Unknown";
-            }
-            EBUS_EVENT_ID(element->GetId(), UiTextBus, SetText, textString);
-        }
-
-        element = nullptr;
-
-        EBUS_EVENT_ID_RESULT(element,m_serverListingID,UiCanvasBus,FindElementByName,k_serverListingMapNameTextBox);
-
-        if (element)
-        {
-            textString = m_defaultMap.c_str();
-
-            EBUS_EVENT_ID(element->GetId(),UiTextInputBus,SetText,textString);
-        }
-
-        element = nullptr;
-
-        EBUS_EVENT_ID_RESULT(element,m_serverListingID,UiCanvasBus,FindElementByName,k_serverListingServerNameTextBox);
-
-        if (element)
-        {
-            textString = m_defaultServerName.c_str();
-
-            EBUS_EVENT_ID(element->GetId(),UiTextInputBus,SetText,textString);
-        }
-    }
-
-    LyShine::StringType MultiplayerLobbyComponent::GetServerName() const
-    {
-        return GetElementText(m_serverListingID,k_serverListingServerNameTextBox);
-    }
-
-    LyShine::StringType MultiplayerLobbyComponent::GetMapName() const
-    {
-        return GetElementText(m_serverListingID,k_serverListingMapNameTextBox);
     }
 
     bool MultiplayerLobbyComponent::SanityCheckWrappedSessionService()
@@ -1279,100 +732,15 @@ namespace Multiplayer
         }
     }
 
-    const char* MultiplayerLobbyComponent::GetGameLiftParam(const char* param)
-    {
-        ICVar* cvar = gEnv->pConsole->GetCVar(param);
-
-        if (cvar)
-        {
-            return cvar->GetString();
-        }
-
-        return "";
-    }
-
-    bool MultiplayerLobbyComponent::GetGameLiftBoolParam(const char* param)
-    {
-        bool value = false;
-        ICVar* cvar = gEnv->pConsole->GetCVar(param);
-
-        if (cvar)
-        {
-            if( cvar->GetI64Val() )
-            {
-                value = true;
-            }
-        }
-
-        return value;
-    }
-
-    void MultiplayerLobbyComponent::SetGameLiftParam(const char* param, const char* value)
-    {
-        ICVar* cvar = gEnv->pConsole->GetCVar(param);
-
-        if (cvar)
-        {
-            cvar->Set(value);
-        }
-    }
-
-    void MultiplayerLobbyComponent::ShowGameLiftConfig()
-    {
-        if (!m_isShowingGameLiftConfig)
-        {
-            m_isShowingGameLiftConfig = true;
-
-            SetElementEnabled(m_selectionLobbyID,k_lobbySelectionGameLiftConfigWindow,true);
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSAccesKeyInput,GetGameLiftParam("gamelift_aws_access_key"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSSecretKeyInput,GetGameLiftParam("gamelift_aws_secret_key"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSRegionInput,GetGameLiftParam("gamelift_aws_region"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftFleetIDInput,GetGameLiftParam("gamelift_fleet_id"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftEndPointInput,GetGameLiftParam("gamelift_endpoint"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAliasIDInput,GetGameLiftParam("gamelift_alias_id"));
-            SetElementText(m_selectionLobbyID,k_lobbySelectionGameliftPlayerIDInput,GetGameLiftParam("gamelift_player_id"));
-        }
-    }
-
-    void MultiplayerLobbyComponent::DismissGameLiftConfig()
-    {
-        if (m_isShowingGameLiftConfig)
-        {
-            m_isShowingGameLiftConfig = false;
-
-            SetElementEnabled(m_selectionLobbyID,k_lobbySelectionGameLiftConfigWindow,false);
-        }
-    }
-
-    void MultiplayerLobbyComponent::SaveGameLiftConfig()
-    {
-        LyShine::StringType param;
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSAccesKeyInput);
-        SetGameLiftParam("gamelift_aws_access_key",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSSecretKeyInput);
-        SetGameLiftParam("gamelift_aws_secret_key",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAWSRegionInput);
-        SetGameLiftParam("gamelift_aws_region",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftFleetIDInput);
-        SetGameLiftParam("gamelift_fleet_id",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftEndPointInput);
-        SetGameLiftParam("gamelift_endpoint",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftAliasIDInput);
-        SetGameLiftParam("gamelift_alias_id",param.c_str());
-
-        param = GetElementText(m_selectionLobbyID,k_lobbySelectionGameliftPlayerIDInput);
-        SetGameLiftParam("gamelift_player_id",param.c_str());
-    }
-
     bool MultiplayerLobbyComponent::SanityCheckGameLift()
     {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
+
+        if (!ValidateGameLiftConfig())
+        {
+            return false;
+        }
+
         GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();
 
         // This should already be errored by the previous sanity check.
@@ -1392,7 +760,52 @@ namespace Multiplayer
 #endif
     }
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+    bool MultiplayerLobbyComponent::ValidateGameLiftConfig()
+    {
+        const AZStd::string fleetId = GetConsoleVarValue("gamelift_fleet_id");
+        const AZStd::string aliasId = GetConsoleVarValue("gamelift_alias_id");
+        const AZStd::string queueName = GetConsoleVarValue("gamelift_queue_name");
+
+        //Validation on inputs.
+        //Service still supports the use of developers credentials on top of the player credentials.
+        if (fleetId.empty() && aliasId.empty() && queueName.empty())
+        {
+            AZ_TracePrintf("GameLift", "You need to provide at least [gamelift_aliasid, gamelift_aws_access_key, gamelift_aws_secret_key] or [gamelift_fleetid, gamelift_aws_access_key, gamelift_aws_secret_key] or [gamelift_queue_name, gamelift_aws_access_key, gamelift_aws_secret_key]\n");
+            return false;
+        }
+
+        if (!fleetId.empty())
+        {
+            if (!aliasId.empty() || !queueName.empty())
+            {
+                AZ_TracePrintf("GameLift", "Initialize failed. Cannot use fleet id with aliasId/queueName.\n");
+                return false;
+            }
+        }
+
+        if (!aliasId.empty()) {
+            if (!fleetId.empty() || !queueName.empty())
+            {
+                AZ_TracePrintf("GameLift", "Initialize failed. Cannot use alias id with fleetId/queueName.\n");
+                return false;
+            }
+        }
+
+        //If the using queues.
+        if (!queueName.empty())
+        {
+            if (!fleetId.empty() || !aliasId.empty())
+            {
+                AZ_TracePrintf("GameLift", "Initialize failed. Cannot use queue name with fleetId/aliasId.\n");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+#if defined(BUILD_GAMELIFT_CLIENT)
+
     bool MultiplayerLobbyComponent::StartGameLiftSession()
     {
         GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();
@@ -1406,14 +819,12 @@ namespace Multiplayer
             GridMate::GameLiftClientServiceEventsBus::Handler::BusConnect(gridMate);
 
             GridMate::GameLiftClientServiceDesc serviceDesc;
-            serviceDesc.m_accessKey = GetGameLiftParam("gamelift_aws_access_key");
-            serviceDesc.m_secretKey = GetGameLiftParam("gamelift_aws_secret_key");
-            serviceDesc.m_fleetId = GetGameLiftParam("gamelift_fleet_id");
-            serviceDesc.m_endpoint = GetGameLiftParam("gamelift_endpoint");
-            serviceDesc.m_region = GetGameLiftParam("gamelift_aws_region");
-            serviceDesc.m_aliasId = GetGameLiftParam("gamelift_alias_id");
-            serviceDesc.m_playerId = GetGameLiftParam("gamelift_player_id");
-            serviceDesc.m_useGameLiftLocalServer = GetGameLiftBoolParam("gamelift_uselocalserver");
+            serviceDesc.m_accessKey = GetConsoleVarValue("gamelift_aws_access_key");
+            serviceDesc.m_secretKey = GetConsoleVarValue("gamelift_aws_secret_key");
+            serviceDesc.m_endpoint = GetConsoleVarValue("gamelift_endpoint");
+            serviceDesc.m_region = GetConsoleVarValue("gamelift_aws_region");
+            serviceDesc.m_playerId = GetConsoleVarValue("gamelift_player_id");
+            serviceDesc.m_useGameLiftLocalServer = GetGetConsoleVarBoolValue("gamelift_uselocalserver");
 
             EBUS_EVENT(GameLift::GameLiftRequestBus, StartClientService, serviceDesc);
         }
@@ -1424,6 +835,22 @@ namespace Multiplayer
     void MultiplayerLobbyComponent::StopGameLiftSession()
     {
         EBUS_EVENT(GameLift::GameLiftRequestBus, StopClientService);
+    }
+
+    void MultiplayerLobbyComponent::StartGameLiftMatchmaking()
+    {
+        GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();
+
+        if (m_gameliftCreationSearch)
+        {
+            m_gameliftCreationSearch->AbortSearch();
+            m_gameliftCreationSearch->Release();
+            m_gameliftCreationSearch = nullptr;
+        }
+
+        ShowBusyScreen();
+
+        EBUS_EVENT_ID_RESULT(m_gameliftCreationSearch, gridMate, GridMate::GameLiftClientServiceBus, StartMatchmaking, GetConsoleVarValue("gamelift_matchmaking_config_name"));
     }
 
     void MultiplayerLobbyComponent::CreateServerForGameLift()
@@ -1439,11 +866,19 @@ namespace Multiplayer
 
         GridMate::GameLiftSessionRequestParams reqParams;
         ConfigureSessionParams(reqParams);
-        reqParams.m_instanceName = GetServerName().c_str();
-
+        reqParams.m_instanceName = m_gameLiftLobbyCanvas->GetServerName().c_str();
+        reqParams.m_fleetId = GetConsoleVarValue("gamelift_fleet_id");
+        reqParams.m_queueName = GetConsoleVarValue("gamelift_queue_name");
+        reqParams.m_aliasId = GetConsoleVarValue("gamelift_alias_id");
+        reqParams.m_useFleetId = !reqParams.m_fleetId.empty();
         ShowBusyScreen();
 
         EBUS_EVENT_ID_RESULT(m_gameliftCreationSearch, gridMate, GridMate::GameLiftClientServiceBus, RequestSession, reqParams);
+
+        if (m_gameliftCreationSearch == nullptr)
+        {
+            ShowError("Failed to create Server for GameLift");
+        }
     }
 
     void MultiplayerLobbyComponent::ListServersForGameLift()
@@ -1458,8 +893,12 @@ namespace Multiplayer
             m_listSearch->Release();
             m_listSearch = nullptr;
         }
-
-        EBUS_EVENT_ID_RESULT(m_listSearch,gridMate,GridMate::GameLiftClientServiceBus, StartSearch, GridMate::GameLiftSearchParams());
+        GridMate::GameLiftSearchParams searchParams;
+        searchParams.m_fleetId = GetConsoleVarValue("gamelift_fleet_id");
+        searchParams.m_queueName = GetConsoleVarValue("gamelift_queue_name");
+        searchParams.m_aliasId = GetConsoleVarValue("gamelift_alias_id");
+        searchParams.m_useFleetId = !searchParams.m_fleetId.empty();
+        EBUS_EVENT_ID_RESULT(m_listSearch,gridMate,GridMate::GameLiftClientServiceBus, StartSearch, searchParams);
 
         if (m_listSearch == nullptr)
         {
@@ -1490,5 +929,67 @@ namespace Multiplayer
         errorMessage += message;
         ShowError(errorMessage.c_str());
     }
+
 #endif
+
+    void MultiplayerLobbyComponent::ShowError(const char* error)
+    {
+        m_busyAndErrorCanvas->ShowError(error);
+    }
+
+    void MultiplayerLobbyComponent::DismissError(bool force)
+    {
+        m_busyAndErrorCanvas->DismissError();
+
+        if (m_unregisterGameliftServiceOnErrorDismiss)
+        {
+            m_unregisterGameliftServiceOnErrorDismiss = false;
+
+#if defined(BUILD_GAMELIFT_CLIENT)
+            StopGameLiftSession();
+#endif
+        }
+    }
+
+    void MultiplayerLobbyComponent::ShowBusyScreen()
+    {
+        m_busyAndErrorCanvas->ShowBusyScreen();
+    }
+
+    void MultiplayerLobbyComponent::DismissBusyScreen(bool force)
+    {
+        m_busyAndErrorCanvas->DismissBusyScreen(force);
+    }
+
+    LyShine::StringType MultiplayerLobbyComponent::GetMapName() const
+    {
+        switch (m_lobbyMode)
+        {
+        case LobbyMode::ServiceWrapperLobby:
+            return m_lanGameLobbyCanvas->GetMapName();
+
+        case LobbyMode::GameliftLobby:
+            return m_gameLiftLobbyCanvas->GetMapName();
+
+        default:
+            return "";
+
+        }
+    }
+
+    LyShine::StringType MultiplayerLobbyComponent::GetServerName() const
+    {
+        switch (m_lobbyMode)
+        {
+        case LobbyMode::ServiceWrapperLobby:
+            return m_lanGameLobbyCanvas->GetServerName();
+
+        case LobbyMode::GameliftLobby:
+            return m_gameLiftLobbyCanvas->GetServerName();
+
+        default:
+            return "";
+
+        }
+    }
 }

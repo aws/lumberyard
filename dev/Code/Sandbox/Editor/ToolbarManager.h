@@ -137,6 +137,7 @@ public:
     AmazonToolbar GetToolbar(int index);
     AmazonToolbar::List GetToolbars() const;
     void RestoreToolbarDefaults(const QString& toolbarName);
+    void SetEnabled(bool enabled);
 
     bool Delete(int index);
     bool Rename(int index, const QString& newName);

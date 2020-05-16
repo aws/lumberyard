@@ -33,11 +33,13 @@ namespace AzToolsFramework
     class ManipulatorManager;
 }
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Manages set of viewports.
 */
 class SANDBOX_API CViewManager
     : public IEditorNotifyListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     void ReleaseView(CViewport* pViewport);
 

@@ -56,7 +56,10 @@
             "aws-cpp-sdk-mobileanalytics"
         ],
         "aws_cpp_sdk_identity_management": [
-            "aws-cpp-sdk-identity-management"
+            "aws-cpp-sdk-identity-management",
+            "aws-cpp-sdk-sts",
+            "aws-cpp-sdk-cognito-identity",
+            "aws-cpp-sdk-core"
         ],
         "aws_cpp_sdk_cognito_identity": [
             "aws-cpp-sdk-cognito-identity"
@@ -81,26 +84,28 @@
             "aws-cpp-sdk-identity-management",
             "aws-cpp-sdk-cognito-identity",
             "aws-cpp-sdk-cognito-idp",
-            "aws-cpp-sdk-core"
+            "aws-cpp-sdk-core",
+            "aws-cpp-sdk-sts"
         ],
         "aws_cpp_sdk_identity_metrics": [
             "aws-cpp-sdk-mobileanalytics",
             "aws-cpp-sdk-identity-management",
             "aws-cpp-sdk-cognito-identity",
             "aws-cpp-sdk-cognito-idp",
-            "aws-cpp-sdk-core"
+            "aws-cpp-sdk-core",
+            "aws-cpp-sdk-sts"
         ],
         "aws_c_dependencies": [
-            "aws-c-common",
-            "aws-c-event-stream"
+            "aws-c-event-stream",
+            "aws-c-common"
         ],
         "aws_dependencies": [
-            "aws-c-common",
             "aws-c-event-stream",
+            "aws-c-common",
             "aws-checksums"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [

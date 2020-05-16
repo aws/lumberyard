@@ -51,10 +51,9 @@ namespace ScriptCanvas
 
                         for (Slot* slot : groupedSlots)
                         {
-                            if (slot->IsInput())
+                            if (slot->IsInput() && !slot->IsVariableReference())
                             {
-                                Datum* newDatum = ModInput(slot->GetId());
-                                InitializeDatum(newDatum, dataType);
+                                InitializeSlot(slot->GetId(), dataType);
                             }
                         }
                     }                    
@@ -63,12 +62,15 @@ namespace ScriptCanvas
 
             void OperatorArithmetic::OnInputSignal(const SlotId& slotId)
             {
-                const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
-                if (slotId == inSlotId)
-                {
-                    if (m_applicableInputSlots.empty())
+                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ScriptCanvas);
+
+                if (!m_scrapedInputs)
                     {
+                    m_scrapedInputs = true;
+
                         AZStd::vector< Slot* > groupedSlots = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+
+                    SlotId fallbackId;
 
                         for (Slot* groupedSlot : groupedSlots)
                         {
@@ -76,21 +78,49 @@ namespace ScriptCanvas
                             {
                                 SlotId groupedSlotId = groupedSlot->GetId();
 
-                                if (IsConnected(groupedSlotId) || IsValidArithmeticSlot(groupedSlotId))
+                            if (!fallbackId.IsValid())
                                 {
-                                    m_applicableInputSlots.emplace_back(groupedSlotId);
+                                fallbackId = groupedSlotId;
+                            }
+
+                            if ((groupedSlot->IsVariableReference() && groupedSlot->GetVariableReference().IsValid()) || IsConnected(groupedSlotId) || IsValidArithmeticSlot(groupedSlotId))
+                            {
+                                const Datum* inputDatum = groupedSlot->FindDatum();
+
+                                if (inputDatum && inputDatum->GetType().IsValid() && inputDatum->GetType().GetType() != Data::eType::BehaviorContextObject)
+                                {
+                                    m_applicableInputs.emplace_back(inputDatum);
+                                }
                                 }
                             }
                             else if (groupedSlot->IsOutput())
                             {
-                                m_outputSlot = groupedSlot->GetId();                                
+                            m_resultSlot = groupedSlot;
                             }
+
+                        m_outSlot = GetSlotByName("Out")->GetId();
+                    }
+
+                    // If none of our inputs are valid input slots. Just use the first one we found to fall into a default use case.
+                    if (m_applicableInputs.empty())
+                    {
+                        const Datum* inputDatum = FindDatum(fallbackId);
+
+                        if (inputDatum && inputDatum->GetType().IsValid())
+                        {
+                            m_applicableInputs.emplace_back(inputDatum);
+                        }
+                    }
+
+                    if (!m_applicableInputs.empty())
+                    {
+                        const Datum* datum = m_applicableInputs.front();
+                        m_result.SetType(datum->GetType());
                         }
                     }
 
                     InvokeOperator();
                 }
-            }
 
             void OperatorArithmetic::OnConfigured()
             {
@@ -144,32 +174,32 @@ namespace ScriptCanvas
                 }
             }
 
-            bool OperatorArithmetic::IsNodeExtendable() const
+            void OperatorArithmetic::OnActivate()
             {
-                return true;
-            }
-
-            int OperatorArithmetic::GetNumberOfExtensions() const
+                if (m_scrapedInputs)
             {
-                return 1;
-            }
+                    m_scrapedInputs = false;
+                    m_applicableInputs.clear();
 
-            ExtendableSlotConfiguration OperatorArithmetic::GetExtensionConfiguration(int extensionIndex) const
-            {
-                ExtendableSlotConfiguration configuration;
-
-                if (extensionIndex == 0)
-                {
-                    configuration.m_name = "Add Operand";
-                    configuration.m_tooltip = "Adds a new operand for the operator";
-
-                    configuration.m_displayGroup = GetArithmeticDisplayGroup();
-                    configuration.m_identifier = GetArithmeticExtensionId();
-
-                    configuration.m_connectionType = ConnectionType::Input;
+                    m_result.ReconfigureDatumTo(AZStd::move(ScriptCanvas::Datum()));                    
                 }
+            }
 
-                return configuration;
+            void OperatorArithmetic::ConfigureVisualExtensions()
+            {
+            {
+                    VisualExtensionSlotConfiguration visualExtensions(VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot);
+
+                    visualExtensions.m_name = "Add Operand";
+                    visualExtensions.m_tooltip = "Adds a new operand for the operator";
+
+                    visualExtensions.m_displayGroup = GetArithmeticDisplayGroup();
+                    visualExtensions.m_identifier = GetArithmeticExtensionId();
+
+                    visualExtensions.m_connectionType = ConnectionType::Input;
+
+                    RegisterExtension(visualExtensions);
+                }
             }
 
             SlotId OperatorArithmetic::HandleExtension(AZ::Crc32 extensionId)
@@ -189,7 +219,7 @@ namespace ScriptCanvas
             {
                 Slot* slot = GetSlot(slotId);            
 
-                if (slot->GetDynamicGroup() == GetArithmeticDynamicTypeGroup())
+                if (slot && slot->GetDynamicGroup() == GetArithmeticDynamicTypeGroup())
                 {
                     if (!slot->IsOutput())
                     {                        
@@ -220,22 +250,16 @@ namespace ScriptCanvas
                 {
                     return;
                 }
-
-                const Datum* operand = operands.front();
-
-                if (operands.size() == 1)
+                else if (operands.size() == 1)
                 {
+                const Datum* operand = operands.front();
                     result = (*operand);
                     return;
                 }
 
-                auto type = operand->GetType();
-
-                if (type.GetType() != Data::eType::BehaviorContextObject)
-                {
+                auto type = result.GetType();
                     Operator(type.GetType(), operands, result);
                 }
-            }
 
             void OperatorArithmetic::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
             {
@@ -244,39 +268,24 @@ namespace ScriptCanvas
                 AZ_UNUSED(result);
             }
 
-            void OperatorArithmetic::InitializeDatum(Datum* datum, const Data::Type& dataType)
+            void OperatorArithmetic::InitializeSlot(const SlotId& slotId, const Data::Type& dataType)
             {
-                AZ_UNUSED(datum);
+                AZ_UNUSED(slotId);
                 AZ_UNUSED(dataType);
             }
 
             void OperatorArithmetic::InvokeOperator()
             {
-                Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
-
-                if (!displayType.IsValid())
+                if (!m_result.GetType().IsValid())
                 {
                     return;
                 }
 
-                AZStd::vector<const Datum*> operands;
+                Evaluate(m_applicableInputs, m_result);
 
-                for (const SlotId& inputSlot : m_applicableInputSlots)
-                {
-                    const Datum* datum = GetInput(inputSlot);
+                PushOutput(m_result, (*m_resultSlot));
 
-                    if (datum->GetType().IsValid())
-                    {
-                        operands.push_back(datum);
-                    }
-                }
-
-                Datum result;
-                Evaluate(operands, result);
-
-                PushOutput(result, *GetSlot(m_outputSlot));
-
-                SignalOutput(GetSlotId("Out"));
+                SignalOutput(m_outSlot);
             }
 
             SlotId OperatorArithmetic::CreateSlot(AZStd::string_view name, AZStd::string_view toolTip, ConnectionType connectionType)
@@ -289,7 +298,7 @@ namespace ScriptCanvas
 
                 ContractDescriptor operatorMethodContract;
                 operatorMethodContract.m_createFunc = [this]() -> MathOperatorContract* {
-                    auto mathContract = aznew MathOperatorContract(OperatorFunction().data());
+                    auto mathContract = aznew MathOperatorContract(OperatorFunction());
                     mathContract->SetSupportedNativeTypes(GetSupportedNativeDataTypes());
                     return mathContract;
                 };
@@ -303,9 +312,7 @@ namespace ScriptCanvas
                 slotConfiguration.m_addUniqueSlotByNameAndType = false;
 
                 SlotId slotId = AddSlot(slotConfiguration);
-
-                Datum* newDatum = ModInput(slotId);
-                InitializeDatum(newDatum, GetDisplayType(GetArithmeticDynamicTypeGroup()));
+                InitializeSlot(slotId, GetDisplayType(GetArithmeticDynamicTypeGroup()));
 
                 return slotId;
             }
@@ -350,7 +357,7 @@ namespace ScriptCanvas
 
             bool OperatorArithmetic::IsValidArithmeticSlot(const SlotId& slotId) const
             {
-                const Datum* datum = GetInput(slotId);
+                const Datum* datum = FindDatum(slotId);
                 return (datum != nullptr);
             }
         }

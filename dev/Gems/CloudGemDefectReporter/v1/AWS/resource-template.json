@@ -390,7 +390,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "SanitizationLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
@@ -416,10 +416,13 @@
                 },
                 "Principal": "s3.amazonaws.com",
                 "SourceArn": {
-                    "Fn::GetAtt": [
-                        "AttachmentBucket",
-                        "Arn"
-                    ]
+                  "Fn::GetAtt": [
+                    "AttachmentBucket",
+                    "Arn"
+                  ]
+                },
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
                 }
             },
             "Type": "AWS::Lambda::Permission"
@@ -586,7 +589,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "ServiceLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },

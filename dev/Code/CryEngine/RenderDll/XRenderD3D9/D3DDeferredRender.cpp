@@ -19,6 +19,8 @@
 #include "../Common/Textures/TextureManager.h"
 #include "GraphicsPipeline/FurPasses.h"
 
+#include <AzCore/NativeUI/NativeUIRequests.h>
+
 #pragma warning(disable: 4244)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -340,7 +342,6 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
             vCamPosShadowSpace /= vCamPosShadowSpace.w;                
             if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
             {
-			
                 pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
                 if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
                 {
@@ -1572,7 +1573,23 @@ bool CD3D9Renderer::FX_DeferredShadows(SRenderLight* pLight, int maskRTWidth, in
     }
 
     static ICVar* pCascadesDebugVar = iConsole->GetCVar("e_ShadowsCascadesDebug");
-    const bool bDebugShadowCascades = pCascadesDebugVar && pCascadesDebugVar->GetIVal() > 0;
+    bool bDebugShadowCascades = pCascadesDebugVar && pCascadesDebugVar->GetIVal() > 0;
+
+    // We don't currently support debug cascade shadow overlay with GMEM enabled
+    if (bDebugShadowCascades && gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        const AZStd::string title = "Debug cascade shadow overlay";
+        const AZStd::string message = AZStd::string::format("e_ShadowsCascadesDebug can not be enabled while r_EnableGMEMPath is enabled. Disable r_EnableGMEMPath to view debug shadow cascades.");
+        AZ_Warning("Renderer", false, "ERROR: %s\n", message.c_str());
+        if (!gEnv->IsInToolMode())
+        {
+            AZStd::vector<AZStd::string> options;
+            options.push_back("OK");
+            AZ::NativeUI::NativeUIRequestBus::Broadcast(&AZ::NativeUI::NativeUIRequestBus::Events::DisplayBlockingDialog, title, message, options);
+        }
+        pCascadesDebugVar->Set(0);
+        bDebugShadowCascades = false;
+    }
 
     const bool bCascadeBlending = CV_r_ShadowsStencilPrePass == 1 && nCasterCount > 0 && arrFrustums[nStartIdx].bBlendFrustum && !bDebugShadowCascades;
     if (bCascadeBlending)

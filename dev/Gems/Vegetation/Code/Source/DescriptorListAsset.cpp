@@ -15,6 +15,7 @@
 #include <Vegetation/DescriptorListAsset.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace Vegetation
 {
@@ -44,6 +45,17 @@ namespace Vegetation
                     ->ElementAttribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<DescriptorListAsset>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Property("descriptors", BehaviorValueProperty(&DescriptorListAsset::m_descriptors))
+                ;
         }
     }
 }

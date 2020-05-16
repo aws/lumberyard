@@ -8,6 +8,8 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+from __future__ import print_function
 from cgf_utils import custom_resource_response
 from cgf_utils import properties
 from cgf_utils import aws_utils
@@ -68,8 +70,8 @@ def _update_iot_policy(physical_resource_id, stack):
 def _create_iot_policy(physical_resource_id, stack):
 
     requested_policy = get_listener_policy(stack,'${cognito-identity.amazonaws.com:sub}')
-    print 'Requesting policy Document - {}'.format(requested_policy)
-    
+    print('Requesting policy Document - {}'.format(requested_policy))
+
     iot_client.create_policy(policyName=physical_resource_id, policyDocument=requested_policy)
 
 

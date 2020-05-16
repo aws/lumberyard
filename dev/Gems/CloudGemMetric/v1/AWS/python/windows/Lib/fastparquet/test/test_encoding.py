@@ -56,7 +56,7 @@ def test_boolean():
 
 def testFourByteValue():
     """Test reading a run with a single four-byte value."""
-    fo = fastparquet.encoding.Numpy8(np.fromstring(struct.pack(b"<i", 1 << 30), np.uint8))
+    fo = fastparquet.encoding.Numpy8(np.frombuffer(struct.pack(b"<i", 1 << 30), np.uint8))
     o = fastparquet.encoding.Numpy32(np.empty(10, np.uint32))
     fastparquet.encoding.read_rle(fo, 2 << 1, 30, o)
     assert ([1 << 30] * 2 == o.so_far()).all()
@@ -64,13 +64,13 @@ def testFourByteValue():
 
 def testSingleByte():
     """Test reading a single byte value."""
-    fo = fastparquet.encoding.Numpy8(np.fromstring(struct.pack(b"<i", 0x7F), np.uint8))
+    fo = fastparquet.encoding.Numpy8(np.frombuffer(struct.pack(b"<i", 0x7F), np.uint8))
     out = fastparquet.encoding.read_unsigned_var_int(fo)
     assert 0x7F == out
 
 def testFourByte():
     """Test reading a four byte value."""
-    fo = fastparquet.encoding.Numpy8(np.fromstring(struct.pack(b"<BBBB", 0xFF, 0xFF, 0xFF, 0x7F), np.uint8))
+    fo = fastparquet.encoding.Numpy8(np.frombuffer(struct.pack(b"<BBBB", 0xFF, 0xFF, 0xFF, 0x7F), np.uint8))
     out = fastparquet.encoding.read_unsigned_var_int(fo)
     assert 0x0FFFFFFF == out
 
@@ -79,7 +79,7 @@ def testFromExample():
     """Test a simple example."""
     raw_data_in = [0b10001000, 0b11000110, 0b11111010]
     encoded_bitstring = b'\x88\xc6\xfa'
-    fo = fastparquet.encoding.Numpy8(np.fromstring(encoded_bitstring, np.uint8))
+    fo = fastparquet.encoding.Numpy8(np.frombuffer(encoded_bitstring, np.uint8))
     count = 8
     o = fastparquet.encoding.Numpy32(np.empty(count, np.uint32))
     fastparquet.encoding.read_bitpacked(fo, count, 3, o)

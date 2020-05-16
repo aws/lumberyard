@@ -262,8 +262,6 @@ namespace LUAEditor
         LUAEditorMainWindowMessages::Handler::BusDisconnect();
         LUABreakpointTrackerMessages::Handler::BusDisconnect();
 
-        m_gui->m_assetBrowserTreeView->SaveState();
-
         azdestroy(m_gui);
 
         delete m_assetDatabaseListener;
@@ -313,7 +311,7 @@ namespace LUAEditor
         m_gui->m_assetBrowserTreeView->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
 
         // Maintains the tree expansion state between runs
-        m_gui->m_assetBrowserTreeView->LoadState("LuaIDETreeView");
+        m_gui->m_assetBrowserTreeView->SetName("LuaIDETreeView");
 
         connect(m_gui->m_assetBrowserTreeView, &QTreeView::doubleClicked, this, [this](const QModelIndex&)
         {
@@ -1531,8 +1529,7 @@ namespace LUAEditor
                 }
             }
         }
-
-        AZ_TracePrintf(LUAEditorInfoName, "                            willShutDown == %d\n", (int)willShutDown);
+        
         return willShutDown;
     }
 

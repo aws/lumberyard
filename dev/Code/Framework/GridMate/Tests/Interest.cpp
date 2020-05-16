@@ -1168,6 +1168,11 @@ class LargeWorldTest
             GridMate::ReplicaChunkDescriptorTable::Get().RegisterChunkType<GridMate::ProximityInterestChunk>();
         }
 
+        ~LargeWorldTestPeerInfo()
+        {
+            SessionEventBus::Handler::BusDisconnect();
+        }
+
         void CreateHostRuleHandler()
         {
             m_im = aznew InterestManager();

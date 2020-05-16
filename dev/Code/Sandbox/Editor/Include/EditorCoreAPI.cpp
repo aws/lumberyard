@@ -42,7 +42,9 @@ void SetIEditor(IEditor* pEditor)
 
 IEditor* GetIEditor()
 {
+#ifndef AZ_TESTS_ENABLED
     assert(s_pEditor);
+#endif
     return s_pEditor;
 }
 

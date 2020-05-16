@@ -15,16 +15,14 @@ def build(bld):
 
 
     bld.DefineGem(
-        includes     = [bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')
-                       ],
+        includes     = [bld.Path('Code/CryEngine/CryCommon')],
         export_includes = ['include'],
         win_features = ['crcfix'],
 
         editor       = dict(
 
 
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
 
             use         = ['AzToolsFramework', 'AzQtComponents'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
@@ -35,7 +33,6 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor/Include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/CryEngine')
                            ],
             uselib      =['QT5CORE',
@@ -45,10 +42,17 @@ def build(bld):
                           'QT5WIDGETS'],
             defines     =['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED'],
 
-            darwin_uselib   =['AWS_CPP_SDK_CORE',
-                              'AWS_CPP_SDK_COGNITO_IDENTITY_STATIC',
-                              'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                              'AWS_CPP_SDK_MOBILEANALYTICS'],
+            darwin_uselib = ['AWS_CPP_SDK_CORE',
+                             'AWS_CPP_SDK_COGNITO_IDENTITY',
+                             'AWS_CPP_SDK_STS',
+                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                             'AWS_CPP_SDK_MOBILEANALYTICS'],
+
+            linux_uselib =['AWS_CPP_SDK_CORE',
+                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+                           'AWS_CPP_SDK_STS',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                           'AWS_CPP_SDK_MOBILEANALYTICS'],
 
             win_features    =['crcfix']
         )

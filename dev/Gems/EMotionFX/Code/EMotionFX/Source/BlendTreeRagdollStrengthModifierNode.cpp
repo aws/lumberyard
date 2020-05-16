@@ -232,6 +232,11 @@ namespace EMotionFX
         return false;
     }
 
+    AZStd::string BlendTreeRagdollStrenghModifierNode::GetModifiedJointName(int index) const
+    {
+        return m_modifiedJointNames[index];
+    }
+
     void BlendTreeRagdollStrenghModifierNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -274,8 +279,9 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeRagdollStrenghModifierNode::Reinit)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                    ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeRagdollStrenghModifierNode::GetModifiedJointName)
+                        ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
                 ;
             }
         }

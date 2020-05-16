@@ -9,13 +9,41 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
 
-AZ_UNIT_TEST_HOOK();
+#include <QApplication>
 
-TEST(ComponentEntityEditorPluginSanityTest, Sanity)
+using namespace AZ;
+
+// Handle asserts
+class ToolsFrameworkHook
+    : public AZ::Test::ITestEnvironment
 {
-    EXPECT_EQ(1, 1);
+public:
+    void SetupEnvironment() override
+    {
+        AllocatorInstance<SystemAllocator>::Create();
+    }
+
+    void TeardownEnvironment() override
+    {
+        AllocatorInstance<SystemAllocator>::Destroy();
+    }
+};
+
+AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)
+{
+    ::testing::InitGoogleMock(&argc, argv);
+    AzQtComponents::PrepareQtPaths();
+    QApplication app(argc, argv);
+    AZ::Test::excludeIntegTests();
+    AZ::Test::printUnusedParametersWarning(argc, argv);
+    AZ::Test::addTestEnvironments({ new ToolsFrameworkHook });
+    int result = RUN_ALL_TESTS();
+    return result;
 }

@@ -23,13 +23,6 @@
         [
             "Source/JoinIn/JoinInCVars.h",
             "Source/JoinIn/JoinInCVars.cpp"
-        ],
-        "Source/FlowGraph":
-        [
-            "Source/FlowGraph/FlowChatPlayNodes.cpp",
-            "Source/FlowGraph/FlowChatPlayVoteNodes.cpp",
-            "Source/FlowGraph/FlowTwitchAPINodes.cpp",
-            "Source/FlowGraph/FlowURICreate.cpp"
         ]
     }
 }

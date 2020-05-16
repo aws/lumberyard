@@ -13,7 +13,7 @@
 #pragma once
 
 #ifdef IMGUI_ENABLED
-#include "ImGui/imgui.h"
+#include "imgui/imgui.h"
 
 namespace ImGui
 {

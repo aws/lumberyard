@@ -15,6 +15,7 @@
 #include "MatMan.h"
 #include <IRenderer.h>
 #include "VisAreas.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 DEFINE_INTRUSIVE_LINKED_LIST(CMatInfo)
 
@@ -152,23 +153,7 @@ void CMatInfo::ShutDown()
 {
     SAFE_DELETE(m_pMaterialLayers);
 
-    // When a group material has the same pointer to a shader resource object as
-    // one of its sub materials we don't want to call ReleaseCurrentShaderItem as
-    // the sub material will be calling it and releasing the shader resources twice
-    // can lead to a crash.
-    bool haveReferenceToSubmaterialShaderResources = false;
-    for (auto& subMaterial : m_subMtls)
-    {
-        if (subMaterial && this->GetShaderItem().m_pShaderResources == subMaterial->GetShaderItem().m_pShaderResources)
-        {
-            haveReferenceToSubmaterialShaderResources = true;
-            break;
-        }
-    }
-    if (!haveReferenceToSubmaterialShaderResources)
-    {
-        ReleaseCurrentShaderItem();
-    }
+    ReleaseCurrentShaderItem();
     m_subMtls.clear();
 }
 
@@ -277,20 +262,12 @@ void CMatInfo::UpdateFlags()
 
         // Make sure to refresh sectors
         static int nLastUpdateFrameId = 0;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (gEnv->IsEditing() && GetTerrain() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
-        {
-            GetTerrain()->MarkAllSectorsAsUncompiled();
-            GetVisAreaManager()->MarkAllSectorsAsUncompiled();
-            nLastUpdateFrameId = GetRenderer()->GetFrameID();
-        }
-#else
         if (gEnv->IsEditing() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
         {
+            LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::MarkAllSectorsAsUncompiled);
             GetVisAreaManager()->MarkAllSectorsAsUncompiled();
             nLastUpdateFrameId = GetRenderer()->GetFrameID();
         }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

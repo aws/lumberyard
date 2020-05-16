@@ -11,6 +11,7 @@
 */
 
 #include "LookAtCamera.h"
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace MCommon
@@ -42,7 +43,7 @@ namespace MCommon
     {
         MCORE_UNUSED(timeDelta);
 
-        mViewMatrix.LookAtRH(mPosition, mTarget, mUp);
+        MCore::LookAtRH(mViewMatrix, mPosition, mTarget, mUp);
 
         // update our base camera at the very end
         Camera::Update();

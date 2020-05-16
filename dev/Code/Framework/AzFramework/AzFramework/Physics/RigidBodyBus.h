@@ -14,10 +14,11 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector3.h>
-#include <AzFramework/Physics/RigidBody.h>
 
 namespace Physics
 {
+    class RigidBody;
+
     class RigidBodyRequests
         : public AZ::ComponentBus
     {
@@ -61,6 +62,7 @@ namespace Physics
         virtual void SetKinematic(bool kinematic) = 0;
         virtual void SetKinematicTarget(const AZ::Transform& targetPosition) = 0;
 
+        virtual bool IsGravityEnabled() const = 0;
         virtual void SetGravityEnabled(bool enabled) = 0;
         virtual void SetSimulationEnabled(bool enabled) = 0;
 

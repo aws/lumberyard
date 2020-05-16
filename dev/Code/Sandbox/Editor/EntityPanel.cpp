@@ -28,12 +28,6 @@
 
 #include "GenericSelectItemDialog.h"
 
-#include <HyperGraph/FlowGraphManager.h>
-#include <HyperGraph/FlowGraph.h>
-#include <HyperGraph/FlowGraphHelpers.h>
-
-#include <HyperGraph/HyperGraphDialog.h>
-#include <HyperGraph/FlowGraphSearchCtrl.h>
 #include <TrackView/TrackViewDialog.h>
 
 #include <ui_EntityPanel.h>
@@ -59,9 +53,6 @@ CEntityPanel::CEntityPanel(QWidget* pParent /*=nullptr*/)
     m_reloadScriptButton = ui->RELOADSCRIPT;
 
     m_prototypeButton = ui->PROTOTYPE;
-    m_flowGraphOpenBtn = ui->OPENFLOWGRAPH;
-    m_flowGraphRemoveBtn = ui->REMOVEFLOWGRAPH;
-    m_flowGraphListBtn = ui->LIST_ENTITY_FLOWGRAPHS;
 
     m_physicsBtn[0] = ui->GETPHYSICS;
     m_physicsBtn[1] = ui->RESETPHYSICS;
@@ -74,9 +65,6 @@ CEntityPanel::CEntityPanel(QWidget* pParent /*=nullptr*/)
     connect(m_reloadScriptButton, &QPushButton::clicked, this, &CEntityPanel::OnReloadScript);
     connect(ui->FILE_COMMANDS, &QPushButton::clicked, this, &CEntityPanel::OnFileCommands);
     connect(m_prototypeButton, &QPushButton::clicked, this, &CEntityPanel::OnPrototype);
-    connect(m_flowGraphOpenBtn, &QPushButton::clicked, this, &CEntityPanel::OnBnClickedOpenFlowGraph);
-    connect(m_flowGraphRemoveBtn, &QPushButton::clicked, this, &CEntityPanel::OnBnClickedRemoveFlowGraph);
-    connect(m_flowGraphListBtn, &QPushButton::clicked, this, &CEntityPanel::OnBnClickedListFlowGraphs);
     connect(m_physicsBtn[0], &QPushButton::clicked, this, &CEntityPanel::OnBnClickedGetphysics);
     connect(m_physicsBtn[1], &QPushButton::clicked, this, &CEntityPanel::OnBnClickedResetphysics);
     connect(m_trackViewSequenceButton, &QPushButton::clicked, this, &CEntityPanel::OnBnClickedTrackViewSequence);
@@ -114,19 +102,6 @@ void CEntityPanel::SetEntity(CEntityObject* entity)
         }
     }
 
-    if (m_entity != NULL && m_entity->GetFlowGraph())
-    {
-        m_flowGraphOpenBtn->setText(tr("Open"));
-        m_flowGraphOpenBtn->setEnabled(true);
-        m_flowGraphRemoveBtn->setEnabled(true);
-    }
-    else
-    {
-        m_flowGraphOpenBtn->setText(tr("Create"));
-        m_flowGraphOpenBtn->setEnabled(true);
-        m_flowGraphRemoveBtn->setEnabled(false);
-    }
-
     if (m_trackViewSequenceButton->isVisible())
     {
         CTrackViewAnimNode* pAnimNode = nullptr;
@@ -147,9 +122,7 @@ void CEntityPanel::OnEditScript()
 {
     assert(m_entity != 0);
     CEntityScript* script = m_entity->GetScript();
-
-    AZStd::string cmd = AZStd::string::format("general.launch_lua_editor \'%s\'", script->GetFile().toUtf8().data());
-    GetIEditor()->ExecuteCommand(cmd.c_str());
+    CCryEditApp::instance()->OpenLUAEditor(script->GetFile().toUtf8().data());
 }
 
 void CEntityPanel::OnReloadScript()
@@ -249,94 +222,6 @@ void CEntityPanel::OnBnClickedResetphysics()
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CEntityPanel::OnBnClickedOpenFlowGraph()
-{
-    if (m_entity)
-    {
-        if (!m_entity->GetFlowGraph())
-        {
-            m_entity->CreateFlowGraphWithGroupDialog();
-        }
-        else
-        {
-            // Flow graph already present.
-            m_entity->OpenFlowGraph("");
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityPanel::OnBnClickedRemoveFlowGraph()
-{
-    if (m_entity)
-    {
-        if (m_entity->GetFlowGraph())
-        {
-            CUndo undo("Remove Flow graph");
-            QString str(tr("Remove Flow Graph for Entity %1?").arg(m_entity->GetName()));
-            if (QMessageBox::question(this, "Confirm", str, QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
-            {
-                m_entity->RemoveFlowGraph();
-                SetEntity(m_entity);
-            }
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityPanel::OnBnClickedListFlowGraphs()
-{
-    std::vector<CFlowGraph*> flowgraphs;
-    CFlowGraph* entityFG = 0;
-    FlowGraphHelpers::FindGraphsForEntity(m_entity, flowgraphs, entityFG);
-    if (flowgraphs.size() > 0)
-    {
-        QMenu menu;
-        unsigned int id = 1;
-        std::vector<CFlowGraph*>::const_iterator iter (flowgraphs.begin());
-        while (iter != flowgraphs.end())
-        {
-            QString name;
-            FlowGraphHelpers::GetHumanName(*iter, name);
-            if (*iter == entityFG)
-            {
-                name += " <GraphEntity>";
-                menu.addAction(name)->setData(id);
-                if (flowgraphs.size() > 1)
-                {
-                    menu.addSeparator();
-                }
-            }
-            else
-            {
-                menu.addAction(name)->setData(id);
-            }
-            ++id;
-            ++iter;
-        }
-
-        QAction* res = menu.exec(QCursor::pos());
-        int chosen = res ? (res->data().toInt() - 1) : -1;
-        if (chosen >= 0)
-        {
-            GetIEditor()->GetFlowGraphManager()->OpenView(flowgraphs[chosen]);
-            CHyperGraphDialog* pHGDlg = CHyperGraphDialog::instance();
-            if (pHGDlg)
-            {
-                CFlowGraphSearchCtrl* pSC = pHGDlg->GetSearchControl();
-                if (pSC)
-                {
-                    CFlowGraphSearchOptions* pOpts = CFlowGraphSearchOptions::GetSearchOptions();
-                    pOpts->m_bIncludeEntities = true;
-                    pOpts->m_findSpecial = CFlowGraphSearchOptions::eFLS_None;
-                    pOpts->m_LookinIndex = CFlowGraphSearchOptions::eFL_Current;
-                    pSC->Find(m_entity->GetName(), false, true, true);
-                }
-            }
-        }
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////

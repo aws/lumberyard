@@ -16,6 +16,7 @@
 #include "ActorInstance.h"
 #include "Actor.h"
 #include <MCore/Source/Compare.h>
+#include <MCore/Source/LogManager.h>
 #include "Node.h"
 #include <EMotionFX/Source/Allocators.h>
 
@@ -82,7 +83,7 @@ namespace EMotionFX
             return;
         }
 
-        mSkinningMatrices       = (MCore::Matrix*)MCore::AlignedAllocate(sizeof(MCore::Matrix) * numNodes, 16, EMFX_MEMCATEGORY_TRANSFORMDATA);
+        mSkinningMatrices       = (AZ::Transform*)MCore::AlignedAllocate(sizeof(AZ::Transform) * numNodes, static_cast<uint16>(AZStd::alignment_of<AZ::Transform>()), EMFX_MEMCATEGORY_TRANSFORMDATA);
         mNumTransforms          = numNodes;
 
         if (mHasUniqueBindPose)
@@ -98,7 +99,7 @@ namespace EMotionFX
         // now initialize the data with the actor transforms
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            mSkinningMatrices[i].Identity();
+            mSkinningMatrices[i] = AZ::Transform::CreateIdentity();
         }
     }
 

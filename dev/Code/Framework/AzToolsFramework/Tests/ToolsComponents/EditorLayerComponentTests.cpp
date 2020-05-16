@@ -346,7 +346,7 @@ namespace AzToolsFramework
         // Layers serialize color as an AZ::Color because it works with our serialization system,
         // but GetColor returns a QColor because it works with our UI system to render with the color.
         // Alpha is not tested because layers don't use alpha.
-        AZ::Color setLayerColor(AZ::Color::CreateU32(255, 128, 64, 255));
+        AZ::Color setLayerColor(aznumeric_cast<uint8_t>(255), aznumeric_cast<uint8_t>(128), aznumeric_cast<uint8_t>(64), aznumeric_cast<uint8_t>(255));
         m_layerEntity.m_layer->SetLayerColor(setLayerColor);
 
         // Set the get color to specifically not be the same as the set, so we know if the ebus
@@ -1051,7 +1051,7 @@ namespace AzToolsFramework
     // layer component after the save, and the color is set correctly in the EditorLayer object.
     TEST_F(EditorLayerComponentTest, LayerTests_SaveColorModified_ColorSavedCorrectly)
     {
-        AZ::Color setLayerColor(AZ::Color::CreateU32(64, 255, 128, 255));
+        AZ::Color setLayerColor(aznumeric_cast<uint8_t>(64), aznumeric_cast<uint8_t>(255), aznumeric_cast<uint8_t>(128), aznumeric_cast<uint8_t>(255));
         m_layerEntity.m_layer->SetLayerColor(setLayerColor);
 
         Layers::EditorLayer layer;
@@ -1074,7 +1074,7 @@ namespace AzToolsFramework
 
     TEST_F(EditorLayerComponentTest, LayerTests_ColorModifiedRestoreLayerAfterSave_ColorRestoresCorrectly)
     {
-        AZ::Color setLayerColor(AZ::Color::CreateU32(10, 30, 20, 255));
+        AZ::Color setLayerColor(aznumeric_cast<uint8_t>(10), aznumeric_cast<uint8_t>(30), aznumeric_cast<uint8_t>(20), aznumeric_cast<uint8_t>(255));
         m_layerEntity.m_layer->SetLayerColor(setLayerColor);
 
         Layers::EditorLayer layer;
@@ -1150,7 +1150,7 @@ namespace AzToolsFramework
 
     TEST_F(EditorLayerComponentTest, LayerTests_SaveAndLoadColorModified_ColorLoadsCorrectly)
     {
-        AZ::Color savedLayerColor(AZ::Color::CreateU32(6, 7, 8, 255));
+        AZ::Color savedLayerColor(aznumeric_cast<uint8_t>(6), aznumeric_cast<uint8_t>(7), aznumeric_cast<uint8_t>(8), aznumeric_cast<uint8_t>(255));
         m_layerEntity.m_layer->SetLayerColor(savedLayerColor);
 
         Layers::EditorLayer layer;
@@ -1163,7 +1163,7 @@ namespace AzToolsFramework
         AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
             m_layerEntity.m_entity->GetId(),
             &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::RestoreEditorData);
-        AZ::Color unsavedLayerColor(AZ::Color::CreateU32(20, 30, 40, 255));
+        AZ::Color unsavedLayerColor(aznumeric_cast<uint8_t>(20), aznumeric_cast<uint8_t>(30), aznumeric_cast<uint8_t>(40), aznumeric_cast<uint8_t>(255));
         m_layerEntity.m_layer->SetLayerColor(unsavedLayerColor);
         
         AZStd::unordered_map<AZ::EntityId, AZ::Entity*> uniqueEntities;
@@ -1176,9 +1176,9 @@ namespace AzToolsFramework
             getLayerColor,
             m_layerEntity.m_entity->GetId(),
             &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::GetLayerColor);
-        EXPECT_EQ(getLayerColor.red(), savedLayerColor.GetR8());
-        EXPECT_EQ(getLayerColor.green(), savedLayerColor.GetG8());
-        EXPECT_EQ(getLayerColor.blue(), savedLayerColor.GetB8());
+        EXPECT_FLOAT_EQ(aznumeric_cast<float>(getLayerColor.redF()), savedLayerColor.GetR());
+        EXPECT_FLOAT_EQ(aznumeric_cast<float>(getLayerColor.greenF()), savedLayerColor.GetG());
+        EXPECT_FLOAT_EQ(aznumeric_cast<float>(getLayerColor.blueF()), savedLayerColor.GetB());
     }
 
     TEST_F(EditorLayerComponentTest, LayerTests_SaveLayerVisibilityModified_VisibilitySavesCorrectly)

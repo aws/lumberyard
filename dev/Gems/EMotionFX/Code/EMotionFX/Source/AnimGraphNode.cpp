@@ -40,6 +40,7 @@
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeFactory.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/Stream.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Random.h>
@@ -133,13 +134,18 @@ namespace EMotionFX
             }
         }
 
-        // Initialize trigger actions
-        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
-        {
-            action->InitAfterLoading(animGraph);
-        }
+        InitTriggerActions();
 
         return result;
+    }
+
+
+    void AnimGraphNode::InitTriggerActions()
+    {
+        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
+        {
+            action->InitAfterLoading(mAnimGraph);
+        }
     }
 
 
@@ -1614,7 +1620,7 @@ namespace EMotionFX
         // top down update all incoming connections
         for (BlendTreeConnection* connection : mConnections)
         {
-            connection->GetSourceNode()->TopDownUpdate(animGraphInstance, timePassedInSeconds);
+            connection->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
         }
     }
 
@@ -1736,8 +1742,6 @@ namespace EMotionFX
         }
     }
 
-
-
     // Process events and motion extraction delta.
     void AnimGraphNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -1812,8 +1816,6 @@ namespace EMotionFX
             }
         }
     }
-
-
 
     // recursively set object data flag
     void AnimGraphNode::RecursiveSetUniqueDataFlag(AnimGraphInstance* animGraphInstance, uint32 flag, bool enabled)
@@ -2137,9 +2139,9 @@ namespace EMotionFX
     // free all poses from all incoming nodes
     void AnimGraphNode::FreeIncomingPoses(AnimGraphInstance* animGraphInstance)
     {
-        for (Port& inputPort : mInputPorts)
+        for (const Port& inputPort : mInputPorts)
         {
-            BlendTreeConnection* connection = inputPort.mConnection;
+            const BlendTreeConnection* connection = inputPort.mConnection;
             if (connection)
             {
                 AnimGraphNode* sourceNode = connection->GetSourceNode();
@@ -2152,9 +2154,9 @@ namespace EMotionFX
     // free all poses from all incoming nodes
     void AnimGraphNode::FreeIncomingRefDatas(AnimGraphInstance* animGraphInstance)
     {
-        for (Port& port : mInputPorts)
+        for (const Port& port : mInputPorts)
         {
-            BlendTreeConnection* connection = port.mConnection;
+            const BlendTreeConnection* connection = port.mConnection;
             if (connection)
             {
                 AnimGraphNode* sourceNode = connection->GetSourceNode();
@@ -2193,10 +2195,10 @@ namespace EMotionFX
         }
 
         // free it
-        const uint32 threadIndex = animGraphInstance->GetActorInstance()->GetThreadIndex();
-        AnimGraphRefCountedDataPool& pool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
         if (uniqueData->GetRefCountedData())
         {
+            const uint32 threadIndex = animGraphInstance->GetActorInstance()->GetThreadIndex();
+            AnimGraphRefCountedDataPool& pool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
             pool.Free(uniqueData->GetRefCountedData());
             uniqueData->SetRefCountedData(nullptr);
         }
@@ -2212,10 +2214,10 @@ namespace EMotionFX
             return;
         }
 
-        TopDownUpdate(animGraphInstance, timePassedInSeconds);
-
         // mark as done
         animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_TOPDOWNUPDATE_READY);
+
+        TopDownUpdate(animGraphInstance, timePassedInSeconds);
     }
 
 
@@ -2228,14 +2230,14 @@ namespace EMotionFX
             return;
         }
 
+        // mark as done
+        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_POSTUPDATE_READY);
+
         // perform the actual post update
         PostUpdate(animGraphInstance, timePassedInSeconds);
 
         // free the incoming refs
         FreeIncomingRefDatas(animGraphInstance);
-
-        // mark as done
-        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_POSTUPDATE_READY);
     }
 
 
@@ -2248,15 +2250,15 @@ namespace EMotionFX
             return;
         }
 
+        // mark as done
+        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_UPDATE_READY);
+
         // increase ref count for incoming nodes
         IncreaseInputRefCounts(animGraphInstance);
         IncreaseInputRefDataRefCounts(animGraphInstance);
 
         // perform the actual node update
         Update(animGraphInstance, timePassedInSeconds);
-
-        // mark as output
-        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_UPDATE_READY);
     }
 
 
@@ -2269,24 +2271,24 @@ namespace EMotionFX
             return;
         }
 
+        // mark as done
+        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_OUTPUT_READY);
+
         // perform the output
         Output(animGraphInstance);
 
         // now decrease ref counts of all input nodes as we do not need the poses of this input node anymore for this node
         // once the pose ref count of a node reaches zero it will automatically release the poses back to the pool so they can be reused again by others
         FreeIncomingPoses(animGraphInstance);
-
-        // mark as output
-        animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_OUTPUT_READY);
     }
 
 
     // increase input ref counts
     void AnimGraphNode::IncreaseInputRefDataRefCounts(AnimGraphInstance* animGraphInstance)
     {
-        for (Port& port : mInputPorts)
+        for (const Port& port : mInputPorts)
         {
-            BlendTreeConnection* connection = port.mConnection;
+            const BlendTreeConnection* connection = port.mConnection;
             if (connection)
             {
                 AnimGraphNode* sourceNode = connection->GetSourceNode();
@@ -2299,9 +2301,9 @@ namespace EMotionFX
     // increase input ref counts
     void AnimGraphNode::IncreaseInputRefCounts(AnimGraphInstance* animGraphInstance)
     {
-        for (Port& port : mInputPorts)
+        for (const Port& port : mInputPorts)
         {
-            BlendTreeConnection* connection = port.mConnection;
+            const BlendTreeConnection* connection = port.mConnection;
             if (connection)
             {
                 AnimGraphNode* sourceNode = connection->GetSourceNode();

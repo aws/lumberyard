@@ -323,6 +323,24 @@ namespace EMotionFX
          */
         void SetIsInEditorMode(bool isInEditorMode) { m_isInEditorMode = isInEditorMode; }
 
+        /**
+         * Get if EMotionFX is in server mode or not
+         * @return True if EMotionFX is configured in server mode.
+         */
+        bool GetIsInServerMode() const { return m_isInServerMode; }
+
+        /**
+         * Sets EMotionFX's server mode.
+         * @param editorMode Indicating if EMotionFX is running in server mode.
+         */
+        void SetIsInServerMode(bool isInServerMode) { m_isInServerMode = isInServerMode; }
+
+        /**
+         * Get if EMotionFX is enabled for server optimization.
+         * @return True if EMotionFX is in server mode and enabled for server optimization.
+         */
+        bool GetEnableServerOptimization() const { return m_isInServerMode && m_enableServerOptimization; }
+
     private:
         AZStd::string               mVersionString;         /**< The version string. */
         AZStd::string               mCompilationDate;       /**< The compilation date string. */
@@ -345,6 +363,8 @@ namespace EMotionFX
         MCore::Distance::EUnitType  mUnitType;              /**< The unit type, on default it is MCore::Distance::UNITTYPE_METERS. */
         float                       mGlobalSimulationSpeed; /**< The global simulation speed, default is 1.0. */
         bool                        m_isInEditorMode;       /**< True when the runtime requires to support an editor. Optimizations can be made if there is no need for editor support. */
+        bool                        m_isInServerMode;       /**< True when emotionfx is running on server. */
+        bool                        m_enableServerOptimization; /**< True when optimization can be made when emotionfx is running in server mode. */
 
         /**
          * The constructor.

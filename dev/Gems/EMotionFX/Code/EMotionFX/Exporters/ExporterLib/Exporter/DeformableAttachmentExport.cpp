@@ -449,27 +449,24 @@ namespace ExporterLib
                 currentMeshNode++;
 
                 // clone the actor so that we can remove all unneeded meshes on this clone before saving
-                EMotionFX::Actor* clone = actor->Clone();
+                AZStd::unique_ptr<EMotionFX::Actor> clone = actor->Clone();
 
                 // put our current node into the mesh node array, all these meshes won't get removed in the skin attachment preparation phase
                 meshNodes.Clear(false);
                 meshNodes.Add(clone->GetSkeleton()->FindNodeByID(node->GetID()));
 
                 // prepare and save the skin attachment
-                PrepareDeformableAttachment(clone, meshNodes);
+                PrepareDeformableAttachment(clone.get(), meshNodes);
 
                 // save the actor
                 Exporter* exporter = Exporter::Create();
                 MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(),
-                    [exporter, tempFileName, clone, targetEndianType]
+                    [exporter, tempFileName, &clone, targetEndianType]
                     {
-                        return exporter->SaveActor(tempFileName, clone, targetEndianType);
+                        return exporter->SaveActor(tempFileName, clone.get(), targetEndianType);
                     },
                     commandManager);
                 exporter->Destroy();
-
-                // delete our cloned actor again
-                clone->Destroy();
 
                 const float saveTime = saveTimer.GetDeltaTimeInSeconds() * 1000.0f;
                 MCore::LogDetailedInfo("Skin attachment '%s' saved in %.2f ms.", nodeName.c_str(), saveTime);
@@ -489,7 +486,7 @@ namespace ExporterLib
         EMotionFX::GetEventManager().OnProgressValue(((float)numMeshNodes / (numMeshNodes + 1)) * 100.0f);
 
         // clone the actor so that we can remove all unneeded meshes on this clone before saving
-        EMotionFX::Actor* skeleton = actor->Clone();
+        AZStd::unique_ptr<EMotionFX::Actor> skeleton = actor->Clone();
 
         // remove everything mesh related
         skeleton->RemoveAllNodeMeshes();
@@ -499,15 +496,12 @@ namespace ExporterLib
         // save the actor
         Exporter* exporter = Exporter::Create();
         MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(),
-            [exporter, tempFileName, skeleton, targetEndianType]
+            [exporter, tempFileName, &skeleton, targetEndianType]
             {
-                return exporter->SaveActor(tempFileName, skeleton, targetEndianType);
+                return exporter->SaveActor(tempFileName, skeleton.get(), targetEndianType);
             },
             commandManager);
         exporter->Destroy();
-
-        // delete our cloned actor again
-        skeleton->Destroy();
 
         // finish the progress
         EMotionFX::GetEventManager().OnProgressValue(100.0f);

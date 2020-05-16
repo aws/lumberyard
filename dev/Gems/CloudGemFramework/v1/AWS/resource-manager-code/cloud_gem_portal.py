@@ -13,16 +13,14 @@
 import resource_manager.util
 import resource_manager_common.constant as constant
 import webbrowser
-import base64
 import os
 import update
-import re
 import argparse
 import subprocess
 from resource_manager.errors import HandledError
-from botocore.exceptions import ClientError
 from resource_manager.uploader import ProjectUploader
 from botocore.client import Config
+
 
 def add_cli_commands(cgf_subparsers, addCommonArgs):
 
@@ -52,7 +50,7 @@ def add_cli_commands(cgf_subparsers, addCommonArgs):
 def open_portal(context, args):    
     project_resources = context.config.project_resources
 
-    if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
+    if constant.PROJECT_CGP_RESOURCE_NAME not in project_resources:
         raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
     
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
@@ -74,7 +72,7 @@ def __get_configuration(s3_client, bucket_id):
 
 def create_portal_administrator(context, args):
     is_new_user, administrator_name, password = update.create_portal_administrator(context)
-    if(args.silent_create_admin):
+    if args.silent_create_admin:
         return
     msg = 'The Cloud Gem Portal administrator account has been created.'
     if password is None:

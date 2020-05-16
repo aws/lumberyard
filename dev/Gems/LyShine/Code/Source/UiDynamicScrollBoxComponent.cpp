@@ -665,20 +665,6 @@ void UiDynamicScrollBoxComponent::SetEstimatedVariableHeaderSize(float estimated
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiDynamicScrollBoxComponent::GetChildElementAtLocationIndex(int index)
-{
-    // This method is deprecated. Use GetChildAtElementIndex instead
-    return GetChildAtElementIndex(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-int UiDynamicScrollBoxComponent::GetLocationIndexOfChild(AZ::EntityId childElement)
-{
-    // This method is deprecated. Use GetElementIndexOfChild isntead
-    return GetElementIndexOfChild(childElement);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiDynamicScrollBoxComponent::OnScrollOffsetChanging(AZ::Vector2 newScrollOffset)
 {
     UpdateElementVisibility();
@@ -858,9 +844,7 @@ void UiDynamicScrollBoxComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetAutoCalculateVariableHeaderSize", &UiDynamicScrollBoxBus::Events::SetAutoCalculateVariableHeaderSize)
             ->Event("GetEstimatedVariableHeaderSize", &UiDynamicScrollBoxBus::Events::GetEstimatedVariableHeaderSize)
             ->Event("SetEstimatedVariableHeaderSize", &UiDynamicScrollBoxBus::Events::SetEstimatedVariableHeaderSize)
-            // Deprecated
-            ->Event("GetChildElementAtLocationIndex", &UiDynamicScrollBoxBus::Events::GetChildElementAtLocationIndex)
-            ->Event("GetLocationIndexOfChild", &UiDynamicScrollBoxBus::Events::GetLocationIndexOfChild);
+            ;
 
         behaviorContext->EBus<UiDynamicScrollBoxDataBus>("UiDynamicScrollBoxDataBus")
             ->Handler<BehaviorUiDynamicScrollBoxDataBusHandler>();
@@ -929,12 +913,22 @@ void UiDynamicScrollBoxComponent::PrepareListForDisplay()
     int numChildren = 0;
     EBUS_EVENT_ID_RESULT(numChildren, contentEntityId, UiElementBus, GetNumChildElements);
 
-    if (m_itemPrototypeElement.IsValid())
+    // Make sure the item prototype element isn't pointing to itself (the dynamic scroll box) or an ancestor,
+    // otherwise this scroll box will spawn scroll boxes recursively ad infinitum.
+    if (IsValidPrototype(m_itemPrototypeElement))
     {
         m_prototypeElement[ElementType::Item] = m_itemPrototypeElement;
     }
     else
     {
+        if (m_itemPrototypeElement.IsValid())
+        {
+            AZ_Warning("UiDynamicScrollBoxComponent", false,
+                "The prototype element is not safe for cloning. "
+                "This scroll box's prototype element contains the scroll box itself which can result in recursively spawning scroll boxes. "
+                "Please change the prototype element to a nonancestral entity.");
+        }
+
         // Find the prototype element as the first child of the content element
         if (numChildren > 0)
         {
@@ -946,8 +940,18 @@ void UiDynamicScrollBoxComponent::PrepareListForDisplay()
 
     if (m_hasSections)
     {
-        // Prototype header element is defined in properties        
-        m_prototypeElement[ElementType::SectionHeader] = m_headerPrototypeElement;
+        if (IsValidPrototype(m_headerPrototypeElement))
+        {
+            // Prototype header element is defined in properties
+            m_prototypeElement[ElementType::SectionHeader] = m_headerPrototypeElement;
+        }
+        else if(m_headerPrototypeElement.IsValid())
+        {
+            AZ_Warning("UiDynamicScrollBoxComponent", false,
+                "The selected prototype header is not safe for cloning. "
+                "This scroll box's prototype header contains the scroll box itself which can result in recursively spawning scroll boxes. "
+                "Please change the header to a nonancestral entity.");
+        }
     }
 
     for (int i = 0; i < ElementType::NumElementTypes; i++)
@@ -2956,4 +2960,19 @@ AZ::EntityId UiDynamicScrollBoxComponent::GetImmediateContentChildFromDescendant
 bool UiDynamicScrollBoxComponent::HeadersHaveVariableSizes() const
 {
     return m_hasSections && m_variableHeaderElementSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiDynamicScrollBoxComponent::IsValidPrototype(AZ::EntityId entityId) const
+{
+    // Entities containing the scroll box itself are not safe to clone as they will respawn this
+    // scroll box and result in infinite recursive spawning.
+    if (!entityId.IsValid() || entityId == GetEntityId())
+    {
+        return false;
+    }
+
+    bool isEntityAncestor;
+    UiElementBus::EventResult(isEntityAncestor, GetEntityId(), &UiElementBus::Events::IsAncestor, entityId);
+    return !isEntityAncestor;
 }

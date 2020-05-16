@@ -22,3 +22,19 @@
     #define AZ_QT_COMPONENTS_API AZ_DLL_IMPORT
 #endif
 
+namespace AzQtComponents
+{
+    constexpr const char* HasSearchAction = "HasSearchAction";
+    constexpr const char* HasError = "HasError";
+    constexpr const char* ClearAction = "_q_qlineeditclearaction";
+    constexpr const char* ClearToolButton = "ClearToolButton";
+    constexpr const char* ErrorToolButton = "ErrorToolButton";
+    constexpr const char* SearchToolButton = "SearchToolButton";
+    constexpr const char* StoredClearButtonState = "_storedClearButtonState";
+    constexpr const char* StoredHoverAttributeState = "_storedWaHoverState";
+    constexpr const char* ErrorMessage = "_errorMessage";
+    constexpr const char* SideButtonsEnabled = "_sideButtonsEnabled";
+    constexpr const char* Validator = "Validator";
+    constexpr const char* HasPopupOpen = "HasPopupOpen";
+}
+

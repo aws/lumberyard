@@ -71,6 +71,21 @@
 #    define AZ_STRINGIZE(text) AZ_STRINGIZE_I(text)
 #endif
 
+// LUMBERYARD_DEPRECATED_BEGIN
+// LUMBERYARD_DEPRECATED(LY-102910)
+/// Compiler has AZStd::nullptr_t (std::nullptr_t)
+#define AZ_HAS_NULLPTR_T
+/// Used to delete a method from a class
+#define AZ_DELETE_METHOD = delete
+/// Use the default implementation of a class method
+#define AZ_DEFAULT_METHOD = default
+/// std::underlying_type for enums
+#define AZSTD_UNDERLAYING_TYPE
+/// Enabled if we have initializers list support
+#define AZ_HAS_INITIALIZERS_LIST
+/// Enabled if we can alias templates with the using keyword
+#define AZ_HAS_TEMPLATE_ALIAS
+// LUMBERYARD_DEPRECATED_END
 
 #if defined(AZ_COMPILER_MSVC)
 
@@ -82,6 +97,17 @@
 /// Pops the warning stack. For use matched with an AZ_PUSH_DISABLE_WARNING
 #define AZ_POP_DISABLE_WARNING                      \
     __pragma(warning(pop))
+
+
+/// Classes in Editor Sandbox and Tools which dll export there interfaces, but inherits from a base class that doesn't dll export
+/// will trigger a warning  
+#define AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING AZ_PUSH_DISABLE_WARNING(4275, "-Wunknown-warning-option")
+#define AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING AZ_POP_DISABLE_WARNING
+/// Disables a warning for dll exported classes which has non dll-exported members as this can cause ABI issues if the layout of those classes differs between dlls.
+/// QT classes such as QList, QString, QMap, etc... and Cry Math classes such Vec3, Quat, Color don't dllexport their interfaces
+/// Therefore this macro can be used to disable the warning when caused by 3rdParty libraries
+#define AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
+#define AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING AZ_POP_DISABLE_WARNING
 
 #   define AZ_FORCE_INLINE  __forceinline
 #if !defined(_DEBUG)
@@ -99,19 +125,6 @@
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __FUNCSIG__
 
-#   define AZ_HAS_NULLPTR_T
-
-// std::underlying_type for enums
-#   define AZSTD_UNDERLAYING_TYPE
-/// Enabled if we have initializers list support
-#   define AZ_HAS_INITIALIZERS_LIST
-/// Enabled if we can alias templates with the using keyword
-#   define AZ_HAS_TEMPLATE_ALIAS
-/// Used to delete a method from a class
-#   define AZ_DELETE_METHOD = delete
-/// Use the default implementation of a class method
-#   define AZ_DEFAULT_METHOD = default
-
 //////////////////////////////////////////////////////////////////////////
 #elif defined(AZ_COMPILER_CLANG)
 
@@ -124,6 +137,11 @@
 #define AZ_POP_DISABLE_WARNING                              \
     _Pragma("clang diagnostic pop")
 
+#define AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+#define AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+#define AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
+#define AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
+
 #   define AZ_FORCE_INLINE  inline
 /// Aligns a declaration.
 #   define AZ_ALIGN(_decl, _alignment) _decl __attribute__((aligned(_alignment)))
@@ -133,20 +151,8 @@
 #   define AZ_RESTRICT  __restrict
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
-/// Compiler has AZStd::nullptr_t (std::nullptr_t)
-#   define AZ_HAS_NULLPTR_T
-/// std::underlying_type for enums
-#   define AZSTD_UNDERLAYING_TYPE
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __PRETTY_FUNCTION__
-/// Enabled if we have initializers list support
-#   define AZ_HAS_INITIALIZERS_LIST
-/// Enabled if we can alias templates with the using keyword
-#   define AZ_HAS_TEMPLATE_ALIAS
-/// Used to delete a method from a class
-#   define AZ_DELETE_METHOD = delete
-/// Use the default implementation of a class method
-#   define AZ_DEFAULT_METHOD = default
 
 #else
     #error Compiler not supported

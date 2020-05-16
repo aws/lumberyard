@@ -23,10 +23,12 @@ namespace Example
     Widget::Widget(QWidget* parent)
         : QWidget(parent)
         , m_drawSimple(false)
+        , m_tearEnabled(false)
     {
         // Call StyleHelpers::repolishWhenPropertyChanges to ensure the widget is repolished when
         // drawSimple changes.
         AzQtComponents::StyleHelpers::repolishWhenPropertyChanges(this, &Widget::drawSimpleChanged);
+        AzQtComponents::StyleHelpers::repolishWhenPropertyChanges(this, &Widget::tearEnabledChanged);
 
         auto layout = new QHBoxLayout(this);
         auto label = new QLabel(this);
@@ -48,6 +50,17 @@ namespace Example
 
         m_drawSimple = drawSimple;
         emit drawSimpleChanged(m_drawSimple);
+    }
+
+    void Widget::setTearEnabled(bool tearEnabled)
+    {
+        if (tearEnabled == m_tearEnabled)
+        {
+            return;
+        }
+
+        m_tearEnabled = tearEnabled;
+        emit tearEnabledChanged(m_tearEnabled);
     }
 }
 
@@ -100,7 +113,10 @@ StyleSheetPage::StyleSheetPage(QWidget* parent)
     AzQtComponents::StyleManager::setStyleSheet(ui->noPrefixLabel, "StyleSheetPage.qss");
 
     // Setup Example::Widget
-    connect(ui->toggleButton, &QPushButton::clicked, ui->widget, &Example::Widget::setDrawSimple);
+    connect(ui->drawSimpleToggle, &QPushButton::clicked, ui->widget, &Example::Widget::setDrawSimple);
+    connect(ui->tearEnabledToggle, &QPushButton::clicked, ui->widget, &Example::Widget::setTearEnabled);
+    connect(ui->drawSimpleToggle, &QPushButton::clicked, ui->titleBar, &AzQtComponents::TitleBar::setDrawSimple);
+    connect(ui->tearEnabledToggle, &QPushButton::clicked, ui->titleBar, &AzQtComponents::TitleBar::setTearEnabled);
     QFile styleSheetFile("gallery:ExampleWidget.qss");
     if (styleSheetFile.open(QFile::ReadOnly))
     {

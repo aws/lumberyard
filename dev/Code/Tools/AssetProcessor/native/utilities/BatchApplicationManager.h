@@ -62,6 +62,7 @@ class BatchApplicationManager
     , public AZ::Debug::TraceMessageBus::Handler
     , protected AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler
     , public AssetProcessor::DiskSpaceInfoBus::Handler
+    , protected AzToolsFramework::SourceControlNotificationBus::Handler
 {
     Q_OBJECT
 public:
@@ -70,6 +71,7 @@ public:
     ApplicationManager::BeforeRunStatus BeforeRun() override;
     void Destroy() override;
     bool Run() override;
+    void HandleFileRelocation() const;
     bool Activate() override;
     bool PostActivate() override;
 
@@ -105,9 +107,11 @@ public:
     //! TraceMessageBus Interface
     bool OnError(const char* window, const char* message) override;
 
-
     //! DiskSpaceInfoBus::Handler
     bool CheckSufficientDiskSpace(const QString& savePath, qint64 requiredSpace, bool shutdownIfInsufficient) override;
+
+    //! AzFramework::SourceControlNotificationBus::Handler
+    void ConnectivityStateChanged(const AzToolsFramework::SourceControlState newState) override;
 
     void RemoveOldTempFolders();
 
@@ -116,7 +120,7 @@ public:
 Q_SIGNALS:
     void CheckAssetProcessorManagerIdleState();
     void ConnectionStatusMsg(QString message);
-
+    void SourceControlReady();
     void OnBuildersRegistered();
 
 public Q_SLOTS:
@@ -152,6 +156,7 @@ protected:
     void DestroyAssetServerHandler();
     void InitFileProcessor();
     void ShutDownFileProcessor();
+    void InitSourceControl();
 
     void InitMetrics();
     void ShutDownMetrics();
@@ -175,12 +180,13 @@ public Q_SLOTS:
 private Q_SLOTS:
     void CheckForIdle();
 
-private:
+protected:
     int m_processedAssetCount = 0;
     int m_failedAssetsCount = 0;
     int m_warningCount = 0;
     int m_errorCount = 0;
     bool m_AssetProcessorManagerIdleState = false;
+    bool m_sourceControlReady = false;
     
     AZStd::vector<AZStd::unique_ptr<FolderWatchCallbackEx> > m_folderWatches;
     FileWatcher m_fileWatcher;

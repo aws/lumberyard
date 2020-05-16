@@ -288,7 +288,8 @@ namespace AssetBundler
             DryRunFlag,
             GenerateDebugFileFlag,
             AllowOverwritesFlag,
-            VerboseFlag
+            VerboseFlag,
+            SkipArg
         };
 
         m_allComparisonRulesArgs = {
@@ -310,6 +311,7 @@ namespace AssetBundler
             CompareSecondFileArg,
             CompareOutputFileArg,
             ComparePrintArg,
+            IntersectionCountArg,
             AllowOverwritesFlag,
             VerboseFlag
         };
@@ -332,7 +334,6 @@ namespace AssetBundler
             BundleVersionArg,
             MaxBundleSizeArg,
             PlatformArg,
-            AssetCatalogFileArg,
             AllowOverwritesFlag,
             VerboseFlag
         };
@@ -377,6 +378,22 @@ namespace AssetBundler
         // Seed List files do not have platform-specific file names
         params.m_seedListFile = FilePath(requiredArgOutcome.GetValue());
 
+        // Read in Add/Remove Platform to All Seeds flag
+        params.m_addPlatformToAllSeeds = parser->HasSwitch(AddPlatformToAllSeedsFlag);
+        params.m_removePlatformFromAllSeeds = parser->HasSwitch(RemovePlatformFromAllSeedsFlag);
+        AddMetric("AddPlatformToAllSeeds flag", params.m_addPlatformToAllSeeds);
+        AddMetric("RemovePlatformFromAllSeeds flag", params.m_removePlatformFromAllSeeds);
+
+        if (params.m_addPlatformToAllSeeds && params.m_removePlatformFromAllSeeds)
+        {
+            return AZ::Failure(AZStd::string::format("Invalid command: Unable to run \"--%s\" and \"--%s\" at the same time.", AssetBundler::AddPlatformToAllSeedsFlag, AssetBundler::RemovePlatformFromAllSeedsFlag));
+        }
+
+        if ((params.m_addPlatformToAllSeeds || params.m_removePlatformFromAllSeeds) && !parser->HasSwitch(PlatformArg))
+        {
+            return AZ::Failure(AZStd::string::format("Invalid command: When running \"--%s\" or \"--%s\", the \"--%s\" arg is required.", AddPlatformToAllSeedsFlag, RemovePlatformFromAllSeedsFlag, PlatformArg));
+        }
+
         // Read in Platform arg
         auto platformOutcome = GetPlatformArg(parser);
         if (!platformOutcome.IsSuccess())
@@ -410,20 +427,7 @@ namespace AssetBundler
                 params.m_removeSeedList.push_back(parser->GetSwitchValue(RemoveSeedArg, removeSeedIndex));
             }
         }
-        AddMetric("RemoveSeed arg size", numRemoveSeedArgs);
-
-        // Read in Add/Remove Platform to All Seeds flag
-        if (parser->HasSwitch(AddPlatformToAllSeedsFlag) && parser->HasSwitch(RemovePlatformFromAllSeedsFlag))
-        {
-            return AZ::Failure(AZStd::string::format("Invalid command: Unable to run \"--%s\" and \"--%s\" at the same time.", AssetBundler::AddPlatformToAllSeedsFlag, AssetBundler::RemovePlatformFromAllSeedsFlag));
-        }
-        else
-        {
-            params.m_addPlatformToAllSeeds = parser->HasSwitch(AddPlatformToAllSeedsFlag);
-            params.m_removePlatformFromAllSeeds = parser->HasSwitch(RemovePlatformFromAllSeedsFlag);
-        }
-        AddMetric("AddPlatformToAllSeeds flag", params.m_addPlatformToAllSeeds);
-        AddMetric("RemovePlatformFromAllSeeds flag", params.m_removePlatformFromAllSeeds);
+        AddMetric("RemoveSeed arg size", aznumeric_cast<double>(numRemoveSeedArgs));
 
         // Read Update Seed Path arg
         params.m_updateSeedPathHint = parser->HasSwitch(UpdateSeedPathArg);
@@ -484,10 +488,13 @@ namespace AssetBundler
         {
             params.m_seedListFiles.emplace_back(FilePath(parser->GetSwitchValue(SeedListFileArg, seedListFileIndex)));
         }
-        AddMetric("SeedListFile arg size", numSeedListFiles);
+        AddMetric("SeedListFile arg size", aznumeric_cast<double>(numSeedListFiles));
 
         // Read in Add Seed arg
         params.m_addSeedList = GetAddSeedArgList(parser);
+
+        // Read in Skip arg
+        params.m_skipList = GetSkipArgList(parser);
 
         // Read in Add Default Seed List Files arg
         params.m_addDefaultSeedListFiles = parser->HasSwitch(AddDefaultSeedListFilesFlag);
@@ -550,6 +557,14 @@ namespace AssetBundler
             return AZ::Failure(parseComparisonTypesOutcome.GetError());
         }
 
+        for (const auto& comparisonType : params.m_comparisonTypeList)
+        {
+            if (comparisonType == AzToolsFramework::AssetFileInfoListComparison::ComparisonType::IntersectionCount)
+            {
+                return AZ::Failure(AZStd::string::format("Adding compare operation ( %s ) to comparison rule file is not supported currently.", AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::IntersectionCount)]));
+            }
+        }
+
         // Read in Allow Overwrites flag
         params.m_allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
         AddMetric("Allow Overwrites flag", params.m_allowOverwrites);
@@ -564,6 +579,15 @@ namespace AssetBundler
         size_t numFilePatterns = parser->GetNumSwitchValues(ComparisonFilePatternArg);
         size_t numPatternTypes = parser->GetNumSwitchValues(ComparisonFilePatternTypeArg);
 
+        size_t numIntersectionCount = parser->GetNumSwitchValues(IntersectionCountArg);
+
+        if (numIntersectionCount > 1)
+        {
+            return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have exactly one value.", IntersectionCountArg));
+        }
+
+        params.m_intersectionCount = AZStd::stoi(parser->GetSwitchValue(IntersectionCountArg, 0));
+
         if (numPatternTypes != numFilePatterns)
         {
             return AZ::Failure(AZStd::string::format("Number of filePatternTypes ( %i ) and filePatterns ( %i ) must match.", numPatternTypes, numFilePatterns));
@@ -571,20 +595,28 @@ namespace AssetBundler
 
         for (size_t comparisonTypeIndex = 0; comparisonTypeIndex < numComparisonTypes; ++comparisonTypeIndex)
         {
-            auto comparisonResult = ParseComparisonType(parser->GetSwitchValue(ComparisonTypeArg, comparisonTypeIndex));
-            if (!comparisonResult.IsSuccess())
+            auto comparisonTypeOutcome = ParseComparisonType(parser->GetSwitchValue(ComparisonTypeArg, comparisonTypeIndex));
+            if (!comparisonTypeOutcome.IsSuccess())
             {
-                return AZ::Failure(comparisonResult.GetError());
+                return AZ::Failure(comparisonTypeOutcome.GetError());
             }
-            auto comparisonType = comparisonResult.GetValue();
+
+            auto comparisonType = comparisonTypeOutcome.GetValue();
             if (comparisonType == AzToolsFramework::AssetFileInfoListComparison::ComparisonType::FilePattern)
             {
                 if (filePatternsConsumed >= numFilePatterns)
                 {
                     return AZ::Failure(AZStd::string::format("Number of file patterns comparisons exceeded number of file patterns provided ( %i ).", numFilePatterns));
                 }
+
                 params.m_filePatternList.emplace_back(parser->GetSwitchValue(ComparisonFilePatternArg, filePatternsConsumed));
-                params.m_filePatternTypeList.emplace_back(static_cast<AzToolsFramework::AssetFileInfoListComparison::FilePatternType>(AZStd::stoi(parser->GetSwitchValue(ComparisonFilePatternTypeArg, filePatternsConsumed))));
+
+                auto filePatternTypeOutcome = ParseFilePatternType(parser->GetSwitchValue(ComparisonFilePatternTypeArg, filePatternsConsumed));
+                if (!filePatternTypeOutcome.IsSuccess())
+                {
+                    return AZ::Failure(filePatternTypeOutcome.GetError());
+                }
+                params.m_filePatternTypeList.emplace_back(filePatternTypeOutcome.GetValue());
                 filePatternsConsumed++;
             }
             else
@@ -681,6 +713,13 @@ namespace AssetBundler
 
         params.m_printLast = parser->HasSwitch(ComparePrintArg) && params.m_printComparisons.empty();
 
+        if (params.m_comparisonRulesParams.m_intersectionCount && (params.m_outputs.size() != 0 && params.m_outputs.size() != 1))
+        {
+            SendErrorMetricEvent("Invalid number of arguements for comparison outputs.");
+            return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have either be 0 or 1 value for compare operation of type (%s).",
+                CompareOutputFileArg, AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::IntersectionCount)]));
+        }
+
         // Read in Allow Overwrites flag
         params.m_allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
         AddMetric("Allow Overwrites flag", params.m_allowOverwrites);
@@ -768,65 +807,126 @@ namespace AssetBundler
         return AZ::Success(params);
     }
 
-    AZ::Outcome<void, AZStd::string> ApplicationManager::ParseBundleSettingsAndOverrides(const AzFramework::CommandLine* parser, BundlesParams& params, const char* commandName)
+    AZ::Outcome<BundlesParamsList, AZStd::string> ApplicationManager::ParseBundleSettingsAndOverrides(const AzFramework::CommandLine* parser, const char* commandName)
     {
-        // Read in Bundle Settings File arg
-        auto argOutcome = GetFilePathArg(parser, BundleSettingsFileArg, commandName);
-        if (!argOutcome.IsSuccess())
+        // Read in Bundle Settings File args
+        auto bundleSettingsOutcome = GetArgsList<FilePath>(parser, BundleSettingsFileArg, commandName);
+        if (!bundleSettingsOutcome.IsSuccess())
         {
-            return AZ::Failure(argOutcome.GetError());
+            return AZ::Failure(bundleSettingsOutcome.GetError());
         }
-        if (!argOutcome.GetValue().empty())
+        if (!bundleSettingsOutcome.GetValue().empty())
         {
-            params.m_bundleSettingsFile = FilePath(argOutcome.GetValue());
-            AddFlagAttribute("BundleSettingsFile arg", true);
+
+            AddFlagAttribute("BundleSettingsFiles arg", true);
         }
 
-        // Read in Asset List File arg
-        argOutcome = GetFilePathArg(parser, AssetListFileArg, commandName);
-        if (!argOutcome.IsSuccess())
+        // Read in Asset List File args
+        auto assetListOutcome = GetArgsList<FilePath>(parser, AssetListFileArg, commandName);
+        if (!assetListOutcome.IsSuccess())
         {
-            return AZ::Failure(argOutcome.GetError());
+            return AZ::Failure(assetListOutcome.GetError());
         }
-        if (!argOutcome.GetValue().empty())
+        if (!assetListOutcome.GetValue().empty())
         {
-            params.m_assetListFile = FilePath(argOutcome.GetValue());
-            AddFlagAttribute("AssetListFile arg", true);
-        }
-
-        // Read in Output Bundle Path arg
-        argOutcome = GetFilePathArg(parser, OutputBundlePathArg, commandName);
-        if (!argOutcome.IsSuccess())
-        {
-            return AZ::Failure(argOutcome.GetError());
-        }
-        if (!argOutcome.GetValue().empty())
-        {
-            params.m_outputBundlePath = FilePath(argOutcome.GetValue());
-            AddFlagAttribute("OutputBundlePath arg", true);
+            AddFlagAttribute("AssetListFiles arg", true);
         }
 
-        // Read in Bundle Version arg
-        if (parser->HasSwitch(BundleVersionArg))
+        // Read in Output Bundle Path args
+        auto bundleOutputPathOutcome = GetArgsList<FilePath>(parser, OutputBundlePathArg, commandName);
+        if (!bundleOutputPathOutcome.IsSuccess())
         {
-            if (parser->GetNumSwitchValues(BundleVersionArg) != 1)
+            return AZ::Failure(bundleOutputPathOutcome.GetError());
+        }
+        if (!bundleOutputPathOutcome.GetValue().empty())
+        {
+            AddFlagAttribute("OutputBundlePaths arg", true);
+        }
+
+        AZStd::vector<FilePath> bundleSettingsFileList = bundleSettingsOutcome.TakeValue();
+        AZStd::vector<FilePath> assetListFileList = assetListOutcome.TakeValue();
+        AZStd::vector<FilePath> outputBundleFileList = bundleOutputPathOutcome.TakeValue();
+
+        size_t bundleSettingListSize = bundleSettingsFileList.size();
+        size_t assetFileListSize = assetListFileList.size();
+        size_t outputBundleListSize = outputBundleFileList.size();
+
+
+        // * We are validating the following cases here
+        // * AssetFileList should always be equal to outputBundleList size even if they are of zero length.
+        // * BundleSettingList can be a zero size list if the number of elements in assetFileList matches the number of elements in outputBundleList.
+        // * If bundleSettingList contains non zero elements than either it should have the same number of elements as in assetFileList or the number of elements in assetFileList should be zero.
+        if (bundleSettingListSize)
+        {
+            if (assetFileListSize != outputBundleListSize)
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have exactly one value.", BundleVersionArg));
+                return AZ::Failure(AZStd::string::format("Invalid command:  \"--%s\" and \"--%s\" are required and should contain the same number of args.", AssetListFileArg, OutputBundlePathArg));
             }
-            params.m_bundleVersion = AZStd::stoi(parser->GetSwitchValue(BundleVersionArg, 0));
-        }
-        AddFlagAttribute("BundleVersion arg", parser->HasSwitch(BundleVersionArg));
-
-        // Read in Max Bundle Size arg
-        if (parser->HasSwitch(MaxBundleSizeArg))
-        {
-            if (parser->GetNumSwitchValues(MaxBundleSizeArg) != 1)
+            else if (bundleSettingListSize != assetFileListSize && assetFileListSize != 0)
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have exactly one value.", MaxBundleSizeArg));
+                return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\", \"--%s\" and \"--%s\" should contain the same number of args.", BundleSettingsFileArg, AssetListFileArg, OutputBundlePathArg));
             }
-            params.m_maxBundleSizeInMB = AZStd::stoi(parser->GetSwitchValue(MaxBundleSizeArg, 0));
         }
-        AddFlagAttribute("BundleVersion arg", parser->HasSwitch(MaxBundleSizeArg));
+        else
+        {
+            if (assetFileListSize != outputBundleListSize)
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command:  \"--%s\" and \"--%s\" are required and should contain the same number of args.", AssetListFileArg, OutputBundlePathArg));
+            }
+        }
+
+        size_t expectedListSize = AZStd::max(assetFileListSize, bundleSettingListSize);
+
+        // Read in Bundle Version args
+        auto bundleVersionOutcome = GetArgsList<AZStd::string>(parser, BundleVersionArg, commandName);
+        if (!bundleVersionOutcome.IsSuccess())
+        {
+            return AZ::Failure(bundleVersionOutcome.GetError());
+        }
+        if (!bundleVersionOutcome.GetValue().empty())
+        {
+            AddFlagAttribute("BundleVersions args", true);
+        }
+        AZStd::vector<AZStd::string> bundleVersionList = bundleVersionOutcome.TakeValue();
+        size_t bundleVersionListSize = bundleVersionList.size();
+
+        if (bundleVersionListSize != expectedListSize && bundleVersionListSize >= 2)
+        {
+            if (expectedListSize != 1)
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %d. Actual size detected %d.", BundleVersionArg, expectedListSize, bundleVersionListSize));
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %d. Expected number of args is one.", BundleVersionArg, bundleVersionListSize ));
+            }
+        }
+
+        // Read in Max Bundle Size args
+        auto maxBundleSizeOutcome = GetArgsList<AZStd::string>(parser, MaxBundleSizeArg, commandName);
+        if (!maxBundleSizeOutcome.IsSuccess())
+        {
+            return AZ::Failure(maxBundleSizeOutcome.GetError());
+        }
+        if (!maxBundleSizeOutcome.GetValue().empty())
+        {
+            AddFlagAttribute("Bundle Max Sizes args", true);
+        }
+
+        AZStd::vector<AZStd::string> maxBundleSizeList = maxBundleSizeOutcome.TakeValue();
+        size_t maxBundleListSize = maxBundleSizeList.size();
+
+        if (maxBundleListSize != expectedListSize && maxBundleListSize >= 2)
+        {
+            if (expectedListSize != 1)
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %d. Actual size detected %d.", MaxBundleSizeArg, expectedListSize, maxBundleListSize));
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %d. Expected number of args is one.", MaxBundleSizeArg, maxBundleListSize));
+            }
+        }
 
         // Read in Platform arg
         auto platformOutcome = GetPlatformArg(parser);
@@ -834,23 +934,37 @@ namespace AssetBundler
         {
             return AZ::Failure(platformOutcome.GetError());
         }
-        params.m_platformFlags = platformOutcome.TakeValue();
 
-        // Read in Asset Catalog File arg
-        argOutcome = GetFilePathArg(parser, AssetCatalogFileArg, commandName);
-        if (!argOutcome.IsSuccess())
+        // Read in Allow Overwrites flag
+        bool allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
+        AddMetric("Allow Overwrites flag", allowOverwrites);
+        BundlesParamsList bundleParamsList;
+
+        for (int idx = 0; idx < expectedListSize; idx++)
         {
-            return AZ::Failure(argOutcome.GetError());
+            BundlesParams bundleParams;
+            bundleParams.m_bundleSettingsFile = bundleSettingListSize ? bundleSettingsFileList[idx] : FilePath();
+            bundleParams.m_assetListFile = assetFileListSize ? assetListFileList[idx] : FilePath();
+            bundleParams.m_outputBundlePath = outputBundleListSize ? outputBundleFileList[idx] : FilePath();
+            if (bundleVersionListSize)
+            {
+                bundleParams.m_bundleVersion = bundleVersionListSize == 1 ? AZStd::stoi(bundleVersionList[0]) : AZStd::stoi(bundleVersionList[idx]);
+            }
+
+            if (maxBundleListSize)
+            {
+                bundleParams.m_maxBundleSizeInMB = maxBundleListSize == 1 ? AZStd::stoi(maxBundleSizeList[0]) : AZStd::stoi(maxBundleSizeList[idx]);
+            }
+
+            bundleParams.m_platformFlags = platformOutcome.GetValue();
+            bundleParams.m_allowOverwrites = allowOverwrites;
+            bundleParamsList.emplace_back(bundleParams);
         }
-        if (!argOutcome.GetValue().empty())
-        {
-            params.m_assetCatalogFile = FilePath(argOutcome.GetValue());
-            AddFlagAttribute("AssetCatalogFile arg", true);
-        }
-        return AZ::Success();
+
+        return AZ::Success(bundleParamsList);
     }
 
-    AZ::Outcome<BundlesParams, AZStd::string> ApplicationManager::ParseBundlesCommandData(const AzFramework::CommandLine* parser)
+    AZ::Outcome<BundlesParamsList, AZStd::string> ApplicationManager::ParseBundlesCommandData(const AzFramework::CommandLine* parser)
     {
         auto validateArgsOutcome = ValidateInputArgs(parser, m_allBundlesArgs);
         if (!validateArgsOutcome.IsSuccess())
@@ -859,24 +973,13 @@ namespace AssetBundler
             return AZ::Failure(validateArgsOutcome.TakeError());
         }
 
-        BundlesParams params;
-
-        if (!parser->HasSwitch(BundleSettingsFileArg) && (!parser->HasSwitch(AssetListFileArg) || !parser->HasSwitch(OutputBundlePathArg)))
-        {
-            return AZ::Failure(AZStd::string::format("Invalid command: Either \"--%s\" or both \"--%s\" and \"--%s\" are required.", BundleSettingsFileArg, AssetListFileArg, OutputBundlePathArg));
-        }
-
-        auto parseSettingsOutcome = ParseBundleSettingsAndOverrides(parser, params, BundlesCommand);
+        auto parseSettingsOutcome = ParseBundleSettingsAndOverrides(parser, BundlesCommand);
         if (!parseSettingsOutcome.IsSuccess())
         {
             return AZ::Failure(parseSettingsOutcome.GetError());
         }
 
-        // Read in Allow Overwrites flag
-        params.m_allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
-        AddMetric("Allow Overwrites flag", params.m_allowOverwrites);
-
-        return AZ::Success(params);
+        return AZ::Success(parseSettingsOutcome.TakeValue());
     }
 
     AZ::Outcome<BundleSeedParams, AZStd::string> ApplicationManager::ParseBundleSeedCommandData(const AzFramework::CommandLine* parser)
@@ -892,14 +995,14 @@ namespace AssetBundler
         BundleSeedParams params;
 
         params.m_addSeedList = GetAddSeedArgList(parser);
-        auto parseSettingsOutcome = ParseBundleSettingsAndOverrides(parser, params.m_bundleParams, BundleSeedCommand);
+        auto parseSettingsOutcome = ParseBundleSettingsAndOverrides(parser, BundleSeedCommand);
         if (!parseSettingsOutcome.IsSuccess())
         {
             return AZ::Failure(parseSettingsOutcome.GetError());
         }
+        BundlesParamsList paramsList = parseSettingsOutcome.TakeValue();
 
-        params.m_bundleParams.m_allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
-        AddMetric("Allow Overwrites flag", params.m_bundleParams.m_allowOverwrites);
+        params.m_bundleParams = paramsList[0];
 
         return AZ::Success(params);
     }
@@ -945,6 +1048,31 @@ namespace AssetBundler
         }
 
         return AZ::Success(parser->GetSwitchValue(argName, 0));
+    }
+
+    template <typename T>
+    AZ::Outcome<AZStd::vector<T>, AZStd::string> ApplicationManager::GetArgsList(const AzFramework::CommandLine* parser, const char* argName, const char* subCommandName, bool isRequired)
+    {
+        AZStd::vector<T> args;
+
+        if (!parser->HasSwitch(argName))
+        {
+            if (isRequired)
+            {
+                return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" is required when running \"%s\".", argName, subCommandName));
+            }
+
+            return AZ::Success(args);
+        }
+
+        size_t numValues = parser->GetNumSwitchValues(argName);
+
+        for (int idx = 0; idx < numValues; ++idx)
+        {
+            args.emplace_back(T(parser->GetSwitchValue(argName, idx)));
+        }
+
+        return AZ::Success(args);
     }
 
     AZ::Outcome<AzFramework::PlatformFlags, AZStd::string> ApplicationManager::GetPlatformArg(const AzFramework::CommandLine* parser)
@@ -1002,10 +1130,21 @@ namespace AssetBundler
         {
             addSeedList.push_back(parser->GetSwitchValue(AddSeedArg, addSeedIndex));
         }
-        AddMetric("AddSeed arg size", numAddSeedArgs);
+        AddMetric("AddSeed arg size", aznumeric_cast<double>(numAddSeedArgs));
         return addSeedList;
     }
 
+    AZStd::vector<AZStd::string> ApplicationManager::GetSkipArgList(const AzFramework::CommandLine* parser)
+    {
+        AZStd::vector<AZStd::string> skipList;
+        size_t numArgs = parser->GetNumSwitchValues(SkipArg);
+        for (size_t argIndex = 0; argIndex < numArgs; ++argIndex)
+        {
+            skipList.push_back(parser->GetSwitchValue(SkipArg, argIndex));
+        }
+        AddMetric("Skip arg size", aznumeric_cast<double>(numArgs));
+        return skipList;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
     // Run Commands
@@ -1155,6 +1294,14 @@ namespace AssetBundler
                     return false;
                 }
             }
+
+            seedListOutcome = LoadProjectDependenciesFile(params.m_platformFlags);
+            if (!seedListOutcome.IsSuccess())
+            {
+                // Metric event has already been sent
+                AZ_Error(AppWindowName, false, seedListOutcome.GetError().c_str());
+                return false;
+            }
         }
 
         if (!RunPlatformSpecificAssetListCommands(params, params.m_platformFlags))
@@ -1214,6 +1361,7 @@ namespace AssetBundler
             comparisonData.m_comparisonType = params.m_comparisonTypeList[idx];
             comparisonData.m_filePattern = params.m_filePatternList[idx];
             comparisonData.m_filePatternType = params.m_filePatternTypeList[idx];
+            comparisonData.m_intersectionCount = params.m_intersectionCount;
 
             assetListComparison.AddComparisonStep(comparisonData);
         }
@@ -1250,29 +1398,56 @@ namespace AssetBundler
         // generate comparisons from additional commands and add it to comparisonOperations
         ConvertRulesParamsToComparisonData(params.m_comparisonRulesParams, comparisonOperations);
 
-        // Verify that inputs match # and content of comparisons
-        if (comparisonOperations.GetComparisonList().size() != params.m_firstCompareFile.size())
-        {
-            SendErrorMetricEvent("Mismatch in number of comparisons and comparison files.");
-            AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %u ).", CompareFirstFileArg, comparisonOperations.GetComparisonList().size());
-            return false;
-        }
-
-        // Verify that outputs match # and content of comparisons
-        if (comparisonOperations.GetComparisonList().size() != params.m_outputs.size())
-        {
-            SendErrorMetricEvent("Mismatch in number of comparisons and comparison outputs.");
-            AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %i ).", CompareOutputFileArg, comparisonOperations.GetComparisonList().size());
-            return false;
-        }
-
         int expectedSecondInputs = 0;
-        for (int idx = 0; idx < comparisonOperations.GetComparisonList().size(); idx++)
+
+        if (params.m_comparisonRulesParams.m_intersectionCount)
         {
-            comparisonOperations.SetDestinationPath(idx, params.m_outputs[idx]);
-            if (comparisonOperations.GetComparisonList()[idx].m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern) // file pattern operations do not use a second input file
+            if ((comparisonOperations.GetComparisonList().size() == 1) && comparisonOperations.GetComparisonList()[0].m_comparisonType != AssetFileInfoListComparison::ComparisonType::IntersectionCount)
             {
-                expectedSecondInputs++;
+                SendErrorMetricEvent("Invalid arguement provided for IntersectionCount operation.");
+                AZ_Error(AppWindowName, false, "Invalid arguement detected. Command ( --%s ) is incompatible with compare operation of type (%s).",
+                    IntersectionCountArg, AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(comparisonOperations.GetComparisonList()[0].m_comparisonType)]);
+                return false;
+            }
+            // Since IntersectionCount Operation cannot be combined with other operation Comparison List should be 1
+            else if (comparisonOperations.GetComparisonList().size() > 1)
+            {
+                SendErrorMetricEvent("Intersection operation cannot be combined with other comparison operations.");
+                AZ_Error(AppWindowName, false, "Compare operation of type ( %s ) cannot be combined with other comparison operations. Number of comparison operation detected (%d).",
+                    AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::IntersectionCount)], comparisonOperations.GetComparisonList().size());
+                return false;
+            }
+
+            if (params.m_outputs.size())
+            {
+                comparisonOperations.SetDestinationPath(0, params.m_outputs[0]);
+            }
+        }
+        else
+        {
+            // Verify that inputs match # and content of comparisons
+            if (comparisonOperations.GetComparisonList().size() != params.m_firstCompareFile.size())
+            {
+                SendErrorMetricEvent("Mismatch in number of comparisons and comparison files.");
+                AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %u ).", CompareFirstFileArg, comparisonOperations.GetComparisonList().size());
+                return false;
+            }
+
+            // Verify that outputs match # and content of comparisons
+            if (comparisonOperations.GetComparisonList().size() != params.m_outputs.size())
+            {
+                SendErrorMetricEvent("Mismatch in number of comparisons and comparison outputs.");
+                AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %i ).", CompareOutputFileArg, comparisonOperations.GetComparisonList().size());
+                return false;
+            }
+
+            for (int idx = 0; idx < comparisonOperations.GetComparisonList().size(); idx++)
+            {
+                comparisonOperations.SetDestinationPath(idx, params.m_outputs[idx]);
+                if (comparisonOperations.GetComparisonList()[idx].m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern) // file pattern operations do not use a second input file
+                {
+                    expectedSecondInputs++;
+                }
             }
         }
 
@@ -1293,7 +1468,7 @@ namespace AssetBundler
 
         if (params.m_printLast)
         {
-            PrintComparisonAssetList(compareOutcome.GetValue(), params.m_outputs.back());
+            PrintComparisonAssetList(compareOutcome.GetValue(), params.m_outputs.size() ? params.m_outputs.back() : "");
         }
 
         // Check if we are performing a destructive overwrite that the user did not approve 
@@ -1363,7 +1538,7 @@ namespace AssetBundler
 
         BundleSettingsParams params = paramsOutcome.GetValue();
 
-        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatforms(params.m_platformFlags))
+        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatformsInterpreted(params.m_platformFlags))
         {
             AssetBundleSettings bundleSettings;
 
@@ -1455,7 +1630,7 @@ namespace AssetBundler
         return true;
     }
 
-    bool ApplicationManager::RunBundlesCommands(const AZ::Outcome<BundlesParams, AZStd::string>& paramsOutcome)
+    bool ApplicationManager::RunBundlesCommands(const AZ::Outcome<BundlesParamsList, AZStd::string>& paramsOutcome)
     {
         using namespace AzToolsFramework;
         if (!paramsOutcome.IsSuccess())
@@ -1465,121 +1640,115 @@ namespace AssetBundler
             return false;
         }
 
-        BundlesParams params = paramsOutcome.GetValue();
-
-        // If no platform was input we want to loop over all possible platforms and make bundles for whatever we find
-        if (params.m_platformFlags == AzFramework::PlatformFlags::Platform_NONE)
+        BundlesParamsList paramsList = paramsOutcome.GetValue();
+        AZStd::vector<AZStd::pair<AssetBundleSettings, BundlesParams>> allBundleSettings;
+        for (BundlesParams& params : paramsList)
         {
-            params.m_platformFlags = AzFramework::PlatformFlags::AllPlatforms;
-        }
-
-        // Load or generate Bundle Settings
-        AzFramework::PlatformFlags allPlatformsInBundle = AzFramework::PlatformFlags::Platform_NONE;
-        AZStd::vector<AssetBundleSettings> allBundleSettings;
-        if (params.m_bundleSettingsFile.AbsolutePath().empty())
-        {
-            // Verify input file path formats before looking for platform-specific versions 
-            auto fileExtensionOutcome = AssetSeedManager::ValidateAssetListFileExtension(params.m_assetListFile.AbsolutePath());
-            if (!fileExtensionOutcome.IsSuccess())
+            // If no platform was input we want to loop over all possible platforms and make bundles for whatever we find
+            if (params.m_platformFlags == AzFramework::PlatformFlags::Platform_NONE)
             {
-                SendErrorMetricEvent("Invalid Asset List file extension");
-                AZ_Error(AssetBundler::AppWindowName, false, fileExtensionOutcome.GetError().c_str());
-                return false;
+                params.m_platformFlags = AzFramework::PlatformFlags::AllNamedPlatforms;
             }
 
-            AZStd::vector<FilePath> allAssetListFilePaths = GetAllPlatformSpecificFilesOnDisk(params.m_assetListFile, params.m_platformFlags);
-
-            // Create temporary Bundle Settings structs for every Asset List file
-            for (const auto& assetListFilePath : allAssetListFilePaths)
+            // Load or generate Bundle Settings
+            AzFramework::PlatformFlags allPlatformsInBundle = AzFramework::PlatformFlags::Platform_NONE;
+            if (params.m_bundleSettingsFile.AbsolutePath().empty())
             {
-                AssetBundleSettings bundleSettings;
-                bundleSettings.m_assetFileInfoListPath = assetListFilePath.AbsolutePath();
-                bundleSettings.m_platform = GetPlatformIdentifier(assetListFilePath.AbsolutePath());
-                allPlatformsInBundle |= AzFramework::PlatformHelper::GetPlatformFlag(bundleSettings.m_platform);
-                allBundleSettings.emplace_back(bundleSettings);
-            }
-        }
-        else
-        {
-            // Verify input file path formats before looking for platform-specific versions 
-            auto fileExtensionOutcome = AssetBundleSettings::ValidateBundleSettingsFileExtension(params.m_bundleSettingsFile.AbsolutePath());
-            if (!fileExtensionOutcome.IsSuccess())
-            {
-                SendErrorMetricEvent("Invalid Bundle Settings file extension");
-                AZ_Error(AssetBundler::AppWindowName, false, fileExtensionOutcome.GetError().c_str());
-                return false;
-            }
-
-            AZStd::vector<FilePath> allBundleSettingsFilePaths = GetAllPlatformSpecificFilesOnDisk(params.m_bundleSettingsFile, params.m_platformFlags);
-
-            // Attempt to load all Bundle Settings files (there may be one or many to load)
-            for (const auto& bundleSettingsFilePath : allBundleSettingsFilePaths)
-            {
-                AZ::Outcome<AssetBundleSettings, AZStd::string> loadBundleSettingsOutcome = AssetBundleSettings::Load(bundleSettingsFilePath.AbsolutePath());
-                if (!loadBundleSettingsOutcome.IsSuccess())
+                // Verify input file path formats before looking for platform-specific versions 
+                auto fileExtensionOutcome = AssetSeedManager::ValidateAssetListFileExtension(params.m_assetListFile.AbsolutePath());
+                if (!fileExtensionOutcome.IsSuccess())
                 {
-                    SendErrorMetricEvent("Failed to load Bundle Settings file.");
-                    AZ_Error(AssetBundler::AppWindowName, false, loadBundleSettingsOutcome.GetError().c_str());
+                    SendErrorMetricEvent("Invalid Asset List file extension");
+                    AZ_Error(AssetBundler::AppWindowName, false, fileExtensionOutcome.GetError().c_str());
                     return false;
                 }
 
-                allBundleSettings.emplace_back(loadBundleSettingsOutcome.TakeValue());
-                allPlatformsInBundle |= AzFramework::PlatformHelper::GetPlatformFlag(allBundleSettings.back().m_platform);
-            }
-        }
+                AZStd::vector<FilePath> allAssetListFilePaths = GetAllPlatformSpecificFilesOnDisk(params.m_assetListFile, params.m_platformFlags);
 
-        // Asset Catalog
-        auto catalogOutcome = InitAssetCatalog(allPlatformsInBundle, params.m_assetCatalogFile.AbsolutePath());
-        if (!catalogOutcome.IsSuccess())
-        {
-            // Metric event has already been sent
-            AZ_Error(AppWindowName, false, catalogOutcome.GetError().c_str());
-            return false;
+                // Create temporary Bundle Settings structs for every Asset List file
+                for (const auto& assetListFilePath : allAssetListFilePaths)
+                {
+                    AssetBundleSettings bundleSettings;
+                    bundleSettings.m_assetFileInfoListPath = assetListFilePath.AbsolutePath();
+                    bundleSettings.m_platform = GetPlatformIdentifier(assetListFilePath.AbsolutePath());
+                    allPlatformsInBundle |= AzFramework::PlatformHelper::GetPlatformFlag(bundleSettings.m_platform);
+                    allBundleSettings.emplace_back(AZStd::make_pair(bundleSettings, params));
+                }
+            }
+            else
+            {
+                // Verify input file path formats before looking for platform-specific versions 
+                auto fileExtensionOutcome = AssetBundleSettings::ValidateBundleSettingsFileExtension(params.m_bundleSettingsFile.AbsolutePath());
+                if (!fileExtensionOutcome.IsSuccess())
+                {
+                    SendErrorMetricEvent("Invalid Bundle Settings file extension");
+                    AZ_Error(AssetBundler::AppWindowName, false, fileExtensionOutcome.GetError().c_str());
+                    return false;
+                }
+
+                AZStd::vector<FilePath> allBundleSettingsFilePaths = GetAllPlatformSpecificFilesOnDisk(params.m_bundleSettingsFile, params.m_platformFlags);
+
+                // Attempt to load all Bundle Settings files (there may be one or many to load)
+                for (const auto& bundleSettingsFilePath : allBundleSettingsFilePaths)
+                {
+                    AZ::Outcome<AssetBundleSettings, AZStd::string> loadBundleSettingsOutcome = AssetBundleSettings::Load(bundleSettingsFilePath.AbsolutePath());
+                    if (!loadBundleSettingsOutcome.IsSuccess())
+                    {
+                        SendErrorMetricEvent("Failed to load Bundle Settings file.");
+                        AZ_Error(AssetBundler::AppWindowName, false, loadBundleSettingsOutcome.GetError().c_str());
+                        return false;
+                    }
+
+                    allBundleSettings.emplace_back(AZStd::make_pair(loadBundleSettingsOutcome.TakeValue(), params));
+                    allPlatformsInBundle |= AzFramework::PlatformHelper::GetPlatformFlag(allBundleSettings.back().first.m_platform);
+                }
+            }
         }
 
         AZStd::atomic_uint failureCount = 0;
 
         // Create all Bundles
-        AZ::parallel_for_each(allBundleSettings.begin(), allBundleSettings.end(), [this, &failureCount, &params](AzToolsFramework::AssetBundleSettings bundleSettings)
-        {
-            auto overrideOutcome = ApplyBundleSettingsOverrides(
-                bundleSettings,
-                params.m_assetListFile.AbsolutePath(),
-                params.m_outputBundlePath.AbsolutePath(),
-                params.m_bundleVersion,
-                params.m_maxBundleSizeInMB);
-            if (!overrideOutcome.IsSuccess())
+        AZ::parallel_for_each(allBundleSettings.begin(), allBundleSettings.end(), [this, &failureCount](AZStd::pair<AzToolsFramework::AssetBundleSettings, BundlesParams> bundleSettings)
             {
-                // Metric event has already been sent
-                AZ_Error(AppWindowName, false, overrideOutcome.GetError().c_str());
-                failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
-                return;
-            }
+                BundlesParams params = bundleSettings.second;
+                auto overrideOutcome = ApplyBundleSettingsOverrides(
+                    bundleSettings.first,
+                    params.m_assetListFile.AbsolutePath(),
+                    params.m_outputBundlePath.AbsolutePath(),
+                    params.m_bundleVersion,
+                    params.m_maxBundleSizeInMB);
+                if (!overrideOutcome.IsSuccess())
+                {
+                    // Metric event has already been sent
+                    AZ_Error(AppWindowName, false, overrideOutcome.GetError().c_str());
+                    failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
+                    return;
+                }
 
-            FilePath bundleFilePath(bundleSettings.m_bundleFilePath);
+                FilePath bundleFilePath(bundleSettings.first.m_bundleFilePath);
 
-            // Check if we are performing a destructive overwrite that the user did not approve 
-            if (!params.m_allowOverwrites && AZ::IO::FileIOBase::GetInstance()->Exists(bundleFilePath.AbsolutePath().c_str()))
-            {
-                SendErrorMetricEvent("Unapproved destructive overwrite on a Bundle.");
-                AZ_Error(AssetBundler::AppWindowName, false, "Bundle ( %s ) already exists, running this command would perform a destructive overwrite.\n\n"
-                    "Run your command again with the ( --%s ) arg if you want to save over the existing file.", bundleFilePath.AbsolutePath().c_str(), AllowOverwritesFlag);
-                failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
-                return;
-            }
+                // Check if we are performing a destructive overwrite that the user did not approve 
+                if (!params.m_allowOverwrites && AZ::IO::FileIOBase::GetInstance()->Exists(bundleFilePath.AbsolutePath().c_str()))
+                {
+                    SendErrorMetricEvent("Unapproved destructive overwrite on a Bundle.");
+                    AZ_Error(AssetBundler::AppWindowName, false, "Bundle ( %s ) already exists, running this command would perform a destructive overwrite.\n\n"
+                        "Run your command again with the ( --%s ) arg if you want to save over the existing file.", bundleFilePath.AbsolutePath().c_str(), AllowOverwritesFlag);
+                    failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
+                    return;
+                }
 
-            AZ_TracePrintf(AssetBundler::AppWindowName, "Creating Bundle ( %s )...\n", bundleFilePath.AbsolutePath().c_str());
-            bool result = false;
-            AssetBundleCommandsBus::BroadcastResult(result, &AssetBundleCommandsBus::Events::CreateAssetBundle, bundleSettings);
-            if (!result)
-            {
-                SendErrorMetricEvent("Unable to create bundle.");
-                AZ_Error(AssetBundler::AppWindowName, false, "Unable to create bundle, target Bundle file path is ( %s ).", bundleFilePath.AbsolutePath().c_str());
-                failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
-                return;
-            }
-            AZ_TracePrintf(AssetBundler::AppWindowName, "Bundle ( %s ) created successfully!\n", bundleFilePath.AbsolutePath().c_str());
-        });
+                AZ_TracePrintf(AssetBundler::AppWindowName, "Creating Bundle ( %s )...\n", bundleFilePath.AbsolutePath().c_str());
+                bool result = false;
+                AssetBundleCommandsBus::BroadcastResult(result, &AssetBundleCommandsBus::Events::CreateAssetBundle, bundleSettings.first);
+                if (!result)
+                {
+                    SendErrorMetricEvent("Unable to create bundle.");
+                    AZ_Error(AssetBundler::AppWindowName, false, "Unable to create bundle, target Bundle file path is ( %s ).", bundleFilePath.AbsolutePath().c_str());
+                    failureCount.fetch_add(1, AZStd::memory_order::memory_order_relaxed);
+                    return;
+                }
+                AZ_TracePrintf(AssetBundler::AppWindowName, "Bundle ( %s ) created successfully!\n", bundleFilePath.AbsolutePath().c_str());
+            });
 
         return failureCount == 0;
     }
@@ -1600,14 +1769,14 @@ namespace AssetBundler
         // If no platform was input we want to loop over all possible platforms and make bundles for whatever we find
         if (params.m_bundleParams.m_platformFlags == AzFramework::PlatformFlags::Platform_NONE)
         {
-            params.m_bundleParams.m_platformFlags = AzFramework::PlatformFlags::AllPlatforms;
+            params.m_bundleParams.m_platformFlags = AzFramework::PlatformFlags::AllNamedPlatforms;
         }
 
         AZStd::vector<AssetBundleSettings> allBundleSettings;
         if (params.m_bundleParams.m_bundleSettingsFile.AbsolutePath().empty())
         {
             // if no bundle settings file was provided generate one for each platform, values will be overridden later
-            for (AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatforms(params.m_bundleParams.m_platformFlags))
+            for (AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatformsInterpreted(params.m_bundleParams.m_platformFlags))
             {
                 allBundleSettings.emplace_back();
                 allBundleSettings.back().m_platform = platformName;
@@ -1666,7 +1835,7 @@ namespace AssetBundler
                 m_assetSeedManager->AddSeedAsset(assetPath, platformFlag);
             }
 
-            auto assetList = m_assetSeedManager->GetDependenciesInfo(platformId);
+            auto assetList = m_assetSeedManager->GetDependenciesInfo(platformId, {});
             if (assetList.size() == 0)
             {
                 AZ_TracePrintf(AssetBundler::AppWindowName, "Platform ( %s ) had no assets based on these seeds, skipping bundle generation.\n", bundleSettings.m_platform.c_str());
@@ -1707,7 +1876,7 @@ namespace AssetBundler
             return AZ::Failure(AZStd::string("Invalid platform.\n"));
         }
 
-        for (const AzFramework::PlatformId& platformId : AzFramework::PlatformHelper::GetPlatformIndices(platforms))
+        for (const AzFramework::PlatformId& platformId : AzFramework::PlatformHelper::GetPlatformIndicesInterpreted(platforms))
         {
             AZStd::string platformSpecificAssetCatalogPath;
             if (assetCatalogFile.empty())
@@ -1728,7 +1897,7 @@ namespace AssetBundler
             {
                 AzToolsFramework::AssetCatalog::PlatformAddressedAssetCatalogRequestBus::EventResult(success, platformId, &AzToolsFramework::AssetCatalog::PlatformAddressedAssetCatalogRequestBus::Events::LoadCatalog, platformSpecificAssetCatalogPath.c_str());
             }
-            if (!success)
+            if (!success && !AzFramework::PlatformHelper::IsSpecialPlatform(platforms))
             {
                 SendErrorMetricEvent("Failed to open asset catalog file.");
                 return AZ::Failure(AZStd::string::format("Failed to open asset catalog file ( %s ).", platformSpecificAssetCatalogPath.c_str()));
@@ -1771,6 +1940,35 @@ namespace AssetBundler
         return AZ::Success();
     }
 
+    AZ::Outcome<void, AZStd::string> ApplicationManager::LoadProjectDependenciesFile(AzFramework::PlatformFlags platformFlags)
+    {
+        AZStd::string projectDependenciesFile = AZStd::move(GetProjectDependenciesFile(g_cachedEngineRoot));
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(projectDependenciesFile.c_str()))
+        {
+            AZ_TracePrintf(AssetBundler::AppWindowName, "Project dependencies file %s doesn't exist.\n", projectDependenciesFile.c_str());
+
+            AZStd::string projectDependenciesFileTemplate = AZStd::move(GetProjectDependenciesFileTemplate(g_cachedEngineRoot));
+            if (AZ::IO::FileIOBase::GetInstance()->Copy(projectDependenciesFileTemplate.c_str(), projectDependenciesFile.c_str()))
+            {
+                AZ_TracePrintf(AssetBundler::AppWindowName, "Copied project dependencies file template %s to the current project.\n",
+                    projectDependenciesFile.c_str());
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Failed to copy project dependencies file template %s from default project"
+                    " template to the current project.\n", projectDependenciesFileTemplate.c_str()));
+            }
+        }
+
+        // Add the project dependencies file to the seed list
+        AZStd::string relativeProductPath;
+        AzFramework::StringFunc::Path::GetFullFileName(projectDependenciesFile.c_str(), relativeProductPath);
+        AZStd::to_lower(relativeProductPath.begin(), relativeProductPath.end());
+        m_assetSeedManager->AddSeedAsset(relativeProductPath, platformFlags);
+
+        return AZ::Success();
+    }
+
     void ApplicationManager::PrintSeedList(const AZStd::string& seedListFileAbsolutePath)
     {
         AZ_Printf(AppWindowName, "\nContents of ( %s ):\n\n", seedListFileAbsolutePath.c_str());
@@ -1784,10 +1982,11 @@ namespace AssetBundler
     bool ApplicationManager::RunPlatformSpecificAssetListCommands(const AssetListsParams& params, AzFramework::PlatformFlags platformFlags)
     {
         using namespace AzToolsFramework;
-        AZStd::vector<AzFramework::PlatformId> platformIds = AzFramework::PlatformHelper::GetPlatformIndices(params.m_platformFlags);
+        AZStd::vector<AzFramework::PlatformId> platformIds = AzFramework::PlatformHelper::GetPlatformIndices(platformFlags);
+        AZStd::vector<AzFramework::PlatformId> platformIdsInterpreted = AzFramework::PlatformHelper::GetPlatformIndicesInterpreted(platformFlags);
 
         // Add Seeds
-        AZ::parallel_for_each(platformIds.begin(), platformIds.end(), [this, &params](AzFramework::PlatformId platformId)
+        for (const auto& platformId : platformIds)
         {
             AzFramework::PlatformFlags platformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
 
@@ -1795,7 +1994,19 @@ namespace AssetBundler
             {
                 m_assetSeedManager->AddSeedAsset(assetPath, platformFlag);
             }
-        });
+        }
+
+        AZStd::unordered_set<AZ::Data::AssetId> exclusionList;
+
+        for (const AZStd::string& asset : params.m_skipList)
+        {
+            AZ::Data::AssetId assetId = m_assetSeedManager->GetAssetIdByPath(asset, platformFlags);
+
+            if (assetId.IsValid())
+            {
+                exclusionList.emplace(assetId);
+            }
+        }
 
         // Print
         bool printExistingFiles = false;
@@ -1805,7 +2016,7 @@ namespace AssetBundler
                 && params.m_seedListFiles.empty()
                 && params.m_addSeedList.empty()
                 && !params.m_addDefaultSeedListFiles;
-            PrintAssetLists(params, platformIds, printExistingFiles);
+            PrintAssetLists(params, platformIdsInterpreted, printExistingFiles, exclusionList);
         }
 
         // Dry Run
@@ -1819,7 +2030,7 @@ namespace AssetBundler
         AZStd::atomic_uint failureCount = 0;
 
         // Save 
-        AZ::parallel_for_each(platformIds.begin(), platformIds.end(), [this, &params, &failureCount](AzFramework::PlatformId platformId)
+        AZ::parallel_for_each(platformIdsInterpreted.begin(), platformIdsInterpreted.end(), [this, &params, &failureCount, &exclusionList](AzFramework::PlatformId platformId)
         {
             AzFramework::PlatformFlags platformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
 
@@ -1847,7 +2058,7 @@ namespace AssetBundler
                 AZ_TracePrintf(AssetBundler::AppWindowName, "Saving Asset List Debug file to ( %s )...\n", debugListFileAbsolutePath.c_str());
             }
 
-            if (!m_assetSeedManager->SaveAssetFileInfo(assetListFileAbsolutePath, platformFlag, debugListFileAbsolutePath))
+            if (!m_assetSeedManager->SaveAssetFileInfo(assetListFileAbsolutePath, platformFlag, exclusionList, debugListFileAbsolutePath))
             {
                 SendErrorMetricEvent("Failed to save Asset List file.");
                 AZ_Error(AssetBundler::AppWindowName, false, "Unable to save Asset List file to ( %s ).\n", assetListFileAbsolutePath.c_str());
@@ -1861,7 +2072,7 @@ namespace AssetBundler
         return failureCount == 0;
     }
 
-    void ApplicationManager::PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles)
+    void ApplicationManager::PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles,const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
     {
         using namespace AzToolsFramework;
 
@@ -1895,7 +2106,7 @@ namespace AssetBundler
         {
             AzFramework::PlatformFlags platformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
 
-            AssetSeedManager::AssetsInfoList assetsInfoList = m_assetSeedManager->GetDependenciesInfo(platformId);
+            AssetSeedManager::AssetsInfoList assetsInfoList = m_assetSeedManager->GetDependenciesInfo(platformId, exclusionList);
 
             AZ_Printf(AssetBundler::AppWindowName, "\nPrinting assets for Platform ( %s ):\n", AzFramework::PlatformHelper::GetPlatformName(platformId));
 
@@ -1920,7 +2131,7 @@ namespace AssetBundler
 
         FilePath testFilePath;
 
-        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatforms(platformFlags))
+        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatformsInterpreted(platformFlags))
         {
             testFilePath = FilePath(platformIndependentFilePath.AbsolutePath(), platformName);
             if (!testFilePath.AbsolutePath().empty() && AZ::IO::FileIOBase::GetInstance()->Exists(testFilePath.AbsolutePath().c_str()))
@@ -2079,6 +2290,8 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Seed List file(s) that will be used as root(s) when generating this Asset List file.\n", SeedListFileArg);
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Seed(s) to use as root(s) when generating this Asset List File.\n", AddSeedArg);
         AZ_Printf(AppWindowName, "%-31s---Takes in a cache path to a pre-processed asset. A cache path is a path relative to \"...\\dev\\Cache\\ProjectName\\platform\\projectname\\\"\n", "");
+        AZ_Printf(AppWindowName, "    --%-25s-The specified files and all dependencies will be ignored when generating the Asset List file.\n", SkipArg);
+        AZ_Printf(AppWindowName, "%-31s---Takes in a comma-separated list of cache paths to pre-processed assets.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Automatically include all default Seed List files in generated Asset List File.\n", AddDefaultSeedListFilesFlag);
         AZ_Printf(AppWindowName, "%-31s---This will include Seed List files for the Lumberyard Engine and all enabled Gems.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the platform(s) to generate an Asset List file for.\n", PlatformArg);
@@ -2095,9 +2308,9 @@ namespace AssetBundler
     void ApplicationManager::OutputHelpComparisonRules()
     {
         using namespace AzToolsFramework;
-        AZ_Printf(AppWindowName, "\n%-25s-Subcommand for generating comparison rules files.\n", ComparisonRulesCommand);
+        AZ_Printf(AppWindowName, "\n%-25s-Subcommand for generating Comparison Rules files.\n", ComparisonRulesCommand);
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Comparison Rules file to operate on by path.\n", ComparisonRulesFileArg);
-        AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of comparison types.\n", ComparisonTypeArg);
+        AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of Comparison types.\n", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern).\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file pattern matching types.\n", ComparisonFilePatternTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Wildcard), 1 (Regex).\n", "");
@@ -2114,12 +2327,13 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Comparison Rules file to load rules from.\n", ComparisonRulesFileArg);
         AZ_Printf(AppWindowName, "%-31s---All additional comparison rules specified in this command will be done after the comparison operations loaded from the rules file.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of comparison types.\n", ComparisonTypeArg);
-        AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern).\n", "");
+        AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern), 5 (IntersectionCount).\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file pattern matching types.\n", ComparisonFilePatternTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Wildcard), 1 (Regex).\n", "");
         AZ_Printf(AppWindowName, "%-31s---Must match the number of FilePattern comparisons specified in ( --%s ) argument list.\n", "", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file patterns.\n", ComparisonFilePatternArg);
         AZ_Printf(AppWindowName, "%-31s---Must match the number of FilePattern comparisons specified in ( --%s ) argument list.\n", "", ComparisonTypeArg);
+        AZ_Printf(AppWindowName, "    --%-25s-Specifies the count that will be used during the %s compare operation.\n", IntersectionCountArg, AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::IntersectionCount)]);
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of first inputs for comparison.\n", CompareFirstFileArg);
         AZ_Printf(AppWindowName, "%-31s---Must match the number of comparison operations.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of second inputs for comparison.\n", CompareSecondFileArg);
@@ -2152,18 +2366,16 @@ namespace AssetBundler
     {
         using namespace AzToolsFramework;
         AZ_Printf(AppWindowName, "\n%-25s-Subcommand for generating bundles. Must provide either (--%s) or (--%s and --%s).\n", BundlesCommand, BundleSettingsFileArg, AssetListFileArg, OutputBundlePathArg);
-        AZ_Printf(AppWindowName, "    --%-25s-Specifies the Bundle Settings file to operate on by path. Must include (.%s) file extension.\n", BundleSettingsFileArg, AssetBundleSettings::GetBundleSettingsFileExtension());
+        AZ_Printf(AppWindowName, "    --%-25s-Specifies the Bundle Settings files to operate on by path. Must include (.%s) file extension.\n", BundleSettingsFileArg, AssetBundleSettings::GetBundleSettingsFileExtension());
         AZ_Printf(AppWindowName, "%-31s---If any other args are specified, they will override the values stored inside this file.\n", "");
-        AZ_Printf(AppWindowName, "    --%-25s-Sets the Asset List file to use for Bundle generation. Must include (.%s) file extension.\n", AssetListFileArg, AssetSeedManager::GetAssetListFileExtension());
-        AZ_Printf(AppWindowName, "    --%-25s-Sets the path where generated Bundles will be stored. Must include (.%s) file extension.\n", OutputBundlePathArg, AssetBundleSettings::GetBundleFileExtension());
-        AZ_Printf(AppWindowName, "    --%-25s-Determines which version of Lumberyard Bundles to generate. Current version is (%i).\n", BundleVersionArg, AzFramework::AssetBundleManifest::CurrentBundleVersion);
-        AZ_Printf(AppWindowName, "    --%-25s-Sets the maximum size for a single Bundle (in MB). Default size is (%i MB).\n", MaxBundleSizeArg, AssetBundleSettings::GetMaxBundleSizeInMB());
+        AZ_Printf(AppWindowName, "    --%-25s-Sets the Asset List files to use for Bundle generation. Must include (.%s) file extension.\n", AssetListFileArg, AssetSeedManager::GetAssetListFileExtension());
+        AZ_Printf(AppWindowName, "    --%-25s-Sets the paths where generated Bundles will be stored. Must include (.%s) file extension.\n", OutputBundlePathArg, AssetBundleSettings::GetBundleFileExtension());
+        AZ_Printf(AppWindowName, "    --%-25s-Determines which versions of Lumberyard Bundles to generate. Current version is (%i).\n", BundleVersionArg, AzFramework::AssetBundleManifest::CurrentBundleVersion);
+        AZ_Printf(AppWindowName, "    --%-25s-Sets the maximum size for Bundles (in MB). Default size is (%i MB).\n", MaxBundleSizeArg, AssetBundleSettings::GetMaxBundleSizeInMB());
         AZ_Printf(AppWindowName, "%-31s---Bundles larger than this limit will be divided into a series of smaller Bundles and named accordingly.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the platform(s) that will be referenced when generating Bundles.\n", PlatformArg);
         AZ_Printf(AppWindowName, "%-31s---If no platforms are specified, Bundles will be generated for all available platforms.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Allow destructive overwrites of files. Include this arg in automation.\n", AllowOverwritesFlag);
-        AZ_Printf(AppWindowName, "    --%-25s-[Testing] Specifies the Asset Catalog file referenced by all Bundle operations.\n", AssetCatalogFileArg);
-        AZ_Printf(AppWindowName, "%-31s---Designed to be used in Unit Tests.\n", "");
     }
 
     void ApplicationManager::OutputHelpBundleSeed()
@@ -2235,7 +2447,6 @@ namespace AssetBundler
 
     void ApplicationManager::InitMetrics()
     {
-#ifdef ENABLE_LY_METRICS
         static const uint32_t processIntervalInSeconds = 2;
         LyMetrics_Initialize(
             "AssetBundler",
@@ -2245,45 +2456,28 @@ namespace AssetBundler
             nullptr,
             LY_METRICS_BUILD_TIME);
         m_assetBundlerMetricId = LyMetrics_CreateEvent("assetBundlerRunEvent");
-#endif
     }
 
     void ApplicationManager::ShutDownMetrics()
     {
-#ifdef ENABLE_LY_METRICS
         LyMetrics_Shutdown();
-#endif
     }
 
     void ApplicationManager::SendErrorMetricEvent(const char *errorMessage) const
     {
-#ifdef ENABLE_LY_METRICS
         LyMetricIdType metricEventId = LyMetrics_CreateEvent("assetBundlerErrorEvent");
         LyMetrics_AddAttribute(metricEventId, "errorMessage", errorMessage);
         LyMetrics_SubmitEvent(metricEventId);
-#else
-        AZ_UNUSED(errorMessage);
-#endif
     }
 
     void ApplicationManager::AddFlagAttribute(const char* key, bool flagValue) const
     {
-#ifdef ENABLE_LY_METRICS
         LyMetrics_AddAttribute(m_assetBundlerMetricId, key, flagValue ? "set" : "clear");
-#else
-        AZ_UNUSED(key);
-        AZ_UNUSED(flagValue);
-#endif
     }
 
     void ApplicationManager::AddMetric(const char* metricName, double metricValue) const
     {
-#ifdef ENABLE_LY_METRICS
         LyMetrics_AddMetric(m_assetBundlerMetricId, metricName, metricValue);
-#else
-        AZ_UNUSED(metricName);
-        AZ_UNUSED(metricValue);
-#endif
     }
 
 } // namespace AssetBundler

@@ -12,7 +12,7 @@
 #include "ImageProcessing_precompiled.h"
 
 #include <ImageLoader/ImageLoaders.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 
 #include <QImage>
 #include <QImageReader>

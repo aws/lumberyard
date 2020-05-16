@@ -98,12 +98,6 @@ public: // member functions
     void SetFillClockwise(bool fillClockwise) override;
     bool GetFillCenter() override;
     void SetFillCenter(bool fillCenter) override;
-    AZ_DEPRECATED(void SetSpriteSheetCellIndex(AZ::u32 index) override, "Deprecated. Use UiIndexableImageInterface::SetImageIndex instead.");
-    AZ_DEPRECATED(const AZ::u32 GetSpriteSheetCellIndex() override, "Deprecated. Use UiIndexableImageInterface::GetImageIndex instead.");
-    AZ_DEPRECATED(const AZ::u32 GetSpriteSheetCellCount() override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexCount instead.");
-    AZ_DEPRECATED(AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexAlias instead.");
-    AZ_DEPRECATED(void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) override, "Deprecated. Use UiIndexableImageInterface::SetImageIndexAlias instead.");
-    AZ_DEPRECATED(AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexFromAlias instead.");
     // ~UiImageInterface
 
     // UiIndexableImageBus

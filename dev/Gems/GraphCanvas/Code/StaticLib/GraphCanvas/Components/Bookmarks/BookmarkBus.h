@@ -11,8 +11,11 @@
 */
 #pragma once
 
+// error C2220 : warning treated as error - no 'object' file generated
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QColor>
 #include <QRect>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
@@ -218,11 +221,11 @@ namespace GraphCanvas
 
         void SetVisibleArea(QRectF visibleArea)
         {
-            m_position.SetX(visibleArea.x());
-            m_position.SetY(visibleArea.y());
+            m_position.SetX(aznumeric_cast<float>(visibleArea.x()));
+            m_position.SetY(aznumeric_cast<float>(visibleArea.y()));
 
-            m_dimension.SetX(visibleArea.width());
-            m_dimension.SetY(visibleArea.height());
+            m_dimension.SetX(aznumeric_cast<float>(visibleArea.width()));
+            m_dimension.SetY(aznumeric_cast<float>(visibleArea.height()));
         }
 
         QRectF GetVisibleArea(const QPointF& center) const

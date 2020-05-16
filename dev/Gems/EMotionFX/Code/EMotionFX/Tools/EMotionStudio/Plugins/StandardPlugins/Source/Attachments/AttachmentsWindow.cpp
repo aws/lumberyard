@@ -20,6 +20,7 @@
 #include <EMotionStudio/EMStudioSDK/Source/FileManager.h>
 #include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #include <EMotionStudio/EMStudioSDK/Source/SaveChangedFilesManager.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include <MysticQt/Source/LinkWidget.h>
 #include <QAction>

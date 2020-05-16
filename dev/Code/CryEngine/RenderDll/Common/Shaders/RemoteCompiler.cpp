@@ -435,6 +435,9 @@ namespace NRemoteCompiler
         case AZ::PLATFORM_APPLE_TV:
             platformName = "iOS";
             break;
+        case AZ::PLATFORM_LINUX_64:
+            platformName = "Linux";
+            break;
         default:
             AZ_Assert(false, "Unknown shader platform");
             break;
@@ -1132,7 +1135,7 @@ namespace NRemoteCompiler
             size_t nUncompressedLen = (size_t)nSrcUncompressedLen;
 
             // Maximum size allowed for a shader in bytes
-            static const size_t maxShaderSize = 1*(1024*1024); // 1 MB
+            static const size_t maxShaderSize = 10ull * (1024ull * 1024ull); // 10 MB
 
             if (nUncompressedLen > maxShaderSize)
             {
@@ -1424,7 +1427,9 @@ namespace NRemoteCompiler
             VerboseLogging(true);
             if(!gEnv->IsInToolMode())
             {
-                EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
+                AZStd::vector<AZStd::string> options;
+                options.push_back("OK");
+                EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayBlockingDialog, title, message, options);
             }
         }
         return ESNetworkError;

@@ -17,7 +17,7 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(MotionSetNameHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionSetNameHandler, EditorAllocator, 0)
 
     AZ::u32 MotionSetNameHandler::GetHandlerName() const
     {

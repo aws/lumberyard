@@ -136,7 +136,7 @@ namespace AzFramework
         * \param[in] recurse - whether to search directories underneath pathToStart recursively
         * \returns AZ::Success and a list of files of matches found, an error string on an empty list
         */
-        AZ::Outcome < AZStd::list<AZStd::string>, AZStd::string> FindFileList(const AZStd::string& pathToStart, const char* pattern, bool recurse);
+        AZ::Outcome<AZStd::list<AZStd::string>, AZStd::string> FindFileList(const AZStd::string& pathToStart, const char* pattern, bool recurse);
     } // namespace FileFunc
 } // namespace AzFramework
 

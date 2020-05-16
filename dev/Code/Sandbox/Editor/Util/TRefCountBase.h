@@ -18,6 +18,7 @@
 #define CRYINCLUDE_EDITOR_UTIL_TREFCOUNTBASE_H
 #pragma once
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //////////////////////////////////////////////////////////////////////////
 //! Derive from this class to get reference counting for your class.
 //////////////////////////////////////////////////////////////////////////
@@ -25,6 +26,7 @@ template <class ParentClass>
 class CRYEDIT_API TRefCountBase
     : public ParentClass
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     TRefCountBase() { m_nRefCount = 0; };
 

@@ -69,7 +69,12 @@ AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--DockBarButton
 
 AzQtComponents--DockBarButton.close
 {
-    titlebar-close-icon: url(:/stylesheet/img/close.svg);
+    titlebar-close-icon: url(:/stylesheet/img/UI20/titlebar-close.svg);
+}
+
+AzQtComponents--DockBarButton.close:hover
+{
+    titlebar-close-icon: url(:/stylesheet/img/UI20/titlebar-close-hover.svg);
 }
 
 AzQtComponents--DockBarButton.maximize
@@ -77,13 +82,29 @@ AzQtComponents--DockBarButton.maximize
     titlebar-maximize-icon: url(:/stylesheet/img/UI20/titlebar-maximize.svg);
 }
 
+AzQtComponents--DockBarButton.maximize:hover
+{
+    titlebar-maximize-icon: url(:/stylesheet/img/UI20/titlebar-maximize-hover.svg);
+}
+
 AzQtComponents--DockBarButton.minimize
 {
     titlebar-minimize-icon: url(:/stylesheet/img/UI20/titlebar-minimize.svg);
+}
+
+AzQtComponents--DockBarButton.minimize:hover
+{
+    titlebar-minimize-icon: url(:/stylesheet/img/UI20/titlebar-minimize-hover.svg);
 }
 
 AzQtComponents--TitleBar AzQtComponents--TabBar::tab:first,
 AzQtComponents--TitleBar AzQtComponents--TabBar::tab:only
 {
     border-left: none;
+}
+
+AzQtComponents--TitleBar AzQtComponents--TabBar,
+AzQtComponents--TitleBar AzQtComponents--TabBar:tab
+{
+    border-top: none;
 }

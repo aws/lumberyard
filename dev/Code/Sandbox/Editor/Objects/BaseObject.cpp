@@ -57,6 +57,7 @@
 #include <QMenu>
 #include <QAction>
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 namespace {
     QColor kLinkColorParent = QColor(0, 255, 255);
@@ -815,7 +816,11 @@ bool CBaseObject::SetPos(const Vec3& pos, int flags)
         StoreUndo("Position", true, flags);
     }
 
-    m_height = pos.z - GetIEditor()->GetTerrainElevation(pos.x, pos.y);
+    float terrainElevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , pos.x, pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+    m_height = pos.z - terrainElevation;
 
     if (!bPositionDelegated)
     {
@@ -2211,9 +2216,14 @@ bool CBaseObject::IsHidden() const
     {
         return false;
     }
+
+#ifndef AZ_TESTS_ENABLED
     return (CheckFlags(OBJFLAG_HIDDEN)) ||
            ((m_layer && !m_layer->IsVisible())) ||
            (gSettings.objectHideMask & GetType());
+#else
+    return CheckFlags(OBJFLAG_HIDDEN);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3477,7 +3487,11 @@ void CBaseObject::UpdateVisibility(bool bVisible)
     bool bVisibleWithSpec = bVisible && !IsHiddenBySpec();
     if (bVisible == CheckFlags(OBJFLAG_INVISIBLE))
     {
-        GetObjectManager()->InvalidateVisibleList();
+        if (IObjectManager* objectManager = GetObjectManager())
+        {
+            objectManager->InvalidateVisibleList();
+        }
+
         if (!bVisible)
         {
             m_flags |= OBJFLAG_INVISIBLE;

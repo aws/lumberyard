@@ -98,6 +98,8 @@ namespace AssetProcessor
         // Populate the unresolved Dependencies in case AP shut down while waiting for path->ID resolution
         m_pathDependencyManager = AZStd::make_unique<PathDependencyManager>(this, m_platformConfig);
 
+        m_sourceFileRelocator = AZStd::make_unique<SourceFileRelocator>(m_stateData, m_platformConfig);
+
         PopulateJobStateCache();
 
         AssetProcessor::ProcessingJobInfoBus::Handler::BusConnect();
@@ -257,6 +259,7 @@ namespace AssetProcessor
             {
                 m_jobRunKeyToJobInfoMap.erase(jobEntry.m_jobRunKey);
                 Q_EMIT SourceFinished(sourceUUID, legacySourceUUID);
+                Q_EMIT JobComplete(jobEntry, status);
 
                 auto found = m_jobKeyToJobRunKeyMap.equal_range(jobEntry.m_jobKey.toUtf8().data());
 
@@ -554,10 +557,35 @@ namespace AssetProcessor
     }
 
     //! This request comes in and is expected to do whatever heuristic is required in order to determine if an asset actually exists in the database.
-    void AssetProcessorManager::OnRequestAssetExists(NetworkRequestID groupID, QString platform, QString searchTerm)
+    void AssetProcessorManager::OnRequestAssetExists(NetworkRequestID groupID, QString platform, QString searchTerm, AZ::Data::AssetId assetId)
     {
-        QString productName = GuessProductOrSourceAssetName(searchTerm, platform, false);
+        // if an assetId is available there is no guessing to do.
+        if (assetId.IsValid())
+        {
+            bool foundOne = false;
+            m_stateData->QueryCombinedBySourceGuidProductSubId(
+                assetId.m_guid,
+                assetId.m_subId,
+                [&foundOne](AzToolsFramework::AssetDatabase::CombinedDatabaseEntry& /*combinedDatabaseEntry*/)
+                {
+                    foundOne = true;
+                    return true;
+                }, 
+                AZ::Uuid::CreateNull(),
+                nullptr,
+                platform.toUtf8().constData(),
+                AzToolsFramework::AssetSystem::JobStatus::Any);
 
+            if (foundOne)
+            {
+                // the source exists.
+                Q_EMIT SendAssetExistsResponse(groupID, true);
+                return;
+            }
+        }
+
+        // otherwise, we have to guess
+        QString productName = GuessProductOrSourceAssetName(searchTerm, platform, false);
         Q_EMIT SendAssetExistsResponse(groupID, !productName.isEmpty());
     }
 
@@ -868,100 +896,104 @@ namespace AssetProcessor
                     // note that this is a relative path from the cache root dir itself, and thus does need to be lowered in its entirety.
                     newProductName = m_cacheRootDir.relativeFilePath(newProductName).toLower();
 
-                    // query all sources for this exact new product name
-                    // the intention here is to find out conflicts where two different sources produce the same exact product.
-                    AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer sources;
-                    if (m_stateData->GetSourcesByProductName(newProductName.toUtf8().constData(), sources))
+                    AzToolsFramework::AssetDatabase::JobDatabaseEntryContainer jobEntries;
+
+                    if (m_stateData->GetJobsByProductName(newProductName.toUtf8().constData(), jobEntries, AZ::Uuid::CreateNull(), QString(), QString(), AzToolsFramework::AssetSystem::JobStatus::Completed))
                     {
-                        for (const auto& source : sources)
+                        for (auto& job : jobEntries)
                         {
-                            if (azstricmp(source.m_sourceName.c_str(), itProcessedAsset->m_entry.m_databaseSourceName.toUtf8().constData()) != 0)
+                            AzToolsFramework::AssetDatabase::SourceDatabaseEntry source;
+                            if (m_stateData->GetSourceBySourceID(job.m_sourcePK, source))
                             {
-                                remove = true;
-                                //this means we have a dupe product name for a different source
-                                //usually this is caused by /blah/x.tif and an /blah/x.dds in the source folder
-                                //they both become /blah/x.dds in the cache
-                                //Not much of an option here, if we find a dupe we already lost access to the
-                                //first one in the db because it was overwritten. So do not commit this new one and
-                                //set the first for reprocessing. That way we will get the original back.
-
-                                //delete the original sources products
-                                AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer products;
-                                m_stateData->GetProductsBySourceID(source.m_sourceID, products);
-                                DeleteProducts(products);
-
-                                //set the fingerprint to failed
-                                AzToolsFramework::AssetDatabase::JobDatabaseEntryContainer jobs;
-                                m_stateData->GetJobsBySourceID(source.m_sourceID, jobs);
-                                for (auto& job : jobs)
+                                if (AzFramework::StringFunc::Equal(source.m_sourceName.c_str(), itProcessedAsset->m_entry.m_databaseSourceName.toUtf8().constData()))
                                 {
+                                    if (job.m_builderGuid != itProcessedAsset->m_entry.m_builderGuid && !AzFramework::StringFunc::Equal(job.m_jobKey.c_str(), itProcessedAsset->m_entry.m_jobKey.toUtf8().data())
+                                        && AzFramework::StringFunc::Equal(job.m_platform.c_str(), itProcessedAsset->m_entry.m_platformInfo.m_identifier.c_str()))
+                                    {
+                                        // If we are here it implies that for the same source file we have another job that outputs the same product.
+                                        // This is usually the case when two builders process the same source file and outputs the same product file. 
+                                        remove = true;
+                                        AZStd::string consoleMsg = AZStd::string::format("Failing Job (source : %s , jobkey %s) because another job (source : %s , jobkey : %s ) outputted the same product %s.\n",
+                                            itProcessedAsset->m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(), itProcessedAsset->m_entry.m_jobKey.toUtf8().data(), source.m_sourceName.c_str(), job.m_jobKey.c_str(), newProductName.toUtf8().constData());
+
+                                        QString duplicateProduct = m_cacheRootDir.absoluteFilePath(newProductName);
+
+                                        AZStd::string autoFailReason = AZStd::string::format(
+                                            "Source file ( %s ) and builder (%s) are also outputting the product (%s)."
+                                            "Please ensure that for the same source file, multiple builders do not output the same product file in the cache.\n",
+                                            source.m_sourceName.c_str(),
+                                            job.m_builderGuid.ToString<AZStd::string>().c_str(),
+                                            duplicateProduct.toUtf8().data());
+
+                                        AutoFailJob(consoleMsg, autoFailReason, itProcessedAsset);
+                                    }
+                                }
+                                else
+                                {
+                                    remove = true;
+                                    //this means we have a dupe product name for a different source
+                                    //usually this is caused by /blah/x.tif and an /blah/x.dds in the source folder
+                                    //they both become /blah/x.dds in the cache
+                                    //Not much of an option here, if we find a dupe we already lost access to the
+                                    //first one in the db because it was overwritten. So do not commit this new one and
+                                    //set the first for reprocessing. That way we will get the original back.
+
+                                    //delete the original sources products
+                                    AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer products;
+                                    m_stateData->GetProductsBySourceID(source.m_sourceID, products);
+                                    DeleteProducts(products);
+
+                                    //set the fingerprint to failed
                                     job.m_fingerprint = FAILED_FINGERPRINT;
                                     m_stateData->SetJob(job);
-                                }
 
-                                //delete product files for this new source
-                                for (const auto& outputProduct : itProcessedAsset->m_response.m_outputProducts)
-                                {
-                                    // The product file path is always lower cased, we can't check that for existance.
-                                    // Let rebuild a fs sensitive file path by replacing the cache path.
-                                    // We assume any file paths normalized, ie no .. nor (back) slashes.
-                                    const QString outputProductFilePath = m_cacheRootDir.filePath(outputProduct.m_productFileName.substr(m_normalizedCacheRootPath.length() +1).c_str());
-
-                                    if (!QFile::exists(outputProductFilePath))
+                                    //delete product files for this new source
+                                    for (const auto& outputProduct : itProcessedAsset->m_response.m_outputProducts)
                                     {
-                                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was expecting to delete product file %s... but it already appears to be gone. \n", qUtf8Printable(outputProductFilePath));
+                                        // The product file path is always lower cased, we can't check that for existance.
+                                        // Let rebuild a fs sensitive file path by replacing the cache path.
+                                        // We assume any file paths normalized, ie no .. nor (back) slashes.
+                                        const QString outputProductFilePath = m_cacheRootDir.filePath(outputProduct.m_productFileName.substr(m_normalizedCacheRootPath.length() + 1).c_str());
+
+                                        if (!QFile::exists(outputProductFilePath))
+                                        {
+                                            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was expecting to delete product file %s... but it already appears to be gone. \n", qUtf8Printable(outputProductFilePath));
+                                        }
+                                        else if (!QFile::remove(outputProductFilePath))
+                                        {
+                                            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was unable to delete product file %s...\n", qUtf8Printable(outputProductFilePath));
+                                        }
+                                        else
+                                        {
+                                            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleted product file %s\n", qUtf8Printable(outputProductFilePath));
+                                        }
                                     }
-                                    else if (!QFile::remove(outputProductFilePath))
+
+                                    //let people know what happened
+                                    AZStd::string consoleMsg = AZStd::string::format("%s has failed because another source %s has already produced the same product %s. Rebuild the original Source.\n",
+                                        itProcessedAsset->m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(), source.m_sourceName.c_str(), newProductName.toUtf8().constData());
+
+                                    //recycle the original source
+                                    AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanfolder;
+                                    AZStd::string fullSourcePath = source.m_sourceName;
+                                    if (m_stateData->GetScanFolderByScanFolderID(source.m_scanFolderPK, scanfolder))
                                     {
-                                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was unable to delete product file %s...\n", qUtf8Printable(outputProductFilePath));
+                                        fullSourcePath = AZStd::string::format("%s/%s", scanfolder.m_scanFolder.c_str(), source.m_sourceName.c_str());
+                                        AssessFileInternal(fullSourcePath.c_str(), false);
                                     }
-                                    else
-                                    {
-                                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleted product file %s\n", qUtf8Printable(outputProductFilePath));
-                                    }
-                                }
 
-                                //let people know what happened
-                                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "%s has failed because another source %s has already produced the same product %s. Rebuild the original Source.\n",
-                                    itProcessedAsset->m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(), source.m_sourceName.c_str(), newProductName.toUtf8().constData());
+                                    QString duplicateProduct = m_cacheRootDir.absoluteFilePath(newProductName);
 
-                                //recycle the original source
-                                AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanfolder;
-                                AZStd::string fullSourcePath = source.m_sourceName;
-                                if (m_stateData->GetScanFolderByScanFolderID(source.m_scanFolderPK, scanfolder))
-                                {
-                                    fullSourcePath = AZStd::string::format("%s/%s", scanfolder.m_scanFolder.c_str(), source.m_sourceName.c_str());
-                                    AssessFileInternal(fullSourcePath.c_str(), false);
-                                }
-
-                                QString duplicateProduct = m_cacheRootDir.absoluteFilePath(newProductName);
-
-                                JobDetails jobdetail;
-                                jobdetail.m_jobEntry = JobEntry(
-                                    itProcessedAsset->m_entry.m_watchFolderPath, 
-                                    itProcessedAsset->m_entry.m_pathRelativeToWatchFolder,
-                                    itProcessedAsset->m_entry.m_databaseSourceName,
-                                    itProcessedAsset->m_entry.m_builderGuid, 
-                                    itProcessedAsset->m_entry.m_platformInfo, 
-                                    itProcessedAsset->m_entry.m_jobKey, 0, GenerateNewJobRunKey(), 
-                                    itProcessedAsset->m_entry.m_sourceFileUUID);
-                                jobdetail.m_autoFail = true;
-                                jobdetail.m_critical = true;
-                                jobdetail.m_priority = INT_MAX; // front of the queue.                                
-                                jobdetail.m_scanFolder = m_platformConfig->GetScanFolderForFile(itProcessedAsset->m_entry.GetAbsoluteSourcePath());
-                                // the new lines make it easier to copy and paste the file names.
-                                jobdetail.m_jobParam[AZ_CRC(AutoFailReasonKey)] = AZStd::string::format(
+                                    AZStd::string autoFailReason = AZStd::string::format(
                                         "A different source file\n%s\nis already outputting the product\n%s\n"
                                         "Please check other files in the same folder as source file and make sure no two sources output the product file.\n"
                                         "For example, you can't have a DDS file and a TIF file in the same folder, as they would cause overwriting.\n",
                                         fullSourcePath.c_str(),
                                         duplicateProduct.toUtf8().data());
 
-                                // this is a failure, so make sure that the system that is tracking files
-                                // knows that this file must not be skipped next time:
-                                UpdateAnalysisTrackerForFile(itProcessedAsset->m_entry, AnalysisTrackerUpdateType::JobFailed);
+                                    AutoFailJob(consoleMsg, autoFailReason, itProcessedAsset);
+                                }
 
-                                Q_EMIT AssetToProcess(jobdetail);// forwarding this job to rccontroller to fail it
                             }
                         }
                     }
@@ -1150,7 +1182,7 @@ namespace AssetProcessor
                 AZ::Data::AssetId legacyAssetId(priorProduct.m_legacyGuid, 0);
                 AZ::Data::AssetId legacySourceAssetId(AssetUtilities::CreateSafeSourceUUIDFromName(source.m_sourceName.c_str(), false), priorProduct.m_subID);
 
-                AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetRemoved, priorProduct.m_assetType);
+                AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetRemoved, priorProduct.m_assetType, processedAsset.m_entry.m_platformInfo.m_identifier.c_str());
                 message.m_assetId = assetId;
 
                 if (legacyAssetId != assetId)
@@ -1186,7 +1218,7 @@ namespace AssetProcessor
 
                         // we still need to tell everyone that its gone!
 
-                        Q_EMIT AssetMessage(processedAsset.m_entry.m_platformInfo.m_identifier.c_str(), message); // we notify that we are aware of a missing product either way.
+                        Q_EMIT AssetMessage(message); // we notify that we are aware of a missing product either way.
                     }
                     else
                     {
@@ -1201,7 +1233,7 @@ namespace AssetProcessor
                         else
                         {
                             AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleting file %s because the recompiled input file no longer emitted that product.\n", fullProductPath.toUtf8().constData());
-                            Q_EMIT AssetMessage(QString(processedAsset.m_entry.m_platformInfo.m_identifier.c_str()), message); // we notify that we are aware of a missing product either way.
+                            Q_EMIT AssetMessage(message); // we notify that we are aware of a missing product either way.
                         }
                     }
                 }
@@ -1251,7 +1283,7 @@ namespace AssetProcessor
                 auto pathDependencies = AZStd::move(pair.second->m_pathDependencies);
 
                 AZStd::vector<AssetBuilderSDK::ProductDependency> resolvedDependencies;
-                m_pathDependencyManager->ResolveDependencies(pathDependencies, resolvedDependencies, job.m_platform);
+                m_pathDependencyManager->ResolveDependencies(pathDependencies, resolvedDependencies, job.m_platform, pair.first.m_productName);
 
                 AZStd::vector<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry> unresolvedProductDependencies;
                 auto queryFunc = [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& productDependencyData)
@@ -1285,7 +1317,7 @@ namespace AssetProcessor
                 // Add the resolved path dependencies to the dependency container
                 for (const auto& resolvedPathDep : resolvedDependencies)
                 {
-                    dependencySet.emplace(pair.first.m_productID, resolvedPathDep.m_dependencyId.m_guid, resolvedPathDep.m_dependencyId.m_subId, resolvedPathDep.m_flags, job.m_platform);
+                    dependencySet.emplace(pair.first.m_productID, resolvedPathDep.m_dependencyId.m_guid, resolvedPathDep.m_dependencyId.m_subId, resolvedPathDep.m_flags, job.m_platform, false);
                 }
 
                 AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer dependencyContainer;
@@ -1322,7 +1354,7 @@ namespace AssetProcessor
                 relativeProductPath = relativeProductPath.right(relativeProductPath.length() - relativeProductPath.indexOf('/') - 1); // remove PLATFORM and an extra slash
                 relativeProductPath = relativeProductPath.right(relativeProductPath.length() - relativeProductPath.indexOf('/') - 1); // remove GAMENAME and an extra slash
 
-                AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetChanged, newProduct.m_assetType);
+                AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetChanged, newProduct.m_assetType, processedAsset.m_entry.m_platformInfo.m_identifier.c_str());
                 AZ::Data::AssetId assetId(source.m_sourceGuid, newProduct.m_subID);
                 AZ::Data::AssetId legacyAssetId(newProduct.m_legacyGuid, 0);
                 AZ::Data::AssetId legacySourceAssetId(AssetUtilities::CreateSafeSourceUUIDFromName(source.m_sourceName.c_str(), false), newProduct.m_subID);
@@ -1357,7 +1389,7 @@ namespace AssetProcessor
                     }
                 }
 
-                Q_EMIT AssetMessage(QString(processedAsset.m_entry.m_platformInfo.m_identifier.c_str()), message);
+                Q_EMIT AssetMessage( message);
                 
                 AddKnownFoldersRecursivelyForFile(fullProductPath, m_cacheRootDir.absolutePath());
             }
@@ -1416,7 +1448,7 @@ namespace AssetProcessor
             // Build up the list of new dependencies
             for (auto& productDependency : jobProduct->m_dependencies)
             {
-                dependencyContainer.emplace(newProduct.m_productID, productDependency.m_dependencyId.m_guid, productDependency.m_dependencyId.m_subId, productDependency.m_flags, platform);
+                dependencyContainer.emplace(newProduct.m_productID, productDependency.m_dependencyId.m_guid, productDependency.m_dependencyId.m_subId, productDependency.m_flags, platform, true);
             }
         }
     }
@@ -1502,6 +1534,22 @@ namespace AssetProcessor
                     return;
                 }
 
+                // Record the modtime for the metadata file so we don't re-analyize this change again next time AP starts up
+                QFileInfo metadataFileInfo(originalName);
+                auto* scanFolder = m_platformConfig->GetScanFolderForFile(originalName);
+                
+                if (scanFolder)
+                {
+                    QString databaseName;
+                    m_platformConfig->ConvertToRelativePath(originalName, scanFolder, databaseName);
+
+                    m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), metadataFileInfo.lastModified().toMSecsSinceEpoch());
+                }
+                else
+                {
+                    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Failed to find scanfolder for metadata file %s\n", originalName.toUtf8().constData());
+                }
+
                 // the casing might be different, too, so retrieve the actual case of the actual source file here:
                 normalizedFilePath = newInfo.absoluteDir().absoluteFilePath(actualCasing[0]);
                 break;
@@ -1538,7 +1586,7 @@ namespace AssetProcessor
                     continue;
                 }
 
-                if (absolutePath.startsWith(m_placeHolderFileName))
+                if (absolutePath.startsWith(PlaceHolderFileName))
                 {
                     // its a missing file, so don't add it to the queue.
                     continue;
@@ -1694,14 +1742,19 @@ namespace AssetProcessor
             QString relativeProductPath(product.m_productName.c_str());
             relativeProductPath = relativeProductPath.right(relativeProductPath.length() - relativeProductPath.indexOf('/') - 1); // also consume the extra slash - remove PLATFORM
             relativeProductPath = relativeProductPath.right(relativeProductPath.length() - relativeProductPath.indexOf('/') - 1); // also consume the extra slash - remove GAMENAME
-
-            if (QFile::exists(fullProductPath))
+            QFileInfo productFileInfo(fullProductPath);
+            if (productFileInfo.exists())
             {
                 AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleting file %s because either its source file %s was removed or the builder did not emit this job.\n", fullProductPath.toUtf8().constData(), source.m_sourceName.c_str());
 
                 AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, fullProductPath.toUtf8().data());
                 successfullyRemoved &= QFile::remove(fullProductPath);
                 AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::EndCacheFileUpdate, fullProductPath.toUtf8().data(), false);
+
+                if(productFileInfo.absoluteDir().entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot).empty())
+                {
+                    productFileInfo.absoluteDir().rmdir(".");
+                }
 
                 if (successfullyRemoved)
                 {
@@ -1720,7 +1773,7 @@ namespace AssetProcessor
                     AZ::Data::AssetId legacyAssetId(product.m_legacyGuid, 0);
                     AZ::Data::AssetId legacySourceAssetId(AssetUtilities::CreateSafeSourceUUIDFromName(source.m_sourceName.c_str(), false), product.m_subID);
 
-                    AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetRemoved, product.m_assetType);
+                    AssetNotificationMessage message(relativeProductPath.toUtf8().constData(), AssetNotificationMessage::AssetRemoved, product.m_assetType, job.m_platform.c_str());
                     message.m_assetId = assetId;
 
                     if (legacyAssetId != assetId)
@@ -1732,7 +1785,7 @@ namespace AssetProcessor
                     {
                         message.m_legacyAssetIds.push_back(legacySourceAssetId);
                     }
-                    Q_EMIT AssetMessage(job.m_platform.c_str(), message);
+                    Q_EMIT AssetMessage( message);
 
                     QString parentFolderName = QFileInfo(fullProductPath).absolutePath();
                     m_checkFoldersToRemove.insert(parentFolderName);
@@ -1770,7 +1823,7 @@ namespace AssetProcessor
                 AssessFileInternal(absolutePath, false);
             }
             // also, update it in the database to be missing, ie, add the "missing file" prefix:
-            existingEntry.m_dependsOnSource = QString(m_placeHolderFileName + relativePath).toUtf8().constData();
+            existingEntry.m_dependsOnSource = QString(PlaceHolderFileName + relativePath).toUtf8().constData();
             m_stateData->RemoveSourceFileDependency(existingEntry.m_sourceDependencyID);
             m_stateData->SetSourceFileDependency(existingEntry);
         }
@@ -2051,7 +2104,7 @@ namespace AssetProcessor
                     QString fullProductPath = m_cacheRootDir.absoluteFilePath(product.m_productName.c_str());
                     if (!QFile::exists(fullProductPath))
                     {
-                        AZ_TracePrintf(AssetProcessor::DebugChannel, "CheckModifiedInputAsset: (%s) is missing a product (%s) on %s\n", jobDetails.m_jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(), product.m_productName.c_str(), jobDetails.m_jobEntry.m_platformInfo.m_identifier.c_str());
+                        AZ_TracePrintf(AssetProcessor::DebugChannel, "AnalyzeJob: (%s) is missing a product (%s) on %s\n", jobDetails.m_jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(), product.m_productName.c_str(), jobDetails.m_jobEntry.m_platformInfo.m_identifier.c_str());
                         shouldProcessAsset = true;
                     }
                     else
@@ -2060,6 +2113,12 @@ namespace AssetProcessor
                         AddKnownFoldersRecursivelyForFile(fullProductPath, absoluteCacheRoot);
                     }
                 }
+            }
+
+            if (jobDetails.m_autoProcessJob)
+            {
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "AnalyzeJob: auto process job for source '%s' job key '%s' platform '%s') \n", jobDetails.m_jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(), jobDetails.m_jobEntry.m_jobKey.toUtf8().constData() , jobDetails.m_jobEntry.m_platformInfo.m_identifier.c_str());
+                shouldProcessAsset = true;
             }
         }
         else
@@ -2515,7 +2574,7 @@ namespace AssetProcessor
                         }
                         // keep track of its parent folder so that if it is deleted later we know it is a folder
                         // delete and not a file delete.
-                        m_knownFolders.insert(AssetUtilities::NormalizeFilePath(fileInfo.absolutePath()));
+                        AddKnownFoldersRecursivelyForFile(normalizedPath, scanFolderName);
 
                         if (normalizedPath.toUtf8().length() > normalizedPath.length())
                         {
@@ -3069,9 +3128,14 @@ namespace AssetProcessor
         // this is because we want to take the fingerprint of SOURCE FILES for source dependencies
         // but for jobs we want the fingerprint of the job itself, not that job's source files.
         QueryAbsolutePathDependenciesRecursive(job.m_jobEntry.m_databaseSourceName, job.m_fingerprintFiles, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceToSource, false);
-        
-        QString absoluteFullPath = QDir(job.m_jobEntry.m_watchFolderPath).absoluteFilePath(job.m_jobEntry.m_pathRelativeToWatchFolder);
-        AddMetadataFilesForFingerprinting(absoluteFullPath, job.m_fingerprintFiles);
+
+        // Add metadata files for all the fingerprint files
+        auto fingerprintFilesCopy = job.m_fingerprintFiles;
+
+        for (const auto& kvp : fingerprintFilesCopy)
+        {
+            AddMetadataFilesForFingerprinting(kvp.first.c_str(), job.m_fingerprintFiles);
+        }
         
         // Check the current builder jobs with the previous ones in the database:
         job.m_jobEntry.m_computedFingerprint = AssetUtilities::GenerateFingerprint(job);
@@ -3096,20 +3160,21 @@ namespace AssetProcessor
         else
         {
             // we're about to drop the job because its already up to date, so that's one job that is "Finished"
+            QString absoluteFullPath = QDir(job.m_jobEntry.m_watchFolderPath).absoluteFilePath(job.m_jobEntry.m_pathRelativeToWatchFolder);
             UpdateAnalysisTrackerForFile(absoluteFullPath.toUtf8().constData(), AnalysisTrackerUpdateType::JobFinished);
         }
     }
 
     void AssetProcessorManager::UpdateJobDependency(JobDetails& job)
     {
-        for(size_t jobDependencySlot = 0; jobDependencySlot < job.m_jobDependencyList.size(); ++jobDependencySlot)
+        for(size_t jobDependencySlot = 0; jobDependencySlot < job.m_jobDependencyList.size();)
         {
             AssetProcessor::JobDependencyInternal* jobDependencyInternal = &job.m_jobDependencyList[jobDependencySlot];
             AssetBuilderSDK::SourceFileDependency& sourceFileDependency = jobDependencyInternal->m_jobDependency.m_sourceFile;
             if (sourceFileDependency.m_sourceFileDependencyUUID.IsNull() && sourceFileDependency.m_sourceFileDependencyPath.empty())
             {
                 AZ_Warning(AssetProcessor::DebugChannel, false, "Unable to resolve job dependency for job %s - %s\n", job.ToString().c_str(), sourceFileDependency.ToString().c_str());
-                jobDependencyInternal = job.m_jobDependencyList.erase(jobDependencyInternal);
+                job.m_jobDependencyList.erase(jobDependencyInternal);
                 continue;
             }
 
@@ -3120,10 +3185,30 @@ namespace AssetProcessor
                 AZ_Warning(AssetProcessor::DebugChannel, false, "Unable to resolve job dependency for job (%s, %s, %s)\n",
                     job.m_jobEntry.m_databaseSourceName.toUtf8().data(), job.m_jobEntry.m_jobKey.toUtf8().data(),
                     job.m_jobEntry.m_platformInfo.m_identifier.c_str(), sourceFileDependency.m_sourceFileDependencyUUID.ToString<AZStd::string>().c_str());
+                job.m_jobDependencyList.erase(jobDependencyInternal);
                 continue;
             }
 
             sourceFileDependency.m_sourceFileDependencyPath = AssetUtilities::NormalizeFilePath(databaseSourceName).toUtf8().data();
+
+            if (jobDependencyInternal->m_jobDependency.m_type == AssetBuilderSDK::JobDependencyType::OrderOnce)
+            {
+                // If the database knows about the job than it implies that AP has processed it sucessfully at least once
+                // and therefore the dependent job should not cause the job which depends on it to be processed again.
+                // If however we find a dependent job which is not known to AP then we know this job needs to be processed 
+                // after all the dependent jobs have completed at least once.
+
+                AzToolsFramework::AssetDatabase::JobDatabaseEntryContainer jobs;
+                if (m_stateData->GetJobsBySourceName(sourceFileDependency.m_sourceFileDependencyPath.c_str(), jobs, AZ::Uuid::CreateNull(), jobDependencyInternal->m_jobDependency.m_jobKey.c_str(), jobDependencyInternal->m_jobDependency.m_platformIdentifier.c_str(), AzToolsFramework::AssetSystem::JobStatus::Completed))
+                {
+                    jobDependencyInternal = job.m_jobDependencyList.erase(jobDependencyInternal);
+                    continue;
+                }
+
+                // Since dependent job fingerprint do not affect the fingerprint of this job, we need to always process
+                // this job if either it is a new dependency or if the dependent job failed last time, which we check by querying the database.
+                job.m_autoProcessJob = true;
+            }
 
             {
                 // Listing all the builderUuids that have the same (sourcefile,platform,jobKey) for this job dependency
@@ -3161,6 +3246,8 @@ namespace AssetProcessor
             {
                 UpdateWildcardDependencies(job, jobDependencySlot, resolvedList);
             }
+
+            ++jobDependencySlot;
         }
         // sorting job dependencies as they can effect the fingerprint of the job 
         AZStd::sort(job.m_jobDependencyList.begin(), job.m_jobDependencyList.end(),
@@ -3452,7 +3539,7 @@ namespace AssetProcessor
             if (!SearchSourceInfoBySourceUUID(sourceDependency.m_sourceFileDependencyUUID, resultSourceInfo))
             {
                 // unable to resolve it, encode it instead, force use of brackets:
-                resultDatabaseSourceName = m_placeHolderFileName + sourceDependency.m_sourceFileDependencyUUID.ToString<AZStd::string>(true /*isBrackets*/).c_str();
+                resultDatabaseSourceName = QString(PlaceHolderFileName) + sourceDependency.m_sourceFileDependencyUUID.ToString<AZStd::string>(true /*isBrackets*/).c_str();
             }
             else
             {
@@ -3491,7 +3578,7 @@ namespace AssetProcessor
                 QString absolutePath = m_platformConfig->FindFirstMatchingFile(encodedFileData);
                 if (absolutePath.isEmpty())
                 {
-                    resultDatabaseSourceName = m_placeHolderFileName + encodedFileData;
+                    resultDatabaseSourceName = QString(PlaceHolderFileName) + encodedFileData;
                 }
                 else
                 {
@@ -3554,15 +3641,17 @@ namespace AssetProcessor
                     sourceDependency.first,
                     entry.m_sourceFileInfo.m_databasePath.toUtf8().constData(),
                     thisEntry.toUtf8().constData(),
-                    SourceFileDependencyEntry::DEP_SourceToSource);
+                    SourceFileDependencyEntry::DEP_SourceToSource,
+                    false);
                 newDependencies.push_back(AZStd::move(newDependencyEntry));
             }
 
             SourceFileDependencyEntry newDependencyEntry(
                 sourceDependency.first,
                 entry.m_sourceFileInfo.m_databasePath.toUtf8().constData(),
-                resolvedDatabaseName.toUtf8().constData(),
-                sourceDependency.second.m_sourceDependencyType == AssetBuilderSDK::SourceFileDependency::SourceFileDependencyType::Wildcards ? SourceFileDependencyEntry::DEP_SourceLikeMatch : SourceFileDependencyEntry::DEP_SourceToSource);
+                resolvedDatabaseName.toUtf8().constData(), 
+                sourceDependency.second.m_sourceDependencyType == AssetBuilderSDK::SourceFileDependency::SourceFileDependencyType::Wildcards ? SourceFileDependencyEntry::DEP_SourceLikeMatch : SourceFileDependencyEntry::DEP_SourceToSource,
+                !sourceDependency.second.m_sourceFileDependencyUUID.IsNull()); // If the UUID is null, then record that this dependency came from a (resolved) path
             newDependencies.push_back(AZStd::move(newDependencyEntry));
         }
 
@@ -3587,7 +3676,8 @@ namespace AssetProcessor
                         builderId,
                         entry.m_sourceFileInfo.m_databasePath.toUtf8().constData(),
                         thisEntry.toUtf8().constData(),
-                        SourceFileDependencyEntry::DEP_JobToJob);   // significant line in this code block
+                        SourceFileDependencyEntry::DEP_JobToJob,   // significant line in this code block
+                        false);
                     newDependencies.push_back(AZStd::move(newDependencyEntry));
                 }
 
@@ -3595,7 +3685,8 @@ namespace AssetProcessor
                     builderId,
                     entry.m_sourceFileInfo.m_databasePath.toUtf8().constData(),
                     resolvedDatabaseName.toUtf8().constData(),
-                    jobDependency.m_jobDependency.m_sourceFile.m_sourceDependencyType == AssetBuilderSDK::SourceFileDependency::SourceFileDependencyType::Wildcards ? SourceFileDependencyEntry::DEP_SourceLikeMatch : SourceFileDependencyEntry::DEP_JobToJob);   // significant line in this code block
+                    jobDependency.m_jobDependency.m_sourceFile.m_sourceDependencyType == AssetBuilderSDK::SourceFileDependency::SourceFileDependencyType::Wildcards ? SourceFileDependencyEntry::DEP_SourceLikeMatch : SourceFileDependencyEntry::DEP_JobToJob,    // significant line in this code block
+                    !entry.m_sourceFileInfo.m_uuid.IsNull());
                 newDependencies.push_back(AZStd::move(newDependencyEntry));
 
             }
@@ -3625,8 +3716,8 @@ namespace AssetProcessor
         // if we find anything, we have to re-queue it.
         // so do another search - this time, on our placeholder.
         // note that if it IS a place holder, it won't have an output prefix, so we use the relative path, not the database path.
-        QString ourNameWithPlaceholder = m_placeHolderFileName + entry.m_sourceFileInfo.m_pathRelativeToScanFolder;
-        QString ourUUIDWithPlaceholder = m_placeHolderFileName + entry.m_sourceFileInfo.m_uuid.ToString<AZStd::string>().c_str();
+        QString ourNameWithPlaceholder = QString(PlaceHolderFileName) + entry.m_sourceFileInfo.m_pathRelativeToScanFolder;
+        QString ourUUIDWithPlaceholder = QString(PlaceHolderFileName) + entry.m_sourceFileInfo.m_uuid.ToString<AZStd::string>().c_str();
 
         SourceFileDependencyEntryContainer results;
         m_stateData->GetSourceFileDependenciesByDependsOnSource(ourNameWithPlaceholder, SourceFileDependencyEntry::DEP_Any, results);
@@ -3669,7 +3760,7 @@ namespace AssetProcessor
         QMutexLocker locker(&m_processingJobMutex);
         m_processingProductInfoList.insert(productPath);
 
-        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileClaimed, AZ::Data::s_invalidAssetType);
+        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileClaimed, AZ::Data::s_invalidAssetType, "");
         AssetProcessor::ConnectionBus::Broadcast(&AssetProcessor::ConnectionBus::Events::Send, 0, message);
     }
 
@@ -3682,7 +3773,7 @@ namespace AssetProcessor
             QMetaObject::invokeMethod(this, "AssessDeletedFile", Qt::QueuedConnection, Q_ARG(QString, QString::fromUtf8(productPath)));
         }
 
-        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileReleased, AZ::Data::s_invalidAssetType);
+        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileReleased, AZ::Data::s_invalidAssetType, "");
         AssetProcessor::ConnectionBus::Broadcast(&AssetProcessor::ConnectionBus::Events::Send, 0, message);
     }
 
@@ -4219,13 +4310,13 @@ namespace AssetProcessor
             m_stateData->SetSource(source);
 
             databaseSourceName = source.m_sourceName.c_str();
-            scanFolderPk = source.m_scanFolderPK;
+            scanFolderPk = aznumeric_cast<int>(source.m_scanFolderPK);
         }
         else
         {
             const ScanFolderInfo* scanFolder = m_platformConfig->GetScanFolderForFile(fileToCheck.c_str());
 
-            scanFolderPk = scanFolder->ScanFolderID();
+            scanFolderPk = aznumeric_cast<int>(scanFolder->ScanFolderID());
             m_platformConfig->ConvertToRelativePath(fileToCheck.c_str(), scanFolder, databaseSourceName);
         }
 
@@ -4246,13 +4337,16 @@ namespace AssetProcessor
         m_allowModtimeSkippingFeature = enable;
     }
 
+    void AssetProcessorManager::SetQueryLogging(bool enableLogging)
+    {
+        m_stateData->SetQueryLogging(enableLogging);
+    }
+
     void AssetProcessorManager::ScanForMissingProductDependencies(QString pattern, int maxScanIteration)
     {
-#ifdef ENABLE_LY_METRICS
         LyMetricIdType metricEventId = LyMetrics_CreateEvent("missingDependencyScanEvent");
         QElapsedTimer scanTime;
         scanTime.start();
-#endif
         AZ_Printf(
             "AssetProcessor",
             "\n----------------\nPerforming dependency scan using pattern %s"
@@ -4287,10 +4381,8 @@ namespace AssetProcessor
                 m_missingDependencyScanner.ScanFile(fullPath, maxScanIteration, entry.m_productID, container, m_stateData.get());
                 return true;
             });
-#ifdef ENABLE_LY_METRICS
-        LyMetrics_AddMetric(metricEventId, "ScanTime", scanTime.elapsed());
+        LyMetrics_AddMetric(metricEventId, "ScanTime", static_cast<double>(scanTime.elapsed()));
         LyMetrics_SubmitEvent(metricEventId);
-#endif
     }
 
     void AssetProcessorManager::QueryAbsolutePathDependenciesRecursive(QString inputDatabasePath, SourceFilesForFingerprintingContainer& finalDependencyList, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency dependencyType, bool reverseQuery)
@@ -4305,13 +4397,13 @@ namespace AssetProcessor
             QString toSearch = *queryQueue.begin();
             queryQueue.erase(queryQueue.begin());
 
-            if (toSearch.startsWith(m_placeHolderFileName))
+            if (toSearch.startsWith(PlaceHolderFileName))
             {
                 if (!reverseQuery)
                 {
                     // a placeholder means that it could not be resolved because the file does not exist.
                     // we still add it to the queue so recursion can happen:
-                    toSearch = toSearch.mid(m_placeHolderFileName.length());
+                    toSearch = toSearch.mid(static_cast<int>(strlen(PlaceHolderFileName)));
                 }
             }
 
@@ -4348,7 +4440,7 @@ namespace AssetProcessor
         for (const QString& dep : results)
         {
             // note that 'results' contains the database paths (or placeholder ones), we need to find the real absolute ones
-            if (dep.startsWith(m_placeHolderFileName))
+            if (dep.startsWith(PlaceHolderFileName))
             {
                 continue;
             }
@@ -4530,6 +4622,32 @@ namespace AssetProcessor
         // it is assumed that watch folder path / path relative to watch folder are already normalized and such.
         QString absolutePath = QDir(entry.m_watchFolderPath).absoluteFilePath(entry.m_pathRelativeToWatchFolder);
         UpdateAnalysisTrackerForFile(absolutePath.toUtf8().constData(), updateType);
+    }
+    void AssetProcessorManager::AutoFailJob(const AZStd::string& consoleMsg, const AZStd::string& autoFailReason, const AZStd::vector<AssetProcessedEntry>::iterator& assetIter)
+    {
+        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "%s", consoleMsg.c_str());
+
+        JobDetails jobdetail;
+        jobdetail.m_jobEntry = JobEntry(
+            assetIter->m_entry.m_watchFolderPath,
+            assetIter->m_entry.m_pathRelativeToWatchFolder,
+            assetIter->m_entry.m_databaseSourceName,
+            assetIter->m_entry.m_builderGuid,
+            assetIter->m_entry.m_platformInfo,
+            assetIter->m_entry.m_jobKey, 0, GenerateNewJobRunKey(),
+            assetIter->m_entry.m_sourceFileUUID);
+        jobdetail.m_autoFail = true;
+        jobdetail.m_critical = true;
+        jobdetail.m_priority = INT_MAX; // front of the queue.                                
+        jobdetail.m_scanFolder = m_platformConfig->GetScanFolderForFile(assetIter->m_entry.GetAbsoluteSourcePath());
+        // the new lines make it easier to copy and paste the file names.
+        jobdetail.m_jobParam[AZ_CRC(AutoFailReasonKey)] = autoFailReason;
+
+        // this is a failure, so make sure that the system that is tracking files
+        // knows that this file must not be skipped next time:
+        UpdateAnalysisTrackerForFile(assetIter->m_entry, AnalysisTrackerUpdateType::JobFailed);
+
+        Q_EMIT AssetToProcess(jobdetail);// forwarding this job to rccontroller to fail it
     }
 } // namespace AssetProcessor
 

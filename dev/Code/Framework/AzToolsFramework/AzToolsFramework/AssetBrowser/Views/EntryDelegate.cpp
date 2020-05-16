@@ -120,8 +120,9 @@ namespace AzToolsFramework
         {
             SharedThumbnail thumbnail;
             ThumbnailerRequestsBus::BroadcastResult(thumbnail, &ThumbnailerRequests::GetThumbnail, thumbnailKey, m_thumbnailContext.c_str());
-            AZ_Assert(thumbnail, "Could not get thumbnail");
-            if (thumbnail->GetState() == Thumbnail::State::Failed)
+            AZ_Assert(thumbnail, "The shared numbernail was not available from the ThumbnailerRequestsBus.");
+            AZ_Assert(painter, "A null QPainter was passed in to DrawThumbnail.");
+            if (!painter || !thumbnail || thumbnail->GetState() == Thumbnail::State::Failed)
             {
                 return 0;
             }

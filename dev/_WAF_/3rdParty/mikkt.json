@@ -2,9 +2,11 @@
     "name": "mikkt",
     "source": "@3P:mikkt@",
     "description": "Mikkt Library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],
     "lib_required": "True"
 }
+
+

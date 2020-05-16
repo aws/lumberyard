@@ -20,6 +20,7 @@
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/ManipulatorCallbacks.h>
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderLayouts.h>
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.h>
+#include <MCore/Source/AzCoreConversions.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
 #include <QMessageBox>
 
@@ -278,7 +279,11 @@ namespace EMStudio
         case RenderPlugin::MODE_SCALEMANIPULATOR:
         {
             mScaleManipulator->Init(actorInstance->GetLocalSpaceTransform().mPosition);
-            mScaleManipulator->SetCallback(new ScaleManipulatorCallback(actorInstance, actorInstance->GetLocalSpaceTransform().mScale));
+            #ifndef EMFX_SCALE_DISABLED
+                mScaleManipulator->SetCallback(new ScaleManipulatorCallback(actorInstance, actorInstance->GetLocalSpaceTransform().mScale));
+            #else
+                mScaleManipulator->SetCallback(new ScaleManipulatorCallback(actorInstance, AZ::Vector3::CreateOne()));
+            #endif
             break;
         }
         default:
@@ -1246,7 +1251,7 @@ namespace EMStudio
             const EMotionFX::Node* motionExtractionNode = actor->GetMotionExtractionNode();
             if (motionExtractionNode)
             {
-                const MCore::Matrix worldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
+                const EMotionFX::Transform& worldTM = actorInstance->GetWorldSpaceTransform();
 
                 bool distanceTraveledEnough = false;
                 if (trajectoryPath->mTraceParticles.GetIsEmpty())
@@ -1256,13 +1261,13 @@ namespace EMStudio
                 else
                 {
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
-                    const MCore::Matrix& oldWorldTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
+                    const EMotionFX::Transform& oldWorldTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
 
-                    const AZ::Vector3& oldPos = oldWorldTM.GetTranslation();
-                    const MCore::Quaternion oldRot(oldWorldTM.Normalized());
-                    const MCore::Quaternion rotation(worldTM.Normalized());
+                    const AZ::Vector3& oldPos = oldWorldTM.mPosition;
+                    const AZ::Quaternion oldRot = oldWorldTM.mRotation.GetNormalized();
+                    const AZ::Quaternion rotation = worldTM.mRotation.GetNormalized();
 
-                    const AZ::Vector3 deltaPos = worldTM.GetTranslation() - oldPos;
+                    const AZ::Vector3 deltaPos = worldTM.mPosition - oldPos;
                     const float deltaRot = MCore::Math::Abs(rotation.Dot(oldRot));
                     if (MCore::SafeLength(deltaPos) > 0.0001f || deltaRot < 0.99f)
                     {
@@ -1400,7 +1405,6 @@ namespace EMStudio
         {
             // iterate through all enabled nodes
             const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
-            const MCore::Matrix actorInstanceWorldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
 
             const uint32 geomLODLevel   = actorInstance->GetLODLevel();
             const uint32 numEnabled     = actorInstance->GetNumEnabledNodes();
@@ -1417,7 +1421,7 @@ namespace EMStudio
                     continue;
                 }
 
-                const MCore::Matrix worldTM = pose->GetMeshNodeWorldSpaceTransform(geomLODLevel, nodeIndex).ToMatrix();
+                const AZ::Transform worldTM = pose->GetMeshNodeWorldSpaceTransform(geomLODLevel, nodeIndex).ToAZTransform();
 
                 if (!mesh->GetIsCollisionMesh())
                 {

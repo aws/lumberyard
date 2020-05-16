@@ -13,7 +13,7 @@
 #include <ImageProcessing_precompiled.h>
 
 #include <ImageLoader/ImageLoaders.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <QFileInfo>
 
 namespace ImageProcessing
@@ -27,6 +27,10 @@ namespace ImageProcessing
         {
             return TIFFLoader::LoadImageFromTIFF(filename);
         }
+        else if (BTLoader::IsExtensionSupported(ext.toUtf8()))
+        {
+            return BTLoader::LoadImageFromBT(filename);
+        }
         else if (QtImageLoader::IsExtensionSupported(ext.toUtf8()))
         {
             return QtImageLoader::LoadImageFromFile(filename);
@@ -39,6 +43,10 @@ namespace ImageProcessing
     bool IsExtensionSupported(const char* extension)
     {
         if (TIFFLoader::IsExtensionSupported(extension))
+        {
+            return true;
+        }
+        else if (BTLoader::IsExtensionSupported(extension))
         {
             return true;
         }

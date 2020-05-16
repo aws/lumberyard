@@ -143,7 +143,9 @@ namespace ScriptCanvasBuilder
         auto assetFilter = [&response](const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
             if (asset.GetType() == azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>() ||
-                asset.GetType() == azrtti_typeid<ScriptCanvas::RuntimeAsset>())
+                asset.GetType() == azrtti_typeid<ScriptCanvas::RuntimeAsset>() ||
+                asset.GetType() == azrtti_typeid<ScriptEvents::ScriptEventsAsset>()
+                )
             {
                 AssetBuilderSDK::SourceFileDependency dependency;
                 dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
@@ -404,6 +406,8 @@ namespace ScriptCanvasBuilder
 
         AZStd::unordered_map<AZ::EntityId, NodeEntityPair > nodeLookUpMap;
 
+        AZStd::unordered_set<AZ::EntityId> deletedNodeEntities;
+
         {
             auto nodeIter = compiledGraphData.m_nodes.begin();
 
@@ -414,11 +418,15 @@ namespace ScriptCanvasBuilder
 
                 if (nodeComponent == nullptr)
                 {
+                    deletedNodeEntities.insert(nodeEntity->GetId());
+
                     delete nodeEntity;
                     nodeIter = compiledGraphData.m_nodes.erase(nodeIter);
 
                     continue;
                 }
+
+                nodeComponent->SetExecutionType(ScriptCanvas::ExecutionType::Runtime);
 
                 bool disabledNode = false;
                 
@@ -429,7 +437,9 @@ namespace ScriptCanvasBuilder
 
                     for (const ScriptCanvas::Slot* slot : nodeSlots)
                     {
-                        disabledEndpoints.insert(slot->GetEndpoint());
+                        // While slot has a GetEndpoint method. It uses the Node pointer which has not been set yet.
+                        // Bypass it for the more manual way in the builder.
+                        disabledEndpoints.insert(ScriptCanvas::Endpoint(nodeEntity->GetId(), slot->GetId()));
                     }
                 }
 
@@ -520,7 +530,9 @@ namespace ScriptCanvasBuilder
 
                 for (const ScriptCanvas::Slot* slot : inputSlots)
                 {
-                    if (compiledGraphData.m_endpointMap.count(slot->GetEndpoint()) > 0)
+                    // Can't use the slot method since it requires the node to be registered which has not happened yet.
+                    ScriptCanvas::Endpoint endpoint = { nodePair.second->GetId(), slot->GetId() };
+                    if (compiledGraphData.m_endpointMap.count(endpoint) > 0)
                     {
                         hasExecutionIn = true;
                         break;
@@ -535,10 +547,11 @@ namespace ScriptCanvasBuilder
 
                     for (auto disabledSlot : disabledSlots)
                     {
-                        disabledEndpoints.insert(disabledSlot->GetEndpoint());
+                        ScriptCanvas::Endpoint endpoint = { nodePair.second->GetId(), disabledSlot->GetId() };
+                        disabledEndpoints.insert(endpoint);
                     }
 
-                    nodeLookUpMap.erase(node->GetEntityId());
+                    nodeLookUpMap.erase(nodePair.second->GetId());
                     size_t eraseCount = compiledGraphData.m_nodes.erase(nodePair.second);
                     AZ_Assert(eraseCount == 1, "Failed to erase node from compiled graph data");
 
@@ -569,7 +582,9 @@ namespace ScriptCanvasBuilder
                 ScriptCanvas::Endpoint sourceEndpoint = connection->GetSourceEndpoint();
 
                 if (fullyRemovedEndpoints.count(targetEndpoint) > 0
-                    || fullyRemovedEndpoints.count(sourceEndpoint) > 0)
+                    || fullyRemovedEndpoints.count(sourceEndpoint) > 0
+                    || deletedNodeEntities.count(targetEndpoint.GetNodeId()) > 0
+                    || deletedNodeEntities.count(sourceEndpoint.GetNodeId()) > 0)
                 {
                     delete connectionEntity;
                     connectionIter = compiledGraphData.m_connections.erase(connectionIter);

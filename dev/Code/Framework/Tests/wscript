@@ -22,7 +22,7 @@ def build(bld):
         target              = 'FrameworkTests',
         vs_filter           = 'AZ Framework/TestSuites',
         file_list           = 'frameworktests.waf_files',
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         test_only           = True,
         use                 = ['AzTest', 'AzToolsFramework', 'AzTestShared'],
@@ -52,6 +52,19 @@ def build(bld):
                 
         # Platform Specific
         darwin_rpath    = ['@executable_path']
+    )
+
+    bld.CryEngineStaticLibrary(
+        target                  = 'AzFrameworkTestShared',
+        vs_filter               = 'AZ Framework',
+        file_list               = ['framework_shared.waf_files'],
+        platforms               = ['win', 'darwin', 'linux'],
+        configurations          = ['all'],
+        test_only               = True,
+        use                     = ['AzFramework', 'AzTest'],
+        includes                = ['..'],
+        export_includes         = ['..'],
+        msvc_cxxflags           = ['/W4'],
     )
 
     bld.recurse(SUBFOLDERS)

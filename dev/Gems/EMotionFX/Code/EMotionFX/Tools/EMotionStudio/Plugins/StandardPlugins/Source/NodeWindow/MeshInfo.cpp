@@ -100,6 +100,9 @@ namespace EMStudio
             case EMotionFX::Mesh::ATTRIB_BITANGENTS:
                 tmpString = "Vertex bitangents";
                 break;
+            case EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES:
+                tmpString = "Vertex cloth inverse masses in 32-bits";
+                break;
             default:
                 tmpString = AZStd::string::format("Unknown data (TypeID=%d)", attributeLayerType);
             }

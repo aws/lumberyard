@@ -90,7 +90,8 @@ namespace EMotionFX
 
             ExporterLib::SaveSkeletalMotion(filename, motion, MCore::Endian::ENDIAN_LITTLE, false);
             static AZ::Data::AssetType emotionFXMotionAssetType("{00494B8E-7578-4BA2-8B28-272E90680787}"); // from MotionAsset.h in EMotionFX Gem
-            context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), emotionFXMotionAssetType);
+            context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), emotionFXMotionAssetType,
+                AZStd::nullopt, AZStd::nullopt);
 
             // The motion object served the purpose of exporting motion and is no longer needed
             MCore::Destroy(motion);

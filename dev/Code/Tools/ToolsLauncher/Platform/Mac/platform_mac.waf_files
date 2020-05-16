@@ -1,0 +1,8 @@
+{
+    "none": {
+        "Source Files": [
+            "../Common/UnixLike/ToolLauncher_unixlike.cpp",
+            "ToolLauncher_mac.cpp"
+        ]
+    }
+}

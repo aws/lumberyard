@@ -11,11 +11,15 @@
 */
 #pragma once
 
+#include <EMotionFX/Source/AutoRegisteredActor.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <Integration/System/SystemCommon.h>
 
 
 namespace EMotionFX
 {
+    class Actor;
+
     namespace Pipeline
     {
         struct ActorGroupExportContext;
@@ -27,11 +31,17 @@ namespace EMotionFX
             AZ_COMPONENT(ActorGroupExporter, "{9E21DF50-202B-44CB-A9E7-F429D3B5E5BE}", AZ::SceneAPI::SceneCore::ExportingComponent);
 
             ActorGroupExporter();
-            ~ActorGroupExporter() override = default;
+
+            Actor* GetActor() const;
 
             static void Reflect(AZ::ReflectContext* context);
 
-            AZ::SceneAPI::Events::ProcessingResult ProcessContext(ActorGroupExportContext& context) const;
+            AZ::SceneAPI::Events::ProcessingResult ProcessContext(ActorGroupExportContext& context);
+
+        private:
+            AZ::SceneAPI::Events::ProcessingResult SaveActor(ActorGroupExportContext& context);
+            AutoRegisteredActor m_actor;
+            AZStd::vector<AZStd::string> m_actorMaterialReferences;
         };
     } // namespace Pipeline
 } // namespace EMotionFX

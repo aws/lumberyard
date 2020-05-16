@@ -106,8 +106,8 @@ namespace GridMate
 
         ReplicaTarget();
         ~ReplicaTarget();
-        ReplicaTarget(const ReplicaTarget&) AZ_DELETE_METHOD;
-        ReplicaTarget& operator=(const ReplicaTarget&) AZ_DELETE_METHOD;
+        ReplicaTarget(const ReplicaTarget&) = delete;
+        ReplicaTarget& operator=(const ReplicaTarget&) = delete;
 
         enum TargetStatus
         {

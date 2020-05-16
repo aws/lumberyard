@@ -24,8 +24,6 @@
 
 """Self-test suite for Crypto.Hash.SHA224"""
 
-__revision__ = "$Id$"
-
 # Test vectors from various sources
 # This is a list of (expected_result, input[, description]) tuples.
 test_data = [
@@ -44,7 +42,7 @@ test_data = [
 
     ('49b08defa65e644cbf8a2dd9270bdededabc741997d1dadd42026d7b',
      'Franz jagt im komplett verwahrlosten Taxi quer durch Bayern'),
-    
+
     ('58911e7fccf2971a7d07f93162d8bd13568e71aa8fc86fc1fe9043d1',
      'Frank jagt im komplett verwahrlosten Taxi quer durch Bayern'),
 
@@ -52,10 +50,10 @@ test_data = [
 
 def get_tests(config={}):
     from Crypto.Hash import SHA224
-    from common import make_hash_tests
+    from .common import make_hash_tests
     return make_hash_tests(SHA224, "SHA224", test_data,
         digest_size=28,
-        oid='\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x04')
+        oid='2.16.840.1.101.3.4.2.4')
 
 if __name__ == '__main__':
     import unittest

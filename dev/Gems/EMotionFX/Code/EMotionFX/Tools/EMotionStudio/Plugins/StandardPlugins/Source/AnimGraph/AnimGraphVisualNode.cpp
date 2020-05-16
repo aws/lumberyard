@@ -128,7 +128,7 @@ namespace EMStudio
 
         // draw the background rect
         QRect playRect = rect;
-        int32 x = rect.left() + 1 + (rect.width() - 2) * (mEMFXNode->GetCurrentPlayTime(animGraphInstance) / duration);
+        int32 x = aznumeric_cast<int32>(rect.left() + 1 + (rect.width() - 2) * (mEMFXNode->GetCurrentPlayTime(animGraphInstance) / duration));
         playRect.setRight(x);
         playRect.setLeft(rect.left() + 1);
         playRect.setTop(rect.top() + 1);
@@ -162,7 +162,7 @@ namespace EMStudio
                 painter.setPen(syncCol);
                 painter.setBrush(syncCol);
 
-                x = rect.left() + 1 + (rect.width() - 2) * (syncTrack->GetEvent(i).GetStartTime() / duration);
+                x = aznumeric_cast<int32>(rect.left() + 1 + (rect.width() - 2) * (syncTrack->GetEvent(i).GetStartTime() / duration));
                 points[0] = QPoint(x, rect.top() + 1);
                 points[1] = QPoint(x + 2, rect.bottom() - 1);
                 points[2] = QPoint(x - 2, rect.bottom() - 1);
@@ -173,7 +173,7 @@ namespace EMStudio
 
         // draw the current play time
         painter.setPen(Qt::yellow);
-        x = rect.left() + 1 + (rect.width() - 2) * (mEMFXNode->GetCurrentPlayTime(animGraphInstance) / duration);
+        x = aznumeric_cast<int32>(rect.left() + 1 + (rect.width() - 2) * (mEMFXNode->GetCurrentPlayTime(animGraphInstance) / duration));
         painter.drawLine(x, rect.top() + 1, x, rect.bottom());
     }
 

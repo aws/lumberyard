@@ -3,13 +3,22 @@ Expose top-level symbols that are safe for import *
 """
 from __future__ import print_function, division, absolute_import
 
+import platform
 import re
 import sys
+import warnings
 
-from . import config, errors, runtests, types
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
+
+from . import config, errors, _runtests as runtests, types
 
 # Re-export typeof
-from .special import typeof, prange
+from .special import (
+    typeof, prange, pndindex, gdb, gdb_breakpoint, gdb_init,
+    literally, literal_unroll
+)
 
 # Re-export error classes
 from .errors import *
@@ -17,13 +26,11 @@ from .errors import *
 # Re-export all type names
 from .types import *
 
-from .smartarray import SmartArray
-
 # Re-export decorators
-from .decorators import autojit, cfunc, generated_jit, jit, njit
+from .decorators import (cfunc, generated_jit, jit, njit, stencil, jit_module)
 
-# Re-export vectorize decorators
-from .npyufunc import vectorize, guvectorize
+# Re-export vectorize decorators and the thread layer querying function
+from .npyufunc import vectorize, guvectorize, threading_layer
 
 # Re-export Numpy helpers
 from .numpy_support import carray, farray, from_dtype
@@ -31,26 +38,42 @@ from .numpy_support import carray, farray, from_dtype
 # Re-export jitclass
 from .jitclass import jitclass
 
+# Initialize withcontexts
+import numba.withcontexts
+from numba.withcontexts import objmode_context as objmode
+
+# Enable bytes/unicode array support (Python 3.x only)
+from .utils import IS_PY3
+if IS_PY3:
+    import numba.charseq
+
 # Keep this for backward compatibility.
 test = runtests.main
 
 
 __all__ = """
-    autojit
     cfunc
     from_dtype
     guvectorize
     jit
     jitclass
     njit
+    stencil
+    jit_module
     typeof
     prange
+    gdb
+    gdb_breakpoint
+    gdb_init
+    stencil
     vectorize
+    objmode
+    literal_unroll
     """.split() + types.__all__ + errors.__all__
 
 
-_min_llvmlite_version = (0, 19, 0)
-_min_llvm_version = (4, 0, 0)
+_min_llvmlite_version = (0, 31, 0)
+_min_llvm_version = (7, 0, 0)
 
 def _ensure_llvm():
     """
@@ -86,7 +109,6 @@ def _ensure_llvm():
 
     check_jit_execution()
 
-
 def _ensure_pynumpy():
     """
     Make sure Python and Numpy have supported versions.
@@ -102,11 +124,73 @@ def _ensure_pynumpy():
     if np_version < (1, 7):
         raise ImportError("Numba needs Numpy 1.7 or greater")
 
+def _try_enable_svml():
+    """
+    Tries to enable SVML if configuration permits use and the library is found.
+    """
+    if not config.DISABLE_INTEL_SVML:
+        try:
+            if sys.platform.startswith('linux'):
+                llvmlite.binding.load_library_permanently("libsvml.so")
+            elif sys.platform.startswith('darwin'):
+                llvmlite.binding.load_library_permanently("libsvml.dylib")
+            elif sys.platform.startswith('win'):
+                llvmlite.binding.load_library_permanently("svml_dispmd")
+            else:
+                return False
+            # The SVML library is loaded, therefore SVML *could* be supported.
+            # Now see if LLVM has been compiled with the SVML support patch.
+            # If llvmlite has the checking function `has_svml` and it returns
+            # True, then LLVM was compiled with SVML support and the the setup
+            # for SVML can proceed. We err on the side of caution and if the
+            # checking function is missing, regardless of that being fine for
+            # most 0.23.{0,1} llvmlite instances (i.e. conda or pip installed),
+            # we assume that SVML was not compiled in. llvmlite 0.23.2 is a
+            # bugfix release with the checking function present that will always
+            # produce correct behaviour. For context see: #3006.
+            try:
+                if not getattr(llvmlite.binding.targets, "has_svml")():
+                    # has detection function, but no svml compiled in, therefore
+                    # disable SVML
+                    return False
+            except AttributeError:
+                if platform.machine() == 'x86_64' and config.DEBUG:
+                    msg = ("SVML was found but llvmlite >= 0.23.2 is "
+                           "needed to support it.")
+                    warnings.warn(msg)
+                # does not have detection function, cannot detect reliably,
+                # disable SVML.
+                return False
+
+            # All is well, detection function present and reports SVML is
+            # compiled in, set the vector library to SVML.
+            llvmlite.binding.set_option('SVML', '-vector-library=SVML')
+            return True
+        except:
+            if platform.machine() == 'x86_64' and config.DEBUG:
+                warnings.warn("SVML was not found/could not be loaded.")
+    return False
 
 _ensure_llvm()
 _ensure_pynumpy()
 
+# we know llvmlite is working as the above tests passed, import it now as SVML
+# needs to mutate runtime options (sets the `-vector-library`).
+import llvmlite
 
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+"""
+Is set to True if Intel SVML is in use.
+"""
+config.USING_SVML = _try_enable_svml()
+
+
+# ---------------------- WARNING WARNING WARNING ----------------------------
+# The following imports occur below here (SVML init) because somewhere in their
+# import sequence they have a `@njit` wrapped function. This triggers too early
+# a bind to the underlying LLVM libraries which then irretrievably sets the LLVM
+# SVML state to "no SVML". See https://github.com/numba/numba/issues/4689 for
+# context.
+# ---------------------- WARNING WARNING WARNING ----------------------------
+
+# Initialize typed containers
+import numba.typed

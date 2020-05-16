@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <SceneAPIExt/Rules/MeshRule.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 
 namespace EMotionFX
 {
@@ -24,14 +25,39 @@ namespace EMotionFX
         {
             AZ_CLASS_ALLOCATOR_IMPL(MeshRule, AZ::SystemAllocator, 0)
 
+            const char* MeshRule::m_disabledVertexColorsName = "No vertex colors";
+
             MeshRule::MeshRule()
-                : m_optimizeTriangleList(true)
             {
             }
 
-            bool MeshRule::GetOptimizeTriangleList() const
+            bool MeshRule::IsVertexColorsDisabled() const
             {
-                return m_optimizeTriangleList;
+                return (m_vertexColorStreamName == m_disabledVertexColorsName);
+            }
+
+            IMeshRule::VertexColorMode MeshRule::GetVertexColorMode() const
+            {
+                return m_vertexColorMode;
+            }
+
+            const AZStd::string& MeshRule::GetVertexColorStreamName() const
+            {
+                return m_vertexColorStreamName;
+            }
+
+            void MeshRule::DisableVertexColors()
+            {
+                m_vertexColorStreamName = m_disabledVertexColorsName;
+            }
+
+            bool MeshRule::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
+            {
+                if (rootElementNode.GetVersion() < 4)
+                {
+                    rootElementNode.RemoveElementByName(AZ_CRC("optimizeTriangleList", 0xfc208cc5));
+                }
+                return true;
             }
 
             void MeshRule::Reflect(AZ::ReflectContext* context)
@@ -44,8 +70,10 @@ namespace EMotionFX
 
                 serializeContext->Class<IMeshRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
 
-                serializeContext->Class<MeshRule, IMeshRule>()->Version(2)
-                    ->Field("optimizeTriangleList", &MeshRule::m_optimizeTriangleList);
+                serializeContext->Class<MeshRule, IMeshRule>()
+                    ->Version(4, VersionConverter)
+                    ->Field("vertexColorStreamName", &MeshRule::m_vertexColorStreamName)
+                    ->Field("vertexColorMode", &MeshRule::m_vertexColorMode);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
@@ -54,7 +82,15 @@ namespace EMotionFX
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute("AutoExpand", true)
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &MeshRule::m_optimizeTriangleList, "Optimize triangle list", "");
+                        ->DataElement("NodeListSelection", &MeshRule::m_vertexColorStreamName, "Vertex color stream",
+                            "Select the vertex color stream that will be used to color the rendered meshes.")
+                            ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IMeshVertexColorData::TYPEINFO_Uuid())
+                            ->Attribute("DisabledOption", m_disabledVertexColorsName)
+                            ->Attribute("DefaultToDisabled", true)
+                            ->Attribute("UseShortNames", true)
+                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &MeshRule::m_vertexColorMode, "Vertex color mode", "What precision should we export vertex colors in?")
+                        ->EnumAttribute(VertexColorMode::Precision_32, "32 bit (8 bits per channel)")
+                        ->EnumAttribute(VertexColorMode::Precision_128, "128 bit (32 bits per channel)");
                 }
             }
         } // Rule

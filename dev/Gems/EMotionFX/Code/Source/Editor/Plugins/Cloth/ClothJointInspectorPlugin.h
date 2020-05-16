@@ -34,7 +34,7 @@ namespace EMotionFX
         ~ClothJointInspectorPlugin();
 
         // EMStudioPlugin overrides
-        const char* GetName() const override                { return "Cloth"; }
+        const char* GetName() const override                { return "Cloth Colliders"; }
         uint32 GetClassID() const override                  { return AZ_CRC("ClothJointInspectorPlugin", 0x8efd2bee); }
         bool GetIsClosable() const override                 { return true;  }
         bool GetIsFloatable() const override                { return true;  }
@@ -52,6 +52,8 @@ namespace EMotionFX
         void OnClearColliders();
 
     private:
+        bool IsNvClothGemAvailable() const;
+
         ClothJointWidget* m_jointWidget;
     };
 } // namespace EMotionFX

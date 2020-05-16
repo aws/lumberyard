@@ -127,7 +127,7 @@ namespace UnitTest
         ~TestAllocator() override = default;
     };
 
-    class AllocatorsTestFixtureLeakDetectionDeathTest
+    class AllocatorsTestFixtureLeakDetectionDeathTest_SKIPCODECOVERAGE
         : public ::testing::Test
     {
     public:
@@ -145,7 +145,7 @@ namespace UnitTest
         }
     };
    
-    TEST_F(AllocatorsTestFixtureLeakDetectionDeathTest, AllocatorLeak)
+    TEST_F(AllocatorsTestFixtureLeakDetectionDeathTest_SKIPCODECOVERAGE, AllocatorLeak)
     {
         // testing that the TraceBusHook will fail on cause the test to die
         EXPECT_DEATH(TestAllocatorLeak(), "");
@@ -167,7 +167,7 @@ namespace UnitTest
             {
                 AZ::Debug::TraceMessageBus::Handler::BusConnect();
             }
-            ~BusRedirector()
+            ~BusRedirector() override
             {
                 EXPECT_EQ(m_leakExpected, m_leakDetected);
                 AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
@@ -223,7 +223,7 @@ namespace UnitTest
         };
 
     public:
-        ~AllocatorSetupLeakDetectionTest()
+        ~AllocatorSetupLeakDetectionTest() override
         {
             EXPECT_EQ(m_busRedirector.m_leakExpected, UnitTest::TestRunner::Instance().m_isAssertTest);
         }

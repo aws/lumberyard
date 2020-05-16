@@ -11,28 +11,6 @@
                 "libQt*.so:%s.5",
                 "libic*.so:%s.56"
             ],
-            "Qt5Bluetooth/defines": [
-                "QT_BLUETOOTH_LIB"
-            ],
-            "Qt5Bluetooth/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtBluetooth"
-            ],
-            "Qt5Bluetooth/shared": [
-                "libQt5Bluetooth.so"
-            ],
-
-            "Qt5CLucene/defines": [
-                "QT_CLUCENE_LIB"
-            ],
-            "Qt5CLucene/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtCLucene"
-            ],
-            "Qt5CLucene/shared": [
-                "libQt5CLucene.so"
-            ],
-
             "Qt5Concurrent/defines": [
                 "QT_CONCURRENT_LIB"
             ],
@@ -51,14 +29,11 @@
             "Qt5Core/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtCore",
-                "gcc_64/include/QtCore/5.6.2",
-                "gcc_64/include/QtCore/5.6.2/QtCore"
+                "gcc_64/include/QtCore/5.12.4",
+                "gcc_64/include/QtCore/5.12.4/QtCore"
             ],
             "Qt5Core/shared": [
-                "libQt5Core.so",
-                "libicudata.so",
-                "libicui18n.so",
-                "libicuuc.so"
+                "libQt5Core.so"
             ],
 
             "Qt5DBus/defines": [
@@ -100,44 +75,11 @@
             "Qt5Gui/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtGui",
-                "gcc_64/include/QtGui/5.6.2",
-                "gcc_64/include/QtGui/5.6.2/QtGui"
+                "gcc_64/include/QtGui/5.12.4",
+                "gcc_64/include/QtGui/5.12.4/QtGui"
             ],
             "Qt5Gui/shared": [
                 "libQt5Gui.so"
-            ],
-
-            "Qt5Help/defines": [
-                "QT_HELP_LIB"
-            ],
-            "Qt5Help/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtHelp"
-            ],
-            "Qt5Help/shared": [
-                "libQt5Help.so"
-            ],
-
-            "Qt5Multimedia/defines": [
-                "QT_MULTIMEDIA_LIB"
-            ],
-            "Qt5Multimedia/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtMultimedia"
-            ],
-            "Qt5Multimedia/shared": [
-                "libQt5Multimedia.so"
-            ],
-
-            "Qt5MultimediaWidgets/defines": [
-                "QT_MULTIMEDIAWIDGETS_LIB"
-            ],
-            "Qt5MultimediaWidgets/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtMultimediaWidgets"
-            ],
-            "Qt5MultimediaWidgets/shared": [
-                "libQt5MultimediaWidgets.so"
             ],
 
             "Qt5Network/defines": [
@@ -151,17 +93,6 @@
                 "libQt5Network.so"
             ],
 
-            "Qt5Nfc/defines": [
-                "QT_NFC_LIB"
-            ],
-            "Qt5Nfc/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtNfc"
-            ],
-            "Qt5Nfc/shared": [
-                "libQt5Nfc.so"
-            ],
-
             "Qt5OpenGL/defines": [
                 "QT_OPENGL_LIB"
             ],
@@ -172,18 +103,6 @@
             "Qt5OpenGL/shared": [
                 "libQt5OpenGL.so"
             ],
-
-            "Qt5Positioning/defines": [
-                "QT_POSITIONING_LIB"
-            ],
-            "Qt5Positioning/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtPositioning"
-            ],
-            "Qt5Positioning/shared": [
-                "libQt5Positioning.so"
-            ],
-
             "Qt5PrintSupport/defines": [
                 "QT_PRINTSUPPORT_LIB"
             ],
@@ -225,6 +144,7 @@
                 "gcc_64/include/QtQuickParticles"
             ],
             "Qt5QuickParticles/shared": [
+                "libQt5Quick.so",
                 "libQt5QuickParticles.so"
             ],
 
@@ -236,31 +156,9 @@
                 "gcc_64/include/QtQuickTest"
             ],
             "Qt5QuickTest/shared": [
+                "libQt5Quick.so",
                 "libQt5QuickTest.so"
             ],
-
-            "Qt5Sensors/defines": [
-                "QT_SENSORS_LIB"
-            ],
-            "Qt5Sensors/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtSensors"
-            ],
-            "Qt5Sensors/shared": [
-                "libQt5Sensors.so"
-            ],
-
-            "Qt5SerialPort/defines": [
-                "QT_SERIALPORT_LIB"
-            ],
-            "Qt5SerialPort/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtSerialPort"
-            ],
-            "Qt5SerialPort/shared": [
-                "libQt5SerialPort.so"
-            ],
-
             "Qt5Sql/defines": [
                 "QT_SQL_LIB"
             ],
@@ -300,22 +198,11 @@
             "Qt5Widgets/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtWidgets",
-                "gcc_64/include/QtWidgets/5.6.2",
-                "gcc_64/include/QtWidgets/5.6.2/QtWidgets"
+                "gcc_64/include/QtWidgets/5.12.4",
+                "gcc_64/include/QtWidgets/5.12.4/QtWidgets"
             ],
             "Qt5Widgets/shared": [
                 "libQt5Widgets.so"
-            ],
-
-            "Qt5XmlPatterns/defines": [
-                "QT_XMLPATTERNS_LIB"
-            ],
-            "Qt5XmlPatterns/includes": [
-                "gcc_64/include",
-                "gcc_64/include/QtXmlPatterns"
-            ],
-            "Qt5XmlPatterns/shared": [
-                "libQt5XmlPatterns.so"
             ],
 
             "Qt5Xml/defines": [
@@ -327,6 +214,37 @@
             ],
             "Qt5Xml/shared": [
                 "libQt5Xml.so"
+            ],
+            "Qt5WebEngine/defines": [
+                "QT_WEBENGINE_LIB"
+            ],
+            "Qt5WebEngine/shared": [
+                "libQt5WebEngine.so",
+                "libQt5Quick.so"
+            ],
+            "Qt5WebEngine/includes": [
+                "gcc_64/include/QtWebEngine"
+            ],
+            "Qt5WebEngineCore/defines": [
+                "QT_WEBENGINECORE_LIB"
+            ],
+            "Qt5WebEngineCore/includes": [
+                "gcc_64/include/QtWebEngineCore"
+            ],
+            "Qt5WebEngineCore/shared": [
+                "libQt5WebEngineCore.so"
+            ],
+            "Qt5WebEngineWidgets/defines": [
+                "QT_WEBENGINEWIDGETS_LIB"
+            ],
+            "Qt5WebEngineWidgets/includes": [
+                "gcc_64/include/QtWebEngineWidgets"
+            ],
+            "Qt5WebEngineWidgets/shared": [
+                "libQt5WebEngineWidgets.so",
+                "libQt5Quick.so",
+                "libQt5QuickWidgets.so",
+                "libQt5PrintSupport.so"
             ]
         }
     }

@@ -1,0 +1,12 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "system_linux_pc.cfg",
+            "outFile": "system_linux_pc.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

@@ -38,10 +38,16 @@
 
 #if defined (AZ_PLATFORM_WINDOWS)
 #define LEGACY_RC_RELATIVE_PATH "/rc/rc.exe"    // Location of the legacy RC compiler relative to the BinXX folder the asset processor resides in
-#elif defined (AZ_PLATFORM_MAC)
+#elif defined (AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
 #define LEGACY_RC_RELATIVE_PATH "/rc/rc"    // Location of the legacy RC compiler relative to the BinXX folder the asset processor resides in
+#elif defined (AZ_PLATFORM_LINUX)
+#define LEGACY_RC_RELATIVE_PATH "/rc/rc" //KDAB verify it
 #else
 #error Unsupported Platform for RC
+#endif
+
+#if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+    #include <native/utilities/Utils_UnixLike.h>
 #endif
 
 
@@ -150,7 +156,7 @@ namespace AssetProcessor
             return false;
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 
         if (!AZ::IO::SystemFile::Exists(rcExecutableFullPath.toUtf8().data()))
         {
@@ -161,16 +167,16 @@ namespace AssetProcessor
         this->m_rcExecutableFullPath = rcExecutableFullPath;
         this->m_resourceCompilerInitialized = true;
         return true;
-#else // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#else // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE  || defined(AZ_PLATFORM_LINUX)
         AZ_TracePrintf(AssetProcessor::DebugChannel, "There is no implementation for how to compile assets on this platform");
         return false;
-#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     }
 
     bool NativeLegacyRCCompiler::Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, 
         const QString& params, const QString& dest, const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
         if (!this->m_resourceCompilerInitialized)
         {
             result.m_exitCode = JobExitCode_RCCouldNotBeLaunched;
@@ -192,6 +198,16 @@ namespace AssetProcessor
         processLaunchInfo.m_showWindow = false;
         processLaunchInfo.m_workingDirectory = m_systemRoot.absolutePath().toUtf8().data();
         processLaunchInfo.m_processPriority = AzToolsFramework::PROCESSPRIORITY_IDLE;
+
+        // for external projects on unix platforms, we need to propagate the project's loader 
+        // path to the builder subprocesses
+    #if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+        AZStd::vector<AZStd::string> evnVars;
+        if (GetExternalProjectEnv(evnVars))
+        {
+            processLaunchInfo.m_environmentVariables = &evnVars;
+        }
+    #endif // AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 
         AZ_TracePrintf("RC Builder", "Executing RC.EXE: '%s' ...\n", processLaunchInfo.m_commandlineParameters.c_str());
         AZ_TracePrintf("Rc Builder", "Executing RC.EXE with working directory: '%s' ...\n", processLaunchInfo.m_workingDirectory.c_str());
@@ -234,10 +250,8 @@ namespace AssetProcessor
                     break;
                 }
             }
-
             tracer.Pump(); // empty whats left if possible.
         }
-
         if (!finishedOK)
         {
             if (watcher->IsProcessRunning())
@@ -270,12 +284,12 @@ namespace AssetProcessor
 
         return finishedOK;
 
-#else // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#else
         result.m_exitCode = JobExitCode_RCCouldNotBeLaunched;
         result.m_crashed = false;
         AZ_Error("RC Builder", false, "There is no implementation for how to compile assets via RC on this platform");
         return false;
-#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     }
 
     QString NativeLegacyRCCompiler::BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest)

@@ -17,6 +17,8 @@
 #include <IRenderAuxGeom.h>
 #include "Components/IComponentAudio.h"
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 const uint32 CAreaGrid::GRID_CELL_SIZE = 4;
 const float CAreaGrid::GRID_CELL_SIZE_R = 1.f / CAreaGrid::GRID_CELL_SIZE;
 
@@ -279,7 +281,11 @@ void CAreaGrid::Compile(CEntitySystem* pEntitySystem, TAreaPointers const& rArea
     FUNCTION_PROFILER(GetISystem(), PROFILE_ENTITY);
 
     uint32 nOldCells = m_nCells;
-    uint32 terrainSize = gEnv->p3DEngine->GetTerrainSize();
+
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    uint32 terrainSize = static_cast<uint32>(terrainAabb.GetWidth());
+
     uint32 nCells = terrainSize / GRID_CELL_SIZE;
     nCells = max(nCells, (uint32)2048);
 
@@ -371,7 +377,8 @@ void CAreaGrid::Draw()
     // Clear this once before the call to GetAreas!
     ClearTmpAreas();
 
-    I3DEngine* p3DEngine = gEnv->p3DEngine;
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
     IRenderAuxGeom* pRC = gEnv->pRenderer->GetIRenderAuxGeom();
     pRC->SetRenderFlags(e_Def3DPublicRenderflags);
 
@@ -447,7 +454,7 @@ void CAreaGrid::Draw()
 
                 for (int i = 0; i < NUM_POINTS; ++i)
                 {
-                    points[i].z = p3DEngine->GetTerrainElevation(points[i].x, points[i].y);
+                    points[i].z = terrain ? terrain->GetHeightFromFloats(points[i].x, points[i].y) : defaultTerrainHeight;
                 }
 
                 pRC->DrawTriangle(points[0], colourB, points[1], colourB, points[2], colourB);

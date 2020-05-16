@@ -399,8 +399,8 @@ namespace GridMate {
         bool m_autoBroadcast; ///< should replicas be automatically broadcast to every session member?
 
         // forbidding replica manager copying
-        ReplicaManager(const ReplicaManager&) AZ_DELETE_METHOD;
-        ReplicaManager& operator=(const ReplicaManager&) AZ_DELETE_METHOD;
+        ReplicaManager(const ReplicaManager&) = delete;
+        ReplicaManager& operator=(const ReplicaManager&) = delete;
 
         bool AcceptPeer(ReplicaPeer* peer);
         void DiscardOrphans(PeerId orphanId);

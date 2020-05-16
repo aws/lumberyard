@@ -20,10 +20,6 @@
 #include "Objects/GeomEntity.h"
 #include "Objects/BrushObject.h"
 #include "Material/Material.h"
-#include "HyperGraph/FlowGraphHelpers.h"
-#include "HyperGraph/FlowGraphManager.h"
-#include "HyperGraph/FlowGraph.h"
-#include "HyperGraph/FlowGraphNode.h"
 #include "TrackView/TrackViewAnimNode.h"
 #include "TrackView/TrackViewSequence.h"
 #include "TrackView/TrackViewSequenceManager.h"
@@ -45,7 +41,6 @@ static int g_sortColumn = ObjectSelectorModel::NameColumn;
 static Qt::SortOrder g_sortOrder = Qt::DescendingOrder;
 
 ObjectSelectorModel::TGeometryCountMap ObjectSelectorModel::m_mGeomCountMap;
-ObjectSelectorModel::ObjToStrMap ObjectSelectorModel::s_flowGraphMap;
 ObjectSelectorModel::ObjToStrMap ObjectSelectorModel::s_trackViewMap;
 
 static bool lessThanEmptyLast(const QString& s1, const QString& s2, Qt::SortOrder order)
@@ -171,19 +166,6 @@ QString ObjectSelectorModel::GetObjectName(CBaseObject* pObject)
     }
 }
 
-static QString GetFlowGraphNames(CBaseObject* pObject)
-{
-    auto it = ObjectSelectorModel::s_flowGraphMap.find(pObject);
-    if (it == ObjectSelectorModel::s_flowGraphMap.end())
-    {
-        return QString();
-    }
-    else
-    {
-        return it->second;
-    }
-}
-
 static QString GetTrackViewName(CBaseObject* pObject)
 {
     auto it = ObjectSelectorModel::s_trackViewMap.find(pObject);
@@ -279,36 +261,6 @@ static QString ComputeTrackViewName(CBaseObject* pObject)
             if (pSequence)
             {
                 result += pSequence->GetName();
-            }
-        }
-        return result;
-    }
-
-    return QString();
-}
-
-static QString ComputeFlowGraphNames(CBaseObject* pObject)
-{
-    QString result;
-    if (qobject_cast<CEntityObject*>(pObject))
-    {
-        CEntityObject* pEntity = static_cast<CEntityObject*>(pObject);
-        std::vector<CFlowGraph*> flowgraphs;
-        CFlowGraph* pEntityFG = 0;
-        FlowGraphHelpers::FindGraphsForEntity(pEntity, flowgraphs, pEntityFG);
-        QString name("");
-        const int count = flowgraphs.size();
-        for (size_t i = 0; i < count; ++i)
-        {
-            if (i > 0)
-            {
-                result += ",";
-            }
-            FlowGraphHelpers::GetHumanName(flowgraphs[i], name);
-            result += name;
-            if (flowgraphs[i] == pEntityFG)
-            {
-                result += "*";      // A special mark for an entity flow graph
             }
         }
         return result;
@@ -675,7 +627,6 @@ void ObjectSelectorModel::Clear()
 {
     beginResetModel();
     m_mGeomCountMap.clear();
-    s_flowGraphMap.clear();
     s_trackViewMap.clear();
     m_objects.clear();
     m_indentState.clear();
@@ -686,7 +637,7 @@ QStringList ObjectSelectorModel::ColumnNames()
 {
     static const QStringList names = {
         "Name", "Selected", "Type", "Layer", "Default Material", "Custom Material",
-        "Breakability", "Smart Object", "Track View", "FlowGraph", "Geometry",
+        "Breakability", "Smart Object", "Track View", "Geometry",
         "Instances In Level", "Number of LODs", "Spec", "AI GroupID"
     };
 
@@ -742,12 +693,6 @@ void ObjectSelectorModel::AddObjectToMaps(CBaseObject* pObject)
     {
         s_trackViewMap[pObject] = tv;
     }
-
-    QString fg = ComputeFlowGraphNames(pObject);
-    if (!fg.isEmpty())
-    {
-        s_flowGraphMap[pObject] = fg;
-    }
 }
 
 int ObjectSelectorModel::rowCount(const QModelIndex& parent) const
@@ -796,8 +741,6 @@ QVariant ObjectSelectorModel::data(CBaseObject* object, int role, int col)
             return GetSmartObject(object);
         case TrackViewColumn:
             return GetTrackViewName(object);
-        case FlowGraphColumn:
-            return GetFlowGraphNames(object);
         case GeometryColumn:
             return GetGeometryFile(object);
         case InstancesInLevel:
@@ -1335,92 +1278,9 @@ bool ObjectSelectorModel::AcceptsObject(CBaseObject* obj) const
     return true;
 }
 
-void ObjectSelectorModel::UpdateFlowGraphInMaps(REFGUID guid)
-{
-    IObjectManager* objMan = GetIEditor()->GetObjectManager();
-    CBaseObject* pObject = objMan->FindObject(guid);
-    if (!pObject)
-    {
-        return;
-    }
-    s_flowGraphMap.erase(pObject);
-    if (pObject->CheckFlags(OBJFLAG_DELETED))
-    {
-        return;
-    }
-    QString fg = ComputeFlowGraphNames(pObject);
-    if (!fg.isEmpty())
-    {
-        s_flowGraphMap[pObject] = fg;
-    }
-}
-
-void ObjectSelectorModel::OnHyperGraphManagerEvent(EHyperGraphEvent event, IHyperGraph* pGraph, IHyperNode* pINode)
-{
-    if (event == EHG_GRAPH_INVALIDATE || event == EHG_GRAPH_ADDED || event == EHG_GRAPH_REMOVED || event == EHG_GRAPH_UPDATE_ENTITY
-        || event == EHG_NODE_ADD || event == EHG_NODE_DELETE || event == EHG_NODE_UPDATE_ENTITY)
-    {
-        if (pGraph)
-        {
-            if (((CHyperGraph*)pGraph)->IsFlowGraph())
-            {
-                CFlowGraph* pFlowGraph = (CFlowGraph*)pGraph;
-                CEntityObject* pGraphObject = pFlowGraph->GetEntity();
-
-                IHyperGraphEnumerator* pEnum = pFlowGraph->GetNodesEnumerator();
-                for (IHyperNode* pINode = pEnum->GetFirst(); pINode; pINode = pEnum->GetNext())
-                {
-                    if (((CHyperNode*)pINode)->IsFlowNode() && ((CHyperNode*)pINode)->GetFlowNodeId() != InvalidFlowNodeId)
-                    {
-                        CFlowNode* pFlowNode = (CFlowNode*)pINode;
-                        CEntityObject* pNodeObject = pFlowNode->GetEntity();
-                        if (pNodeObject && pNodeObject != pGraphObject)
-                        {
-                            m_modifiedFlowGraphObjects.push_back(pNodeObject->GetId());
-                        }
-                    }
-                }
-                pEnum->Release();
-                if (pGraphObject)
-                {
-                    m_modifiedFlowGraphObjects.push_back(pGraphObject->GetId());
-                }
-            }
-        }
-        else if (pINode)
-        {
-            CHyperGraph* pFlowGraph = (CHyperGraph*)pINode->GetGraph();
-            if (pFlowGraph && pFlowGraph->IsFlowGraph()
-                && ((CHyperNode*)pINode)->IsFlowNode() && ((CHyperNode*)pINode)->GetFlowNodeId() != InvalidFlowNodeId)
-            {
-                CFlowNode* pFlowNode = (CFlowNode*)pINode;
-                if (pFlowNode->GetEntity())
-                {
-                    m_modifiedFlowGraphObjects.push_back(pFlowNode->GetEntity()->GetId());
-                }
-            }
-        }
-    }
-}
-
-void ObjectSelectorModel::UpdateFlowGraphs()
-{
-    if (!m_modifiedFlowGraphObjects.empty())
-    {
-        for (size_t i = 0; i < m_modifiedFlowGraphObjects.size(); ++i)
-        {
-            UpdateFlowGraphInMaps(m_modifiedFlowGraphObjects[i]);
-        }
-        m_modifiedFlowGraphObjects.resize(0);
-        EmitDataChanged();
-    }
-}
-
 void ObjectSelectorModel::BuildMaps()
 {
-    s_flowGraphMap.clear();
     s_trackViewMap.clear();
-    m_modifiedFlowGraphObjects.resize(0);
 
     for (size_t i = 0; i < m_objects.size(); ++i)
     {
@@ -1430,6 +1290,7 @@ void ObjectSelectorModel::BuildMaps()
     // Now it has the latest data again.
     m_bTrackViewModified = false;
 }
+
 
 void ObjectSelectorModel::SetTrackViewModified(bool modified)
 {

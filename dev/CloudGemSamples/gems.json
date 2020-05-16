@@ -8,12 +8,6 @@
             "_comment": "EMotionFX"
         },
         {
-            "Path": "Gems/AWS",
-            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
-            "Version": "0.1.0",
-            "_comment": "AWS"
-        },
-        {
             "Path": "Gems/StartingPointInput",
             "Uuid": "09f4bedeee614358bc36788e77f97e51",
             "Version": "0.1.0",
@@ -80,6 +74,12 @@
             "_comment": "StaticData"
         },
         {
+            "Path": "Gems/ExpressionEvaluation",
+            "Uuid": "4c6f9df57ca2468f93c8d860ee6a1167",
+            "Version": "0.1.0",
+            "_comment": "ExpressionEvaluation"
+        },
+        {
             "Path": "Gems/InputManagementFramework",
             "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
             "Version": "0.1.0",
@@ -92,6 +92,12 @@
             "_comment": "TextureAtlas"
         },
         {
+            "Path": "Gems/AudioEngineWwise",
+            "Uuid": "67a80e2ac865406c990f2715feb55f7f",
+            "Version": "0.1.0",
+            "_comment": "AudioEngineWwise"
+        },
+        {
             "Path": "Gems/UiBasics",
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
@@ -102,12 +108,6 @@
             "Uuid": "6f2e05e82d6f4b76abaa18a70f25d7fe",
             "Version": "0.1.0",
             "_comment": "CloudGemSpeechRecognition"
-        },
-        {
-            "Path": "Gems/AudioEngineWwise",
-            "Uuid": "67a80e2ac865406c990f2715feb55f7f",
-            "Version": "0.1.0",
-            "_comment": "AudioEngineWwise"
         },
         {
             "Path": "Gems/AudioSystem",
@@ -164,16 +164,10 @@
             "_comment": "CloudGemTextToSpeech"
         },
         {
-            "Path": "Gems/UserLoginDefault",
-            "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
+            "Path": "Gems/LegacyTerrain",
+            "Uuid": "c87f9fc3e7054f3482311da444e84456",
             "Version": "0.1.0",
-            "_comment": "UserLoginDefault"
-        },
-        {
-            "Path": "Gems/NativeUI",
-            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
-            "Version": "0.1.0",
-            "_comment": "NativeUI"
+            "_comment": "LegacyTerrain"
         },
         {
             "Path": "Gems/ScriptCanvasDiagnosticLibrary",

@@ -67,11 +67,17 @@ namespace AZ
             bool operator!=(const AssetId& rhs) const;
             bool operator<(const AssetId& rhs) const;
 
-            template<class StringType>
-            StringType ToString() const;
+            enum class SubIdDisplayType
+            {
+                Hex,
+                Decimal
+            };
 
             template<class StringType>
-            void ToString(StringType& result) const;
+            StringType ToString(SubIdDisplayType displayType = SubIdDisplayType::Hex) const;
+
+            template<class StringType>
+            void ToString(StringType& result, SubIdDisplayType displayType = SubIdDisplayType::Hex) const;
 
             static AssetId CreateString(AZStd::string_view input);
             static void Reflect(ReflectContext* context);
@@ -148,6 +154,17 @@ namespace AZ
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
 
+            /**
+             * Override this function to control automatic reload behavior. 
+             * By default, the asset will reload automatically.
+             * Return false to disable automatic reload. Potential use cases include:
+             * 1, If an asset is dependent on a parent asset(i.e.both assets need to be reloaded as a group) the parent asset can explicitly reload the child.
+             * 2, The asset does not support reload.
+             * Note: Disabling an auto reload means that the asset in memory will be stale compared to what triggered the reload
+             * This moves the responsibility of loading the asset or editing/handling the stale asset onto the system that disabled the reload
+             */
+            virtual bool HandleAutoReload() { return true; }
+
             AssetData(const AssetData&) = delete;
             AZStd::atomic_int m_useCount;
             AZStd::atomic_int m_status;
@@ -219,6 +236,18 @@ namespace AZ
                 return m_assetData != nullptr;
             }
 
+            T& operator*() const
+            {
+                AZ_Assert(m_assetData, "Asset is not loaded");
+                return *Get();
+            }
+
+            T* operator->() const
+            {
+                AZ_Assert(m_assetData, "Asset is not loaded");
+                return Get();
+            }
+
             bool IsReady() const;               ///< Is the asset data ready (loaded)?
             bool IsError() const;               ///< Did an error occur when loading the asset?
             bool IsLoading() const;             ///< Is the asset currently loading?
@@ -265,7 +294,7 @@ namespace AZ
 
             /**
              * Reloads an asset if an asset is create.
-             * \returns true if reload is triggered, otherwise false if an asset is not created (ie. We don't asset ID to reload)
+             * \returns true if reload is triggered, otherwise false if an asset is not created (ie. We don't have asset ID to reload)
              */
             bool Reload();
 
@@ -407,11 +436,11 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData.Get()->GetStatus() == AssetData::AssetStatus::Ready)
+                        if (assetData->GetStatus() == AssetData::AssetStatus::Ready)
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData.Get()->IsError())
+                        else if (assetData->IsError())
                         {
                             handler->OnAssetError(assetData);
                         }
@@ -524,18 +553,26 @@ namespace AZ
 
         //=========================================================================
         template<class StringType>
-        inline StringType AssetId::ToString() const
+        inline StringType AssetId::ToString(SubIdDisplayType displayType) const
         {
             StringType result;
-            ToString(result);
+            ToString(result, displayType);
             return result;
         }
 
         //=========================================================================
         template<class StringType>
-        inline void AssetId::ToString(StringType& result) const
+        inline void AssetId::ToString(StringType& result, SubIdDisplayType displayType) const
         {
-            result = StringType::format("%s:%x", m_guid.ToString<StringType>().c_str(), m_subId);
+            switch (displayType)
+            {
+            case SubIdDisplayType::Hex:
+                result = StringType::format("%s:%x", m_guid.ToString<StringType>().c_str(), m_subId);
+                break;
+            case SubIdDisplayType::Decimal:
+                result = StringType::format("%s:%d", m_guid.ToString<StringType>().c_str(), m_subId);
+                break;
+            }
         }
 
         //=========================================================================
@@ -596,7 +633,7 @@ namespace AZ
             : m_assetType(azrtti_typeid<T>())
             , m_loadBehavior(loadBehavior)
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<AssetData, T>::value), "Can only specify desired type if asset type is AssetData");
+            static_assert((AZStd::is_base_of<AssetData, T>::value), "Can only specify desired type if asset type is AssetData");
         }
 
         //=========================================================================
@@ -785,12 +822,7 @@ namespace AZ
         template<class T>
         T* Asset<T>::Get() const
         {
-            if (m_assetData)
-            {
-                //return azrtti_cast<T*>(m_assetData);
-                return static_cast<T*>(m_assetData); // Type is checked when we set the asset data
-            }
-            return nullptr;
+            return static_cast<T*>(m_assetData);
         }
 
         //=========================================================================

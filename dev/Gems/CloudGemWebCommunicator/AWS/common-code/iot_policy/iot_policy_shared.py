@@ -10,10 +10,11 @@
 #
 
 from cgf_utils import aws_utils
+from cgf_utils import aws_sts
 from resource_manager_common import stack_info
 import web_communicator_iot
-import boto3
 import json
+from six import iteritems
 
 iot_client = web_communicator_iot.get_iot_client()
 
@@ -23,7 +24,8 @@ def _get_subscription_resources(stack, client_id):
 
     policy_list = []
     if stack.stack_type == stack_info.StackInfo.STACK_TYPE_RESOURCE_GROUP:
-        account_id = aws_utils.ClientWrapper(boto3.client('sts')).get_caller_identity()['Account']
+        sts_client = aws_sts.AWSSTSUtils(stack.region).client()
+        account_id = aws_utils.ClientWrapper(sts_client).get_caller_identity()['Account']
 
         resource_group_name = stack.resource_group_name
         deployment_name = stack.deployment.deployment_name
@@ -31,15 +33,15 @@ def _get_subscription_resources(stack, client_id):
 
         resource_group_settings = stack.deployment.get_gem_settings(resource_group_name)
 
-        for gem_name, gem_settings in resource_group_settings.iteritems():
+        for gem_name, gem_settings in iteritems(resource_group_settings):
             channel_list = gem_settings.get('Channels', [])
             for requested_channel in channel_list:
                 requested_name = requested_channel.get('Name')
                 if not requested_name:
                     continue
                 for requested_type in requested_channel.get('Types', []):
-                    iot_client_resource = 'arn:aws:iot:{}:{}:topic/{}/{}/{}'.format(stack.region, account_id,project_name,deployment_name,requested_name)
-                    if requested_channel.get('CommunicationChannel', None) != None:
+                    iot_client_resource = 'arn:aws:iot:{}:{}:topic/{}/{}/{}'.format(stack.region, account_id, project_name, deployment_name, requested_name)
+                    if requested_channel.get('CommunicationChannel', None) is not None:
                         # This channel communicates within another channel - We don't want to subscribe to it
                         continue
                     if requested_type == 'PRIVATE':
@@ -48,32 +50,36 @@ def _get_subscription_resources(stack, client_id):
 
     return policy_list
 
+
 def get_listener_policy(stack, client_id):
-    account_id = aws_utils.ClientWrapper(boto3.client('sts')).get_caller_identity()['Account']
+    sts_client = aws_sts.AWSSTSUtils(stack.region).client()
+    account_id = aws_utils.ClientWrapper(sts_client).get_caller_identity()['Account']
 
     iot_client_resource = "arn:aws:iot:{}:{}:client/{}".format(stack.region, account_id, client_id)
 
-    policy_doc = {}
-    policy_doc['Version'] = '2012-10-17'
+    policy_doc = {'Version': '2012-10-17'}
 
     policy_list = []
-    connect_statement = {}
-    connect_statement['Effect'] = 'Allow'
-    connect_statement['Action'] = ['iot:Connect']
-    connect_statement['Resource'] = "arn:aws:iot:{}:{}:client/{}".format(stack.region, account_id, client_id)
+    connect_statement = {
+        'Effect': 'Allow',
+        'Action': ['iot:Connect'],
+        'Resource': "arn:aws:iot:{}:{}:client/{}".format(stack.region, account_id, client_id)
+    }
     policy_list.append(connect_statement)
 
-    receive_statement = {}
-    receive_statement['Effect'] = 'Allow'
-    receive_statement['Action'] = ['iot:Receive']
+    receive_statement = {
+        'Effect': 'Allow',
+        'Action': ['iot:Receive']
+    }
     receive_list = _get_subscription_resources(stack, client_id)
     receive_statement['Resource'] = receive_list
     policy_list.append(receive_statement)
 
-    subscribe_statement = {}
-    subscribe_statement['Effect'] = 'Allow'
-    subscribe_statement['Action'] = ['iot:Subscribe']
-    subscribe_list = [ channel.replace(":topic/", ":topicfilter/") for channel in receive_list]
+    subscribe_statement = {
+        'Effect': 'Allow',
+        'Action': ['iot:Subscribe']
+    }
+    subscribe_list = [channel.replace(":topic/", ":topicfilter/") for channel in receive_list]
     subscribe_statement['Resource'] = subscribe_list
     policy_list.append(subscribe_statement)
 
@@ -81,13 +87,14 @@ def get_listener_policy(stack, client_id):
 
     return json.dumps(policy_doc)
 
+
 def detach_policy_principals(physical_resource_id):
     try:
         principal_list = iot_client.list_policy_principals(policyName=physical_resource_id, pageSize=100)
     except Exception as e:
         # Wrapper should have logged error. Return gracefully rather than raising
         return e
-        
+
     next_marker = principal_list.get('nextMarker')
     while True:
         for thisPrincipal in principal_list['principals']:
@@ -95,8 +102,8 @@ def detach_policy_principals(physical_resource_id):
                 # For a cert, the principal is the full arn
                 principal_name = thisPrincipal
             else:
-                ## Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
-                principal_name = thisPrincipal.split(':',1)[1]
+                # Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
+                principal_name = thisPrincipal.split(':', 1)[1]
             try:
                 iot_client.detach_policy(policyName=physical_resource_id, target=principal_name)
             except Exception as e:
@@ -104,8 +111,5 @@ def detach_policy_principals(physical_resource_id):
 
         if next_marker is None:
             break
-        principal_list = iot_client.list_policy_principals(policyName=physical_resource_id, pageSize=100, marker=next_marker)  
+        principal_list = iot_client.list_policy_principals(policyName=physical_resource_id, pageSize=100, marker=next_marker)
         next_marker = principal_list.get('nextMarker')
-
-    
-        

@@ -24,7 +24,7 @@ def put(request, survey_id, question_order):
     validation_utils.validate_param(question_id_list, 'question_id_list', validation_utils.is_not_none)
 
     survey_metadata = survey_utils.get_survey_metadata_by_id(survey_id, ['questions'], True)
-    question_ids = map(lambda x: x['id'], survey_metadata['questions'])
+    question_ids = [x['id'] for x in survey_metadata['questions']]
     if set(question_ids) != set(question_id_list):
         raise errors.ClientError("Question IDs from input doesn't match existing question IDs")
 

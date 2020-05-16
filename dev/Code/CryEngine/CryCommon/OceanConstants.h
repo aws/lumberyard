@@ -78,6 +78,8 @@ namespace AZ
 
         static const bool s_GodRaysEnabled = true;
         static const float s_UnderwaterDistortion = 1.0f;
+
+        static const float s_oceanIsVeryFarAway = 1000000.f;
     };
 
 }

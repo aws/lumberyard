@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 
 namespace ImageProcessing
 {

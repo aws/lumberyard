@@ -227,7 +227,7 @@ namespace PhysXCharacters
     }
 
     // PhysX::ConfigurationNotificationBus
-    void EditorCharacterControllerComponent::OnConfigurationRefreshed(const PhysX::Configuration& configuration)
+    void EditorCharacterControllerComponent::OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration)
     {
         AZ_UNUSED(configuration);
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,

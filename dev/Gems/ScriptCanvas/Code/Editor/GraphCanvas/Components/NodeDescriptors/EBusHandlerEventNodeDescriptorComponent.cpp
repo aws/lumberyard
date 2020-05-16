@@ -19,7 +19,9 @@
 
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.h>
 
+#include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Core/NodeBus.h>
+#include <ScriptCanvas/Core/EBusNodeBus.h>
 #include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
 #include <Editor/Nodes/NodeUtils.h>
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
@@ -110,7 +112,28 @@ namespace ScriptCanvasEditor
     ScriptCanvas::EBusEventId EBusHandlerEventNodeDescriptorComponent::GetEventId() const
     {
         return m_eventId;
-    }    
+    }
+
+    void EBusHandlerEventNodeDescriptorComponent::SetHandlerAddress(const ScriptCanvas::Datum& idDatum)
+    {
+        if (m_ebusWrapper.m_scriptCanvasId.IsValid())
+        {
+            GraphCanvas::GraphId graphId;
+            GraphCanvas::SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+
+            ScriptCanvas::ScriptCanvasId canvasId;
+            GeneralRequestBus::BroadcastResult(canvasId, &GeneralRequests::GetScriptCanvasId, graphId);            
+
+            ScriptCanvas::GraphScopedNodeId scopedNodeId(canvasId, m_ebusWrapper.m_scriptCanvasId);
+            ScriptCanvas::EBusHandlerNodeRequestBus::Event(scopedNodeId, &ScriptCanvas::EBusHandlerNodeRequests::SetAddressId, AZStd::move(idDatum));
+
+            m_queuedId = AZStd::move(ScriptCanvas::Datum());
+        }
+        else
+        {
+            m_queuedId.DeepCopyDatum(idDatum);
+        }
+    }
 
     void EBusHandlerEventNodeDescriptorComponent::OnNodeWrapped(const AZ::EntityId& wrappingNode)
     {
@@ -246,6 +269,11 @@ namespace ScriptCanvasEditor
                     }
 
                     isValid = (totalSlots == graphCanvasSlotIds.size());
+                }
+
+                if (m_queuedId.GetType().IsValid())
+                {
+                    SetHandlerAddress(m_queuedId);                    
                 }
             }
         }

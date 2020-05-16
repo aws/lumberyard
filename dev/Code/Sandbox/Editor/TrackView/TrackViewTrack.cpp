@@ -18,6 +18,7 @@
 #include "TrackViewSequence.h"
 #include "TrackViewNodeFactories.h"
 #include "TrackViewUndo.h"
+
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -317,9 +318,19 @@ void CTrackViewTrack::OffsetKeyPosition(const Vec3& offset)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
 {
-    AzToolsFramework::ScopedUndoBatch undoBatch("Update Key Data After Parent Changed");
+    AZStd::unique_ptr<AzToolsFramework::ScopedUndoBatch> undoBatch;
+
+    if (!AzToolsFramework::UndoRedoOperationInProgress())
+    {
+        undoBatch = AZStd::make_unique<AzToolsFramework::ScopedUndoBatch>("Update Key Data After Parent Changed");
+    }
+
     m_pAnimTrack->UpdateKeyDataAfterParentChanged(oldParentWorldTM, newParentWorldTM);
-    undoBatch.MarkEntityDirty(GetSequence()->GetSequenceComponentEntityId());
+
+    if (undoBatch.get())
+    {
+        undoBatch->MarkEntityDirty(GetSequence()->GetSequenceComponentEntityId());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

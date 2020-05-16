@@ -192,6 +192,7 @@ namespace GridMate
             , m_numUsedPrivateSlots(0)
             , m_numPlayers(0)
             , m_numParams(0)
+            , m_port(0)
         { }
         SessionID m_sessionId;
         AZ::u32 m_numFreePublicSlots;
@@ -200,6 +201,7 @@ namespace GridMate
         AZ::u32 m_numUsedPrivateSlots;
         AZ::u32 m_numPlayers;           ///< Number of players in the session.
         AZ::u32 m_numParams;
+        AZ::u32 m_port;
         GridSessionParam m_params[SessionParams::k_maxNumParams];
     };
 
@@ -311,6 +313,7 @@ namespace GridMate
         bool IsHost() const { return m_isHost.Get(); }
         bool IsLocal() const;
         bool IsInvited() const { return m_isInvited.Get(); }
+        const RemotePeerMode GetPeerMode() const { return m_peerMode.Get(); }
         /**
          * Returns true if all member related data is present. Even if IsReady is false you can still access
          * all functions! Unless explicitly specified otherwise.

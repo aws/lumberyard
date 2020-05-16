@@ -9,14 +9,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import os
 import sys
-sys.path += '.'
 
+lmbrwaflib_path = os.path.abspath(os.path.dirname(__file__))
+if lmbrwaflib_path not in sys.path:
+    sys.path.insert(0, os.path.dirname(__file__))
+
+
+# waflib imports
 from waflib import Utils, Errors, Node
 
-import utils
-
-import os
+# lmbrwaflib imports
+from lmbrwaflib import utils
 
 
 class FakeContext(object):

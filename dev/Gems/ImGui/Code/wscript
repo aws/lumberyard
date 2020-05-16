@@ -15,7 +15,7 @@ def build(bld):
     # Set Config Based Defines (not including IMGUI_ENABLED turns ImGui off and no-ops much of the code.)
     configBaseDefines=[]
     configBaseDefinesEditor=[]
-    if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug':
+    if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug' or bld.env['CONFIGURATION'] == 'performance':
         configBaseDefines.append('IMGUI_ENABLED')
         configBaseDefinesEditor.append('IMGUI_ENABLED')
     configBaseDefinesEditor.append('IMGUI_GEM_EDITOR')
@@ -54,9 +54,9 @@ def build(bld):
 
     #Common Editor and Game Includes
     COMMON_INCLUDES = [
+        '.',
         bld.Path('Code/CryEngine/CryCommon'),
-        bld.Path('Code/CryEngine/CryAction'),
-        bld.Path('Gems/LmbrCentral/Code/include')
+         bld.Path('Gems/LmbrCentral/Code/include')
     ]
     COMMON_USE = ['imguilib', 'AzFramework', 'LmbrCentral']
 

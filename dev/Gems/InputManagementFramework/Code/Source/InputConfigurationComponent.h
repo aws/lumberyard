@@ -88,8 +88,9 @@ namespace Input
         InputEventBindings m_inputEventBindings;
         AZStd::vector<AZStd::string> m_inputContexts;
         AZ::Data::Asset<InputEventBindingsAsset> m_inputEventBindingsAsset;
-        AzFramework::LocalUserId m_localUserId = AzFramework::LocalUserIdAny;
+        AZ::u32 m_localPlayerIndex = std::numeric_limits<AZ::u32>::max();
 
+        AzFramework::LocalUserId m_localUserId = AzFramework::LocalUserIdAny;
         bool m_isContextActive = false;
 
         // Unlike the definition of most assets, the input asset requires additional preparation after its loaded

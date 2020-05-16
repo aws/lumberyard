@@ -22,7 +22,6 @@
 #include "CAISystem.h"
 #include "DebugDrawContext.h"
 
-#include "AIActions.h"
 #include "SmartObjects.h"
 
 #include "Navigation/NavigationSystem/NavigationSystem.h"
@@ -416,21 +415,15 @@ void CSmartObjectManager::SerializePointer(TSerialize ser, const char* name, CCo
 
 void CSmartObject::Use(CSmartObject* pObject, CCondition* pCondition, int eventId /*=0*/, bool bForceHighPriority /*=false*/) const
 {
-    CAIActionManager* pActionManager = gAIEnv.pAIActionManager;
     const char* sSignal = NULL;
-    IAIAction* pAction = NULL;
     if (!pCondition->sAction.empty() && pCondition->eActionType != eAT_None)
     {
         if (pCondition->eActionType == eAT_AISignal)
         {
             sSignal = pCondition->sAction;
         }
-        else
-        {
-            pAction = pActionManager->GetAIAction(pCondition);
-        }
 
-        if (!pAction && !sSignal)
+        if (!sSignal)
         {
             AIWarning("Undefined AI action \"%s\"!", pCondition->sAction.c_str());
 
@@ -486,90 +479,9 @@ void CSmartObject::Use(CSmartObject* pObject, CCondition* pCondition, int eventI
                     gAIEnv.pSmartObjectManager->ModifySmartObjectStates(pObjectEntity, pCondition->objectPostActionStates.AsString());
                 }
             }
-
-            return;
         }
-        //else if (pAIObject->CastToCAIPlayer())
-        //{
-        //  pAIObject = NULL;
-        //}
-        else
-        {
-            PREFAST_ASSUME(pAction);
 
-            if (eventId || (pAction && !pAction->GetFlowGraph()))
-            {
-                if (!pAction->GetFlowGraph())
-                {
-                    // set reference point to say where to play the animation
-                    CAnimationAction* pAnimAction = static_cast< CAnimationAction* >(pAction);
-
-                    if (pCondition->pObjectClass)
-                    {
-                        if (pCondition->sAnimationHelper.c_str()[0] == '<')
-                        {
-                            if (pCondition->sAnimationHelper == "<Auto>")
-                            {
-                                pAnimAction->SetAutoTarget(pObject->GetPos(), pObject->GetOrientation(NULL));
-                            }
-                            else if (pCondition->sAnimationHelper == "<AutoInverse>")
-                            {
-                                pAnimAction->SetAutoTarget(pObject->GetPos(), Quat::CreateRotationZ(gf_PI) * pObject->GetOrientation(NULL));
-                            }
-                            else
-                            {
-                                AIError("Invalid animation helper name '%s' in smart object rule '%s'!", pCondition->sAnimationHelper.c_str(), pCondition->sName.c_str());
-                            }
-
-                            // approach target might be different
-                            const SmartObjectHelper* pApproachHelper = pCondition->pObjectClass->GetHelper(pCondition->sApproachHelper);
-                            if (pApproachHelper)
-                            {
-                                pAnimAction->SetApproachPos(pObject->GetHelperPos(pApproachHelper));
-                            }
-                        }
-                        else if (const SmartObjectHelper* pHelper = pCondition->pObjectClass->GetHelper(pCondition->sAnimationHelper))
-                        {
-                            pAnimAction->SetTarget(pObject->GetHelperPos(pHelper), pObject->GetOrientation(pHelper));
-
-                            // approach target might be different
-                            const SmartObjectHelper* pApproachHelper = pCondition->pObjectClass->GetHelper(pCondition->sApproachHelper);
-                            if (pApproachHelper)
-                            {
-                                pAnimAction->SetApproachPos(pObject->GetHelperPos(pApproachHelper));
-                            }
-                        }
-                        else
-                        {
-                            Vec3 direction = pObject->GetPos() - GetPos();
-                            direction.NormalizeSafe();
-                            pAnimAction->SetTarget(GetPos(), direction);
-                        }
-                    }
-                    else
-                    {
-                        pAnimAction->SetTarget(GetPos(), GetOrientation(NULL));
-                    }
-                }
-
-                pActionManager->ExecuteAIAction(pAction, GetEntity(), pObject->GetEntity(), maxAlertness, eventId,
-                    pCondition->userPostActionStates.AsString(), pCondition->objectPostActionStates.AsString(),
-                    pCondition->userPreActionStates.AsUndoString(), pCondition->objectPreActionStates.AsUndoString());
-            }
-            else
-            {
-                AISignalExtraData* pExtraData = new AISignalExtraData;
-                pExtraData->SetObjectName(string(pAction->GetName()) +
-                    ",\"" + pCondition->userPostActionStates.AsString() + '\"' +
-                    ",\"" + pCondition->objectPostActionStates.AsString() + '\"' +
-                    ",\"" + pCondition->userPreActionStates.AsUndoString() + '\"' +
-                    ",\"" + pCondition->objectPreActionStates.AsUndoString() + '\"');
-                pExtraData->iValue = maxAlertness;
-                pAIObject->SetSignal(10, "OnUseSmartObject", pObjectEntity, pExtraData, gAIEnv.SignalCRCs.m_nOnUseSmartObject);
-            }
-
-            return;
-        }
+        return;
     }
 
     if (!pAIObject)
@@ -592,12 +504,6 @@ void CSmartObject::Use(CSmartObject* pObject, CCondition* pCondition, int eventI
                     gAIEnv.pSmartObjectManager->ModifySmartObjectStates(pObject->GetEntity(), pCondition->objectPreActionStates.AsUndoString());
                 }
             }
-        }
-        else if (pAction && pAction->GetFlowGraph())
-        {
-            gAIEnv.pAIActionManager->ExecuteAIAction(pAction, GetEntity(), pObject->GetEntity(), 100, eventId,
-                pCondition->userPostActionStates.AsString(), pCondition->objectPostActionStates.AsString(),
-                pCondition->userPreActionStates.AsUndoString(), pCondition->objectPreActionStates.AsUndoString());
         }
     }
 }
@@ -3794,9 +3700,6 @@ bool CSmartObjectManager::OnRemove(IEntity* pEntity)
 
 void CSmartObjectManager::DoRemove(IEntity* pEntity, bool bDeleteSmartObject)
 {
-    // remove all actions in which this entity is participating
-    gAIEnv.pAIActionManager->OnEntityRemove(pEntity);
-
     CSmartObject* pSmartObject = GetSmartObject(pEntity->GetId());
     if (pSmartObject)
     {

@@ -17,6 +17,7 @@
 #include "Objects/BaseObject.h"
 #include "LayersSelectDialog.h"
 #include "Material/Material.h"
+#include "Material/MaterialManager.h"
 #include "Objects/ObjectLayerManager.h"
 
 #include <QtUtilWin.h>
@@ -454,7 +455,7 @@ void CObjectPanel::OnBnClickedMaterial()
         else
         {
             GetIEditor()->OpenDataBaseLibrary(EDB_TYPE_MATERIAL);
-            GetIEditor()->ExecuteCommand("material.select_from_object");
+            GetIEditor()->GetMaterialManager()->Command_SelectFromObject();
         }
     }
 }

@@ -47,9 +47,12 @@ namespace AzFramework
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<AzFramework::SliceInstantiationTicket>()
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                    ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("Equal", &AzFramework::SliceInstantiationTicket::operator==)
-                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                ->Method("ToString", &SliceInstantiationTicket::ToString)
+                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("IsValid", &AzFramework::SliceInstantiationTicket::operator bool)
                 ;
         }
@@ -440,6 +443,41 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // GenerateSliceInstantiationTicket
+    //=========================================================================
+    SliceInstantiationTicket EntityContext::GenerateSliceInstantiationTicket()
+    {
+        return SliceInstantiationTicket(m_contextId, ++m_nextSliceTicket);
+    }
+
+    //=========================================================================
+    // PreSliceInstantiate
+    //=========================================================================
+    void EntityContext::PreSliceInstantiate(AZ::Data::AssetId sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& instance, const SliceInstantiationTicket& ticket)
+    {
+        EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSlicePreInstantiate, sliceAssetId, instance);
+        SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSlicePreInstantiate, sliceAssetId, instance);
+    }
+
+    //=========================================================================
+    // PostSliceInstantiate
+    //=========================================================================
+    void EntityContext::PostSliceInstantiate(AZ::Data::AssetId sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& instance, const SliceInstantiationTicket& ticket)
+    {
+        EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiated, sliceAssetId, instance);
+        SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, sliceAssetId, instance);
+    }
+
+    //=========================================================================
+    // SliceInstantiateFailed
+    //=========================================================================
+    void EntityContext::SliceInstantiateFailed(AZ::Data::AssetId sliceAssetId, const SliceInstantiationTicket& ticket)
+    {
+        EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, sliceAssetId);
+        DispatchOnSliceInstantiationFailed(ticket, sliceAssetId, false);
+    }
+
+    //=========================================================================
     // CloneEntity
     //=========================================================================
     AZ::Entity* EntityContext::CloneEntity(const AZ::Entity& sourceEntity)
@@ -504,7 +542,7 @@ namespace AzFramework
     {
         if (asset.GetId().IsValid())
         {
-            const SliceInstantiationTicket ticket(m_contextId, ++m_nextSliceTicket);
+            const SliceInstantiationTicket ticket = GenerateSliceInstantiationTicket();
             m_queuedSliceInstantiations.emplace_back(asset, ticket, customIdMapper);
             m_queuedSliceInstantiations.back().m_asset.QueueLoad(assetLoadFilter);
 
@@ -792,13 +830,11 @@ namespace AzFramework
                             if (instance.GetInstance()->GetInstantiated() &&
                                 ValidateEntitiesAreValidForContext(instance.GetInstance()->GetInstantiated()->m_entities))
                             {
-                                EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSlicePreInstantiate, m_instantiatingAssetId, instance);
-                                SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSlicePreInstantiate, m_instantiatingAssetId, instance);
+                                PreSliceInstantiate(m_instantiatingAssetId, instance, ticket);
 
                                 HandleEntitiesAdded(instance.GetInstance()->GetInstantiated()->m_entities);
 
-                                EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiated, m_instantiatingAssetId, instance);
-                                SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, m_instantiatingAssetId, instance);
+                                PostSliceInstantiate(m_instantiatingAssetId, instance, ticket);
 
                                 isSliceInstantiated = true;
                             }
@@ -812,8 +848,7 @@ namespace AzFramework
                       
                         if (!isSliceInstantiated)
                         {
-                            EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, m_instantiatingAssetId);
-                            DispatchOnSliceInstantiationFailed(ticket, m_instantiatingAssetId, false);
+                            SliceInstantiateFailed(m_instantiatingAssetId, ticket);
                         }
 
                         // clear the Asset ID cache

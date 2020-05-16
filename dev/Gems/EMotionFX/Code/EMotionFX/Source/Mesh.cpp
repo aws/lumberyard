@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Math/Vector2.h>
 #include "EMotionFXConfig.h"
 #include "Mesh.h"
 #include "SubMesh.h"
@@ -20,6 +21,7 @@
 #include "SoftSkinDeformer.h"
 #include "MeshDeformerStack.h"
 #include <EMotionFX/Source/Allocators.h>
+
 
 namespace EMotionFX
 {
@@ -235,8 +237,8 @@ namespace EMotionFX
         uint32 i, f;
         AZ::Vector4* tangents = nullptr;
         AZ::Vector4* orgTangents = nullptr;
-        AZ::PackedVector3f* bitangents = nullptr;
-        AZ::PackedVector3f* orgBitangents = nullptr;
+        AZ::Vector3* bitangents = nullptr;
+        AZ::Vector3* orgBitangents = nullptr;
         const uint32 numTangentLayers = CalcNumAttributeLayers(Mesh::ATTRIB_TANGENTS);
 
         // make sure we have tangent data allocated for all uv layers before the given one
@@ -251,13 +253,13 @@ namespace EMotionFX
             if (storeBitangents)
             {
                 AddVertexAttributeLayer(VertexAttributeLayerAbstractData::Create(mNumVertices, Mesh::ATTRIB_BITANGENTS, sizeof(AZ::PackedVector3f), true));
-                bitangents    = static_cast<AZ::PackedVector3f*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, i));
-                orgBitangents = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, i));
+                bitangents    = static_cast<AZ::Vector3*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, i));
+                orgBitangents = static_cast<AZ::Vector3*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, i));
             }
 
             // default all tangents for the newly created layer
             AZ::Vector4 defaultTangent(1.0f, 0.0f, 0.0f, 0.0f);
-            AZ::PackedVector3f defaultBitangent(0.0f, 0.0f, 1.0f);
+            AZ::Vector3 defaultBitangent(0.0f, 0.0f, 1.0f);
             for (uint32 vtx = 0; vtx < mNumVertices; ++vtx)
             {
                 tangents[vtx]      = defaultTangent;
@@ -274,11 +276,11 @@ namespace EMotionFX
         // get access to the tangent layer for the given uv set
         tangents      = static_cast<AZ::Vector4*>(FindVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
         orgTangents   = static_cast<AZ::Vector4*>(FindOriginalVertexData(Mesh::ATTRIB_TANGENTS, uvSet));
-        bitangents    = static_cast<AZ::PackedVector3f*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
-        orgBitangents = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
+        bitangents    = static_cast<AZ::Vector3*>(FindVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
+        orgBitangents = static_cast<AZ::Vector3*>(FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS, uvSet));
 
-        AZ::PackedVector3f* positions   = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
-        AZ::PackedVector3f* normals     = static_cast<AZ::PackedVector3f*>(FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
+        AZ::Vector3* positions   = static_cast<AZ::Vector3*>(FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::Vector3* normals     = static_cast<AZ::Vector3*>(FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
         uint32*         indices     = GetIndices(); // the indices (face data)
         uint8*          vertCounts  = GetPolygonVertexCounts();
         AZ::Vector3     curTangent;
@@ -316,7 +318,7 @@ namespace EMotionFX
                 indexC = indices[polyStartIndex + i - 1];
 
                 // calculate the tangent and bitangent for the face
-                CalcTangentAndBitangentForFace(AZ::Vector3(positions[indexA]), AZ::Vector3(positions[indexB]), AZ::Vector3(positions[indexC]),
+                CalcTangentAndBitangentForFace(positions[indexA], positions[indexB], positions[indexC],
                     uvData[indexA], uvData[indexB], uvData[indexC],
                     &curTangent, &curBitangent);
 
@@ -384,7 +386,7 @@ namespace EMotionFX
             // store the bitangent
             if (bitangents && orgBitangents)
             {
-                orgBitangents[i] = AZ::PackedVector3f(bitangent);
+                orgBitangents[i] = bitangent;
                 bitangents[i] = orgBitangents[i];
             }
         }
@@ -1107,12 +1109,12 @@ namespace EMotionFX
         outBoundingBox->Init();
 
         // get the position data
-        AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(ATTRIB_POSITIONS);
+        AZ::Vector3* positions = (AZ::Vector3*)FindVertexData(ATTRIB_POSITIONS);
 
         const uint32 numVerts = GetNumVertices();
         for (uint32 i = 0; i < numVerts; i += vertexFrequency)
         {
-            outBoundingBox->Encapsulate(transform.TransformPoint(AZ::Vector3(positions[i])));
+            outBoundingBox->Encapsulate(transform.TransformPoint(positions[i]));
         }
     }
 
@@ -1122,7 +1124,7 @@ namespace EMotionFX
     bool Mesh::Intersects(const Transform& transform, const MCore::Ray& ray)
     {
         // get the positions and indices and calculate the inverse of the transformation matrix
-        const AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
+        const AZ::Vector3* positions = (AZ::Vector3*)FindVertexData(Mesh::ATTRIB_POSITIONS);
         const Transform invTransform = transform.Inversed();
 
         // transform origin and dest of the ray into space of the mesh
@@ -1150,7 +1152,7 @@ namespace EMotionFX
                 indexB = indices[polyStartIndex + i];
                 indexC = indices[polyStartIndex + i - 1];
 
-                if (testRay.Intersects(AZ::Vector3(positions[indexA]), AZ::Vector3(positions[indexB]), AZ::Vector3(positions[indexC])))
+                if (testRay.Intersects(positions[indexA], positions[indexB], positions[indexC]))
                 {
                     return true;
                 }
@@ -1168,7 +1170,7 @@ namespace EMotionFX
     // intersection test between the mesh and a ray, includes calculation of intersection point
     bool Mesh::Intersects(const Transform& transform, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU, float* outBaryV, uint32* outIndices)
     {
-        AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
+        AZ::Vector3* positions = (AZ::Vector3*)FindVertexData(Mesh::ATTRIB_POSITIONS);
         Transform           invNodeTransform = transform.Inversed();
         AZ::Vector3         newOrigin = invNodeTransform.TransformPoint(ray.GetOrigin());
         AZ::Vector3         newDest = invNodeTransform.TransformPoint(ray.GetDest());
@@ -1204,7 +1206,7 @@ namespace EMotionFX
                 indexC = indices[polyStartIndex + i - 1];
 
                 // test the ray with the triangle (in object space)
-                if (testRay.Intersects(AZ::Vector3(positions[indexA]), AZ::Vector3(positions[indexB]), AZ::Vector3(positions[indexC]), &intersectionPoint, &baryU, &baryV))
+                if (testRay.Intersects(positions[indexA], positions[indexB], positions[indexC], &intersectionPoint, &baryU, &baryV))
                 {
                     // calculate the squared distance between the intersection point and the ray origin
                     dist = (intersectionPoint - newOrigin).GetLengthSq();
@@ -1483,18 +1485,18 @@ namespace EMotionFX
         outPoints.resize(mNumOrgVerts);
 
         // get the mesh data
-        const AZ::PackedVector3f*   positions = (AZ::PackedVector3f*)FindOriginalVertexData(ATTRIB_POSITIONS);
+        const AZ::Vector3*      positions = (AZ::Vector3*)FindOriginalVertexData(ATTRIB_POSITIONS);
         const uint32*           orgVerts  = (uint32*) FindVertexData(ATTRIB_ORGVTXNUMBERS);
 
         // init all org vertices
         for (uint32 v = 0; v < mNumOrgVerts; ++v)
         {
-            outPoints[v] = AZ::Vector3(positions[0]); // init them, as there are some unused original vertices sometimes
+            outPoints[v] = positions[0]; // init them, as there are some unused original vertices sometimes
         }
         // output the points
         for (uint32 i = 0; i < mNumVertices; ++i)
         {
-            outPoints[ orgVerts[i] ] = AZ::Vector3(positions[i]);
+            outPoints[ orgVerts[i] ] = positions[i];
         }
     }
 
@@ -1502,15 +1504,15 @@ namespace EMotionFX
     // calculate the normals
     void Mesh::CalcNormals(bool useDuplicates)
     {
-        AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-        AZ::PackedVector3f* normals = (AZ::PackedVector3f*)FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
+        AZ::Vector3* positions = (AZ::Vector3*)FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+        AZ::Vector3* normals = (AZ::Vector3*)FindOriginalVertexData(Mesh::ATTRIB_NORMALS);
         //uint32*       indices     = GetIndices();     // the indices (face data)
 
         // if we want to use the original mesh only
         if (useDuplicates == false)
         {
             // the smoothed normals array
-            MCore::Array<AZ::Vector3>    smoothNormals(mNumOrgVerts);
+            AZStd::vector<AZ::Vector3>    smoothNormals(mNumOrgVerts);
             for (uint32 i = 0; i < mNumOrgVerts; ++i)
             {
                 smoothNormals[i] = AZ::Vector3::CreateZero();
@@ -1538,9 +1540,9 @@ namespace EMotionFX
                     indexB = indices[polyStartIndex + i];
                     indexC = indices[polyStartIndex];
 
-                    const AZ::Vector3& posA = AZ::Vector3(positions[ indexA ]);
-                    const AZ::Vector3& posB = AZ::Vector3(positions[ indexB ]);
-                    const AZ::Vector3& posC = AZ::Vector3(positions[ indexC ]);
+                    const AZ::Vector3& posA = positions[ indexA ];
+                    const AZ::Vector3& posB = positions[ indexB ];
+                    const AZ::Vector3& posC = positions[ indexC ];
                     AZ::Vector3 faceNormal = MCore::SafeNormalize((posB - posA).Cross(posC - posB));
 
                     // store the tangents in the orgTangents array
@@ -1578,14 +1580,14 @@ namespace EMotionFX
 
             for (uint32 i = 0; i < mNumVertices; ++i)
             {
-                normals[i] = AZ::PackedVector3f(smoothNormals[ orgVerts[i] ]);
+                normals[i] = smoothNormals[ orgVerts[i] ];
             }
         }
         else
         {
             for (uint32 i = 0; i < mNumVertices; ++i)
             {
-                normals[i] = AZ::PackedVector3f(0.0f);
+                normals[i] = AZ::Vector3::CreateZero();
             }
 
             // iterate over all polygons, triangulate internally
@@ -1607,15 +1609,15 @@ namespace EMotionFX
                     indexB = indices[polyStartIndex + i];
                     indexC = indices[polyStartIndex];
 
-                    const AZ::Vector3 posA = AZ::Vector3(positions[ indexA ]);
-                    const AZ::Vector3 posB = AZ::Vector3(positions[ indexB ]);
-                    const AZ::Vector3 posC = AZ::Vector3(positions[ indexC ]);
+                    const AZ::Vector3& posA = positions[ indexA ];
+                    const AZ::Vector3& posB = positions[ indexB ];
+                    const AZ::Vector3& posC = positions[ indexC ];
                     AZ::Vector3 faceNormal = MCore::SafeNormalize((posB - posA).Cross(posC - posB));
 
                     // store the tangents in the orgTangents array
-                    normals[indexA] = AZ::PackedVector3f(AZ::Vector3(normals[indexA]) + faceNormal);
-                    normals[indexB] = AZ::PackedVector3f(AZ::Vector3(normals[indexB]) + faceNormal);
-                    normals[indexC] = AZ::PackedVector3f(AZ::Vector3(normals[indexC]) + faceNormal);
+                    normals[indexA] = normals[indexA] + faceNormal;
+                    normals[indexB] = normals[indexB] + faceNormal;
+                    normals[indexC] = normals[indexC] + faceNormal;
                 }
 
                 polyStartIndex += numPolyVerts;
@@ -1643,7 +1645,7 @@ namespace EMotionFX
             // normalize the normals
             for (uint32 i = 0; i < mNumVertices; ++i)
             {
-                normals[i] = AZ::PackedVector3f(MCore::SafeNormalize(AZ::Vector3(normals[i])));
+                normals[i] = MCore::SafeNormalize(normals[i]);
             }
         }
     }
@@ -1718,14 +1720,14 @@ namespace EMotionFX
         }
 
         // scale the positional data
-        AZ::PackedVector3f* positions       = (AZ::PackedVector3f*)FindVertexData(ATTRIB_POSITIONS);
-        AZ::PackedVector3f* orgPositions    = (AZ::PackedVector3f*)FindOriginalVertexData(ATTRIB_POSITIONS);
+        AZ::Vector3* positions       = (AZ::Vector3*)FindVertexData(ATTRIB_POSITIONS);
+        AZ::Vector3* orgPositions    = (AZ::Vector3*)FindOriginalVertexData(ATTRIB_POSITIONS);
 
         const uint32 numVerts = mNumVertices;
         for (uint32 i = 0; i < numVerts; ++i)
         {
-            positions[i] = AZ::PackedVector3f(AZ::Vector3(positions[i]) * scaleFactor);
-            orgPositions[i] = AZ::PackedVector3f(AZ::Vector3(orgPositions[i]) * scaleFactor);
+            positions[i] = positions[i] * scaleFactor;
+            orgPositions[i] = orgPositions[i] * scaleFactor;
         }
     }
 

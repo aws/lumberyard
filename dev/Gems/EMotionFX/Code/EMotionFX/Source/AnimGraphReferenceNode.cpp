@@ -506,6 +506,12 @@ namespace EMotionFX
             // We only want to do this in editor mode to save time.
             else if(GetEMotionFX().GetIsInEditorMode())
             {
+                if(AzFramework::StringFunc::Equal(referenceAnimGraph->GetFileName(), GetAnimGraph()->GetFileName()))
+                {
+                    // Check if the reference animgraph and the animgraph from this node are the same file
+                    return true;
+                }
+
                 if (!AnimGraphNode::RecursiveDetectCycles(nodes))
                 {
                     // Check that any child node doesn't have this node. We have to be extra careful in this case to detect
@@ -950,9 +956,9 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphReferenceNode::ParameterAdded(size_t newParameterIndex)
+    void AnimGraphReferenceNode::ParameterAdded(const AZStd::string& newParameterName)
     {
-        AZ_UNUSED(newParameterIndex);
+        AZ_UNUSED(newParameterName);
 
         // When a new parameter is added, we dont put it into the mask, the user has to do that manually (by default
         // we will map it).

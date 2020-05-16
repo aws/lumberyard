@@ -37,10 +37,15 @@ namespace EMotionFX
     public:
         AnimGraphEventBuffer();
         ~AnimGraphEventBuffer() = default;
+        AnimGraphEventBuffer(const AnimGraphEventBuffer&) = default;
+        AnimGraphEventBuffer(AnimGraphEventBuffer&&) = default;
+        AnimGraphEventBuffer& operator=(const AnimGraphEventBuffer&) = default;
+        AnimGraphEventBuffer& operator=(AnimGraphEventBuffer&&) = default;
 
         void Reserve(uint32 numEvents);
         void Resize(uint32 numEvents);
         void AddEvent(const EventInfo& newEvent);
+        void AddAllEventsFrom(const AnimGraphEventBuffer& eventBuffer);
 
         template<typename... Args>
         void AddEvent(Args&&... args)

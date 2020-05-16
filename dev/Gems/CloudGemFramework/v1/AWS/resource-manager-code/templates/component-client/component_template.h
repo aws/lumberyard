@@ -49,7 +49,7 @@ AZ_POP_DISABLE_WARNING
 
 namespace {{ json_object.namespace }} {
 namespace ServiceAPI {
-    {% for key, value in json_object.UUIDs.iteritems() %}
+    {% for key, value in json_object.UUIDs.items() %}
     extern const char* LmbrAWS_CodeGen_{{ key }}_UUID;
     {% endfor %}
 

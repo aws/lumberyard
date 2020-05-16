@@ -112,7 +112,7 @@ static struct
     { "soanimhelper", IVariable::STRING,    IVariable::DT_SOANIMHELPER, IEntityPropertyHandler::String, 0, false },
     { "soevent",    IVariable::STRING,  IVariable::DT_SOEVENT, IEntityPropertyHandler::String, 0, false },
     { "sotemplate", IVariable::STRING,  IVariable::DT_SOTEMPLATE, IEntityPropertyHandler::String, 0, false },
-    { "customaction",   IVariable::STRING,  IVariable::DT_CUSTOMACTION, IEntityPropertyHandler::String, 0, false },
+    { "customaction",   IVariable::STRING,  IVariable::DT_DEPRECATED0, IEntityPropertyHandler::String, 0, false },
     { "gametoken", IVariable::STRING, IVariable::DT_GAMETOKEN, IEntityPropertyHandler::String, 0, false },
     { "seq_",      IVariable::STRING, IVariable::DT_SEQUENCE, IEntityPropertyHandler::String, 0, false },
     { "mission_", IVariable::STRING, IVariable::DT_MISSIONOBJ, IEntityPropertyHandler::String, 0, false },

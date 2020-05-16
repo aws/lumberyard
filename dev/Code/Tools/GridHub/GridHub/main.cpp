@@ -25,6 +25,7 @@
 #endif
 
 #include "gridhub.hxx"
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMessageBox>
 #include <QtCore/QFile>
@@ -33,9 +34,10 @@
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QSharedMemory>
 #include <QtCore/QProcess>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/Memory/allocatormanager.h>
+#include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/TickBus.h>
@@ -45,11 +47,14 @@
 
 #ifdef AZ_PLATFORM_WINDOWS
 #include <Shlwapi.h>
-#else
+#elif defined AZ_PLATFORM_APPLE
+#include <mach-o/dyld.h>
 #include <errno.h>
 #include <sys/param.h>
-#include <mach-o/dyld.h>
 #include <libgen.h>
+#else
+#include <sys/param.h>
+#include <errno.h>
 #endif
 
 #ifdef AZ_PLATFORM_WINDOWS
@@ -108,6 +113,12 @@ static bool IsDebuggerPresent()
     return false;
 }
 #endif
+#elif defined AZ_PLATFORM_LINUX
+static bool IsDebuggerPresent()
+{
+    //KDAB_TODO
+    return false;
+}
 #endif
 
 /**
@@ -121,9 +132,9 @@ public:
     AZ::Entity* Create(const char* systemEntityFileName, const StartupParameters& startupParameters = StartupParameters()) override;
     void Destroy() override;
 
-    bool	IsNeedToRelaunch() const		{ return m_needToRelaunch; }
-    bool	IsValidModuleName() const		{ return m_monitorForExeChanges; }
-    const QString	GetModuleName() const	{ return m_originalExeFileName; }
+    bool            IsNeedToRelaunch() const        { return m_needToRelaunch; }
+    bool            IsValidModuleName() const       { return m_monitorForExeChanges; }
+    const QString   GetModuleName() const           { return m_originalExeFileName; }
 protected:
     /**
      * This is the function that will be called instantly after the memory
@@ -152,8 +163,8 @@ protected:
 
         /// This is called from a 'safe' main sync point and should originate all messages that need to be synced to the 'main' thread.
         // {
-        //	if (AZ::IO::Streamer::IsReady())
-        //	AZ::IO::Streamer::Instance().ReceiveRequests(); // activate callbacks on main thread!
+        //  if (AZ::IO::Streamer::IsReady())
+        //  AZ::IO::Streamer::Instance().ReceiveRequests(); // activate callbacks on main thread!
         // }
 
          // check to see if we got a newer version of our executable, if so run it.
@@ -178,12 +189,11 @@ protected:
          }
      }
 
-     QString						m_originalExeFileName;
-     QDateTime	m_originalExeLastModified;
-     bool						m_monitorForExeChanges;
-     bool						m_needToRelaunch;
-     float						m_timeSinceLastCheckForChanges;
-
+    QString         m_originalExeFileName;
+     QDateTime      m_originalExeLastModified;
+     bool           m_monitorForExeChanges;
+     bool           m_needToRelaunch;
+     float          m_timeSinceLastCheckForChanges;
 };
 
 /**
@@ -415,6 +425,11 @@ GridHubApplication::Create(const char* systemEntityFileName, const StartupParame
 
             m_originalExeLastModified = QFileInfo(m_originalExeFileName).lastModified();
         }
+#elif defined AZ_PLATFORM_LINUX
+        // KDAB_TODO
+        if ( 0 ) //Avoid compile error
+        {
+        }
 #else
         char path[MAXPATHLEN];
         unsigned int pathSize = MAXPATHLEN;
@@ -531,6 +546,8 @@ void CopyAndRun(bool failSilently)
             }
         }
     }
+#elif defined AZ_PLATFORM_LINUX
+    // KDAB_TODO
 #else
     char path[MAXPATHLEN];
     unsigned int pathSize = MAXPATHLEN;
@@ -592,6 +609,8 @@ void RelaunchImage()
             &si,                        // Pointer to STARTUPINFO structure.
             &pi);                       // Pointer to PROCESS_INFORMATION structure.
     }
+#elif defined AZ_PLATFORM_LINUX
+    // KDAB_TODO
 #else
     char path[MAXPATHLEN];
     unsigned int pathSize = MAXPATHLEN;
@@ -625,12 +644,15 @@ int main(int argc, char *argv[])
 
     bool isCopyAndRunOnExit = false;
 
-    if( IsDebuggerPresent() == FALSE )
+    if( IsDebuggerPresent() == false )
     {
 
 #ifdef AZ_PLATFORM_WINDOWS
         TCHAR exeFileName[MAX_PATH];
         if( GetModuleFileName(NULL,exeFileName,AZ_ARRAY_SIZE(exeFileName)) )
+#elif defined AZ_PLATFORM_LINUX
+        //KDAB_TODO
+        char exeFileName[MAXPATHLEN];
 #else
         char exeFileName[MAXPATHLEN];
         unsigned int pathSize = MAXPATHLEN;
@@ -645,10 +667,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(isCopyAndRunOnExit == false)	// if we need to exit and run copy and run, just go there
+    if (isCopyAndRunOnExit == false)     // if we need to exit and run copy and run, just go there
     {
         bool isNeedToRelaunch = false;
-
+        
         {
 #ifdef AZ_PLATFORM_WINDOWS
             // Create a OS named mutex while the OS is running
@@ -690,6 +712,8 @@ int main(int argc, char *argv[])
                 azstrcat(searchPath, MAX_PATH, "qtlibs\\plugins");
                 QApplication::addLibraryPath(searchPath);
             }
+#elif defined AZ_PLATFORM_LINUX
+            //KDAB_TODO
 #else
             char path[MAXPATHLEN];
             unsigned int pathSize = MAXPATHLEN;

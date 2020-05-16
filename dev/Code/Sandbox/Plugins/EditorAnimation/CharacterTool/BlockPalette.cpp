@@ -152,7 +152,7 @@ static int FindDropIndex(const SLayoutItems& items, const QPoint& p, int excludi
 static void DrawItem(QPainter& painter, const SLayoutItem& litem, const BlockPaletteItem& item, bool selected, bool hasFocus, const QPalette& palette, int hotkey)
 {
     QRectF rect = QRectF(litem.rect.adjusted(1, 2, -1, -2));
-    float ratio = rect.width() != 0 ? (rect.height() != 0 ? rect.width() / float(rect.height()) : 1.0f) : 1.0f;
+    float ratio = rect.width() != 0 ? (rect.height() != 0 ? float(rect.width()) / float(rect.height()) : 1.0f) : 1.0f;
     float radius = 0.2f;
     float rx = radius * 200.0f / ratio;
     float ry = radius * 200.0f;

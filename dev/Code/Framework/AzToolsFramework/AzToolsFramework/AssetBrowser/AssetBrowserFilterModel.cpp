@@ -9,15 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/AssetBrowser/Entries/FolderAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+
 #include <QSharedPointer>
 #include <QTimer>
 #include <QCollator>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -30,15 +33,35 @@ namespace AzToolsFramework
         {
             m_showColumn.insert(AssetBrowserModel::m_column);
             m_collator.setNumericMode(true);
+            AssetBrowserComponentNotificationBus::Handler::BusConnect();
         }
 
-        AssetBrowserFilterModel::~AssetBrowserFilterModel() = default;
+        AssetBrowserFilterModel::~AssetBrowserFilterModel()
+        {
+            AssetBrowserComponentNotificationBus::Handler::BusDisconnect();
+        }
 
         void AssetBrowserFilterModel::SetFilter(FilterConstType filter)
         {
             connect(filter.data(), &AssetBrowserEntryFilter::updatedSignal, this, &AssetBrowserFilterModel::filterUpdatedSlot);
             m_filter = filter;
-            invalidateFilter();
+            m_invalidateFilter = true;
+            // asset browser entries are not guaranteed to have populated when the filter is set, delay filtering until they are
+            bool isAssetBrowserComponentReady = false;
+            AssetBrowserComponentRequestBus::BroadcastResult(isAssetBrowserComponentReady, &AssetBrowserComponentRequests::AreEntriesReady);
+            if (isAssetBrowserComponentReady)
+            {
+                OnAssetBrowserComponentReady();
+            }
+        }
+
+        void AssetBrowserFilterModel::OnAssetBrowserComponentReady()
+        {
+            if (m_invalidateFilter)
+            {
+                invalidateFilter();
+                m_invalidateFilter = false;
+            }
         }
 
         bool AssetBrowserFilterModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
@@ -126,7 +149,7 @@ namespace AzToolsFramework
                 }
             }
             invalidateFilter();
-                    Q_EMIT filterChanged();
+            Q_EMIT filterChanged();
         }
 
         void AssetBrowserFilterModel::filterUpdatedSlot()

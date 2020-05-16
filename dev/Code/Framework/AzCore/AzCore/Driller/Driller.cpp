@@ -33,18 +33,18 @@ namespace AZ
             typedef vector<Driller*>::type DrillerArrayType;
             DrillerArrayType m_drillers;
 
-            virtual ~DrillerManagerImpl();
+            ~DrillerManagerImpl() override;
 
-            virtual void Register(Driller* factory);
-            virtual void Unregister(Driller* factory);
+            void Register(Driller* factory) override;
+            void Unregister(Driller* factory) override;
 
-            virtual void FrameUpdate();
+            void FrameUpdate() override;
 
-            virtual DrillerSession*     Start(DrillerOutputStream& output, const DrillerListType& drillerList, int numFrames = -1);
-            virtual void                Stop(DrillerSession* session);
+            DrillerSession*     Start(DrillerOutputStream& output, const DrillerListType& drillerList, int numFrames = -1) override;
+            void                Stop(DrillerSession* session) override;
 
-            virtual int                 GetNumDrillers() const  { return static_cast<int>(m_drillers.size()); }
-            virtual Driller*            GetDriller(int index)   { return m_drillers[index]; }
+            int                 GetNumDrillers() const override  { return static_cast<int>(m_drillers.size()); }
+            Driller*            GetDriller(int index) override   { return m_drillers[index]; }
         };
 
         //////////////////////////////////////////////////////////////////////////

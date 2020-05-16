@@ -61,14 +61,14 @@ namespace AssetProcessor
 
     Q_SIGNALS:
         // outgoing message to the network
-        void SendAssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
+        void SendAssetMessage(AzFramework::AssetSystem::AssetNotificationMessage message);
         void AsyncAssetCatalogStatusResponse(AssetCatalogStatus status);
 
     public Q_SLOTS:
         // incoming message from the AP
-        void OnAssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
+        void OnAssetMessage(AzFramework::AssetSystem::AssetNotificationMessage message);
         void OnDependencyResolved(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
-        void RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed = false);
+        virtual void RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed = false);
 
         void SaveRegistry_Impl();
         void BuildRegistry();

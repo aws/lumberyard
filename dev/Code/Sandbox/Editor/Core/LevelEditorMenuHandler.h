@@ -54,7 +54,6 @@ public:
     // It's used when users update the Tool Box Macro list in the Configure Tool Box Macro dialog
     void UpdateMacrosMenu();
 
-    void SetupSliceSelectMenu(AZ::EntityId selectedId);
 Q_SIGNALS:
     void ActivateAssetImporter();
 
@@ -88,7 +87,7 @@ private:
     void OnOpenAssetEditor();
 
     void OnUpdateMacrosMenu();
-    
+
     void UpdateOpenViewPaneMenu();
 
     QAction* CreateViewPaneMenuItem(ActionManager* actionManager, ActionManager::MenuWrapper& menu, const QtViewPane* view);
@@ -100,6 +99,8 @@ private:
 
     void LoadNetPromoterScoreDialog(ActionManager::MenuWrapper& menu);
 
+    void AddDisableActionInSimModeListener(QAction* action);
+
     // EditorComponentModeNotificationBus
     void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
     void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
@@ -107,7 +108,7 @@ private:
     // EditorMenuRequestBus
     void AddEditMenuAction(QAction* action) override;
     void RestoreEditMenuToDefault() override;
-    
+
     MainWindow* m_mainWindow;
     ActionManager* m_actionManager;
     QtViewPaneManager* m_viewPaneManager;
@@ -119,7 +120,6 @@ private:
     QMenu* m_mostRecentLevelsMenu = nullptr;
     QMenu* m_mostRecentProjectsMenu = nullptr;
     QMenu* m_editmenu = nullptr;
-    QMenu* m_selectSliceRootMenu = nullptr;
     ActionManager::MenuWrapper m_cloudMenu;
 
     ActionManager::MenuWrapper m_viewPanesMenu;

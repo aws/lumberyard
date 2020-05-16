@@ -46,19 +46,13 @@ namespace ScriptCanvasEditor
         
         void SetString(const AZStd::string& value) override
         {
-            ScriptCanvas::Datum* object = GetSlotObject();
+            ScriptCanvas::ModifiableDatumView datumView;
+            ModifySlotObject(datumView);
 
-            if (object)
-            {
-                AZStd::string oldValue = GetString();
-                if (oldValue != value)
-                {
-                    object->Set(value);
+            datumView.SetAs<AZStd::string>(value);
 
-                    PostUndoPoint();
-                    PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
-                }
-            }
+            PostUndoPoint();
+            PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
         }
         ////
     };

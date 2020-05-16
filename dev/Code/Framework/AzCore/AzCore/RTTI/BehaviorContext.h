@@ -351,7 +351,7 @@ namespace AZ
             using FunctionPointer = R(*)(Args...);
             typedef void ClassType;
 
-            AZ_CLASS_ALLOCATOR(BehaviorMethodImpl<R(Args...)>, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(BehaviorMethodImpl, AZ::SystemAllocator, 0);
 
             static const int s_startArgumentIndex = 1; // +1 for result type
             static const int s_startNamedArgumentIndex = s_startArgumentIndex; // +1 for result type
@@ -385,6 +385,20 @@ namespace AZ
             BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
+        
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        class BehaviorMethodImpl<R(Args...) noexcept>
+            : public BehaviorMethodImpl<R(Args...)>
+        {
+            using base_type = BehaviorMethodImpl<R(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(*)(Args...) noexcept;
+        };
+#endif
 
         template<class R, class C, class... Args>
         class BehaviorMethodImpl<R(C::*)(Args...)> : public BehaviorMethod
@@ -427,6 +441,21 @@ namespace AZ
             BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
+
+ #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class C, class... Args>
+        class BehaviorMethodImpl<R(C::*)(Args...) noexcept>
+            : public BehaviorMethodImpl<R(C::*)(Args...)>
+        {
+            using base_type = BehaviorMethodImpl<R(C::*)(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(C::*)(Args...) noexcept;
+            using FunctionPointerConst = R(C::*)(Args...) const noexcept;
+        };
+#endif
 
         enum BehaviorEventType
         {
@@ -573,6 +602,21 @@ namespace AZ
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        class BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...) noexcept>
+            : public BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>
+        {
+            using base_type = BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(C::*)(Args...) noexcept;
+            using FunctionPointerConst = R(C::*)(Args...) const noexcept;
+        };
+#endif
+
         template<class F>
         struct SetFunctionParameters;
 
@@ -583,6 +627,14 @@ namespace AZ
             static bool Check(AZStd::vector<BehaviorParameter>& source);
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        struct SetFunctionParameters<R(Args...) noexcept>
+            : SetFunctionParameters<R(Args...)>
+        {};
+#endif
         template<class R, class C, class... Args>
         struct SetFunctionParameters<R(C::*)(Args...)>
         {
@@ -590,6 +642,14 @@ namespace AZ
             static bool Check(AZStd::vector<BehaviorParameter>& source);
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class C, class... Args>
+        struct SetFunctionParameters<R(C::*)(Args...) noexcept>
+            : SetFunctionParameters<R(C::*)(Args...)>
+        {};
+#endif
         
         template<class FunctionType>
         struct BehaviorOnDemandReflectHelper;
@@ -615,6 +675,15 @@ namespace AZ
                 }
             }
         };
+
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        struct BehaviorOnDemandReflectHelper<R(*)(Args...) noexcept>
+            : BehaviorOnDemandReflectHelper<R(*)(Args...)>
+        {};
+#endif
 
         template<class... Functions>
         void OnDemandReflectFunctions(OnDemandReflectionOwner* onDemandReflection, AZStd::Internal::pack_traits_arg_sequence<Functions...>);
@@ -810,6 +879,9 @@ namespace AZ
         /// Deallocate a class, NO DESTRUCTOR is called, only memory is free, call \ref Destruct or use Destroy to destroy and free the object
         void  Deallocate(void* address) const;
 
+        AZ::Attribute* FindAttribute(const AttributeId& attributeId) const;
+        bool HasAttribute(const AttributeId& attributeId) const;
+
         AllocateType m_allocate;
         DeallocateType m_deallocate;
         DefaultConstructorType m_defaultConstructor;
@@ -891,25 +963,25 @@ namespace AZ
     struct BehaviorEBusEventSender
     {
         template<class EBus, class Event>
-        void Set(Event e, BehaviorContext* context);
+        void Set(Event e, const char* eventName, BehaviorContext* context);
 
         template<class EBus, class Event>
-        void SetEvent(Event e, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
+        void SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
 
         template<class EBus, class Event>
-        void SetEvent(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
+        void SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
 
         template<class EBus, class Event>
-        void SetQueueBroadcast(Event e, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
+        void SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
 
         template<class EBus, class Event>
-        void SetQueueBroadcast(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
+        void SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
 
         template<class EBus, class Event>
-        void SetQueueEvent(Event e, BehaviorContext* context, const AZStd::true_type& /* is Queue and is BusId valid*/);
+        void SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /* is Queue and is BusId valid*/);
 
         template<class EBus, class Event>
-        void SetQueueEvent(Event e, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/);
+        void SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/);
 
         BehaviorMethod* m_broadcast = nullptr;
         BehaviorMethod* m_event = nullptr;
@@ -1581,51 +1653,6 @@ namespace AZ
         AZStd::unordered_map<AZStd::string, BehaviorEBus*> m_ebuses; // TODO: make it a set and use the name inside EBus
     };
 
-    //////////////////////////////////////////////////////////////////////////
-    /*!
-    \deprecated Use the BehaviorContext::MakeDefaultValue function instead
-    The reason for deprecation is that this function has no access to the BehaviorContext
-    and therefore does not know when the BehaviorContext is removing reflection
-    */
-    template<class Value>
-    AZ_DEPRECATED(BehaviorDefaultValuePtr BehaviorMakeDefaultValue(Value&& defaultValue)
-    {
-        AZ::BehaviorContext* behaviorContext{};
-        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
-
-        if (behaviorContext)
-        {
-            return behaviorContext->MakeDefaultValue(AZStd::forward<Value>(defaultValue));
-        }
-
-        // If the BehaviorContext could not be found registered with the ComponentApplicationBus
-        // then it cannot be determined if reflection is being removed and therefore the BehaviorDefaultValue
-        // is always created
-        return aznew BehaviorDefaultValue(AZStd::forward<Value>(defaultValue));
-    }, "BehaviorMakeDefaultValue is deprecated as of Version 1.13. Please use the BehaviorContext::MakeDefaultValue function instead.")
-
-        /*!
-        \deprecated Use the BehaviorContext::MakeDefaultValues function instead
-        The reason for deprecation is that this function has no access to the BehaviorContext
-        and therefore does not know when the BehaviorContext is removing reflection
-        */
-        template<class... Values>
-    AZ_DEPRECATED(BehaviorValues* BehaviorMakeDefaultValues(Values&&... values)
-    {
-        AZ::BehaviorContext* behaviorContext{};
-        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
-
-        if (behaviorContext)
-        {
-            return behaviorContext->MakeDefaultValues(AZStd::forward<Values>(values)...);
-        }
-
-        // If the BehaviorContext could not be found registered with the ComponentApplicationBus
-        // then it cannot be determined if reflection is being removed and therefore the BehaviorValues
-        // is always created
-        return aznew Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...);
-    }, "BehaviorMakeDefaultValue is deprecated as of Version 1.13. Please use the BehaviorContext::MakeDefaultValues function instead.")
-    //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
     namespace BehaviorContextHelper
@@ -2495,57 +2522,62 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::Set(Event e, BehaviorContext* context)
+    void BehaviorEBusEventSender::Set(Event e, const char* eventName, BehaviorContext* context)
     {
         m_broadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
-        SetEvent<EBus>(e, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
-        SetQueueBroadcast<EBus>(e, context, typename AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
-        SetQueueEvent<EBus>(e, context, typename AZStd::conditional<AZStd::is_same<typename EBus::BusIdType, NullBusId>::value || AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value, AZStd::true_type, AZStd::false_type>::type());
+        m_broadcast->m_name = eventName;
+
+        SetEvent<EBus>(e, eventName, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
+        SetQueueBroadcast<EBus>(e, eventName, context, typename AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
+        SetQueueEvent<EBus>(e, eventName, context, typename AZStd::conditional<AZStd::is_same<typename EBus::BusIdType, NullBusId>::value || AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value, AZStd::true_type, AZStd::false_type>::type());
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetEvent(Event e, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/)
+    void BehaviorEBusEventSender::SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/)
     {
-        (void)e; (void)context;
+        AZ_UNUSED(e); AZ_UNUSED(context); AZ_UNUSED(eventName);
         m_event = nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetEvent(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
+    void BehaviorEBusEventSender::SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
         m_event = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_event->m_name = eventName;
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/)
+    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/)
     {
-        (void)e; (void)context;
+        AZ_UNUSED(e); AZ_UNUSED(context); AZ_UNUSED(eventName);
         m_queueBroadcast = nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
+    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
         m_queueBroadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_queueBroadcast->m_name = eventName;
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueEvent(Event e, BehaviorContext* context, const AZStd::true_type& /* is Queue and is BusId valid*/)
+    void BehaviorEBusEventSender::SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /* is Queue and is BusId valid*/)
     {
-        (void)e; (void)context;
+        AZ_UNUSED(e); AZ_UNUSED(context); AZ_UNUSED(eventName);
         m_queueEvent = nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueEvent(Event e, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/)
+    void BehaviorEBusEventSender::SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/)
     {
         m_queueEvent = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_queueEvent->m_name = eventName;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -3333,7 +3365,7 @@ namespace AZ
         {
             BehaviorEBusEventSender ebusEvent;
 
-            ebusEvent.Set<Bus>(e, Base::m_context);
+            ebusEvent.Set<Bus>(e, name, Base::m_context);
 
             auto insertIt = m_ebus->m_events.insert(AZStd::make_pair(name, ebusEvent));
 
@@ -3494,7 +3526,7 @@ namespace AZ
                 }
                 if (setter->m_broadcast->GetNumArguments() != 1)
                 {
-                    AZ_Error("BehaviorContext", false, "EBus %s, VirtualProperty %s getter %s can have only one argument", m_ebus->m_name.c_str(), name, setterEvent);
+                    AZ_Error("BehaviorContext", false, "EBus %s, VirtualProperty %s setter %s can have only one argument", m_ebus->m_name.c_str(), name, setterEvent);
                     return this;
                 }
             }
@@ -3868,7 +3900,7 @@ namespace AZ
             if (!arguments[0].ConvertTo(AzTypeInfo<C>::Uuid()))
             {
                 // this pointer is invalid
-                AZ_Warning("Behavior", false, "First parameter should be the 'this' pointer for the member function!");
+                AZ_Warning("Behavior", false, "First parameter should be the 'this' pointer for the member function! %s", m_name.c_str());
                 return false;
             }
 

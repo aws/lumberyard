@@ -10,11 +10,12 @@
 *
 */
 
-// include required headers
+#include <AzCore/Math/Matrix4x4.h>
+#include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/VectorConversions.h>
 #include "Frustum.h"
 #include "AABB.h"
 #include "LogManager.h"
-#include "Matrix4.h"
 #include "Algorithms.h"
 
 
@@ -149,14 +150,14 @@ namespace MCore
 
 
     // initialize the frustum planes from the given matrix
-    void ViewFrustum::InitFromMatrix(const Matrix& viewProjMatrix)
+    void ViewFrustum::InitFromMatrix(const AZ::Matrix4x4& viewProjMatrix)
     {
         // extract the right plane
         AZ::Vector4 rightPlane;
-        rightPlane.SetX(MMAT(viewProjMatrix, 0, 3) - MMAT(viewProjMatrix, 0, 0));
-        rightPlane.SetY(MMAT(viewProjMatrix, 1, 3) - MMAT(viewProjMatrix, 1, 0));
-        rightPlane.SetZ(MMAT(viewProjMatrix, 2, 3) - MMAT(viewProjMatrix, 2, 0));
-        rightPlane.SetW(MMAT(viewProjMatrix, 3, 3) - MMAT(viewProjMatrix, 3, 0));
+        rightPlane.SetX(viewProjMatrix(3, 0) - viewProjMatrix(0, 0));
+        rightPlane.SetY(viewProjMatrix(3, 1) - viewProjMatrix(0, 1));
+        rightPlane.SetZ(viewProjMatrix(3, 2) - viewProjMatrix(0, 2));
+        rightPlane.SetW(viewProjMatrix(3, 3) - viewProjMatrix(0, 3));
 
         // normalize the result and construct the plane equation
         rightPlane.Normalize();
@@ -164,10 +165,10 @@ namespace MCore
 
         // extract the left plane
         AZ::Vector4 leftPlane;
-        leftPlane.SetX(MMAT(viewProjMatrix, 0, 3) + MMAT(viewProjMatrix, 0, 0));
-        leftPlane.SetY(MMAT(viewProjMatrix, 1, 3) + MMAT(viewProjMatrix, 1, 0));
-        leftPlane.SetZ(MMAT(viewProjMatrix, 2, 3) + MMAT(viewProjMatrix, 2, 0));
-        leftPlane.SetW(MMAT(viewProjMatrix, 3, 3) + MMAT(viewProjMatrix, 3, 0));
+        leftPlane.SetX(viewProjMatrix(3, 0) + viewProjMatrix(0, 0));
+        leftPlane.SetY(viewProjMatrix(3, 1) + viewProjMatrix(0, 1));
+        leftPlane.SetZ(viewProjMatrix(3, 2) + viewProjMatrix(0, 2));
+        leftPlane.SetW(viewProjMatrix(3, 3) + viewProjMatrix(0, 3));
 
         // normalize the result and construct the plane equation
         leftPlane.Normalize();
@@ -175,10 +176,10 @@ namespace MCore
 
         // extract the bottom plane
         AZ::Vector4 bottomPlane;
-        bottomPlane.SetX(MMAT(viewProjMatrix, 0, 3) + MMAT(viewProjMatrix, 0, 1));
-        bottomPlane.SetY(MMAT(viewProjMatrix, 1, 3) + MMAT(viewProjMatrix, 1, 1));
-        bottomPlane.SetZ(MMAT(viewProjMatrix, 2, 3) + MMAT(viewProjMatrix, 2, 1));
-        bottomPlane.SetW(MMAT(viewProjMatrix, 3, 3) + MMAT(viewProjMatrix, 3, 1));
+        bottomPlane.SetX(viewProjMatrix(3, 0) + viewProjMatrix(1, 0));
+        bottomPlane.SetY(viewProjMatrix(3, 1) + viewProjMatrix(1, 1));
+        bottomPlane.SetZ(viewProjMatrix(3, 2) + viewProjMatrix(1, 2));
+        bottomPlane.SetW(viewProjMatrix(3, 3) + viewProjMatrix(1, 3));
 
         // normalize the result and construct the plane equation
         bottomPlane.Normalize();
@@ -186,10 +187,10 @@ namespace MCore
 
         // extract the top plane
         AZ::Vector4 topPlane;
-        topPlane.SetX(MMAT(viewProjMatrix, 0, 3) - MMAT(viewProjMatrix, 0, 1));
-        topPlane.SetY(MMAT(viewProjMatrix, 1, 3) - MMAT(viewProjMatrix, 1, 1));
-        topPlane.SetZ(MMAT(viewProjMatrix, 2, 3) - MMAT(viewProjMatrix, 2, 1));
-        topPlane.SetW(MMAT(viewProjMatrix, 3, 3) - MMAT(viewProjMatrix, 3, 1));
+        topPlane.SetX(viewProjMatrix(3, 0) - viewProjMatrix(1, 0));
+        topPlane.SetY(viewProjMatrix(3, 1) - viewProjMatrix(1, 1));
+        topPlane.SetZ(viewProjMatrix(3, 2) - viewProjMatrix(1, 2));
+        topPlane.SetW(viewProjMatrix(3, 3) - viewProjMatrix(1, 3));
 
         // normalize the result and construct the plane equation
         topPlane.Normalize();
@@ -197,10 +198,10 @@ namespace MCore
 
         // extract the far plane
         AZ::Vector4 farPlane;
-        farPlane.SetX(MMAT(viewProjMatrix, 0, 3) - MMAT(viewProjMatrix, 0, 2));
-        farPlane.SetY(MMAT(viewProjMatrix, 1, 3) - MMAT(viewProjMatrix, 1, 2));
-        farPlane.SetZ(MMAT(viewProjMatrix, 2, 3) - MMAT(viewProjMatrix, 2, 2));
-        farPlane.SetW(MMAT(viewProjMatrix, 3, 3) - MMAT(viewProjMatrix, 3, 2));
+        farPlane.SetX(viewProjMatrix(3, 0) - viewProjMatrix(2, 0));
+        farPlane.SetY(viewProjMatrix(3, 1) - viewProjMatrix(2, 1));
+        farPlane.SetZ(viewProjMatrix(3, 2) - viewProjMatrix(2, 2));
+        farPlane.SetW(viewProjMatrix(3, 3) - viewProjMatrix(2, 3));
 
         // normalize the result and construct the plane equation
         farPlane.Normalize();
@@ -208,10 +209,10 @@ namespace MCore
 
         // extract the near plane
         AZ::Vector4 nearPlane;
-        nearPlane.SetX(MMAT(viewProjMatrix, 0, 3) + MMAT(viewProjMatrix, 0, 2));
-        nearPlane.SetY(MMAT(viewProjMatrix, 1, 3) + MMAT(viewProjMatrix, 1, 2));
-        nearPlane.SetZ(MMAT(viewProjMatrix, 2, 3) + MMAT(viewProjMatrix, 2, 2));
-        nearPlane.SetW(MMAT(viewProjMatrix, 3, 3) + MMAT(viewProjMatrix, 3, 3));
+        nearPlane.SetX(viewProjMatrix(3, 0) + viewProjMatrix(2, 0));
+        nearPlane.SetY(viewProjMatrix(3, 1) + viewProjMatrix(2, 1));
+        nearPlane.SetZ(viewProjMatrix(3, 2) + viewProjMatrix(2, 2));
+        nearPlane.SetW(viewProjMatrix(3, 3) + viewProjMatrix(3, 3));
 
         // normalize the result and construct the plane equation
         nearPlane.Normalize();

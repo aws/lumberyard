@@ -45,6 +45,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelAnalog::SimulateRawInput(float rawValue)
+    {
+        ProcessRawInputEvent(rawValue);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelAnalog::ProcessRawInputEvent(float rawValue)
     {
         const float oldValue = m_value;

@@ -41,6 +41,7 @@
 #include <Components/Nodes/Group/NodeGroupLayoutComponent.h>
 #include <Components/Nodes/Wrapper/WrapperNodeLayoutComponent.h>
 
+#include <Components/NodePropertyDisplays/AssetIdNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.h>
@@ -275,6 +276,11 @@ namespace GraphCanvas
     NodePropertyDisplay* GraphCanvasSystemComponent::CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const
     {
         return aznew VectorNodePropertyDisplay(dataInterface);
+    }
+
+    NodePropertyDisplay* GraphCanvasSystemComponent::CreateAssetIdNodePropertyDisplay(AssetIdDataInterface* dataInterface) const
+    {
+        return aznew AssetIdNodePropertyDisplay(dataInterface);
     }
 
     AZ::Entity* GraphCanvasSystemComponent::CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& configuration) const

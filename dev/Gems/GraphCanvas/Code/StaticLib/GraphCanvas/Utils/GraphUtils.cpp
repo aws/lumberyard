@@ -26,6 +26,7 @@
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
@@ -164,7 +165,7 @@ namespace GraphCanvas
             }
             else
             {
-                GeometryRequestBus::Event(m_nodeId, &GeometryRequests::SetPosition, AZ::Vector2(m_finalPosition.x(), m_finalPosition.y()));
+                GeometryRequestBus::Event(m_nodeId, &GeometryRequests::SetPosition, AZ::Vector2(aznumeric_cast<float>(m_finalPosition.x()), aznumeric_cast<float>(m_finalPosition.y())));
             }
         }
 
@@ -933,10 +934,13 @@ namespace GraphCanvas
         NodeId nodeId;
         SlotRequestBus::EventResult(nodeId, slotId, &SlotRequests::GetNode);
 
-        bool isVisible = false;
-        SlotLayoutRequestBus::EventResult(isVisible, nodeId, &SlotLayoutRequests::IsSlotGroupVisible, slotGroup);
+        bool isGroupVisible = false;
+        SlotLayoutRequestBus::EventResult(isGroupVisible, nodeId, &SlotLayoutRequests::IsSlotGroupVisible, slotGroup);
 
-        return (slotGroup != SlotGroups::Invalid && isVisible);
+        bool isSlotVisible = false;
+        VisualRequestBus::EventResult(isSlotVisible, slotId, &VisualRequests::IsVisible);
+
+        return isSlotVisible && (slotGroup != SlotGroups::Invalid && isGroupVisible);
     }
 
     bool GraphUtils::IsSlotConnectionType(const SlotId& slotId, ConnectionType connectionType)
@@ -1473,16 +1477,16 @@ namespace GraphCanvas
         return handledSplice;
     }
 
-    void GraphUtils::DetachNodeAndStitchConnections(const NodeId& nodeId)
+    void GraphUtils::DetachNodeAndStitchConnections(const NodeDetachConfig& detachConfig)
     {
         GraphId graphId;
-        SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
+        SceneMemberRequestBus::EventResult(graphId, detachConfig.m_nodeId, &SceneMemberRequests::GetScene);
 
         {
             ScopedGraphUndoBlocker undoBlocker(graphId);
 
             AZStd::vector< AZ::EntityId > slotIds;
-            NodeRequestBus::EventResult(slotIds, nodeId, &NodeRequests::GetSlotIds);
+            NodeRequestBus::EventResult(slotIds, detachConfig.m_nodeId, &NodeRequests::GetSlotIds);
 
             AZStd::vector< Endpoint > sourceEndpoints;
             AZStd::vector< Endpoint > targetEndpoints;
@@ -1496,12 +1500,30 @@ namespace GraphCanvas
                 AZStd::vector< AZ::EntityId > connectionIds;
                 SlotRequestBus::EventResult(connectionIds, slotId, &SlotRequests::GetConnections);
 
+                SlotType slotType = SlotTypes::Invalid;
+                SlotRequestBus::EventResult(slotType, slotId, &SlotRequests::GetSlotType);
+
+                if (detachConfig.m_listingType == ListingType::WhiteList)
+                {
+                    if (detachConfig.m_typeListing.count(slotType) == 0)
+                    {
+                        continue;
+                    }
+                }
+                else if (detachConfig.m_listingType == ListingType::BlackList)
+                {
+                    if (detachConfig.m_typeListing.count(slotType) != 0)
+                    {
+                        continue;
+                    }
+                }
+
                 for (const AZ::EntityId& connectionId : connectionIds)
                 {
                     Endpoint sourceEndpoint;
                     ConnectionRequestBus::EventResult(sourceEndpoint, connectionId, &ConnectionRequests::GetSourceEndpoint);
 
-                    if (sourceEndpoint.m_nodeId != nodeId)
+                    if (sourceEndpoint.m_nodeId != detachConfig.m_nodeId)
                     {
                         sourceEndpoints.push_back(sourceEndpoint);
 
@@ -1516,7 +1538,7 @@ namespace GraphCanvas
                     Endpoint targetEndpoint;
                     ConnectionRequestBus::EventResult(targetEndpoint, connectionId, &ConnectionRequests::GetTargetEndpoint);
 
-                    if (targetEndpoint.m_nodeId != nodeId)
+                    if (targetEndpoint.m_nodeId != detachConfig.m_nodeId)
                     {
                         targetEndpoints.push_back(targetEndpoint);
                         
@@ -1548,10 +1570,10 @@ namespace GraphCanvas
                 NodeRequestBus::Event(nodeId, &NodeRequests::SignalBatchedConnectionManipulationEnd);
             }
 
-            if (GraphUtils::IsWrapperNode(nodeId))
+            if (GraphUtils::IsWrapperNode(detachConfig.m_nodeId))
             {
                 AZStd::vector< NodeId > wrappedNodeIds;
-                WrapperNodeRequestBus::EventResult(wrappedNodeIds, nodeId, &WrapperNodeRequests::GetWrappedNodeIds);
+                WrapperNodeRequestBus::EventResult(wrappedNodeIds, detachConfig.m_nodeId, &WrapperNodeRequests::GetWrappedNodeIds);
 
                 for (const NodeId& wrappedNodeId : wrappedNodeIds)
                 {
@@ -1663,20 +1685,53 @@ namespace GraphCanvas
         
         for (const Endpoint& testEndpoint : endpoints)
         {
+            DataSlotType testType = DataSlotType::Unknown;
+            DataSlotRequestBus::EventResult(testType, testEndpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
+
             auto slotIter = slotOrderings.begin();
             while (slotIter != slotOrderings.end())
             {
+                // Check whether or not the slots are already connected. If they are Skip over those slots.
                 bool isConnected = false;
                 SlotRequestBus::EventResult(isConnected, testEndpoint.GetSlotId(), &SlotRequests::IsConnectedTo, (*slotIter).m_endpoint);
 
                 if (!isConnected)
                 {
-                    ConnectionId connectionId = CreateUnknownConnection(graphId, testEndpoint, (*slotIter).m_endpoint);
-
-                    if (connectionId.IsValid())
+                    if (testType == DataSlotType::Reference)
                     {
-                        isConnected = true;
-                        config.m_createdConnections.insert(connectionId);
+                        GraphModelRequestBus::EventResult(isConnected, graphId, &GraphModelRequests::SynchronizeReferences, testEndpoint, (*slotIter).m_endpoint);
+                    }
+                    else if (testType == DataSlotType::Value)
+                    {
+                        DataSlotRequests* dataSlotRequests = DataSlotRequestBus::FindFirstHandler((*slotIter).m_endpoint.GetSlotId());
+
+                        if (dataSlotRequests)
+                        {
+                            DataSlotType sourceSlotType = dataSlotRequests->GetDataSlotType();
+
+                            if (sourceSlotType == DataSlotType::Reference)
+                            {
+                                bool isValidConnection = false;
+
+                                GraphModelRequestBus::EventResult(isValidConnection, graphId, &GraphModelRequests::IsValidConnection, testEndpoint, (*slotIter).m_endpoint);
+
+                                if (isValidConnection)
+                                {
+                                    dataSlotRequests->ConvertToValue();
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isConnected)
+                    {
+                        ConnectionId connectionId = CreateUnknownConnection(graphId, testEndpoint, (*slotIter).m_endpoint);
+
+                        if (connectionId.IsValid())
+                        {
+                            isConnected = true;
+                            config.m_createdConnections.insert(connectionId);
+                        }
                     }
                 }
 
@@ -1970,7 +2025,7 @@ namespace GraphCanvas
                     NodeGroupRequestBus::EventResult(groupedBoundingBox, nodeStruct.m_nodeId, &NodeGroupRequests::GetGroupBoundingBox);                    
 
                     // Need to account for the fact the node group doesn't need to be perfectly aligned.                    
-                    float topOffset = static_cast<int>(groupedBoundingBox.height()) % static_cast<int>(gridStep.GetY());
+                    float topOffset = aznumeric_cast<float>(static_cast<int>(groupedBoundingBox.height()) % static_cast<int>(gridStep.GetY()));
 
                     if (AZ::IsClose(topOffset, 0, gridStep.GetY() * 0.25f))
                     {
@@ -2079,7 +2134,7 @@ namespace GraphCanvas
                             if (testItem)
                             {
                                 QRectF testBoundingRect = testItem->sceneBoundingRect();
-                                float testDistance = QtVectorMath::GetMinimumDistanceBetween(originalBoundingRect, testBoundingRect);
+                                float testDistance = aznumeric_cast<float>(QtVectorMath::GetMinimumDistanceBetween(originalBoundingRect, testBoundingRect));
 
                                 if (!anchorEntity.IsValid() || minDistance > testDistance)
                                 {
@@ -2267,8 +2322,8 @@ namespace GraphCanvas
                             // Determine if we want to treat something as more vertical or horizontal for our space allocation
                             if (abs(connectionDirection.x()) > abs(connectionDirection.y()))
                             {
-                                space = triggeredHelper->m_boundingArea.height();
-                                seperator = gridStep.GetY();
+                                space = aznumeric_cast<int>(triggeredHelper->m_boundingArea.height());
+                                seperator = aznumeric_cast<int>(gridStep.GetY());
 
                                 if (connectionDirection.x() < 0)
                                 {
@@ -2281,8 +2336,8 @@ namespace GraphCanvas
                             }
                             else
                             {
-                                int space = triggeredHelper->m_boundingArea.width();
-                                int seperator = gridStep.GetX();
+                                int space = aznumeric_cast<int>(triggeredHelper->m_boundingArea.width());
+                                int seperator = aznumeric_cast<int>(gridStep.GetX());
 
                                 if (connectionDirection.y() < 0)
                                 {
@@ -2315,8 +2370,8 @@ namespace GraphCanvas
                 case VerticalAlignment::Middle:
                 {
                     float overshoot = 0.5f * AZStd::GetMax(0, static_cast<int>(maxHeight - helper->m_boundingArea.height()));
-                    topOffset = ceil(overshoot);
-                    bottomOffset = floor(overshoot);
+                    topOffset = aznumeric_cast<int>(ceil(overshoot));
+                    bottomOffset = aznumeric_cast<int>(floor(overshoot));
                     break;
                 }
                 case VerticalAlignment::Top:
@@ -2577,7 +2632,7 @@ namespace GraphCanvas
             GraphCanvas::ViewId viewId;
             GraphCanvas::SceneRequestBus::EventResult(viewId, graphId, &GraphCanvas::SceneRequests::GetViewId);
 
-            GraphCanvas::ViewRequestBus::Event(viewId, &GraphCanvas::ViewRequests::DisplayArea, focusArea);
+            GraphCanvas::ViewRequestBus::Event(viewId, &GraphCanvas::ViewRequests::CenterOnArea, focusArea);
         }
     }
 
@@ -2865,6 +2920,63 @@ namespace GraphCanvas
                 }
             }
         }
+    }
+
+    bool GraphUtils::CanHideEndpoint(const Endpoint& endpoint, const HideSlotConfig& hideConfig)
+    {
+        SlotRequests* slotRequests = SlotRequestBus::FindFirstHandler(endpoint.GetSlotId());
+
+        if (slotRequests == nullptr)
+        {
+            return false;
+        }
+
+        if (slotRequests->HasConnections())
+        {
+            return false;
+        }
+
+        SlotType slotType = slotRequests->GetSlotType();
+
+        if (hideConfig.m_slotTypeListing.AllowsType(slotType))
+        {
+            return false;
+        }
+
+        // Hard out on these types(more structural in nature and doesn't really make sense to hide)
+        if (slotType == SlotTypes::ExtenderSlot
+            || slotType == SlotTypes::PropertySlot)
+        {
+            return false;
+        }
+
+        if (slotType == SlotTypes::DataSlot)
+        {
+            DataSlotType dataSlotType = DataSlotType::Unknown;
+
+            DataSlotRequestBus::EventResult(dataSlotType, endpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
+
+            if (dataSlotType == DataSlotType::Reference)
+            {
+                return false;
+            }
+        }
+
+        SlotGroup slotGroup = slotRequests->GetSlotGroup();
+
+        if (hideConfig.m_slotGroupListing.AllowsType(slotGroup))
+        {
+            return false;
+        }
+
+        ConnectionType connectionType = slotRequests->GetConnectionType();
+
+        if (hideConfig.m_connectionTypeListing.AllowsType(connectionType))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     AZ::EntityId GraphUtils::CreateUnknownConnection(const GraphId& graphId, const Endpoint& firstEndpoint, const Endpoint& secondEndpoint)

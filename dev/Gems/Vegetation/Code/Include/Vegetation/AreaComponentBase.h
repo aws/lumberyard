@@ -15,7 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <LmbrCentral/Dependency/DependencyNotificationBus.h>
 #include <Vegetation/Ebuses/AreaConfigRequestBus.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
 #include <Vegetation/Ebuses/AreaRequestBus.h>
 #include <Vegetation/Ebuses/AreaInfoBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
@@ -96,9 +96,16 @@ namespace Vegetation
         // ShapeComponentNotificationsBus
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons reasons) override;
 
+    protected:
+        // Give subclasses the ability to do work whenever areas are registered and unregistered
+        virtual void OnRegisterArea() {}
+        virtual void OnUnregisterArea() {}
+
     private:
+        void UpdateRegistration();
+
         AreaConfig m_configuration;
-        AZStd::atomic_bool m_refreshPending{ false };
+        bool m_areaRegistered { false };
         AZStd::atomic_int m_changeIndex{ 0 };
     };
 }

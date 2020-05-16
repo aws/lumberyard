@@ -10,6 +10,7 @@
 *
 */
 
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
 #include <Editor/PropertyWidgets/RagdollJointHandler.h>
 #include <Editor/JointSelectionDialog.h>
 #include <Editor/SkeletonSortFilterProxyModel.h>
@@ -17,7 +18,7 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(RagdollMultiJointHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(RagdollMultiJointHandler, PropertyWidgetAllocator, 0)
 
     AZ::u32 RagdollMultiJointHandler::GetHandlerName() const
     {

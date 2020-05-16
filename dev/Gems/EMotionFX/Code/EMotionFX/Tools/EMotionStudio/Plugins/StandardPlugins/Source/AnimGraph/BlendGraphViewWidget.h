@@ -90,11 +90,6 @@ namespace EMStudio
 
         void OnCreateAnimGraph();
 
-        void AlignLeft();
-        void AlignRight();
-        void AlignTop();
-        void AlignBottom();
-
         void NavigateToRoot();
         void NavigateToNode();
         void NavigateToParent();
@@ -118,8 +113,6 @@ namespace EMStudio
         void CreateEntry(QMenu* menu, QHBoxLayout* toolbarLayout, const char* entryName, const char* toolbarIconFileName, bool addToToolbar, bool checkable, int32 actionIndex, const QKeySequence& shortcut = 0, bool border = true, bool addToMenu = true);
         void BuildOpenMenu();
         void AddSeparator(QLayout* layout = nullptr);
-
-        void AlignNodes(uint32 mode);
 
         void keyReleaseEvent(QKeyEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;

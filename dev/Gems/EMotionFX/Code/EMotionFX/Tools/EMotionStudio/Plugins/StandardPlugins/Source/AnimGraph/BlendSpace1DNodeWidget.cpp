@@ -307,7 +307,7 @@ namespace EMStudio
 
         const float centerX = (min + max) / 2;
         m_scale.Set(scaleX, scaleY);
-        m_shift.Set(m_drawCenterX - centerX * scaleX, m_drawCenterY);
+        m_shift.Set(m_drawCenterX - centerX * scaleX, aznumeric_cast<float>(m_drawCenterY));
     }
 
     void BlendSpace1DNodeWidget::DrawGrid(QPainter& painter)
@@ -505,7 +505,7 @@ namespace EMStudio
             textToDraw += str;
         }
 
-        QRect rect(QPoint(loc.x() - s_maxTextDim, loc.y() - s_maxTextDim), QPoint(loc.x() + s_maxTextDim, m_drawCenterY - 13));
+        QRect rect(QPoint(aznumeric_cast<int>(loc.x() - s_maxTextDim), aznumeric_cast<int>(loc.y() - s_maxTextDim)), QPoint(aznumeric_cast<int>(loc.x() + s_maxTextDim), m_drawCenterY - 13));
 
         // avoid the text occluding the motion point
         rect.translate(0, -s_motionPointCircleWidth);
@@ -590,8 +590,8 @@ namespace EMStudio
         const AZ::u32 numMotions = (AZ::u32)m_renderPoints.size();
         for (AZ::u32 i = 0; i < numMotions; ++i)
         {
-            const float diffX = windowX - m_renderPoints[i].x();
-            const float diffY = windowY - m_renderPoints[i].y();
+            const float diffX = aznumeric_cast<float>(windowX - m_renderPoints[i].x());
+            const float diffY = aznumeric_cast<float>(windowY - m_renderPoints[i].y());
             const float distSqr = diffX * diffX + diffY * diffY;
             if (distSqr < minDistSqr)
             {

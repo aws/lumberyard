@@ -384,7 +384,7 @@ void MeshUtil::GenFan(int numSideVert, float radius, float startAngleDegree, flo
 // On top of the fan shape, there's a concentric beam which simulates the spike effect.
 void MeshUtil::GenShaft(float radius, float centerThickness, int complexity, float startAngleDegree, float endAngleDegree, const ColorF& clr, std::vector<SVF_P3F_C4B_T2F>& vertOut, std::vector<uint16>& idxOut)
 {
-    if (complexity <= 0)
+    if (complexity <= 1)
     {
         return;
     }

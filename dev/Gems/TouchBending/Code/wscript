@@ -73,7 +73,7 @@ def build(bld):
 
         # Section to control the editor (things related with asset pipeline, etc) build.
         Editor = dict(
-            platforms           = ['win', 'darwin'],
+            platforms           = ['win', 'darwin', 'linux'],
 
             # General
             file_list           = touchbending_file_list_editor,

@@ -25,33 +25,58 @@ namespace ScriptCanvas
             const size_t ForEach::k_keySlotIndex = 0;
             const size_t ForEach::k_valueSlotIndex = 1;
 
+            bool ForEach::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+            {
+                if (rootElement.GetVersion() <= 1)
+                {
+                    SlotMetadata metaData;
+
+                    if (rootElement.FindSubElementAndGetData(AZ_CRC("m_sourceSlot", 0x7575d6c1), metaData))
+                    {
+                        rootElement.RemoveElementByName(AZ_CRC("m_sourceSlot", 0x7575d6c1));
+                        rootElement.AddElementWithData(serializeContext, "m_sourceSlot", metaData.m_slotId);
+                    }
+                }
+
+                return true;
+            }
+
             void ForEach::OnInit()
             {
                 ResetLoop();
 
-                if (!m_sourceSlot.m_slotId.IsValid())
+                if (!m_sourceSlot.IsValid())
                 {
                     DynamicDataSlotConfiguration slotConfiguration;
 
                     slotConfiguration.m_name = GetSourceSlotName();
                     slotConfiguration.m_dynamicDataType = DynamicDataType::Container;
-                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+                    slotConfiguration.m_dynamicGroup = GetContainerGroupId();
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);                    
 
-                    m_sourceSlot.m_slotId = AddSlot(slotConfiguration);
+                    m_sourceSlot = AddSlot(slotConfiguration);
                 }
                 // DYNAMIC_SLOT_VERSION_CONVERTER
-                else
+                
                 {
-                    Slot* slot = GetSlot(m_sourceSlot.m_slotId);
+                    Slot* slot = GetSlot(m_sourceSlot);
 
-                    if (slot && !slot->IsDynamicSlot())
+                    if (slot)
                     {
-                        slot->SetDynamicDataType(DynamicDataType::Container);
+                        if (!slot->IsDynamicSlot())
+                        {
+                            slot->SetDynamicDataType(DynamicDataType::Container);
+                        }
+
+                        if (slot->GetDynamicGroup() == AZ::Crc32())
+                        {
+                            SetDynamicGroup(slot->GetId(), GetContainerGroupId());
+                        }
                     }
                 }
                 ////
 
-                EndpointNotificationBus::Handler::BusConnect({ GetEntityId(), m_sourceSlot.m_slotId });
+                EndpointNotificationBus::Handler::BusConnect({ GetEntityId(), m_sourceSlot });
             }
 
             void ForEach::OnInputSignal(const SlotId& slotId)
@@ -65,6 +90,7 @@ namespace ScriptCanvas
                         {
                             // Loop initialization failed
                             SignalOutput(ForEachProperty::GetFinishedSlotId(this));
+                            return;
                         }
                     }
 
@@ -84,7 +110,7 @@ namespace ScriptCanvas
             {
                 ResetLoop();
 
-                const Datum* input = GetInput(m_sourceSlot.m_slotId);
+                const Datum* input = FindDatum(m_sourceSlot);
 
                 if (input && !input->Empty())
                 {
@@ -201,7 +227,7 @@ namespace ScriptCanvas
                 }
 
                 ++m_index;
-                ExecutionRequestBus::Event(GetGraphId(), &ExecutionRequests::AddToExecutionStack, *this, SlotId{});
+                GetExecutionBus()->AddToExecutionStack((*this), SlotId());
                 SignalOutput(ForEachProperty::GetEachSlotId(this));
             }
 
@@ -235,25 +261,11 @@ namespace ScriptCanvas
                 m_keysVector = Datum();
             }
 
-            void ForEach::OnEndpointConnected(const Endpoint& dataOutEndpoint)
+            void ForEach::OnDynamicGroupDisplayTypeChanged(const AZ::Crc32& dynamicGroup, const Data::Type& dataType)
             {
-                auto dataOutNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>(dataOutEndpoint.GetNodeId());
-                if (dataOutNode)
+                if (dynamicGroup == GetContainerGroupId() && dataType.IsValid())
                 {
-                    AddPropertySlotsFromSlot(dataOutNode->GetSlot(dataOutEndpoint.GetSlotId()));
-                }
-            }
-
-            void ForEach::OnEndpointDisconnected(const Endpoint& targetEndpoint)
-            {
-                if (!IsConnected(m_sourceSlot.m_slotId))
-                {
-                    auto scriptCanvasSlot = GetSlot(m_sourceSlot.m_slotId);
-
-                    if (scriptCanvasSlot)
-                    {
-                        scriptCanvasSlot->SetDisplayType(Data::Type::Invalid());
-                    }
+                    AddPropertySlotsFromType(dataType);
                 }
             }
 
@@ -266,28 +278,19 @@ namespace ScriptCanvas
                 m_propertySlots.clear();
             }
 
-            void ForEach::AddPropertySlotsFromSlot(const Slot* dataSlot)
+            void ForEach::AddPropertySlotsFromType(const Data::Type& dataType)
             {
-                if (dataSlot && Data::IsContainerType(dataSlot->GetDataType()))
+                if (Data::IsContainerType(dataType))
                 {
-                    AZ::TypeId newType = ScriptCanvas::Data::ToAZType(dataSlot->GetDataType());
+                    AZ::TypeId newType = ScriptCanvas::Data::ToAZType(dataType);
 
-                    if (newType != ScriptCanvas::Data::ToAZType(m_sourceSlot.m_dataType))
+                    if (newType != m_previousTypeId)
                     {
                         ClearPropertySlots();
 
                         m_previousTypeId = newType;
 
-                        auto scriptCanvasSlot = GetSlot(m_sourceSlot.m_slotId);
-
-                        if (scriptCanvasSlot)
-                        {
-                            scriptCanvasSlot->SetDisplayType(dataSlot->GetDataType());
-                        }
-
-                        m_sourceSlot.m_dataType = dataSlot->GetDataType();
-
-                        AZStd::vector<Data::Type> types = Data::GetContainedTypes(dataSlot->GetDataType());
+                        AZStd::vector<Data::Type> types = Data::GetContainedTypes(dataType);
                         for (size_t i = 0; i < types.size(); ++i)
                         {
                             Data::PropertyMetadata propertyAccount;

@@ -1,0 +1,16 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "${GemId}",
+    "Name": "${Name}",
+    "DisplayName": "${Name}",
+    "Version": "${Version}",
+    "Summary": "${Summary}",
+    "Tags": ["Game"],
+    "IconPath": "preview.png",
+    "IsGameGem": true,
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ]
+}

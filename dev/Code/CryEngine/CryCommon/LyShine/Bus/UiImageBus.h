@@ -22,7 +22,7 @@ class UiImageInterface
 {
 public: // types
 
-    enum class ImageType
+    enum class ImageType : int32_t
     {
         Stretched,      //!< the texture is stretched to fit the rect without maintaining aspect ratio
         Sliced,         //!< the texture is sliced such that center stretches and the edges do not
@@ -32,13 +32,13 @@ public: // types
         StretchedToFill //!< the texture is scaled to fill the rect while maintaining aspect ratio
     };
 
-    enum class SpriteType
+    enum class SpriteType : int32_t
     {
         SpriteAsset,
         RenderTarget,
     };
 
-    enum class FillType
+    enum class FillType : int32_t
     {
         None,           //!< the image is displayed fully filled
         Linear,         //!< the image is filled linearly from one edge to the opposing edge
@@ -47,7 +47,7 @@ public: // types
         RadialEdge,     //!< the image is filled radially around the midpoint of an edge
     };
 
-    enum class FillCornerOrigin
+    enum class FillCornerOrigin : int32_t
     {
         TopLeft,
         TopRight,
@@ -55,7 +55,7 @@ public: // types
         BottomLeft,
     };
 
-    enum class FillEdgeOrigin
+    enum class FillEdgeOrigin : int32_t
     {
         Left,
         Top,
@@ -161,24 +161,6 @@ public: // member functions
 
     //! Sets whether the center of a sliced image is filled
     virtual void SetFillCenter(bool fillCenter) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::SetImageIndex instead.
-    virtual void SetSpriteSheetCellIndex(AZ::u32 index) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndex instead.
-    virtual const AZ::u32 GetSpriteSheetCellIndex() = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexCount instead.
-    virtual const AZ::u32 GetSpriteSheetCellCount() = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexAlias instead.
-    virtual AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::SetImageIndexAlias instead.
-    virtual void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexFromAlias instead.
-    virtual AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) = 0;
 
 public: // static member data
 

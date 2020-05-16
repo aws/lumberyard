@@ -32,8 +32,10 @@
 
 #include <I3DEngine.h>
 #include <ITerrain.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Commands/LegacyCommand.h>
 
@@ -335,7 +337,7 @@ CHeightmap::CHeightmap(const CHeightmap& h)
     , m_fMaxHeight(h.m_fMaxHeight)
     , m_defaultHeight(h.m_defaultHeight)
     , m_pHeightmap(h.m_pHeightmap)
-    , m_Weightmap() // no copy ctor for this
+    , m_Weightmap() // Copy ctor is private. 
     , m_iWidth(h.m_iWidth)
     , m_iHeight(h.m_iHeight)
     , m_textureSize(h.m_textureSize)
@@ -347,6 +349,9 @@ CHeightmap::CHeightmap(const CHeightmap& h)
     , m_updateModSectors(h.m_updateModSectors)
     , m_standaloneMode(true) // always stand alone if copied
 {
+    // Given that the copy constructor for Weightmap is private,
+    // calling Copy is the next best thing.
+    m_Weightmap.Copy(h.m_Weightmap);
 }
 
 CHeightmap::~CHeightmap()
@@ -382,6 +387,20 @@ bool CHeightmap::GetUseTerrain()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CHeightmap::GetTerrainInfo(STerrainInfo& terrainInfoOut)
+{
+    // construct terrain in 3dengine.
+    SSectorInfo si;
+    GetSectorsInfo(si);
+    terrainInfoOut.nHeightMapSize_InUnits = si.sectorSize * si.numSectors / si.unitSize;
+    terrainInfoOut.nUnitSize_InMeters = si.unitSize;
+    terrainInfoOut.nSectorSize_InMeters = si.sectorSize;
+    terrainInfoOut.nSectorsTableSize_InSectors = si.numSectors;
+    terrainInfoOut.fHeightmapZRatio = 0.0f;
+    terrainInfoOut.fOceanWaterLevel = GetOceanLevel();
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, bool bForceKeepVegetation /*=false*/)
 {
     if (iWidth <= 0 || iHeight <= 0)
@@ -395,6 +414,9 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
         // TODO: Non-destructive resize
         m_pHeightmap.clear();
         m_pHeightmap.resize(iWidth * iHeight);
+
+        m_Weightmap.Allocate(iWidth, iHeight);
+
         m_iWidth = iWidth;
         m_iHeight = iHeight;
         return;
@@ -436,7 +458,7 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
     m_numSectors = (m_iWidth * m_unitSize) / sectorSize;
 
     bool            boChangedTerrainDimensions(prevWidth != m_iWidth || prevHeight != m_iHeight || prevUnitSize != m_unitSize);
-    ITerrain* pTerrain = GetIEditor()->Get3DEngine()->GetITerrain();
+    const bool isLegacyTerrainActive = LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers();
 
     uint32 dwTerrainSizeInMeters = m_iWidth * unitSize;
     uint32 dwTerrainTextureResolution = dwTerrainSizeInMeters / 2;          // terrain texture resolution scaled with heightmap - bad: hard coded factor 2m=1texel
@@ -453,7 +475,9 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
 
     uint32 dwTileCount = dwTerrainTextureResolution / dwTileResolution;
 
-    m_TerrainBGRTexture.AllocateTiles(dwTileCount, dwTileCount, dwTileResolution);
+    // Create our new texture size - make sure to save any unsaved data first!
+    const bool saveIfDirty = true;
+    m_TerrainBGRTexture.AllocateTiles(dwTileCount, dwTileCount, dwTileResolution, saveIfDirty);
 
     // Allocate new data (reuses capacity if the new map is smaller)
     m_pHeightmap.resize(iWidth * iHeight);
@@ -496,7 +520,7 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
 
 
     // This must run only when creating a new terrain.
-    if (!boChangedTerrainDimensions || !pTerrain)
+    if (!boChangedTerrainDimensions || !isLegacyTerrainActive)
     {
         CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
         if (pVegetationMap)
@@ -517,21 +541,19 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
 
     if (boChangedTerrainDimensions)
     {
-        if (pTerrain)
+        if (isLegacyTerrainActive)
         {
             static bool bNoReentrant = false;
             if (!bNoReentrant)
             {
                 bNoReentrant = true;
 
-                /*
-                    Note: Don't create and lo temporary directory, and load that level.
-                    Instead, reload the existing level to apply chagnes.
-                */
                 constexpr bool showMessages = false;
-                constexpr bool deleteHoldFolder = false;
-                GetIEditor()->GetDocument()->Hold(".");
-                GetIEditor()->GetDocument()->Fetch(".", showMessages, deleteHoldFolder);
+                constexpr auto tempPath = ".";
+                constexpr auto tempFileName = "$temp_resize";
+
+                GetIEditor()->GetDocument()->Hold(tempFileName, tempPath);
+                GetIEditor()->GetDocument()->Fetch(tempFileName, tempPath, showMessages, CCryEditDoc::FetchPolicy::DELETE_LY_FILE);
 
                 bNoReentrant = false;
             }
@@ -553,21 +575,28 @@ void CHeightmap::RefreshTerrain()
 // maps to the Y world axis, and the Y texture tile index maps to the X world axis.
 void CHeightmap::RefreshTextureTile(uint32 xIndex, uint32 yIndex)
 {
-    int terrainSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
-    int texSectorSize = GetIEditor()->Get3DEngine()->GetTerrainTextureNodeSizeMeters();
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int terrainSizeX = terrainAabb.GetWidth();
+    const int terrainSizeY = terrainAabb.GetHeight();
+
+    int texSectorSize = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(texSectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
+
     uint32 tileCountX = GetRGBLayer()->GetTileCountX();
     uint32 tileCountY = GetRGBLayer()->GetTileCountY();
 
-    if (!texSectorSize || !terrainSize || !tileCountX)
+    if (!texSectorSize || !terrainSizeX || !tileCountX)
     {
         return;
     }
 
     // Get the number of sector textures in each direction that we need to update in order to refresh the 
     // entire texture tile.
-    int numTexSectors = terrainSize / texSectorSize;
-    int sectorsPerTileX = numTexSectors / tileCountX;
-    int sectorsPerTileY = numTexSectors / tileCountY;
+    int numTexSectorsX = terrainSizeX / texSectorSize;
+    int numTexSectorsY = terrainSizeY / texSectorSize;
+    int sectorsPerTileX = numTexSectorsX / tileCountX;
+    int sectorsPerTileY = numTexSectorsY / tileCountY;
 
     for (int y = 0; y < sectorsPerTileY; ++y)
     {
@@ -1287,8 +1316,24 @@ void CHeightmap::Normalize()
         }
     }
 
-    // Storing the value range in this way saves us a division and a multiplication
-    fValueRange = (1.0f / (fHighestPoint - (float)fLowestPoint)) * m_fMaxHeight;
+    if (AZ::IsClose(fLowestPoint, fHighestPoint, 0.0001f))
+    {
+        // If we have the pathological case of normalizing an effectively flat terrain (varies by < 0.1 mm),
+        // adjust our normalization constants so that we don't actually perform any normalization.
+        // i.e. height = (height - 0.0f) * 1.0f
+        // Note that if it's possible for the flat terrain to exist outside our 0 - maxHeight range, we'll
+        // still end up clamping it into the range below.
+        fLowestPoint = 0.0f;
+        fValueRange = 1.0f;
+    }
+    else
+    {
+        // Normal case: create a valueRange scaling constant that we'll use to scale from 
+        // (existing min - existing max) to (0 - fMaxHeight)
+        // i.e. height = (height - existing min) * valueRange
+        // Storing the value range in this way saves us a division and a multiplication
+        fValueRange = m_fMaxHeight / (fHighestPoint - fLowestPoint);
+    }
 
     // Normalize the heightmap
     for (i = 0; i < m_iWidth; i++)
@@ -1298,6 +1343,11 @@ void CHeightmap::Normalize()
             fHeight = GetXY(i, j);
             fHeight -= fLowestPoint;
             fHeight *= fValueRange;
+
+            // Make sure our height stays within our expected normalize range of 0 - maxHeight.
+            // (In the case of flat terrain or small precision errors, it may be able to stray outside the range)
+            fHeight = AZ::GetClamp(fHeight, 0.0f, m_fMaxHeight);
+
             SetXY(i, j, fHeight);
         }
     }
@@ -1305,7 +1355,7 @@ void CHeightmap::Normalize()
     NotifyModified();
 }
 
-bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bNoise) const
+bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bNoise, bool treatHolesAsMinHeight) const
 {
     long iXSrcFl, iXSrcCe, iYSrcFl, iYSrcCe;
     float fXSrc, fYSrc;
@@ -1388,6 +1438,14 @@ bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bN
             fHeight[2] = (float)m_pHeightmap[iXSrcFl + iYSrcCe * dwHeightmapWidth];
             fHeight[3] = (float)m_pHeightmap[iXSrcCe + iYSrcCe * dwHeightmapWidth];
 
+            bool isHole[4];
+            isHole[0] = IsHoleAt(iXSrcFl, iYSrcFl);
+            isHole[1] = IsHoleAt(iXSrcCe, iYSrcFl);
+            isHole[2] = IsHoleAt(iXSrcFl, iYSrcCe);
+            isHole[3] = IsHoleAt(iXSrcCe, iYSrcCe);
+
+            bool hasHole = isHole[0] || isHole[1] || isHole[2] || isHole[3];
+
             // Interpolate between the four nearest height values
 
             // Get the height for the given X position trough interpolation between
@@ -1396,7 +1454,9 @@ bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bN
             fHeightTop = (fHeight[2] * fHeightWeight[0] + fHeight[3] * fHeightWeight[1]);
 
             // Set the new value in the destination heightmap
-            *pData++ = static_cast<t_hmap>(fHeightBottom * fHeightWeight[2] + fHeightTop * fHeightWeight[3]);
+            *pData++ = (hasHole && treatHolesAsMinHeight)
+                ? std::numeric_limits<float>::min()
+                : static_cast<t_hmap>(fHeightBottom * fHeightWeight[2] + fHeightTop * fHeightWeight[3]);
         }
     }
 
@@ -1426,7 +1486,7 @@ bool CHeightmap::GetDataEx(t_hmap* pData, UINT iDestWidth, bool bSmooth, bool bN
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth, bool bNoise)
+bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoint& vTexOffset, CFloatImage& hmap, bool bSmooth, bool bNoise, bool treatHolesAsMinHeight)
 {
     if (m_pHeightmap.empty())
     {
@@ -1525,6 +1585,14 @@ bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoin
             fHeight[2] = (float)m_pHeightmap[iXSrcFl + iYSrcCe * dwHeightmapWidth];
             fHeight[3] = (float)m_pHeightmap[iXSrcCe + iYSrcCe * dwHeightmapWidth];
 
+            bool isHole[4];
+            isHole[0] = IsHoleAt(iXSrcFl, iYSrcFl);
+            isHole[1] = IsHoleAt(iXSrcCe, iYSrcFl);
+            isHole[2] = IsHoleAt(iXSrcFl, iYSrcCe);
+            isHole[3] = IsHoleAt(iXSrcCe, iYSrcCe);
+
+            bool hasHole = isHole[0] || isHole[1] || isHole[2] || isHole[3];
+
             // Interpolate between the four nearest height values
 
             // Get the height for the given X position trough interpolation between
@@ -1533,7 +1601,9 @@ bool CHeightmap::GetData(const QRect& srcRect, const int resolution, const QPoin
             fHeightTop = (fHeight[2] * fHeightWeight[0] + fHeight[3] * fHeightWeight[1]);
 
             // Set the new value in the destination heightmap
-            *pData++ = (t_hmap)(fHeightBottom * fHeightWeight[2] + fHeightTop * fHeightWeight[3]);
+            *pData++ = (hasHole && treatHolesAsMinHeight)
+                ? std::numeric_limits<float>::min()
+                : (t_hmap)(fHeightBottom * fHeightWeight[2] + fHeightTop * fHeightWeight[3]);
         }
     }
 
@@ -1605,6 +1675,10 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
     hmap.Allocate(width, width);
     t_hmap* pHeightmap = hmap.GetData();
 
+    // When gathering up heights, also check for holes and mark them in the data as min float values
+    const bool treatHolesAsMinHeights = true;
+    const float holeHeight = std::numeric_limits<float>::min();
+
     // If we're using an unscaled greyscale range, we can get away with just updating the updateRect area of the bitmap if one
     // was provided.  However, with a scaling greyscale range, the scale can change on every update so we need to update the
     // entire bitmap to retain consistency, not just the part that changed height values.
@@ -1617,7 +1691,7 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
         destUpdateRect.moveTopLeft(destUpdateRect.topLeft() * fScale);
         destUpdateRect.setSize(destUpdateRect.size() * fScale);
 
-        if (!GetData(destUpdateRect, width, QPoint(0, 0), hmap, bSmooth, bNoise))
+        if (!GetData(destUpdateRect, width, QPoint(0, 0), hmap, bSmooth, bNoise, treatHolesAsMinHeights))
         {
             return false;
         }
@@ -1626,7 +1700,7 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
     }
     else
     {
-        if (!GetDataEx(pHeightmap, width, bSmooth, bNoise))
+        if (!GetDataEx(pHeightmap, width, bSmooth, bNoise, treatHolesAsMinHeights))
         {
             return false;
         }
@@ -1646,8 +1720,14 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
         {
             for (int iX = bounds.left(); iX < bounds.right() + 1; iX++)
             {
-                minHeight = AZStd::min(minHeight, pHeightmap[iX + iY * width]);
-                maxHeight = AZStd::max(maxHeight, pHeightmap[iX + iY * width]);
+                float height = pHeightmap[iX + iY * width];
+
+                // Only track heights outside of holes for our scaled range
+                if (height != holeHeight)
+                {
+                    minHeight = AZStd::min(minHeight, height);
+                    maxHeight = AZStd::max(maxHeight, height);
+                }
             }
         }
     }
@@ -1661,11 +1741,14 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
 
     // Pleasant blue color for the ocean.
     const QColor oceanColor(0x00, 0x99, 0xFF);
-
     // Alpha blend the ocean color in by 25%
     const float oceanBlendFactor = 0.25f;
 
+    // Red for terrain holes.
+    const QColor holeColor(0x80, 0x10, 0x10);
+
     QColor finalColor;
+    QColor terrainColor;
 
     // Fill the preview with the heightmap image
     for (int iY = bounds.top(); iY < bounds.bottom(); iY++)
@@ -1673,25 +1756,27 @@ bool CHeightmap::GetPreviewBitmap(DWORD* pBitmapData, int width, bool bSmooth, b
         for (int iX = bounds.left(); iX < bounds.right(); iX++)
         {
             float height = pHeightmap[iX + iY * width];
+            bool isHole = (height == holeHeight);
 
             // Scale our height range to (0, 1) across the minHeight to maxHeight range.
-            float greyVal = (height - minHeight) / maxHeightDifference;
+            float greyVal = isHole ? 0.0f : (height - minHeight) / maxHeightDifference;
+
+            terrainColor.setRgbF(greyVal, greyVal, greyVal);
 
             if (bShowOcean && (height <= GetOceanLevel()))
             {
                 // If we want to see ocean, blend a blue tint to any height data that's underwater.
                 finalColor.setRgbF(
-                    (oceanColor.redF()   * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor)),
-                    (oceanColor.greenF() * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor)),
-                    (oceanColor.blueF()  * oceanBlendFactor) + (greyVal * (1.0f - oceanBlendFactor))
+                    (oceanColor.redF() * oceanBlendFactor) + (terrainColor.redF() * (1.0f - oceanBlendFactor)),
+                    (oceanColor.greenF() * oceanBlendFactor) + (terrainColor.greenF() * (1.0f - oceanBlendFactor)),
+                    (oceanColor.blueF() * oceanBlendFactor) + (terrainColor.blueF() * (1.0f - oceanBlendFactor))
                 );
             }
             else
             {
-                finalColor.setRgbF(greyVal, greyVal, greyVal);
+                finalColor = isHole ? holeColor : terrainColor;
             }
 
-            // Use a texel from the tiled water texture when it is below the ocean level
             pBitmapData[iX + iY * width] = RGB(finalColor.red(), finalColor.green(), finalColor.blue());
         }
     }
@@ -1894,16 +1979,22 @@ void CHeightmap::LowerRange(float fFactor)
     // Lower the value range of the heightmap, effectively making it
     // more flat
     //////////////////////////////////////////////////////////////////////
-
-    unsigned int i;
-    float fOceanHeight = GetOceanLevel();
-
     CLogFile::WriteLine("Lowering range...");
 
-    // Lower the range, make sure we don't put anything below the ocean level
-    for (i = 0; i < m_iWidth * m_iHeight; i++)
+    if (OceanRequest::OceanIsEnabled())
     {
-        m_pHeightmap[i] = ((m_pHeightmap[i] - fOceanHeight) * fFactor) + fOceanHeight;
+        float fOceanHeight = GetOceanLevel();
+
+        // Lower the range, make sure we don't put anything below the ocean level
+        for (unsigned int i = 0; i < m_iWidth * m_iHeight; i++)
+        {
+            m_pHeightmap[i] = ((m_pHeightmap[i] - fOceanHeight) * fFactor) + fOceanHeight;
+        }
+    }
+    else
+    {
+        // Flatten relative to the default terrain height since the ocean isn't here.
+        Flatten(fFactor);
     }
 
     NotifyModified();
@@ -2175,7 +2266,7 @@ void CHeightmap::RiseLowerSpot(int iX, int iY, int radius, float insideRadius, f
     NotifyModified(iX - radius, iY - radius, radius * 2, radius * 2);
 }
 
-void CHeightmap::SmoothSpot(int iX, int iY, int radius, float fHeight, float fHardness)
+void CHeightmap::SmoothSpot(int iX, int iY, int radius, float fHeight, float fHardness, bool refreshTerrain)
 {
     ////////////////////////////////////////////////////////////////////////
     // Draw an attenuated spot on the map
@@ -2235,6 +2326,11 @@ void CHeightmap::SmoothSpot(int iX, int iY, int radius, float fHeight, float fHa
             float currH = m_pHeightmap[pos];
             m_pHeightmap[pos] = currH + (h - currH) * fHardness;
         }
+    }
+
+    if (refreshTerrain)
+    {
+        RefreshTerrain();
     }
 
     // We modified the heightmap.
@@ -2444,13 +2540,14 @@ void CHeightmap::UpdateEngineTerrain(int left, int bottom, int areaSize, int _he
 
     LOADING_TIME_PROFILE_SECTION(gEnv->pSystem);
 
-    I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-
-    const int nHeightMapUnitSize = p3DEngine->GetHeightMapUnitSize();
+    AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
+    const int nHeightMapUnitSize = static_cast<int>(gridResolution.GetX());
 
     // update terrain by square blocks aligned to terrain sector size
-
-    int nSecSize = p3DEngine->GetTerrainSectorSize() / p3DEngine->GetHeightMapUnitSize();
+    int terrainSectorSizeInMeters = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(terrainSectorSizeInMeters, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
+    int nSecSize = terrainSectorSizeInMeters / nHeightMapUnitSize;
     if (nSecSize == 0)
     {
         return;
@@ -2538,8 +2635,18 @@ void CHeightmap::UpdateEngineTerrain(int left, int bottom, int areaSize, int _he
 
     if (bElevation || bInfoBits)
     {
-        // TODO (bethelz): Take note that we swap bottom / left. The editor height data is transposed. Fix this.
-        p3DEngine->GetITerrain()->SetTerrainElevation(bottom, left, areaSize, m_pHeightmap.data(), WeightmapSize, surfaceWeights);
+        //Protect the call with the TerrainDataRequestBus mutex to prevent race conditions with threads
+        //that are reading terrain data.
+        auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+        {
+            // Take note that we swap bottom / left. The editor height data is transposed.
+            LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainElevationAndSurfaceWeights
+                , bottom, left, areaSize, m_pHeightmap.data(), WeightmapSize, surfaceWeights);
+        
+            // Only one handler should exist.
+            return false;
+        };
+        AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
     }
 
     const float areaRadius = originalInputAreaSize * nHeightMapUnitSize / 2;
@@ -2766,21 +2873,11 @@ void CHeightmap::SerializeTerrain(CXmlArchive& xmlAr)
             STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pData;
             if ((pHeader->nVersion == OCTREE_CHUNK_VERSION) && (pHeader->TerrainInfo.nSectorSize_InMeters == pHeader->TerrainInfo.nUnitSize_InMeters * SECTOR_SIZE_IN_UNITS))
             {
-                SSectorInfo si;
-                GetSectorsInfo(si);
-
-                if (ITerrain* pTerrain = GetIEditor()->Get3DEngine()->CreateTerrain(pHeader->TerrainInfo))
+                GetIEditor()->Get3DEngine()->ChangeOceanWaterLevel(pHeader->TerrainInfo.fOceanWaterLevel);
+                const bool loadTerrainMacroTexture = false;
+                if (!GetIEditor()->Get3DEngine()->SetOctreeCompiledData((uint8*)pData, nSize, nullptr, nullptr, loadTerrainMacroTexture))
                 {
-                    GetIEditor()->Get3DEngine()->ChangeOceanWaterLevel(pHeader->TerrainInfo.fOceanWaterLevel);
-                    // check if size of terrain in compile data match
-                    if (pHeader->TerrainInfo.nUnitSize_InMeters)
-                    {
-                        const bool loadTerrainMacroTexture = false;
-                        if (!GetIEditor()->Get3DEngine()->SetOctreeCompiledData((uint8*)pData, nSize, nullptr, nullptr, loadTerrainMacroTexture))
-                        {
-                            GetIEditor()->Get3DEngine()->DeleteTerrain();
-                        }
-                    }
+                    AZ_Error("Heightmap", false, "Terrain system failed to accept height map data.");
                 }
             }
         }
@@ -2811,7 +2908,7 @@ void CHeightmap::SetOceanLevel(float oceanLevel)
 
     m_fOceanLevel = oceanLevel;
 
-    if (!m_standaloneMode)
+    if (!m_standaloneMode && GetIEditor())
     {
         I3DEngine* i3d = GetIEditor()->GetSystem()->GetI3DEngine();
         if (i3d)
@@ -2873,6 +2970,28 @@ void CHeightmap::SetLayerWeightAt(const int x, const int y, const LayerWeight& w
 {
     m_Weightmap.ValueAt(x, y) = weight;
 }
+
+//////////////////////////////////////////////////////////////////////////
+void CHeightmap::GetLayerWeights(uint8 layerId, CImageEx* splatMap)
+{
+    if (!splatMap)
+    {
+        return;
+    }
+
+    splatMap->Allocate(m_iWidth, m_iHeight);
+
+    for (uint32 y = 0; y < m_iHeight; ++y)
+    {
+        for (uint32 x = 0; x < m_iWidth; ++x)
+        {
+            LayerWeight weight = GetLayerWeightAt(x, y);
+            uint8 layerWeight = weight.GetWeight(layerId);
+            splatMap->ValueAt(x, y) = (layerWeight) | (layerWeight << 8) | (layerWeight << 16) | (0xFF << 24);
+        }
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 void CHeightmap::SetLayerWeights(const AZStd::vector<uint8>& layerIds, const CImageEx* splatMaps, size_t splatMapCount)
@@ -3486,20 +3605,26 @@ void CHeightmap::RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 wi
 
 void CHeightmap::UpdateLayerTexture(const QRect& rect)
 {
-    I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-
     float x1 = HmapToWorld(rect.topLeft()).x;
     float y1 = HmapToWorld(rect.topLeft()).y;
     float x2 = HmapToWorld((rect.bottomRight() + QPoint(1, 1))).x;
     float y2 = HmapToWorld((rect.bottomRight() + QPoint(1, 1))).y;
 
-    int iTexSectorSize = GetIEditor()->Get3DEngine()->GetTerrainTextureNodeSizeMeters();
+    int iTexSectorSize = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(iTexSectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
     if (iTexSectorSize == 0)
     {
         return;
     }
 
-    int iTerrainSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int iTerrainSize = static_cast<int>(terrainAabb.GetWidth());
+    if (iTerrainSize <= 0)
+    {
+        return;
+    }
+
     int iTexSectorsNum = iTerrainSize / iTexSectorSize;
 
     uint32 dwFullResolution = m_TerrainBGRTexture.CalcMaxLocalResolution((float)rect.left() / GetWidth(), (float)rect.top() / GetHeight(), (float)(rect.right() + 1) / GetWidth(), (float)(rect.bottom() + 1) / GetHeight());
@@ -3642,15 +3767,18 @@ void CHeightmap::SetWeightmapBlock(int x, int y, const Weightmap& map)
 void CHeightmap::UpdateSectorTexture(const QPoint& texsector,
     const float fGlobalMinX, const float fGlobalMinY, const float fGlobalMaxX, const float fGlobalMaxY)
 {
-    I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-
-    int texSectorSize = p3DEngine->GetTerrainTextureNodeSizeMeters();
+    int texSectorSize = 0;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(texSectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
     if (texSectorSize == 0)
     {
         return;
     }
 
-    int texSectorCount = p3DEngine->GetTerrainSize() / texSectorSize;
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
+
+    int texSectorCount = terrainSize / texSectorSize;
 
     if (texSectorCount == 0 || texsector.x() >= texSectorCount || texsector.y() >= texSectorCount)
     {
@@ -3767,35 +3895,23 @@ void CHeightmap::InitTerrain()
     SSectorInfo si;
     GetSectorsInfo(si);
 
-    STerrainInfo TerrainInfo;
-    TerrainInfo.nHeightMapSize_InUnits = si.sectorSize * si.numSectors / si.unitSize;
-    TerrainInfo.nUnitSize_InMeters = si.unitSize;
-    TerrainInfo.nSectorSize_InMeters = si.sectorSize;
-    TerrainInfo.nSectorsTableSize_InSectors = si.numSectors;
-    TerrainInfo.fHeightmapZRatio = 0.0f;
-    TerrainInfo.fOceanWaterLevel = GetOceanLevel();
-
-    bool bCreateTerrain = false;
-    ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
-    if (pTerrain)
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    if (terrain)
     {
-        if ((gEnv->p3DEngine->GetTerrainSize() != (si.sectorSize * si.numSectors)) ||
-            (gEnv->p3DEngine->GetHeightMapUnitSize() != si.unitSize))
+        AZ::Aabb terrainAabb = terrain->GetTerrainAabb();
+        const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
+
+        AZ::Vector2 terrainGridResolution = terrain->GetTerrainGridResolution();
+        const int unitSizeX = static_cast<int>(terrainGridResolution.GetX());
+
+        if ((terrainSize != (si.sectorSize * si.numSectors)) ||
+            (unitSizeX != si.unitSize))
         {
-            bCreateTerrain = true;
+            // pass heightmap data to the 3dengine
+            UpdateEngineTerrain(false);
         }
     }
-    else
-    {
-        bCreateTerrain = true;
-    }
-    if (bCreateTerrain)
-    {
-        pTerrain = gEnv->p3DEngine->CreateTerrain(TerrainInfo);
-        // pass heightmap data to the 3dengine
-        UpdateEngineTerrain(false);
-    }
-    gEnv->p3DEngine->ChangeOceanWaterLevel(TerrainInfo.fOceanWaterLevel);
+    gEnv->p3DEngine->ChangeOceanWaterLevel(GetOceanLevel());
 }
 
 
@@ -3836,18 +3952,29 @@ void CHeightmap::UnlockSectorsTexture(const QRect& rc)
 }
 
 /////////////////////////////////////////////////////////
-void CHeightmap::UpdateModSectors()
+void CHeightmap::UpdateModSectors(bool forceUpdate)
 {
-    if (!m_updateModSectors)
+    if (!m_useTerrain)
     {
         return;
     }
 
-    I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-    int iTerrainSize = p3DEngine->GetTerrainSize();
-    if (!iTerrainSize)
+    if ((!forceUpdate) && (!m_updateModSectors))
     {
-        assert(false && "[CHeightmap::UpdateModSectors] Zero sized terrain.");     // maybe we should visualized this to the user
+        return;
+    }
+
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    if (!terrain)
+    {
+        return;
+    }
+
+    AZ::Aabb terrainAabb = terrain->GetTerrainAabb();
+    const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
+    if (terrainSize <= 0)
+    {
+        AZ_Error("LegacyTerrain", false, "[CHeightmap::UpdateModSectors] Zero sized terrain.");
         return;
     }
 
@@ -3900,7 +4027,8 @@ std::shared_ptr<CImageEx> CHeightmap::GetHeightmapImageEx() const
         // Get a normalized grayscale value from the heightmap
         const uint8 iColor = (uint8)__min((m_pHeightmap[i] * fPrecisionScale + 0.5f), 255.0f);
         // Create an ARGB grayscale value
-        pImageData[i] = (0xFF << 24) | (iColor << 16) | (iColor << 8) | iColor;
+        const uint8 alpha = IsHoleAt(i%width, i/width) ? 0x00 : 0xFF;
+        pImageData[i] = (alpha << 24) | (iColor << 16) | (iColor << 8) | iColor;
     }
     return image;
 }

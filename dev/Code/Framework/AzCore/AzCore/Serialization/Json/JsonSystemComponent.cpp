@@ -23,6 +23,7 @@
 #include <AzCore/Serialization/Json/TupleSerializer.h>
 #include <AzCore/Serialization/Json/UnorderedSetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/forward_list.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/set.h>
@@ -63,6 +64,7 @@ namespace AZ
             jsonContext->Serializer<JsonStringSerializer>()->HandlesType<AZStd::string>();
             jsonContext->Serializer<JsonOSStringSerializer>()->HandlesType<OSString>();
             jsonContext->Serializer<JsonBasicContainerSerializer>()
+                ->HandlesType<AZStd::forward_list>()
                 ->HandlesType<AZStd::list>()
                 ->HandlesType<AZStd::set>()
                 ->HandlesType<AZStd::vector>();

@@ -22,7 +22,6 @@
 #include "ParticleParams.h"
 #include "DelayedPlaneBreak.h"
 #include "IPhysics.h"
-#include "IFlowSystem.h"
 #include "IMaterialEffects.h"
 #include "IBreakableGlassSystem.h"
 #include "IPlayerProfiles.h"
@@ -35,7 +34,6 @@
 #include "VisualLog/VisualLog.h"
 #include "SignalTimers/SignalTimers.h"
 #include "Animation/PoseModifier/IKTorsoAim.h"
-#include <IGameTokens.h>
 #include <IMovieSystem.h>
 #include <IGameStatistics.h>
 #include "IForceFeedbackSystem.h"
@@ -210,7 +208,6 @@ private:
 CActionGame::CActionGame(CScriptRMI* pScriptRMI)
     : m_pEntitySystem(gEnv->pEntitySystem)
     , m_pNetwork(gEnv->pNetwork)
-    , m_pGameTokenSystem(0)
     , m_pPhysicalWorld(0)
     , m_pEntHits0(0)
     , m_pGameContext(0)
@@ -228,7 +225,6 @@ CActionGame::CActionGame(CScriptRMI* pScriptRMI)
     s_this = this;
 
     m_pGameContext = new CGameContext(CCryAction::GetCryAction(), pScriptRMI, this);
-    m_pGameTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
     m_pMaterialEffects = CCryAction::GetCryAction()->GetIMaterialEffects();
     m_inDeleteEntityCallback = 0;
 
@@ -512,11 +508,13 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
     m_pPhysicalWorld = gEnv->pPhysicalWorld;
 
     // Create Physics API World
-    Physics::SystemRequestBus::BroadcastResult(m_physicalWorld,
-        &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
-    if (m_physicalWorld)
+    if (auto physicsSystem = AZ::Interface<Physics::System>::Get())
     {
-        m_physicalWorld->SetEventHandler(this);
+        m_physicalWorld = physicsSystem->CreateWorld(Physics::DefaultPhysicsWorldId);
+        if (m_physicalWorld)
+        {
+            m_physicalWorld->SetEventHandler(this);
+        }
     }
 
     m_pFreeCHSlot0 = m_pCHSlotPool = new SEntityCollHist[32];
@@ -655,13 +653,6 @@ bool CActionGame::Update()
         {
             pgr->AddHitListener(this);
         }
-
-#ifdef _GAMETOKENSDEBUGINFO
-        if (m_pGameTokenSystem)
-        {
-            m_pGameTokenSystem->DebugDraw();
-        }
-#endif
 
         if (g_breakage_debug)
         {
@@ -4267,7 +4258,6 @@ void CActionGame::OnEditorSetGameMode(bool bGameMode)
     // reset time of day scheduler before flowsystem
     // as nodes could register in initialize
     pCryAction->GetTimeOfDayScheduler()->Reset();
-    gEnv->pFlowSystem->Reset(false);
     CDialogSystem* pDS = pCryAction->GetDialogSystem();
     if (pDS)
     {

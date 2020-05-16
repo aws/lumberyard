@@ -16,6 +16,14 @@
 
 namespace AzToolsFramework
 {
+    struct GridSnapParameters
+    {
+        GridSnapParameters(bool gridSnap, float gridSize);
+
+        bool m_gridSnap;
+        float m_gridSize;
+    };
+
     /// Calculate the offset along an axis to adjust a position
     /// to stay snapped to a given grid size.
     AZ::Vector3 CalculateSnappedOffset(
@@ -27,11 +35,8 @@ namespace AzToolsFramework
         const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal,
         int viewportId, float gridSize);
 
-    /// Wrapper for grid snapping enabled bus call.
-    bool GridSnapping(int viewportId);
-
-    /// Wrapper for grid size bus call.
-    float GridSize(int viewportId);
+    /// Wrapper for grid snapping and grid size bus calls.
+    GridSnapParameters GridSnapSettings(int viewportId);
 
     /// Wrapper for angle snapping enabled bus call.
     bool AngleSnapping(int viewportId);

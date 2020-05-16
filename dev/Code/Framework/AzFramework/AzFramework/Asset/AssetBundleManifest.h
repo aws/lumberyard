@@ -37,9 +37,12 @@ namespace AzFramework
         // loading the bundle
         const AZStd::string& GetCatalogName() const { return m_catalogName; }
         AZStd::vector<AZStd::string> GetDependentBundleNames() const { return m_depedendentBundleNames;  }
+        AZStd::vector<AZStd::string> GetLevelDirectories() const { return m_levelDirs; }
+        int GetBundleVersion() const { return m_bundleVersion; }
         void SetCatalogName(const AZStd::string& catalogName) { m_catalogName = catalogName; }
         void SetBundleVersion(int bundleVersion) { m_bundleVersion = bundleVersion; }
         void SetDependentBundleNames(const AZStd::vector<AZStd::string>& dependentBundleNames) { m_depedendentBundleNames = dependentBundleNames; }
+        void SetLevelsDirectory(const AZStd::vector<AZStd::string>& levelDirs) { m_levelDirs = levelDirs; }
 
         static const char s_manifestFileName[];
         static const int CurrentBundleVersion;
@@ -47,6 +50,7 @@ namespace AzFramework
     private: 
         AZStd::string m_catalogName;
         AZStd::vector<AZStd::string> m_depedendentBundleNames;
+        AZStd::vector<AZStd::string> m_levelDirs;
         int m_bundleVersion = CurrentBundleVersion;
     };
 

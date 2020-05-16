@@ -19,9 +19,9 @@
       <file>Resources/live_update.png</file>
       <file>Resources/message_icon.png</file>
       <file>Resources/open.png</file>
-      <file>Resources/pause.png</file>
+      <file>Resources/Pause.png</file>
       <file>Resources/pin.png</file>
-      <file>Resources/play.png</file>      
+      <file>Resources/Play.png</file>
       <file>Resources/reset.png</file>
       <file>Resources/scriptcanvas_bookmark.png</file>
       <file>Resources/scriptcanvas_commandline.png</file>
@@ -38,7 +38,7 @@
       <file>Resources/step_into.png</file>
       <file>Resources/step_out.png</file>
       <file>Resources/step_over.png</file>
-      <file>Resources/stop.png</file>
+      <file>Resources/Stop.png</file>
       <file>Resources/triangle.png</file>
       <file>Resources/valid_icon.png</file>
       <file>Resources/valid_icon_grey.png</file>

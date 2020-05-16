@@ -16,7 +16,6 @@
 
 SUBFOLDERS = [
         'Cry3DEngine',
-        'CryAction',
         'CryFont',
         'CryNetwork',
         'CryPhysics',

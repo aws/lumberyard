@@ -28,6 +28,7 @@
 #include "Matrix3x3Nodes.h"
 #include "Matrix4x4Node.h"
 #include "Matrix4x4Nodes.h"
+#include "MathExpression.h"
 #include "Multiply.h"
 #include "Number.h"
 #include "OBBNode.h"

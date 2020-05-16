@@ -31,6 +31,13 @@
                 "~>0.1"
             ],
             "_comment": "SurfaceData"
+        },
+        {
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "ImageProcessing"
         }
     ]
 }

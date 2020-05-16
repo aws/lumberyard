@@ -6,6 +6,7 @@ Instructions are in the instructions module.
 from __future__ import print_function, absolute_import
 
 import string
+import re
 
 from .. import six
 from . import types, _utils
@@ -15,6 +16,8 @@ from ._utils import _StrCaching, _StringReferenceCaching, _HasMetadata
 _VALID_CHARS = (frozenset(map(ord, string.ascii_letters)) |
                 frozenset(map(ord, string.digits)) |
                 frozenset(map(ord, ' !#$%&\'()*+,-./:;<=>?@[]^_`{|}~')))
+
+_SIMPLE_IDENTIFIER_RE = re.compile(r"[-a-zA-Z$._][-a-zA-Z$._0-9]*$")
 
 
 def _escape_string(text, _map={}):
@@ -103,6 +106,12 @@ class _Undefined(object):
     """
     'undef': a value for undefined values.
     """
+    def __new__(cls):
+        try:
+            return Undefined
+        except NameError:
+            return object.__new__(_Undefined)
+
 
 Undefined = _Undefined()
 
@@ -116,9 +125,7 @@ class Constant(_StrCaching, _StringReferenceCaching, _ConstOpMixin, Value):
         assert isinstance(typ, types.Type)
         assert not isinstance(typ, types.VoidType)
         self.type = typ
-        if isinstance(constant, (list, tuple)):
-            # Recursively wrap aggregate constants
-            constant = typ.wrap_constant_value(constant)
+        constant = typ.wrap_constant_value(constant)
         self.constant = constant
 
     def _to_string(self):
@@ -160,6 +167,12 @@ class Constant(_StrCaching, _StringReferenceCaching, _ConstOpMixin, Value):
         """
         tys = [el.type for el in elems]
         return cls(types.LiteralStructType(tys), elems)
+
+    @property
+    def addrspace(self):
+        if not isinstance(self.type, types.PointerType):
+            raise TypeError("Only pointer constant have address spaces")
+        return self.type.addrspace
 
     def __eq__(self, other):
         if isinstance(other, Constant):
@@ -540,9 +553,10 @@ class FunctionAttributes(AttributeSet):
         'sanitize_memory', 'sanitize_thread', 'ssp',
         'sspreg', 'sspstrong', 'uwtable'])
 
-    def __init__(self):
+    def __init__(self, args=()):
         self._alignstack = 0
         self._personality = None
+        super(FunctionAttributes, self).__init__(args)
 
     @property
     def alignstack(self):
@@ -666,6 +680,49 @@ class ArgumentAttributes(AttributeSet):
                         'nocapture', 'nonnull', 'returned', 'signext',
                         'sret', 'zeroext'])
 
+    def __init__(self, args=()):
+        self._align = 0
+        self._dereferenceable = 0
+        self._dereferenceable_or_null = 0
+        super(ArgumentAttributes, self).__init__(args)
+
+    @property
+    def align(self):
+        return self._align
+
+    @align.setter
+    def align(self, val):
+        assert isinstance(val, six.integer_types) and val >= 0
+        self._align = val
+
+    @property
+    def dereferenceable(self):
+        return self._dereferenceable
+
+    @dereferenceable.setter
+    def dereferenceable(self, val):
+        assert isinstance(val, six.integer_types) and val >= 0
+        self._dereferenceable = val
+
+    @property
+    def dereferenceable_or_null(self):
+        return self._dereferenceable_or_null
+
+    @dereferenceable_or_null.setter
+    def dereferenceable_or_null(self, val):
+        assert isinstance(val, six.integer_types) and val >= 0
+        self._dereferenceable_or_null = val
+
+    def _to_list(self):
+        attrs = sorted(self)
+        if self.align:
+            attrs.append('align {0:d}'.format(self.align))
+        if self.dereferenceable:
+            attrs.append('dereferenceable({0:d})'.format(self.dereferenceable))
+        if self.dereferenceable_or_null:
+            attrs.append('dereferenceable_or_null({0:d})'.format(self.dereferenceable_or_null))
+        return attrs
+
 
 class _BaseArgument(NamedValue):
     def __init__(self, parent, typ, name=''):
@@ -687,8 +744,9 @@ class Argument(_BaseArgument):
     """
 
     def __str__(self):
-        if self.attributes:
-            return "{0} {1} {2}".format(self.type, ' '.join(self.attributes),
+        attrs = self.attributes._to_list()
+        if attrs:
+            return "{0} {1} {2}".format(self.type, ' '.join(attrs),
                                         self.get_reference())
         else:
             return "{0} {1}".format(self.type, self.get_reference())
@@ -700,8 +758,9 @@ class ReturnValue(_BaseArgument):
     """
 
     def __str__(self):
-        if self.attributes:
-            return "{0} {1}".format(' '.join(self.attributes), self.type)
+        attrs = self.attributes._to_list()
+        if attrs:
+            return "{0} {1}".format(' '.join(attrs), self.type)
         else:
             return str(self.type)
 
@@ -734,7 +793,7 @@ class Block(NamedValue):
         return self.parent.module
 
     def descr(self, buf):
-        buf.append("{0}:\n".format(self.name))
+        buf.append("{0}:\n".format(self._format_name()))
         buf += ["  {0}\n".format(instr) for instr in self.instructions]
 
     def replace(self, old, new):
@@ -748,6 +807,17 @@ class Block(NamedValue):
         for bb in self.parent.basic_blocks:
             for instr in bb.instructions:
                 instr.replace_usage(old, new)
+    
+    def _format_name(self):
+        # Per the LLVM Language Ref on identifiers, names matching the following 
+        # regex do not need to be quoted: [%@][-a-zA-Z$._][-a-zA-Z$._0-9]*
+        # Otherwise, the identifier must be quoted and escaped.
+        name = self.name
+        if not _SIMPLE_IDENTIFIER_RE.match(name):
+            name = name.replace('\\', '\\5c').replace('"', '\\22')
+            name = '"{0}"'.format(name)
+        return name
+
 
 
 class BlockAddress(Value):

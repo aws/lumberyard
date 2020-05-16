@@ -36,7 +36,7 @@ namespace AzQtComponents
         setFocusPolicy(Qt::ClickFocus);
 
         QHBoxLayout* layout = new QHBoxLayout(this);
-        layout->setMargin(0);
+        layout->setContentsMargins(0, 0, 0, 0);
 
         m_iconLabel = new QLabel(this);
         m_iconLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);

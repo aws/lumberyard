@@ -164,8 +164,13 @@ namespace EMotionFX
     void HitDetectionJointInspectorPlugin::Render(EMStudio::RenderPlugin* renderPlugin, RenderInfo* renderInfo)
     {
         EMStudio::RenderViewWidget* activeViewWidget = renderPlugin->GetActiveViewWidget();
+        if (!activeViewWidget)
+        {
+            return;
+        }
+
         const bool renderColliders = activeViewWidget->GetRenderFlag(EMStudio::RenderViewWidget::RENDER_HITDETECTION_COLLIDERS);
-        if (!activeViewWidget || !renderColliders)
+        if (!renderColliders)
         {
             return;
         }

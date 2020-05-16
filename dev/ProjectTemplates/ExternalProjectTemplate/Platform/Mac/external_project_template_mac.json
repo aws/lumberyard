@@ -1,0 +1,12 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "system_osx_osx_gl.cfg",
+            "outFile": "system_osx_osx_gl.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

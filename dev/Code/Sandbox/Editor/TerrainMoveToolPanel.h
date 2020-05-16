@@ -54,8 +54,7 @@ protected:
 
     void OnSelectSource();
     void OnSelectTarget();
-    void OnCopyButton();
-    void OnMoveButton();
+    void OnApplyButton();
     void OnUpdateNumbers();
     void OnChangeTargetRot();
     void OnSyncHeight();

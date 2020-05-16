@@ -35,7 +35,7 @@ namespace GridMate
         ReplicaTarget &m_target;
 
     private:
-        MarshalTaskContext& operator=(const MarshalTaskContext&) AZ_DELETE_METHOD;
+        MarshalTaskContext& operator=(const MarshalTaskContext&) = delete;
     };
     //-----------------------------------------------------------------------------
     // ReplicaMarshalTaskBase

@@ -30,9 +30,8 @@ namespace GraphCanvas
         DataConnectionComponent(const Endpoint& sourceEndpoint,const Endpoint& targetEndpoint, bool createModelConnection = true);
         ~DataConnectionComponent() override = default;
 
-        // Component
-        void Activate();
-        void Deactivate();
+        // ConnectionComponent
+        bool AllowNodeCreation() const override;
         ////
 
     protected:

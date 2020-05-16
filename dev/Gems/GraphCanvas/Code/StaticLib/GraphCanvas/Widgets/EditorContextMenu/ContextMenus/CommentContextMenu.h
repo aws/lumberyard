@@ -16,6 +16,7 @@
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/AlignmentMenuActions/AlignmentActionsMenuGroup.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/EditMenuActions/EditActionsMenuGroup.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions/NodeGroupActionsMenuGroup.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/CommentMenuActions/CommentActionsMenuGroup.h>
 
 namespace GraphCanvas
 {
@@ -33,6 +34,7 @@ namespace GraphCanvas
     private:
 
         EditActionsMenuGroup m_editActionGroup;
+        CommentActionsMenuGroup m_commentActionGroup;
         NodeGroupActionsMenuGroup m_nodeGroupActionGroup;
         AlignmentActionsMenuGroup m_alignmentActionGroup;
 

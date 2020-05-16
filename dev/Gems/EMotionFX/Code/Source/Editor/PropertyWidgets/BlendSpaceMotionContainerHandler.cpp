@@ -26,9 +26,9 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionWidget, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionContainerWidget, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionContainerHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionWidget, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionContainerWidget, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceMotionContainerHandler, EditorAllocator, 0)
 
     BlendSpaceMotionWidget::BlendSpaceMotionWidget(BlendSpaceNode::BlendSpaceMotion* motion, QGridLayout* layout, int row)
         : m_motion(motion)

@@ -51,11 +51,12 @@ namespace ScriptCanvasEditor
         
         void SetNumber(double value) override
         {
-            ScriptCanvas::Datum* object = GetSlotObject();
+            ScriptCanvas::ModifiableDatumView datumView;
+            ModifySlotObject(datumView);
 
-            if (object)
+            if (datumView.IsValid())
             {
-                object->Set(value);
+                datumView.SetAs(value);
 
                 PostUndoPoint();
                 PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);

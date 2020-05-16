@@ -57,13 +57,13 @@ namespace ScriptCanvas
 
             void ExpectEqual::OnInputSignal(const SlotId& slotId)
             {
-                auto lhs = GetInput(GetSlotId("Candidate"));
+                auto lhs = FindDatum(GetSlotId("Candidate"));
                 if (!lhs)
                 {
                     return;
                 }
 
-                auto rhs = GetInput(GetSlotId("Reference"));
+                auto rhs = FindDatum(GetSlotId("Reference"));
                 if (!rhs)
                 {
                     return;
@@ -72,7 +72,7 @@ namespace ScriptCanvas
                 if (lhs->GetType() != rhs->GetType())
                 {
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::AddFailure
                         , "Type mismatch in comparison operator");
 
@@ -80,14 +80,14 @@ namespace ScriptCanvas
                     return;
                 }
 
-                const auto report = GetInput(GetSlotId("Report"))->GetAs<Data::StringType>();
+                const auto report = FindDatum(GetSlotId("Report"))->GetAs<Data::StringType>();
 
                 switch (lhs->GetType().GetType())
                 {
 
                 case Data::eType::AABB:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualAABB
                         , *lhs->GetAs<Data::AABBType>()
                         , *rhs->GetAs<Data::AABBType>()
@@ -96,7 +96,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Boolean:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualBoolean
                         , *lhs->GetAs<Data::BooleanType>()
                         , *rhs->GetAs<Data::BooleanType>()
@@ -105,7 +105,7 @@ namespace ScriptCanvas
 
                 case Data::eType::CRC:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualCRC
                         , *lhs->GetAs<Data::CRCType>()
                         , *rhs->GetAs<Data::CRCType>()
@@ -114,7 +114,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Color:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualColor
                         , *lhs->GetAs<Data::ColorType>()
                         , *rhs->GetAs<Data::ColorType>()
@@ -123,7 +123,7 @@ namespace ScriptCanvas
 
                 case Data::eType::EntityID:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualEntityID
                         , *lhs->GetAs<Data::EntityIDType>()
                         , *rhs->GetAs<Data::EntityIDType>()
@@ -132,7 +132,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Matrix3x3:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualMatrix3x3
                         , *lhs->GetAs<Data::Matrix3x3Type>()
                         , *rhs->GetAs<Data::Matrix3x3Type>()
@@ -141,7 +141,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Matrix4x4:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualMatrix4x4
                         , *lhs->GetAs<Data::Matrix4x4Type>()
                         , *rhs->GetAs<Data::Matrix4x4Type>()
@@ -150,7 +150,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Number:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualNumber
                         , *lhs->GetAs<Data::NumberType>()
                         , *rhs->GetAs<Data::NumberType>()
@@ -159,7 +159,7 @@ namespace ScriptCanvas
 
                 case Data::eType::OBB:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualOBB
                         , *lhs->GetAs<Data::OBBType>()
                         , *rhs->GetAs<Data::OBBType>()
@@ -168,7 +168,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Plane:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualPlane
                         , *lhs->GetAs<Data::PlaneType>()
                         , *rhs->GetAs<Data::PlaneType>()
@@ -177,7 +177,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Quaternion:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualQuaternion
                         , *lhs->GetAs<Data::QuaternionType>()
                         , *rhs->GetAs<Data::QuaternionType>()
@@ -186,7 +186,7 @@ namespace ScriptCanvas
 
                 case Data::eType::String:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualString
                         , *lhs->GetAs<Data::StringType>()
                         , *rhs->GetAs<Data::StringType>()
@@ -195,7 +195,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Transform:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualTransform
                         , *lhs->GetAs<Data::TransformType>()
                         , *rhs->GetAs<Data::TransformType>()
@@ -204,7 +204,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Vector2:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualVector2
                         , *lhs->GetAs<Data::Vector2Type>()
                         , *rhs->GetAs<Data::Vector2Type>()
@@ -213,7 +213,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Vector3:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualVector3
                         , *lhs->GetAs<Data::Vector3Type>()
                         , *rhs->GetAs<Data::Vector3Type>()
@@ -222,7 +222,7 @@ namespace ScriptCanvas
 
                 case Data::eType::Vector4:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectEqualVector4
                         , *lhs->GetAs<Data::Vector4Type>()
                         , *rhs->GetAs<Data::Vector4Type>()

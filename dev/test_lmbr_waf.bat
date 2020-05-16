@@ -14,7 +14,7 @@ pushd %~dp0%
 
 SET BASE_PATH=%~dp0
 
-
+setlocal
 REM Locate Python. We will force the use of our version of Python by setting 
 REM PYTHONHOME (done by win\python.cmd) and clearing any PYTHONPATH
 REM (https://docs.python.org/2/using/cmdline.html#envvar-PYTHON_DIRECTORY)
@@ -27,7 +27,7 @@ IF EXIST "%PYTHON_DIRECTORY%" GOTO pythonPathAvailable
 GOTO pythonNotFound
 
 :pythonPathAvailable
-SET PYTHON_EXECUTABLE=%PYTHON_DIRECTORY%\python.cmd
+SET PYTHON_EXECUTABLE=%PYTHON_DIRECTORY%\python3.cmd
 IF NOT EXIST "%PYTHON_EXECUTABLE%" GOTO pythonNotFound
 
 REM Execute the WAF script
@@ -41,15 +41,23 @@ IF DEFINED BUILD_TAG (
 SET PARAM=%1
 
 REM call is required here otherwise control won't be returned to lmbr_waf.bat and the rest of the file doesn't execute
-CALL "%PYTHON_EXECUTABLE%" -m pytest %PARAM%
+CALL "%PYTHON_EXECUTABLE%" -m pytest %PYTHONPATH%
+set EXITCODE=%ERRORLEVEL%
+REM the above captures the exit code.  There is no such thing as $* on windows batch files.
 
 GOTO end
 
 :pythonNotFound
 ECHO Unable to locate the local python inside the SDK.  Please contact support.
-popd
-EXIT /b 1
+
+IF "%PARAM%" == "return-result" (
+    popd
+    EXIT /b 1
+)
 
 :end
 popd
-EXIT $?
+
+IF "%PARAM%" == "return-result" (
+    EXIT /b %EXITCODE%
+)

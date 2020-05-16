@@ -7,7 +7,9 @@
             "Launcher_Traits_Linux.h",
             "Launcher_Traits_Platform.h",
             "../Common/UnixLike/Launcher_UnixLike.cpp",
-            "../Common/UnixLike/Launcher_UnixLike.h"
+            "../Common/UnixLike/Launcher_UnixLike.h",
+            "../../common/Launcher_host.cpp",
+            "../../common/Launcher_host.h"
         ]
     }
 }

@@ -18,15 +18,18 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string_view.h>
+
+#include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 #include <ScriptCanvas/Data/Data.h>
+#include <ScriptCanvas/Variable/VariableCore.h>
 
 namespace ScriptCanvas
 {
     struct GraphData;
+    class GraphVariable;
     class VariableData;
-    class VariableDatum;
-    struct VariableNameValuePair;
-    struct VariableId;
+    
+    using EndpointMapConstIterator = AZStd::unordered_multimap<Endpoint, Endpoint>::const_iterator;
 
     //! Runtime Request Bus for interfacing with the runtime execution component
     class RuntimeRequests : public AZ::EBusTraits
@@ -36,7 +39,7 @@ namespace ScriptCanvas
         //! BusIdType represents a unique id for the execution component
         //! Because multiple Script Canvas graphs can execute on the same entity
         //! this is not an "EntityId" in the sense that it uniquely identifies an entity.
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvasId;
 
         virtual VariableId FindAssetVariableIdByRuntimeVariableId(VariableId runtimeId) const = 0;
         
@@ -60,8 +63,12 @@ namespace ScriptCanvas
         virtual AZStd::vector<AZ::EntityId> GetNodes() const = 0;
         //! Returns a container of connections
         virtual AZStd::vector<AZ::EntityId> GetConnections() const = 0;
+
         //! Returns a container of all endpoints to which the supplied endpoint is connected point
         virtual AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& endpoint) const = 0;
+
+        virtual AZStd::pair< EndpointMapConstIterator, EndpointMapConstIterator > GetConnectedEndpointIterators(const Endpoint& endpoint) const = 0;
+
         //! Returns whether the given endpoint has any connections
         virtual bool IsEndpointConnected(const Endpoint& endpoint) const = 0;
 
@@ -74,22 +81,25 @@ namespace ScriptCanvas
         virtual const VariableData* GetVariableDataConst() const = 0;
 
         //! Retrieves a map of variable id to variable name and variable datums pair
-        virtual const AZStd::unordered_map<VariableId, VariableNameValuePair>* GetVariables() const = 0;
+        virtual const GraphVariableMapping* GetVariables() const = 0;
 
         //! Searches for a variable with the specified name
         //! returns pointer to the first variable with the specified name or nullptr
-        virtual VariableDatum* FindVariable(AZStd::string_view varName) = 0;
+        virtual GraphVariable* FindVariable(AZStd::string_view varName) = 0;
 
         //! Searches for a variable by VariableId
         //! returns a pair of <variable datum pointer, variable name> with the supplied id
         //! The variable datum pointer is non-null if the variable has been found
-        virtual VariableNameValuePair* FindVariableById(const VariableId& variableId) = 0;
+        virtual GraphVariable* FindVariableById(const VariableId& variableId) = 0;
 
         //! Returns the type associated with the specified variable.
         virtual Data::Type GetVariableType(const VariableId& variableId) const = 0;
 
         //! Looks up the variable name that the variable data is associated with in the handler of the bus
         virtual AZStd::string_view GetVariableName(const VariableId& variableId) const = 0;
+
+        virtual bool IsGraphObserved() const = 0;
+        virtual void SetIsGraphObserved(bool isObserved) = 0;
     };
 
     using RuntimeRequestBus = AZ::EBus<RuntimeRequests>;

@@ -14,7 +14,10 @@
 
 #include <AzCore/std/string/string.h>
 
-struct MacroTextureConfiguration;
+namespace LegacyTerrain
+{
+    struct MacroTextureConfiguration;
+}
 
 namespace TerrainConverter
 {
@@ -26,6 +29,6 @@ namespace TerrainConverter
     };
 
     bool ConvertTerrain(const Config& config);
-    bool FixTerrainMultiplier(const Config& config, MacroTextureConfiguration& configuration);
+    bool FixTerrainMultiplier(const Config& config, LegacyTerrain::MacroTextureConfiguration& configuration);
 
 };

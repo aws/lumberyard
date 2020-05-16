@@ -46,27 +46,44 @@ CUndo::~CUndo()
 
 bool CUndo::IsRecording()
 {
-    return GetIEditor()->IsUndoRecording();
+    if (IEditor* editor = GetIEditor())
+    {
+        return editor->IsUndoRecording();
+    }
+
+    return false;
 }
 
 bool CUndo::IsSuspended()
 {
-    return GetIEditor()->IsUndoSuspended();
+    if (IEditor* editor = GetIEditor())
+    {
+        return editor->IsUndoSuspended();
+    }
+
+    return false;
 }
 
 void CUndo::Record(IUndoObject* undo)
 {
-    return GetIEditor()->RecordUndo(undo);
+    if (IEditor* editor = GetIEditor())
+    {
+        editor->RecordUndo(undo);
+    }
 }
 
 CUndoSuspend::CUndoSuspend()
 {
-    assert(GetIEditor());
-
-    GetIEditor()->SuspendUndo();
+    if (IEditor* editor = GetIEditor())
+    {
+        editor->SuspendUndo();
+    }
 };
 
 CUndoSuspend::~CUndoSuspend()
 {
-    GetIEditor()->ResumeUndo();
+    if (IEditor* editor = GetIEditor())
+    {
+        editor->ResumeUndo();
+    }
 };

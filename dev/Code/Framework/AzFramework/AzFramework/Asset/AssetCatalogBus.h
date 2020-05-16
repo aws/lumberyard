@@ -52,7 +52,9 @@ namespace AzFramework
     public:
         ///////////////////////////////////////////////////////////////////////
         static const bool EnableEventQueue = true; // enabled queued events, asset msgs come from any thread
-        typedef AZ::u32 BusIdType; // bus is addressed by CRC of extension
+        using EventQueueMutexType = AZStd::mutex;
+
+        using BusIdType = AZ::u32; // bus is addressed by CRC of extension
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         ///////////////////////////////////////////////////////////////////////

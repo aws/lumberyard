@@ -403,6 +403,7 @@ public:
     static CShader* s_ShaderDXTCompress;
     static CShader* s_ShaderStereo;
     static CShader* s_ShaderFur;
+    static CShader* s_ShaderVideo;
 #else
     static SShaderItem s_DefaultShaderItem;
 #endif

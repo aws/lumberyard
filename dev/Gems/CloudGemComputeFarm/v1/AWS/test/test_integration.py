@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import boto3
 from botocore.exceptions import ClientError
 import datetime
@@ -66,7 +67,7 @@ class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.Bas
 
     def __999_cleanup(self):
         if self.FAST_TEST_RERUN:
-            print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
+            print('Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.')
             self.assertFalse(self.FAST_TEST_RERUN)
         self.teardown_base_stack()
 

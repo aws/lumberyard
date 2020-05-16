@@ -25,7 +25,7 @@ SlicerEdit::SlicerEdit( SpriteBorder border,
 {
     bool isVertical = IsBorderVertical( border );
 
-    float totalUnscaledSizeInPixels = ( isVertical ? unscaledPixmapSize.width() : unscaledPixmapSize.height() );
+    float totalUnscaledSizeInPixels = aznumeric_cast<float>( isVertical ? unscaledPixmapSize.width() : unscaledPixmapSize.height() );
 
     setPixelPosition( GetBorderValueInPixels( sprite, border, totalUnscaledSizeInPixels ) );
 

@@ -351,8 +351,8 @@ namespace CD
         BrushVec2 circumCenterToFirstPoint = (vBaseVertex0 - circumCenter).GetNormalized();
         BrushVec2 circumCenterToLastPoint = (vBaseVertex1 - circumCenter).GetNormalized();
 
-        BrushFloat startRadian = acosf(vXAxis.Dot(circumCenterToFirstPoint));
-        BrushFloat endRadian = acosf(vXAxis.Dot(circumCenterToLastPoint));
+        BrushFloat startRadian = acos(vXAxis.Dot(circumCenterToFirstPoint));
+        BrushFloat endRadian = acos(vXAxis.Dot(circumCenterToLastPoint));
 
         BrushLine vXAxisLine(circumCenter, circumCenter + vXAxis);
 

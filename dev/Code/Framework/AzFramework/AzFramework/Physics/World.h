@@ -23,7 +23,6 @@
 #include <AzFramework/Physics/WorldBody.h>
 #include <AzFramework/Physics/Collision.h>
 #include <AzFramework/Physics/Casts.h>
-#include <AzFramework/Physics/Material.h>
 
 namespace Physics
 {
@@ -77,6 +76,7 @@ namespace Physics
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::Crc32;
+        using MutexType = AZStd::mutex;
 
         AZ_CLASS_ALLOCATOR(World, AZ::SystemAllocator, 0);
         AZ_RTTI(World, "{61832612-9F5C-4A2E-8E11-00655A6DDDD2}");
@@ -84,6 +84,12 @@ namespace Physics
         virtual ~World() = default;
 
         virtual void Update(float deltaTime) = 0;
+
+        //! Start the simulation process. This will spawn physics jobs.
+        virtual void StartSimulation(float deltaTime) = 0;
+
+        //! Complete the simulation process. This will wait for the simulation jobs to complete, swap the buffers and process events.
+        virtual void FinishSimulation() = 0;
 
         //! Perform a raycast in the world returning the closest object that intersected.
         virtual RayCastHit RayCast(const RayCastRequest& request) = 0;
@@ -169,6 +175,9 @@ namespace Physics
 
         virtual AZ::Vector3 GetGravity() = 0;
         virtual void SetGravity(const AZ::Vector3& gravity) = 0;
+
+        virtual void SetMaxDeltaTime(float maxDeltaTime) = 0;
+        virtual void SetFixedDeltaTime(float fixedDeltaTime) = 0;
 
         virtual void DeferDelete(AZStd::unique_ptr<WorldBody> worldBody) = 0;
 

@@ -14,6 +14,7 @@
 #include "EventManager.h"
 #include "AnimGraphInstance.h"
 #include <EMotionFX/Source/MotionEvent.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace EMotionFX
@@ -21,7 +22,6 @@ namespace EMotionFX
     AnimGraphEventBuffer::AnimGraphEventBuffer()
     {
     }
-
 
     // set the emitter pointers
     void AnimGraphEventBuffer::UpdateEmitters(AnimGraphNode* emitterNode)
@@ -32,8 +32,6 @@ namespace EMotionFX
         }
     }
 
-
-    // update the weights
     void AnimGraphEventBuffer::UpdateWeights(AnimGraphInstance* animGraphInstance)
     {
         for (EventInfo& curEvent : m_events)
@@ -43,7 +41,6 @@ namespace EMotionFX
             curEvent.mLocalWeight = emitterUniqueData->GetLocalWeight();
         }
     }
-
 
     // log details of all events
     void AnimGraphEventBuffer::Log() const
@@ -72,8 +69,6 @@ namespace EMotionFX
         }
     }
 
-
-    // trigger the events
     void AnimGraphEventBuffer::TriggerEvents() const
     {
         for (const EventInfo& event : m_events)
@@ -85,33 +80,41 @@ namespace EMotionFX
         }
     }
 
-
     void AnimGraphEventBuffer::Reserve(uint32 numEvents)
     {
         m_events.reserve(numEvents);
     }
-
 
     void AnimGraphEventBuffer::Resize(uint32 numEvents)
     {
         m_events.resize(numEvents);
     }
 
-
     void AnimGraphEventBuffer::AddEvent(const EventInfo& newEvent)
     {
         m_events.emplace_back(newEvent);
     }
 
+    void AnimGraphEventBuffer::AddAllEventsFrom(const AnimGraphEventBuffer& eventBuffer)
+    {
+        const AZ::u32 numEventsToCopy = eventBuffer.GetNumEvents();
+        const uint32 numPrevEvents = GetNumEvents();
+
+        Resize(GetNumEvents() + numEventsToCopy);
+
+        for (uint32 i = 0; i < numEventsToCopy; ++i)
+        {
+            SetEvent(numPrevEvents + i, eventBuffer.GetEvent(i));
+        }
+    }
 
     void AnimGraphEventBuffer::Clear()
     {
         m_events.clear();
     }
 
-
     void AnimGraphEventBuffer::SetEvent(uint32 index, const EventInfo& eventInfo)
     {
         m_events[index] = eventInfo;
     }
-}   // namespace EMotionFX
+} // namespace EMotionFX

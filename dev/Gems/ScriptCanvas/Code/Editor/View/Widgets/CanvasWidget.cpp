@@ -58,12 +58,12 @@ namespace ScriptCanvasEditor
             hide();
         }
 
-        void CanvasWidget::ShowScene(const AZ::EntityId& scriptCanvasGraphId)
+        void CanvasWidget::ShowScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
-            EditorGraphRequestBus::Event(scriptCanvasGraphId, &EditorGraphRequests::CreateGraphCanvasScene);
+            EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::CreateGraphCanvasScene);
 
             AZ::EntityId graphCanvasSceneId;
-            EditorGraphRequestBus::EventResult(graphCanvasSceneId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasSceneId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             m_graphicsView->SetScene(graphCanvasSceneId);
         }
@@ -164,13 +164,6 @@ namespace ScriptCanvasEditor
 
         void CanvasWidget::OnClicked()
         {
-            ScriptCanvas::Graph* graph{};
-            ScriptCanvas::GraphRequestBus::EventResult(graph, m_graphicsView->GetScene(), &ScriptCanvas::GraphRequests::GetGraph);
-            if (!graph)
-            {
-                return;
-            }
-
         }
 
 #include <Editor/View/Widgets/CanvasWidget.moc>

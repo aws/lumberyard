@@ -10,23 +10,22 @@
 #
 
 import unittest
-import mock
+from unittest import mock
 import json
 import os
 import tempfile
 
 import swagger_processor
 
-from mock_swagger_json_navigator import SwaggerNavigatorMatcher
+from .mock_swagger_json_navigator import SwaggerNavigatorMatcher
 from resource_manager.errors import HandledError
 
-class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_file_handling(unittest.TestCase):
 
+class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_file_handling(unittest.TestCase):
 
     def setUp(self):
         self.__temp_files = []
         return super(UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_file_handling, self).setUp()
-
 
     def tearDown(self):
         for temp_file in self.__temp_files:
@@ -38,28 +37,24 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_file_hand
         mock_context = mock.MagicMock()
         self.assertRaises(HandledError, swagger_processor.process_swagger_path, mock_context, 'C:\\bad_swagger_file_path')
 
-
     def test_invalid_json(self):
         mock_context = mock.MagicMock()
-        swagger_path = self.__temp_file('{ this is invalid json }')
+        swagger_path = self.__temp_file(b'{ this is invalid json }')
         self.assertRaises(HandledError, swagger_processor.process_swagger_path, mock_context, swagger_path)
-
 
     @mock.patch.object(swagger_processor, 'process_swagger')
     def test_valid_json(self, mock_process_swagger):
-        input_json = '{ "this is": "valid json" }'
+        input_json = b'{ "this is": "valid json" }'
         swagger_path = self.__temp_file(input_json)
         mock_context = mock.MagicMock()
         swagger_processor.process_swagger_path(mock_context, swagger_path)
         expected_json = json.loads(input_json)
         mock_process_swagger.assert_called_once_with(mock_context, expected_json)
 
-
     def test_invalid_swagger(self):
-        swagger = { "this is" : "not valid swagger" }
+        swagger = {"this is" : "not valid swagger"}
         mock_context = mock.MagicMock()
         self.assertRaises(ValueError, swagger_processor.process_swagger, mock_context, swagger)
-
 
     @mock.patch('swagger_processor.interface.process_interface_implementation_objects')
     @mock.patch('swagger_processor.lambda_dispatch.process_lambda_dispatch_objects')
@@ -83,12 +78,12 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_file_hand
         mock_process_lambda_dispatch_objects.assert_called_with(mock_context, swagger_navigator_matcher)
         mock_process_interface_implementation_objects.assert_called_with(mock_context, swagger_navigator_matcher)
 
-
     def __temp_file(self, content):
         (fd, path) = tempfile.mkstemp()
         self.__temp_files.append(path)
         os.write(fd, content) 
         os.close(fd)
+        print('path: {}'.format(path))
         return path
 
 

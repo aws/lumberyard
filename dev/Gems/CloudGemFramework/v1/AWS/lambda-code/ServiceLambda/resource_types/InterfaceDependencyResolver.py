@@ -9,21 +9,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-
-
 import json
 import boto3
 import collections
 import copy
 import re
 
+# Python 2.7/3.7 Compatibility
+from six import iteritems
+
 from cgf_utils import custom_resource_response
-from cgf_utils import properties
 from resource_manager_common import stack_info
-from cgf_utils import role_utils
-from cgf_utils import patch
 from cgf_utils import aws_utils
-from cgf_utils import json_utils
 from botocore.exceptions import ClientError
 
 from cgf_service_directory import ServiceDirectory
@@ -31,8 +28,8 @@ from cgf_service_directory import ServiceDirectory
 lambda_client = boto3.client('lambda')
 iam_client = boto3.client('iam')
 
-
 SERVICE_DIRECTORY_PREFIX = "cloudcanvas_service_"
+
 
 def handler(event, context):
     request_type = event['RequestType']
@@ -47,26 +44,23 @@ def handler(event, context):
         return custom_resource_response.success_response(data, physical_resource_id)
 
     if not stack.is_deployment_stack:
-        raise RuntimeError("InterfaceDependecyResolver can only be stood up on a deployment stack")
+        raise RuntimeError("InterfaceDependencyResolver can only be stood up on a deployment stack")
 
     configuration_bucket_name = stack.project.configuration_bucket
     if not configuration_bucket_name:
         raise RuntimeError('Not adding service settings because there is no project configuration bucket.')
     service_directory = ServiceDirectory(configuration_bucket_name)
 
-
     interface_deps = event["ResourceProperties"].get("InterfaceDependencies", {})
-    # start by clearing the refs this funciton and role have to make sure no old permissions/interfaces linger
+    # start by clearing the refs this function and role have to make sure no old permissions/interfaces linger
     _clear_interface_refs(stack)
 
-    for gem, interface_list in interface_deps.iteritems():
+    for gem, interface_list in iteritems(interface_deps):
         gem_function_info = {}
         for interface in interface_list:
             if not interface['function'] in gem_function_info:
-                gem_function_info[interface['function']] = { "interfaces": [] }
-            interface_function_info = {}
-            interface_function_info["id"] = interface['id']
-            interface_function_info["gem"] = interface.get("gem", "CloudGemFramework")
+                gem_function_info[interface['function']] = {"interfaces": []}
+            interface_function_info = {"id": interface['id'], "gem": interface.get("gem", "CloudGemFramework")}
             if interface_function_info["gem"] == "CloudGemFramework":
                 interface_function_info["url"] = _get_project_url(
                     service_directory, interface['id'])
@@ -79,9 +73,9 @@ def handler(event, context):
                 interface_function_info["url"] = _get_url(
                     service_directory, stack, interface['id'])
                 interface_function_info["permittedArns"] = _get_permitted_arns(
-                        _get_resource_group(gem, stack),
-                        _get_interface_description(service_directory, stack, interface["id"])
-                    )
+                    _get_resource_group(gem, stack),
+                    _get_interface_description(service_directory, stack, interface["id"])
+                )
             gem_function_info[interface['function']]["interfaces"].append(
                 interface_function_info)
 
@@ -93,20 +87,21 @@ def handler(event, context):
 def _get_project_interface_description(service_directory, interface_id):
     interfaces = service_directory.get_interface_services("", interface_id)
     if len(interfaces) > 1:
-        print "There are more than one entries for the x-gem interface {}".format(interface_id)
+        print("There are more than one entries for the x-gem interface {}".format(interface_id))
     if len(interfaces) > 0:
         return interfaces[0]
-    print "No info found for x-gem interface {}".format(interface_id)
+    print("No info found for x-gem interface {}".format(interface_id))
     return None
+
 
 def _get_interface_description(service_directory, stack, interface_id):
     interfaces = service_directory.get_interface_services(
         stack.deployment_name, interface_id)
     if len(interfaces) > 1:
-        print "There are more than one entries for the x-gem interface {}".format(interface_id)
+        print("There are more than one entries for the x-gem interface {}".format(interface_id))
     if len(interfaces) > 0:
         return interfaces[0]
-    print "No info found for x-gem interface {}".format(interface_id)
+    print("No info found for x-gem interface {}".format(interface_id))
     return None
 
 
@@ -115,6 +110,7 @@ def _get_project_url(service_directory, interface_id):
     if desc is not None:
         return desc['InterfaceUrl']
     return None
+
 
 def _get_url(service_directory, stack, interface_id):
     desc = _get_interface_description(service_directory, stack, interface_id)
@@ -131,8 +127,9 @@ SERVICE_ACCESS_POLICY_DOCUMENT = {
     ]
 }
 
+
 def _put_gem_function_info(gem_name, gem_function_info, deployment):
-    for function, info in gem_function_info.iteritems():
+    for function, info in iteritems(gem_function_info):
         url_env_var_map = {}
         policy_document = copy.deepcopy(SERVICE_ACCESS_POLICY_DOCUMENT)
         for interface_description in info['interfaces']:
@@ -150,11 +147,12 @@ def _put_gem_function_info(gem_name, gem_function_info, deployment):
 
 
 def _add_urls_to_lambda(lambda_name, deployment, resource_group_name, url_env_var_map):
-    print "adding environment vars for {}\n{}".format(lambda_name, json.dumps(url_env_var_map))
+    print("adding environment vars for {}\n{}".format(lambda_name, json.dumps(url_env_var_map)))
     # lambda_function is a stack_info.ResourceInfo
     lambda_function = _get_lambda(resource_group_name, lambda_name, deployment)
-    if lambda_function == None:
+    if lambda_function is None:
         return
+
     function_config = lambda_client.get_function_configuration(
         FunctionName=lambda_function.physical_id)
     function_env = function_config.get("Environment", {})
@@ -166,12 +164,12 @@ def _add_urls_to_lambda(lambda_name, deployment, resource_group_name, url_env_va
         FunctionName=lambda_function.physical_id, Environment=function_env)
 
 
-
 def _add_policy_to_role(lambda_name, deployment, resource_group_name, policy_doc):
-    print "Putting policy on role for {}\n{}".format(lambda_name, json.dumps(policy_doc))
+    print("Putting policy on role for {}\n{}".format(lambda_name, json.dumps(policy_doc)))
     lambda_function = _get_lambda(resource_group_name, lambda_name, deployment)
-    if lambda_function == None:
+    if lambda_function is None:
         return
+
     function_config = lambda_client.get_function_configuration(
         FunctionName=lambda_function.physical_id)
     role_arn = function_config["Role"]
@@ -186,6 +184,7 @@ def _add_policy_to_role(lambda_name, deployment, resource_group_name, policy_doc
 
 ARN_FORMAT = 'arn:aws:execute-api:{region}:{account_id}:{api_id}/{stage_name}/{HTTP_VERB}/{interface_path}/*'
 
+
 def _get_permitted_arns(stack, interface):
     permitted_arns = []
     interface_url_parts = _parse_interface_url(interface['InterfaceUrl'])
@@ -193,7 +192,7 @@ def _get_permitted_arns(stack, interface):
         swagger = json.loads(interface['InterfaceSwagger'])
     except Exception as e:
         raise ValueError('Could not parse interface {} ({}) swagger: {}'.format(
-            interface['InterfaceId'], interface['InterfaceUrl'], e.message))
+            interface['InterfaceId'], interface['InterfaceUrl'], str(e)))
 
     for path_object in swagger.get('paths', {}).values():
         for operation in path_object.keys():
@@ -215,8 +214,8 @@ InterfaceUrlParts = collections.namedtuple(
     'InterfaceUrlparts', ['api_id', 'region', 'stage_name', 'path'])
 INTERFACE_URL_FORMAT = 'https://{api_id}.execute-api.{region}.amazonaws.com/{stage_name}/{path}'
 
-def _parse_interface_url(interface_url):
 
+def _parse_interface_url(interface_url):
     slash_parts = interface_url.split('/')
     if len(slash_parts) <= 4:
         raise RuntimeError('Interface url does not have the expected format of {}: {}'.format(
@@ -255,11 +254,12 @@ def _get_resource_group(resource_group_name, deployment):
             if stack_id is not None and resource_group_name == resource.logical_id:
                 return stack_info.ResourceGroupInfo(
                     deployment.stack_manager,
-                    stack_id, 
+                    stack_id,
                     resource_group_name=resource.logical_id,
-                    session=deployment.session, 
+                    session=deployment.session,
                     deployment_info=deployment)
     return None
+
 
 def _clear_service_access_policies(role_arn):
     role_name = aws_utils.get_role_name_from_role_arn(role_arn)

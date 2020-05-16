@@ -35,7 +35,7 @@ PropertyPivotCtrl::PropertyPivotCtrl(QWidget* parent)
     // Add Preset buttons.
     {
         AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
-        AZ::Vector2 controlValue(elements[0]->GetValue(), elements[1]->GetValue());
+        AZ::Vector2 controlValue(aznumeric_cast<float>(elements[0]->GetValue()), aznumeric_cast<float>(elements[1]->GetValue()));
 
         m_pivotPresetsWidget = new PivotPresetsWidget(PivotPresets::PivotToPresetIndex(controlValue),
                 [this](int presetIndex)
@@ -113,8 +113,8 @@ void PropertyHandlerPivot::WriteGUIValuesIntoProperty(size_t index, PropertyPivo
     AZ::Vector2 newPivot;
     if (presetSelected)
     {
-        newPivot.SetX(elements[0]->GetValue());
-        newPivot.SetY(elements[1]->GetValue());
+        newPivot.SetX(aznumeric_cast<float>(elements[0]->GetValue()));
+        newPivot.SetY(aznumeric_cast<float>(elements[1]->GetValue()));
     }
     else
     {
@@ -122,11 +122,11 @@ void PropertyHandlerPivot::WriteGUIValuesIntoProperty(size_t index, PropertyPivo
 
         if (elements[0]->WasValueEditedByUser())
         {
-            newPivot.SetX(elements[0]->GetValue());
+            newPivot.SetX(aznumeric_cast<float>(elements[0]->GetValue()));
         }
         if (elements[1]->WasValueEditedByUser())
         {
-            newPivot.SetY(elements[1]->GetValue());
+            newPivot.SetY(aznumeric_cast<float>(elements[1]->GetValue()));
         }
     }
 

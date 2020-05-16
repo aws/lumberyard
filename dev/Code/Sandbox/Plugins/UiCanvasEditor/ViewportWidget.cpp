@@ -527,7 +527,7 @@ void ViewportWidget::mousePressEvent(QMouseEvent* ev)
             if (ev->button() == Qt::LeftButton)
             {
                 // Send event to this canvas
-                const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+                const AZ::Vector2 viewportPosition(aznumeric_cast<float>(ev->x()), aznumeric_cast<float>(ev->y()));
                 const AzFramework::InputChannel::Snapshot inputSnapshot(AzFramework::InputDeviceMouse::Button::Left,
                                                                         AzFramework::InputDeviceMouse::Id,
                                                                         AzFramework::InputChannel::State::Began);
@@ -561,7 +561,7 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* ev)
         AZ::EntityId canvasEntityId = m_editorWindow->GetPreviewModeCanvas();
         if (canvasEntityId.IsValid())
         {
-            const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+            const AZ::Vector2 viewportPosition(aznumeric_cast<float>(ev->x()), aznumeric_cast<float>(ev->y()));
             const AzFramework::InputChannelId& channelId = (ev->buttons() & Qt::LeftButton) ?
                                                             AzFramework::InputDeviceMouse::Button::Left :
                                                             AzFramework::InputDeviceMouse::SystemCursorPosition;
@@ -597,7 +597,7 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* ev)
             if (ev->button() == Qt::LeftButton)
             {
                 // Send event to this canvas
-                const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+                const AZ::Vector2 viewportPosition(aznumeric_cast<float>(ev->x()), aznumeric_cast<float>(ev->y()));
                 const AzFramework::InputChannel::Snapshot inputSnapshot(AzFramework::InputDeviceMouse::Button::Left,
                                                                         AzFramework::InputDeviceMouse::Id,
                                                                         AzFramework::InputChannel::State::Ended);
@@ -877,7 +877,7 @@ void ViewportWidget::RenderEditMode()
         m_viewportInteraction->GetCanvasToViewportScale(),
         m_viewportInteraction->GetCanvasToViewportTranslation());
 
-    AZ::Vector2 viewportSize(size().width(), size().height());
+    AZ::Vector2 viewportSize(aznumeric_cast<float>(size().width()), aznumeric_cast<float>(size().height()));
 
     // clear the stencil buffer before rendering each canvas - required for masking
     // NOTE: the FRT_CLEAR_IMMEDIATE is required since we will not be setting the render target
@@ -1010,7 +1010,7 @@ void ViewportWidget::RenderPreviewMode()
     if (canvasEntityId.IsValid())
     {
         // Get the canvas size
-        AZ::Vector2 viewportSize(size().width(), size().height());
+        AZ::Vector2 viewportSize(aznumeric_cast<float>(size().width()), aznumeric_cast<float>(size().height()));
         AZ::Vector2 canvasSize = m_editorWindow->GetPreviewCanvasSize();
         if (canvasSize.GetX() == 0.0f && canvasSize.GetY() == 0.0f)
         {

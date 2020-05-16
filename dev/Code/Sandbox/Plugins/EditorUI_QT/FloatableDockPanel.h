@@ -30,6 +30,8 @@ private Q_SLOTS:
     void onFloatingStatusChanged(bool floating);
 protected:
     virtual bool eventFilter(QObject* obj, QEvent* e) override;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QObject*, AZStd::function<void(QKeyEvent* e)> > m_hotkeyHandlers;
     QMap<QObject*, AZStd::function<bool(QShortcutEvent* e)> > m_shortcutHandlers;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };

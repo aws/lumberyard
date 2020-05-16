@@ -19,12 +19,45 @@
 
 namespace AssetProcessor
 {
+    class RegexComplexityAssertAbsorber
+        : public AZ::Debug::TraceMessageBus::Handler
+    {
+    public:
+        RegexComplexityAssertAbsorber()
+        {
+            AZ::Debug::TraceMessageBus::Handler::BusConnect();
+        }
+
+        virtual ~RegexComplexityAssertAbsorber()
+        {
+            AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+        }
+
+        bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message) override
+        {
+            // Ignore the regex complexity assert, there's no reason for the asset processor to crash when running a complex regex.
+            const char* complexityError = AZStd::Internal::RegexError(AZStd::regex_constants::error_complexity);
+            if (strncmp(message, complexityError, strlen(complexityError)) == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    };
+
     LineByLineDependencyScanner::SearchResult GlobalSearch(const AZStd::string& scanString, int maxScanIteration, const AZStd::regex& regex, AZStd::function<void(const AZStd::smatch&)> callback)
     {
         AZStd::smatch result;
         AZStd::string::const_iterator searchStart = scanString.begin();
 
         bool useScanTimeout = maxScanIteration > 0;
+
+        // Some binary files can cause the regex system to emit an assert that they are too complex to scan.
+        // There's no harm in this case failing here, so ignore that assert if it occurs.
+        RegexComplexityAssertAbsorber assertAbsorber;
 
         while (AZStd::regex_search(searchStart, scanString.end(), result, regex) && (!useScanTimeout || maxScanIteration > 0))
         {

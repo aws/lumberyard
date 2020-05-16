@@ -211,23 +211,19 @@ namespace EMotionFX
 
         // calculate the lookat transform
         // TODO: a quaternion lookat function would be nicer, so that there are no matrix operations involved
-        MCore::Matrix lookAt;
-        lookAt.LookAt(globalTransform.mPosition, goal, AZ::Vector3(0.0f, 0.0f, 1.0f));
-        MCore::Quaternion destRotation = lookAt.Transposed(); // implicit matrix to quat conversion
+        AZ::Transform lookAt;
+        MCore::LookAt(lookAt, globalTransform.mPosition, goal, AZ::Vector3(0.0f, 0.0f, 1.0f));
+        AZ::Quaternion destRotation = AZ::Quaternion::CreateFromTransform(lookAt.GetTranspose());
 
         // apply the post rotation
-        MCore::Quaternion postRotation = MCore::AzQuatToEmfxQuat(m_postRotation);
-        destRotation = destRotation * postRotation;
-
-        // get the constraint rotation
-        const MCore::Quaternion constraintRotation = MCore::AzQuatToEmfxQuat(m_constraintRotation);
+        destRotation = destRotation * m_postRotation;
 
         if (m_limitsEnabled)
         {
             // calculate the delta between the bind pose rotation and current target rotation and constraint that to our limits
             const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
-            MCore::Quaternion parentRotationGlobal;
-            MCore::Quaternion bindRotationLocal;
+            AZ::Quaternion parentRotationGlobal;
+            AZ::Quaternion bindRotationLocal;
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
                 parentRotationGlobal = inputPose->GetPose().GetWorldSpaceTransform(parentIndex).mRotation;
@@ -235,12 +231,12 @@ namespace EMotionFX
             }
             else
             {
-                parentRotationGlobal.Identity();
-                bindRotationLocal.Identity();
+                parentRotationGlobal = AZ::Quaternion::CreateIdentity();
+                bindRotationLocal = AZ::Quaternion::CreateIdentity();
             }
 
-            const MCore::Quaternion destRotationLocal = destRotation * parentRotationGlobal.Conjugated();
-            const MCore::Quaternion deltaRotLocal = destRotationLocal * bindRotationLocal.Conjugated();
+            const AZ::Quaternion destRotationLocal = destRotation * parentRotationGlobal.GetConjugate();
+            const AZ::Quaternion deltaRotLocal     = destRotationLocal * bindRotationLocal.GetConjugate();
 
             // setup the constraint and execute it
             // the limits are relative to the bind pose in local space
@@ -250,18 +246,18 @@ namespace EMotionFX
             constraint.SetMinTwistAngle(0.0f);
             constraint.SetMaxTwistAngle(0.0f);
             constraint.SetTwistAxis(m_twistAxis);
-            constraint.GetTransform().mRotation = (deltaRotLocal * constraintRotation.Conjugated());
+            constraint.GetTransform().mRotation = (deltaRotLocal * m_constraintRotation.GetConjugate());
             constraint.Execute();
 
             if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
-                MCore::Matrix offset = (postRotation.Inversed() * bindRotationLocal * constraintRotation * parentRotationGlobal).ToMatrix();
+                AZ::Transform offset = AZ::Transform::CreateFromQuaternion(m_postRotation.GetInverseFull() * bindRotationLocal * m_constraintRotation * parentRotationGlobal);
                 offset.SetTranslation(globalTransform.mPosition);
                 constraint.DebugDraw(actorInstance, offset, GetVisualizeColor(), 0.5f);
             }
 
             // convert back into world space
-            destRotation = (bindRotationLocal * (constraint.GetTransform().mRotation * constraintRotation)) * parentRotationGlobal;
+            destRotation = (bindRotationLocal * (constraint.GetTransform().mRotation * m_constraintRotation)) * parentRotationGlobal;
         }
 
         // init the rotation quaternion to the initial rotation
@@ -320,7 +316,7 @@ namespace EMotionFX
             drawData->DrawLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), mVisualizeColor);
             drawData->DrawLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), mVisualizeColor);
             drawData->DrawLine(globalTransform.mPosition, goal, mVisualizeColor);
-            drawData->DrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, AZ::Color(0.0f, 0.0f, 1.0f, 1.0f));
+            drawData->DrawLine(globalTransform.mPosition, globalTransform.mPosition + MCore::CalcUpAxis(globalTransform.mRotation) * s * 50.0f, AZ::Color(0.0f, 0.0f, 1.0f, 1.0f));
             drawData->Unlock();
         }
     }

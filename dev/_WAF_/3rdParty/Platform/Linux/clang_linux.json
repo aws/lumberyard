@@ -1,7 +1,7 @@
 {
     "platform": {
         "linux_x64": {
-            "includes": [
+            "system_includes": [
                 "llvm/include",
                 "linux_x64/release/include"
             ],

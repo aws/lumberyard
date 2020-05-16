@@ -21,6 +21,7 @@
 #include "ViewportMoveGuideInteraction.h"
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/Bus/UiEditorCanvasBus.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 static const float g_elementEdgeForgiveness = 10.0f;
 
@@ -197,7 +198,7 @@ void ViewportInteraction::StopObjectPickMode()
     {
         QPoint viewportCursorPos = m_editorWindow->GetViewport()->mapFromGlobal(QCursor::pos());
         QTreeWidgetItemRawPtrQList selectedItems = m_editorWindow->GetHierarchy()->selectedItems();
-        UpdateInteractionType(AZ::Vector2(viewportCursorPos.x(), viewportCursorPos.y()), selectedItems);
+        UpdateInteractionType(AZ::Vector2(aznumeric_cast<float>(viewportCursorPos.x()), aznumeric_cast<float>(viewportCursorPos.y())), selectedItems);
     }
 
     UpdateCursor();
@@ -660,7 +661,7 @@ void ViewportInteraction::MouseWheelEvent(QWheelEvent* ev)
         // Angle delta returns distance rotated by mouse wheel in eigths of a
         // degree.
         static const int numStepsPerDegree = 8;
-        const float numScrollDegress = numDegrees.y() / numStepsPerDegree;
+        const float numScrollDegress = aznumeric_cast<float>(numDegrees.y() / numStepsPerDegree);
 
         static const float zoomMultiplier = 1 / 100.0f;
         Vec2i pivotPoint(
@@ -701,7 +702,7 @@ bool ViewportInteraction::KeyReleaseEvent(QKeyEvent* ev)
             {
                 // Update hover element right away in case mouse is over an element
                 QPoint viewportCursorPos = m_editorWindow->GetViewport()->mapFromGlobal(QCursor::pos());
-                UpdateHoverElement(AZ::Vector2(viewportCursorPos.x(), viewportCursorPos.y()));
+                UpdateHoverElement(AZ::Vector2(aznumeric_cast<float>(viewportCursorPos.x()), aznumeric_cast<float>(viewportCursorPos.y())));
             }
         }
 
@@ -826,18 +827,18 @@ void ViewportInteraction::GetScaleToFitTransformProps(const AZ::Vector2* newCanv
     // the edges of the canvas.
     static const int canvasBorderPaddingInPixels = 32;
     AZ::Vector2 viewportPaddedSize(
-        viewportWidth - canvasBorderPaddingInPixels,
-        viewportHeight - canvasBorderPaddingInPixels);
+        aznumeric_cast<float>(viewportWidth - canvasBorderPaddingInPixels),
+        aznumeric_cast<float>(viewportHeight - canvasBorderPaddingInPixels));
 
     // Guard against very small viewports
     if (viewportPaddedSize.GetX() <= 0.0f)
     {
-        viewportPaddedSize.SetX(viewportWidth);
+        viewportPaddedSize.SetX(aznumeric_cast<float>(viewportWidth));
     }
 
     if (viewportPaddedSize.GetY() <= 0.0f)
     {
-        viewportPaddedSize.SetY(viewportHeight);
+        viewportPaddedSize.SetY(aznumeric_cast<float>(viewportHeight));
     }
 
     // Use a "scale to fit" approach
@@ -912,10 +913,10 @@ void ViewportInteraction::SetCanvasToViewportScale(float newScale, Vec2i* option
         // Get the distance between our pivot point and the upper-left corner of the
         // canvas (in viewport space)
         const Vec2i canvasUpperLeft(
-            m_canvasViewportMatrixProps.translation.GetX(),
-            m_canvasViewportMatrixProps.translation.GetY());
+            static_cast<int32_t>(m_canvasViewportMatrixProps.translation.GetX()),
+            static_cast<int32_t>(m_canvasViewportMatrixProps.translation.GetY()));
         Vec2i delta = canvasUpperLeft - pivotPoint;
-        const AZ::Vector2 pivotDiff(delta.x, delta.y);
+        const AZ::Vector2 pivotDiff(aznumeric_cast<float>(delta.x), aznumeric_cast<float>(delta.y));
 
         // Calculate the pivot position relative to the current scaled canvas size. For
         // example, if the pivot position is the upper-left corner of the canvas, this

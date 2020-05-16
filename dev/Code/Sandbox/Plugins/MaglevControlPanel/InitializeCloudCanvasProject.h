@@ -61,9 +61,10 @@ public slots:
     void OnCreateClicked();
     void OnLearnMoreClicked();
     void SourceChangedAttemptCreate();
+    void OnProjectAdminLearnMoreClicked();
 
-    void SourceUpdatedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
-    void SourceChangedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
+    void SourceUpdatedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles);
+    void SourceChangedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles);
 
 private:
 
@@ -79,6 +80,7 @@ private:
     void AddAddProfileEditButtons(QVBoxLayout* verticalLayout);
     void AddAffirmReview(QVBoxLayout* verticalLayout);
     void AddCreateCancelButtons(QVBoxLayout* verticalLayout);
+    void AddAdminRoleControl(QVBoxLayout* verticalLayout);
 
     void AddProjectDetailsWithProfile(QFrame* groupBox);
     void AddProjectDetailsNoProfile(QFrame* groupBox);
@@ -102,9 +104,10 @@ private:
 
     QString GetSelectedDeploymentRegion() const;
     QString GetEditControlText(const char* controlText) const;
+    bool GetCreateAdminRoleStatus() const;
 
-    void ValidateSourceInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
-    void DoInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
+    void ValidateSourceInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles);
+    void DoInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey, bool createAdminRoles);
 
     QSharedPointer<IAWSProfileModel> m_model;
     AZStd::vector<QRadioButton*> m_profileSelectorButtons;

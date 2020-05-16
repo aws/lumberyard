@@ -74,6 +74,11 @@
             "../Common/SIMD/AzCore/Math/Internal/MathTypes_SIMD.h"
         ],
 
+        "Module/Internal/Platform/iOS":
+        [
+            "../Common/Default/AzCore/Module/Internal/ModuleManagerSearchPathTool_Default.cpp"
+        ],
+
         "Math/Platform/iOS":
         [
             "AzCore/Math/Random_Platform.h",

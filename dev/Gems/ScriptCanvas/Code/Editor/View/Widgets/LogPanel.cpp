@@ -36,9 +36,9 @@ namespace ScriptCanvasEditor
             ScriptCanvasEditor::GeneralGraphEventBus::Handler::BusDisconnect();
         }
 
-        void LogPanel::OnBuildGameEntity(const AZStd::string& name, const AZ::EntityId& editGraphId, const AZ::EntityId& runtimeGraphId)
+        void LogPanel::OnBuildGameEntity(const AZStd::string& name, const AZ::EntityId& editGraphId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
-            m_runtimeGraphId = runtimeGraphId;
+            m_scriptCanvasId = scriptCanvasId;
 
             AZStd::intrusive_ptr<Settings> settings = AZ::UserSettings::CreateFind<Settings>(AZ::Crc32(editGraphId.ToString().c_str()), AZ::UserSettings::CT_LOCAL);
             if (settings->m_enableLogging)
@@ -50,7 +50,7 @@ namespace ScriptCanvasEditor
 
         QWidget* LogPanel::CreateTab(const AzToolsFramework::LogPanel::TabSettings& settings)
         {
-            return new LogTab(this, m_runtimeGraphId, settings);
+            return new LogTab(this, m_scriptCanvasId, settings);
         }
 
         LogPanelWidget::LogPanelWidget(QWidget* parent)
@@ -67,7 +67,7 @@ namespace ScriptCanvasEditor
 
         }
 
-        LogTab::LogTab(QWidget* pParent, const AZ::EntityId& runtimeGraphId, const AzToolsFramework::LogPanel::TabSettings& in_settings)
+        LogTab::LogTab(QWidget* pParent, const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AzToolsFramework::LogPanel::TabSettings& in_settings)
             : AzToolsFramework::LogPanel::BaseLogView(pParent)
         {
 
@@ -79,7 +79,7 @@ namespace ScriptCanvasEditor
 
             ConnectModelToView(new AzToolsFramework::LogPanel::RingBufferLogDataModel(m_ptrLogView));
 
-            ScriptCanvas::LogNotificationBus::Handler::BusConnect(runtimeGraphId);
+            ScriptCanvas::LogNotificationBus::Handler::BusConnect(scriptCanvasId);
             Clear();
         }
 

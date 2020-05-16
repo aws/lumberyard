@@ -71,6 +71,7 @@ namespace EMotionFX
 
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         void WriteGUIValuesIntoProperty(size_t index, QWidget* GUI, T& instance, AzToolsFramework::InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, QWidget* GUI, const T& instance, AzToolsFramework::InstanceDataNode* node) override;
@@ -91,6 +92,7 @@ namespace EMotionFX
 
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         void ConsumeAttribute(ActorJointPicker* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
 
@@ -110,6 +112,7 @@ namespace EMotionFX
 
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         void ConsumeAttribute(ActorJointPicker* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
 
@@ -129,6 +132,7 @@ namespace EMotionFX
 
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         void ConsumeAttribute(ActorJointPicker* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
 

@@ -17,7 +17,8 @@
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphTagCondition.h>
-
+#include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
+#include <MCore/Source/ReflectionSerializer.h>
 
 namespace EMotionFX
 {
@@ -259,6 +260,11 @@ namespace EMotionFX
         m_tags = tags;
     }
 
+    const AZStd::vector<size_t>& AnimGraphTagCondition::GetTagParameterIndices() const
+    {
+        return m_tagParameterIndices;
+    }
+
     void AnimGraphTagCondition::SetFunction(EFunction function)
     {
         m_function = function;
@@ -286,9 +292,9 @@ namespace EMotionFX
         // The parameters are replaceable
     }
 
-    void AnimGraphTagCondition::ParameterAdded(size_t newParameterIndex)
+    void AnimGraphTagCondition::ParameterAdded(const AZStd::string& newParameterName)
     {
-        AZ_UNUSED(newParameterIndex);
+        AZ_UNUSED(newParameterName);
         // Just recompute the indexes in the case the new parameter was inserted before ours
         Reinit();
     }
@@ -318,6 +324,29 @@ namespace EMotionFX
         AZ_UNUSED(oldParameterName);
         // Removing a parameter can also shift indexes, so just recompute them
         Reinit();
+    }
+
+    void AnimGraphTagCondition::BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved)
+    {
+        // Only handle in case the removed parameter is a tag from the condition.
+        if (AZStd::find(m_tags.begin(), m_tags.end(), parameterNameToBeRemoved) != m_tags.end())
+        {
+            AZ::Outcome<size_t> conditionIndex = m_transition->FindConditionIndex(this);
+            if (conditionIndex.IsSuccess())
+            {
+                AZStd::vector<AZStd::string> updatedTags = m_tags;
+                updatedTags.erase(AZStd::remove(updatedTags.begin(), updatedTags.end(), parameterNameToBeRemoved), updatedTags.end());
+                const AZStd::string attributesString = AZStd::string::format("-tags {%s}",
+                    MCore::ReflectionSerializer::Serialize(&updatedTags).GetValue().c_str());
+
+                CommandSystem::CommandAdjustTransitionCondition* command = aznew CommandSystem::CommandAdjustTransitionCondition(
+                    m_transition->GetAnimGraph()->GetID(),
+                    m_transition->GetId(),
+                    conditionIndex.GetValue(),
+                    attributesString);
+                commandGroup.AddCommand(command);
+            }
+        }
     }
 
     void AnimGraphTagCondition::Reflect(AZ::ReflectContext* context)

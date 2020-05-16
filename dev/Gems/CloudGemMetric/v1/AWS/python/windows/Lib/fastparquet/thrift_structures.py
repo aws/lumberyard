@@ -1,8 +1,11 @@
 import io
+import sys
+import types
 from thrift.protocol.TCompactProtocol import TCompactProtocolAccelerated as TCompactProtocol
 from thrift.protocol.TProtocol import TProtocolException
 
 from .parquet_thrift.parquet import ttypes as parquet_thrift
+from .util import ParquetException
 
 
 def read_thrift(file_obj, ttype):
@@ -71,27 +74,6 @@ def is_thrift_item(item):
     return hasattr(item, 'thrift_spec') and hasattr(item, 'read')
 
 
-def thrift_copy(structure):
-    """
-    Recursively copy a thriftpy structure
-    """
-    base = structure.__class__()
-    for key in dir(structure):
-        if key.startswith('_') or key in ['thrift_spec', 'read', 'write',
-                                          'default_spec', 'validate']:
-            continue
-        val = getattr(structure, key)
-        if isinstance(val, list):
-            setattr(base, key, [thrift_copy(item)
-                                if is_thrift_item(item)
-                                else item for item in val])
-        elif is_thrift_item(val):
-            setattr(base, key, thrift_copy(val))
-        else:
-            setattr(base, key, val)
-    return base
-
-
 def thrift_print(structure, offset=0):
     """
     Handy recursive text ouput for thrift structures
@@ -108,23 +90,42 @@ def thrift_print(structure, offset=0):
     return s
 
 
-for cls in dir(parquet_thrift):
-    if cls[0].isupper():
-        c = getattr(parquet_thrift, cls)
-        c.__str__ = thrift_print
-        c.__repr__ = thrift_print
+def bind_method(cls, name, func):
+    if sys.version_info.major == 2:
+        setattr(cls, name, types.MethodType(func, None, cls))
+    else:
+        setattr(cls, name, func)
 
 
-def __getstate__(ob):
+for clsname in dir(parquet_thrift):
+    if clsname[0].isupper():
+        cls = getattr(parquet_thrift, clsname)
+        bind_method(cls, '__repr__', thrift_print)
+
+
+def getstate_method(ob):
     b = io.BytesIO()
     write_thrift(b, ob)
     b.seek(0)
     return b.read()
 
-for t in [parquet_thrift.FileMetaData, parquet_thrift.RowGroup]:
-    def __setstate__(ob, d, t=t):
-        b = io.BytesIO(d)
-        o = read_thrift(b, t)
-        ob.__dict__ = o.__dict__
-    t.__setstate__ = __setstate__
-    t.__getstate__ = __getstate__
+
+def copy_method(self):
+    cls = type(self)
+    out = cls.__new__(cls)
+    out.__dict__ = self.__dict__.copy()
+    return out
+
+
+def setstate_method(self, state):
+    b = io.BytesIO(state)
+    out = read_thrift(b, type(self))
+    self.__dict__ = out.__dict__
+
+
+for cls in [parquet_thrift.FileMetaData,
+            parquet_thrift.RowGroup,
+            parquet_thrift.ColumnChunk]:
+    bind_method(cls, '__getstate__', getstate_method)
+    bind_method(cls, '__setstate__', setstate_method)
+    bind_method(cls, '__copy__', copy_method)

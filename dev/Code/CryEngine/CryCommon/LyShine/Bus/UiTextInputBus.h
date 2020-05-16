@@ -129,6 +129,12 @@ public: // member functions
     //! text input will be used as a password field (see GetIsPasswordField).
     virtual void SetReplacementCharacter(uint32_t replacementChar) = 0;
 
+    //! True if copy/cut/paste should be supported, false otherwise
+    virtual bool GetIsClipboardEnabled() = 0;
+
+    //! Allows copy/cut/paste support for this text input
+    virtual void SetIsClipboardEnabled(bool enableClipboard) = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

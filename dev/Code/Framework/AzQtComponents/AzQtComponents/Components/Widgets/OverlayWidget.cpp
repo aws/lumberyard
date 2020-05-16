@@ -10,10 +10,10 @@
 *
 */
 
-#include <QEvent.h>
-#include <QLayout.h>
-#include <QMessageBox.h>
-#include <QDockWidget.h>
+#include <QEvent>
+#include <QLayout>
+#include <QMessageBox>
+#include <QDockWidget>
 #include <AzQtComponents/Components/Widgets/OverlayWidget.h>
 #include <AzQtComponents/Components/Widgets/Internal/OverlayWidgetLayer.h>
 #include <AzCore/std/algorithm.h>

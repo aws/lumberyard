@@ -12,6 +12,7 @@
 import account_utils
 import errors
 import service
+from six import iteritems # Python 2.7/3.7 Compatibility
 
 IDP_COGNITO = 'Cognito'
 
@@ -25,7 +26,7 @@ def get(request, cognitoUsername):
 def put(request, cognitoUsername, UpdateCognitoUser=None):
     updates = []
     if UpdateCognitoUser:
-        for key, value in UpdateCognitoUser.iteritems():
+        for key, value in iteritems(UpdateCognitoUser):
             if key in account_utils.COGNITO_ATTRIBUTES:
                 updates.append({'Name': key, 'Value': value})
             else:
@@ -37,9 +38,9 @@ def put(request, cognitoUsername, UpdateCognitoUser=None):
             Username=cognitoUsername,
             UserAttributes=updates
         )
-        print 'Updated: ', account_utils.logging_filter(updates)
+        print('Updated: {}'.format(account_utils.logging_filter(updates)))
     else:
-        print 'No updates provided in the request'
+        print('No updates provided in the request')
 
     user = account_utils.get_user(cognitoUsername)
     return account_utils.convert_user_from_cognito_to_model(user)

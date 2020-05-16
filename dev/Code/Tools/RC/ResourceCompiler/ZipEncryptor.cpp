@@ -214,7 +214,7 @@ bool ZipEncryptor::ParseKey(uint32 outputKey[4], const char* inputString)
         unsigned char v2 = s_charValueTable[(unsigned char)(inputString[i * 2 + 1])];
         if (v1 == 0xff || v2 == 0xff)
         {
-            size_t pos = i * 2 + (v1 == 0xff) ? 1 : 2;
+            size_t pos = i * 2 + ((v1 == 0xff) ? 1 : 2); // add 1 to position if v1==0xff, or 2 if v2==0xff
             RCLogError("Encryption key contains bad character at position %i", pos);
             return false;
         }

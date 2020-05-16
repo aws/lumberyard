@@ -12,38 +12,30 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
-#include "AnimGraphNode.h"
-
+#include <AzCore/std/optional.h>
+#include <EMotionFX/Source/ActorBus.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 
 namespace EMotionFX
 {
-    /**
-     *
-     */
     class EMFX_API BlendTreeMaskNode
         : public AnimGraphNode
+        , public ActorNotificationBus::Handler
     {
     public:
-        AZ_RTTI(BlendTreeMaskNode, "{24647B8B-05B4-4D5D-9161-F0AD0B456B09}", AnimGraphNode)
+        AZ_RTTI(BlendTreeMaskNode, "{EC50F91C-8BB1-4D49-B13E-F639D2505DB7}", AnimGraphNode)
         AZ_CLASS_ALLOCATOR_DECL
 
-        //
         enum
         {
-            INPUTPORT_POSE_0    = 0,
-            INPUTPORT_POSE_1    = 1,
-            INPUTPORT_POSE_2    = 2,
-            INPUTPORT_POSE_3    = 3,
+            INPUTPORT_BASEPOSE  = 0,
+            INPUTPORT_START     = 1, //INPUTPORT_POSE1..N= INPUTPORT_START+i
             OUTPUTPORT_RESULT   = 0
         };
 
         enum
         {
-            PORTID_INPUT_POSE_0     = 0,
-            PORTID_INPUT_POSE_1     = 1,
-            PORTID_INPUT_POSE_2     = 2,
-            PORTID_INPUT_POSE_3     = 3,
             PORTID_OUTPUT_RESULT    = 0
         };
 
@@ -55,12 +47,21 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)     { mMustUpdate = true; }
-            ~UniqueData()   {}
+                : AnimGraphNodeData(node, animGraphInstance)
+                , mMustUpdate(true)
+            {
+            }
 
         public:
-            AZStd::vector< AZStd::vector<AZ::u32> > mMasks;
-            bool                                    mMustUpdate;
+            struct MaskInstance
+            {
+                AZ::u32 m_inputPortNr;
+                AZStd::vector<AZ::u32> m_jointIndices;
+            };
+
+            AZStd::vector<MaskInstance> m_maskInstances;
+            AZStd::optional<AZ::u32> m_motionExtractionInputPortNr;
+            bool mMustUpdate;
         };
 
         BlendTreeMaskNode();
@@ -69,48 +70,55 @@ namespace EMotionFX
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
+        // ActorNotificationBus overrides
+        void OnMotionExtractionNodeChanged(Actor* actor, Node* newMotionExtractionNode) override;
+
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        bool GetHasOutputPose() const override                      { return true; }
-        bool GetSupportsVisualization() const override              { return true; }
-        AZ::Color GetVisualColor() const override                   { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
+        bool GetHasOutputPose() const override { return true; }
+        bool GetSupportsVisualization() const override { return true; }
+        AZ::Color GetVisualColor() const override { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override         { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
 
-        const char* GetPaletteName() const override;
-        AnimGraphObject::ECategory GetPaletteCategory() const override;
+        const char* GetPaletteName() const override { return "Pose Mask";}
+        AnimGraphObject::ECategory GetPaletteCategory() const override { return AnimGraphObject::CATEGORY_BLENDING; }
 
-        bool GetOutputEvents(size_t index) const;
+        bool GetOutputEvents(size_t inputPortNr) const;
 
-        void SetMask0(const AZStd::vector<AZStd::string>& mask0);
-        void SetMask1(const AZStd::vector<AZStd::string>& mask1);
-        void SetMask2(const AZStd::vector<AZStd::string>& mask2);
-        void SetMask3(const AZStd::vector<AZStd::string>& mask3);
-        void SetOutputEvents0(bool outputEvents0);
-        void SetOutputEvents1(bool outputEvents1);
-        void SetOutputEvents2(bool outputEvents2);
-        void SetOutputEvents3(bool outputEvents3);
+        void SetMask(size_t maskIndex, const AZStd::vector<AZStd::string>& jointNames);
+        void SetOutputEvents(size_t maskIndex, bool outputEvents);
 
         static void Reflect(AZ::ReflectContext* context);
+
+        class Mask
+        {
+        public:
+            AZ_RTTI(BlendTreeMaskNode::Mask, "{74750F38-24B3-465B-9CA1-740ACF947DC1}")
+            AZ_CLASS_ALLOCATOR_DECL
+
+            virtual ~Mask() = default;
+            
+            static void Reflect(AZ::ReflectContext* context);
+            void Reinit();
+            AZStd::string GetMaskName() const;
+            AZStd::string GetOutputEventsName() const;
+
+            AZStd::vector<AZStd::string> m_jointNames;
+            bool m_outputEvents = true;
+
+            AZ::u8 m_maskIndex = 0;
+            BlendTreeMaskNode* m_parent = nullptr;
+        };
 
     private:
         void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        size_t GetNumUsedMasks() const;
 
-        AZStd::string GetMask0JointName(int index) const;
-        AZStd::string GetMask1JointName(int index) const;
-        AZStd::string GetMask2JointName(int index) const;
-        AZStd::string GetMask3JointName(int index) const;
+        AZStd::string GetMaskJointName(size_t maskIndex, size_t jointIndex) const;
 
-        AZStd::vector<AZStd::string>        m_mask0;
-        AZStd::vector<AZStd::string>        m_mask1;
-        AZStd::vector<AZStd::string>        m_mask2;
-        AZStd::vector<AZStd::string>        m_mask3;
-        bool                                m_outputEvents0;
-        bool                                m_outputEvents1;
-        bool                                m_outputEvents2;
-        bool                                m_outputEvents3;
-
-        static size_t                       m_numMasks;
+        AZStd::vector<Mask> m_masks;
+        static const size_t s_numMasks;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

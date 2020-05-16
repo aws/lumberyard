@@ -76,7 +76,8 @@ namespace AZ
 
                     // This is a new guid as caf doesn't have type as it's an input to Mannequin.
                     static const AZ::Data::AssetType cryAnimationAssetType("{10121AD6-2B3E-442C-AF5B-6F563614ABC6}");
-                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), cryAnimationAssetType);
+                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), cryAnimationAssetType,
+                        AZStd::nullopt, AZStd::nullopt);
                 }
                 else
                 {

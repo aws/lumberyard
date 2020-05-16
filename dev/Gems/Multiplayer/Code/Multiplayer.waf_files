@@ -12,15 +12,15 @@
             "Include/Multiplayer/MultiplayerEventsComponent.h",
             "Include/Multiplayer/MultiplayerUtils.h"
         ],
-        "Include/MultiplayerLobbyServiceWrapper": [            
+        "Include/MultiplayerLobbyServiceWrapper": [
             "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.h",
             "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyServiceWrapper.h"
         ],
-        "Include/GridMateServiceWrapper": [            
+        "Include/GridMateServiceWrapper": [
             "Include/Multiplayer/GridMateServiceWrapper/GridMateLANServiceWrapper.h",
             "Include/Multiplayer/GridMateServiceWrapper/GridMateServiceWrapper.h"
         ],
-        "Include/BehaviorContext": [            
+        "Include/BehaviorContext": [
             "Include/Multiplayer/BehaviorContext/GridSearchContext.h",
             "Include/Multiplayer/BehaviorContext/GridSystemContext.h"
         ],
@@ -44,9 +44,31 @@
             "Source/GridMateServiceWrapper/GridMateLANServiceWrapper.cpp",
             "Source/GridMateServiceWrapper/GridMateServiceWrapper.cpp"
         ],
-        "Source/BehaviorContext": [            
+        "Source/BehaviorContext": [
             "Source/BehaviorContext/GridSearchContext.cpp",
             "Source/BehaviorContext/GridSystemContext.cpp"
+        ],
+        "Source/Canvas": [
+            "Source/Canvas/MultiplayerCanvasHelper.h",
+            "Source/Canvas/MultiplayerCanvasHelper.cpp",
+            "Source/Canvas/MultiplayerCreateServerView.h",
+            "Source/Canvas/MultiplayerCreateServerView.cpp",
+            "Source/Canvas/MultiplayerGameLiftFlextMatchView.h",
+            "Source/Canvas/MultiplayerGameLiftFlextMatchView.cpp",
+            "Source/Canvas/MultiplayerJoinServerView.h",
+            "Source/Canvas/MultiplayerJoinServerView.cpp",
+            "Source/Canvas/MultiplayerGameLiftLobbyCanvas.h",
+            "Source/Canvas/MultiplayerGameLiftLobbyCanvas.cpp",
+            "Source/Canvas/MultiplayerLANGameLobbyCanvas.h",
+            "Source/Canvas/MultiplayerLANGameLobbyCanvas.cpp",
+            "Source/Canvas/MultiplayerBusyAndErrorCanvas.h",
+            "Source/Canvas/MultiplayerBusyAndErrorCanvas.cpp",
+            "Source/Canvas/MultiplayerDedicatedHostTypeSelectionCanvas.h",
+            "Source/Canvas/MultiplayerDedicatedHostTypeSelectionCanvas.cpp"
+        ],
+        "Source/GameLift": [
+            "Source/GameLift/GameLiftMatchmakingComponent.h",
+            "Source/GameLift/GameLiftMatchmakingComponent.cpp"
         ]
     }
 }

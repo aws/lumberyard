@@ -28,35 +28,41 @@ namespace EMStudio
             return;
         }
 
-        InputDialogValidatable inputDialog(parent, /*labelText=*/"Name:");
-        inputDialog.setWindowTitle("New simulated object name");
-        inputDialog.setMinimumWidth(300);
+        InputDialogValidatable* inputDialog = new InputDialogValidatable(parent, /*labelText=*/"Name:");
+        inputDialog->setWindowTitle("New simulated object name");
+        inputDialog->setMinimumWidth(300);
+        inputDialog->setObjectName("newSimulatedObjectDialog");
 
-        inputDialog.SetValidatorFunc([&inputDialog, actor]() {
+        inputDialog->SetValidatorFunc([inputDialog, actor]() {
             EMotionFX::SimulatedObjectSetup* simulatedObjectSetup = actor->GetSimulatedObjectSetup().get();
             if (simulatedObjectSetup)
             {
-                return simulatedObjectSetup->IsSimulatedObjectNameUnique(inputDialog.GetText().toUtf8().data(), /*forSimulatedObject=*/nullptr);
+                return simulatedObjectSetup->IsSimulatedObjectNameUnique(inputDialog->GetText().toUtf8().data(), /*checkedSimulatedObject=*/nullptr);
             }
 
             return false;
         });
 
-        if (inputDialog.exec() == QDialog::Rejected)
-        {
-            return;
-        }
+        EMStudio::InputDialogValidatable::connect(inputDialog, &QDialog::finished, [actor, selectedJoints, inputDialog, addChildJoints](int resultCode) {
+            inputDialog->deleteLater();
 
-        const AZStd::string commadGroupName = AZStd::string::format("Add simulated object%s", selectedJoints.empty() ? "" : " and joints");
-        MCore::CommandGroup commandGroup(commadGroupName);
+            if (resultCode == QDialog::Rejected)
+            {
+                return;
+            }
+            const AZStd::string commadGroupName = AZStd::string::format("Add simulated object%s", selectedJoints.empty() ? "" : " and joints");
+            MCore::CommandGroup commandGroup(commadGroupName);
 
-        EMotionFX::SimulatedObjectHelpers::AddSimulatedObject(actor->GetID(), inputDialog.GetText().toUtf8().data(), &commandGroup);
-        EMotionFX::SimulatedObjectHelpers::AddSimulatedJoints(selectedJoints, actor->GetSimulatedObjectSetup()->GetNumSimulatedObjects(), addChildJoints, &commandGroup);
+            EMotionFX::SimulatedObjectHelpers::AddSimulatedObject(actor->GetID(), inputDialog->GetText().toUtf8().data(), &commandGroup);
+            EMotionFX::SimulatedObjectHelpers::AddSimulatedJoints(selectedJoints, actor->GetSimulatedObjectSetup()->GetNumSimulatedObjects(), addChildJoints, &commandGroup);
 
-        AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
-        {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
+            AZStd::string result;
+            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+            {
+                AZ_Error("EMotionFX", false, result.c_str())
+            }
+        });
+
+        inputDialog->open();
     }
 } // namespace EMStudio

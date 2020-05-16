@@ -21,24 +21,37 @@
 
 namespace ScriptEvents
 {
-    Module::Module()
+    ScriptEventsModule::ScriptEventsModule()
         : AZ::Module()
+        , m_systemImpl(nullptr)
     {
+        ScriptEventModuleConfigurationRequestBus::Handler::BusConnect();
+
         m_descriptors.insert(m_descriptors.end(), {
-            ScriptEvents::SystemComponent::CreateDescriptor(),
+            ScriptEvents::ScriptEventsSystemComponent::CreateDescriptor(),
             ScriptEvents::Components::ScriptEventReferencesComponent::CreateDescriptor(),
         });
+    }
+
+    ScriptEventsSystemComponentImpl* ScriptEventsModule::GetSystemComponentImpl()
+    {
+        if (!m_systemImpl)
+        {
+            m_systemImpl = aznew ScriptEventsSystemComponentRuntimeImpl();
+        }
+
+        return m_systemImpl;
     }
 
     /**
     * Add required SystemComponents to the SystemEntity.
     */
-    AZ::ComponentTypeList Module::GetRequiredSystemComponents() const
+    AZ::ComponentTypeList ScriptEventsModule::GetRequiredSystemComponents() const
     {
         return AZ::ComponentTypeList{
-            azrtti_typeid<ScriptEvents::SystemComponent>(),
+            azrtti_typeid<ScriptEvents::ScriptEventsSystemComponent>(),
         };
     }
 }
 
-AZ_DECLARE_MODULE_CLASS(ScriptEvents_32d8ba21703e4bbbb08487366e48dd69, ScriptEvents::Module)
+AZ_DECLARE_MODULE_CLASS(ScriptEvents_32d8ba21703e4bbbb08487366e48dd69, ScriptEvents::ScriptEventsModule)

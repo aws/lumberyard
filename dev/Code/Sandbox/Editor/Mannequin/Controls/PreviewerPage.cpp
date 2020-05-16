@@ -479,6 +479,7 @@ void CPreviewerPage::OnToggleTimelineUnits()
 //////////////////////////////////////////////////////////////////////////
 void CPreviewerPage::OnReloadAnimations()
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (m_modelViewport == NULL)
     {
         return;
@@ -506,6 +507,7 @@ void CPreviewerPage::OnReloadAnimations()
 
     OnSequenceRestart(0.0f);
     SetTime(0.0f);
+#endif //EDITOR_PCDEBUGCODE
 }
 
 //////////////////////////////////////////////////////////////////////////

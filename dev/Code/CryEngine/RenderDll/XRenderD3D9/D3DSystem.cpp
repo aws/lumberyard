@@ -195,10 +195,10 @@ bool CD3D9Renderer::CreateContext(WIN_HWND hWnd, bool bAllowMSAA, int SSX, int S
     pContext->m_Height = m_height;
     pContext->m_pSwapChain  = 0;
     pContext->m_pBackBuffer = 0;
-    pContext->m_nViewportWidth  = m_width  / (m_CurrContext ? m_CurrContext->m_nSSSamplesX : 1);
-    pContext->m_nViewportHeight = m_height / (m_CurrContext ? m_CurrContext->m_nSSSamplesY : 1);
-    pContext->m_nSSSamplesX = std::max(1, SSX);
-    pContext->m_nSSSamplesY = std::max(1, SSY);
+    pContext->m_nViewportWidth  = aznumeric_cast<int>(aznumeric_cast<float>(m_width)  / (m_CurrContext ? m_CurrContext->m_fPixelScaleX : 1.0f));
+    pContext->m_nViewportHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / (m_CurrContext ? m_CurrContext->m_fPixelScaleY : 1.0f));
+    pContext->m_fPixelScaleX = aznumeric_cast<float>(std::max(1, SSX));
+    pContext->m_fPixelScaleY = aznumeric_cast<float>(std::max(1, SSY));
     pContext->m_bMainViewport = !gEnv->IsEditor();
     m_CurrContext = pContext;
     m_RContexts.AddElem(pContext);
@@ -1606,6 +1606,8 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 
     if (!iSystem || !iLog)
     {
+        AZ_Error("CD3D9Renderer::Init", iSystem, "Renderer initialization failed because iSystem was null.");
+        AZ_Error("CD3D9Renderer::Init", iLog, "Renderer initialization failed because iLog was null.");
         return 0;
     }
 
@@ -1933,8 +1935,12 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 
     if (!bShaderCacheGen)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         // create the D3D implementation of the GPU particle system.
         m_gpuParticleEngine = new CD3DGPUParticleEngine();
+#else
+        AZ_Warning("Rendering", false, "GPU Particles not supported on Linux");
+#endif
     }
 
     // Success, return the window handle
@@ -3088,7 +3094,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         LOADING_TIME_PROFILE_SECTION_NAMED("CD3D9Renderer::OnD3D10PostCreateDevice(): m_OcclQueries");
         rd->m_OcclQueries.Reserve(MAX_OCCL_QUERIES);
         // Lazy initialization on Android due to limited number of queries that we can create.
-#if !defined(AZ_PLATFORM_ANDROID)
+        // TODO Linux - This was crashing on Ubuntu, investigate
+#if !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX)
         for (int a = 0; a < MAX_OCCL_QUERIES; a++)
         {
             rd->m_OcclQueries[a].Create();

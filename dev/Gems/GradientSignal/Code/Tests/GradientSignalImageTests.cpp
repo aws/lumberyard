@@ -108,6 +108,8 @@ namespace UnitTest
             m_imageData = aznew GradientSignal::ImageAsset();
             m_imageData->m_imageWidth = width;
             m_imageData->m_imageHeight = height;
+            m_imageData->m_bytesPerPixel = 1;
+            m_imageData->m_imageFormat = ImageProcessing::EPixelFormat::ePixelFormat_R8;
 
             size_t value = 0;
             AZStd::hash_combine(value, seed);
@@ -131,6 +133,8 @@ namespace UnitTest
             m_imageData = aznew GradientSignal::ImageAsset();
             m_imageData->m_imageWidth = width;
             m_imageData->m_imageHeight = height;
+            m_imageData->m_bytesPerPixel = 1;
+            m_imageData->m_imageFormat = ImageProcessing::EPixelFormat::ePixelFormat_R8;
 
             const AZ::u8 pixelValue = 255;
 

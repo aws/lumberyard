@@ -1,15 +1,30 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": [ "swaggerVersion", "apis" ],
     "properties": {
-        "swaggerVersion": { "enum": [ "1.2" ] },
-        "apis": {
-            "type": "array",
-            "items": { "$ref": "resourceObject.json#" }
+        "apiVersion": {
+            "type": "string"
         },
-        "apiVersion": { "type": "string" },
-        "info": { "$ref": "infoObject.json#" },
-        "authorizations": { "$ref": "authorizationObject.json#" }
-    }
+        "apis": {
+            "items": {
+                "$ref": "resourceObject.json#"
+            },
+            "type": "array"
+        },
+        "authorizations": {
+            "$ref": "authorizationObject.json#"
+        },
+        "info": {
+            "$ref": "infoObject.json#"
+        },
+        "swaggerVersion": {
+            "enum": [
+                "1.2"
+            ]
+        }
+    },
+    "required": [
+        "swaggerVersion",
+        "apis"
+    ],
+    "type": "object"
 }

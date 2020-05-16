@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QBoolWidget.h"
 #include "BaseVariableWidget.h"
 #include "Utils.h"

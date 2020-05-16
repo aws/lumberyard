@@ -28,6 +28,8 @@
 #include <AzCore/JSON/prettywriter.h>
 #include <AzCore/JSON/error/en.h>
 
+#include <AzFramework/API/ApplicationAPI.h>
+
 #if defined(AZ_PLATFORM_ANDROID)
 #include <errno.h>
 #endif
@@ -82,19 +84,21 @@ namespace Gems
         }
         return true;
     }
+
     bool ProjectSettings::DisableGem(const GemSpecifier& spec)
     {
         auto it = m_gems.find(spec.m_id);
         // If the Gem is enabled at the version specified, disable it.
-        if (it != m_gems.end() && spec.m_version == it->second.m_version)
+        if (it != m_gems.end())
         {
+            if (spec.m_version != it->second.m_version)
+            {
+                return false;
+            }
+
             m_gems.erase(it);
-            return true;
         }
-        else
-        {
-            return false;
-        }
+        return true;
     }
 
     bool ProjectSettings::IsGemEnabled(const GemSpecifier& spec) const
@@ -228,6 +232,27 @@ namespace Gems
             }
         }
 
+        // attempt to construct a complete gem registry for unmet dependency ID to name resolution
+        GemRegistry completeRegistry;
+
+        const char* gemsSearchFilter = "Gems";
+
+        const char* appRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+        if (appRoot)
+        {
+            completeRegistry.AddSearchPath({ appRoot, gemsSearchFilter }, false);
+        }
+
+        const char* engineRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+        if (engineRoot)
+        {
+            completeRegistry.AddSearchPath({ engineRoot, gemsSearchFilter }, false);
+        }
+
+        completeRegistry.LoadAllGemsFromDisk();
+
         // Verify all gems dependencies are all met
         for (auto && pair : globalDeps)
         {
@@ -240,14 +265,32 @@ namespace Gems
                 // no candidate found
                 char depIdStr[UUID_STR_BUF_LEN];
                 dep.GetID().ToString(depIdStr, UUID_STR_BUF_LEN, true, true);
+
                 char gemIdStr[UUID_STR_BUF_LEN];
                 dep.GetGem()->GetID().ToString(gemIdStr, UUID_STR_BUF_LEN, true, true);
-                errorString += AZStd::string::format(
-                    "Gem \"%s\" (%s) dependency on Gem with ID %s is unmet.\n", 
-                    dep.GetGem()->GetDisplayName().c_str(), 
-                    gemIdStr,
-                    depIdStr
-                );
+
+                // don't care about the version, just need the gem name
+                IGemDescriptionConstPtr depDesc = completeRegistry.GetLatestGem(dep.GetID());
+                if (depDesc)
+                {
+                    errorString += AZStd::string::format(
+                        "Gem \"%s\" (%s) dependency on Gem \"%s\" (%s) is unmet.\n", 
+                        dep.GetGem()->GetDisplayName().c_str(), 
+                        gemIdStr,
+                        depDesc->GetDisplayName().c_str(),
+                        depIdStr
+                    );
+                }
+                else
+                {
+                    errorString += AZStd::string::format(
+                        "Gem \"%s\" (%s) dependency on unresolved Gem with ID %s is unmet.\n", 
+                        dep.GetGem()->GetDisplayName().c_str(), 
+                        gemIdStr,
+                        depIdStr
+                    );
+                }
+
                 isTreeValid = false;
             }
             else if (!dep.IsFullfilledBy(candidateIt->second))
@@ -268,15 +311,34 @@ namespace Gems
 
                 char depIdStr[UUID_STR_BUF_LEN];
                 dep.GetID().ToString(depIdStr, UUID_STR_BUF_LEN, true, true);
+
                 char gemIdStr[UUID_STR_BUF_LEN];
                 dep.GetGem()->GetID().ToString(gemIdStr, UUID_STR_BUF_LEN, true, true);
-                errorString += AZStd::string::format(
-                    "Gem \"%s\" (%s) dependency on Gem with ID %s is unmet. It must fall within the following version bounds: [%s]\n", 
-                    dep.GetGem()->GetDisplayName().c_str(),
-                    gemIdStr,
-                    depIdStr,
-                    boundsStr.c_str()
-                );
+
+                // don't care about the version, just need the gem name
+                IGemDescriptionConstPtr depDesc = completeRegistry.GetLatestGem(dep.GetID());
+                if (depDesc)
+                {
+                    errorString += AZStd::string::format(
+                        "Gem \"%s\" (%s) dependency on Gem \"%s\" (%s) is unmet. It must fall within the following version bounds: [%s]\n", 
+                        dep.GetGem()->GetDisplayName().c_str(),
+                        gemIdStr,
+                        depDesc->GetDisplayName().c_str(),
+                        depIdStr,
+                        boundsStr.c_str()
+                    );
+                }
+                else
+                {
+                    errorString += AZStd::string::format(
+                        "Gem \"%s\" (%s) dependency on unresolved Gem with ID %s is unmet. It must fall within the following version bounds: [%s]\n", 
+                        dep.GetGem()->GetDisplayName().c_str(),
+                        gemIdStr,
+                        depIdStr,
+                        boundsStr.c_str()
+                    );
+                }
+
                 isTreeValid = false;
             }
         }

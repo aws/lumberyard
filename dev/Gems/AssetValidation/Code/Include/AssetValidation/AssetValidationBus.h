@@ -57,8 +57,8 @@ namespace AssetValidation
         virtual bool AddSeedList(const char* filePath) { return true; }
         //! Remove all seeds from a seed file at a specified path
         virtual bool RemoveSeedList(const char* filePath) { return true; }
-        //! Toggle blacklist printing
-        virtual void TogglePrintBlacklisted() { }
+        //! Toggle exclude printing
+        virtual void TogglePrintExcluded() { }
     };
     using AssetValidationRequestBus = AZ::EBus<AssetValidationRequests>;
 

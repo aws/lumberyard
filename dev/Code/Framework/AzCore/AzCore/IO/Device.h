@@ -113,8 +113,7 @@ namespace AZ
             template<typename ...FuncArgs, typename ...Args>
             inline void AddCommand(void (DeviceRequest::* func)(FuncArgs...), Args&&... args)
             {
-                //Need to create AZStd::result_of and AZStd::declval type trait
-                AZ_STATIC_ASSERT((AZStd::is_void<typename std::result_of<decltype(func)(DeviceRequest*, Args...)>::type>::value), "Argument cannot be bound to supplied device function argument");
+                static_assert(AZStd::is_void_v<AZStd::invoke_result_t<decltype(func), DeviceRequest*, Args...>>, "Argument cannot be bound to supplied device function argument");
                 {
                     AZStd::scoped_lock<AZStd::mutex> lock(m_eventQueueLock);
                     DeviceRequestBus::QueueBroadcast(func, AZStd::forward<Args>(args)...);

@@ -13,6 +13,7 @@
 */
 
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/std/string/string.h>
 #include <SceneAPIExt/Rules/IMeshRule.h>
 
 namespace AZ
@@ -36,12 +37,20 @@ namespace EMotionFX
                 MeshRule();
                 ~MeshRule() override = default;
 
-                bool GetOptimizeTriangleList() const override;
+                VertexColorMode GetVertexColorMode() const override;
+                const AZStd::string& GetVertexColorStreamName() const override;
+                bool IsVertexColorsDisabled() const override;
+                void DisableVertexColors() override;
 
                 static void Reflect(AZ::ReflectContext* context);
 
             protected:
-                bool m_optimizeTriangleList;
+                static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode);
+
+                VertexColorMode m_vertexColorMode = VertexColorMode::Precision_32;
+                AZStd::string m_vertexColorStreamName;
+
+                static const char* m_disabledVertexColorsName;
             };
         } // Rule
     } // Pipeline

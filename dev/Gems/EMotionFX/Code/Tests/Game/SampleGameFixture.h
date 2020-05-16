@@ -21,13 +21,13 @@ namespace EMotionFX
     {
     protected:
 
-        virtual AZStd::string GetAssetFolder() const override
+        AZStd::string GetAssetFolder() const override
         {
             // This path points to asset under sample's project.
             // If you want to test asset under different projects, you need to change the path in here.
             // execute path: (workspace)/dev/(test_outputfolder)
             // asset path(pc): (workspace)/dev/Cache/SamplesProject/pc/samplesproject/
-            AZStd::string assetPath = mApp.GetExecutableFolder();
+            AZStd::string assetPath = m_app.GetExecutableFolder();
             const size_t pos = AzFramework::StringFunc::Find(assetPath.c_str(), '/', 1, true, false);
             if (pos != AZStd::string::npos)
             {
@@ -37,4 +37,4 @@ namespace EMotionFX
             return assetPath;
         }
     };
-}
+} // namespace EMotionFX

@@ -128,7 +128,7 @@ namespace AZ
             // used during load to skip the rest of the element including any subelements
             void SkipElement();
 
-            bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData);
+            bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData) override;
             bool WriteElement(const void* elemPtr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
             bool CloseElement();
 
@@ -177,7 +177,7 @@ namespace AZ
                 const SerializeContext::ClassData* dataElementClassData, void* parentClassPtr);
 
             /// finalizes the stream after the user is done submitting his writes
-            virtual bool Finalize();
+            bool Finalize() override;
 
             /// Returns true if we will keep the element class, otherwise false
             bool ConvertOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass);
@@ -770,13 +770,17 @@ namespace AZ
                     AZ_Assert(classData->m_serializer, "Asset references should always have a serializer defined");
 
                     // Intercept asset references so we can forward asset load filter information.
-                    static_cast<AssetSerializer*>(classData->m_serializer.get())->LoadWithFilter(
+                    bool loaded = static_cast<AssetSerializer*>(classData->m_serializer.get())->LoadWithFilter(
                         dataAddress,
                         *element.m_stream,
                         element.m_version,
                         m_filterDesc.m_assetCB,
                         element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE);
 
+                    if (!loaded)
+                    {
+                        result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);
+                    }
                 }
                 // Serializable leaf element.
                 else if (classData->m_serializer)
@@ -797,7 +801,11 @@ namespace AZ
                     if (dataAddress == nullptr || 
                         !classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
+                        AZStd::string error = AZStd::string::format("Serializer failed for %s '%s'(0x%x).", 
+                            classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc);
+
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
+                        m_errorLogger.ReportError(error.c_str());
                     }
                 }
 
@@ -913,6 +921,7 @@ namespace AZ
                     // serialized.
                     if (!storageElement.m_classContainer && *reinterpret_cast<void**>(storageElement.m_reserveAddress))
                     {
+                        // Tip: If you crash here, it might be a pointer that isn't initialized to null
                         classFactory->Destroy(*reinterpret_cast<void**>(storageElement.m_reserveAddress));
                     }
 

@@ -24,5 +24,7 @@ namespace AzFramework
 
         AzFrameworkModule();
         ~AzFrameworkModule() override = default;
+
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override;
     };
 }

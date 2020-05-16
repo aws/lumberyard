@@ -97,12 +97,13 @@ namespace EMotionFX
     void AnimGraphStateMachine::Output(AnimGraphInstance* animGraphInstance)
     {
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-        RequestPoses(animGraphInstance);
-        AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
+        AnimGraphPose* outputPose = nullptr;
 
         if (mDisabled)
         {
             // Output bind pose in case state machine is disabled.
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             outputPose->InitFromBindPose(actorInstance);
             return;
         }
@@ -115,17 +116,21 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         const bool isTransitioning = IsTransitioning(uniqueData);
 
+        const AZStd::vector<AnimGraphNode*>& activeStates = uniqueData->GetActiveStates();
+
         // Single active state, no active transition.
         if (!isTransitioning && uniqueData->mCurrentState)
         {
             uniqueData->mCurrentState->PerformOutput(animGraphInstance);
+
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             *outputPose = *uniqueData->mCurrentState->GetMainOutputPose(animGraphInstance);
         }
         // One or more transitions active.
         else if (isTransitioning)
         {
             // Output all active states (current state as well as target states).
-            const AZStd::vector<AnimGraphNode*>& activeStates = uniqueData->GetActiveStates();
             for (AnimGraphNode* activeState : activeStates)
             {
                 OutputIncomingNode(animGraphInstance, activeState);
@@ -138,36 +143,51 @@ namespace EMotionFX
             const AnimGraphPose* startPose = startSourceNode ? startSourceNode->GetMainOutputPose(animGraphInstance) : nullptr;
             if (startPose)
             {
+                RequestPoses(animGraphInstance);
+                outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
                 *outputPose = *startPose;
 
                 // Iterate through the transition stack from the oldest to the newest active transition.
                 for (size_t i = 0; i < numActiveTransitions; ++i)
                 {
-                    AnimGraphStateTransition* activeTransition = uniqueData->m_activeTransitions[numActiveTransitions - i - 1];
+                    const AnimGraphStateTransition* activeTransition = uniqueData->m_activeTransitions[numActiveTransitions - i - 1];
 
                     const AnimGraphNode* targetNode = activeTransition->GetTargetNode();
                     const AnimGraphPose* targetPose = targetNode->GetMainOutputPose(animGraphInstance);
-                    AZ_Assert(targetPose, "Transition target node has to provide a valid main output pose.");
-
-                    // Processes the transition, calculate and blend the in between pose and use it as output for the state machine.
-                    activeTransition->CalcTransitionOutput(animGraphInstance, *outputPose, *targetPose, outputPose);
+                    AZ_Assert(targetPose, "Transition target node has to provide a valid main output pose.");                  
+                    if (targetPose)
+                    {
+                        // Processes the transition, calculate and blend the in between pose and use it as output for the state machine.
+                        activeTransition->CalcTransitionOutput(animGraphInstance, *outputPose, *targetPose, outputPose);
+                    }
                 }
             }
             else
             {
+                RequestPoses(animGraphInstance);
+                outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
                 outputPose->InitFromBindPose(actorInstance);
             }
         }
         // No state active, output bind pose.
         else
         {
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             outputPose->InitFromBindPose(actorInstance);
         }
 
         // Decrease pose ref counts for all states where we increased it.
+        for (AnimGraphNode* node : uniqueData->GetPoseRefIncreasedNodes())
+        {
+            if (AZStd::find(begin(activeStates), end(activeStates), node) == end(activeStates))
+            {
+                node->SkipOutput(animGraphInstance);
+            }
+        }
         uniqueData->DecreasePoseRefCounts(animGraphInstance);
 
-        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
+        if (outputPose && GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
@@ -381,6 +401,11 @@ namespace EMotionFX
 
         PushTransitionStack(uniqueData, transition);
 
+        if (transition->GetSyncMode() != AnimGraphObject::ESyncMode::SYNCMODE_DISABLED)
+        {
+            targetNode->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_RESYNC, true);
+        }
+
         transition->Update(animGraphInstance, 0.0f);
 
         if (calledFromWithinUpdate &&
@@ -459,7 +484,17 @@ namespace EMotionFX
     void AnimGraphStateMachine::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        uniqueData->ClearRefCounts();
+
+        // Defer switch to entry state.
+        if (uniqueData->mSwitchToEntryState)
+        {
+            AnimGraphNode* entryState = GetEntryState();
+            if (entryState)
+            {
+                SwitchToState(animGraphInstance, entryState);
+            }          
+            uniqueData->mSwitchToEntryState = false;
+        }
 
         // Update all currently active transitions.
         for (AnimGraphStateTransition* transition : uniqueData->m_activeTransitions)
@@ -482,6 +517,7 @@ namespace EMotionFX
         UpdateConditions(animGraphInstance, uniqueData->mCurrentState, timePassedInSeconds);
         CheckConditions(uniqueData->mCurrentState, animGraphInstance, uniqueData, /*calledFromWithinUpdate*/ true);
 
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
         // Check if our latest active transition is already done, end it and check for further transition candidates.
         // This can happen in the same frame directly after starting a new transition in case the blend time is 0.0.
         AZ::u32 numPasses = 0;
@@ -491,7 +527,7 @@ namespace EMotionFX
             EndAllActiveTransitions(animGraphInstance, uniqueData);
 
             UpdateConditions(animGraphInstance, uniqueData->mCurrentState, 0.0f);
-            CheckConditions(uniqueData->mCurrentState, animGraphInstance, uniqueData, /*calledFromWithinUpdate*/ true);
+            CheckConditions(uniqueData->mCurrentState, animGraphInstance, uniqueData, /*calledFromWithinUpdate=*/true);
 
             if (numPasses >= s_maxNumPasses)
             {
@@ -503,6 +539,14 @@ namespace EMotionFX
             }
             numPasses++;
         }
+#else
+        // Check if our latest active transition is already done and end it.
+        if (GetLatestActiveTransition(uniqueData) && IsLatestActiveTransitionDone(animGraphInstance, uniqueData))
+        {
+            // End all transitions on the stack back to front
+            EndAllActiveTransitions(animGraphInstance, uniqueData);
+        }
+#endif
 
         // Enable the exit state reached flag when are entering an exit state or if the current state is an exit state.
         UpdateExitStateReachedFlag(animGraphInstance, uniqueData);
@@ -596,6 +640,13 @@ namespace EMotionFX
             for (AnimGraphNode* activeState : activeStates)
             {
                 activeState->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
+            }
+            for (AnimGraphNode* node : uniqueData->GetDataRefIncreasedNodes())
+            {
+                if (AZStd::find(begin(activeStates), end(activeStates), node) == end(activeStates))
+                {
+                    node->SkipPostUpdate(animGraphInstance);
+                }
             }
 
             if (!IsTransitioning(uniqueData))
@@ -1102,6 +1153,7 @@ namespace EMotionFX
         mCurrentState = nullptr;
         mPreviousState = nullptr;
         mReachedExitState = false;
+        mSwitchToEntryState = true;
     }
 
     const AZStd::vector<AnimGraphNode*>& AnimGraphStateMachine::UniqueData::GetActiveStates()
@@ -1281,7 +1333,7 @@ namespace EMotionFX
                 outObjects.emplace_back(const_cast<AnimGraphStateTransition*>(transition));
             }
 
-            // get the number of conditions and iterate through them
+            // Add transition conditions.
             const size_t numConditions = transition->GetNumConditions();
             for (size_t j = 0; j < numConditions; ++j)
             {
@@ -1291,6 +1343,30 @@ namespace EMotionFX
                 {
                     outObjects.emplace_back(condition);
                 }
+            }
+
+            // Add transition actions.
+            const TriggerActionSetup& transitionActionSetup = transition->GetTriggerActionSetup();
+            const size_t numActions = transitionActionSetup.GetNumActions();
+            for (size_t j = 0; j < numActions; ++j)
+            {
+                AnimGraphTriggerAction* action = transitionActionSetup.GetAction(j);
+                if (azrtti_istypeof(objectType, action))
+                {
+                    outObjects.emplace_back(action);
+                }
+            }
+        }
+
+        // Add state actions.
+        const TriggerActionSetup& actionSetup = GetTriggerActionSetup();
+        const size_t numActions = actionSetup.GetNumActions();
+        for (size_t j = 0; j < numActions; ++j)
+        {
+            AnimGraphTriggerAction* action = actionSetup.GetAction(j);
+            if (azrtti_istypeof(objectType, action))
+            {
+                outObjects.emplace_back(action);
             }
         }
     }
@@ -1359,6 +1435,18 @@ namespace EMotionFX
                 }
             }
         }
+    }
+
+    void AnimGraphStateMachine::SkipPostUpdate(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        uniqueData->DecreaseDataRefCounts(animGraphInstance);
+    }
+
+    void AnimGraphStateMachine::SkipOutput(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        uniqueData->DecreasePoseRefCounts(animGraphInstance);
     }
 
     AnimGraphStateMachine::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)

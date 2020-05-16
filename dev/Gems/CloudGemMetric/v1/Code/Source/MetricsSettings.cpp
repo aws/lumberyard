@@ -13,7 +13,8 @@
 #include "StdAfx.h"
 
 #include "CloudGemMetric/MetricsSettings.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace CloudGemMetric
 {
@@ -56,19 +57,19 @@ namespace CloudGemMetric
 
         if (!RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_local_file_size_in_bytes", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "game_buffer_flush_period_in_seconds", IsInt) ||
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_game_buffer_size_in_bytes", IsInt) || 
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_num_buffered_metrics", IsInt) || 
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_metrics_size_to_send_in_batch_in_bytes", IsInt) || 
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_game_buffer_size_in_bytes", IsInt) ||
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_num_buffered_metrics", IsInt) ||
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_metrics_size_to_send_in_batch_in_bytes", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "send_metrics_interval_in_seconds", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "file_threshold_to_prioritize_in_perc", IsDouble))
         {
             return false;
         }
 
-        if (!ValidateSettings(settingsObjVal["max_local_file_size_in_bytes"].GetInt(), 
-            settingsObjVal["game_buffer_flush_period_in_seconds"].GetInt(), 
-            settingsObjVal["max_game_buffer_size_in_bytes"].GetInt(), 
-            settingsObjVal["max_metrics_size_to_send_in_batch_in_bytes"].GetInt(), 
+        if (!ValidateSettings(settingsObjVal["max_local_file_size_in_bytes"].GetInt(),
+            settingsObjVal["game_buffer_flush_period_in_seconds"].GetInt(),
+            settingsObjVal["max_game_buffer_size_in_bytes"].GetInt(),
+            settingsObjVal["max_metrics_size_to_send_in_batch_in_bytes"].GetInt(),
             settingsObjVal["send_metrics_interval_in_seconds"].GetInt()))
         {
             AZ_Warning("MetricsSettings", false, "Rejecting invalid settings from file");
@@ -86,21 +87,22 @@ namespace CloudGemMetric
     }
 
     void MetricsSettings::InitFromBackend(const CloudGemMetric::ServiceAPI::ClientContext& context)
-    {        
-        if (!ValidateSettings(context.file_max_size_in_mb,
+    {
+        if (!ValidateSettings(
+            aznumeric_caster(context.file_max_size_in_mb),
             context.buffer_flush_to_file_interval_sec,
             context.buffer_flush_to_file_max_in_bytes,
-            context.file_max_metrics_to_send_in_batch_in_mb,
+            aznumeric_caster(context.file_max_metrics_to_send_in_batch_in_mb),
             context.file_send_metrics_interval_in_seconds))
         {
             AZ_Warning("MetricsSettings", false, "Rejecting invalid settings from backend");
             return;
         }
 
-        m_maxLocalFileSizeInBytes = context.file_max_size_in_mb * 1024*1024;
+        m_maxLocalFileSizeInBytes = aznumeric_caster(context.file_max_size_in_mb * 1024*1024);
         m_gameBufferFlushPeriodInSeconds = context.buffer_flush_to_file_interval_sec;
         m_maxGameBufferSizeInBytes = context.buffer_flush_to_file_max_in_bytes;
-        m_maxMetricsSizeToSendInBatchInBytes = context.file_max_metrics_to_send_in_batch_in_mb * 1024*1024;
+        m_maxMetricsSizeToSendInBatchInBytes = aznumeric_caster(context.file_max_metrics_to_send_in_batch_in_mb * 1024*1024);
         m_sendMetricsIntervalInSeconds = context.file_send_metrics_interval_in_seconds;
         m_fileThresholdToPrioritizeInPercent = context.file_threshold_to_prioritize_in_perc;
     }

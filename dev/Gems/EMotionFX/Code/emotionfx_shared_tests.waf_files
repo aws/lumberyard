@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Tests/AssetCode":
+        [
+            "Tests/TestAssetCode/JackActor.cpp",
+            "Tests/TestAssetCode/JackActor.h",
+            "Tests/TestAssetCode/SimpleActors.cpp",
+            "Tests/TestAssetCode/SimpleActors.h",
+            "Tests/TestAssetCode/AnimGraphFactory.cpp",
+            "Tests/TestAssetCode/AnimGraphFactory.h"
+        ]
+    }
+}

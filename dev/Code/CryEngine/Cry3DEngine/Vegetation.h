@@ -132,6 +132,9 @@ public:
     virtual bool GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const override;
     float GetFirstLodDistance() const override;
 
+    //! A Helper Method used for vegetation planting.
+    static void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33);
+
     // Avoid C4266 virtual function is hidden because that SetScale(float fScale) is also defined in IVegetation: https://msdn.microsoft.com/en-us/library/4b76ty10.aspx
     void SetScale(const Vec3& scale) override
     {

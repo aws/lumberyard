@@ -45,6 +45,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251' # Setting W4 overrides the External header level of /external:W0 for Qt headers
         ],
         win_lib                 = [ 'shell32' ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
@@ -54,6 +55,7 @@ def build(bld):
 
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
+        linux_rpath             = ['@executable_path', '@executable_path/qtlibs/lib'],
         clang_cxxflags          = [
             '-Wno-writable-strings',
         ]
@@ -95,6 +97,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251' # Setting W4 overrides the External header level of /external:W0 for Qt headers
             ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
                                     'AWS_CPP_SDK_COGNITO_IDENTITY',
@@ -102,6 +105,7 @@ def build(bld):
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
+        linux_rpath             = ['@executable_path', '@executable_path/qtlibs/lib'],
         clang_cxxflags          = [
             '-Wno-writable-strings',
             ],

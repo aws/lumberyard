@@ -68,14 +68,15 @@ namespace AzToolsFramework
 
     protected:
 
-        void RestoreEntity(const AZ::u8* buffer, AZStd::size_t bufferSizeBytes) const;
+        void RestoreEntity(const AZ::u8* buffer, AZStd::size_t bufferSizeBytes, const AZ::SliceComponent::EntityRestoreInfo& sliceRestoreInfo) const;
 
         AZ::EntityId m_entityID;                            ///< The Id of the captured entity.
         AzFramework::EntityContextId m_entityContextId;     ///< The entity context to which the entity belongs (if any).
         int m_entityState;                                  ///< The entity state at time of capture (active, constructed, etc).
         bool m_isSelected;                                  ///< Whether the entity was selected at time of capture.
 
-        AZ::SliceComponent::EntityRestoreInfo m_sliceRestoreInfo;
+        AZ::SliceComponent::EntityRestoreInfo m_undoSliceRestoreInfo;
+        AZ::SliceComponent::EntityRestoreInfo m_redoSliceRestoreInfo;
 
         AZStd::vector<AZ::u8> m_undoState;
         AZStd::vector<AZ::u8> m_redoState;

@@ -13,6 +13,7 @@
 // include required headers
 #include "Skeleton.h"
 #include "Node.h"
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/Allocators.h>
 

@@ -17,8 +17,7 @@
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 
 namespace MNM
@@ -710,27 +709,77 @@ namespace MNM
 
     AABB WorldVoxelizer::ComputeTerrainAABB(IGeometry* geometry)
     {
-        primitives::heightfield* phf = (primitives::heightfield*)geometry->GetData();
-
-        const int minX = max(0, (int)((m_volumeAABB.min.x - phf->origin.x) * phf->stepr.x));
-        const int minY = max(0, (int)((m_volumeAABB.min.y - phf->origin.y) * phf->stepr.y));
-        const int maxX = min((int)((m_volumeAABB.max.x - phf->origin.x) * phf->stepr.x), (phf->size.x - 1));
-        const int maxY = min((int)((m_volumeAABB.max.y - phf->origin.y) * phf->stepr.y), (phf->size.y - 1));
-
-        const Vec3 origin = phf->origin;
-
-        const float xStep = (float)phf->step.x;
-        const float yStep = (float)phf->step.y;
-
         AABB terrainAABB(AABB::RESET);
-
-        if (phf->fpGetSurfTypeCallback && phf->fpGetHeightCallback)
+        //This method usually runs in a Job, and it indirectly uses the terrain system via CryPhysics API.
+        //To avoid race conditions that can occur when the terrain system is added/removed we protect it
+        //inside the Ebus enumeration handler callback because it guarantees the terrain system to be valid while
+        //locked.
+        bool isTerrainActive = false;
+        auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
         {
-            for (int y = minY; y <= maxY; ++y)
+            isTerrainActive = true;
+
+            primitives::heightfield* phf = (primitives::heightfield*)geometry->GetData();
+
+            const int minX = max(0, (int)((m_volumeAABB.min.x - phf->origin.x) * phf->stepr.x));
+            const int minY = max(0, (int)((m_volumeAABB.min.y - phf->origin.y) * phf->stepr.y));
+            const int maxX = min((int)((m_volumeAABB.max.x - phf->origin.x) * phf->stepr.x), (phf->size.x - 1));
+            const int maxY = min((int)((m_volumeAABB.max.y - phf->origin.y) * phf->stepr.y), (phf->size.y - 1));
+
+            const Vec3 origin = phf->origin;
+
+            const float xStep = (float)phf->step.x;
+            const float yStep = (float)phf->step.y;
+
+            if (phf->fpGetSurfTypeCallback && phf->fpGetHeightCallback)
             {
-                for (int x = minX; x <= maxX; ++x)
+                for (int y = minY; y <= maxY; ++y)
                 {
-                    if (phf->fpGetSurfTypeCallback(x, y) != phf->typehole)
+                    for (int x = minX; x <= maxX; ++x)
+                    {
+                        if (phf->fpGetSurfTypeCallback(x, y) != phf->typehole)
+                        {
+                            const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
+                            const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
+                            const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, phf->getheight(x + 1, y) * phf->heightscale);
+                            const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, phf->getheight(x + 1, y + 1) * phf->heightscale);
+
+                            terrainAABB.Add(v0);
+                            terrainAABB.Add(v1);
+                            terrainAABB.Add(v2);
+                            terrainAABB.Add(v3);
+                        }
+                    }
+                }
+            }
+            else if (phf->fpGetSurfTypeCallback)
+            {
+                float* height = (float*)phf->fpGetHeightCallback;
+
+                assert(height);
+                PREFAST_ASSUME(height);
+
+                for (int y = minY; y <= maxY; ++y)
+                {
+                    for (int x = minX; x <= maxX; ++x)
+                    {
+                        const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, height[vector2di(x, y) * phf->stride] * phf->heightscale);
+                        const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, height[vector2di(x, y + 1) * phf->stride] * phf->heightscale);
+                        const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, height[vector2di(x + 1, y) * phf->stride] * phf->heightscale);
+                        const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, height[vector2di(x + 1, y + 1) * phf->stride] * phf->heightscale);
+
+                        terrainAABB.Add(v0);
+                        terrainAABB.Add(v1);
+                        terrainAABB.Add(v2);
+                        terrainAABB.Add(v3);
+                    }
+                }
+            }
+            else
+            {
+                for (int y = minY; y <= maxY; ++y)
+                {
+                    for (int x = minX; x <= maxX; ++x)
                     {
                         const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
                         const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
@@ -744,54 +793,20 @@ namespace MNM
                     }
                 }
             }
-        }
-        else if (phf->fpGetSurfTypeCallback)
+
+            // Only one handler should exist.
+            return false;
+        };
+        AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
+
+        if (isTerrainActive)
         {
-            float* height = (float*)phf->fpGetHeightCallback;
-
-            assert(height);
-            PREFAST_ASSUME(height);
-
-            for (int y = minY; y <= maxY; ++y)
+            if (Overlap::AABB_AABB(m_volumeAABB, terrainAABB))
             {
-                for (int x = minX; x <= maxX; ++x)
-                {
-                    const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, height[vector2di(x, y) * phf->stride] * phf->heightscale);
-                    const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, height[vector2di(x, y + 1) * phf->stride] * phf->heightscale);
-                    const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, height[vector2di(x + 1, y) * phf->stride] * phf->heightscale);
-                    const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, height[vector2di(x + 1, y + 1) * phf->stride] * phf->heightscale);
-
-                    terrainAABB.Add(v0);
-                    terrainAABB.Add(v1);
-                    terrainAABB.Add(v2);
-                    terrainAABB.Add(v3);
-                }
+                return terrainAABB;
             }
         }
-        else
-        {
-            for (int y = minY; y <= maxY; ++y)
-            {
-                for (int x = minX; x <= maxX; ++x)
-                {
-                    const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
-                    const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
-                    const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, phf->getheight(x + 1, y) * phf->heightscale);
-                    const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, phf->getheight(x + 1, y + 1) * phf->heightscale);
-
-                    terrainAABB.Add(v0);
-                    terrainAABB.Add(v1);
-                    terrainAABB.Add(v2);
-                    terrainAABB.Add(v3);
-                }
-            }
-        }
-
-        if (Overlap::AABB_AABB(m_volumeAABB, terrainAABB))
-        {
-            return terrainAABB;
-        }
-
+ 
         return AABB::RESET;
     }
 
@@ -799,30 +814,77 @@ namespace MNM
 #pragma warning (disable: 6262)
     size_t WorldVoxelizer::VoxelizeTerrain(IGeometry* geometry, const Matrix34& worldTM)
     {
-        primitives::heightfield* phf = (primitives::heightfield*)geometry->GetData();
-
-        const int minX = max(0, (int)((m_volumeAABB.min.x - phf->origin.x) * phf->stepr.x));
-        const int minY = max(0, (int)((m_volumeAABB.min.y - phf->origin.y) * phf->stepr.y));
-        const int maxX = min((int)((m_volumeAABB.max.x - phf->origin.x) * phf->stepr.x), (phf->size.x - 1));
-        const int maxY = min((int)((m_volumeAABB.max.y - phf->origin.y) * phf->stepr.y), (phf->size.y - 1));
-
-        const Vec3 origin = phf->origin;
-
-        const float xStep = (float)phf->step.x;
-        const float yStep = (float)phf->step.y;
-
         size_t faceCount = 0;
-
-        const size_t MaxVertexCount = 1024 * 4;
-        Vec3 vertices[MaxVertexCount];
-
-        if (phf->fpGetSurfTypeCallback && phf->fpGetHeightCallback)
+        auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
         {
-            for (int y = minY; y <= maxY; ++y)
+            primitives::heightfield* phf = (primitives::heightfield*)geometry->GetData();
+
+            const int minX = max(0, (int)((m_volumeAABB.min.x - phf->origin.x) * phf->stepr.x));
+            const int minY = max(0, (int)((m_volumeAABB.min.y - phf->origin.y) * phf->stepr.y));
+            const int maxX = min((int)((m_volumeAABB.max.x - phf->origin.x) * phf->stepr.x), (phf->size.x - 1));
+            const int maxY = min((int)((m_volumeAABB.max.y - phf->origin.y) * phf->stepr.y), (phf->size.y - 1));
+
+            const Vec3 origin = phf->origin;
+
+            const float xStep = (float)phf->step.x;
+            const float yStep = (float)phf->step.y;
+
+            const size_t MaxVertexCount = 1024 * 4;
+            Vec3 vertices[MaxVertexCount];
+
+            if (phf->fpGetSurfTypeCallback && phf->fpGetHeightCallback)
             {
-                for (int x = minX; x <= maxX; ++x)
+                for (int y = minY; y <= maxY; ++y)
                 {
-                    if (phf->fpGetSurfTypeCallback(x, y) != phf->typehole)
+                    for (int x = minX; x <= maxX; ++x)
+                    {
+                        if (phf->fpGetSurfTypeCallback(x, y) != phf->typehole)
+                        {
+                            const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
+                            const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
+                            const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, phf->getheight(x + 1, y) * phf->heightscale);
+                            const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, phf->getheight(x + 1, y + 1) * phf->heightscale);
+
+                            assert(faceCount < MaxVertexCount);
+
+                            vertices[(faceCount << 2) + 0] = v0;
+                            vertices[(faceCount << 2) + 1] = v1;
+                            vertices[(faceCount << 2) + 2] = v2;
+                            vertices[(faceCount++ << 2) + 3] = v3;
+                        }
+                    }
+                }
+            }
+            else if (phf->fpGetSurfTypeCallback)
+            {
+                float* height = (float*)phf->fpGetHeightCallback;
+
+                assert(height);
+                PREFAST_ASSUME(height);
+
+                for (int y = minY; y <= maxY; ++y)
+                {
+                    for (int x = minX; x <= maxX; ++x)
+                    {
+                        const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, height[vector2di(x, y) * phf->stride] * phf->heightscale);
+                        const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, height[vector2di(x, y + 1) * phf->stride] * phf->heightscale);
+                        const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, height[vector2di(x + 1, y) * phf->stride] * phf->heightscale);
+                        const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, height[vector2di(x + 1, y + 1) * phf->stride] * phf->heightscale);
+
+                        assert(faceCount < MaxVertexCount);
+
+                        vertices[(faceCount << 2) + 0] = v0;
+                        vertices[(faceCount << 2) + 1] = v1;
+                        vertices[(faceCount << 2) + 2] = v2;
+                        vertices[(faceCount++ << 2) + 3] = v3;
+                    }
+                }
+            }
+            else
+            {
+                for (int y = minY; y <= maxY; ++y)
+                {
+                    for (int x = minX; x <= maxX; ++x)
                     {
                         const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
                         const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
@@ -838,59 +900,17 @@ namespace MNM
                     }
                 }
             }
-        }
-        else if (phf->fpGetSurfTypeCallback)
-        {
-            float* height = (float*)phf->fpGetHeightCallback;
 
-            assert(height);
-            PREFAST_ASSUME(height);
-
-            for (int y = minY; y <= maxY; ++y)
+            for (size_t i = 0; i < faceCount; ++i)
             {
-                for (int x = minX; x <= maxX; ++x)
-                {
-                    const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, height[vector2di(x, y) * phf->stride] * phf->heightscale);
-                    const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, height[vector2di(x, y + 1) * phf->stride] * phf->heightscale);
-                    const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, height[vector2di(x + 1, y) * phf->stride] * phf->heightscale);
-                    const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, height[vector2di(x + 1, y + 1) * phf->stride] * phf->heightscale);
-
-                    assert(faceCount < MaxVertexCount);
-
-                    vertices[(faceCount << 2) + 0] = v0;
-                    vertices[(faceCount << 2) + 1] = v1;
-                    vertices[(faceCount << 2) + 2] = v2;
-                    vertices[(faceCount++ << 2) + 3] = v3;
-                }
+                RasterizeTriangle(vertices[(i << 2) + 0], vertices[(i << 2) + 2], vertices[(i << 2) + 1]);
+                RasterizeTriangle(vertices[(i << 2) + 1], vertices[(i << 2) + 2], vertices[(i << 2) + 3]);
             }
-        }
-        else
-        {
-            for (int y = minY; y <= maxY; ++y)
-            {
-                for (int x = minX; x <= maxX; ++x)
-                {
-                    const Vec3 v0 = origin + Vec3(x * xStep, y * yStep, phf->getheight(x, y) * phf->heightscale);
-                    const Vec3 v1 = origin + Vec3(x * xStep, (y + 1) * yStep, phf->getheight(x, y + 1) * phf->heightscale);
-                    const Vec3 v2 = origin + Vec3((x + 1) * xStep, y * yStep, phf->getheight(x + 1, y) * phf->heightscale);
-                    const Vec3 v3 = origin + Vec3((x + 1) * xStep, (y + 1) * yStep, phf->getheight(x + 1, y + 1) * phf->heightscale);
 
-                    assert(faceCount < MaxVertexCount);
-
-                    vertices[(faceCount << 2) + 0] = v0;
-                    vertices[(faceCount << 2) + 1] = v1;
-                    vertices[(faceCount << 2) + 2] = v2;
-                    vertices[(faceCount++ << 2) + 3] = v3;
-                }
-            }
-        }
-
-        for (size_t i = 0; i < faceCount; ++i)
-        {
-            RasterizeTriangle(vertices[(i << 2) + 0], vertices[(i << 2) + 2], vertices[(i << 2) + 1]);
-            RasterizeTriangle(vertices[(i << 2) + 1], vertices[(i << 2) + 2], vertices[(i << 2) + 3]);
-        }
-
+            //We expect only one terrain ebus handler.
+            return false;
+        };
+        AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
         return faceCount << 1;
     }
 #pragma warning (pop)

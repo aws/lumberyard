@@ -11,12 +11,21 @@
 ########################################################################################
 
 def build(bld):
-    bld.DefineGem(
-        includes    = [ bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction'),
-                        bld.Path('Code/Tools')
-                      ],
-        use         = ['SceneCore'],
-        features    = ['crcfix'],
-        disable_pch = True,
-    )
+    _, configuration = bld.get_platform_and_configuration()
+
+    # This is a client only gem but we need to build a minimal stub to be loaded
+    if 'dedicated' in configuration:
+        bld.DefineGem(
+            file_list = ['sceneloggingexample_stub.waf_files'],
+            disable_pch = True,
+            disable_tests = True
+        )
+    else:
+        bld.DefineGem(
+            includes    = [ bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/Tools')
+                          ],
+            use         = ['SceneCore'],
+            features    = ['crcfix'],
+            disable_pch = True
+        )

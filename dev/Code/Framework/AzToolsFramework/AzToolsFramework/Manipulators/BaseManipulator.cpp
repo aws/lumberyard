@@ -218,6 +218,19 @@ namespace AzToolsFramework
         NotifyEntityComponentPropertyChanged();
     }
 
+    void BaseManipulator::ForwardMouseOverEvent(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        OnMouseOver(m_manipulatorId, interaction);
+    }
+
+    void BaseManipulator::UpdateMouseOver(const ManipulatorId manipulatorId)
+    {
+        if (!PerformingAction())
+        {
+            m_mouseOver = (m_manipulatorId == manipulatorId);
+        }
+    }
+
     void BaseManipulator::EndUndoBatch()
     {
         if (m_undoBatch != nullptr)
@@ -225,11 +238,6 @@ namespace AzToolsFramework
             ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::EndUndoBatch);
             m_undoBatch = nullptr;
         }
-    }
-
-    void BaseManipulator::AddEntityId(const AZ::EntityId entityId)
-    {
-        m_entityComponentIdPairs.insert(AZ::EntityComponentIdPair(entityId, AZ::ComponentId{}));
     }
 
     void BaseManipulator::AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityIdComponentPair)
@@ -352,14 +360,6 @@ namespace AzToolsFramework
         ProcessManipulators([](BaseManipulator* manipulator)
         {
             manipulator->SetBoundsDirty();
-        });
-    }
-
-    void Manipulators::AddEntityId(const AZ::EntityId entityId)
-    {
-        ProcessManipulators([entityId](BaseManipulator* manipulator)
-        {
-            manipulator->AddEntityId(entityId);
         });
     }
 

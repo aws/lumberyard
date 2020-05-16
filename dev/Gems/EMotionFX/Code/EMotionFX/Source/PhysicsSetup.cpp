@@ -259,12 +259,29 @@ namespace EMotionFX
             return;
         }
 
-        const MCore::OBB& nodeOBB = actor->GetNodeOBB(joint->GetNodeIndex());
-        const bool nodeOBBValid = nodeOBB.CheckIfIsValid();
-        const AZ::Vector3& extents = nodeOBBValid ? nodeOBB.GetExtents() : AZ::Vector3::CreateOne();
-        const float extent = static_cast<float>(extents.GetLength());
+        AZ::Vector3 extents = AZ::Vector3::CreateOne();
+        AZ::Vector3 position = AZ::Vector3::CreateZero();
 
-        collider.first->m_position = nodeOBBValid ? nodeOBB.GetCenter() : AZ::Vector3::CreateZero();
+        const AZ::u32 jointIndex = joint->GetNodeIndex();
+        const MCore::OBB& nodeOBB = actor->GetNodeOBB(jointIndex);
+        if (nodeOBB.CheckIfIsValid())
+        {
+            position = nodeOBB.GetCenter();
+            extents = nodeOBB.GetExtents();
+        }
+
+        if (extents.GetLength() < AZ::g_fltEps && joint->GetParentNode())
+        {
+            const Pose* bindPose = actor->GetBindPose();
+            const AZ::Vector3 jointPosition = bindPose->GetModelSpaceTransform(jointIndex).mPosition;
+            const AZ::Vector3 parentPosition = bindPose->GetModelSpaceTransform(joint->GetParentIndex()).mPosition;
+            const float boneLength = AZ::GetAbs((parentPosition - jointPosition).GetLength());
+
+            extents = AZ::Vector3(boneLength);
+        }
+
+        const float extent = extents.GetLength();
+        collider.first->m_position = position;
 
         const AZ::TypeId colliderType = collider.second->RTTI_GetType();
         if (colliderType == azrtti_typeid<Physics::SphereShapeConfiguration>())
@@ -291,6 +308,14 @@ namespace EMotionFX
             Physics::BoxShapeConfiguration* box = static_cast<Physics::BoxShapeConfiguration*>(collider.second.get());
             box->m_dimensions = extents;
         }
+    }
+
+    void PhysicsSetup::OptimizeForServer()
+    {
+        // The server only need hit detection colliders. We can remove all the other collider setup.
+        m_config.m_clothConfig.m_nodes.clear();
+        m_config.m_ragdollConfig.m_nodes.clear();
+        m_config.m_simulatedObjectColliderConfig.m_nodes.clear();
     }
 
     void PhysicsSetup::Reflect(AZ::ReflectContext* context)

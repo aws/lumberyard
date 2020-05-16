@@ -12,6 +12,7 @@
 #include "shadercompilerjob.h"
 #include "native/assetprocessor.h"
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QTcpSocket>
 #include <QThread>
@@ -167,7 +168,7 @@ bool ShaderCompilerJob::attemptDelivery(QString serverAddress, QByteArray& paylo
                 return false;
             }
 
-            bytesReadTotal += bytesRead;
+            bytesReadTotal = aznumeric_cast<uint32_t>(bytesReadTotal + bytesRead);
         }
     }
 

@@ -23,7 +23,7 @@ namespace GraphCanvas
     {    
     public:
         AZ_CLASS_ALLOCATOR(ReadOnlyNodePropertyDisplay, AZ::SystemAllocator, 0);
-		
+        
         ReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface);
         virtual ~ReadOnlyNodePropertyDisplay();
     
@@ -34,6 +34,10 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() override;
         QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() override;
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
+        ////
+
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragState) override;
         ////
     
     private:

@@ -72,11 +72,11 @@ namespace ScriptCanvas
                 if (inputSlot && outputSlot)
                 {
                     SlotId sourceSlotId = inputSlot->GetId();
-                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    const Datum* containerDatum = FindDatum(sourceSlotId);
 
                     if (Datum::IsValidDatum(containerDatum))
                     {
-                        const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
+                        const Datum* inputKeyDatum = FindDatum(*m_inputSlots.begin());
                         AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Erase", *inputKeyDatum);
                         if (!valueOutcome.IsSuccess())
                         {

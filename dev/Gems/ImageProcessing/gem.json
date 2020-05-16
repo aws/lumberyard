@@ -5,9 +5,9 @@
     "DisplayName": "Image Processing",
     "Version": "0.1.0",
     "Summary": "Contains ImageBuilder for Asset Processor processing image files and UI for texture property editing",
-    "Tags": ["Required", "Asset Processor Builder", "Texture Property Editor"],
+    "Tags": ["Image Builder", "Texture Property Editor"],
     "IconPath": "preview.png",
-    "IsRequired": true,
+    "IsRequired": false,
     "Modules": [ 
         {
             "Name": "Editor",

@@ -14,7 +14,6 @@
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/MathUtils.h>
 
-// we need to specify the namespace AZ, since the Wii SDK has a Quaternion defined struct in the global namespace)
 namespace AZ
 {
     const Quaternion Quaternion::CreateRotationX(float angle)

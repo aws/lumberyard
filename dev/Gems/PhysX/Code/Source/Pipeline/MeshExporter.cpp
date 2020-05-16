@@ -28,21 +28,23 @@
 #include <AzFramework/Physics/Material.h>
 #include <Source/Pipeline/MeshAssetHandler.h>
 #include <Source/Pipeline/MeshExporter.h>
+#include <Source/Pipeline/PrimitiveShapeFitter/PrimitiveShapeFitter.h>
 #include <Source/Pipeline/MeshGroup.h>
 #include <Source/Utils.h>
 
 #include <PxPhysicsAPI.h>
+#include <VHACD.h>
 
 #include <Cry_Math.h>
+#include <MathConversion.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/XML/rapidxml.h>
+#include <AzCore/std/algorithm.h>
 #include <GFxFramework/MaterialIO/Material.h>
 
 // A utility macro helping set/clear bits in a single line
 #define SET_BITS(flags, condition, bits) flags = (condition) ? ((flags) | (bits)) : ((flags) & ~(bits))
-
-using namespace AZ::SceneAPI;
 
 namespace PhysX
 {
@@ -53,19 +55,93 @@ namespace PhysX
         namespace SceneUtil = AZ::SceneAPI::Utilities;
 
         static physx::PxDefaultAllocator pxDefaultAllocatorCallback;
-        static const char* const s_defaultSurfaceType = "mat_default";
+        static const char* const DefaultMaterialName = "default";
 
-        /// Implementation of the PhysX error callback interface directing errors to ErrorWindow output.
-        ///
+        // Implementation of the PhysX error callback interface directing errors to ErrorWindow output.
         static class PxExportErrorCallback
             : public physx::PxErrorCallback
         {
         public:
-            virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line)
+            void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override final
             {
                 AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
             }
         } pxDefaultErrorCallback;
+
+        // A struct to store the asset-wide material names shared by multiple shapes
+        struct AssetMaterialsData
+        {
+            // Material names coming from FBX, these will be Mesh Surfaces in the Collider Component
+            AZStd::vector<AZStd::string> m_fbxMaterialNames;
+
+            // Look-up table for fbxMaterialNames
+            AZStd::unordered_map<AZStd::string, size_t> m_materialIndexByName;
+        };
+
+        // A struct to store the geometry data per FBX node
+        struct NodeCollisionGeomExportData
+        {
+            AZStd::vector<Vec3> m_vertices;
+            AZStd::vector<vtx_idx> m_indices;
+            AZStd::vector<AZ::u16> m_perFaceMaterialIndices;
+            AZStd::string m_nodeName;
+        };
+
+        // Implementation of the V-HACD log callback interface directing all messages to LogWindow output.
+        static class VHACDLogCallback
+            : public VHACD::IVHACD::IUserLogger
+        {
+            void Log(const char* const msg) override final
+            {
+                AZ_TracePrintf(AZ::SceneAPI::Utilities::LogWindow, "V-HACD: %s", msg);
+            }
+        } vhacdDefaultLogCallback;
+
+        // Scope-guarded interface to VHACD library. Uses lazy initialization and RAII to free resources upon deletion.
+        class ScopedVHACD
+        {
+        public:
+            ScopedVHACD()
+                : vhacdPtr(nullptr)
+            {
+            }
+
+            ~ScopedVHACD()
+            {
+                if (vhacdPtr)
+                {
+                    vhacdPtr->Clean();
+                    vhacdPtr->Release();
+                }
+            }
+
+            ScopedVHACD(ScopedVHACD const&) = delete;
+            ScopedVHACD& operator=(ScopedVHACD const&) = delete;
+
+            VHACD::IVHACD& operator*()
+            {
+                return *GetImplementation();
+            }
+
+            VHACD::IVHACD* operator->()
+            {
+                return GetImplementation();
+            }
+
+        private:
+            VHACD::IVHACD* GetImplementation()
+            {
+                if (!vhacdPtr)
+                {
+                    vhacdPtr = VHACD::CreateVHACD();
+                    AZ_Assert(vhacdPtr, "Failed to create VHACD instance.");
+                }
+
+                return vhacdPtr;
+            }
+
+            VHACD::IVHACD* vhacdPtr;
+        };
 
         MeshExporter::MeshExporter()
         {
@@ -77,30 +153,36 @@ namespace PhysX
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(2);
+                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(3);
             }
         }
 
         namespace Utils
         {
-            AZ::u16 GetMaterialIndex(const AZStd::string& name, AZStd::vector<Physics::MaterialConfiguration>& materials)
+            // Utility function doing look-up in fbxMaterialNames and inserting the name if it's not found
+            AZ::u16 GetMaterialIndexByName(const AZStd::string& materialName, AssetMaterialsData& materials)
             {
-                for (AZ::u16 i = 0; i < materials.size(); ++i)
+                AZStd::vector<AZStd::string>& fbxMaterialNames = materials.m_fbxMaterialNames;
+                AZStd::unordered_map<AZStd::string, size_t>& materialIndexByName = materials.m_materialIndexByName;
+
+                // Check if we have this material in the list
+                auto materialIndexIter = materialIndexByName.find(materialName);
+
+                if (materialIndexIter != materialIndexByName.end())
                 {
-                    if (materials[i].m_surfaceType == name)
-                    {
-                        return i;
-                    }
+                    return materialIndexIter->second;
                 }
 
-                Physics::MaterialConfiguration newConfiguration;
-                newConfiguration.m_surfaceType = name;
+                // Add it to the list otherwise
+                fbxMaterialNames.push_back(materialName);
 
-                materials.push_back(newConfiguration);
+                AZ::u16 newIndex = fbxMaterialNames.size() - 1;
+                materialIndexByName[materialName] = newIndex;
 
-                return materials.size() - 1;
+                return newIndex;
             }
 
+            // Building a map between FBX material name and the corresponding Cry surface type that is set in the .mtl file.
             void BuildMaterialToSurfaceTypeMap(const AZStd::string& materialFilename,
                 AZStd::unordered_map<AZStd::string, AZStd::string>& materialToSurfaceTypeMap)
             {
@@ -113,12 +195,12 @@ namespace PhysX
                     mtlFile.Read(mtlFile.Length(), buffer.data());
                     mtlFile.Close();
 
-                    //Apparently in rapidxml if 'parse_no_data_nodes' isn't set it creates both value and data nodes 
-                    //with the data nodes having precedence such that updating values doesn't work. 
+                    //Apparently in rapidxml if 'parse_no_data_nodes' isn't set it creates both value and data nodes
+                    //with the data nodes having precedence such that updating values doesn't work.
                     AZ::rapidxml::xml_document<char>  document;
                     document.parse<AZ::rapidxml::parse_no_data_nodes>(buffer.data());
 
-                    //Parse MTL file for materials and/or submaterials. 
+                    //Parse MTL file for materials and/or submaterials.
                     AZ::rapidxml::xml_node<char>* rootMaterialNode = document.first_node(AZ::GFxFramework::MaterialExport::g_materialString);
 
                     AZ::rapidxml::xml_node<char>* subMaterialNode = rootMaterialNode->first_node(AZ::GFxFramework::MaterialExport::g_subMaterialString);
@@ -133,7 +215,7 @@ namespace PhysX
                             if (nameAttribute)
                             {
                                 AZStd::string materialName = nameAttribute->value();
-                                AZStd::string surfaceTypeName = s_defaultSurfaceType;
+                                AZStd::string surfaceTypeName = DefaultMaterialName;
 
                                 AZ::rapidxml::xml_attribute<char>* surfaceTypeNode = materialNode->first_attribute("SurfaceType");
                                 if (surfaceTypeNode && surfaceTypeNode->value_size() != 0)
@@ -160,43 +242,44 @@ namespace PhysX
                 }
             }
 
-            void ResolveMaterialSlotsSoftNamingConvention(AZStd::vector<Physics::MaterialConfiguration>& originalMaterials, 
-                AZStd::vector<AZStd::string>& outSlots, 
-                const AZStd::unordered_map<AZStd::string, AZStd::string>& materialToSurfaceTypeMap)
+            void UpdateAssetMaterialsFromCrySurfaceTypes(const AZStd::vector<AZStd::string>& fbxMaterialNames,
+                const AZStd::unordered_map<AZStd::string, AZStd::string>& materialToSurfaceTypeMap,
+                MeshAssetData& assetData)
             {
+                AZStd::vector<AZStd::string>& materialNames = assetData.m_materialNames;
+                AZ_Assert(materialNames.empty(),
+                    "UpdateAssetMaterialsFromCrySurfaceTypes: Mesh Asset Data should not have materials already assigned.");
 
-                outSlots.clear();
-                outSlots.reserve(originalMaterials.size());
+                materialNames.clear();
+                materialNames.reserve(fbxMaterialNames.size());
 
-                int slotCounter = 0;
-
-                for (auto& materialConfiguration : originalMaterials)
+                for (const AZStd::string& fbxMaterial : fbxMaterialNames)
                 {
-                    // MaterialConfiguration::surfaceType stores the material name assigned in DCC initially
-                    AZStd::string materialName = materialConfiguration.m_surfaceType;
+                    AZStd::string materialName;
 
-                    AZStd::string surfaceType = s_defaultSurfaceType;
-                    
                     // Here we assign the actual engine surface type based on the material name
-                    auto materialToSurfaceIt = materialToSurfaceTypeMap.find(materialName);
-                    if (materialToSurfaceIt != materialToSurfaceTypeMap.end())
+                    auto materialToSurfaceIt = materialToSurfaceTypeMap.find(fbxMaterial);
+                    if (materialToSurfaceIt != materialToSurfaceTypeMap.end()
+                        && !materialToSurfaceIt->second.empty())
                     {
-                        surfaceType = materialToSurfaceIt->second;
+                        materialName = materialToSurfaceIt->second;
+
+                        // Remove the mat_ prefix since the material library generated from surface types doesn't have it.
+                        if (materialName.find("mat_") == 0)
+                        {
+                            materialName = materialName.substr(4);
+                        }
+                    }
+                    else
+                    {
+                        materialName = DefaultMaterialName;
                     }
 
-                    outSlots.emplace_back(materialName);
-
-                    // Remove the mat_ prefix since the material library generated from surface types doesn't have it.
-                    if (surfaceType.find("mat_") == 0)
-                    {
-                        surfaceType = surfaceType.substr(4);
-                    }
-
-                    // Save the actual surface type now
-                    materialConfiguration.m_surfaceType = surfaceType;
-
-                    slotCounter++;
+                    materialNames.emplace_back(AZStd::move(materialName));
                 }
+
+                // Asset mesh surfaces match FBX materials. These are the names that users see in the Collider Component in the Editor.
+                assetData.m_surfaceNames = fbxMaterialNames;
             }
 
             bool ValidateCookedTriangleMesh(void* assetData, AZ::u32 assetDataSize)
@@ -224,9 +307,9 @@ namespace PhysX
                 AZStd::vector<AZStd::string> materialNames;
 
                 auto view = AZ::SceneAPI::Containers::Views::MakeSceneGraphChildView<AZ::SceneAPI::Containers::Views::AcceptEndPointsOnly>(
-                    graph, 
-                    nodeIndex, 
-                    graph.GetContentStorage().begin(), 
+                    graph,
+                    nodeIndex,
+                    graph.GetContentStorage().begin(),
                     true
                 );
 
@@ -243,51 +326,6 @@ namespace PhysX
             }
         }
 
-        static void AccumulateMeshes(
-            const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData>& meshToExport, 
-            const AZ::Transform& worldTransform, 
-            const AZStd::vector<AZStd::string>& localFbxMaterialsList,
-            AZStd::vector<Vec3>& vertices, AZStd::vector<AZ::u32>& indices, 
-            AZStd::vector<physx::PxMaterialTableIndex>& faceMaterialIndices, 
-            AZStd::vector<Physics::MaterialConfiguration>& materialConfigruations)
-        {
-            // append the vertices
-            AZ::u32 vertexCount = meshToExport->GetVertexCount();
-            AZ::u32 vertOffset = vertices.size();
-            vertices.resize(vertices.size() + vertexCount);
-
-            for (int i = 0; i < vertexCount; ++i)
-            {
-                AZ::Vector3 pos = meshToExport->GetPosition(i);
-                pos = worldTransform * pos;
-                vertices[vertOffset + i] = Vec3(pos.GetX(), pos.GetY(), pos.GetZ());
-            }
-
-            // append the indices
-            int faceCount = meshToExport->GetFaceCount();
-            AZ::u32 indexOffset = indices.size();
-            AZ::u32 faceIndexOffset = faceMaterialIndices.size();
-
-            indices.resize(indices.size() + faceCount * 3);
-            faceMaterialIndices.resize(faceMaterialIndices.size() + faceCount);
-
-            for (int i = 0; i < faceCount; ++i)
-            {
-                AZ::SceneAPI::DataTypes::IMeshData::Face face = meshToExport->GetFaceInfo(i);
-                indices[indexOffset + i*3] = vertOffset + face.vertexIndex[0];
-                indices[indexOffset + i*3 + 1] = vertOffset + face.vertexIndex[1];
-                indices[indexOffset + i*3 + 2] = vertOffset + face.vertexIndex[2];
-
-                int materialId = meshToExport->GetFaceMaterialId(i);
-                if (materialId < localFbxMaterialsList.size())
-                {
-                    auto& materialName = localFbxMaterialsList[materialId];
-                    AZ::u16 materialIndex = Utils::GetMaterialIndex(materialName, materialConfigruations);
-                    faceMaterialIndices[faceIndexOffset + i] = materialIndex;
-                }
-            }
-        }
-
         static physx::PxMeshMidPhase::Enum GetMidPhaseStructureType(const AZStd::string& platformIdentifier)
         {
             // Use by default 3.4 since 3.3 is being deprecated (despite being default)
@@ -301,17 +339,31 @@ namespace PhysX
             return ret;
         }
 
-        // used by CGFMeshAssetBuilderWorker.cpp to generate .pxmesh from cgf
-        bool CookPhysxTriangleMesh(
+        // Checks that the entire mesh is assigned (at most) one material (required for convexes and primitives).
+        static void RequireSingleFaceMaterial(const AZStd::vector<AZ::u16>& faceMaterials)
+        {
+            AZStd::unordered_set<AZ::u16> uniqueFaceMaterials(faceMaterials.begin(), faceMaterials.end());
+            if (uniqueFaceMaterials.size() > 1)
+            {
+                AZ_TracePrintf(AZ::SceneAPI::Utilities::WarningWindow,
+                    "Should only have 1 material assigned to a convex mesh. Assigned: %d", uniqueFaceMaterials.size());
+            }
+        }
+
+        // Cooks the geometry provided into a memory buffer based on the rules set in MeshGroup
+        // Note: This function is also used by CGFMeshAssetBuilderWorker.cpp to generate .pxmesh from cgf
+        bool CookPhysXMesh(
             const AZStd::vector<Vec3>& vertices,
             const AZStd::vector<AZ::u32>& indices,
             const AZStd::vector<AZ::u16>& faceMaterials,
             AZStd::vector<AZ::u8>* output,
             const MeshGroup& meshGroup,
-            const AZStd::string& platformIdentifier
-        ) {
+            const AZStd::string& platformIdentifier)
+        {
             bool cookingSuccessful = false;
             AZStd::string cookingResultErrorCodeString;
+            const ConvexAssetParams& convexAssetParams = meshGroup.GetConvexAssetParams();
+            const TriangleMeshAssetParams& triangleMeshAssetParams = meshGroup.GetTriangleMeshAssetParams();
             bool shouldExportAsConvex = meshGroup.GetExportAsConvex();
 
             physx::PxCookingParams pxCookingParams = physx::PxCookingParams(physx::PxTolerancesScale());
@@ -321,32 +373,32 @@ namespace PhysX
 
             if (shouldExportAsConvex)
             {
-                if (meshGroup.GetCheckZeroAreaTriangles())
+                if (convexAssetParams.GetCheckZeroAreaTriangles())
                 {
-                    pxCookingParams.areaTestEpsilon = meshGroup.GetAreaTestEpsilon();
+                    pxCookingParams.areaTestEpsilon = convexAssetParams.GetAreaTestEpsilon();
                 }
 
-                pxCookingParams.planeTolerance = meshGroup.GetPlaneTolerance();
-                pxCookingParams.gaussMapLimit = meshGroup.GetGaussMapLimit();
+                pxCookingParams.planeTolerance = convexAssetParams.GetPlaneTolerance();
+                pxCookingParams.gaussMapLimit = convexAssetParams.GetGaussMapLimit();
             }
             else
             {
-                pxCookingParams.midphaseDesc.mBVH34Desc.numPrimsPerLeaf = meshGroup.GetNumTrisPerLeaf();
-                pxCookingParams.meshWeldTolerance = meshGroup.GetMeshWeldTolerance();
-                pxCookingParams.buildTriangleAdjacencies = meshGroup.GetBuildTriangleAdjacencies();
-                pxCookingParams.suppressTriangleMeshRemapTable = meshGroup.GetSuppressTriangleMeshRemapTable();
+                pxCookingParams.midphaseDesc.mBVH34Desc.numPrimsPerLeaf = triangleMeshAssetParams.GetNumTrisPerLeaf();
+                pxCookingParams.meshWeldTolerance = triangleMeshAssetParams.GetMeshWeldTolerance();
+                pxCookingParams.buildTriangleAdjacencies = triangleMeshAssetParams.GetBuildTriangleAdjacencies();
+                pxCookingParams.suppressTriangleMeshRemapTable = triangleMeshAssetParams.GetSuppressTriangleMeshRemapTable();
 
-                if (meshGroup.GetWeldVertices())
+                if (triangleMeshAssetParams.GetWeldVertices())
                 {
                     pxCookingParams.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eWELD_VERTICES;
                 }
 
-                if (meshGroup.GetDisableCleanMesh())
+                if (triangleMeshAssetParams.GetDisableCleanMesh())
                 {
                     pxCookingParams.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
                 }
 
-                if (meshGroup.GetForce32BitIndices())
+                if (triangleMeshAssetParams.GetForce32BitIndices())
                 {
                     pxCookingParams.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES;
                 }
@@ -368,20 +420,24 @@ namespace PhysX
                 convexDesc.points = strideData;
                 convexDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
 
-                SET_BITS(convexDesc.flags, meshGroup.GetUse16bitIndices(), physx::PxConvexFlag::e16_BIT_INDICES);
-                SET_BITS(convexDesc.flags, meshGroup.GetCheckZeroAreaTriangles(), physx::PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES);
-                SET_BITS(convexDesc.flags, meshGroup.GetQuantizeInput(), physx::PxConvexFlag::eQUANTIZE_INPUT);
-                SET_BITS(convexDesc.flags, meshGroup.GetUsePlaneShifting(), physx::PxConvexFlag::ePLANE_SHIFTING);
-                SET_BITS(convexDesc.flags, meshGroup.GetBuildGPUData(), physx::PxConvexFlag::eGPU_COMPATIBLE);
-                SET_BITS(convexDesc.flags, meshGroup.GetShiftVertices(), physx::PxConvexFlag::eSHIFT_VERTICES);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetUse16bitIndices(), physx::PxConvexFlag::e16_BIT_INDICES);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetCheckZeroAreaTriangles(), physx::PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetQuantizeInput(), physx::PxConvexFlag::eQUANTIZE_INPUT);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetUsePlaneShifting(), physx::PxConvexFlag::ePLANE_SHIFTING);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetBuildGpuData(), physx::PxConvexFlag::eGPU_COMPATIBLE);
+                SET_BITS(convexDesc.flags, convexAssetParams.GetShiftVertices(), physx::PxConvexFlag::eSHIFT_VERTICES);
 
                 physx::PxConvexMeshCookingResult::Enum convexCookingResultCode = physx::PxConvexMeshCookingResult::eSUCCESS;
 
-                cookingSuccessful = 
+                cookingSuccessful =
                     pxCooking->cookConvexMesh(convexDesc, cookedMeshData, &convexCookingResultCode)
                     && Utils::ValidateCookedConvexMesh(cookedMeshData.getData(), cookedMeshData.getSize());
 
                 cookingResultErrorCodeString = PhysX::Utils::ConvexCookingResultToString(convexCookingResultCode);
+
+                // Check how many unique materials are assigned onto the convex mesh.
+                // Report it to the user if there's more than 1 since PhysX only supports a single material assigned to a convex
+                RequireSingleFaceMaterial(faceMaterials);
             }
             else
             {
@@ -397,8 +453,8 @@ namespace PhysX
 
                 physx::PxTriangleMeshCookingResult::Enum trimeshCookingResultCode = physx::PxTriangleMeshCookingResult::eSUCCESS;
 
-                cookingSuccessful = 
-                    pxCooking->cookTriangleMesh(meshDesc, cookedMeshData, &trimeshCookingResultCode) 
+                cookingSuccessful =
+                    pxCooking->cookTriangleMesh(meshDesc, cookedMeshData, &trimeshCookingResultCode)
                     && Utils::ValidateCookedTriangleMesh(cookedMeshData.getData(), cookedMeshData.getSize());
 
                 cookingResultErrorCodeString = PhysX::Utils::TriMeshCookingResultToString(trimeshCookingResultCode);
@@ -417,89 +473,227 @@ namespace PhysX
             return cookingSuccessful;
         }
 
-        static AZ::SceneAPI::Events::ProcessingResult WritePhysx(
-            AZ::SceneAPI::Events::ExportEventContext& context,
-            const AZStd::vector<AZ::u8>& cookedMeshData,
-            const AZStd::vector<Physics::MaterialConfiguration>& materials,
-            const MeshGroup& meshGroup
-        ) {
-            SceneEvents::ProcessingResult result = SceneEvents::ProcessingResult::Ignored;
+        // Utility function finding out the .mtl file for a given FBX (at the moment it's the same name as FBX but with .mtl extension)
+        static AZStd::string GetAssetMaterialFilename(const AZ::SceneAPI::Events::ExportEventContext& context)
+        {
+            const AZ::SceneAPI::Containers::Scene& scene = context.GetScene();
 
-            AZStd::string assetName = meshGroup.GetName();
-            AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(assetName, context.GetOutputDirectory(), "physx");
-
-            bool canStartWritingToFile = !filename.empty() && SceneUtil::FileUtilities::EnsureTargetFolderExists(filename);
-
-            if (canStartWritingToFile)
-            {
-                result = SceneEvents::ProcessingResult::Success;
-
-                // copy data into destination
-                // ToBeDeprecated
-            }
-
-            return result;
+            AZStd::string materialFilename = scene.GetSourceFilename();
+            AzFramework::StringFunc::Path::ReplaceExtension(materialFilename, ".mtl");
+            return materialFilename;
         }
 
-        static AZ::SceneAPI::Events::ProcessingResult WritePxmesh(
+        // Processes the collected data and writes into a file
+        static AZ::SceneAPI::Events::ProcessingResult WritePxMeshAsset(
             AZ::SceneAPI::Events::ExportEventContext& context,
-            const AZStd::vector<AZ::u8>& physxData,
-            const AZStd::vector<Physics::MaterialConfiguration> &materials,
-            const MeshGroup& meshGroup
-        ) {
+            const AZStd::vector<NodeCollisionGeomExportData>& totalExportData,
+            const AssetMaterialsData &assetMaterialsData,
+            const MeshGroup& meshGroup)
+        {
             SceneEvents::ProcessingResult result = SceneEvents::ProcessingResult::Ignored;
 
             AZStd::string assetName = meshGroup.GetName();
             AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(assetName, context.GetOutputDirectory(), MeshAssetHandler::s_assetFileExtension);
 
-            bool canStartWritingToFile = !filename.empty() && SceneUtil::FileUtilities::EnsureTargetFolderExists(filename);
-            
-            if (canStartWritingToFile)
+            MeshAssetData assetData;
+
+            const AZStd::string& materialFilename = GetAssetMaterialFilename(context);
+
+            // Read the information about surface type for each material from the .mtl file
+            AZStd::unordered_map<AZStd::string, AZStd::string> fbxMaterialToCrySurfaceTypeMap;
+            Utils::BuildMaterialToSurfaceTypeMap(materialFilename, fbxMaterialToCrySurfaceTypeMap);
+
+            // Assign the materials into cooked data
+            Utils::UpdateAssetMaterialsFromCrySurfaceTypes(assetMaterialsData.m_fbxMaterialNames, fbxMaterialToCrySurfaceTypeMap, assetData);
+
+            for (const NodeCollisionGeomExportData& subMesh : totalExportData)
             {
-                const AZ::SceneAPI::Events::ExportProductList& exportProductList = context.GetProductList();
-                const AZ::SceneAPI::Containers::Scene& scene = context.GetScene();
+                MeshAssetData::ShapeConfigurationPair shape;
 
-                AZStd::string materialFilename = scene.GetSourceFilename();
-                AzFramework::StringFunc::Path::ReplaceExtension(materialFilename, ".mtl");
-
-                result = SceneEvents::ProcessingResult::Success;
-
-                MeshAssetCookedData cookedData;
-                cookedData.m_isConvexMesh = meshGroup.GetExportAsConvex();
-                cookedData.m_cookedPxMeshData = physxData;
-
-                if (!cookedData.m_isConvexMesh)
+                if (meshGroup.GetExportAsPrimitive())
                 {
-                    cookedData.m_materialsData = materials;
+                    // Only one material can be assigned to a primitive collider, so report a warning if the mesh has
+                    // multiple materials assigned to it.
+                    RequireSingleFaceMaterial(subMesh.m_perFaceMaterialIndices);
 
-                    // Read the information about surface type for each material from the .mtl file
-                    AZStd::unordered_map<AZStd::string, AZStd::string> materialToSurfaceTypeMap;
-                    Utils::BuildMaterialToSurfaceTypeMap(materialFilename, materialToSurfaceTypeMap);
-                    
-                    // Assign the surface types into the materials data
-                    Utils::ResolveMaterialSlotsSoftNamingConvention(cookedData.m_materialsData, cookedData.m_materialSlots, materialToSurfaceTypeMap);
-                }
+                    const PrimitiveAssetParams& primitiveAssetParams = meshGroup.GetPrimitiveAssetParams();
 
-                if (PhysX::Utils::WriteCookedMeshToFile(filename, cookedData))
-                {
-                    AZStd::string productUuidString = meshGroup.GetId().ToString<AZStd::string>();
-                    AZ::Uuid productUuid = AZ::Uuid::CreateData(productUuidString.data(), productUuidString.size() * sizeof(productUuidString[0]));
-
-                    context.GetProductList().AddProduct(AZStd::move(filename), productUuid, AZ::AzTypeInfo<MeshAsset>::Uuid());
+                    shape = FitPrimitiveShape(
+                        subMesh.m_nodeName,
+                        subMesh.m_vertices,
+                        primitiveAssetParams.GetVolumeTermCoefficient(),
+                        primitiveAssetParams.GetPrimitiveShapeTarget()
+                    );
                 }
                 else
                 {
-                    AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to write to a file for a PhysX mesh asset. Filename: %s", filename.c_str());
-                    result = SceneEvents::ProcessingResult::Failure;
+                    // Cook the mesh into a binary buffer.
+                    AZStd::vector<AZ::u8> physxData;
+                    bool success = CookPhysXMesh(subMesh.m_vertices, subMesh.m_indices, subMesh.m_perFaceMaterialIndices,
+                        &(physxData), meshGroup, context.GetPlatformIdentifier());
+
+                    if (success)
+                    {
+                        AZStd::shared_ptr<Physics::CookedMeshShapeConfiguration> shapeConfig =
+                            AZStd::make_shared<Physics::CookedMeshShapeConfiguration>();
+
+                        shapeConfig->SetCookedMeshData(
+                            physxData.data(),
+                            physxData.size(),
+                            meshGroup.GetExportAsConvex() ? Physics::CookedMeshShapeConfiguration::MeshType::Convex
+                                                          : Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh
+                        );
+
+                        shape.second = shapeConfig;
+                    }
+                    else
+                    {
+                        AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Mesh cooking terminated unsuccessfully.");
+                    }
                 }
+
+                if (shape.second)
+                {
+                    assetData.m_colliderShapes.push_back(shape);
+                }
+                else
+                {
+                    AZ_TracePrintf(
+                        AZ::SceneAPI::Utilities::ErrorWindow,
+                        "WritePxMeshAsset: Failed to create asset. Node: %s",
+                        subMesh.m_nodeName.c_str()
+                    );
+
+                    return SceneEvents::ProcessingResult::Failure;
+                }
+
+                if (meshGroup.GetExportAsTriMesh())
+                {
+                    assetData.m_materialIndexPerShape.push_back(MeshAssetData::TriangleMeshMaterialIndex);
+                }
+                else
+                {
+                    AZ_Assert(
+                        !subMesh.m_perFaceMaterialIndices.empty(),
+                        "WritePxMeshAsset: m_perFaceMaterialIndices must be not empty! Please make sure you have a material assigned to the geometry. Node: %s",
+                        subMesh.m_nodeName.c_str()
+                    );
+
+                    assetData.m_materialIndexPerShape.push_back(subMesh.m_perFaceMaterialIndices[0]);
+                }
+            }
+
+            if (PhysX::Utils::WriteCookedMeshToFile(filename, assetData))
+            {
+                AZStd::string productUuidString = meshGroup.GetId().ToString<AZStd::string>();
+                AZ::Uuid productUuid = AZ::Uuid::CreateData(productUuidString.data(), productUuidString.size() * sizeof(productUuidString[0]));
+
+                context.GetProductList().AddProduct(AZStd::move(filename), productUuid, AZ::AzTypeInfo<MeshAsset>::Uuid(), AZStd::nullopt, AZStd::nullopt);
+                result = SceneEvents::ProcessingResult::Success;
             }
             else
             {
-                AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to create a file for a PhysX mesh asset. AssetName: %s, filename: %s", assetName.c_str(), filename.c_str());
+                AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to write to a file for a PhysX mesh asset. AssetName: %s, filename: %s", assetName.c_str(), filename.c_str());
                 result = SceneEvents::ProcessingResult::Failure;
             }
 
             return result;
+        }
+
+        void DecomposeAndAppendMeshes(
+            ScopedVHACD& decomposer,
+            VHACD::IVHACD::Parameters vhacdParams,
+            AZStd::vector<NodeCollisionGeomExportData>& totalExportData,
+            const NodeCollisionGeomExportData& nodeExportData
+        )
+        {
+            RequireSingleFaceMaterial(nodeExportData.m_perFaceMaterialIndices);
+            AZ_Assert(
+                !nodeExportData.m_perFaceMaterialIndices.empty(),
+                "DecomposeAndAppendMeshes: Empty per-face material vector. Node: %s",
+                nodeExportData.m_nodeName.c_str()
+            );
+
+            decomposer->Clean();
+
+            // Convert the vertices to a float array suitable for passing to V-HACD.
+            AZStd::vector<float> vhacdVertices;
+            vhacdVertices.reserve(nodeExportData.m_vertices.size() * 3);
+            for (const Vec3& vertex : nodeExportData.m_vertices)
+            {
+                vhacdVertices.emplace_back(vertex[0]);
+                vhacdVertices.emplace_back(vertex[1]);
+                vhacdVertices.emplace_back(vertex[2]);
+            }
+
+            if constexpr (AZStd::is_same<decltype(nodeExportData.m_indices)::value_type, uint32_t>::value)
+            {
+                decomposer->Compute(
+                    vhacdVertices.data(),
+                    vhacdVertices.size() / 3,
+                    nodeExportData.m_indices.data(),
+                    nodeExportData.m_indices.size() / 3,
+                    vhacdParams
+                );
+            }
+            else
+            {
+                // Convert the indices to an unsigned 32-bit integer array suitable for passing to V-HACD.
+                AZStd::vector<uint32_t> vhacdIndices;
+                vhacdIndices.reserve(nodeExportData.m_indices.size());
+                for (auto index : nodeExportData.m_indices)
+                {
+                    vhacdIndices.emplace_back(index);
+                }
+
+                decomposer->Compute(
+                    vhacdVertices.data(),
+                    vhacdVertices.size() / 3,
+                    vhacdIndices.data(),
+                    vhacdIndices.size() / 3,
+                    vhacdParams
+                );
+            }
+
+            const AZ::u32 numberOfHulls = decomposer->GetNConvexHulls();
+
+            AZ_Assert(numberOfHulls > 0, "V-HACD returned no convex hulls.");
+            AZ_TracePrintf(AZ::SceneAPI::Utilities::LogWindow, "Convex decomposition returned %d hulls", numberOfHulls);
+
+            for (AZ::u32 hullCounter = 0; hullCounter < numberOfHulls; ++hullCounter)
+            {
+                VHACD::IVHACD::ConvexHull convexHull;
+                decomposer->GetConvexHull(hullCounter, convexHull);
+
+                NodeCollisionGeomExportData nodeExportDataConvexPart;
+
+                // Copy vertices.
+                nodeExportDataConvexPart.m_vertices.reserve(convexHull.m_nPoints);
+                for (AZ::u32 vertexCounter = 0; vertexCounter < convexHull.m_nPoints; ++vertexCounter)
+                {
+                    double* vertex = convexHull.m_points + 3 * vertexCounter;
+                    nodeExportDataConvexPart.m_vertices.emplace_back(Vec3(
+                        static_cast<float>(vertex[0]),
+                        static_cast<float>(vertex[1]),
+                        static_cast<float>(vertex[2])
+                    ));
+                }
+
+                // Copy indices.
+                nodeExportDataConvexPart.m_indices.reserve(convexHull.m_nTriangles * 3);
+                for (AZ::u32 indexCounter = 0; indexCounter < convexHull.m_nTriangles * 3; ++indexCounter)
+                {
+                    nodeExportDataConvexPart.m_indices.emplace_back(convexHull.m_triangles[indexCounter]);
+                }
+
+                // Set up single per-face material.
+                nodeExportDataConvexPart.m_perFaceMaterialIndices = AZStd::vector<AZ::u16>(
+                    convexHull.m_nTriangles, nodeExportData.m_perFaceMaterialIndices[0]
+                );
+
+                nodeExportDataConvexPart.m_nodeName = nodeExportData.m_nodeName + "_" + AZStd::to_string(hullCounter);
+                totalExportData.emplace_back(AZStd::move(nodeExportDataConvexPart));
+            }
         }
 
         SceneEvents::ProcessingResult MeshExporter::ProcessContext(SceneEvents::ExportEventContext& context) const
@@ -516,57 +710,152 @@ namespace PhysX
             SceneContainers::SceneManifest::ValueStorageConstData valueStorage = manifest.GetValueStorage();
             auto view = SceneContainers::MakeExactFilterView<MeshGroup>(valueStorage);
 
+            ScopedVHACD decomposer;
+
             for (const MeshGroup& pxMeshGroup : view)
             {
-                AZStd::vector<Vec3> accumulatedVertices;
-                AZStd::vector<vtx_idx> accumulatedIndices;
-                AZStd::vector<AZ::u16> accumulatedFaceMaterialIndicies;
-                AZStd::vector<Physics::MaterialConfiguration> accumulatedMaterialConfigurations;
+                // Export data per node
+                AZStd::vector<NodeCollisionGeomExportData> totalExportData;
+                AssetMaterialsData assetMaterialData;
 
-                AZStd::string groupName = pxMeshGroup.GetName();
+                const AZStd::string& groupName = pxMeshGroup.GetName();
 
                 AZ_TraceContext("Group Name", groupName);
 
                 const auto& sceneNodeSelectionList = pxMeshGroup.GetSceneNodeSelectionList();
 
-                auto selectedNodeCount = sceneNodeSelectionList.GetSelectedNodeCount();
+                size_t selectedNodeCount = sceneNodeSelectionList.GetSelectedNodeCount();
 
-                for (size_t i = 0; i < selectedNodeCount; i++)
+                // Setup VHACD parameters if required.
+                VHACD::IVHACD::Parameters vhacdParams;
+                if (pxMeshGroup.GetDecomposeMeshes())
                 {
-                    auto nodeIndex = graph.Find(sceneNodeSelectionList.GetSelectedNode(i));
-                    auto nodeMesh = azrtti_cast<const AZ::SceneAPI::DataTypes::IMeshData*>(*graph.ConvertToStorageIterator(nodeIndex));
+                    const ConvexDecompositionParams& convexDecompositionParams = pxMeshGroup.GetConvexDecompositionParams();
 
-                    AZStd::vector<AZStd::string> localFbxMaterialsList = Utils::GenerateLocalNodeMaterialMap(graph, nodeIndex);
-                    const AZ::Transform worldTransform = SceneUtil::BuildWorldTransform(graph, nodeIndex);
-
-                    if (nodeMesh)
-                    {
-                        AccumulateMeshes(
-                            nodeMesh,
-                            worldTransform,
-                            localFbxMaterialsList,
-                            accumulatedVertices,
-                            accumulatedIndices,
-                            accumulatedFaceMaterialIndicies,
-                            accumulatedMaterialConfigurations
-                        );
-                    }
+                    vhacdParams.m_callback = nullptr;
+                    vhacdParams.m_logger = &vhacdDefaultLogCallback;
+                    vhacdParams.m_concavity = convexDecompositionParams.GetConcavity();
+                    vhacdParams.m_alpha = convexDecompositionParams.GetAlpha();
+                    vhacdParams.m_beta = convexDecompositionParams.GetBeta();
+                    vhacdParams.m_minVolumePerCH = convexDecompositionParams.GetMinVolumePerConvexHull();
+                    vhacdParams.m_resolution = convexDecompositionParams.GetResolution();
+                    vhacdParams.m_maxNumVerticesPerCH = convexDecompositionParams.GetMaxNumVerticesPerConvexHull();
+                    vhacdParams.m_planeDownsampling = convexDecompositionParams.GetPlaneDownsampling();
+                    vhacdParams.m_convexhullDownsampling = convexDecompositionParams.GetConvexHullDownsampling();
+                    vhacdParams.m_maxConvexHulls = convexDecompositionParams.GetMaxConvexHulls();
+                    vhacdParams.m_pca = convexDecompositionParams.GetPca();
+                    vhacdParams.m_mode = convexDecompositionParams.GetMode();
+                    vhacdParams.m_projectHullVertices = convexDecompositionParams.GetProjectHullVertices();
+                }
+                else
+                {
+                    totalExportData.reserve(selectedNodeCount);
                 }
 
-                if (accumulatedVertices.size())
+                for (size_t index = 0; index < selectedNodeCount; index++)
                 {
-                    AZStd::vector<AZ::u8> physxData;
-                    bool success = CookPhysxTriangleMesh(accumulatedVertices, accumulatedIndices, accumulatedFaceMaterialIndicies, &physxData, pxMeshGroup, context.GetPlatformIdentifier());
-                    if (success)
+                    AZ::SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex = graph.Find(sceneNodeSelectionList.GetSelectedNode(index));
+                    auto nodeMesh = azrtti_cast<const AZ::SceneAPI::DataTypes::IMeshData*>(*graph.ConvertToStorageIterator(nodeIndex));
+
+                    if (!nodeMesh)
                     {
-                        result += WritePxmesh(context, physxData, accumulatedMaterialConfigurations, pxMeshGroup);
-                        result += WritePhysx(context, physxData, accumulatedMaterialConfigurations, pxMeshGroup);
+                        continue;
+                    }
+
+                    const AZ::SceneAPI::Containers::SceneGraph::Name& nodeName = graph.GetNodeName(nodeIndex);
+
+                    const AZStd::vector<AZStd::string> localFbxMaterialsList = Utils::GenerateLocalNodeMaterialMap(graph, nodeIndex);
+                    const AZ::Transform worldTransform = SceneUtil::BuildWorldTransform(graph, nodeIndex);
+
+                    NodeCollisionGeomExportData nodeExportData;
+                    nodeExportData.m_nodeName = nodeName.GetName();
+
+                    const AZ::u32 vertexCount = nodeMesh->GetVertexCount();
+                    const AZ::u32 faceCount = nodeMesh->GetFaceCount();
+
+                    nodeExportData.m_vertices.resize(vertexCount);
+
+                    for (AZ::u32 vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+                    {
+                        AZ::Vector3 pos = nodeMesh->GetPosition(vertexIndex);
+                        pos = worldTransform * pos;
+                        nodeExportData.m_vertices[vertexIndex] = AZVec3ToLYVec3(pos);
+                    }
+
+                    nodeExportData.m_indices.resize(faceCount * 3);
+                    nodeExportData.m_perFaceMaterialIndices.resize(faceCount);
+
+                    for (AZ::u32 faceIndex = 0; faceIndex < faceCount; ++faceIndex)
+                    {
+                        int materialId = nodeMesh->GetFaceMaterialId(faceIndex);
+                        if (materialId >= localFbxMaterialsList.size())
+                        {
+                            AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow,
+                                "materialId %d for face %d is out of bound for localFbxMaterialsList (size %d).",
+                                materialId, faceIndex, localFbxMaterialsList.size());
+                            continue;
+                        }
+
+                        const AZ::SceneAPI::DataTypes::IMeshData::Face& face = nodeMesh->GetFaceInfo(faceIndex);
+                        nodeExportData.m_indices[faceIndex * 3] = face.vertexIndex[0];
+                        nodeExportData.m_indices[faceIndex * 3 + 1] = face.vertexIndex[1];
+                        nodeExportData.m_indices[faceIndex * 3 + 2] = face.vertexIndex[2];
+
+                        const AZStd::string& materialName = localFbxMaterialsList[materialId];
+
+                        AZ::u16 materialIndex = Utils::GetMaterialIndexByName(materialName, assetMaterialData);
+                        nodeExportData.m_perFaceMaterialIndices[faceIndex] = materialIndex;
+                    }
+
+                    if (pxMeshGroup.GetDecomposeMeshes())
+                    {
+                        DecomposeAndAppendMeshes(decomposer, vhacdParams, totalExportData, nodeExportData);
                     }
                     else
                     {
-                        result = SceneEvents::ProcessingResult::Failure;
-                        AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "PhysX Mesh group didn't have any vertices to cook");
+                        totalExportData.emplace_back(AZStd::move(nodeExportData));
                     }
+                }
+
+                // Merge triangle meshes if there's more than 1
+                if (pxMeshGroup.GetExportAsTriMesh() && pxMeshGroup.GetTriangleMeshAssetParams().GetMergeMeshes() && totalExportData.size() > 1)
+                {
+                    NodeCollisionGeomExportData mergedData;
+                    mergedData.m_nodeName = groupName;
+
+                    AZStd::vector<Vec3>& mergedVertices = mergedData.m_vertices;
+                    AZStd::vector<vtx_idx>& mergedIndices = mergedData.m_indices;
+                    AZStd::vector<AZ::u16>& mergedPerFaceMaterials = mergedData.m_perFaceMaterialIndices;
+
+                    // Here we add the geometry data for each node into a single merged one
+                    // Vertices & materials can be added directly but indices need to be incremented
+                    // by the amount of vertices already added in the last iteration
+                    for (const NodeCollisionGeomExportData& exportData : totalExportData)
+                    {
+                        vtx_idx startingIndex = mergedVertices.size();
+
+                        mergedVertices.insert(mergedVertices.end(), exportData.m_vertices.begin(), exportData.m_vertices.end());
+
+                        mergedPerFaceMaterials.insert(mergedPerFaceMaterials.end(),
+                            exportData.m_perFaceMaterialIndices.begin(), exportData.m_perFaceMaterialIndices.end());
+
+                        mergedIndices.reserve(mergedIndices.size() + exportData.m_indices.size());
+
+                        AZStd::transform(exportData.m_indices.begin(), exportData.m_indices.end(),
+                            AZStd::back_inserter(mergedIndices), [startingIndex](vtx_idx index)
+                        {
+                            return index + startingIndex;
+                        });
+                    }
+
+                    // Clear the data per node and use only the merged one
+                    totalExportData.clear();
+                    totalExportData.emplace_back(AZStd::move(mergedData));
+                }
+
+                if (!totalExportData.empty())
+                {
+                    result += WritePxMeshAsset(context, totalExportData, assetMaterialData, pxMeshGroup);
                 }
             }
 

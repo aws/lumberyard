@@ -25,8 +25,6 @@ namespace PhysX
     {
         Physics::CapsuleShapeConfiguration ConvertFromLmbrCentralCapsuleConfig(
             const LmbrCentral::CapsuleShapeConfig& inputCapsuleConfig);
-
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig(AZ::EntityId entityId);
     } // namespace Utils
 
     namespace ShapeConstants
@@ -34,6 +32,7 @@ namespace PhysX
         static const AZ::Crc32 Box = AZ_CRC("Box", 0x08a9483a);
         static const AZ::Crc32 Capsule = AZ_CRC("Capsule", 0xc268a183);
         static const AZ::Crc32 Sphere = AZ_CRC("Sphere", 0x55f96687);
+        static const AZ::Crc32 PolygonPrism = AZ_CRC("PolygonPrism", 0xd6b50036);
     } // namespace ShapeConstants
 
     /// Component that provides a collider based on geometry from a shape component.

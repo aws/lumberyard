@@ -400,7 +400,6 @@ public:
         return (14 - n | n - 1) < 0 ? i : m_pUsedParts[iCaller][i & 15];
     }
     CPhysicalPlaceholder* ReleasePartPlaceholder(int i);
-    int m_iDeletionTime;
     volatile int m_nRefCount;
     unsigned int m_flags;
     CPhysicalEntity* m_next, * m_prev;

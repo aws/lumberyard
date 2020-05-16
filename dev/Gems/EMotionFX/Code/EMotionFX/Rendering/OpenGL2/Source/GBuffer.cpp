@@ -12,6 +12,7 @@
 
 // include the required headers
 #include <MCore/Source/Config.h>
+#include <MCore/Source/LogManager.h>
 #include "GLInclude.h"
 
 #include <MCore/Source/Array.h>

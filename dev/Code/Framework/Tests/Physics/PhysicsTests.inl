@@ -62,8 +62,13 @@ namespace Physics
         return SuppressExpectedErrors(window, message);
     }
 
+    bool ErrorHandler::OnPrintf(const char* window, const char* message)
+    {
+        return SuppressExpectedErrors(window, message);
+    }
+
     // helper functions
-    AZStd::shared_ptr<World> GenericPhysicsInterfaceTest::CreateTestWorld()
+    AZStd::shared_ptr<World> GenericPhysicsFixture::CreateTestWorld()
     {
         AZStd::shared_ptr<World> world;
         WorldConfiguration worldConfiguration;
@@ -166,6 +171,15 @@ namespace Physics
         for (AZ::u32 i = 0; i < numSteps; i++)
         {
             world->Update(timeStep);
+        }
+    }
+
+    void UpdateWorldSplitSim(World* world, float timeStep, AZ::u32 numSteps)
+    {
+        for (AZ::u32 i = 0; i < numSteps; i++)
+        {
+            world->StartSimulation(timeStep);
+            world->FinishSimulation();
         }
     }
 

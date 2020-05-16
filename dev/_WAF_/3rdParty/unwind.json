@@ -2,7 +2,7 @@
   "name": "unwind",
   "source": "@3P:unwind_build@",
   "description": "unwind Library",
-  "includes": [
+  "system_includes": [
     "include"
   ],
   "defines": [],

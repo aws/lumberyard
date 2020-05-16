@@ -14,6 +14,7 @@
 
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
@@ -400,7 +401,7 @@ namespace EMotionFX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        static AnimGraph* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context);
+        static AnimGraph* LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& loadFilter = AZ::ObjectStream::FilterDescriptor(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         static AnimGraph* LoadFromBuffer(const void* buffer, const AZStd::size_t length, AZ::SerializeContext* context);
 
         bool SaveToFile(const AZStd::string& filename, AZ::SerializeContext* context) const;

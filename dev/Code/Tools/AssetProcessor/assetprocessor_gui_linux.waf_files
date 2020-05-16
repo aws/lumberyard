@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+        "FileWatcher": [
+            "native/FileWatcher/FileWatcher_linux.cpp"
+        ],
+        "utilities": [
+            "native/utilities/Utils_UnixLike.cpp",
+            "native/utilities/Utils_UnixLike.h"
+        ]
+    }
+}

@@ -20,19 +20,20 @@
 # SOFTWARE.
 # ===================================================================
 
-from __future__ import nested_scopes
-
-__revision__ = "$Id$"
-
+import json
 import unittest
+from binascii import unhexlify
 
 from Crypto.SelfTest.st_common import list_test_cases, a2b_hex, b2a_hex
 
-from Crypto.Util.py3compat import *
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP as PKCS
-from Crypto.Hash import MD2,MD5,SHA as SHA1,SHA256,RIPEMD
+from Crypto.Hash import MD2, MD5, SHA1, SHA256, RIPEMD160, SHA224, SHA384, SHA512
 from Crypto import Random
+from Crypto.Signature.pss import MGF1
+
+from Crypto.Util.py3compat import b, bchr
+from Crypto.Util._file_system import pycryptodome_filename
 
 def rws(t):
     """Remove white spaces, tabs, and new lines from a string"""
@@ -269,7 +270,7 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                 # Verify encryption using all test vectors
                 for test in self._testData:
                         # Build the key
-                        comps = [ long(rws(test[0][x]),16) for x in ('n','e') ]
+                        comps = [ int(rws(test[0][x]),16) for x in ('n','e') ]
                         key = RSA.construct(comps)
                         # RNG that takes its random numbers from a pool given
                         # at initialization
@@ -282,8 +283,7 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                                 self.idx += N
                                 return r
                         # The real test
-                        key._randfunc = randGen(t2b(test[3]))
-                        cipher = PKCS.new(key, test[4])
+                        cipher = PKCS.new(key, test[4], randfunc=randGen(t2b(test[3])))
                         ct = cipher.encrypt(t2b(test[1]))
                         self.assertEqual(ct, t2b(test[2]))
 
@@ -297,7 +297,7 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                 # Verify decryption using all test vectors
                 for test in self._testData:
                         # Build the key
-                        comps = [ long(rws(test[0][x]),16) for x in ('n','e','d') ]
+                        comps = [ int(rws(test[0][x]),16) for x in ('n','e','d') ]
                         key = RSA.construct(comps)
                         # The real test
                         cipher = PKCS.new(key, test[4])
@@ -312,13 +312,14 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
 
         def testEncryptDecrypt1(self):
                 # Encrypt/Decrypt messages of length [0..128-2*20-2]
-                for pt_len in xrange(0,128-2*20-2):
+                for pt_len in range(0,128-2*20-2):
                     pt = self.rng(pt_len)
-                    ct = PKCS.encrypt(pt, self.key1024)
-                    pt2 = PKCS.decrypt(ct, self.key1024)
+                    cipher = PKCS.new(self.key1024)
+                    ct = cipher.encrypt(pt)
+                    pt2 = cipher.decrypt(ct)
                     self.assertEqual(pt,pt2)
 
-        def testEncryptDecrypt1(self):
+        def testEncryptDecrypt2(self):
                 # Helper function to monitor what's requested from RNG
                 global asked
                 def localRng(N):
@@ -326,18 +327,17 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                     asked += N
                     return self.rng(N)
                 # Verify that OAEP is friendly to all hashes
-                for hashmod in (MD2,MD5,SHA1,SHA256,RIPEMD):
+                for hashmod in (MD2,MD5,SHA1,SHA256,RIPEMD160):
                     # Verify that encrypt() asks for as many random bytes
                     # as the hash output size
                     asked = 0
                     pt = self.rng(40)
-                    self.key1024._randfunc = localRng
-                    cipher = PKCS.new(self.key1024, hashmod)
+                    cipher = PKCS.new(self.key1024, hashmod, randfunc=localRng)
                     ct = cipher.encrypt(pt)
                     self.assertEqual(cipher.decrypt(ct), pt)
-                    self.failUnless(asked > hashmod.digest_size)
+                    self.assertEqual(asked, hashmod.digest_size)
 
-        def testEncryptDecrypt2(self):
+        def testEncryptDecrypt3(self):
                 # Verify that OAEP supports labels
                 pt = self.rng(35)
                 xlabel = self.rng(22)
@@ -345,7 +345,7 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                 ct = cipher.encrypt(pt)
                 self.assertEqual(cipher.decrypt(ct), pt)
 
-        def testEncryptDecrypt3(self):
+        def testEncryptDecrypt4(self):
                 # Verify that encrypt() uses the custom MGF
                 global mgfcalls
                 # Helper function to monitor what's requested from MGF
@@ -360,9 +360,147 @@ class PKCS1_OAEP_Tests(unittest.TestCase):
                 self.assertEqual(mgfcalls, 2)
                 self.assertEqual(cipher.decrypt(ct), pt)
 
+        def testByteArray(self):
+            pt = b("XER")
+            cipher = PKCS.new(self.key1024)
+            ct = cipher.encrypt(bytearray(pt))
+            pt2 = cipher.decrypt(bytearray(ct))
+            self.assertEqual(pt, pt2)
+
+        def testMemoryview(self):
+            pt = b("XER")
+            cipher = PKCS.new(self.key1024)
+            ct = cipher.encrypt(memoryview(bytearray(pt)))
+            pt2 = cipher.decrypt(memoryview(bytearray(ct)))
+            self.assertEqual(pt, pt2)
+
+        import sys
+        if sys.version[:3] == "2.6":
+            del testMemoryview
+
+
+class TestVectorsWycheproof(unittest.TestCase):
+
+    def __init__(self, wycheproof_warnings, skip_slow_tests):
+        unittest.TestCase.__init__(self)
+        self._wycheproof_warnings = wycheproof_warnings
+        self._skip_slow_tests = skip_slow_tests
+        self._id = "None"
+
+    def load_tests(self, filename):
+        comps = "Crypto.SelfTest.Cipher.test_vectors.wycheproof".split(".")
+        with open(pycryptodome_filename(comps, filename), "rt") as file_in:
+            tv_tree = json.load(file_in)
+
+        class TestVector(object):
+            pass
+        result = []
+
+        for group in tv_tree['testGroups']:
+
+            rsa_key = RSA.import_key(group['privateKeyPem'])
+            if group['sha'] == "SHA-1":
+                hash_mod = SHA1
+            elif group['sha'] == "SHA-224":
+                hash_mod = SHA224
+            elif group['sha'] == "SHA-256":
+                hash_mod = SHA256
+            elif group['sha'] == "SHA-384":
+                hash_mod = SHA384
+            elif group['sha'] == "SHA-512":
+                hash_mod = SHA512
+            else:
+                raise ValueError("Unknown sha " + group['sha'])
+
+            if group['mgfSha'] == "SHA-1":
+                mgf = lambda x,y: MGF1(x, y, SHA1)
+            elif group['mgfSha'] == "SHA-224":
+                mgf = lambda x,y: MGF1(x, y, SHA224)
+            elif group['mgfSha'] == "SHA-256":
+                mgf = lambda x,y: MGF1(x, y, SHA256)
+            elif group['mgfSha'] == "SHA-384":
+                mgf = lambda x,y: MGF1(x, y, SHA384)
+            elif group['mgfSha'] == "SHA-512":
+                mgf = lambda x,y: MGF1(x, y, SHA512)
+            else:
+                raise ValueError("Unknown mgf/sha " + group['mgfSha'])
+        
+            for test in group['tests']:
+                tv = TestVector()
+
+                tv.rsa_key = rsa_key
+                tv.hash_mod = hash_mod
+                tv.mgf = mgf
+                tv.algo = "%s with MGF1/%s" % (group['sha'], group['mgfSha'])
+
+                tv.id = test['tcId']
+                tv.comment = test['comment']
+                for attr in 'msg', 'ct', 'label':
+                    setattr(tv, attr, unhexlify(test[attr]))
+                tv.valid = test['result'] != "invalid"
+                tv.warning = test['result'] == "acceptable"
+
+                result.append(tv)
+        return result
+
+    def setUp(self):
+        self.tv = []
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha1_mgf1sha1_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha224_mgf1sha1_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha224_mgf1sha224_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha256_mgf1sha1_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha256_mgf1sha256_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha384_mgf1sha1_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha384_mgf1sha384_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha512_mgf1sha1_test.json"))
+        self.tv.extend(self.load_tests("rsa_oaep_2048_sha512_mgf1sha512_test.json"))
+        if not self._skip_slow_tests:
+            self.tv.extend(self.load_tests("rsa_oaep_3072_sha256_mgf1sha1_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_3072_sha256_mgf1sha256_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_3072_sha512_mgf1sha1_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_3072_sha512_mgf1sha512_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_4096_sha256_mgf1sha1_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_4096_sha256_mgf1sha256_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_4096_sha512_mgf1sha1_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_4096_sha512_mgf1sha512_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_4096_sha512_mgf1sha512_test.json"))
+            self.tv.extend(self.load_tests("rsa_oaep_misc_test.json"))
+
+
+    def shortDescription(self):
+        return self._id
+
+    def warn(self, tv):
+        if tv.warning and self._wycheproof_warnings:
+            import warnings
+            warnings.warn("Wycheproof warning: %s (%s)" % (self._id, tv.comment))
+
+    def test_decrypt(self, tv):
+        self._id = "Wycheproof Decrypt %s Test #%s" % (tv.algo, tv.id)
+
+        cipher = PKCS.new(tv.rsa_key, hashAlgo=tv.hash_mod, mgfunc=tv.mgf, label=tv.label)
+        try:
+            pt = cipher.decrypt(tv.ct)
+        except ValueError:
+            assert not tv.valid
+        else:
+            assert tv.valid
+            self.assertEqual(pt, tv.msg)
+            self.warn(tv)
+
+    def runTest(self):
+
+        for tv in self.tv:
+            self.test_decrypt(tv)
+
+
 def get_tests(config={}):
+    skip_slow_tests = not config.get('slow_tests')
+    wycheproof_warnings = config.get('wycheproof_warnings')
+
     tests = []
     tests += list_test_cases(PKCS1_OAEP_Tests)
+    tests += [TestVectorsWycheproof(wycheproof_warnings, skip_slow_tests)]
     return tests
 
 if __name__ == '__main__':

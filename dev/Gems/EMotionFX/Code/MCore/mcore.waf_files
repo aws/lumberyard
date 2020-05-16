@@ -95,8 +95,6 @@
             "Source/Matrix4.cpp",
             "Source/Matrix4.h",
             "Source/Matrix4.inl",
-            "Source/MatrixDecomposer.cpp",
-            "Source/MatrixDecomposer.h",
             "Source/MCoreSystem.cpp",
             "Source/MCoreSystem.h",
             "Source/MemoryCategoriesCore.h",

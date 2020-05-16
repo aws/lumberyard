@@ -18,6 +18,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzCore/Component/TickBus.h>
 #include <MainWindow.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
@@ -72,6 +73,7 @@ namespace CryEditPythonBindingsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("is_idle_enabled") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("idle_is_enabled") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("idle_wait") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("idle_wait_frames") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("start_process_detached") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("launch_lua_editor") != behaviorContext->m_methods.end());
     }
@@ -82,5 +84,30 @@ namespace CryEditPythonBindingsUnitTests
         ASSERT_TRUE(behaviorContext);
 
         EXPECT_TRUE(behaviorContext->m_methods.find("enable_for_all") != behaviorContext->m_methods.end());
+    }
+
+    TEST_F(CryEditPythonBindingsFixture, CryEditPython_IdleWaitFramesWorks)
+    {
+        AZ::BehaviorContext* behaviorContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
+        ASSERT_TRUE(behaviorContext);
+
+        unsigned int numTicks = 0;
+        QEventLoop loop;
+        QTimer timer;
+        loop.connect(&timer, &QTimer::timeout, [&numTicks]()
+        {
+            AZ::TickBus::Broadcast(&AZ::TickEvents::OnTick, 0.01f, AZ::ScriptTimePoint(AZStd::chrono::system_clock().now()));
+            ++numTicks;
+        });
+        timer.start(100);
+
+        const unsigned int framesToWait = 5;
+        AZStd::array<AZ::BehaviorValueParameter, 1> args;
+        args[0].Set(&framesToWait);
+        behaviorContext->m_methods.find("idle_wait_frames")->second->Call(args.begin(), static_cast<unsigned int>(args.size()));
+        loop.disconnect(&timer);
+        timer.stop();
+        EXPECT_EQ(numTicks, framesToWait);
     }
 }

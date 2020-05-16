@@ -75,7 +75,7 @@ namespace ScriptCanvas
 
         void UnaryExpression::OnInputSignal(const SlotId&)
         {
-            const Datum output = Evaluate(*GetDatumByIndex(k_datumIndex));
+            const Datum output = Evaluate(*FindDatumByIndex(k_datumIndex));
             if (auto slot = GetSlot(GetOutputSlotId()))
             {
                 PushOutput(output, *slot);

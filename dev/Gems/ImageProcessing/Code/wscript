@@ -37,7 +37,7 @@ def build(bld):
                                            'ETC2COMP',
                                            'ASTCENC'],
             
-            platforms                   = ['win', 'darwin'],
+            platforms                   = ['win', 'darwin', 'linux'],
             
             # Platform Roots
             platform_roots              = [bld.PlatformRoot('Source/Platform', export_includes=False)],

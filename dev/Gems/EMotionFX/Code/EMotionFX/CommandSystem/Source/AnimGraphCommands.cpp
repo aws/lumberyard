@@ -14,6 +14,7 @@
 #include "AnimGraphCommands.h"
 #include "CommandManager.h"
 #include <MCore/Source/FileSystem.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>
@@ -51,7 +52,6 @@ namespace CommandSystem
     {
     }
 
-
     // execute
     bool CommandLoadAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
@@ -67,9 +67,12 @@ namespace CommandSystem
             }
         }
 
-        // get the filename and set it for the anim graph
-        AZStd::string filename;
-        parameters.GetValue("filename", this, filename);
+        // Get the filename of the anim graph asset.
+        AZStd::string filename = parameters.GetValue("filename", this);
+        if (m_relocateFilenameFunction)
+        {
+            m_relocateFilenameFunction(filename);
+        }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // Check if the anim graph got already loaded via the command system.

@@ -201,7 +201,7 @@ void IrisShafts::GenMesh()
         float spread = m_fSpread * (1 + stable_rand::randUnit() * m_fSpreadNoiseStrength);
         float halfAngle = ComputeSpreadParameters(spread);
         int dynSmoothLevel = ComputeDynamicSmoothLevel(m_nSmoothLevel, halfAngle * 2, 1);
-        if (dynSmoothLevel <= 0)
+        if (dynSmoothLevel <= 1)
         {
             continue;
         }

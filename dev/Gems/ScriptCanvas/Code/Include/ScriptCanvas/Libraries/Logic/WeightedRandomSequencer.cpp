@@ -57,6 +57,36 @@ namespace ScriptCanvas
                     AddWeightedPair();                    
                 }
             }
+
+            void WeightedRandomSequencer::ConfigureVisualExtensions()
+            {
+                {
+                    VisualExtensionSlotConfiguration visualExtension(VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot);
+
+                    visualExtension.m_name = "Add State";
+                    visualExtension.m_tooltip = "Adds a new weighted state to the node.";
+
+                    visualExtension.m_connectionType = ConnectionType::Input;
+                    visualExtension.m_displayGroup = GetDisplayGroup();
+                    visualExtension.m_identifier = GetWeightExtensionId();
+
+                    RegisterExtension(visualExtension);
+                }
+
+                {
+                    VisualExtensionSlotConfiguration visualExtension(VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot);
+
+                    visualExtension.m_name = "Add State";
+                    visualExtension.m_tooltip = "Adds a new weighted state to the node.";
+
+                    visualExtension.m_connectionType = ConnectionType::Output;
+                    visualExtension.m_displayGroup = GetDisplayGroup();
+                    visualExtension.m_identifier = GetExecutionExtensionId();
+
+                    RegisterExtension(visualExtension);
+                }
+
+            }
             
             void WeightedRandomSequencer::OnInputSignal(const SlotId& slotId)
             {
@@ -71,7 +101,7 @@ namespace ScriptCanvas
                     
                     for (const WeightedPairing& weightedPairing : m_weightedPairings)
                     {
-                        const Datum* datum = GetInput(weightedPairing.m_weightSlotId);
+                        const Datum* datum = FindDatum(weightedPairing.m_weightSlotId);
                         
                         if (datum)
                         {
@@ -113,39 +143,6 @@ namespace ScriptCanvas
                         }
                     }
                 }
-            }
-
-            bool WeightedRandomSequencer::IsNodeExtendable() const
-            {
-                return true;
-            }
-
-            int WeightedRandomSequencer::GetNumberOfExtensions() const
-            {
-                return 2;
-            }
-
-            ExtendableSlotConfiguration WeightedRandomSequencer::GetExtensionConfiguration(int extensionIndex) const
-            {
-                ExtendableSlotConfiguration slotConfiguration;
-
-                slotConfiguration.m_name = "Add State";
-                slotConfiguration.m_tooltip = "Adds a new weighted state to the node.";                
-
-                if (extensionIndex == 0)
-                {
-                    slotConfiguration.m_connectionType = ConnectionType::Input;
-                    slotConfiguration.m_displayGroup = GetDisplayGroup();
-                    slotConfiguration.m_identifier = GetWeightExtensionId();
-                }
-                else if (extensionIndex == 1)
-                {
-                    slotConfiguration.m_connectionType = ConnectionType::Output;
-                    slotConfiguration.m_displayGroup = GetDisplayGroup();
-                    slotConfiguration.m_identifier = GetExecutionExtensionId();
-                }
-
-                return slotConfiguration;
             }
 
             SlotId WeightedRandomSequencer::HandleExtension(AZ::Crc32 extensionId)

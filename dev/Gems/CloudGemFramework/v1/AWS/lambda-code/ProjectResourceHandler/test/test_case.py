@@ -10,7 +10,11 @@
 #
 # $Revision: #3 $
 
+# Python 2.7/3.7 Compatibility
+from six import string_types
+
 import unittest
+
 
 class EnhancedTestCase(unittest.TestCase):
 
@@ -26,7 +30,7 @@ class EnhancedTestCase(unittest.TestCase):
             return isinstance(other, self.__expected_type)
 
     ANY_LIST = AnyInstance(list)
-    ANY_STRING = AnyInstance(basestring)
+    ANY_STRING = AnyInstance(string_types)
 
 
 class ResourceHandlerTestCase(EnhancedTestCase):
@@ -47,15 +51,16 @@ class ResourceHandlerTestCase(EnhancedTestCase):
     ACCOUNT = 'TestAccount'
     UUID = 'TestUUID'
     STACK_ARN = 'arn:aws:cloudformation:{region}:{account}:stack/{name}/{uuid}'.format(
-        region = REGION,
-        account = ACCOUNT,
-        name = STACK_NAME,
-        uuid = UUID)
+        region=REGION,
+        account=ACCOUNT,
+        name=STACK_NAME,
+        uuid=UUID)
 
     CONTEXT = {}
 
     @classmethod
-    def make_event(cls, request_type, properties = PROPERTIES, stack_arn=STACK_ARN, logical_resource_id=LOGICAL_RESOURCE_ID, physical_resource_id=PHYSICAL_RESOURCE_ID):
+    def make_event(cls, request_type, properties=PROPERTIES, stack_arn=STACK_ARN, logical_resource_id=LOGICAL_RESOURCE_ID,
+                   physical_resource_id=PHYSICAL_RESOURCE_ID):
         event = {
             'RequestType': request_type,
             'ResourceProperties': properties,
@@ -65,5 +70,3 @@ class ResourceHandlerTestCase(EnhancedTestCase):
         if request_type != 'Create':
             event['PhysicalResourceId'] = physical_resource_id
         return event
-
-

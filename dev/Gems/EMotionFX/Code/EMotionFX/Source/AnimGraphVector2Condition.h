@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include <EMotionFX/Source/AnimGraphParameterCondition.h>
+#include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
 
 
 namespace EMotionFX
@@ -22,23 +23,19 @@ namespace EMotionFX
     // forward declarations
     class AnimGraphInstance;
 
-    /**
-     *
-     *
-     *
-     */
     class EMFX_API AnimGraphVector2Condition 
         : public AnimGraphTransitionCondition
+        , public ObjectAffectedByParameterChanges
     {
     public:
-        AZ_RTTI(AnimGraphVector2Condition, "{605DF8B0-C39A-4BB4-B1A9-ABAF528E0739}", AnimGraphTransitionCondition)
+        AZ_RTTI(AnimGraphVector2Condition, "{605DF8B0-C39A-4BB4-B1A9-ABAF528E0739}", AnimGraphTransitionCondition, ObjectAffectedByParameterChanges)
         AZ_CLASS_ALLOCATOR_DECL
 
         enum EOperation : AZ::u8
         {
-            OPERATION_LENGTH            = 0,
-            OPERATION_GETX              = 1,
-            OPERATION_GETY              = 2
+            OPERATION_LENGTH = 0,
+            OPERATION_GETX = 1,
+            OPERATION_GETY = 2
         };
 
         AnimGraphVector2Condition();
@@ -61,9 +58,16 @@ namespace EMotionFX
         const char* GetOperationString() const;
 
         AZ::TypeId GetParameterType() const;
+        AZ::Outcome<size_t> GetParameterIndex() const;
         void SetParameterName(const AZStd::string& parameterName);
         void SetTestValue(float testValue);
         void SetRangeValue(float rangeValue);
+
+        // ObjectAffectedByParameterChanges overrides
+        void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
+        void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
+        void ParameterRemoved(const AZStd::string& oldParameterName) override;
+        void BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved) override;
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -27,6 +27,8 @@
 
 struct ITerrain;
 struct STerrainInfo;
+struct IOctreeNode;
+class COctreeNode;
 class CCullBuffer;
 class IDeformableNode;
 class CRoadRenderNode;
@@ -39,6 +41,13 @@ struct StatInstGroupChunk;
 namespace LegacyProceduralVegetation
 {
     class VegetationPoolManager;
+}
+
+//REMARK: Please remove this declaration once the legacy terrain system
+//becomes a Gem. [LY-106934]
+namespace LegacyTerrain
+{
+    class LegacyTerrainInstanceManager;
 }
 
 struct SEntInFoliage
@@ -176,74 +185,6 @@ struct DLightAmount
 {
     CDLight* pLight;
     float fAmount;
-};
-
-struct CRNTmpData
-{
-    struct SRNUserData
-    {
-        int m_narrDrawFrames[MAX_RECURSION_LEVELS];
-        SLodDistDissolveTransitionState lodDistDissolveTransitionState;
-        Matrix34 objMat;
-        OcclusionTestClient m_OcclState;
-        struct IFoliage* m_pFoliage;
-        struct IClipVolume* m_pClipVolume;
-        SBending m_Bending;
-        SBending m_BendingPrev;
-        Vec3 vCurrentWind;
-        uint32 nBendingLastFrame : 29;
-        uint32 bWindCurrent : 1;
-        uint32 bBendingSet : 1;
-        uint16 nCubeMapId;
-        uint16 nCubeMapIdCacheClearCounter;
-        uint8 nWantedLod;
-        CRenderObject* m_pRenderObject[MAX_STATOBJ_LODS_NUM];
-        CRenderObject* m_arrPermanentRenderObjects[MAX_STATOBJ_LODS_NUM];
-    } userData;
-
-    CRNTmpData() { memset(this, 0, sizeof(*this)); assert((void*)this == (void*)&this->userData); nPhysAreaChangedProxyId = ~0; }
-    CRNTmpData* pNext, * pPrev;
-    CRNTmpData** pOwnerRef;
-    uint32 nFrameInfoId;
-    uint32 nPhysAreaChangedProxyId;
-
-    void Unlink()
-    {
-        if (!pNext || !pPrev)
-        {
-            return;
-        }
-        pNext->pPrev = pPrev;
-        pPrev->pNext = pNext;
-        pNext = pPrev = NULL;
-    }
-
-    void Link(CRNTmpData* Before)
-    {
-        if (pNext || pPrev)
-        {
-            return;
-        }
-        pNext = Before->pNext;
-        Before->pNext->pPrev = this;
-        Before->pNext = this;
-        pPrev = Before;
-    }
-
-    int Count()
-    {
-        int nCounter = 0;
-        for (CRNTmpData* pElem = pNext; pElem != this; pElem = pElem->pNext)
-        {
-            nCounter++;
-        }
-        return nCounter;
-    }
-
-    void OffsetPosition(const Vec3& delta)
-    {
-        userData.objMat.SetTranslation(userData.objMat.GetTranslation() + delta);
-    }
 };
 
 template <class T, int nMaxElemsInChunk>
@@ -444,8 +385,6 @@ struct SPerObjectShadow
 #define LV_LIGHT_CELL_R_SIZE (1.0f / (float)LV_LIGHT_CELL_SIZE)
 
 #define LV_DLF_LIGHTVOLUMES_MASK (DLF_DISABLED | DLF_FAKE | DLF_AMBIENT | DLF_DEFERRED_CUBEMAPS)
-
-#define TERRAIN_AABB_PADDING 0.5f
 
 class CLightVolumesMgr
     : public Cry3DEngineBase
@@ -771,16 +710,29 @@ public:
     virtual OceanAnimationData GetOceanAnimationParams() const override;
     virtual void GetHDRSetupParams(Vec4 pParams[5]) const;
     virtual void CreateDecal(const CryEngineDecalInfo& Decal);
-    virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const override;
+    int GetLegacyTerrainLevelData(AZ::IO::HandleType& fileHandle, STerrainInfo& terrainInfo
+                                  , bool& bSectorPalettes, EEndian& eEndian
+                                  , XmlNodeRef& surfaceTypesXmlNode) override;
+    int GetLegacyTerrainLevelData(uint8*& octreeData, STerrainInfo& terrainInfo
+                                  , bool& bSectorPalettes, EEndian& eEndian) override;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::ReadMacroTextureFile instead
+    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const override;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead
+    //! START
     virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
-    virtual float GetTerrainElevation3D(Vec3 vPos);
     virtual float GetTerrainZ(int x, int y);
     virtual float GetTerrainSlope(int x, int y);
     virtual int GetTerrainSurfaceId(int x, int y);
     virtual bool GetTerrainHole(int x, int y);
     virtual int GetHeightMapUnitSize();
     virtual int GetTerrainSize();
-    virtual const AZ::Aabb& GetTerrainAabb() const;
+    virtual int GetTerrainSectorSize();
+    virtual bool IsTerrainActive();
+    //! END
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead
+
     virtual void SetSunDir(const Vec3& newSunOffset);
     virtual Vec3 GetSunDir() const;
     virtual Vec3 GetSunDirNormalized() const;
@@ -805,7 +757,10 @@ public:
     virtual void OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain = true);
     //! For editor
     virtual void RemoveAllStaticObjects(int nSID);
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainSectorTexture instead.
     virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY);
+
     virtual void SetPhysMaterialEnumerator(IPhysMaterialEnumerator* pPhysMaterialEnumerator);
     virtual IPhysMaterialEnumerator* GetPhysMaterialEnumerator();
     virtual void LoadMissionDataFromXMLNode(const char* szMissionName);
@@ -854,11 +809,16 @@ public:
 
     virtual void FreeRenderNodeState(IRenderNode* pEnt);
     virtual const char* GetLevelFilePath(const char* szFileName);
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
     virtual void SetTerrainBurnedOut(int x, int y, bool bBurnedOut);
+    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
     virtual bool IsTerrainBurnedOut(int x, int y);
-    virtual int GetTerrainSectorSize();
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::LoadTerrainSurfacesFromXML instead.
     virtual void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID);
-    virtual bool LoadCompiledTerrainForEditor();
+
+    bool LoadCompiledOctreeForEditor() override;
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID);
     virtual bool GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID);
     virtual void ActivatePortal(const Vec3& vPos, bool bActivate, const char* szEntityName);
@@ -892,7 +852,10 @@ public:
     virtual void DeleteLightSource(ILightSource* pLightSource);
     virtual bool RestoreTerrainFromDisk(int nSID);
     virtual void CheckMemoryHeap();
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::CloseTerrainTextureFile instead.
     virtual void CloseTerrainTextureFile(int nSID);
+
     virtual int GetLoadedObjectCount();
     virtual void GetLoadedStatObjArray(IStatObj** pObjectsArray, int& nCount);
     virtual void GetObjectsStreamingStatus(SObjectsStreamingStatus& outStatus);
@@ -978,8 +941,8 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
 
-    virtual int GetTerrainTextureNodeSizeMeters();
-    virtual bool GetShowTerrainSurface();
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize
+    int GetTerrainTextureNodeSizeMeters() override;
 
     const char* GetLevelFolder() { return m_szLevelFolder; }
 
@@ -1050,6 +1013,7 @@ public:
 
     const float GetGSMRange() override { return m_fGsmRange; }
     const float GetGSMRangeStep() override { return m_fGsmRangeStep; }
+    float GetTerrainDetailMaterialsViewDistRatio() const override { return m_fTerrainDetailMaterialsViewDistRatio; }
 
     void UpdatePreRender(const SRenderingPassInfo& passInfo);
     void UpdatePostRender(const SRenderingPassInfo& passInfo);
@@ -1142,7 +1106,6 @@ public:
     Vec3 m_moonDirection;
     int m_nWaterBottomTexId;
     int m_nNightMoonTexId;
-    bool m_bShowTerrainSurface;
     float m_fSunClipPlaneRange;
     float m_fSunClipPlaneRangeShift;
     bool m_bSunShadows;
@@ -1168,8 +1131,6 @@ public:
     Vec3 m_volFogHeightDensity;
     Vec3 m_volFogHeightDensity2;
     Vec3 m_volFogGradientCtrl;
-
-    AZ::Aabb m_terrainAabb;
 
 private:
     float m_oceanWindDirection;
@@ -1255,9 +1216,10 @@ public:
     virtual void GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D);
     virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, bool getDynamic);
 
-    bool IsTerrainTextureStreamingInProgress() const;
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::IsTerrainTextureStreamingInProgress
+    bool IsTerrainTextureStreamingInProgress() const override;
 
-    bool IsTerrainSyncLoad() { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTerrainAndProcVeget; }
+    bool IsTerrainSyncLoad() override { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTerrainAndProcVeget; }
     bool IsShadersSyncLoad() { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTexturesAndShaders; }
     bool IsStatObjSyncLoad() { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheCgf; }
     float GetAverageCameraSpeed() { return m_fAverageCameraSpeed; }
@@ -1272,7 +1234,7 @@ public:
 
     struct ILightSource* GetSunEntity();
 
-    void OnCasterDeleted(IShadowCaster* pCaster);
+    void OnCasterDeleted(IShadowCaster* pCaster) override;
 
     CCullBuffer* GetCoverageBuffer() { return m_pCoverageBuffer; }
 
@@ -1296,6 +1258,9 @@ public:
     void DrawTextLeftAligned(const float x, const float y, const float scale, const ColorF& color, const char* format, ...) PRINTF_PARAMS(6, 7);
     void DrawTextAligned(int flags, const float x, const float y, const float scale, const ColorF& color, const char* format, ...) PRINTF_PARAMS(7, 8);
 
+    void DrawBBoxHelper(const Vec3& vMin, const Vec3& vMax, ColorB col = Col_White) override { DrawBBox(vMin, vMax, col); }
+    void DrawBBoxHelper(const AABB& box, ColorB col = Col_White) override { DrawBBox(box, col); }
+
     float GetLightAmount(CDLight* pLight, const AABB& objBox);
 
     IStatObj* CreateStatObj();
@@ -1306,13 +1271,18 @@ public:
     // Creates a new indexed mesh.
     IIndexedMesh* CreateIndexedMesh();
 
-    void InitMaterialDefautMappingAxis(_smart_ptr<IMaterial> pMat);
+    void InitMaterialDefautMappingAxis(_smart_ptr<IMaterial> pMat) override;
+    _smart_ptr<IMaterial> MakeSystemMaterialFromShaderHelper(const char* sShaderName, SInputShaderResources* Res = NULL) override
+    {
+        return MakeSystemMaterialFromShader(sShaderName, Res);
+    }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    virtual ITerrain* GetITerrain() { return (ITerrain*)m_pTerrain; }
-#else
-    virtual ITerrain* GetITerrain() { return nullptr; }
-#endif
+    bool CheckMinSpecHelper(uint32 nMinSpec) override { return CheckMinSpec(nMinSpec); }
+
+    virtual ITerrain* GetITerrain() {
+        AZ_Warning("LegacyTerrain", false, "C3DEngine::GetITerrain is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus or LegacyTerrain::LegacyTerrainDataRequestBus instead.");
+        return nullptr;
+    }
 
     virtual IVisAreaManager* GetIVisAreaManager() { return (IVisAreaManager*)m_pVisAreaManager; }
     virtual IMergedMeshesManager* GetIMergedMeshesManager() { return (IMergedMeshesManager*)m_pMergedMeshesManager; }
@@ -1321,9 +1291,6 @@ public:
     void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) override;
     void ChangeOceanWaterLevel(float fWaterLevel) override;
 
-    //! Creates the terrain and destroys and recreates the Octree so it is at least as large as the terrain.
-    ITerrain* CreateTerrain(const STerrainInfo& TerrainInfo) override;
-    void DeleteTerrain();
     bool LoadOctree(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, int nSID);
     bool LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable);
     bool LoadUsedShadersList();
@@ -1380,17 +1347,22 @@ public:
     static void GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr);
     static void MoveObjectsIntoListGlobal(PodArray<SRNInfo>* plstResultEntities, const AABB* pAreaBox, bool bRemoveObjects = false, bool bSkipDecals = false, bool bSkip_ERF_NO_DECALNODE_DECALS = false, bool bSkipDynamicObjects = false, EERType eRNType = eERType_TypesNum);
 
-    inline bool IsObjectTreeReady()
+    bool IsObjectTreeReady() override
     {
         return m_pObjectsTree != nullptr;
     }
 
-    inline class COctreeNode* GetObjectTree()
+    IOctreeNode* GetIObjectTree() override
+    {
+        return (IOctreeNode*)m_pObjectsTree;
+    }
+
+    inline COctreeNode* GetObjectTree()
     {
         return m_pObjectsTree;
     }
 
-    inline void SetObjectTree(class COctreeNode* tree)
+    inline void SetObjectTree(COctreeNode* tree)
     {
         m_pObjectsTree = tree;
     }
@@ -1411,7 +1383,7 @@ public:
     CThreadSafeRendererContainer<SFrameInfo> m_elementFrameInfo;
     CRNTmpData m_LTPRootFree, m_LTPRootUsed;
     void CreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo);
-    void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
+    void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo) override
     {
         // Lock to avoid a situation where two threads simultaneously find that *ppinfo is null,
         // which would result in two CRNTmpData objects for the same owner which eventually leads to a crash
@@ -1528,6 +1500,8 @@ public:
     bool GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo) override;
     void GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial> >* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask) override;
     IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX, uint8 angleY) override;
+    void WaitForCullingJobsCompletion() override;
+    void ClipTriangleHelper(const PodArray<vtx_idx>& lstInds, const Plane pPlanes[4], PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstClippedInds) const override;
     //I3DEngine Overrides END
 
 private:
@@ -1546,7 +1520,7 @@ private:
     int     GetFlags(void) { return m_nFlags; }
     int     m_nFlags;
 
-    class COctreeNode* m_pObjectsTree;
+    COctreeNode* m_pObjectsTree;
 
     std::vector<byte> arrFPSforSaveLevelStats;
     PodArray<float> m_arrProcessStreamingLatencyTestResults;
@@ -1694,26 +1668,52 @@ private:
 
     bool RemoveObjectsInArea(Vec3 vExploPos, float fExploRadius);
 
-    //! Creates the terrain and has nothing to do with the size of the octree.
-    void CreateTerrainInternal(const STerrainInfo& TerrainInfo);
-
     ///////////////////////////////////////////////////////////////////////////
     // Octree Loading/Saving related START
     ///////////////////////////////////////////////////////////////////////////
+
+    //! Reads STerrainInfo from the compiled octree data file, and seeks within the compiled octree file
+    //! until positioned at the first byte of the terrain heightmap data.
+    //!
+    //! @fileHandle [Out] Returns the open file handle pointing to the first byte of terrain data. It is the caller responsibility
+    //!             to close the file handle.
+    //! @terrainInfo [Out] Returns the parsed STerrainInfo from the octree file.
+    //! @bSectorPalettes [Out]
+    //! @eEndian [Out] The endianess of the octree data.
+    //!
+    //! Returns:
+    //!     The number of bytes left in @fileHandle.
+    int GetLegacyTerrainDataFromCompiledOctreeFile(AZ::IO::HandleType& fileHandle, STerrainInfo& terrainInfo,
+                                        bool& bSectorPalettes, EEndian& eEndian);
+
+    //! Reads STerrainInfo from a buffer that represents octree data, and seeks within the buffer
+    //! until positioned at the first byte of the terrain heightmap data.
+    //!
+    //! @octreeData [In & Out] Initially it is the starting address of the octree data.
+    //!     Upon return points to the first byte of the terrain heightmap data.
+    //! @terrainInfo [Out] Returns the parsed STerrainInfo from the @octreeData buffer.
+    //! @bSectorPalettes [Out]
+    //! @eEndian [Out] The endianess of the octree data.
+    //!
+    //! Returns:
+    //!     The number of bytes left to read in @octreeData.
+    int GetLegacyTerrainDataFromOctreeBuffer(uint8*& octreeData, STerrainInfo& terrainInfo,
+        bool& bSectorPalettes, EEndian& eEndian);
+
+    //! Skips all the data from a fileHandle or buffer until finding the first byte of terrain heightmap data.
+    template <class T>
+    int SeekTerrainDataInOctree(T& handle, STerrainChunkHeader* pOctreeChunkHeader, int nDataSize, EEndian eEndian);
 
     //! initialWorldSize: in Meters.
     bool CreateOctree(float initialWorldSize);
     
     void DestroyOctree();
 
-#ifndef LY_TERRAIN_LEGACY_RUNTIME
-
     //!Returns the number of nodes in the Quadtree as if the terrain was actually loaded.
     template <class T>
     int SkipTerrainData_T(T& f, int& nDataSize, const STerrainInfo& terrainInfo, bool bHotUpdate, bool bHMap, bool bSectorPalettes, EEndian eEndian, SHotUpdateInfo* pExportInfo);
-    
+
     void GetEmptyTerrainCompiledData(byte*& pData, int &nDataSize, EEndian eEndian);
-#endif
 
     template <class T>
     bool LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STerrainChunkHeader* pOctreeChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo, bool loadTerrainMacroTexture = true);
@@ -1730,6 +1730,9 @@ private:
     ///////////////////////////////////////////////////////////////////////////
     // Octree Loading/Saving related END
     ///////////////////////////////////////////////////////////////////////////
+
+    //REMARK: Remove once the legacy terrain system becomes a Gem. [LY-106934]
+    LegacyTerrain::LegacyTerrainInstanceManager* m_legacyTerrainInstanceManager;
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_3DENGINE_H

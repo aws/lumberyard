@@ -1,6 +1,7 @@
 {
-  "TemplateDefinitionVersion": 1,
-  "Name": "Default",
-  "Description":  "A simple starting point suitable for many projects.",
-  "IconPath": "${ProjectName}/preview.png"
+    "TemplateDefinitionVersion": 1,
+    "Name": "Default",
+    "Description":  "A simple starting point suitable for many projects.",
+    "IconPath": "${ProjectName}/preview.png",
+    "GemTemplate": "game_project_gem_template"
 }

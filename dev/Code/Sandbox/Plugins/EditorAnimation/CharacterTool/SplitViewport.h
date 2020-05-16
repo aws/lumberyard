@@ -14,7 +14,9 @@
 #pragma once
 #include <QWidget>
 
-class QViewport;
+#include "../EditorCommon/EditorCommonAPI.h"
+class EDITOR_COMMON_API QViewport;
+
 class QBoxLayout;
 template<class T>
 struct QuatT_tpl;

@@ -16,6 +16,7 @@
 #include <Framework/ScriptCanvasTestNodes.h>
 #include <AzTest/AzTest.h>
 
+
 namespace ScriptCanvasTests
 {
     extern const char* k_tempCoreAssetDir;
@@ -39,17 +40,18 @@ namespace ScriptCanvasTests
     void RunUnitTestGraphMixed(AZStd::string_view graphPath);
 
     template<typename t_NodeType>
-    t_NodeType* GetTestNode(const AZ::EntityId& graphUniqueId, const AZ::EntityId& nodeID)
+    t_NodeType* GetTestNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::EntityId& nodeID)
     {
         using namespace ScriptCanvas;
         t_NodeType* node{};
         SystemRequestBus::BroadcastResult(node, &SystemRequests::GetNode<t_NodeType>, nodeID);
         EXPECT_TRUE(node != nullptr);
+        node->SetExecutionType(ExecutionType::Runtime);
         return node;
     }
 
     template<typename t_NodeType>
-    t_NodeType* CreateTestNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut)
+    t_NodeType* CreateTestNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, AZ::EntityId& entityOut)
     {
         using namespace ScriptCanvas;
 
@@ -57,18 +59,18 @@ namespace ScriptCanvasTests
         entity->Init();
         entityOut = entity->GetId();
         EXPECT_TRUE(entityOut.IsValid());
-        SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, entityOut, graphUniqueId, azrtti_typeid<t_NodeType>());
-        return GetTestNode<t_NodeType>(graphUniqueId, entityOut);
+        SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, entityOut, scriptCanvasId, azrtti_typeid<t_NodeType>());
+        return GetTestNode<t_NodeType>(scriptCanvasId, entityOut);
     }
 
-    ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
+    ScriptCanvas::Node* CreateDataNodeByType(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
 
     template<typename t_Value>
-    ScriptCanvas::Node* CreateDataNode(const AZ::EntityId& graphUniqueId, const t_Value& value, AZ::EntityId& nodeIDout)
+    ScriptCanvas::Node* CreateDataNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const t_Value& value, AZ::EntityId& nodeIDout)
     {
         using namespace ScriptCanvas;
         const Data::Type operandType = Data::FromAZType(azrtti_typeid<t_Value>());
-        Node* node = CreateDataNodeByType(graphUniqueId, operandType, nodeIDout);
+        Node* node = CreateDataNodeByType(scriptCanvasId, operandType, nodeIDout);
 
         EXPECT_NE(node, nullptr);
         if (node)
@@ -79,11 +81,11 @@ namespace ScriptCanvasTests
     }
 
     template<typename t_Value>
-    ScriptCanvas::VariableId CreateVariable(AZ::EntityId graphUniqueId, const t_Value& value, AZStd::string_view variableName)
+    ScriptCanvas::VariableId CreateVariable(ScriptCanvas::ScriptCanvasId scriptCanvasId, const t_Value& value, AZStd::string_view variableName)
     {
         using namespace ScriptCanvas;
         AZ::Outcome<VariableId, AZStd::string> addVariableOutcome = AZ::Failure(AZStd::string());
-        GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, variableName, Datum(value));
+        GraphVariableManagerRequestBus::EventResult(addVariableOutcome, scriptCanvasId, &GraphVariableManagerRequests::AddVariable, variableName, Datum(value));
         if (!addVariableOutcome)
         {
             AZ_Warning("Script Canvas Test", false, "%s", addVariableOutcome.GetError().data());
@@ -93,8 +95,8 @@ namespace ScriptCanvasTests
         return addVariableOutcome.TakeValue();
     }
 
-    ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
-    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, AZStd::string_view className, AZStd::string_view methodName);
+    ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
+    AZ::EntityId CreateClassFunctionNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, AZStd::string_view className, AZStd::string_view methodName);
     AZStd::string SlotDescriptorToString(ScriptCanvas::SlotDescriptor type);
     void DumpSlots(const ScriptCanvas::Node& node);
     bool Connect(ScriptCanvas::Graph& graph, const AZ::EntityId& fromNodeID, const char* fromSlotName, const AZ::EntityId& toNodeID, const char* toSlotName, bool dumpSlotsOnFailure = true);
@@ -551,7 +553,7 @@ namespace ScriptCanvasTests
         EXPECT_NE(nullptr, graph);
 
         const AZ::EntityId& graphEntityId = graph->GetEntityId();
-        const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+        const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
         AZ::EntityId startID;
         CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);

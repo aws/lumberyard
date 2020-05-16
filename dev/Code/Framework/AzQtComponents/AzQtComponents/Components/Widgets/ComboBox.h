@@ -13,15 +13,43 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QPointer>
 #include <QColor>
 #include <QStyle>
+#include <QValidator>
+AZ_POP_DISABLE_WARNING
 
+class QComboBox;
 class QSettings;
 
 namespace AzQtComponents
 {
     class Style;
+    class ComboBoxWatcher;
+
+    class AZ_QT_COMPONENTS_API ComboBoxValidator
+        : public QValidator
+    {
+        Q_OBJECT
+
+    public:
+        explicit ComboBoxValidator(QObject* parent = nullptr)
+            : QValidator(parent)
+        {
+
+        }
+
+        virtual QValidator::State validateIndex(int) const
+        {
+            return QValidator::Acceptable;
+        };
+
+        QValidator::State validate(QString&, int&) const override
+        {
+            return QValidator::Acceptable;
+        }
+    };
 
     /**
      * Class to provide extra functionality for working with ComboBox controls.
@@ -34,12 +62,11 @@ namespace AzQtComponents
     public:
         struct Config
         {
-            int boxShadowXOffset;
-            int boxShadowYOffset;
-            int boxShadowBlurRadius;
-            QColor boxShadowColor;
             QColor placeHolderTextColor;
             QColor framelessTextColor;
+            QString errorImage;
+            QSize errorImageSize;
+            int errorImageSpacing;
         };
 
         /*!
@@ -52,8 +79,33 @@ namespace AzQtComponents
         */
         static Config defaultConfig();
 
+        /*!
+        * Adds a validator to the checkbox.
+        * QComboBox implementation only sets a validator to the underlying
+        * QLineEdit, meant for editable QComboBox widgets, and the validator
+        * gets deleted together with the owning QLineEdit when the QComboBox
+        * widget is set to not editable.
+        * This function binds a validator to the QComboBox instead, and it
+        * won't be deleted until the QComboBox itself is destroyed.
+        */
+       static void setValidator(QComboBox* cb, QValidator* validator);
+
+        /*!
+        * Forces the ComboBox to set its internal error state to "error"
+        */
+       static void setError(QComboBox* cb, bool error);
+
     private:
         friend class Style;
+
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
+        static QPointer<ComboBoxWatcher> s_comboBoxWatcher;
+        AZ_POP_DISABLE_WARNING
+        
+        static unsigned int s_watcherReferenceCount;
+
+        static void initializeWatcher();
+        static void uninitializeWatcher();
 
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
@@ -61,6 +113,11 @@ namespace AzQtComponents
         static bool drawComboBox(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
         static bool drawComboBoxLabel(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
         static bool drawIndicatorArrow(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
+        static bool drawItemCheckIndicator(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
+
+        static void addErrorButton(QComboBox* cb, const Config& config);
     };
 
 } // namespace AzQtComponents
+
+Q_DECLARE_METATYPE(AzQtComponents::ComboBoxValidator*)

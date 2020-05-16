@@ -14,5 +14,9 @@ namespace EMotionFX
 {
     class AnimGraphStateTransition
     {
+    public:
+        MOCK_CONST_METHOD0(GetAnimGraph, AnimGraph*());
+        MOCK_CONST_METHOD0(GetNumConditions, size_t());
+        MOCK_CONST_METHOD1(GetCondition, AnimGraphTransitionCondition*(size_t));
     };
 } // namespace EMotionFX

@@ -14,6 +14,7 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCard.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteView.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <QVBoxLayout>
 
 namespace AzQtComponents
@@ -147,6 +148,11 @@ namespace AzQtComponents
         return m_paletteCards.count();
     }
 
+    bool PaletteCardCollection::isEmpty() const
+    {
+        return m_paletteCards.isEmpty();
+    }
+
     QSharedPointer<PaletteCard> PaletteCardCollection::paletteCard(int index) const
     {
         return m_paletteCards[index];
@@ -220,7 +226,7 @@ namespace AzQtComponents
 
         auto lastDigit = std::find_if(name.rbegin(), name.rend(),
             [](const QChar ch) { return !ch.isDigit(); });
-        const QString baseName = name.left(std::distance(name.begin(), lastDigit.base()));
+        const QString baseName = name.left(aznumeric_cast<int>(std::distance(name.begin(), lastDigit.base())));
 
         int lastNumber = 1;
         while (true)

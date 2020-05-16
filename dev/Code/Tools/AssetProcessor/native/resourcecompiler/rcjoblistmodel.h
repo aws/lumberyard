@@ -87,7 +87,8 @@ namespace AssetProcessor
         bool isInQueue(const QueueElementID& check) const;
         bool isWaitingOnCatalog(const QueueElementID& check) const;
 
-        void PerformHeuristicSearch(QString searchTerm, QString platform, QSet<QueueElementID>& found, AssetProcessor::JobIdEscalationList& escalationList, bool& isStatusRequest);
+        void PerformHeuristicSearch(QString searchTerm, QString platform, QSet<QueueElementID>& found, AssetProcessor::JobIdEscalationList& escalationList, bool isStatusRequest);
+        void PerformUUIDSearch(AZ::Uuid searchUuid, QString platform, QSet<QueueElementID>& found, AssetProcessor::JobIdEscalationList& escalationList, bool isStatusRequest);
 
         int itemCount() const;
         RCJob* getItem(int index) const;

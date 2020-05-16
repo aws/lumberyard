@@ -52,7 +52,7 @@ namespace AzQtComponents
          * that eventually unproxies to a TableViewModel and a delegate that is a
          * TableViewItemDelegate.
          */
-        Q_PROPERTY(bool expandOnSelection READ expandOnSelection WRITE setExpandOnSelection);
+        Q_PROPERTY(bool expandOnSelection READ expandOnSelection WRITE setExpandOnSelection)
 
         friend class Style;
 
@@ -61,6 +61,9 @@ namespace AzQtComponents
         {
             int borderWidth;
             QColor borderColor;
+            qreal focusBorderWidth;
+            QColor focusBorderColor;
+            QColor focusFillColor;
         };
 
         /*!
@@ -91,6 +94,7 @@ namespace AzQtComponents
 
     private:
         static bool drawHeader(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
+        static bool drawFrameFocusRect(const Style* style, const QStyleOption* option, QPainter* painter, const Config& config);
         static QRect itemViewItemRect(const Style* style, QStyle::SubElement element, const QStyleOptionViewItem* option, const QWidget* widget, const Config& config);
 
         static bool polish(Style* style, QWidget* widget, const ScrollBar::Config& scrollBarConfig, const Config& config);

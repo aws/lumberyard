@@ -54,9 +54,10 @@ namespace ScriptCanvas
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<SystemComponent, AZ::Component>()
-                ->Version(0)
+                ->Version(1)
                 // ScriptCanvas avoids a use dependency on the AssetBuilderSDK. Therefore the Crc is used directly to register this component with the Gem builder
-                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }))
+                ->Field("m_infiniteLoopDetectionMaxIterations", &SystemComponent::m_infiniteLoopDetectionMaxIterations)
                 ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
@@ -66,6 +67,7 @@ namespace ScriptCanvas
                     ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemComponent::m_infiniteLoopDetectionMaxIterations, "Infinite Loop Protection Max Iterations", "Script Canvas will avoid infinite loops by detecting potentially re-entrant conditions that execute up to this number of iterations.")
                     ;
             }
         }
@@ -122,7 +124,7 @@ namespace ScriptCanvas
         if (entity)
         {
             auto graph = entity->CreateComponent<Graph>();
-            entity->CreateComponent<GraphVariableManagerComponent>(graph->GetUniqueId());
+            entity->CreateComponent<GraphVariableManagerComponent>(graph->GetScriptCanvasId());
         }
     }
 
@@ -138,10 +140,10 @@ namespace ScriptCanvas
         return graph;
     }
 
-    AZ::EntityId SystemComponent::FindGraphId(AZ::Entity* graphEntity)
+    ScriptCanvasId SystemComponent::FindScriptCanvasId(AZ::Entity* graphEntity)
     {
         auto* graph = graphEntity ? AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(graphEntity) : nullptr;
-        return graph ? graph->GetUniqueId() : AZ::EntityId();
+        return graph ? graph->GetScriptCanvasId() : ScriptCanvasId();
     }
 
     ScriptCanvas::Node* SystemComponent::GetNode(const AZ::EntityId& nodeId, const AZ::Uuid& typeId)
@@ -157,7 +159,7 @@ namespace ScriptCanvas
         return nullptr;
     }
 
-    ScriptCanvas::Node* SystemComponent::CreateNodeOnEntity(const AZ::EntityId& entityId, AZ::EntityId graphId, const AZ::Uuid& nodeType)
+    ScriptCanvas::Node* SystemComponent::CreateNodeOnEntity(const AZ::EntityId& entityId, ScriptCanvasId scriptCanvasId, const AZ::Uuid& nodeType)
     {
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -178,7 +180,7 @@ namespace ScriptCanvas
                 nodeEntity->AddComponent(node);
             }
 
-            GraphRequestBus::Event(graphId, &GraphRequests::AddNode, nodeEntity->GetId());
+            GraphRequestBus::Event(scriptCanvasId, &GraphRequests::AddNode, nodeEntity->GetId());
             return node;
         }
 
@@ -187,19 +189,37 @@ namespace ScriptCanvas
 
     void SystemComponent::AddOwnedObjectReference(const void* object, BehaviorContextObject* behaviorContextObject)
     {
+        if (object == nullptr)
+        {
+            return;
+        }
+
         LockType lock(m_ownedObjectsByAddressMutex);
-        m_ownedObjectsByAddress.emplace(object, behaviorContextObject);
+        auto emplaceResult = m_ownedObjectsByAddress.emplace(object, behaviorContextObject);
+
+        AZ_Assert(emplaceResult.second, "Adding second owned reference to memory");
     }
 
     BehaviorContextObject* SystemComponent::FindOwnedObjectReference(const void* object)
     {
+        if (object == nullptr)
+        {
+            return nullptr;
+        }
+
         LockType lock(m_ownedObjectsByAddressMutex);
         auto iter = m_ownedObjectsByAddress.find(object);
+
         return iter == m_ownedObjectsByAddress.end() ? nullptr : iter->second;
     }
 
     void SystemComponent::RemoveOwnedObjectReference(const void* object)
     {
+        if (object == nullptr)
+        {
+            return;
+        }
+
         LockType lock(m_ownedObjectsByAddressMutex);
         m_ownedObjectsByAddress.erase(object);
     }

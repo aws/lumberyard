@@ -320,8 +320,14 @@ public: // member functions
     //! Set the element to be displayed when hovering over an interactable
     virtual void SetTooltipDisplayElement(AZ::EntityId entityId) = 0;
 
-    //! Force the active interactable for the canvas to be the given one, this is intended for internal
-    //! use by UI components
+    //! Force the active interactable for the canvas to be the given one,
+    //! also force AutoActivation of interactable,
+    //! intended for internal use by UI components
+    virtual void ForceFocusInteractable(AZ::EntityId interactableId) = 0;
+
+    //! Force the active interactable for the canvas to be the given one,
+    //! also set last mouse pos to point,
+    //! intended for internal use by UI components
     virtual void ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point) = 0;
 
     //! Get the hover interactable
@@ -349,7 +355,7 @@ public: // static member data
 typedef AZ::EBus<UiCanvasInterface> UiCanvasBus;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! The canvas component implements this bus and it is provided for C++ implementations of 
+//! The canvas component implements this bus and it is provided for C++ implementations of
 //! UI components to use to talk to the canvas
 class UiCanvasComponentImplementationInterface
     : public AZ::ComponentBus

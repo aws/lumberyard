@@ -18,6 +18,12 @@
 
 namespace AzToolsFramework
 {
+    GridSnapParameters::GridSnapParameters(bool gridSnap, float gridSize):
+        m_gridSnap(gridSnap),
+        m_gridSize(gridSize)
+    {
+    }
+
     AZ::Vector3 CalculateSnappedOffset(
         const AZ::Vector3& unsnappedPosition, const AZ::Vector3& axis, const float size)
     {
@@ -61,6 +67,7 @@ namespace AzToolsFramework
         ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             snapping, viewportId,
             &ViewportInteraction::ViewportInteractionRequestBus::Events::GridSnappingEnabled);
+
         return snapping;
     }
 
@@ -71,6 +78,18 @@ namespace AzToolsFramework
             gridSize, viewportId,
             &ViewportInteraction::ViewportInteractionRequestBus::Events::GridSize);
         return gridSize;
+    }
+
+    GridSnapParameters GridSnapSettings(int viewportId)
+    {
+        bool snapping = GridSnapping(viewportId);
+        const float gridSize = GridSize(viewportId);
+        if (AZ::IsClose(gridSize, 0.0f, 1e-2f)) // Same threshold value as min value for m_spinBox in SnapToWidget constructor in MainWindow.cpp
+        {
+            snapping = false;
+        }
+
+        return GridSnapParameters(snapping, gridSize);
     }
 
     bool AngleSnapping(const int viewportId)

@@ -39,10 +39,10 @@ struct IPakSystem
     //   modTime - modification timestamp of the file
     //   compressionLevel - level of compression (correnponds to zlib-levels):
     //                      -1 or [0-9] where -1=default compression, 0=no compression, 9=best compression
-    virtual void AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, __time64_t modTime, int compressionLevel = -1) = 0;
+    virtual void AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, int64 modTime, int compressionLevel = -1) = 0;
 
     virtual bool DeleteFromArchive(PakSystemArchive* archive, const char* path) = 0;
-    virtual bool CheckIfFileExist(PakSystemArchive* archive, const char* path, __time64_t modTime) = 0;
+    virtual bool CheckIfFileExist(PakSystemArchive* archive, const char* path, int64 modTime) = 0;
 };
 
 #endif // CRYINCLUDE_CRYCOMMONTOOLS_IPAKSYSTEM_H

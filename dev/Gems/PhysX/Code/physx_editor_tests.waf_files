@@ -1,9 +1,20 @@
 {
     "auto": {
         "Tests": [
+            "Tests/PhysXTestCommon.cpp",
+            "Tests/PhysXTestCommon.h",
+            "Tests/EditorTestUtilities.cpp",
+            "Tests/EditorTestUtilities.h",
             "Tests/PhysXEditorTest.cpp",
+            "Tests/PolygonPrismMeshUtilsTest.cpp",
             "Tests/PhysXColliderComponentModeTests.cpp",
-            "Tests/TestColliderComponent.h"
+            "Tests/ShapeColliderComponentTests.cpp",
+            "Tests/TestColliderComponent.h",
+            "Tests/SystemComponentTest.cpp",
+            "Tests/RigidBodyComponentTests.cpp",
+            "Tests/StaticRigidBodyComponentTests.cpp",
+            "Tests/PrimitiveShapeFitterTests.cpp",
+            "Tests/PrimitiveShapeFitterTestData.cpp"
         ]
     }
 }

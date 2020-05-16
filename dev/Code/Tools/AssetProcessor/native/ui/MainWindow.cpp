@@ -11,7 +11,11 @@
 */
 #include "MainWindow.h"
 
+#include "AssetTreeFilterModel.h"
+#include "AssetTreeItem.h"
 #include "ConnectionEditDialog.h"
+#include "ProductAssetTreeModel.h"
+#include "SourceAssetTreeModel.h"
 
 #include <AzCore/base.h>
 #include <AzCore/IO/FileIO.h>
@@ -26,6 +30,7 @@
 
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/Widgets/Text.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 #include <AzQtComponents/Utilities/DesktopUtilities.h>
@@ -156,14 +161,15 @@ void MainWindow::Activate()
 
     connect(ui->supportButton, &QPushButton::clicked, this, &MainWindow::OnSupportClicked);
 
+    ui->buttonList->addTab(QStringLiteral("Jobs"));
     ui->buttonList->addTab(QStringLiteral("Assets"));
+    ui->buttonList->addTab(QStringLiteral("Logs"));
     ui->buttonList->addTab(QStringLiteral("Shaders"));
     ui->buttonList->addTab(QStringLiteral("Connections"));
-    ui->buttonList->addTab(QStringLiteral("Logs"));
     ui->buttonList->addTab(QStringLiteral("Tools"));
 
     connect(ui->buttonList, &AzQtComponents::SegmentBar::currentChanged, ui->dialogStack, &QStackedWidget::setCurrentIndex);
-    const int startIndex = 0;
+    const int startIndex = static_cast<int>(DialogStackIndex::Jobs);
     ui->dialogStack->setCurrentIndex(startIndex);
     ui->buttonList->setCurrentIndex(startIndex);
 
@@ -329,6 +335,49 @@ void MainWindow::Activate()
     ui->shaderTreeView->header()->setSectionResizeMode(ShaderCompilerModel::ColumnError, QHeaderView::Stretch);
     ui->shaderTreeView->header()->setStretchLastSection(false);
 
+    // Asset view
+    m_sourceAssetTreeFilterModel = new AssetProcessor::AssetTreeFilterModel(this);
+    m_sourceModel = new AssetProcessor::SourceAssetTreeModel(this);
+    m_sourceModel->Reset();
+    m_sourceAssetTreeFilterModel->setSourceModel(m_sourceModel);
+    ui->SourceAssetsTreeView->setModel(m_sourceAssetTreeFilterModel);
+    connect(ui->assetDataFilteredSearchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged,
+        m_sourceAssetTreeFilterModel, static_cast<void (QSortFilterProxyModel::*)(const QString&)>(&AssetTreeFilterModel::FilterChanged));
+
+    m_productAssetTreeFilterModel = new AssetProcessor::AssetTreeFilterModel(this);
+    m_productModel = new AssetProcessor::ProductAssetTreeModel(this);
+    m_productModel->Reset();
+    m_productAssetTreeFilterModel->setSourceModel(m_productModel);
+    ui->ProductAssetsTreeView->setModel(m_productAssetTreeFilterModel);
+    connect(ui->assetDataFilteredSearchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged,
+        m_productAssetTreeFilterModel, static_cast<void (QSortFilterProxyModel::*)(const QString&)>(&AssetTreeFilterModel::FilterChanged));
+
+    AzQtComponents::StyleManager::setStyleSheet(ui->sourceAssetDetailsPanel, QStringLiteral("style:AssetProcessor.qss"));
+    AzQtComponents::StyleManager::setStyleSheet(ui->productAssetDetailsPanel, QStringLiteral("style:AssetProcessor.qss"));
+
+    ui->sourceAssetDetailsPanel->RegisterAssociatedWidgets(
+        ui->SourceAssetsTreeView,
+        m_sourceModel,
+        m_sourceAssetTreeFilterModel,
+        ui->ProductAssetsTreeView,
+        m_productModel,
+        m_productAssetTreeFilterModel,
+        ui->assetsTabWidget);
+    ui->productAssetDetailsPanel->RegisterAssociatedWidgets(
+        ui->SourceAssetsTreeView,
+        m_sourceModel,
+        m_sourceAssetTreeFilterModel,
+        ui->ProductAssetsTreeView,
+        m_productModel,
+        m_productAssetTreeFilterModel,
+        ui->assetsTabWidget);
+
+    connect(ui->SourceAssetsTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, ui->sourceAssetDetailsPanel, &SourceAssetDetailsPanel::AssetDataSelectionChanged);
+    connect(ui->ProductAssetsTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, ui->productAssetDetailsPanel, &ProductAssetDetailsPanel::AssetDataSelectionChanged);
+    connect(ui->assetsTabWidget, &QTabWidget::currentChanged, this, &MainWindow::OnAssetTabChange);
+
+    SetupAssetSelectionCaching();
+
     //Log View
     m_loggingPanel = ui->LoggingPanel;
     m_loggingPanel->SetStorageID(AZ_CRC("AssetProcessor::LogPanel", 0x75baa468));
@@ -376,6 +425,83 @@ void MainWindow::Activate()
 
     m_guiApplicationManager->GetAssetProcessorManager()->SetEnableModtimeSkippingFeature(zeroAnalysisModeFromSettings);
     ui->modtimeSkippingCheckBox->setCheckState(zeroAnalysisModeFromSettings ? Qt::Checked : Qt::Unchecked);
+}
+
+void MainWindow::SetupAssetSelectionCaching()
+{
+    // Connect the source model resetting to preserve selection and restore it after the model is reset.
+    connect(m_sourceModel, &QAbstractItemModel::modelAboutToBeReset, [&]()
+    {
+        QItemSelection sourceSelection = m_sourceAssetTreeFilterModel->mapSelectionToSource(ui->SourceAssetsTreeView->selectionModel()->selection());
+
+        if (sourceSelection.indexes().count() == 0 || !sourceSelection.indexes()[0].isValid())
+        {
+            return;
+        }
+        QModelIndex sourceModelIndex = sourceSelection.indexes()[0];
+        AssetProcessor::AssetTreeItem* childItem = static_cast<AssetProcessor::AssetTreeItem*>(sourceModelIndex.internalPointer());
+        m_cachedSourceAssetSelection = childItem->GetData()->m_assetDbName;
+    });
+
+    connect(m_sourceModel, &QAbstractItemModel::modelReset, [&]()
+    {
+        if (m_cachedSourceAssetSelection.empty())
+        {
+            return;
+        }
+        QModelIndex goToIndex = m_sourceModel->GetIndexForSource(m_cachedSourceAssetSelection);
+        // If the cached selection was deleted or is no longer available, clear the selection.
+        if (!goToIndex.isValid())
+        {
+            m_cachedSourceAssetSelection.clear();
+            ui->ProductAssetsTreeView->selectionModel()->clearSelection();
+            // ClearSelection says in the Qt docs that the selectionChange signal will be sent, but that wasn't happening,
+            // so force the details panel to refresh.
+            ui->sourceAssetDetailsPanel->AssetDataSelectionChanged(QItemSelection(), QItemSelection());
+            return;
+        }
+        m_sourceAssetTreeFilterModel->ForceModelIndexVisible(goToIndex);
+        QModelIndex filterIndex = m_sourceAssetTreeFilterModel->mapFromSource(goToIndex);
+        ui->SourceAssetsTreeView->scrollTo(filterIndex, QAbstractItemView::ScrollHint::EnsureVisible);
+        ui->SourceAssetsTreeView->selectionModel()->select(filterIndex, AssetProcessor::AssetTreeModel::GetAssetTreeSelectionFlags());
+    });
+
+    // Connect the product model resetting to preserve selection and restore it after the model is reset.
+    connect(m_productModel, &QAbstractItemModel::modelAboutToBeReset, [&]()
+    {
+        QItemSelection productSelection = m_productAssetTreeFilterModel->mapSelectionToSource(ui->ProductAssetsTreeView->selectionModel()->selection());
+
+        if (productSelection.indexes().count() == 0 || !productSelection.indexes()[0].isValid())
+        {
+            return;
+        }
+        QModelIndex productModelIndex = productSelection.indexes()[0];
+        AssetProcessor::AssetTreeItem* childItem = static_cast<AssetProcessor::AssetTreeItem*>(productModelIndex.internalPointer());
+        m_cachedProductAssetSelection = childItem->GetData()->m_assetDbName;
+    });
+
+    connect(m_productModel, &QAbstractItemModel::modelReset, [&]()
+    {
+        if (m_cachedProductAssetSelection.empty())
+        {
+            return;
+        }
+        QModelIndex goToIndex = m_productModel->GetIndexForProduct(m_cachedProductAssetSelection);
+        // If the cached selection was deleted or is no longer available, clear the selection.
+        if (!goToIndex.isValid())
+        {
+            m_cachedProductAssetSelection.clear();
+            ui->ProductAssetsTreeView->selectionModel()->clearSelection();
+            // ClearSelection says in the Qt docs that the selectionChange signal will be sent, but that wasn't happening,
+            // so force the details panel to refresh.
+            ui->productAssetDetailsPanel->AssetDataSelectionChanged(QItemSelection(), QItemSelection());
+            return;
+        }
+        m_productAssetTreeFilterModel->ForceModelIndexVisible(goToIndex);
+        QModelIndex filterIndex = m_productAssetTreeFilterModel->mapFromSource(goToIndex);
+        ui->ProductAssetsTreeView->scrollTo(filterIndex, QAbstractItemView::ScrollHint::EnsureVisible);
+        ui->ProductAssetsTreeView->selectionModel()->select(filterIndex, AssetProcessor::AssetTreeModel::GetAssetTreeSelectionFlags());
+    });
 }
 
 void MainWindow::OnRescanButtonClicked()
@@ -720,6 +846,10 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             text = tr("Idle...");
             ui->timerContainerWidget->setVisible(true);
             m_guiApplicationManager->RemoveOldTempFolders();
+            AZ_TracePrintf(
+                AssetProcessor::ConsoleChannel,
+                "Job processing completed. Asset Processor is currently idle. Process time: %s\n",
+                FormatStringTime(m_processTime).toUtf8().constData());
         }
         break;
     default:
@@ -738,7 +868,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
 void MainWindow::HighlightAsset(QString assetPath)
 {
     // Make sure that the currently active tab is the job list
-    ui->buttonList->setCurrentIndex(0);
+    ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Jobs));
 
     // clear all filters
     ui->jobFilteredSearchWidget->ClearTextFilter();
@@ -767,6 +897,22 @@ void MainWindow::HighlightAsset(QString assetPath)
 
     // select the first item in the list
     ui->jobTreeView->setCurrentIndex(m_jobSortFilterProxy->index(0, 0));
+}
+
+void MainWindow::OnAssetTabChange(int index)
+{
+    AssetTabIndex tabIndex = static_cast<AssetTabIndex>(index);
+    switch (tabIndex)
+    {
+    case AssetTabIndex::Source:
+        ui->sourceAssetDetailsPanel->setVisible(true);
+        ui->productAssetDetailsPanel->setVisible(false);
+        break;
+    case AssetTabIndex::Product:
+        ui->sourceAssetDetailsPanel->setVisible(false);
+        ui->productAssetDetailsPanel->setVisible(true);
+        break;
+    }
 }
 
 void MainWindow::ApplyConfig()
@@ -1029,6 +1175,8 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
     if (item)
     {
         QMenu menu;
+        menu.setToolTipsVisible(true);
+
         menu.addAction("Show in Asset Browser", this, [&]()
         {
             ConnectionManager* connectionManager = m_guiApplicationManager->GetConnectionManager();
@@ -1057,6 +1205,23 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
                 }
             }
         });
+
+        // Only completed items will be available in the assets tab.
+        QAction* assetTabAction = menu.addAction("Show in Asset Tab", this, [&]()
+        {
+            ui->dialogStack->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+            ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+            ui->sourceAssetDetailsPanel->GoToSource(item->m_elementId.GetInputAssetName().toUtf8().constData());
+        });
+        if (assetTabAction && item->m_jobState != AzToolsFramework::AssetSystem::JobStatus::Completed)
+        {
+            assetTabAction->setToolTip(tr("Only completed jobs are available in the asset tab."));
+            assetTabAction->setDisabled(true);
+        }
+        else if(assetTabAction)
+        {
+            assetTabAction->setToolTip(tr("Show the source asset for this job in the asset tab."));
+        }
 
         menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
         {

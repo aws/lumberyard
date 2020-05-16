@@ -843,6 +843,8 @@ D3DFormat CTexture::ConvertToSRGBFmt(D3DFormat fmt)
         return DXGI_FORMAT_ETC2_UNORM_SRGB;
     case DXGI_FORMAT_ETC2A_UNORM:
         return DXGI_FORMAT_ETC2A_UNORM_SRGB;
+    case DXGI_FORMAT_EAC_RG11_UNORM:
+        return DXGI_FORMAT_EAC_RG11_UNORM;
 #endif //defined(OPENGL)
 
 #ifdef CRY_USE_METAL
@@ -880,6 +882,10 @@ D3DFormat CTexture::ConvertToSRGBFmt(D3DFormat fmt)
         return DXGI_FORMAT_ASTC_12x10_UNORM_SRGB;
     case DXGI_FORMAT_ASTC_12x12_UNORM:
         return DXGI_FORMAT_ASTC_12x12_UNORM_SRGB;
+    case DXGI_FORMAT_R8_UNORM:
+        return DXGI_FORMAT_R8_UNORM;
+    case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+        return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
 #endif
     case DXGI_FORMAT_R10G10B10A2_UNORM:
         return DXGI_FORMAT_R10G10B10A2_UNORM;
@@ -966,6 +972,7 @@ ETEX_Format CTexture::TexFormatFromDeviceFormat(D3DFormat nFormat)
 
     case DXGI_FORMAT_A8_UNORM:
         return eTF_A8;
+    case DXGI_FORMAT_R8_TYPELESS:
     case DXGI_FORMAT_R8_UNORM:
         return eTF_R8;
     case DXGI_FORMAT_R8_SNORM:
@@ -2283,6 +2290,14 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     int nMips = m_nMips;
     AZ_Assert(nWdt > 0 && nHgt > 0 && nMips > 0, "Attempting to create a device texture '%s' with height:%d, width:%d, and mip levels:%d. All three must be > 0", GetSourceName(), nHgt, nWdt, nMips);
 
+    #ifdef CRY_USE_METAL
+        bool isMetalCompressedTextureFormat = GetBlockDim(m_eTFSrc) != Vec2i(1);
+    #else
+        bool isMetalCompressedTextureFormat = false;
+    #endif
+
+        bool allowReinterpretingColorSpace = !isMetalCompressedTextureFormat && RenderCapabilities::SupportsTextureViews();
+    
     byte* pTemp = NULL;
 
     CDeviceManager* pDevMan = &r->m_DevMan;
@@ -2292,16 +2307,17 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     if (m_nFlags & (FT_USAGE_RENDERTARGET | FT_USAGE_UNORDERED_ACCESS))
     {
         m_pRenderTargetData = new RenderTargetData();
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_6
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/D3DTexture_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/D3DTexture_cpp_provo.inl"
-    #elif defined(AZ_PLATFORM_SALEM)
-        #include "Salem/D3DTexture_cpp_salem.inl"
-    #endif
-#endif
+        #if defined(AZ_RESTRICTED_PLATFORM)
+            #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_6
+            
+            #if defined(AZ_PLATFORM_XENIA)
+                #include "Xenia/D3DTexture_cpp_xenia.inl"
+            #elif defined(AZ_PLATFORM_PROVO)
+                #include "Provo/D3DTexture_cpp_provo.inl"
+            #elif defined(AZ_PLATFORM_SALEM)
+                #include "Salem/D3DTexture_cpp_salem.inl"
+            #endif
+        #endif
     }
 
     uint32 nArraySize = m_nArraySize;
@@ -2313,45 +2329,20 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 
         //nMips = 1;
         DXGI_FORMAT nFormatOrig = D3DFmt;
-        DXGI_FORMAT nFormatSRGB = D3DFmt;
-
+        
         resetSRGB = false;
+        
+        m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
+
+        if (m_bIsSRGB)
         {
-            m_bIsSRGB &= m_pPixelFormat->bCanReadSRGB && (m_nFlags & (FT_USAGE_MSAA | FT_USAGE_RENDERTARGET)) == 0;
-            if ((m_bIsSRGB || m_nFlags & FT_USAGE_ALLOWREADSRGB))
-            {
-                nFormatSRGB = ConvertToSRGBFmt(D3DFmt);
-            }
+            D3DFmt = ConvertToSRGBFmt(D3DFmt);
+        }
 
-            if (m_bIsSRGB)
-            {
-                D3DFmt = nFormatSRGB;
-            }
-
-            // must use typeless format to allow runtime casting
-            if (m_nFlags & FT_USAGE_ALLOWREADSRGB)
-            {
-                //If we don't support texture views, and the user will primarily want an srgb view, then create the texture directly that way.
-                //So when the srgb view is created it succeeds.
-
-                if (!RenderCapabilities::SupportsTextureViews()
-#ifdef CRY_USE_METAL
-                    //  for some reason Metal doesn't allow to reinterprete compressed format.
-                    //  This might be perfectly ok if they didn't block sRGB/RGB view conversion which doesn't make much sence
-                    || GetBlockDim(m_eTFSrc) != Vec2i(1)
-#endif
-                    )
-
-                {
-#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL) // really only for OpenGL 4.1, metal should do this just fine
-                    D3DFmt = nFormatSRGB;
-#endif
-                }
-                else
-                {
-                    D3DFmt = ConvertToTypelessFmt(D3DFmt);
-                }
-            }
+        // must use typeless format to allow runtime casting
+        if (m_nFlags & FT_USAGE_ALLOWREADSRGB && allowReinterpretingColorSpace)
+        {
+            D3DFmt = ConvertToTypelessFmt(D3DFmt);
         }
 
         uint32 nUsage = 0;
@@ -2364,12 +2355,12 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
         
-#if defined(AZ_PLATFORM_IOS)
-        if (m_nFlags & FT_USAGE_MEMORYLESS)
-        {
-            nUsage |= CDeviceManager::USAGE_MEMORYLESS;
-        }
-#endif
+        #if defined(AZ_PLATFORM_IOS)
+            if (m_nFlags & FT_USAGE_MEMORYLESS)
+            {
+                nUsage |= CDeviceManager::USAGE_MEMORYLESS;
+            }
+        #endif
         
         if (m_nFlags & FT_USAGE_DYNAMIC)
         {
@@ -2489,18 +2480,19 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
                 }
             }
         }
-        else
+        else // no texture data so just make an empty texture
         {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_7
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/D3DTexture_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/D3DTexture_cpp_provo.inl"
-    #elif defined(AZ_PLATFORM_SALEM)
-        #include "Salem/D3DTexture_cpp_salem.inl"
-    #endif
-        #endif
+            #if defined(AZ_RESTRICTED_PLATFORM)
+                #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_7
+                
+                #if defined(AZ_PLATFORM_XENIA)
+                    #include "Xenia/D3DTexture_cpp_xenia.inl"
+                #elif defined(AZ_PLATFORM_PROVO)
+                    #include "Provo/D3DTexture_cpp_provo.inl"
+                #elif defined(AZ_PLATFORM_SALEM)
+                    #include "Salem/D3DTexture_cpp_salem.inl"
+                #endif
+            #endif
 
             SAFE_RELEASE(m_pDevTexture);
             hr = pDevMan->Create2DTexture(m_SrcName, nWdt, nHgt, nMips, nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pDevTexture, &TI, false, nESRAMOffset);
@@ -2516,38 +2508,20 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             return false;
         }
 
-
         // Restore format
         if (m_nFlags & FT_USAGE_ALLOWREADSRGB)
         {
             D3DFmt = nFormatOrig;
         }
 
-        // force SRGB resource creation.
-
-        //  for some reason Metal doesn't allow to reinterprete compressed format.
-        //  This might be perfectly ok if they didn't block sRGB/RGB view conversion which doesn't make much sence
-        const Vec2i BlockDim = GetBlockDim(m_eTFSrc);
-        if ((m_nFlags & FT_USAGE_ALLOWREADSRGB) && (!RenderCapabilities::SupportsTextureViews()
-#ifdef CRY_USE_METAL
-             || (BlockDim != Vec2i(1))
-#endif
-            ))
-        {
-#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
-            m_bIsSRGB = true;
-#endif
-        }
-
         //////////////////////////////////////////////////////////////////////////
         m_pDeviceShaderResource = static_cast<D3DShaderResourceView*> (CreateDeviceResourceView(SResourceView::ShaderResourceView(m_eTFDst, 0, -1, 0, nMips, m_bIsSRGB, false)));
+        
         m_nMinMipVidActive = 0;
 
-        if (m_nFlags & FT_USAGE_ALLOWREADSRGB)
+        if (m_nFlags & FT_USAGE_ALLOWREADSRGB && allowReinterpretingColorSpace)
         {
-#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
             m_pDeviceShaderResourceSRGB = static_cast<D3DShaderResourceView*> (CreateDeviceResourceView(SResourceView::ShaderResourceView(m_eTFDst, 0, -1, 0, nMips, true, false)));
-#endif
         }
     }
     else if (m_eTT == eTT_Cube)
@@ -2997,6 +2971,8 @@ void CTexture::ReleaseDeviceTexture(bool bKeepLastMips, bool bFromUnload)
         s_pTextureStreamer->OnTextureDestroy(this);
     }
 
+    SAFE_DELETE(m_pRenderTargetData);
+
     if (!m_bNoTexture)
     {
         CDeviceTexture* pTex = m_pDevTexture;
@@ -3083,8 +3059,6 @@ void CTexture::ReleaseDeviceTexture(bool bKeepLastMips, bool bFromUnload)
         m_pDeviceShaderResourceSRGB = NULL;
     }
     m_bNoTexture = false;
-
-    SAFE_DELETE(m_pRenderTargetData);
 }
 
 void* CTexture::CreateDeviceResourceView(const SResourceView& rv)

@@ -1,0 +1,26 @@
+{
+    "auto": {
+        "Source/Pipeline/RCExt": [
+            "Source/Pipeline/RCExt/CgfClothExporter.h",
+            "Source/Pipeline/RCExt/CgfClothExporter.cpp"
+        ],
+        "Source/Pipeline/SceneAPIExt": [
+            "Source/Pipeline/SceneAPIExt/ClothRule.h",
+            "Source/Pipeline/SceneAPIExt/ClothRule.cpp",
+            "Source/Pipeline/SceneAPIExt/ClothRuleBehavior.h",
+            "Source/Pipeline/SceneAPIExt/ClothRuleBehavior.cpp"
+        ],
+        "Source/Components": [
+            "Source/Components/EditorClothComponent.cpp",
+            "Source/Components/EditorClothComponent.h"
+        ],
+        "Source/Editor": [
+            "Source/Editor/MeshNodeHandler.cpp",
+            "Source/Editor/MeshNodeHandler.h",
+            "Source/Editor/ComboBoxEditButtonPair.cpp",
+            "Source/Editor/ComboBoxEditButtonPair.h",
+            "Source/Editor/PropertyTypes.cpp",
+            "Source/Editor/PropertyTypes.h"
+        ]
+    }
+}

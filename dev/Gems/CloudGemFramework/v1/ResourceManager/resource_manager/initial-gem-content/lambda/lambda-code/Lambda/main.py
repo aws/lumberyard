@@ -44,9 +44,10 @@ import CloudCanvas      # Access Settings using get_setting("SETTING_NAME")
 # The Lambda Function code can use the pyhsical id to access the AWS resource using
 # the boto3 api.
 
+
 def handler(event, context):
     
-    print 'event: {}'.format(event)
+    print('event: {}'.format(event))
 
     response = {}
 

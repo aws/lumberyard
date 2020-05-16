@@ -32,11 +32,11 @@ namespace EMotionFX
         {
             AnimGraphFixture::ConstructGraph();
             m_param = GetParam();
-            AddParameter<Vector3Parameter, AZ::Vector3>("vec3Test", m_param);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            AddParameter<Vector3Parameter, AZ::Vector3>("vec3Test", m_param);
 
             /*
             +------------+
@@ -61,6 +61,14 @@ namespace EMotionFX
 
             m_twoLinkIKNode->AddConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeTwoLinkIKNode::PORTID_INPUT_POSE);
             finalNode->AddConnection(m_twoLinkIKNode, BlendTreeTwoLinkIKNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            m_blendTreeAnimGraph->InitAfterLoading();
+        }
+
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
         }
 
         template <class paramType, class inputType>
@@ -73,6 +81,7 @@ namespace EMotionFX
         }
 
     protected:
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTree* m_blendTree = nullptr;
         BlendTreeParameterNode* m_paramNode = nullptr;
         BlendTreeTwoLinkIKNode* m_twoLinkIKNode = nullptr;
@@ -85,7 +94,7 @@ namespace EMotionFX
             ParameterType* parameter = aznew ParameterType();
             parameter->SetName(name);
             parameter->SetDefaultValue(defaultValue);
-            m_animGraph->AddParameter(parameter);
+            m_blendTreeAnimGraph->AddParameter(parameter);
         }
     };
 
@@ -96,7 +105,7 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Check correct output for vector3 parameter.
-        const AZ::PackedVector3f& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
+        const AZ::Vector3& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("vec3Test"))->GetValue();
 
         EXPECT_FLOAT_EQ(vec3TestParam.GetX(), m_param.GetX()) << "Vector3 X value should be the same as expected vector3 X value.";
@@ -110,10 +119,10 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Shuffle the vector3 parameter values to check changing vector3 values will be processed correctly.
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("vec3Test", AZ::PackedVector3f(m_param.GetY(), m_param.GetZ(), m_param.GetX()));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("vec3Test", AZ::Vector3(m_param.GetY(), m_param.GetZ(), m_param.GetX()));
         GetEMotionFX().Update(1.0f / 60.0f);
 
-        const AZ::PackedVector3f& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
+        const AZ::Vector3& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("vec3Test"))->GetValue();
         EXPECT_FLOAT_EQ(vec3TestParam.GetX(), m_param.GetY()) << "Input vector3 X value should be the same as expected vector3 Y value.";
         EXPECT_FLOAT_EQ(vec3TestParam.GetY(), m_param.GetZ()) << "Input vector3 Y value should be the same as expected vector3 Z value.";

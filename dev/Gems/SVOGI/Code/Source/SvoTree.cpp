@@ -29,6 +29,9 @@
 #include "FrameProfiler.h"
 
 #include "MathConversion.h"
+
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 namespace SVOGI
 {
     //Since the Job System has no priority or size scheduling hints we don't want to starve out other jobs with 
@@ -112,9 +115,9 @@ namespace SVOGI
             m_globalInsertedMeshes.clear();
             m_globalRemovals.clear();
 
-            float fMapSize = (float)gEnv->p3DEngine->GetTerrainSize();
-            AZ::Aabb areaBox = AZ::Aabb::CreateFromMinMax(AZ::Vector3(0, 0, 0), AZ::Vector3(fMapSize, fMapSize, fMapSize));
-            m_svoRoot = AZStd::make_shared<Voxel>(areaBox, nullptr, this, 0);
+            AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+            m_svoRoot = AZStd::make_shared<Voxel>(terrainAabb, nullptr, this, 0);
         }
     }
 
@@ -126,9 +129,9 @@ namespace SVOGI
         {
             if (!gEnv->p3DEngine->LevelLoadingInProgress() || gEnv->IsEditor())
             {
-                float fMapSize = (float)gEnv->p3DEngine->GetTerrainSize();
-                AZ::Aabb areaBox = AZ::Aabb::CreateFromMinMax(AZ::Vector3(0, 0, 0), AZ::Vector3(fMapSize, fMapSize, fMapSize));
-                m_svoRoot = AZStd::make_shared<Voxel>(areaBox, nullptr, this, 0);
+                AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+                AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+                m_svoRoot = AZStd::make_shared<Voxel>(terrainAabb, nullptr, this, 0);
             }
         }
 
@@ -505,8 +508,9 @@ namespace SVOGI
 
         m_globalSpecularCM = 0;
         m_globalSpecularCM_Mult = 0;
-        float fMapSize = (float)gEnv->p3DEngine->GetTerrainSize();
-        AABB areaBox(Vec3(0, 0, 0), Vec3(fMapSize, fMapSize, fMapSize));
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        AABB areaBox = AZAabbToLyAABB(terrainAabb);
 
         if (AZ::s32 nCount = gEnv->p3DEngine->GetObjectsByTypeInBox(eERType_Light, areaBox, (IRenderNode**)0))
         {

@@ -11,30 +11,47 @@
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
-    <InterpreterVersion />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <PropertyGroup>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
-    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="bootstrap.py" />
+    <Compile Include="cleanup.py" />
+    <Compile Include="cleanup_utils\cleanup_apigateway_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_cf_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_cognito_identity_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_cognito_idp_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_dynamodb_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_glue_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_iam_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_iot_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_lambda_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_logs_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_s3_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_sqs_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_swf_utils.py" />
+    <Compile Include="cleanup_utils\cleanup_utils.py" />
+    <Compile Include="cleanup_utils\exception_utils.py" />
+    <Compile Include="cleanup_utils\__init__.py" />
     <Compile Include="cli.py" />
+    <Compile Include="delete_ec2_resources.py" />
+    <Compile Include="errors.py" />
     <Compile Include="gui.py" />
-    <Compile Include="test\cleanup.py" />
     <Compile Include="test\path_utils.py" />
     <Compile Include="test\test_runner.py" />
+    <Compile Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="test" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="test\cleanup.cmd" />
+    <Folder Include="cleanup_utils" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="test\RunAllTests.cmd" />
   </ItemGroup>
-  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

@@ -18,7 +18,9 @@
 #include "Vector.h"
 #include "PlaneEq.h"
 #include "LogManager.h"
-#include "AzCore/Math/Vector3.h"
+#include <AzCore/Math/Matrix4x4.h>
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Vector3.h>
 
 // matrix order
 #define MCORE_MATRIX_ROWMAJOR
@@ -33,13 +35,12 @@
 #endif
 
 
+namespace AZ { class Quaternion; }
 
 namespace MCore
 {
-    // forward declaration
-    class Quaternion;
-
     /**
+     * Depracated. Please use AZ::Transform instead.
      * A 4x4 matrix class.
      * Matrices can for example be used to transform points or vectors.
      * Transforming means moving to another coordinate system. With matrices you can do things like: translate (move), rotate and scale.
@@ -95,11 +96,31 @@ namespace MCore
          */
         MCORE_INLINE Matrix(const Matrix& m);
 
-        void InitFromPosRot(const AZ::Vector3& pos, const Quaternion& rot);
-        void InitFromPosRotScale(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale);
-        void InitFromNoScaleInherit(const AZ::Vector3& translation, const Quaternion& rotation, const AZ::Vector3& scale, const AZ::Vector3& invParentScale);
-        void InitFromPosRotScaleScaleRot(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const Quaternion& scaleRot);
-        void InitFromPosRotScaleShear(const AZ::Vector3& pos, const Quaternion& rot, const AZ::Vector3& scale, const AZ::Vector3& shear);
+        MCORE_INLINE Matrix(const AZ::Matrix4x4& m)
+        {
+            TMAT(0, 0) = m.GetElement(0, 0);
+            TMAT(0, 1) = m.GetElement(0, 1);
+            TMAT(0, 2) = m.GetElement(0, 2);
+            TMAT(0, 3) = m.GetElement(0, 3);
+            TMAT(1, 0) = m.GetElement(1, 0);
+            TMAT(1, 1) = m.GetElement(1, 1);
+            TMAT(1, 2) = m.GetElement(1, 2);
+            TMAT(1, 3) = m.GetElement(1, 3);
+            TMAT(2, 0) = m.GetElement(2, 0);
+            TMAT(2, 1) = m.GetElement(2, 1);
+            TMAT(2, 2) = m.GetElement(2, 2);
+            TMAT(2, 3) = m.GetElement(2, 3);
+            TMAT(3, 0) = m.GetElement(3, 0);
+            TMAT(3, 1) = m.GetElement(3, 1);
+            TMAT(3, 2) = m.GetElement(3, 2);
+            TMAT(3, 3) = m.GetElement(3, 3);
+        }
+
+        void InitFromPosRot(const AZ::Vector3& pos, const AZ::Quaternion& rot);
+        void InitFromPosRotScale(const AZ::Vector3& pos, const AZ::Quaternion& rot, const AZ::Vector3& scale);
+        void InitFromNoScaleInherit(const AZ::Vector3& translation, const AZ::Quaternion& rotation, const AZ::Vector3& scale, const AZ::Vector3& invParentScale);
+        void InitFromPosRotScaleScaleRot(const AZ::Vector3& pos, const AZ::Quaternion& rot, const AZ::Vector3& scale, const AZ::Quaternion& scaleRot);
+        void InitFromPosRotScaleShear(const AZ::Vector3& pos, const AZ::Quaternion& rot, const AZ::Vector3& scale, const AZ::Vector3& shear);
 
         /**
          * Sets the matrix to identity.
@@ -128,10 +149,10 @@ namespace MCore
         void SetTranslationMatrix(const AZ::Vector3& t);
 
         /**
-         * Initialize this matrix into a rotation matrix from a quaternion.
-         * @param rotation The quaternion representing the rotatation.
+         * Initialize this matrix into a rotation matrix from a AZ::Quaternion.
+         * @param rotation The AZ::Quaternion representing the rotatation.
          */
-        void SetRotationMatrix(const Quaternion& rotation);
+        void SetRotationMatrix(const AZ::Quaternion& rotation);
 
         /**
          * Makes the matrix an rotation matrix along the x-axis.
@@ -671,23 +692,23 @@ namespace MCore
         /**
          * Decompose a transformation matrix into translation and rotation components.
          * The translation part is just the translation part of the matrix.
-         * The rotation quaternion is calculated by normalizing the basis vectors and converting the
-         * 3x3 rotation part of the matrix to a quaternion.
+         * The rotation AZ::Quaternion is calculated by normalizing the basis vectors and converting the
+         * 3x3 rotation part of the matrix to a AZ::Quaternion.
          * It is allowed for the matrix to contain scaling.
          * The matrix where you call Decompose on remains unchanged.
          * @param outTranslation A pointer to a vector where the translation will be written to.
-         * @param outRotation A pointer to a quaternion where the rotation will be written to.
+         * @param outRotation A pointer to a AZ::Quaternion where the rotation will be written to.
          * @note Please keep in mind that nullptr values for the parameters are NOT allowed.
          */
-        void Decompose(AZ::Vector3* outTranslation, Quaternion* outRotation) const;
+        void Decompose(AZ::Vector3* outTranslation, AZ::Quaternion* outRotation) const;
 
         // QR Gram-Schmidt decomposition
-        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, AZ::Quaternion& rot) const;
         void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot) const;
         void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale) const;
         void DecomposeQRGramSchmidt(AZ::Vector3& translation, Matrix& rot, AZ::Vector3& scale, AZ::Vector3& shear) const;
-        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale, AZ::Vector3& shear) const;
-        void DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, AZ::Quaternion& rot, AZ::Vector3& scale, AZ::Vector3& shear) const;
+        void DecomposeQRGramSchmidt(AZ::Vector3& translation, AZ::Quaternion& rot, AZ::Vector3& scale) const;
 
         static Matrix OuterProduct(const AZ::Vector4& column, const AZ::Vector4& row);
 
@@ -774,6 +795,15 @@ namespace MCore
          */
         bool CheckIfIsReflective() const;
 
+        AZ::Matrix4x4 ToAzMatrix() const
+        {
+#ifdef MCORE_MATRIX_ROWMAJOR
+            return AZ::Matrix4x4::CreateFromRowMajorFloat16(m16);
+#else
+            return AZ::Matrix4x4::CreateFromColumnMajorFloat16(m16);
+#endif
+        }
+
         /**
          * Prints the matrix into the logfile or debug output, using MCore::LogDetailedInfo().
          * Please note that the values are printed using floats or doubles. So it is not possible
@@ -789,19 +819,19 @@ namespace MCore
         static MCORE_INLINE Matrix TranslationMatrix(const AZ::Vector3& v)                      { Matrix m; m.SetTranslationMatrix(v); return m; }
 
         /**
-         * Returns a rotation matrix from a quaternion.
-         * @param rot The quaternion that represents the rotation.
+         * Returns a rotation matrix from a AZ::Quaternion.
+         * @param rot The AZ::Quaternion that represents the rotation.
          * @result A rotation matrix.
          */
-        static MCORE_INLINE Matrix RotationMatrix(const Quaternion& rot)                    { Matrix m; m.SetRotationMatrix(rot); return m; }
+        static MCORE_INLINE Matrix RotationMatrix(const AZ::Quaternion& rot)                    { Matrix m; m.SetRotationMatrix(rot); return m; }
 
         /**
-         * Returns a rotation matrix, including a translation, where the rotation is represented by a quaternion.
-         * @param rot The quaternion that represents the rotation.
+         * Returns a rotation matrix, including a translation, where the rotation is represented by a AZ::Quaternion.
+         * @param rot The AZ::Quaternion that represents the rotation.
          * @param trans The translation of the matrix.
          * @result The rotation matrix, that includes a translation as well.
          */
-        static MCORE_INLINE Matrix RotationTranslationMatrix(const Quaternion& rot, const AZ::Vector3& trans)       { Matrix m; m.InitFromPosRot(trans, rot); return m; }
+        static MCORE_INLINE Matrix RotationTranslationMatrix(const AZ::Quaternion& rot, const AZ::Vector3& trans)       { Matrix m; m.InitFromPosRot(trans, rot); return m; }
 
         /**
          * Returns a rotation matrix along the x-axis.
@@ -881,7 +911,6 @@ namespace MCore
          * @result The shear matrix.
          */
         static MCORE_INLINE Matrix ShearMatrix(const AZ::Vector3& s)                                { Matrix m; m.SetShearMatrix(s); return m; }
-
 
         // operators
         Matrix  operator +  (const Matrix& right) const;

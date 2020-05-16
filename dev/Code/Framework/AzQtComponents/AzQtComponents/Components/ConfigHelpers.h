@@ -59,7 +59,7 @@ namespace AzQtComponents
         {
             // Sets configValue to the value of key in settings. If key does not exist, configValue
             // is unchanged.
-            configValue = settings.value(key, configValue).template value<T>();
+            configValue = settings.value(key, QVariant::fromValue(configValue)).template value<T>();
         }
 
         template <>

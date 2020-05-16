@@ -205,17 +205,14 @@ namespace AssetProcessor
         }
 #endif // defined(AZ_ENABLE_TRACING)
 
-        if (!m_tempEnabledPlatforms.isEmpty())
+        // over here, we want to eliminate any platforms in the m_enabledPlatforms array that are not in the m_tempEnabledPlatforms
+        for (int enabledPlatformIdx = static_cast<int>(m_enabledPlatforms.size() - 1); enabledPlatformIdx >= 0; --enabledPlatformIdx)
         {
-            // over here, we want to eliminate any platforms in the m_enabledPlatforms array that are not in the m_tempEnabledPlatforms
-            for (int enabledPlatformIdx = static_cast<int>(m_enabledPlatforms.size() - 1); enabledPlatformIdx >= 0; --enabledPlatformIdx)
-            {
-                const AssetBuilderSDK::PlatformInfo& platformInfo = m_enabledPlatforms[enabledPlatformIdx];
+            const AssetBuilderSDK::PlatformInfo& platformInfo = m_enabledPlatforms[enabledPlatformIdx];
 
-                if (!m_tempEnabledPlatforms.contains(platformInfo.m_identifier.c_str()))
-                {
-                    m_enabledPlatforms.erase(m_enabledPlatforms.cbegin() + enabledPlatformIdx);
-                }
+            if (!m_tempEnabledPlatforms.contains(platformInfo.m_identifier.c_str()))
+            {
+                m_enabledPlatforms.erase(m_enabledPlatforms.cbegin() + enabledPlatformIdx);
             }
         }
 
@@ -491,18 +488,28 @@ namespace AssetProcessor
                     AssetRecognizer rec;
                     rec.m_name = group.mid(3); // chop off the "RC " and you're left with the remainder name
 
-                    if (m_assetRecognizers.find(rec.m_name) != m_assetRecognizers.end())
+                    if (loader.value("ignore", false).toBool())
                     {
-                        rec = m_assetRecognizers[rec.m_name];
+                        // This allows a game-specific configuration to remove an AssetRecognizer that exists in
+                        // the default configuration. For example, some projects may provide an AssetBuilder for 
+                        // a file type that normally uses RC by default.
+                        m_assetRecognizers.remove(rec.m_name);
                     }
+                    else
+                    {
+                        if (m_assetRecognizers.find(rec.m_name) != m_assetRecognizers.end())
+                        {
+                            rec = m_assetRecognizers[rec.m_name];
+                        }
 
-                    if (!ReadRecognizerFromConfig(rec, loader))
-                    {
-                        return false;
-                    }
-                    if (!rec.m_platformSpecs.empty())
-                    {
-                        m_assetRecognizers[rec.m_name] = rec;
+                        if (!ReadRecognizerFromConfig(rec, loader))
+                        {
+                            return false;
+                        }
+                        if (!rec.m_platformSpecs.empty())
+                        {
+                            m_assetRecognizers[rec.m_name] = rec;
+                        }
                     }
 
                     loader.endGroup();
@@ -810,7 +817,7 @@ namespace AssetProcessor
         return QString();
     }
 
-    QStringList PlatformConfiguration::FindWildcardMatches(const QString& sourceFolder, QString relativeName) const
+    QStringList PlatformConfiguration::FindWildcardMatches(const QString& sourceFolder, QString relativeName, bool includeFolders) const
     {
         if (relativeName.isEmpty())
         {
@@ -828,7 +835,7 @@ namespace AssetProcessor
         while (diretoryIterator.hasNext())
         {
             diretoryIterator.next();
-            if (!diretoryIterator.fileInfo().isFile())
+            if (!includeFolders && !diretoryIterator.fileInfo().isFile())
             {
                 continue;
             }

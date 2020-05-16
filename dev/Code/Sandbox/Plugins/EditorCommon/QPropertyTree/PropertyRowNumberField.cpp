@@ -182,7 +182,7 @@ void PropertyRowNumberField::onMouseDrag(const PropertyDragEvent& e)
 	float relativeDelta = float(e.totalDelta.x()) / screenSize.width();
 	int fieldRectWidth = widgetRect(e.tree).width();
 	if (fieldRectWidth < 16)
-		fieldRectWidth = e.tree->treeSize().x() * e.tree->valueColumnWidth();
+		fieldRectWidth = aznumeric_cast<int>(e.tree->treeSize().x() * e.tree->valueColumnWidth());
 	float valueFieldFraction = fieldRectWidth < FLT_EPSILON  ? 0 : float(e.totalDelta.x()) / fieldRectWidth;
 	incrementLog(relativeDelta, valueFieldFraction);
     setMultiValue(false);

@@ -14,10 +14,21 @@
 #include <Gallery/ui_ComboBoxPage.h>
 
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
+#include <AzQtComponents/Components/Widgets/ComboBox.h>
 
 #include <QMenu>
 #include <QCheckBox>
 #include <QLineEdit>
+
+class FirstIsErrorComboBoxValidator
+    : public AzQtComponents::ComboBoxValidator
+{
+public:
+    QValidator::State validateIndex(int index) const override
+    {
+        return (index == 0) ? QValidator::Invalid : QValidator::Acceptable;
+    }
+};
 
 ComboBoxPage::ComboBoxPage(QWidget* parent)
 : QWidget(parent)
@@ -32,15 +43,17 @@ ComboBoxPage::ComboBoxPage(QWidget* parent)
         ui->m_data->addItem(QString("Option %1").arg(i), i);
     }
     ui->m_data->setCurrentIndex(0);
-    ui->m_flat->setModel(ui->m_data->model());
-
-    // Make the control with data be editable too
-    ui->m_data->setEditable(true);
-    ui->m_data->lineEdit()->setPlaceholderText("Hint Text"); // visible only 
 
     ui->m_disabled->setDisabled(true);
     ui->m_disabled->addItem("Disabled dropdown");
     ui->m_disabled->setCurrentIndex(0);
+
+    // Add a custom validator to the combo box
+    auto validator = new FirstIsErrorComboBoxValidator();
+    AzQtComponents::ComboBox::setValidator(ui->m_error, validator);
+
+    ui->m_error->addItem(QString("Item 0"));
+    ui->m_error->addItem(QString("Item 1"));
 
     QString exampleText = R"(
 

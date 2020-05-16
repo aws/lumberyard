@@ -26,7 +26,6 @@ namespace EMotionFX
     {
     }
 
-
     AnimGraphTransitionCondition::~AnimGraphTransitionCondition()
     {
         if (mAnimGraph)
@@ -34,7 +33,6 @@ namespace EMotionFX
             mAnimGraph->RemoveObject(this);
         }
     }
-
 
     bool AnimGraphTransitionCondition::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -47,13 +45,21 @@ namespace EMotionFX
 
         return true;
     }
-    
 
+    void AnimGraphTransitionCondition::SetTransition(AnimGraphStateTransition* transition)
+    {
+        m_transition = transition;
+    }
+
+    AnimGraphStateTransition* AnimGraphTransitionCondition::GetTransition() const
+    {
+        return m_transition;
+    }
+    
     AnimGraphObject::ECategory AnimGraphTransitionCondition::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_TRANSITIONCONDITIONS;
     }
-
 
     void AnimGraphTransitionCondition::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
     {
@@ -61,7 +67,6 @@ namespace EMotionFX
         AZ_UNUSED(convertedIds);
         AZ_UNUSED(attributesString);
     }
-
 
     void AnimGraphTransitionCondition::Reflect(AZ::ReflectContext* context)
     {
@@ -74,5 +79,4 @@ namespace EMotionFX
         serializeContext->Class<AnimGraphTransitionCondition, AnimGraphObject>()
             ->Version(1);
     }
-
 } // namespace EMotionFX

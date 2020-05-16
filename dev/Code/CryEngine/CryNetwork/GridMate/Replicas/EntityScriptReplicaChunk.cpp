@@ -38,7 +38,7 @@ namespace GridMate
             "DataSet31","DataSet32"
         };
 
-        AZ_STATIC_ASSERT(EntityScriptReplicaChunk::k_maxScriptableDataSets <= AZ_ARRAY_SIZE(s_nameArray),"Insufficient number of names supplied to EntityScriptDataSet::GetDataSetName()");
+        static_assert(EntityScriptReplicaChunk::k_maxScriptableDataSets <= AZ_ARRAY_SIZE(s_nameArray),"Insufficient number of names supplied to EntityScriptDataSet::GetDataSetName()");
 
         if (s_chunkIndex > EntityScriptReplicaChunk::k_maxScriptableDataSets && EntityScriptReplicaChunk::k_maxScriptableDataSets >= 0)
         {

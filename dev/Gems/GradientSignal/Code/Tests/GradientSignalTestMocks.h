@@ -18,6 +18,7 @@
 #include <AzCore/Component/TransformBus.h>
 
 #include <GradientSignal/Ebuses/GradientRequestBus.h>
+#include <GradientSignal/Ebuses/GradientPreviewContextRequestBus.h>
 #include <GradientSignal/GradientSampler.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
@@ -35,7 +36,7 @@ namespace UnitTest
         void SetUp() override
         {
             AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_memoryBlocksByteSize = 32 * 1024 * 1024;
+            appDesc.m_memoryBlocksByteSize = 128 * 1024 * 1024;
             m_systemEntity = m_app.Create(appDesc);
             m_app.AddEntity(m_systemEntity);
         }
@@ -124,10 +125,13 @@ namespace UnitTest
     struct MockGradientArrayRequestsBus
         : public GradientSignal::GradientRequestBus::Handler
     {
-        MockGradientArrayRequestsBus(const AZ::EntityId& id, const AZStd::vector<float>& data, int dataSize)
-            : m_getValue(data), m_dataSize(dataSize)
+        MockGradientArrayRequestsBus(const AZ::EntityId& id, const AZStd::vector<float>& data, int rowSize)
+            : m_getValue(data), m_rowSize(rowSize)
         {
             BusConnect(id);
+
+            // We expect each value to get requested exactly once.
+            m_positionsRequested.reserve(data.size());
         }
 
         ~MockGradientArrayRequestsBus()
@@ -138,8 +142,10 @@ namespace UnitTest
         float GetValue(const GradientSignal::GradientSampleParams& sampleParams) const override
         {
             const auto& pos = sampleParams.m_position;
-            const int index = azlossy_caster<float>(pos.GetY() * float(m_dataSize) + pos.GetX());
-            
+            const int index = azlossy_caster<float>(pos.GetY() * float(m_rowSize) + pos.GetX());
+
+            m_positionsRequested.push_back(sampleParams.m_position);
+
             return m_getValue[index];
         }
 
@@ -149,7 +155,8 @@ namespace UnitTest
         }
 
         AZStd::vector<float> m_getValue;
-        int m_dataSize;
+        int m_rowSize;
+        mutable AZStd::vector<AZ::Vector3> m_positionsRequested;
     };
 
     struct MockShapeComponentHandler
@@ -272,31 +279,152 @@ namespace UnitTest
             }
         }
 
+        void GetSurfacePointsFromRegion(const AZ::Aabb& inRegion, const AZ::Vector2 stepSize, const SurfaceData::SurfaceTagVector& desiredTags,
+            SurfaceData::SurfacePointListPerPosition& surfacePointListPerPosition) const override
+        {
+        }
+
         SurfaceData::SurfaceDataRegistryHandle RegisterSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
-            return {};
+            return RegisterEntry(entry, m_providers);
         }
 
         void UnregisterSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle) override
         {
+            UnregisterEntry(handle, m_providers);
         }
 
         SurfaceData::SurfaceDataRegistryHandle RegisterSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryEntry& entry) override
         {
-            return {};
+            return RegisterEntry(entry, m_modifiers);
         }
 
         void UnregisterSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle) override
         {
+            UnregisterEntry(handle, m_modifiers);
         }
 
-        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        void UpdateSurfaceDataModifier(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
+        {
+            UpdateEntry(handle, entry, m_providers);
+        }
+
+        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry) override
+        {
+            UpdateEntry(handle, entry, m_modifiers);
+        }
+
+        void RefreshSurfaceData(const AZ::Aabb& dirtyBounds) override
         {
         }
 
-        void UpdateSurfaceDataProvider(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry, const AZ::Aabb& dirtyBoundsOverride) override
+        SurfaceData::SurfaceDataRegistryHandle GetSurfaceProviderHandle(AZ::EntityId id)
         {
+            return GetEntryHandle(id, m_providers);
         }
 
+        SurfaceData::SurfaceDataRegistryHandle GetSurfaceModifierHandle(AZ::EntityId id)
+        {
+            return GetEntryHandle(id, m_modifiers);
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetSurfaceProviderEntry(AZ::EntityId id)
+        {
+            return GetEntry(id, m_providers);
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetSurfaceModifierEntry(AZ::EntityId id)
+        {
+            return GetEntry(id, m_modifiers);
+        }
+    protected:
+        AZStd::vector<SurfaceData::SurfaceDataRegistryEntry> m_providers;
+        AZStd::vector<SurfaceData::SurfaceDataRegistryEntry> m_modifiers;
+
+        SurfaceData::SurfaceDataRegistryHandle RegisterEntry(const SurfaceData::SurfaceDataRegistryEntry& entry, AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // Keep a list of registered entries.  Use the "list index + 1" as the handle.  (We add +1 because 0 is used to mean "invalid handle")
+            entryList.emplace_back(entry);
+            return entryList.size();
+        }
+
+        void UnregisterEntry(const SurfaceData::SurfaceDataRegistryHandle& handle, AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // We don't actually remove the entry from our list because we use handles as indices, so the indices can't change.
+            // Clearing out the entity Id should be good enough.
+            uint32 index = static_cast<uint32>(handle) - 1;
+            if (index < entryList.size())
+            {
+                entryList[index].m_entityId = AZ::EntityId();
+            }
+        }
+
+        void UpdateEntry(const SurfaceData::SurfaceDataRegistryHandle& handle, const SurfaceData::SurfaceDataRegistryEntry& entry,
+                         AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            uint32 index = static_cast<uint32>(handle) - 1;
+            if (index < entryList.size())
+            {
+                entryList[index] = entry;
+            }
+
+        }
+
+        SurfaceData::SurfaceDataRegistryHandle GetEntryHandle(AZ::EntityId id, const AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            // Look up the requested entity Id and see if we have a registered surface entry with that handle.  If so, return the handle.
+            auto result = AZStd::find_if(entryList.begin(), entryList.end(), [this, id](const SurfaceData::SurfaceDataRegistryEntry& entry) { return entry.m_entityId == id; });
+            if (result == entryList.end())
+            {
+                return SurfaceData::InvalidSurfaceDataRegistryHandle;
+            }
+            else
+            {
+                // We use "index + 1" as our handle
+                return static_cast<SurfaceData::SurfaceDataRegistryHandle>(result - entryList.begin() + 1);
+            }
+
+        }
+
+        SurfaceData::SurfaceDataRegistryEntry GetEntry(AZ::EntityId id, const AZStd::vector<SurfaceData::SurfaceDataRegistryEntry>& entryList)
+        {
+            SurfaceData::SurfaceDataRegistryHandle handle = GetEntryHandle(id, entryList);
+            if (handle != SurfaceData::InvalidSurfaceDataRegistryHandle)
+            {
+                return entryList[handle - 1];
+            }
+            else
+            {
+                SurfaceData::SurfaceDataRegistryEntry emptyEntry;
+                return emptyEntry;
+            }
+        }
     };
+
+    struct MockGradientPreviewContextRequestBus
+        : public GradientSignal::GradientPreviewContextRequestBus::Handler
+    {
+        MockGradientPreviewContextRequestBus(const AZ::EntityId& id, const AZ::Aabb& previewBounds, bool constrainToShape)
+            : m_previewBounds(previewBounds)
+            , m_constrainToShape(constrainToShape)
+            , m_id(id)
+        {
+            BusConnect(id);
+        }
+
+        ~MockGradientPreviewContextRequestBus()
+        {
+            BusDisconnect();
+        }
+
+        AZ::EntityId GetPreviewEntity() const override { return m_id; }
+        virtual AZ::Aabb GetPreviewBounds() const { return m_previewBounds; }
+        virtual bool GetConstrainToShape() const { return m_constrainToShape; }
+
+    protected:
+        AZ::EntityId m_id;
+        AZ::Aabb m_previewBounds;
+        bool m_constrainToShape;
+    };
+
 }

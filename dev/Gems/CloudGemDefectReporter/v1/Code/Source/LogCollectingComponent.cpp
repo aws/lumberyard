@@ -15,6 +15,7 @@
 #include <LogCollectingComponent.h>
 #include "DefectReportManager.h"
 #include <AzFramework/FileFunc/FileFunc.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -162,7 +163,7 @@ namespace CloudGemDefectReporter
         AZ::u64 bytesRead = 0;
         fileIO->Read(fileHandle, pBuffer, numBytes, false, &bytesRead);
 
-        return FileBuffer(pBuffer, bytesRead);
+        return FileBuffer(pBuffer, aznumeric_caster(bytesRead));
     }
 
     const char* LogCollectingComponent::GetLogFilePath() const

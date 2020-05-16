@@ -33,11 +33,10 @@ namespace CommandSystem
 
     class CommandAnimGraphAddTransitionAction
         : public MCore::Command
-        , public EMotionFX::ParameterMixinAnimGraphId
         , public EMotionFX::ParameterMixinTransitionId
     {
     public:
-        AZ_RTTI(CommandAnimGraphAddTransitionAction, "{EBC2F137-6473-4D7B-AD59-BB044CFC880E}", MCore::Command, ParameterMixinAnimGraphId, ParameterMixinTransitionId)
+        AZ_RTTI(CommandAnimGraphAddTransitionAction, "{EBC2F137-6473-4D7B-AD59-BB044CFC880E}", MCore::Command, ParameterMixinTransitionId)
         AZ_CLASS_ALLOCATOR_DECL
 
         CommandAnimGraphAddTransitionAction(MCore::Command* orgCommand = nullptr);
@@ -66,11 +65,10 @@ namespace CommandSystem
 
     class CommandAnimGraphRemoveTransitionAction
         : public MCore::Command
-        , public EMotionFX::ParameterMixinAnimGraphId
         , public EMotionFX::ParameterMixinTransitionId
     {
     public:
-        AZ_RTTI(CommandAnimGraphRemoveTransitionAction, "{19219257-24E5-4216-AF4F-8375DA6F3F74}", MCore::Command, ParameterMixinAnimGraphId, ParameterMixinTransitionId)
+        AZ_RTTI(CommandAnimGraphRemoveTransitionAction, "{19219257-24E5-4216-AF4F-8375DA6F3F74}", MCore::Command, ParameterMixinTransitionId)
         AZ_CLASS_ALLOCATOR_DECL
 
         CommandAnimGraphRemoveTransitionAction(MCore::Command* orgCommand = nullptr);

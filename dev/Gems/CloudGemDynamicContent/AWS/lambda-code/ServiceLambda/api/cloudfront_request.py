@@ -55,16 +55,16 @@ def _get_cdn_data():
             raise RuntimeError('No key data found at {}:{}'.format(cdn_data_bucket,cdn_prefix))
         else:
             s3_client = boto3.client('s3', config=Config(signature_version='s3v4'))
-            print 'Attempting to get {}'.format(found_key)
+            print('Attempting to get {}'.format(found_key))
             cdn_data = s3_client.get_object(Bucket = cdn_data_bucket, Key=found_key)
             _get_cdn_data.key_data = key_id_from_name(found_key), cdn_data['Body'].read()
     return _get_cdn_data.key_data
 
 # Algorithm based on https://boto3.readthedocs.io/en/latest/reference/services/cloudfront.html#generate-a-signed-url-for-amazon-cloudfront
 def get_cdn_presigned(file_name):
-    print 'Getting presigned url for {} from CDN - {}'.format(file_name, cdn_name)
+    print('Getting presigned url for {} from CDN - {}'.format(file_name, cdn_name))
     cdn_key_name, cdn_key_data = _get_cdn_data()
-    print 'Got key name {} data {}'.format(cdn_key_name, cdn_key_data)
+    print('Got key name {} data {}'.format(cdn_key_name, cdn_key_data))
 
     def _rsa_signer(message):
         private_key = serialization.load_pem_private_key(cdn_key_data, password=None, backend=default_backend())
@@ -75,12 +75,12 @@ def get_cdn_presigned(file_name):
     if not hasattr(get_cdn_presigned, 'cdn_domain'):
         client = boto3.client('cloudfront')
         response = client.get_distribution(Id=cdn_name)
-        print 'CDN {} got distribution info {}'.format(cdn_name, response)
+        print('CDN {} got distribution info {}'.format(cdn_name, response))
 
         get_cdn_presigned.cdn_domain = response.get('Distribution',{}).get('DomainName')
 
     if not get_cdn_presigned.cdn_domain:
-        print 'No domain on cdn {} to get signed url from'.format(cdn_name)
+        print('No domain on cdn {} to get signed url from'.format(cdn_name))
 
     current_time = datetime.utcnow()
     expire_time = current_time + timedelta(seconds=_cloudfront_url_duration())
@@ -88,11 +88,11 @@ def get_cdn_presigned(file_name):
     cloudfront_signer = CloudFrontSigner(cdn_key_name, _rsa_signer)
 
     url = 'https://' + get_cdn_presigned.cdn_domain + '/' + file_name
-    print 'Retrieving signed url for {}'.format(url)
+    print('Retrieving signed url for {}'.format(url))
 
     signed_url = cloudfront_signer.generate_presigned_url(url, date_less_than=expire_time)
 
-    print 'Got signed url of {}'.format(signed_url)
+    print('Got signed url of {}'.format(signed_url))
     return signed_url
 
 

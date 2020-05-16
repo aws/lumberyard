@@ -13,12 +13,14 @@
 
 #include <functional>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QGraphicsItem>
 #include <QGraphicsGridLayout>
 #include <QGraphicsLayoutItem>
 #include <QGraphicsScene>
 #include <QGraphicsWidget>
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/RTTI/TypeInfo.h>
 
@@ -27,6 +29,7 @@
 #include <Components/Nodes/Comment/CommentTextGraphicsWidget.h>
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
 #include <GraphCanvas/Components/GridBus.h>
+
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
@@ -313,9 +316,8 @@ namespace GraphCanvas
     {
         if (m_commentTextWidget)
         {
-            CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentChanged, m_saveData.m_comment);
-
             m_commentTextWidget->SetComment(m_saveData.m_comment);
+            CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentChanged, m_saveData.m_comment);
         }
     }
 

@@ -17,7 +17,7 @@
 #include <ImageLoader/ImageLoaders.h>
 #include <BuilderSettings/TextureSettings.h>
 #include <BuilderSettings/PresetSettings.h>
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 #include <Converters/Cubemap.h>
 #include <Processing/ImageConvert.h>
 #include <AzCore/std/string/conversions.h>

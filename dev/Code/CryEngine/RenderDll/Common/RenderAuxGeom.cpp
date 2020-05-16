@@ -1875,6 +1875,29 @@ void CAuxGeomCB::DrawSphere(const Vec3& pos, float radius, const ColorB& col, bo
     }
 }
 
+void CAuxGeomCB::DrawDisk(const Vec3& pos, const Vec3& dir, float radius, const ColorB& col, bool drawShaded)
+{
+    if (radius > 0.0f && dir.GetLengthSquared() > 0.0f)
+    {
+        SAuxDrawObjParams* pDrawParams(0);
+        AddObject(pDrawParams, CreateObjectRenderFlags(eDOT_Disk));
+
+        Vec3 direction(dir.normalized());
+        Vec3 orthogonal(direction.GetOrthogonal().normalized());
+
+        Matrix33 matRot;
+        matRot.SetIdentity();
+        matRot.SetColumn(0, orthogonal);
+        matRot.SetColumn(1, direction);
+        matRot.SetColumn(2, orthogonal.Cross(direction));
+
+        pDrawParams->m_matWorld = Matrix34::CreateTranslationMat(pos) * matRot * Matrix33::CreateScale(Vec3(radius, 1.0, radius));
+        pDrawParams->m_matWorldRotation = matRot;
+        pDrawParams->m_color = PackColor(col);
+        pDrawParams->m_size = radius;
+        pDrawParams->m_shaded = drawShaded;
+    }
+}
 
 void CAuxGeomCB::DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height, const ColorB& col, bool drawShaded)
 {

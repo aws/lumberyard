@@ -24,13 +24,9 @@
 
 """Self-test suite for Crypto.Random.new()"""
 
-__revision__ = "$Id$"
-
-import unittest
 import sys
-if sys.version_info[0] == 2 and sys.version_info[1] == 1:
-    from Crypto.Util.py21compat import *
-from Crypto.Util.py3compat import *
+import unittest
+from Crypto.Util.py3compat import b
 
 class SimpleTest(unittest.TestCase):
     def runTest(self):
@@ -104,7 +100,7 @@ class SimpleTest(unittest.TestCase):
         for i in range(10):
             self.assertEqual(random.choice((1,2,3)) in (1,2,3), True)
         self.assertEqual(random.choice([1,2,3]) in [1,2,3], True)
-        if sys.version_info[0] is 3:
+        if sys.version_info[0] == 3:
             self.assertEqual(random.choice(bytearray(b('123'))) in bytearray(b('123')), True)
         self.assertEqual(1, random.choice([1]))
         self.assertRaises(IndexError, random.choice, [])
@@ -133,7 +129,7 @@ class SimpleTest(unittest.TestCase):
             self.assertEqual(b('1') in z, True)
             self.assertRaises(TypeError, random.shuffle, b('12'))
         self.assertRaises(TypeError, random.shuffle, 1)
-        self.assertRaises(TypeError, random.shuffle, "1")
+        self.assertRaises(TypeError, random.shuffle, "11")
         self.assertRaises(TypeError, random.shuffle, (1,2))
         # 2to3 wraps a list() around it, alas - but I want to shoot
         # myself in the foot here! :D

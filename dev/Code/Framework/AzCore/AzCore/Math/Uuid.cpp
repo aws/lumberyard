@@ -385,5 +385,5 @@ namespace AZ
         return guid;
     }
 
-#endif // AZ_PLATFORM_WINDOWS
+#endif // defined(AZ_PLATFORM_WINDOWS)  || defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
 } // namespace AZ

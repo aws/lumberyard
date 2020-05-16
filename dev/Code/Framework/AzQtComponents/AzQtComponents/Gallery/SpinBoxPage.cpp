@@ -79,6 +79,20 @@ SpinBoxPage::SpinBoxPage(QWidget* parent)
     ui->focusDoubleSpinBox->setSingleStep(0.01);
     ui->focusDoubleSpinBox->setValue(0.07);
 
+    ui->vectorInputX->setCoordinate(AzQtComponents::VectorInput::Coordinate::X);
+    ui->vectorInputY->setCoordinate(AzQtComponents::VectorInput::Coordinate::Y);
+    ui->vectorInputZ->setCoordinate(AzQtComponents::VectorInput::Coordinate::Z);
+
+    ui->metersVectorInputX->setSuffix(" m");
+    ui->metersVectorInputX->setCoordinate(AzQtComponents::VectorInput::Coordinate::X);
+    ui->metersVectorInputY->setSuffix(" m");
+    ui->metersVectorInputY->setCoordinate(AzQtComponents::VectorInput::Coordinate::Y);
+    ui->metersVectorInputZ->setSuffix(" m");
+    ui->metersVectorInputZ->setCoordinate(AzQtComponents::VectorInput::Coordinate::Z);
+
+    ui->horizontalLayout->setStretch(0, 3);
+    ui->horizontalLayout->setStretch(1, 1);
+
     QString exampleText = R"(
 
 QAbstractSpinBox docs: <a href="https://doc.qt.io/qt-5/qabstractspinbox.html">https://doc.qt.io/qt-5/qabstractspinbox.html</a><br/>

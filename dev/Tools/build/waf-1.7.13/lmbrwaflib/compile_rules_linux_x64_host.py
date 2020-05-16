@@ -10,13 +10,18 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf, Logs
+
+# System Imports
 import os
+
+# waflib imports
+from waflib.Configure import conf, Logs
 
 # being a _host file, this means that these settings apply to any build at all that is
 # being done from this kind of host
 
 PLATFORM = 'linux_x64'
+
 
 @conf
 def load_linux_x64_host_settings(conf):
@@ -29,22 +34,25 @@ def load_linux_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
-                                        conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7'),
+                                        conf.Path('Tools/Python/3.7.5/linux_x64/lib'),
+                                        conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7/lib-dynload'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
-                                              conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7'),
+                                              conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7/lib-dynload'),
                                               conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/linux_x64')
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/linux_x64')
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/linux_x64'
+    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/linux_x64')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = [conf.ThirdPartyPath('Clang', 'linux_x64/release/lib/clang/6.0.1/include')]
     
     v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']
-    v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'include/python2.7')
+    # Set include path to the pymalloc build
+    v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'include/python3.7m')
     v['EMBEDDED_PYTHON_LIBPATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib')
-    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib/libpython2.7.so')
+    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib/libpython3.7m.so.1.0')
 
     # Detect the QT binaries, if the current capabilities selected requires it.
     _, enabled, _, _ = conf.tp.get_third_party_path(PLATFORM, 'qt')

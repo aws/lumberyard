@@ -63,6 +63,7 @@ namespace Lyzard
             //! Get the name of the command
             const AZStd::string& GetName() const { return m_name; }
             const AZStd::string& GetDescription() const { return m_description; }
+            bool ShouldPrintHelp() const { return m_printHelp; }
 
             //////////////////////////////////////////////////////////////////////////
             // Utilities for Namespace / Framework
@@ -84,10 +85,10 @@ namespace Lyzard
             AZStd::string m_description;
 
             // Switches
-            AZStd::vector<AZStd::shared_ptr<Internal::Argument> > m_params;
+            AZStd::vector<AZStd::shared_ptr<Internal::Argument>> m_params;
 
             // Positional args
-            AZStd::vector<AZStd::shared_ptr<Internal::PosArgument> > m_posParams;
+            AZStd::vector<AZStd::shared_ptr<Internal::PosArgument>> m_posParams;
         };
 
         class Namespace final
@@ -99,16 +100,12 @@ namespace Lyzard
             Namespace(const AZStd::string& name);
 
             //////////////////////////////////////////////////////////////////////////
-            // Command
-
+            // Command overrides
             StringOutcome Execute() override final;
             StringOutcome ProcessArgs(const AzFramework::CommandLine& args) override final;
             AZStd::string GetHelpText() override final;
-
             void SetDepth(size_t newDepth) override final;
-
             //////////////////////////////////////////////////////////////////////////
-            // Namespace
 
             //! Register a child command. Returns this.
             Namespace* RegisterCommand(AZStd::shared_ptr<Command> ptr);
@@ -122,7 +119,7 @@ namespace Lyzard
 
         private:
             // Child commands
-            AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<Command> > m_commands;
+            AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<Command>> m_commands;
 
             // Arguments
             AZStd::string m_cmdNameToExecute;

@@ -23,272 +23,295 @@ AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
-    // Decimal precision parameters
-    const int decimalPrecisonDefault = 7;
-    const int decimalDisplayPrecisionDefault = 3;
-
-    void MouseEvent(QEvent* event, QAbstractSpinBox* spinBox, QPoint& lastMousePos, bool& isMouseCaptured)
+    namespace DHSpinBox
     {
-        switch (event->type())
+        // Decimal precision parameters
+        static const int DecimalPrecisonDefault = 7;
+        static const int DecimalDisplayPrecisionDefault = 3;
+
+        // MouseEvent doesn't need to accept/ignore the event
+        // We can check the event and still pass it up to our parent
+        static void MouseEvent(QAbstractSpinBox* spinBox, QEvent* event, QPoint& lastMousePos, bool& isMouseCaptured)
         {
-        case QEvent::MouseButtonPress:
-        {
-            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-            lastMousePos = mouseEvent->globalPos();
-            isMouseCaptured = true;
-        }
-        break;
-        case QEvent::MouseButtonRelease:
-        {
-            spinBox->unsetCursor();
-            isMouseCaptured = false;
-        }
-        break;
-        case QEvent::MouseMove:
-        {
-            if (isMouseCaptured)
+            AZ_Assert(spinBox, "spinBox must not be null");
+            AZ_Assert(event, "event must not be null");
+
+            switch (event->type())
             {
-                spinBox->setCursor(Qt::SizeVerCursor);
-                QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-                QPoint mousePos = mouseEvent->globalPos();
-
-                int distance = lastMousePos.y() - mousePos.y();
-                spinBox->stepBy(distance);
-                lastMousePos = mouseEvent->globalPos();
-
-                int screenId = QApplication::desktop()->screenNumber(mousePos);
-                QRect screenSize = QApplication::desktop()->screen(screenId)->geometry();
-                if (mouseEvent->globalPos().y() >= screenSize.height() - 1)
+            case QEvent::MouseButtonPress:
                 {
-                    mousePos.setY(1);
-                    spinBox->cursor().setPos(mousePos);
+                    QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+                    lastMousePos = mouseEvent->globalPos();
+                    isMouseCaptured = true;
                 }
-                else if (mouseEvent->globalPos().y() <= 0)
+                break;
+            case QEvent::MouseButtonRelease:
                 {
-                    mousePos.setY(screenSize.height() - 2);
-                    spinBox->cursor().setPos(mousePos);
+                    spinBox->unsetCursor();
+                    isMouseCaptured = false;
                 }
+                break;
+            case QEvent::MouseMove:
+                {
+                    if (isMouseCaptured)
+                    {
+                        spinBox->setCursor(Qt::SizeVerCursor);
+                        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+                        QPoint mousePos = mouseEvent->globalPos();
 
-                lastMousePos = mousePos;
+                        int distance = lastMousePos.y() - mousePos.y();
+                        spinBox->stepBy(distance);
+                        lastMousePos = mouseEvent->globalPos();
+
+                        int screenId = QApplication::desktop()->screenNumber(mousePos);
+                        QRect screenSize = QApplication::desktop()->screen(screenId)->geometry();
+                        if (mouseEvent->globalPos().y() >= screenSize.height() - 1)
+                        {
+                            mousePos.setY(1);
+                        }
+                        else if (mouseEvent->globalPos().y() <= 0)
+                        {
+                            mousePos.setY(screenSize.height() - 2);
+                        }
+
+                        lastMousePos = mousePos;
+                    }
+                }
+                break;
             }
         }
-        break;
+
+        static bool WheelEvent(QAbstractSpinBox* spinBox, QWheelEvent* event)
+        {
+            AZ_Assert(spinBox, "spinBox must not be null");
+            AZ_Assert(event, "event must not be null");
+
+            if (!spinBox->hasFocus())
+            {
+                event->ignore();
+                return true;
+            }
+
+            return false;
         }
+
+        static QSize MinimumSizeHint(const QAbstractSpinBox* spinBox)
+        {
+            AZ_Assert(spinBox, "spinBox must not be null");
+
+            // This prevents the range from affecting the size, allowing the use of user-defined size hints.
+            QSize size = spinBox->sizeHint();
+            size.setWidth(spinBox->minimumWidth());
+            return size;
+        }
+
+        // Note: use a templated type to facilitate 'duck typing' for common
+        // functions between DHQDoubleSpinbox and DHQSpinbox
+        template<typename SpinBox>
+        void HandleEscape(SpinBox* spinBox)
+        {
+            AZ_Assert(spinBox, "spinBox must not be null");
+
+            if (!spinBox->keyboardTracking())
+            {
+                // If we're not keyboard tracking, then changes to the text field
+                // aren't 'committed' until the user hits Enter, Return, tabs out of
+                // the field, or the spinbox is hidden.
+                // We want to stop the commit from happening if the user hits escape.
+                if (spinBox->hasFocus())
+                {
+                    // Big logic jump here; if the current value has been committed already,
+                    // then everything listening on the signals knows about it already.
+                    // If the current value has NOT been committed, nothing knows about it
+                    // but we don't want to trigger any further updates, because we're resetting
+                    // it, so we disable signals here
+                    {
+                        QSignalBlocker blocker(spinBox);
+                        spinBox->setValue(spinBox->LastValue());
+                    }
+
+                    // If the text was not selected (mostly likely the user was typing a value)
+                    // then hitting Escape will first retain focus and select all text in the box
+                    if (!spinBox->HasSelectedText())
+                    {
+                        spinBox->selectAll();
+                    }
+                    else
+                    {
+                        // A second press of Escape will clear focus from the box
+                        spinBox->clearFocus();
+                    }
+                }
+            }
+        }
+
+        template<typename SpinBox>
+        bool EventFilter(SpinBox* spinBox, QEvent* event)
+        {
+            AZ_Assert(spinBox, "spinBox must not be null");
+            AZ_Assert(event, "event must not be null");
+
+            // handle 'Escape' key behavior
+            if (event->type() == QEvent::ShortcutOverride ||
+                event->type() == QEvent::KeyPress)
+            {
+                QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+                if (keyEvent->key() == Qt::Key_Escape && spinBox->hasFocus())
+                {
+                    if (!event->isAccepted())
+                    {
+                        event->accept();
+                        HandleEscape(spinBox);
+                    }
+
+                    return true;
+                }
+            }
+
+            if (spinBox->isEnabled())
+            {
+                if (event->type() == QEvent::ShortcutOverride)
+                {
+                    // This should be handled in the base class, but since that's part of Qt, do it here.
+                    // The Up and Down keys have a function while this widget is in focus,
+                    // so prevent those shortcuts from firing
+                    QKeyEvent* kev = static_cast<QKeyEvent*>(event);
+                    switch (kev->key())
+                    {
+                    case (Qt::Key_Up):
+                    case (Qt::Key_Down):
+                        event->accept();
+                        return true;
+
+                    default:
+                        break;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        template void HandleEscape<DHQSpinbox>(DHQSpinbox* spinBox);
+        template void HandleEscape<DHQDoubleSpinbox>(DHQDoubleSpinbox* spinBox);
+        template bool EventFilter<DHQSpinbox>(DHQSpinbox* spinBox, QEvent* event);
+        template bool EventFilter<DHQDoubleSpinbox>(DHQDoubleSpinbox* spinBox, QEvent* event);
     }
 
-    DHQSpinbox::DHQSpinbox(QWidget* parent) 
+    DHQSpinbox::DHQSpinbox(QWidget* parent)
         : QSpinBox(parent)
     {
         setButtonSymbols(QAbstractSpinBox::NoButtons);
 
         // we want to be able to handle the Escape key so that it reverts
         // what's in the text field if it wasn't committed already
-        using OnValueChanged = void(QSpinBox::*)(int);
-        auto valueChanged = static_cast<OnValueChanged>(&QSpinBox::valueChanged);
-        connect(this, valueChanged, this, [this](int newValue){
+        QObject::connect(
+            this, qOverload<int>(&QSpinBox::valueChanged),
+            this, [this](int newValue)
+        {
             m_lastValue = newValue;
         });
 
-        EditorEvents::Bus::Handler::BusConnect();
+        installEventFilter(this);
     }
 
     bool DHQSpinbox::event(QEvent* event)
     {
-        if (isEnabled())
-        {
-            if (event->type() == QEvent::Wheel)
-            {
-                if (hasFocus())
-                {
-                    QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
-                    QSpinBox::wheelEvent(wheelEvent);
-                    return true;
-                }
-                else
-                {
-                    event->ignore();
-                    return true;
-                }
-            }
-            else if (event->type() == QEvent::ShortcutOverride)
-            {
-                // This should be handled in the base class, but since that's part of Qt, do it here.
-                // The Up and Down keys have a function while this widget is in focus, so prevent those shortcuts from firing
-                QKeyEvent* kev = static_cast<QKeyEvent*>(event);
-                switch (kev->key())
-                {
-                case (Qt::Key_Up):
-                case (Qt::Key_Down):
-                    event->accept();
-                    return true;
-                    break;
-
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                //  MouseEvent doesn't need to accept/ignore the event.
-                //  We can check the event and still pass it up to our parent.
-                MouseEvent(event, this, lastMousePosition, mouseCaptured);
-            }
-        }
-
+        DHSpinBox::MouseEvent(this, event, m_lastMousePosition, m_mouseCaptured);
         return QSpinBox::event(event);
     }
 
-    void DHQSpinbox::setValue(int value)
+    bool DHQSpinbox::eventFilter(QObject* object, QEvent* event)
     {
-        m_lastValue = value;
-        QSpinBox::setValue(value);
+        if (DHSpinBox::EventFilter(this, event))
+        {
+            return true;
+        }
+
+        return QSpinBox::eventFilter(object, event);
     }
 
-    void DHQSpinbox::OnEscape()
+    void DHQSpinbox::focusInEvent(QFocusEvent* event)
     {
-        if (!keyboardTracking())
-        {
-            // If we're not keyboard tracking, then changes to the text field
-            // aren't 'committed' until the user hits Enter, Return, tabs out of
-            // the field, or the spinbox is hidden.
-            // We want to stop the commit from happening if the user hits escape.
-            if (hasFocus())
-            {
-                // Big logic jump here; if the current value has been committed already,
-                // then everything listening on the signals knows about it already.
-                // If the current value has NOT been committed, nothing knows about it
-                // but we don't want to trigger any further updates, because we're resetting
-                // it.
-                // So we disable signals here
-                {
-                    QSignalBlocker blocker(this);
-                    setValue(m_lastValue);
-                }
+        m_lastValue = value();
 
-                selectAll();
-            }
-        }
+        QSpinBox::focusInEvent(event);
     }
 
     QSize DHQSpinbox::minimumSizeHint() const
     {
-        //  This prevents the range from affecting the size, allowing the use of user-defined size hints.
-        QSize size = QSpinBox::sizeHint();
-        size.setWidth(minimumWidth());
-        return size;
+        return DHSpinBox::MinimumSizeHint(this);
+    }
+
+    bool DHQSpinbox::HasSelectedText() const
+    {
+        return lineEdit()->hasSelectedText();
     }
 
     DHQDoubleSpinbox::DHQDoubleSpinbox(QWidget* parent)
         : QDoubleSpinBox(parent)
-        , m_displayDecimals(decimalDisplayPrecisionDefault)
+        , m_displayDecimals(DHSpinBox::DecimalDisplayPrecisionDefault)
     {
         setButtonSymbols(QAbstractSpinBox::NoButtons);
 
         // we want to be able to handle the Escape key so that it reverts
         // what's in the text field if it wasn't committed already
-        using OnValueChanged = void(QDoubleSpinBox::*)(double);
-        auto valueChanged = static_cast<OnValueChanged>(&QDoubleSpinBox::valueChanged);
-        connect(this, valueChanged, this, [this](double newValue){
+        QObject::connect(
+            this, qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, [this](double newValue)
+        {
             m_lastValue = newValue;
         });
 
+        // Our tooltip will be the full decimal value, so keep it updated whenever our value changes
+        QObject::connect(
+            this, qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, &DHQDoubleSpinbox::UpdateToolTip);
+
         // Set the default decimal precision we will store to a large number
         // since we will be truncating the value displayed
-        setDecimals(decimalPrecisonDefault);
+        setDecimals(DHSpinBox::DecimalPrecisonDefault);
 
-        // Our tooltip will be the full decimal value, so keep it updated
-        // whenever our value changes
-        QObject::connect(this, static_cast<void(DHQDoubleSpinbox::*)(double)>(&DHQDoubleSpinbox::valueChanged), this, &DHQDoubleSpinbox::UpdateToolTip);
         UpdateToolTip(value());
 
-        EditorEvents::Bus::Handler::BusConnect();
+        installEventFilter(this);
     }
 
     bool DHQDoubleSpinbox::event(QEvent* event)
     {
-        if (isEnabled())
-        {
-            if (event->type() == QEvent::Wheel)
-            {
-                if (hasFocus())
-                {
-                    QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
-                    QDoubleSpinBox::wheelEvent(wheelEvent);
-                    return true;
-                }
-                else
-                {
-                    event->ignore();
-                    return true;
-                }
-            }
-            else if (event->type() == QEvent::ShortcutOverride)
-            {
-                // This should be handled in the base class, but since that's part of Qt, do it here.
-                // The Up and Down keys have a function while this widget is in focus, so prevent those shortcuts from firing
-                QKeyEvent* kev = static_cast<QKeyEvent*>(event);
-                switch (kev->key())
-                {
-                case (Qt::Key_Up):
-                case (Qt::Key_Down):
-                    event->accept();
-                    return true;
-                    break;
-
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                //  MouseEvent doesn't need to accept/ignore the event.
-                //  We can check the event and still pass it up to our parent.
-                MouseEvent(event, this, lastMousePosition, mouseCaptured);
-            }
-        }
-
+        DHSpinBox::MouseEvent(this, event, m_lastMousePosition, m_mouseCaptured);
         return QDoubleSpinBox::event(event);
     }
 
-    void DHQDoubleSpinbox::setValue(double value)
+    void DHQDoubleSpinbox::wheelEvent(QWheelEvent* event)
     {
-        m_lastValue = value;
-        QDoubleSpinBox::setValue(value);
-        UpdateToolTip(value);
+        if (!DHSpinBox::WheelEvent(this, event))
+        {
+            QDoubleSpinBox::wheelEvent(event);
+        }
     }
 
-    void DHQDoubleSpinbox::OnEscape()
+    void DHQSpinbox::wheelEvent(QWheelEvent* event)
     {
-        if (!keyboardTracking())
+        if (!DHSpinBox::WheelEvent(this, event))
         {
-            // If we're not keyboard tracking, then changes to the text field
-            // aren't 'committed' until the user hits Enter, Return, tabs out of
-            // the field, or the spinbox is hidden.
-            // We want to stop the commit from happening if the user hits escape.
-            if (hasFocus())
-            {
-                // Big logic jump here; if the current value has been committed already,
-                // then everything listening on the signals knows about it already.
-                // If the current value has NOT been committed, nothing knows about it
-                // but we don't want to trigger any further updates, because we're resetting
-                // it.
-                // So we disable signals here
-                {
-                    QSignalBlocker blocker(this);
-                    setValue(m_lastValue);
-                }
-
-                selectAll();
-            }
+            QSpinBox::wheelEvent(event);
         }
+    }
+
+    bool DHQDoubleSpinbox::eventFilter(QObject* object, QEvent* event)
+    {
+        if (DHSpinBox::EventFilter(this, event))
+        {
+            return true;
+        }
+
+        return QDoubleSpinBox::eventFilter(object, event);
     }
 
     QSize DHQDoubleSpinbox::minimumSizeHint() const
     {
-        //  This prevents the range from affecting the size, allowing the use of user-defined size hints.
-        QSize size = QDoubleSpinBox::sizeHint();
-        size.setWidth(minimumWidth());
-        return size;
+        return DHSpinBox::MinimumSizeHint(this);
     }
 
     void DHQDoubleSpinbox::SetDisplayDecimals(int precision)
@@ -363,6 +386,8 @@ namespace AzToolsFramework
         m_lastSuffix = suffix();
         setSuffix(QString());
 
+        m_lastValue = value();
+
         QDoubleSpinBox::focusInEvent(event);
     }
 
@@ -371,11 +396,16 @@ namespace AzToolsFramework
         QDoubleSpinBox::focusOutEvent(event);
 
         // restore the suffix now, if needed
-        if (m_lastSuffix.length() > 0)
+        if (!m_lastSuffix.isEmpty())
         {
             setSuffix(m_lastSuffix);
             m_lastSuffix.clear();
         }
+    }
+
+    bool DHQDoubleSpinbox::HasSelectedText() const
+    {
+        return lineEdit()->hasSelectedText();
     }
 }
 

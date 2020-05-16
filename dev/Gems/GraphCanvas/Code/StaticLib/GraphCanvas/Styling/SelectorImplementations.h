@@ -12,12 +12,16 @@
 
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
+#include <QDebug>
+AZ_POP_DISABLE_WARNING
+
 #include <AzCore/std/string/string.h>
 #include <AzCore/Component/EntityUtils.h>
 
 #include <GraphCanvas/Styling/Selector.h>
-
-#include <QDebug>
 
 namespace GraphCanvas
 {
@@ -95,10 +99,10 @@ namespace GraphCanvas
 
             DefaultSelector() = default;
             DefaultSelector(SelectorImplementation* value);
-			DefaultSelector(const DefaultSelector& other)
-			: m_actual(other.Clone())
-			, m_value(other.m_value)
-			{}
+            DefaultSelector(const DefaultSelector& other)
+            : m_actual(other.Clone())
+            , m_value(other.m_value)
+            {}
 
             virtual ~DefaultSelector() = default;
 

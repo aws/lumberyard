@@ -1,0 +1,11 @@
+{
+    "none": 
+    {
+        "Source":
+        [
+            "Source/ModuleUnsupported.cpp",
+            "Source/NvClothUnsupported_precompiled.cpp",
+            "Source/NvClothUnsupported_precompiled.h"
+        ]
+    }
+}

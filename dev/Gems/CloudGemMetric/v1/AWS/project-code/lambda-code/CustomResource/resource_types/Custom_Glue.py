@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from cgf_utils import custom_resource_response
 from glue import Glue
 from athena import DEFAULT_EVENTS
@@ -8,9 +20,10 @@ import util
 import metric_schema as schema
 import athena
 from thread_pool import ThreadPool
+from cgf_lambda_service import ClientError
 
 def handler(event, context):
-    print "Start Glue"  
+    print("Start Glue")
     stack_id = event[c.ENV_STACK_ID]
     resources = util.get_stack_resources(stack_id)  
     request_type = event['RequestType']
@@ -24,10 +37,10 @@ def handler(event, context):
            storage_physical_id = resource.physical_id
     
     if role_name is None:
-        raise errors.ClientError("The logical resource '{}' was not found.  Is the resource in the cloud formation stack?".format(c.RES_SERVICE_ROLE))   
+        raise ClientError("The logical resource '{}' was not found.  Is the resource in the cloud formation stack?".format(c.RES_SERVICE_ROLE))   
 
     if storage_physical_id is None:
-        raise errors.ClientError("The logical resource '{}' was not found.  Is the resource in the cloud formation stack?".format(c.RES_S3_STORAGE))           
+        raise ClientError("The logical resource '{}' was not found.  Is the resource in the cloud formation stack?".format(c.RES_S3_STORAGE))           
     crawler_id_1 =  glue.get_crawler_name(stack_id)    
     srcs = [
                 {
@@ -39,9 +52,8 @@ def handler(event, context):
                     'Exclusions': []
                 }
             ]
-      
 
-    print request_type, db_name, crawler_id_1, "role: ", role_name, "s3: ", storage_physical_id
+    print(request_type, db_name, crawler_id_1, "role: ", role_name, "s3: ", storage_physical_id)
     if request_type.lower() == 'delete':
         if glue.get_crawler(crawler_id_1) is not None:       
             glue.stop_crawler(crawler_id_1) 

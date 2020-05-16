@@ -65,15 +65,22 @@ namespace ScriptCanvasEditor
         AZ::Data::AssetBus::Handler::BusConnect(m_assetId);
     }
 
+    void ScriptEventSenderNodeDescriptorComponent::Deactivate()
+    {
+        NodeDescriptorComponent::Deactivate();
+
+        AZ::Data::AssetBus::Handler::BusDisconnect();
+    }
+
     void ScriptEventSenderNodeDescriptorComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         AZ::EntityId graphCanvasGraphId;
         GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
 
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        EditorGraphRequestBus::Event(scriptCanvasGraphId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
+        EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
     }
 
     bool ScriptEventSenderNodeDescriptorComponent::IsOutOfDate() const
@@ -103,8 +110,8 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasGraphId;
         GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
 
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
         VersionControlledNodeNotificationBus::Event(GetEntityId(), &VersionControlledNodeNotifications::OnVersionConversionBegin);
 
@@ -180,20 +187,23 @@ namespace ScriptCanvasEditor
 
     void ScriptEventSenderNodeDescriptorComponent::UpdateTitles()
     {
-        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_assetId, true, nullptr, true);
-
-        if (asset.IsReady())
+        if (m_assetId.IsValid())
         {
-            const ScriptEvents::ScriptEvent& definition = asset.Get()->m_definition;
+            AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_assetId, true, nullptr, true);
 
-            GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetSubTitle, definition.GetName());
-
-            for (auto eventDefinition : definition.GetMethods())
+            if (asset.IsReady())
             {
-                if (eventDefinition.GetEventId() == m_eventId)
+                const ScriptEvents::ScriptEvent& definition = asset.Get()->m_definition;
+
+                GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetSubTitle, definition.GetName());
+
+                for (auto eventDefinition : definition.GetMethods())
                 {
-                    GraphCanvas::NodeRequestBus::Event(GetEntityId(), &GraphCanvas::NodeRequests::SetTooltip, eventDefinition.GetTooltip());
-                    GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetTitle, eventDefinition.GetName());
+                    if (eventDefinition.GetEventId() == m_eventId)
+                    {
+                        GraphCanvas::NodeRequestBus::Event(GetEntityId(), &GraphCanvas::NodeRequests::SetTooltip, eventDefinition.GetTooltip());
+                        GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetTitle, eventDefinition.GetName());
+                    }
                 }
             }
         }

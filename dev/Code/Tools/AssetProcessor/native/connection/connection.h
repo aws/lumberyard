@@ -42,7 +42,8 @@ class Connection
     Q_PROPERTY(QString ipAddress READ IpAddress WRITE SetIpAddress NOTIFY IpAddressChanged)
     Q_PROPERTY(int port READ Port WRITE SetPort NOTIFY PortChanged)
     Q_PROPERTY(ConnectionStatus status READ Status NOTIFY StatusChanged)
-    Q_PROPERTY(QString assetPlatform READ AssetPlatform WRITE SetAssetPlatform NOTIFY AssetPlatformChanged)
+    Q_PROPERTY(QStringList assetPlatform READ AssetPlatforms WRITE SetAssetPlatforms NOTIFY AssetPlatformChanged)
+    Q_PROPERTY(QString assetPlatformsString READ AssetPlatformsString WRITE SetAssetPlatformsString)
     Q_PROPERTY(bool autoConnect READ AutoConnect WRITE SetAutoConnect NOTIFY AutoConnectChanged)
     Q_PROPERTY(QString displayName READ DisplayName NOTIFY DisplayNameChanged)
     Q_PROPERTY(QString elapsed READ Elapsed NOTIFY ElapsedChanged)
@@ -76,8 +77,8 @@ class Connection
     Q_PROPERTY(qint64 numOpenFiles MEMBER m_numOpenFiles NOTIFY NumOpenFilesChanged)
 
 public:
-    explicit Connection(AssetProcessor::PlatformConfiguration* platformConfig = nullptr, qintptr socketDescriptor = -1, QObject* parent = 0);
-    explicit Connection(bool isUserCreatedConnection, AssetProcessor::PlatformConfiguration* platformConfig = nullptr, qintptr socketDescriptor = -1, QObject* parent = 0);
+    explicit Connection(qintptr socketDescriptor = -1, QObject* parent = 0);
+    explicit Connection(bool isUserCreatedConnection, qintptr socketDescriptor = -1, QObject* parent = 0);
     virtual ~Connection();
 
     enum ConnectionStatus
@@ -93,7 +94,8 @@ public:
     QString IpAddress() const;
     int Port() const;
     ConnectionStatus Status() const;
-    QString AssetPlatform() const;
+    QStringList AssetPlatforms() const;
+    QString AssetPlatformsString() const;
     void SaveConnection(QSettings& qSettings);
     void LoadConnection(QSettings& qSettings);
     bool AutoConnect() const;
@@ -175,6 +177,7 @@ public:
     void RemoveResponseHandler(unsigned int serial) override;
 
     void InvokeResponseHandler(AZ::u32 serial, AZ::u32 type, QByteArray data);
+
 Q_SIGNALS:
     void IdentifierChanged();
     void IpAddressChanged();
@@ -233,7 +236,8 @@ public Q_SLOTS:
     void SetIpAddress(QString IpAddress);
     void SetPort(int Port);
     void SetStatus(ConnectionStatus Status);
-    void SetAssetPlatform(QString assetPlatform);
+    void SetAssetPlatforms(QStringList assetPlatform);
+    void SetAssetPlatformsString(QString assetPlatforms);
     void SetAutoConnect(bool AutoConnect);
     void OnConnectionDisconnect();
     void OnConnectionEstablished(QString ipAddress, quint16 port);
@@ -246,14 +250,12 @@ private:
 
     AZ::u32 GetNextSerial();
 
-    AssetProcessor::PlatformConfiguration* m_platformConfig = nullptr;
-
     unsigned int m_connectionId;
     QString m_identifier;
     QString m_ipAddress;
     quint16 m_port;
     ConnectionStatus m_status;
-    QString m_assetPlatform;
+    QStringList m_assetPlatforms;
     bool m_autoConnect;
     QThread m_connectionWorkerThread;
     QPointer<AssetProcessor::ConnectionWorker> m_connectionWorker;

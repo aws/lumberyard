@@ -12,7 +12,6 @@
 *
 */
 
-#include <type_traits> // For std::result_of
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_reference.h>
@@ -57,8 +56,7 @@ namespace AZ
                 struct ConvertIteratorFunctionHelper
                 {
                     using ArgumentType = typename ConvertIteratorArgumentHelper<Iterator>::ArgumentType;
-                    // There's currently no AZStd equivalent for std::result_of
-                    using ReturnType = typename std::result_of<Function(ArgumentType)>::type;
+                    using ReturnType = AZStd::invoke_result_t<Function, ArgumentType>;
                 };
 
                 template<typename Iterator, typename ReturnType>

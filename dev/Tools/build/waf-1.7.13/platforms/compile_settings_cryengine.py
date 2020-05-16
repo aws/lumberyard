@@ -10,12 +10,16 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-    
-from waflib.Configure import conf
-from cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list
-from waf_branch_spec import LUMBERYARD_COPYRIGHT_YEAR
+
+# waflib imports
 from waflib import Options
-import os
+from waflib.Configure import conf
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list
+
+# misc imports
+from waf_branch_spec import LUMBERYARD_COPYRIGHT_YEAR
 
 
 @conf

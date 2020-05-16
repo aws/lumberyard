@@ -14,7 +14,7 @@
 #include "ButtonGroup.h"
 #include <QtWidgets/QPushButton>
 #include <MCore/Source/LogManager.h>
-
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace MysticQt
 {
@@ -26,12 +26,12 @@ namespace MysticQt
             return;
         }
 
-        const float startR  = startColor.redF();
-        const float startG  = startColor.greenF();
-        const float startB  = startColor.blueF();
-        const float endR    = endColor.redF();
-        const float endG    = endColor.greenF();
-        const float endB    = endColor.blueF();
+        const float startR  = aznumeric_cast<float>(startColor.redF());
+        const float startG  = aznumeric_cast<float>(startColor.greenF());
+        const float startB  = aznumeric_cast<float>(startColor.blueF());
+        const float endR    = aznumeric_cast<float>(endColor.redF());
+        const float endG    = aznumeric_cast<float>(endColor.greenF());
+        const float endB    = aznumeric_cast<float>(endColor.blueF());
 
         const float weightStart = rowIndex / (float)numRows;
         const float weightEnd = (rowIndex + 1) / (float)numRows;

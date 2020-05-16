@@ -73,8 +73,8 @@ df = sql.read.json('temp.json')
 @pytest.mark.parametrize('row_groups', [[0], [0, 500]])
 @pytest.mark.parametrize('comp', [None] + list(compressions))
 def test_pyspark_roundtrip(tempdir, scheme, row_groups, comp, sql):
-    if comp == 'BROTLI':
-        pytest.xfail("spark doesn't support BROTLI compression")
+    if comp in ['BROTLI', 'ZSTD', 'LZO', "LZ4"]:
+        pytest.xfail("spark doesn't support compression")
     data = pd.DataFrame({'i32': np.random.randint(-2**17, 2**17, size=1001,
                                                   dtype=np.int32),
                          'i64': np.random.randint(-2**33, 2**33, size=1001,

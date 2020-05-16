@@ -24,12 +24,17 @@
     font-weight: 400;
 }
 
+QMainWindow:separator
+{
+    background-color: #111111;
+}
+
 QMainWindow,
 QDialog,
 QDockWidget
 {
     color: #cccccc;
-    background-color: #393a3c;
+    background-color: #444444;
 }
 
 QTextEdit,
@@ -39,7 +44,7 @@ QSpinBox,
 QDoubleSpinBox,
 QComboBox
 {
-    background-color: #e9e9e9;
+    background-color: #CCCCCC;
     color: black;
     font-family: "Amazon Ember";
     border-radius: 2px;
@@ -74,3 +79,4 @@ QComboBox
 @import "TitleBar.qss";
 @import "WindowDecorationWrapper.qss";
 @import "StyledDockWidget.qss";
+@import "VectorInput.qss";

@@ -39,7 +39,6 @@
 #include "Export/ExportManager.h"
 
 #include "Util/AutoDirectoryRestoreFileDialog.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayerManager.h"
 #include "TrackViewFBXImportPreviewDialog.h"
 #include "FBXExporterDialog.h"

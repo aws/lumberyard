@@ -22,7 +22,6 @@
 #
 deprecated_plugins = [
     'AssetTagging',                 # LUMBERYARD_DEPRECATED(LY-98542)
-    'EditorAudioControlsEditor',    # LUMBERYARD_DEPRECATED(LY-104407)
 ]
 
 

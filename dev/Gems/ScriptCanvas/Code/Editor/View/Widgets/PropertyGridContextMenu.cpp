@@ -36,13 +36,13 @@ namespace
 
     bool IsGraphCanvasActive()
     {
-        AZ::EntityId scriptCanvasGraphId;
-        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasId);
 
         AZ::EntityId graphCanvasGraphId;
         ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveGraphCanvasGraphId);
 
-        return (scriptCanvasGraphId.IsValid() &&
+        return (scriptCanvasId.IsValid() &&
                 graphCanvasGraphId.IsValid());
     }
 

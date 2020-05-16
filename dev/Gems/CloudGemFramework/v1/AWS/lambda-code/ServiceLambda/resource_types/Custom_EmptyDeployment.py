@@ -10,12 +10,17 @@
 #
 # $Revision: #7 $
 
+# Suppress "Parent module 'x' not found while handling absolute import " warnings.
+from __future__ import absolute_import
+
 from cgf_utils import properties
 from cgf_utils import custom_resource_response
 from cgf_utils import aws_utils
 
+
 def handler(event, context):
-    
+    """Entry point for the Custom::EmptyDeployment resource handler."""
+
     # This resource does nothing. It exists so that deployment stacks can be created
     # before any resource groups have been defined. In such cases the Resources list 
     # would be empty, which CloudFormation doesn't allow, so the lmbr_aws client inserts

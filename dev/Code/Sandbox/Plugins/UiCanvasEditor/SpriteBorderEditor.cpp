@@ -144,7 +144,7 @@ void SpriteBorderEditor::CreateLayout()
         const float widthScale = 1.15f;
         QSize currentSize(size());
         
-        setFixedSize(currentSize.width() * widthScale, currentSize.height() * heightScale);
+        setFixedSize(aznumeric_cast<int>(currentSize.width() * widthScale), aznumeric_cast<int>(currentSize.height() * heightScale));
     }
 }
 
@@ -189,8 +189,8 @@ void SpriteBorderEditor::UpdateSpriteSheetCellInfo(int newNumRows, int newNumCol
     m_numRows = newNumRows;
     m_numCols = newNumCols;
 
-    float floatNumRows = m_numRows;
-    float floatNumCols = m_numCols;
+    float floatNumRows = aznumeric_cast<float>(m_numRows);
+    float floatNumCols = aznumeric_cast<float>(m_numCols);
 
     // Calculate uniformly sized sprite-sheet cell UVs based on the given
     // row and column cell configuration.
@@ -236,10 +236,10 @@ void SpriteBorderEditor::DisplaySelectedCell(AZ::u32 cellIndex)
     QRect croppedRect = m_unscaledSpriteSheet.rect();
     {
         const UiTransformInterface::RectPoints& cellUvCoords = m_sprite->GetSourceCellUvCoords(cellIndex);
-        int minX = cellUvCoords.TopLeft().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.TopLeft().GetX() : 0;
-        int maxX = cellUvCoords.BottomRight().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.BottomRight().GetX() : 0;
-        int minY = cellUvCoords.TopLeft().GetY() > 0.0f ? croppedRect.bottom() * cellUvCoords.TopLeft().GetY() : 0;
-        int maxY = cellUvCoords.BottomRight().GetY() > 0.0f ? croppedRect.bottom() * cellUvCoords.BottomRight().GetY() : 0;
+        int minX = aznumeric_cast<int>(cellUvCoords.TopLeft().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.TopLeft().GetX() : 0);
+        int maxX = aznumeric_cast<int>(cellUvCoords.BottomRight().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.BottomRight().GetX() : 0);
+        int minY = aznumeric_cast<int>(cellUvCoords.TopLeft().GetY() > 0.0f ? croppedRect.bottom() * cellUvCoords.TopLeft().GetY() : 0);
+        int maxY = aznumeric_cast<int>(cellUvCoords.BottomRight().GetY() > 0.0f ? croppedRect.bottom() * cellUvCoords.BottomRight().GetY() : 0);
         croppedRect.setCoords(minX, minY, maxX, maxY);
     }
 
@@ -259,7 +259,7 @@ void SpriteBorderEditor::DisplaySelectedCell(AZ::u32 cellIndex)
         const float sizeInPixels = IsBorderVertical(border) ? cellSize.GetX() : cellSize.GetY();
 
         m_manipulators[i]->SetCellIndex(cellIndex);
-        m_manipulators[i]->SetPixmapSizes(QSize(cellSize.GetX(), cellSize.GetY()), croppedPixmap.size());
+        m_manipulators[i]->SetPixmapSizes(QSize(aznumeric_cast<int>(cellSize.GetX()), aznumeric_cast<int>(cellSize.GetY())), croppedPixmap.size());
         m_manipulators[i]->setPixelPosition(GetBorderValueInPixels(m_sprite, border, sizeInPixels, cellIndex));
     }
 
@@ -420,12 +420,12 @@ void SpriteBorderEditor::AddSelectCellSection(QGridLayout* gridLayout, int& rowN
 
         if (isVertical)
         {
-            scaledPixmap = m_unscaledSpriteSheet.scaledToHeight(UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_HEIGHT - (borderMarginTotal));
+            scaledPixmap = m_unscaledSpriteSheet.scaledToHeight(aznumeric_cast<int>(UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_HEIGHT - (borderMarginTotal)));
         }
         else
         {
             widthMultiplier = widthToHeightRatio >= 2.0f ? 2 : 1;
-            scaledPixmap = m_unscaledSpriteSheet.scaledToWidth(UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_WIDTH * widthMultiplier - (borderMarginTotal));
+            scaledPixmap = m_unscaledSpriteSheet.scaledToWidth(aznumeric_cast<int>(UICANVASEDITOR_SPRITEBORDEREDITOR_SCENE_WIDTH * widthMultiplier - (borderMarginTotal)));
         }
     }
 
@@ -720,7 +720,7 @@ void SpriteBorderEditor::AddPropertiesSection(QGridLayout* gridLayout, int& rowN
 
             m_textureSizeLabel = new QLabel(this);
             textureSizeLabelLayout->addWidget(m_textureSizeLabel, 0, 0, Qt::AlignLeft);
-            SetDisplayedTextureSize(unscaledPixmapSize.width(), unscaledPixmapSize.height());
+            SetDisplayedTextureSize(aznumeric_cast<float>(unscaledPixmapSize.width()), aznumeric_cast<float>(unscaledPixmapSize.height()));
         }
 
         // Separate layout for border property fields
@@ -1014,7 +1014,7 @@ void CellSelectRectItem::SelectCell()
     static const QColor orangeQColor(255, 165, 0);
     solidPenStyle.setColor(orangeQColor);
     solidPenStyle.setStyle(Qt::SolidLine);
-    solidPenStyle.setWidth(4.0f);
+    solidPenStyle.setWidth(4);
     solidPenStyle.setJoinStyle(Qt::MiterJoin);
     setPen(solidPenStyle);
 }

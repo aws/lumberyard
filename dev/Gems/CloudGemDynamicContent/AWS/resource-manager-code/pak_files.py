@@ -15,14 +15,18 @@ import tempfile
 import shutil
 import os
 import os.path
+import platform
+import posixpath
 import errno
 import stat
 import sys
-import posixpath
 import zipfile
+from path_utils import ensure_posix_path
 
-vprint = lambda *a : None
+# For Debugging, flip this on to get verbose output
+vprint = lambda *a: None
 #vprint = lambda *args: print("\n".join(args))
+
 
 class PakFileArchiver:
 
@@ -31,7 +35,7 @@ class PakFileArchiver:
         vprint("Trying command: {}".format(" ".join(arguments)))
         try:
             subprocess.check_call(arguments)
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             print("Archive command error: ", e.output)
 
     def update_pak(self, file_to_add_path, dest_pak_path):
@@ -53,12 +57,12 @@ class PakFileArchiver:
             for dir_path, subfolder_names, file_names in os.walk(src_path):
                 for subfolder_name in subfolder_names:
                     subfolder_path = os.path.join(dir_path, subfolder_name)
-                    arcname = subfolder_path.replace(src_dir_name + '\\', '')
+                    arcname = subfolder_path.replace(src_dir_name + os.path.sep, '')
                     myzip.write(subfolder_path, arcname)
 
                 for file_name in file_names:
                     file_path = os.path.join(dir_path, file_name)
-                    arcname = file_path.replace(src_dir_name + '\\', '')
+                    arcname = file_path.replace(src_dir_name + os.path.sep, '')
                     myzip.write(file_path, arcname)        
 
     def archive_files(self, src_file_list, dest_pak_path):
@@ -87,7 +91,8 @@ class PakFileArchiver:
             if not file.startswith(src_file_root):
                 print("File doesn't have correct root. Root is: {} and file path is: {}".format(src_file_root, file))
             else:
-                relative_path = file[len(src_file_root):].replace('\\','/')
+                relative_path = ensure_posix_path(file[len(src_file_root):])
+
                 # Be sure we aren't starting with a file separator or the join below will fail
                 if len(relative_path) and relative_path[0] == posixpath.sep:
                     relative_path = relative_path[1:]
@@ -101,9 +106,10 @@ class PakFileArchiver:
                         if exc.errno != errno.EEXIST:
                             raise
                 shutil.copy(file, temp_path)
-                #remove read only in case this came from source control environment so the temp folder
-                #can be removed when done
-                os.chmod(temp_path, stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+                # clear read only flags in case this came from source control environment so the temp folder
+                # can be removed when done
+                os.chmod(temp_path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IWGRP | stat.S_IRGRP |
+                          stat.S_IWOTH | stat.S_IROTH)
 
         # create a pak archive from the files in the temporary folder
         self.archive_folder(temp_dir, dest_pak_path)
@@ -111,10 +117,11 @@ class PakFileArchiver:
         # delete the temporary files and folder
         shutil.rmtree(temp_dir)
 
-# This code is here to make it easy to archive without needing to run the lmbr_aws utility
+
 def main():
+    """This code is here to make it easy to archive without needing to run the lmbr_aws utility"""
     global vprint
-    vprint = lambda *args : print("\n".join(args))
+    vprint = lambda *args: print("\n".join(args))
 
     if len(sys.argv) != 3:
         print("Error: two parameters expected. pak_files.py <create|update> <test data file path>")
@@ -177,6 +184,7 @@ def main():
     else:
         print("Unknown command " + command)
         exit(-1)
+
 
 if __name__ == "__main__":
     main()

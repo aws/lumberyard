@@ -482,6 +482,11 @@ private:
     SSyncToRenderMeshContext* m_pAsyncUpdateContext;
 
     //////////////////////////////////////////////////////////////////////////
+    // Cloth inverse masses
+    //////////////////////////////////////////////////////////////////////////
+    AZStd::vector<float> m_clothInverseMasses;
+
+    //////////////////////////////////////////////////////////////////////////
     // METHODS.
     //////////////////////////////////////////////////////////////////////////
 public:
@@ -775,11 +780,15 @@ public:
     string& GetFileName() override { return m_szFileName; }
     const string& GetFileName() const override { return m_szFileName; }
 
+    const string& GetCGFNodeName() const override { return m_cgfNodeName; }
+
     int GetUserCount() const override { return m_nUsers; }
     bool CheckGarbage() const override { return m_bCheckGarbage; }
     void SetCheckGarbage(bool val) override { m_bCheckGarbage = val; }
     IStatObj* GetLodLevel0() override { return m_pLod0; }
     void SetLodLevel0(IStatObj* lod) override { m_pLod0 = lod; }
+
+    AZStd::vector<float>& GetClothInverseMasses() override { return m_clothInverseMasses; }
 
 protected:
     // Called by async stream callback.
@@ -830,6 +839,8 @@ protected:
 
     /// LOD support for touch bending vegetation
     void InitializeSkinnedChunk();
+
+    void FillClothInverseMasses(CMesh& mesh);
 
 } _ALIGN(8);
 

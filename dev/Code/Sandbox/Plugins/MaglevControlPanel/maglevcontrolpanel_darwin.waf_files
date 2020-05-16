@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+    "Root":
+        [
+            "MaglevControlPanelPlugin_stub.cpp"
+        ]	
+    }
+}

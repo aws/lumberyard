@@ -230,7 +230,7 @@ def validate_cfg(self, kw):
 		return
 
 	# checking for the version of a module, for the moment, one thing at a time
-	for x in cfg_ver.keys():
+	for x in list(cfg_ver.keys()):
 		y = x.replace('-', '_')
 		if y in kw:
 			if not 'package' in kw:
@@ -300,7 +300,7 @@ def exec_cfg(self, kw):
 	defi = kw.get('define_variable', None)
 	if not defi:
 		defi = self.env.PKG_CONFIG_DEFINES or {}
-	for key, val in defi.items():
+	for key, val in list(defi.items()):
 		lst.append('--define-variable=%s=%s' % (key, val))
 
 	# retrieving variables of a module
@@ -710,7 +710,7 @@ def run_c_code(self, *k, **kw):
 
 	"""
 
-	lst = [str(v) for (p, v) in kw.items() if p != 'env']
+	lst = [str(v) for (p, v) in list(kw.items()) if p != 'env']
 	h = Utils.h_list(lst)
 	dir = self.bldnode.abspath() + os.sep + (not Utils.is_win32 and '.' or '') + 'conf_check_' + Utils.to_hex(h)
 
@@ -756,7 +756,7 @@ def run_c_code(self, *k, **kw):
 
 	o = bld(features=kw['features'], source=kw['compile_filename'], target='testprog')
 
-	for k, v in kw.items():
+	for k, v in list(kw.items()):
 		setattr(o, k, v)
 
 	self.to_log("==>\n%s\n<==" % kw['code'])

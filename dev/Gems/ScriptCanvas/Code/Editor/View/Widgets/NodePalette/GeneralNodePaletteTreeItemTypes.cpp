@@ -59,10 +59,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateClassMethodMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
+    ScriptCanvasEditor::NodeIdPair CreateClassMethodMimeEvent::CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropObject, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasGraphId);
-        return Nodes::CreateObjectMethodNode(m_className, m_methodName, scriptCanvasGraphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropObject, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasId);
+        return Nodes::CreateObjectMethodNode(m_className, m_methodName, scriptCanvasId);
     }
 
     ////////////////////////////////////
@@ -141,15 +141,15 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateCustomNodeMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
+    ScriptCanvasEditor::NodeIdPair CreateCustomNodeMimeEvent::CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, m_typeId, scriptCanvasGraphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, m_typeId, scriptCanvasId);
 
         Nodes::StyleConfiguration styleConfiguration;
         styleConfiguration.m_nodeSubStyle = m_styleOverride;
         styleConfiguration.m_titlePalette = m_titlePalette;
 
-        return Nodes::CreateNode(m_typeId, scriptCanvasGraphId, styleConfiguration);
+        return Nodes::CreateNode(m_typeId, scriptCanvasId, styleConfiguration);
     }
 
     //////////////////////////////

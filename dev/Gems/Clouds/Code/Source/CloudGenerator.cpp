@@ -137,7 +137,7 @@ namespace CloudsGem
         }
 
         // Determine the number of particles to generate
-        int count = m_fillByVolume ? (dimensions.GetLengthSquaredFloat() / m_totalArea) * particleCount : particleCount / m_numChildrenEntities;
+        int count = m_fillByVolume ? aznumeric_cast<int>((dimensions.GetLengthSquaredFloat() / m_totalArea) * particleCount) : particleCount / m_numChildrenEntities;
         for (int i = 0; i < count; i++)
         {
             auto particle = AZStd::make_shared<CloudParticle>();
@@ -269,7 +269,7 @@ namespace CloudsGem
             case GenerationFlag::GF_ALL:
             case GenerationFlag::GF_SEED:
                 m_generatedParticles.clear();
-                m_seed = flag == GenerationFlag::GF_SEED ? m_seed : AZStd::GetTimeUTCMilliSecond();
+                m_seed = flag == GenerationFlag::GF_SEED ? m_seed : aznumeric_cast<uint32>(AZStd::GetTimeUTCMilliSecond());
                 m_rng = CRndGen(m_seed);
                 AddParticles(entityId, m_spriteCount);
                 break;

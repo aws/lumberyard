@@ -12,7 +12,7 @@
 
 // include the required headers
 #include "ColorLabel.h"
-
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace MysticQt
 {
@@ -29,7 +29,7 @@ namespace MysticQt
 
         mEnableColorAdjustment = enableColorAdjustment;
         mDataObject = dataObject;
-        mColor = QColor(startColor.r * 255, startColor.g * 255, startColor.b * 255, startColor.a * 255);
+        mColor = QColor(aznumeric_cast<int>(startColor.r * 255), aznumeric_cast<int>(startColor.g * 255), aznumeric_cast<int>(startColor.b * 255), aznumeric_cast<int>(startColor.a * 255));
 
         mColorDialog = new QColorDialog(mColor, this);
         connect(mColorDialog, &QColorDialog::colorSelected, this, &MysticQt::ColorLabel::ColorChanged);

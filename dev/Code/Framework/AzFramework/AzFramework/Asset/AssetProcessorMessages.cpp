@@ -122,6 +122,13 @@ namespace AzFramework
             AZ_Assert(sourceData, "Invalid source data for RequestAssetStatus");
         }
 
+        RequestAssetStatus::RequestAssetStatus(const AZ::Data::AssetId& assetId, bool isStatusRequest, bool requireFencing /*= true*/)
+            : BaseAssetProcessorMessage(requireFencing)
+            , m_assetId(assetId)
+            , m_isStatusRequest(isStatusRequest)
+        {
+            AZ_Assert(assetId.IsValid(), "Invalid assetId for RequestAssetStatus");
+        }
 
         RequestAssetStatus::RequestAssetStatus(bool requireFencing /*= true*/)
             :BaseAssetProcessorMessage(requireFencing)
@@ -146,9 +153,49 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<RequestAssetStatus, BaseAssetProcessorMessage>()
-                    ->Version(1)
+                    ->Version(2)
                     ->Field("SearchTerm", &RequestAssetStatus::m_searchTerm)
-                    ->Field("IsStatusRequest", &RequestAssetStatus::m_isStatusRequest);
+                    ->Field("IsStatusRequest", &RequestAssetStatus::m_isStatusRequest)
+                    ->Field("AssetId", &RequestAssetStatus::m_assetId);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        RequestEscalateAsset::RequestEscalateAsset(const char* searchTerm)
+            : BaseAssetProcessorMessage(true)
+            , m_searchTerm(searchTerm)
+            , m_assetUuid(AZ::Uuid::CreateNull())
+        {
+        }
+
+        RequestEscalateAsset::RequestEscalateAsset(const AZ::Uuid& assetUuid)
+            : BaseAssetProcessorMessage(true)
+            , m_assetUuid(assetUuid)
+        {
+            
+        }
+
+        // these share the same message type since they're request and response.
+        unsigned int RequestEscalateAsset::MessageType()
+        {
+            static unsigned int messageTypeAssetStatus = AZ_CRC("AssetSystem::RequestEscalateAsset", 0x1894d94e);
+            return messageTypeAssetStatus;
+        }
+
+        unsigned int RequestEscalateAsset::GetMessageType() const
+        {
+            return RequestEscalateAsset::MessageType();
+        }
+
+        void RequestEscalateAsset::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<RequestEscalateAsset, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("m_assetUuid", &RequestEscalateAsset::m_assetUuid)
+                    ->Field("m_searchTerm", &RequestEscalateAsset::m_searchTerm);
             }
         }
 
@@ -191,6 +238,46 @@ namespace AzFramework
         unsigned int ResponseAssetProcessorStatus::GetMessageType() const
         {
             return RequestAssetProcessorStatus::MessageType();
+        }
+
+        //------------------------------------------------------------------------
+        void GetUnresolvedDependencyCountsRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetUnresolvedDependencyCountsRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("AssetId", &GetUnresolvedDependencyCountsRequest::m_assetId);
+            }
+        }
+
+        unsigned GetUnresolvedDependencyCountsRequest::MessageType()
+        {
+            static unsigned int type = AZ_CRC("AssetSystem::GetUnresolvedDependencyCountsRequest", 0xb430e444);
+            return type;
+        }
+
+        unsigned GetUnresolvedDependencyCountsRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void GetUnresolvedDependencyCountsResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetUnresolvedDependencyCountsResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("UnresolvedAssetIdReferences", &GetUnresolvedDependencyCountsResponse::m_unresolvedAssetIdReferences)
+                    ->Field("UnresolvedPathReferences", &GetUnresolvedDependencyCountsResponse::m_unresolvedPathReferences);
+            }
+        }
+
+        unsigned GetUnresolvedDependencyCountsResponse::GetMessageType() const
+        {
+            return GetUnresolvedDependencyCountsRequest::MessageType();
         }
 
         //---------------------------------------------------------------------
@@ -407,9 +494,10 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<AssetInfoRequest, BaseAssetProcessorMessage>()
-                    ->Version(1)
+                    ->Version(2)
                     ->Field("AssetId", &AssetInfoRequest::m_assetId)
-                    ->Field("AssetPath", &AssetInfoRequest::m_assetPath);
+                    ->Field("AssetPath", &AssetInfoRequest::m_assetPath)
+                    ->Field("AssetType", &AssetInfoRequest::m_assetType);
             }
         }
 
@@ -430,9 +518,10 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<AssetInfoResponse, BaseAssetProcessorMessage>()
-                    ->Version(1)
+                    ->Version(2)
                     ->Field("Found", &AssetInfoResponse::m_found)
-                    ->Field("AssetInfo", &AssetInfoResponse::m_assetInfo);
+                    ->Field("AssetInfo", &AssetInfoResponse::m_assetInfo)
+                    ->Field("RootFolder", &AssetInfoResponse::m_rootFolder);
             }
         }
 
@@ -1537,8 +1626,9 @@ namespace AzFramework
 
 
         //---------------------------------------------------------------------------
-        AssetNotificationMessage::AssetNotificationMessage(const AZ::OSString& data, NotificationType type, const AZ::Data::AssetType& assetType)
+        AssetNotificationMessage::AssetNotificationMessage(const AZ::OSString& data, NotificationType type, const AZ::Data::AssetType& assetType, const AZ::OSString& platform)
             : m_data(data)
+            , m_platform(platform)
             , m_type(type)
             , m_assetType(assetType)
         {
@@ -1562,14 +1652,15 @@ namespace AzFramework
             if (serialize)
             {
                 serialize->Class<AssetNotificationMessage, BaseAssetProcessorMessage>()
-                    ->Version(5)
+                    ->Version(6)
                     ->Field("StringData", &AssetNotificationMessage::m_data)
                     ->Field("NotificationType", &AssetNotificationMessage::m_type)
                     ->Field("size", &AssetNotificationMessage::m_sizeBytes)
                     ->Field("assetId", &AssetNotificationMessage::m_assetId)
                     ->Field("assetType", &AssetNotificationMessage::m_assetType)
                     ->Field("legacyAssetIds", &AssetNotificationMessage::m_legacyAssetIds)
-                    ->Field("dependencies", &AssetNotificationMessage::m_dependencies);
+                    ->Field("dependencies", &AssetNotificationMessage::m_dependencies)
+                    ->Field("platform", &AssetNotificationMessage::m_platform);
             }
         }
 
@@ -1612,5 +1703,5 @@ namespace AzFramework
                     ->Field("CatalogSaved", &SaveAssetCatalogResponse::m_saved);
             }
         }
-    } // namespace AssetSystem
+} // namespace AssetSystem
 } // namespace AzFramework

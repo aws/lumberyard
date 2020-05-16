@@ -24,7 +24,6 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Math/Transform.h>
 #include <MathConversion.h>
-#include <CryAction.h>
 #include <I3DEngine.h>
 #include <IViewSystem.h>
 #include <AzFramework/Components/CameraBus.h>

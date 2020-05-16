@@ -98,7 +98,6 @@ const char* g_szModuleGroups[][2] = {
     {"CryPhysics.dll", g_szGroupCore},
     {"CryFont.dll", g_szGroupCore},
     {"Cry3DEngine.dll", g_szGroupCore},
-    {"CryAction.dll", g_szGroupCore},
     {"CryRenderD3D9.dll", g_szGroupCore},
     {"CryRenderD3D10.dll", g_szGroupCore},
     {"CryRenderOGL.dll", g_szGroupCore},
@@ -153,15 +152,6 @@ void CSystem::DumpMemoryUsageStatistics(bool bUseKB)
 
     CrySizerStatsRenderer StatsRenderer (this, m_pMemStats, 10, 0);
     StatsRenderer.dump(bUseKB);
-
-    int iSizeInM = m_env.p3DEngine->GetTerrainSize();
-
-    //  ResourceCollector.ComputeDependencyCnt();
-
-    //  int iTerrainSectorSize = m_env.p3DEngine->GetTerrainSectorSize();
-
-    //  if(iTerrainSectorSize)
-    //      ResourceCollector.LogData(*GetILog(),AABB(Vec3(0,0,0),Vec3(iSizeInM,iSizeInM,0)),iSizeInM/iTerrainSectorSize);
 
     // since we've recalculated this mem stats for dumping, we'll want to calculate it anew the next time it's rendered
     SAFE_DELETE(m_pMemStats);

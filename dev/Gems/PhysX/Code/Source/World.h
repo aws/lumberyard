@@ -50,6 +50,8 @@ namespace PhysX
         void AddBody(Physics::WorldBody& body) override;
         void RemoveBody(Physics::WorldBody& body) override;
         void Update(float deltaTime) override;
+        void StartSimulation(float deltaTime) override;
+        void FinishSimulation() override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
         void SetEventHandler(Physics::WorldEventHandler* eventHandler) override;
@@ -76,6 +78,8 @@ namespace PhysX
 
         AZ::Vector3 GetGravity() override;
         void SetGravity(const AZ::Vector3& gravity) override;
+        void SetMaxDeltaTime(float maxDeltaTime) override;
+        void SetFixedDeltaTime(float fixedDeltaTime) override;
 
         void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> worldBody) override;
 
@@ -86,15 +90,20 @@ namespace PhysX
         physx::PxScene* m_world = nullptr;
         AZ::Crc32 m_worldId;
 
-        AZStd::vector<physx::PxRaycastHit> m_raycastBuffer; ///< Maximum number of hits that can be stored from a single raycast.
-        AZStd::vector<physx::PxSweepHit> m_sweepBuffer; ///< Maximum number of hits that can be stored from a single shapecast.
-        AZStd::vector<physx::PxOverlapHit> m_overlapBuffer; ///< Maximum number of hits that can be stored from a single overlap query.
+        static thread_local AZStd::vector<physx::PxRaycastHit> s_raycastBuffer; ///< Maximum number of hits that can be stored from a single raycast.
+        static thread_local AZStd::vector<physx::PxSweepHit> s_sweepBuffer; ///< Maximum number of hits that can be stored from a single shape cast.
+        static thread_local AZStd::vector<physx::PxOverlapHit> s_overlapBuffer; ///< Maximum number of hits that can be stored from a single overlap query.
+
+        const AZ::u64 m_maxRaycastBufferSize; //!< Max size to limit the raycast buffer, set in WorldConfiguration.
+        const AZ::u64 m_maxSweepBufferSize; //!< Max size to limit the shape cast buffer, set in WorldConfiguration.
+        const AZ::u64 m_maxOverlapBufferSize; //!< Max size to limit the overlap query buffer, set in WorldConfiguration.
 
         AZStd::unordered_set<ActorPair> m_suppressedCollisionPairs; ///< Actor pairs with collision suppressed.
 
         float m_maxDeltaTime = 0.0f;
         float m_fixedDeltaTime = 0.0f;
         float m_accumulatedTime = 0.0f;
+        float m_currentDeltaTime = 0.0f;
 
         //function pointer for simulating
         std::function<void(void *)> m_simFunc = nullptr;

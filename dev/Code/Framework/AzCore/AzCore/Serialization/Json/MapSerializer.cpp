@@ -108,6 +108,22 @@ namespace AZ
         rapidjson::SizeType maximumSize = 0;
         const rapidjson::Value defaultValue(rapidjson::kObjectType);
         JSR::ResultCode retVal(JSR::Tasks::ReadField);
+        if (containerSize > 0 && settings.m_clearContainers)
+        {
+            JSR::Result result = JSR::Result(settings, "Clearing associative container.", JSR::Tasks::Clear, JSR::Outcomes::Success, path);
+            if (result.GetResultCode().GetOutcome() == JSR::Outcomes::Success)
+            {
+                container->ClearElements(outputValue, settings.m_serializeContext);
+                containerSize = container->Size(outputValue);
+                result = JSR::Result(settings, containerSize == 0 ? "Cleared associative container." : "Failed to clear associative container.",
+                    JSR::Tasks::Clear, containerSize == 0 ? JSR::Outcomes::Success : JSR::Outcomes::Unsupported, path);
+            }
+            if (result.GetResultCode().GetProcessing() != JSR::Processing::Completed)
+            {
+                return result;
+            }
+            retVal.Combine(result);
+        }
         if (inputValue.IsObject())
         {
             maximumSize = inputValue.MemberCount();
@@ -137,7 +153,8 @@ namespace AZ
             maximumSize = inputValue.Size();
             if (maximumSize == 0)
             {
-                return JSR::Result(settings, "No values provided for map.", JSR::ResultCode::Success(JSR::Tasks::ReadField), path);
+                return JSR::Result(settings, "No values provided for map.",
+                    retVal.HasDoneWork() ? retVal : JSR::ResultCode::Success(JSR::Tasks::ReadField), path);
             }
             for (rapidjson::SizeType i = 0; i < maximumSize; ++i)
             {
@@ -169,7 +186,7 @@ namespace AZ
                 }
             }
         }
-        
+
         size_t addedCount = container->Size(outputValue) - containerSize;
         AZStd::string_view message =
             addedCount >= maximumSize ? "Successfully read associative container." :

@@ -38,6 +38,7 @@ namespace AzToolsFramework
         const AZ::Vector3 rayCrossAxis = localRayDirection.Cross(axis);
 
         StartInternal startInternal;
+        startInternal.m_localHitPosition = localTransform.GetTranslation(); // Initialize m_localHitPosition to handle edge case where CalculateRayPlaneIntersectingPoint fails because ray is parallel to plane
         startInternal.m_localNormal = rayCrossAxis.Cross(axis).GetNormalizedSafeExact();
 
         Internal::CalculateRayPlaneIntersectingPoint(
@@ -151,10 +152,7 @@ namespace AzToolsFramework
     {
         const AZ::Transform worldFromLocalUniformScale = TransformUniformScale(m_worldFromLocal);
 
-        const bool snapping =
-            GridSnapping(interaction.m_interactionId.m_viewportId);
-        const float gridSize =
-            GridSize(interaction.m_interactionId.m_viewportId);
+        const GridSnapParameters gridSnapParams = GridSnapSettings(interaction.m_interactionId.m_viewportId);
 
         AzFramework::CameraState cameraState;
         ViewportInteraction::ViewportInteractionRequestBus::EventResult(
@@ -162,14 +160,16 @@ namespace AzToolsFramework
             &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
         m_startInternal = CalculateManipulationDataStart(
-            m_fixed, worldFromLocalUniformScale, m_localTransform, snapping, gridSize,
+            m_fixed, worldFromLocalUniformScale, m_localTransform,
+            gridSnapParams.m_gridSnap, gridSnapParams.m_gridSize,
             interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
             cameraState);
 
         if (m_onLeftMouseDownCallback)
         {
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
-                m_fixed, m_startInternal, worldFromLocalUniformScale, m_localTransform, snapping, gridSize,
+                m_fixed, m_startInternal, worldFromLocalUniformScale, m_localTransform,
+                gridSnapParams.m_gridSnap, gridSnapParams.m_gridSize,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
                 interaction.m_keyboardModifiers));
         }
@@ -179,10 +179,12 @@ namespace AzToolsFramework
     {
         if (m_onMouseMoveCallback)
         {
+            const GridSnapParameters gridSnapParams = GridSnapSettings(interaction.m_interactionId.m_viewportId);
+
             m_onMouseMoveCallback(CalculateManipulationDataAction(
                 m_fixed, m_startInternal, TransformUniformScale(m_worldFromLocal), m_localTransform,
-                GridSnapping(interaction.m_interactionId.m_viewportId),
-                GridSize(interaction.m_interactionId.m_viewportId),
+                gridSnapParams.m_gridSnap,
+                gridSnapParams.m_gridSize,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
                 interaction.m_keyboardModifiers));
         }
@@ -192,10 +194,12 @@ namespace AzToolsFramework
     {
         if (m_onLeftMouseUpCallback)
         {
+            const GridSnapParameters gridSnapParams = GridSnapSettings(interaction.m_interactionId.m_viewportId);
+
             m_onLeftMouseUpCallback(CalculateManipulationDataAction(
                 m_fixed, m_startInternal, TransformUniformScale(m_worldFromLocal), m_localTransform,
-                GridSnapping(interaction.m_interactionId.m_viewportId),
-                GridSize(interaction.m_interactionId.m_viewportId),
+                gridSnapParams.m_gridSnap,
+                gridSnapParams.m_gridSize,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
                 interaction.m_keyboardModifiers));
         }

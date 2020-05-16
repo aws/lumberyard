@@ -350,7 +350,7 @@ QString StyleSheetCache::findStyleSheetPath(const QString& styleFileName)
     }
 
     // If we didn't find it in the processing stack, search all known prefixes
-    for (const auto prefix : m_prefixes)
+    for (const auto& prefix : m_prefixes)
     {
         const auto result = QString("%1:%2").arg(prefix, styleFileName);
         if (QFile::exists(result))

@@ -16,6 +16,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <RoadsAndRivers/RoadsAndRiversBus.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <SurfaceData/Utility/SurfaceDataUtility.h>
@@ -97,15 +98,19 @@ namespace RoadsAndRivers
         registryEntry.m_tags = m_configuration.m_providerTags;
 
         m_providerHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
-        SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
-        SurfaceData::SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::SplineComponentNotificationBus::Handler::BusConnect(GetEntityId());
         RoadNotificationBus::Handler::BusConnect(GetEntityId());
         RoadsAndRiversGeometryNotificationBus::Handler::BusConnect(GetEntityId());
 
+        // Update the cached shape data and bounds, then register the surface data provider
         UpdateShapeData();
+
+        // This needs to connect after the call to UpdateShapeData() so that the handle is valid
+        AZ_Assert((m_providerHandle != SurfaceData::InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+        SurfaceData::SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+
         m_refresh = false;
     }
 
@@ -159,24 +164,36 @@ namespace RoadsAndRivers
                 point.m_entityId = GetEntityId();
 
                 if (m_configuration.m_snapToTerrain)
-                { 
+                {
+                    const float x = inPosition.GetX();
+                    const float y = inPosition.GetY();
                     auto engine = GetISystem()->GetI3DEngine();
-                    if (engine && engine->GetShowTerrainSurface() && engine->GetTerrainAabb().Contains(inPosition))
+                    bool isTerrainActive = false;
+                    float terrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                    bool isPointInTerrain = false;
+                    bool terrainHeightIsValid = false;
+                    auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
                     {
-                        const float x = inPosition.GetX();
-                        const float y = inPosition.GetY();
+                        isTerrainActive = true;
+                        terrainHeight = terrain->GetHeightFromFloats(x, y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, &terrainHeightIsValid);
+                        isPointInTerrain = SurfaceData::AabbContains2D(terrain->GetTerrainAabb(), inPosition);
+                        const bool isHole = !terrainHeightIsValid;
 
-                        if (m_ignoreTerrainHoles || !engine->GetTerrainHole(int(x), int(y)))
+                        if (isPointInTerrain)
                         {
-                            const Vec3 positionLy = AZVec3ToLYVec3(inPosition);
-                            const float terrainHeight = engine->GetTerrainElevation(x, y);
-
-                            point.m_position = AZ::Vector3(x, y, terrainHeight);
-                            point.m_normal = LYVec3ToAZVec3(engine->GetTerrainSurfaceNormal(positionLy));
-                            AddMaxValueForMasks(point.m_masks, m_configuration.m_providerTags, 1.0f);
-                            surfacePointList.push_back(point);
+                            if (m_ignoreTerrainHoles || !isHole)
+                            {
+                                point.m_position = AZ::Vector3(x, y, terrainHeight);
+                                point.m_normal = terrain->GetNormal(inPosition);
+                                AddMaxValueForMasks(point.m_masks, m_configuration.m_providerTags, 1.0f);
+                                surfacePointList.push_back(point);
+                            }
                         }
-                    }
+      
+                        // Only one handler should exist.
+                        return false;
+                    };
+                    AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
                 }
                 else
                 {
@@ -238,17 +255,8 @@ namespace RoadsAndRivers
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        AZ::Aabb dirtyVolume = AZ::Aabb::CreateNull();
-
         {
             AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
-
-            // To make sure we update our surface data even if our surface shrinks or grows, keep track of a bounding box
-            // that contains the old surface volume.  At the end, we'll add in our new surface volume.
-            if (m_shapeBoundsIsValid)
-            {
-                dirtyVolume.AddAabb(m_shapeBounds);
-            }
 
             m_shapeWorldTM = AZ::Transform::CreateIdentity();
             AZ::TransformBus::EventResult(m_shapeWorldTM, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
@@ -266,18 +274,22 @@ namespace RoadsAndRivers
                 m_shapeBounds.AddPoint(vertex);
             }
             m_shapeBoundsIsValid = m_shapeBounds.IsValid();
-
-            // Add our new surface volume to our dirty volume, so that we have a bounding box that encompasses everything that's been added / changed / removed
-            if (m_shapeBoundsIsValid)
-            {
-                dirtyVolume.AddAabb(m_shapeBounds);
-            }
         }
 
         SurfaceData::SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
         registryEntry.m_bounds = m_shapeBounds;
         registryEntry.m_tags = m_configuration.m_providerTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, dirtyVolume);
+        if (m_providerHandle == SurfaceData::InvalidSurfaceDataRegistryHandle)
+        {
+            // First time this is called, register the provider and save off the provider handle
+            AZ_Assert(m_shapeBoundsIsValid, "Road Surface Geometry isn't correctly initialized.");
+            SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
+        }
+        else
+        {
+            // On subsequent calls, just update the provider information with the saved provider handle
+            SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry);
+        }
     }
 }

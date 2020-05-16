@@ -101,7 +101,9 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<PolygonPrismShapeComponentRequestBus>("PolygonPrismShapeComponentRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                 ->Attribute(AZ::Edit::Attributes::Category, "Shape")
+                ->Attribute(AZ::Script::Attributes::Module, "shape")
                 ->Event("GetPolygonPrism", &PolygonPrismShapeComponentRequestBus::Events::GetPolygonPrism)
                 ->Event("SetHeight", &PolygonPrismShapeComponentRequestBus::Events::SetHeight)
                 ->Event("AddVertex", &PolygonPrismShapeComponentRequestBus::Events::AddVertex)

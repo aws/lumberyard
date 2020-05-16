@@ -454,7 +454,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "ServiceLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
@@ -678,7 +678,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "AnswersDynamoDbStreamLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
@@ -785,7 +785,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "ExportAnswerSubmissionsCSVLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
@@ -864,7 +864,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "DeleteAnswerSubmissionsLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },

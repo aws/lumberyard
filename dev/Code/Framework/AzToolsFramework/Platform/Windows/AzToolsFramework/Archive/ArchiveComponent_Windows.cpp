@@ -97,11 +97,6 @@ namespace AzToolsFramework
             return commandLineArgs;
         }
 
-        bool IsAddFilesToArchiveCommandSupported()
-        {
-            return true;
-        }
-        
         AZStd::string GetListFilesInArchiveCommand(const AZStd::string& archivePath)
         {
             AZStd::string commandLineArgs = AZStd::string::format(ListFilesInArchiveCmd, archivePath.c_str());

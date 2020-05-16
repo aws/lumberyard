@@ -293,6 +293,8 @@ namespace AzToolsFramework
 
     Framework::~Framework(void)
     {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+
         delete m_ActionPreferences;
         m_ActionPreferences = nullptr;
 
@@ -319,12 +321,22 @@ namespace AzToolsFramework
         EBUS_EVENT(LegacyFramework::CoreMessageBus, OnReady);
     }
 
+    void Framework::OnSystemTick()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+        CheckForReadyToQuit();
+    }
+
     void Framework::Init()
     {
         char myFileName[MAX_PATH] = {0};
 #if AZ_TRAIT_OS_PLATFORM_APPLE
         uint32_t bufSize = AZ_ARRAY_SIZE(myFileName);
         _NSGetExecutablePath(myFileName, &bufSize);
+        if (strlen(myFileName) > 0)
+#elif defined (AZ_PLATFORM_LINUX)
+        uint32_t bufSize = AZ_ARRAY_SIZE(myFileName);
+        size_t pathLen = readlink("/proc/self/exe", myFileName, bufSize);
         if (strlen(myFileName) > 0)
 #else
         if (GetModuleFileNameA(NULL, myFileName, MAX_PATH))
@@ -408,7 +420,6 @@ namespace AzToolsFramework
         EBUS_EVENT_RESULT(pApp, AZ::ComponentApplicationBus, GetApplication);
         if (pApp)
         {
-
             AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
             static AZStd::chrono::system_clock::time_point lastUpdate = now;
 
@@ -417,10 +428,12 @@ namespace AzToolsFramework
 
             lastUpdate = now;
 
-            AZ::SystemTickBus::ExecuteQueuedEvents();
-            AZ::SystemTickBus::Broadcast(&AZ::SystemTickEvents::OnSystemTick);
-
-            pApp->Tick(deltaTime);
+            if (m_ptrTicker)
+            {
+                AZ::SystemTickBus::ExecuteQueuedEvents();
+                AZ::SystemTickBus::Broadcast(&AZ::SystemTickEvents::OnSystemTick);
+                pApp->Tick(deltaTime);
+            }
 
         }
 
@@ -524,7 +537,7 @@ namespace AzToolsFramework
         {
             // the above could cause contexts to generate threaded requests that are outstanding (like a long data save).
             // we keep the app running until those requests have been completed.
-            QTimer::singleShot(1, this, SLOT(CheckForReadyToQuit()));
+            AZ::SystemTickBus::Handler::BusConnect();
             return;
         }
 

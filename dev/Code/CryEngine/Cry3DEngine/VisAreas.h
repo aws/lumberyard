@@ -28,6 +28,8 @@ typedef uint64 VisAreaGUID;
 
 #define ReservedVisAreaBytes 384
 
+struct ITerrainNode;
+
 enum EVisAreaColdDataType
 {
     eCDT_Generic = 0,
@@ -134,7 +136,6 @@ struct CVisArea
     int Load(AZ::IO::HandleType& fileHandle, int& nDataSizeLeft, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, SHotUpdateInfo* pExportInfo);
     const AABB* GetAABBox() const;
     const AABB* GetStaticObjectAABBox() const;
-    void UpdateOcclusionFlagInTerrain();
     void AddConnectedAreas(PodArray<CVisArea*>& lstAreas, int nMaxRecursion);
     void GetShapePoints(const Vec3*& pPoints, size_t& nPoints);
     float GetHeight();
@@ -156,7 +157,7 @@ struct CVisArea
     static PodArray<Vec3> s_tmpLstPortVertsSS;
     static PodArray<Vec3> s_tmpPolygonA;
     static PodArray<IRenderNode*>   s_tmpLstLights;
-    static PodArray<CTerrainNode*> s_tmpLstTerrainNodeResult;
+    static PodArray<ITerrainNode*> s_tmpLstTerrainNodeResult;
     static CPolygonClipContext s_tmpClipContext;
     static PodArray<CCamera> s_tmpCameras;
     static int s_nGetDistanceThruVisAreasCallCounter;
@@ -276,7 +277,7 @@ struct CVisAreaManager
     PodArray<CVisArea*>* GetActiveEntransePortals() { return &m_lstActiveEntransePortals; }
     void PortalsDrawDebug();
     bool IsEntityVisible(IRenderNode* pEnt);
-    bool IsOutdoorAreasVisible();
+    bool IsOutdoorAreasVisible() override;
     bool IsSkyVisible();
     bool IsOceanVisible();
     CVisArea* CreateVisArea(VisAreaGUID visGUID);

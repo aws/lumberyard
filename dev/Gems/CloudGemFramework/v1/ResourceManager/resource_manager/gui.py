@@ -9,34 +9,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-
-import thread
 import sys
 import traceback
-
-import project
-import deployment
-import mappings
-import resource_group
-import player_identity
-import profile
-import util
-import importer
-import function
-import gem
-
-from errors import HandledError
-from context import Context
-from metrics import MetricsContext
-from view import ViewContext
-
-from util import Args
+from six import iteritems
+from six.moves import _thread
 
 from botocore.exceptions import NoCredentialsError
 from botocore.exceptions import EndpointConnectionError
 from botocore.exceptions import IncompleteReadError
 from botocore.exceptions import ConnectionError
 from botocore.exceptions import UnknownEndpointError
+
+from . import project
+from . import deployment
+from . import mappings
+from . import resource_group
+from . import profile
+from . import util
+from . import importer
+from . import function
+from . import gem
+
+from .errors import HandledError
+from .context import Context
+from .metrics import MetricsContext
+from .view import ViewContext
+
+from .util import Args
 
 command_handlers = {
     'list-importable-resources': importer.list_aws_resources,
@@ -76,14 +75,14 @@ command_handlers = {
 
 
 def execute(command, args):
-    thread.start_new_thread(__execute, (command, args))
+    _thread.start_new_thread(__execute, (command, args))
 
 
 def __execute(command, args):
 
     requestId = args['request_id'] if 'request_id' in args else 0
 
-    print 'command started - {} with args {}'.format(command, args)
+    print('command started - {} with args {}'.format(command, args))
 
     metricsInterface = MetricsContext('gui')
     metricsInterface.set_command_name(command)
@@ -136,31 +135,36 @@ def __execute(command, args):
     except HandledError as e:
         metricsInterface.submit_failure()
         msg = str(e)
-        print 'command error   - {} when executing command {} with args {}.'.format(msg, command, args)
+        print('command error   - {} when executing command {} with args {}.'.format(msg, command, args))
         args['view_output_function'](requestId, 'error', msg)
     except NoCredentialsError:
         metricsInterface.submit_failure()
         msg = 'No AWS credentials were provided.'
-        print 'command error   - {} when executing command {} with args {}.'.format(msg, command, args)
+        print('command error   - {} when executing command {} with args {}.'.format(msg, command, args))
         args['view_output_function'](requestId, 'error', msg)
     except (EndpointConnectionError, IncompleteReadError, ConnectionError, UnknownEndpointError) as e:
         metricsInterface.submit_failure()        
-        msg = 'We were unable to contact your AWS endpoint.\nERROR: {0}'.format(e.message)
-        print 'command error   - {} when executing command {} with args {}.'.format(msg, command, args)
+        msg = 'We were unable to contact your AWS endpoint.\nERROR: {0}'.format(e)
+        print('command error   - {} when executing command {} with args {}.'.format(msg, command, args))
         args['view_output_function'](requestId, 'error', msg)
     except:
         metricsInterface.submit_failure()
         info = sys.exc_info()
         msg = traceback.format_exception(*info)
-        print 'command error   - {} when executing command {} with args {}.'.format(msg, command, args)
+        print('command error   - {} when executing command {} with args {}.'.format(msg, command, args))
         args['view_output_function'](requestId, 'error', msg)
 
-    print 'command finished - {} with args {}'.format(command, args)
+    print('command finished - {} with args {}'.format(command, args))
 
 
 class GuiViewContext(ViewContext):
 
     def __init__(self, context):
+        # Print calls in Python 2 when called from C++ need to be wrapped to avoid an error.
+        # Redirect them to nowhere for now.
+        class GuiNullWriter(object):
+            def write(self, value): pass
+        sys.stdout = sys.stderr = GuiNullWriter()
         super(GuiViewContext, self).__init__(context)
 
     def initialize(self, args):
@@ -172,14 +176,14 @@ class GuiViewContext(ViewContext):
         self._output('project_stack_exists', value)
 
     def _output(self, key, value):
-        print 'command output   - requestId: {}, key: {}, value: {}'.format(self.__requestId, key, value)
+        print('command output   - requestId: {}, key: {}, value: {}'.format(self.__requestId, key, value))
         self.__view_output_function(self.__requestId, str(key).encode('utf-8'), value)
 
     def success(self):
         self._output('success', 'Operation completed successfully.')
 
     def loading_file(self, path):
-        pass # supressed in gui
+        pass  # suppressed in gui
 
     def importable_resource_list(self, importable_resources):
         self._output('importable-resource-list', 
@@ -193,6 +197,12 @@ class GuiViewContext(ViewContext):
                 'DeploymentName': deployment_name,
                 'Protected': protected,
                 'Mappings': mappings
+            })
+
+    def deployment_updated(self, deployment_name):
+        self._output('deployment-updated',
+            {
+                'DeploymentName': deployment_name
             })
 
     def confirm_writable_try_again(self, path_list):
@@ -223,7 +233,7 @@ class GuiViewContext(ViewContext):
     def resource_list(self, stack_id, deployment_name, resource_group_name, resource_map):
 
         resource_list = []
-        for k,v in resource_map.iteritems():
+        for k, v in iteritems(resource_map):
             v['Name'] = k
             resource_list.append(v)
 
@@ -282,5 +292,3 @@ class GuiViewContext(ViewContext):
     def supported_region_list(self, region_list):
         self._output('supported-region-list', region_list)
 
-if __name__ == "__main__":
-    sys.exit(main())

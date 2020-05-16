@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <Azcore/Debug/Profiler.h>
+#include <AzCore/Debug/Profiler.h>
  
 #define GRAPH_CANVAS_PROFILE_FUNCTION() AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 #define GRAPH_CANVAS_PROFILE_SCOPE(message) AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, message);

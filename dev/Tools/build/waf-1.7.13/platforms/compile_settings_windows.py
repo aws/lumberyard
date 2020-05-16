@@ -10,10 +10,14 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
+
+# System Imports
+import os
+
+# waflib imports
 from waflib.Configure import conf
 from waflib.Errors import WafError
-from lumberyard import deprecated
-import os
+
 
 @conf
 def load_windows_common_settings(conf):

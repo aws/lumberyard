@@ -192,7 +192,11 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
 #elif defined(ANDROID)
     const char* p_r_DriverDef = "GL";
 #elif defined(LINUX)
-    const char* p_r_DriverDef = "NULL";
+    const char* p_r_DriverDef = "GL";
+    if (gEnv->IsDedicated())
+    {
+        p_r_DriverDef = "NULL";
+    }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMRENDERER_CPP_SECTION_1
     #if defined(AZ_PLATFORM_XENIA)
@@ -579,7 +583,7 @@ void CSystem::UpdateLoadingScreen()
     EBUS_EVENT(LoadScreenBus, UpdateAndRender);
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
 
-    if (!m_bEditor && !m_bQuit)
+    if (!m_bEditor && !IsQuitting())
     {
         if (m_pProgressListener)
         {

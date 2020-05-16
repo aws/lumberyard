@@ -11,12 +11,13 @@
 # $Revision: #2 $
 
 import unittest
-import mock
+from unittest import mock
 
 from cgf_utils import custom_resource_response
 from resource_types import Custom_Helper
 
 from cgf_utils.properties import ValidationError
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_HelperResourceHandler(unittest.TestCase):
 

@@ -252,8 +252,8 @@ namespace EMStudio
                 CommandSystem::CommandCreateMotionEvent* createMotionEventCommand = aznew CommandSystem::CommandCreateMotionEvent();
                 createMotionEventCommand->SetMotionID(mMotion->GetID());
                 createMotionEventCommand->SetEventTrackName(eventTrack->GetName());
-                createMotionEventCommand->SetStartTime(dropTimeInSeconds);
-                createMotionEventCommand->SetEndTime(dropTimeInSeconds);
+                createMotionEventCommand->SetStartTime(aznumeric_cast<float>(dropTimeInSeconds));
+                createMotionEventCommand->SetEndTime(aznumeric_cast<float>(dropTimeInSeconds));
                 createMotionEventCommand->SetEventDatas(preset->GetEventDatas());
 
                 if (!EMStudio::GetCommandManager()->ExecuteCommand(createMotionEventCommand, result))

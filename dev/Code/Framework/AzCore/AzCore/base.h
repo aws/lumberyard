@@ -44,41 +44,14 @@ namespace AZ
     const char* GetPlatformName(PlatformID platform);
 } // namespace AZ
 
-
-#define AZSTD_STATIC_ASSERT_BOOL_CAST(_x) (bool)(_x)
-
 #define AZ_JOIN(X, Y) AZSTD_DO_JOIN(X, Y)
 #define AZSTD_DO_JOIN(X, Y) AZSTD_DO_JOIN2(X, Y)
 #define AZSTD_DO_JOIN2(X, Y) X##Y
 
-#ifdef AZ_COMPILER_MSVC
-#   define  AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
-#elif defined(AZ_COMPILER_CLANG)
-#   define AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
-#else
-// generic version
-namespace AZ
-{
-    template<bool x>
-    struct STATIC_ASSERTION_FAILURE;
-    template<>
-    struct STATIC_ASSERTION_FAILURE<true>
-    {
-        enum
-        {
-            value = 1
-        };
-    };
-    template<int x>
-    struct static_assert_test{};
-} //namespace AZ
-#define AZ_STATIC_ASSERT(_Exp, _Str)                                               \
-    typedef ::AZ::static_assert_test<                                              \
-    sizeof(::AZ::STATIC_ASSERTION_FAILURE< AZSTD_STATIC_ASSERT_BOOL_CAST(_Exp) >)> \
-        AZ_JOIN (azstd_static_assert_typedef_, __LINE__)
-#endif //
-
-//////////////////////////////////////////////////////////////////////////
+// LUMBERYARD_DEPRECATED_BEGIN
+#define AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
+#define AZSTD_STATIC_ASSERT_BOOL_CAST(_x) (bool)(_x)
+// LUMBERYARD_DEPRECATED_END
 
 /**
  * Macros for calling into strXXX functions. These are simple wrappers that call into the platform
@@ -273,10 +246,10 @@ namespace AZ
     } u128;
 
     template<typename T>
-    inline T SizeAlignUp(T s, size_t a) { return (s+(a-1)) & ~(a-1); }
+    inline T SizeAlignUp(T s, size_t a) { return static_cast<T>((s+(a-1)) & ~(a-1)); }
 
     template<typename T>
-    inline T SizeAlignDown(T s, size_t a)   { return (s) & ~(a-1); }
+    inline T SizeAlignDown(T s, size_t a) { return static_cast<T>((s) & ~(a-1)); }
 
     template<typename T>
     inline T* PointerAlignUp(T* p, size_t a)    { return reinterpret_cast<T*>((reinterpret_cast<size_t>(p)+(a-1)) & ~(a-1));    }
@@ -291,7 +264,7 @@ namespace AZ
     template<typename T, typename S>
     T AliasCast(S source)
     {
-        AZ_STATIC_ASSERT(sizeof(T) == sizeof(S), "Source and target should be the same size!");
+        static_assert(sizeof(T) == sizeof(S), "Source and target should be the same size!");
         union
         {
             S source;
@@ -334,8 +307,8 @@ namespace AZ
 
 // Macros to default the auto-generated copy/move constructors and assignment operators for a class
 #define AZ_DEFAULT_COPY(_Class) _Class(const _Class&) = default; _Class& operator=(const _Class&) = default;
-// MSVC only supports default move constructors and assignment operators starting from version 14.0,
-// so we can't add macros for AZ_DEFAULT_MOVE/AZ_DEFAULT_COPY_MOVE while we're supporting MSVC 12.0
+#define AZ_DEFAULT_MOVE(_Class) _Class(_Class&&) = default; _Class& operator=(_Class&&) = default;
+#define AZ_DEFAULT_COPY_MOVE(_Class) AZ_DEFAULT_COPY(_Class) AZ_DEFAULT_MOVE(_Class)
 
 // Macro that can be used to avoid unreferenced variable warnings
 #define AZ_UNUSED(x) (void)x;

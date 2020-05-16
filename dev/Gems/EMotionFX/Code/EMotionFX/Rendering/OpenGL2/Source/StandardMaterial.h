@@ -13,6 +13,7 @@
 #ifndef __RENDERGL_STANDARD_MATERIAL_H
 #define __RENDERGL_STANDARD_MATERIAL_H
 
+#include <AzCore/Math/Transform.h>
 #include <EMotionFX/Source/StandardMaterial.h>
 #include "Material.h"
 #include "GLSLShader.h"
@@ -46,7 +47,7 @@ namespace RenderGL
 
         GLSLShader*                     mActiveShader;
         MCore::Array<GLSLShader*>       mShaders;
-        MCore::Matrix                   mBoneMatrices[200];
+        AZ::Matrix4x4                   mBoneMatrices[200];
         EMotionFX::Material*            mMaterial;
 
         Texture*                        mDiffuseMap;

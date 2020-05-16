@@ -14,6 +14,7 @@
 #include "MacroTexture.h"
 #include <AzCore/Math/Color.h>
 #include <AzCore/IO/Streamer.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 const MacroTexture::Region MacroTexture::Region::Unit(0.0f, 0.0f, 1.0f);
 
@@ -109,7 +110,7 @@ Morton::Key MacroTexture::MortonEncodeRegion(Region region) const
     return Morton::FindCommonAncestor(p0, p1, p2, p3);
 }
 
-MacroTexture::MacroTexture(const MacroTextureConfiguration& configuration)
+MacroTexture::MacroTexture(const LegacyTerrain::MacroTextureConfiguration& configuration)
     : m_TexturePool(configuration.maxElementCountPerPool)
     , m_TotalSectorDataSize(configuration.totalSectorDataSize)
     , m_SectorDataStartOffset(configuration.sectorStartDataOffset)
@@ -402,7 +403,7 @@ void MacroTexture::StreamOnComplete(IReadStream* stream, unsigned error)
     node.readStream = nullptr;
 }
 
-void MacroTexture::GetTileStatistics(TileStatistics& statistics) const
+void MacroTexture::GetTileStatistics(LegacyTerrain::MacroTexture::TileStatistics& statistics) const
 {
     uint32 resident = 0;
     uint32 streaming = 0;

@@ -17,7 +17,8 @@
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <QSettings>
 #include <Util/Variable.h>
-#include <AWSResourceManager.h>
+
+class AWSResourceManager;
 
 class MaglevControlPanelPlugin
     : public IPlugin
@@ -35,8 +36,9 @@ public:
 
     static const char* GetHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/developerguide/cloud-canvas"; }
     static const char* GetDeploymentHelpLink() { return "https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-ui-rm-deployments.html"; }
+    static const char* GetRolesHelpLink() { return "https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-built-in-roles-and-policies.html"; }
 private:
     static const DWORD s_pluginVersion = 1;
     QSettings m_pluginSettings;
-    AWSResourceManager m_awsResourceManager;
+    AZStd::shared_ptr<AWSResourceManager> m_awsResourceManager;
 };

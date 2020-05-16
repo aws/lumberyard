@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Mac": [
+        "../Common/Unimplemented/UiClipboard_Unimplemented.cpp"
+    ]
+  }
+}

@@ -21,9 +21,12 @@
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Execution/ExecutionBus.h>
 #include <ScriptCanvas/Execution/ErrorBus.h>
+#include <ScriptCanvas/Core/ScriptCanvasBus.h>
 
 namespace ScriptCanvas
 {
+    class Node;
+
     //! Execution Context  responsible for executing a ScriptCanvas Graph
     //! It maintains a stack of currently executing nodes as well a unique id
     //! for identifying the execution context
@@ -38,10 +41,10 @@ namespace ScriptCanvas
         ExecutionContext();
         ~ExecutionContext() override = default;
 
-        AZ::Outcome<void, AZStd::string> Activate(AZ::EntityId runtimeId);
-        void Deactivate();
+        AZ::Outcome<void, AZStd::string> ActivateContext(const ScriptCanvasId& scriptCanvasId);
+        void DeactivateContext();
 
-        AZ::EntityId GetExecutionId() const { return m_runtimeId; };
+        ScriptCanvasId GetScriptCanvasId() const { return m_scriptCanvasId; };
 
         //// ErrorReporterBus::Handler
         AZStd::string_view GetLastErrorDescription() const override;
@@ -49,7 +52,9 @@ namespace ScriptCanvas
         bool IsInErrorState() const override{ return m_isInErrorState; }
         bool IsInIrrecoverableErrorState() const override { return m_isInErrorState && !m_isRecoverable; }
         void ReportError(const Node& reporter, const char* format, ...) override;
+
         ////
+
         void AddErrorHandler(AZ::EntityId errorScopeId, AZ::EntityId errorHandlerNodeId);
 
         /**
@@ -59,6 +64,7 @@ namespace ScriptCanvas
         void AddToExecutionStack(Node& node, const SlotId& slotId) override;
 
         bool IsExecuting() const override;
+        bool HasQueuedExecution() const;
         /**
         ** Use with caution, or better, not at all. This is only currently public to all for BehaviorContext ebus handlers with return values
         ** to properly function.
@@ -73,11 +79,14 @@ namespace ScriptCanvas
         //! Searches for the node ids that from both endpoints of the connection inside of the supplied node set container
         void UnwindStack(const Node& callStackTop);
 
+        void RefreshInputs();
+
     private:
-        AZ::EntityId m_runtimeId;
+        ScriptCanvasId m_scriptCanvasId;
 
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_sourceToErrorHandlerNodes;
 
+        bool m_isActive = false;
         bool m_isInErrorState = false;
         bool m_isExecuting = false;
         bool m_isFinalErrorReported = false;
@@ -91,6 +100,10 @@ namespace ScriptCanvas
         using ExecutionStack = AZStd::stack<StackEntry, AZStd::vector<StackEntry>>;
         ExecutionStack m_executionStack;
         size_t m_preExecutedStackSize{};
+
+        AZStd::unordered_set<Node*> m_executedNodes;
+
+        SystemComponentConfiguration m_systemComponentConfiguration;
     };
 
 }

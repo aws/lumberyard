@@ -16,6 +16,8 @@ from cgf_utils import custom_resource_utils
 import boto3
 import json
 from resource_manager import util
+from six import iteritems
+
 
 def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
     stack_arn = hook.context.config.get_deployment_stack_id(kwargs['deployment_name'])
@@ -40,7 +42,7 @@ def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
     updated_channels = []
     aggregate_settings = hook.context.config.aggregate_settings
     if aggregate_settings:
-        for gem_name, settings_data in aggregate_settings.iteritems():
+        for gem_name, settings_data in iteritems(aggregate_settings):
             communicator_settings = settings_data.get('GemSettings',{}).get('CloudGemWebCommunicator')
             if not communicator_settings:
                 continue

@@ -30,6 +30,10 @@
         "TargetManagement/Platform/iOS":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"
+        ],
+        "Windowing/Platform/iOS":
+        [
+            "AzFramework/Windowing/NativeWindow_ios.mm"
         ]
     },
     "AzFramework_Input_Uber_iOS.cpp":
@@ -58,6 +62,11 @@
         "Input/Devices/Touch/Platform/iOS":
         [
             "AzFramework/Input/Devices/Touch/InputDeviceTouch_iOS.mm"
+        ],
+        "Input/User/Platform/iOS":
+        [
+            "AzFramework/Input/User/LocalUserId_Platform.h",
+            "../Common/Default/AzFramework/Input/User/LocalUserId_Default.h"
         ],
         "Input/Devices/VirtualKeyboard/Platform/iOS":
         [

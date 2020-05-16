@@ -52,7 +52,7 @@ static inline int Vscprintf(const char* format, va_list argList)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     return _vscprintf(format, argList);
-#elif AZ_TRAIT_OS_PLATFORM_APPLE
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     int retval;
     va_list argcopy;
     va_copy(argcopy, argList);
@@ -68,7 +68,7 @@ static inline int Vscprintf(const wchar_t* format, va_list argList)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     return _vscwprintf(format, argList);
-#elif AZ_TRAIT_OS_PLATFORM_APPLE
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     int retval;
     va_list argcopy;
     va_copy(argcopy, argList);
@@ -365,12 +365,18 @@ bool StringHelpers::ContainsIgnoreCase(const wstring& str, const wstring& patter
     const size_t n = str.length() - patternLength + 1;
     for (size_t i = 0; i < n; ++i)
     {
+        bool match = true;
         for (size_t j = 0; j < patternLength; ++j)
         {
             if (towlower(str[i + j]) != towlower(pattern[j]))
             {
-                return false;
+                match = false;
+                break;
             }
+        }
+        if (match)
+        {
+            return true;
         }
     }
     return false;

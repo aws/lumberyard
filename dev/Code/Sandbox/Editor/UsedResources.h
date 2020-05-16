@@ -39,6 +39,8 @@ public:
     //! validate gathered resources, reports warning if resource is not found
     void Validate(struct IErrorReport* pReport);
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     TResourceFiles files;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 #endif // CRYINCLUDE_EDITOR_USEDRESOURCES_H

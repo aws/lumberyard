@@ -4,14 +4,18 @@ Provide math calls that uses intrinsics or libc math functions.
 
 from __future__ import print_function, absolute_import, division
 import math
+import operator
 import sys
+import numpy as np
 
 import llvmlite.llvmpy.core as lc
 from llvmlite.llvmpy.core import Type
 
 from numba.targets.imputils import Registry, impl_ret_untracked
-from numba import types, cgutils, utils, config
+from numba import types, typeof, cgutils, utils, config
+from numba.extending import overload
 from numba.typing import signature
+from numba.unsafe.numbers import trailing_zeros
 
 
 registry = Registry()
@@ -19,14 +23,19 @@ lower = registry.lower
 
 
 # Helpers, shared with cmathimpl.
+_NP_FLT_FINFO = np.finfo(np.dtype('float32'))
+FLT_MAX = _NP_FLT_FINFO.max
+FLT_MIN = _NP_FLT_FINFO.tiny
 
-FLT_MAX = 3.402823466E+38
-FLT_MIN = 1.175494351E-38
+_NP_DBL_FINFO = np.finfo(np.dtype('float64'))
+DBL_MAX = _NP_DBL_FINFO.max
+DBL_MIN = _NP_DBL_FINFO.tiny
 
 FLOAT_ABS_MASK = 0x7fffffff
 FLOAT_SIGN_MASK = 0x80000000
 DOUBLE_ABS_MASK = 0x7fffffffffffffff
 DOUBLE_SIGN_MASK = 0x8000000000000000
+
 
 def is_nan(builder, val):
     """
@@ -401,5 +410,53 @@ unary_math_int_impl(math.degrees, degrees_float_impl)
 @lower(math.pow, types.Float, types.Float)
 @lower(math.pow, types.Float, types.Integer)
 def pow_impl(context, builder, sig, args):
-    impl = context.get_function("**", sig)
+    impl = context.get_function(operator.pow, sig)
     return impl(builder, args)
+
+# -----------------------------------------------------------------------------
+
+
+def _unsigned(T):
+    """Convert integer to unsigned integer of equivalent width."""
+    pass
+
+@overload(_unsigned)
+def _unsigned_impl(T):
+    if T in types.unsigned_domain:
+        return lambda T: T
+    elif T in types.signed_domain:
+        newT = getattr(types, 'uint{}'.format(T.bitwidth))
+        return lambda T: newT(T)
+
+
+def gcd_impl(context, builder, sig, args):
+    xty, yty = sig.args
+    assert xty == yty == sig.return_type
+    x, y = args
+
+    def gcd(a, b):
+        """
+        Stein's algorithm, heavily cribbed from Julia implementation.
+        """
+        T = type(a)
+        if a == 0: return abs(b)
+        if b == 0: return abs(a)
+        za = trailing_zeros(a)
+        zb = trailing_zeros(b)
+        k = min(za, zb)
+        # Uses np.*_shift instead of operators due to return types
+        u = _unsigned(abs(np.right_shift(a, za)))
+        v = _unsigned(abs(np.right_shift(b, zb)))
+        while u != v:
+            if u > v:
+                u, v = v, u
+            v -= u
+            v = np.right_shift(v, trailing_zeros(v))
+        r = np.left_shift(T(u), k)
+        return r
+
+    res = context.compile_internal(builder, gcd, sig, args)
+    return impl_ret_untracked(context, builder, sig.return_type, res)
+
+if utils.PYVERSION >= (3, 5):
+    lower(math.gcd, types.Integer, types.Integer)(gcd_impl)

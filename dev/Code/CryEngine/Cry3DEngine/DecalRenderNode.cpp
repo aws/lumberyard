@@ -17,9 +17,7 @@
 #include "ObjMan.h"
 #include "MatMan.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#endif
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "Environment/OceanEnvironmentBus.h"
 
@@ -94,8 +92,16 @@ void CDecalRenderNode::CreatePlanarDecal()
 
 void CDecalRenderNode::CreateDecalOnTerrain()
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    float terrainHeight(GetTerrain()->GetBilinearZ(m_decalProperties.m_pos.x, m_decalProperties.m_pos.y));
+    bool terrainExists = false;
+    float terrainHeight = AZ_FLT_MAX;
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainHeight
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , m_decalProperties.m_pos.x, m_decalProperties.m_pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, &terrainExists);
+    if (!terrainExists)
+    {
+        //No terrain system available, or there's a hole at the given location.
+        return;
+    }
     float terrainDelta(m_decalProperties.m_pos.z - terrainHeight);
     if (terrainDelta < m_decalProperties.m_radius && terrainDelta > -0.5f)
     {
@@ -111,7 +117,6 @@ void CDecalRenderNode::CreateDecalOnTerrain()
 
         CreateDecal(decalInfo);
     }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 void CDecalRenderNode::CreateDecal(const CryEngineDecalInfo& decalInfo)

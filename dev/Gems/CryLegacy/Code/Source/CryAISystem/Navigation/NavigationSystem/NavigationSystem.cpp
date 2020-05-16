@@ -25,10 +25,6 @@
 #define MAX_NAME_LENGTH 512
 #define BAI_NAVIGATION_GUID_FLAG (1 << 30)
 
-
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
-
 #if !defined(_RELEASE)
 #define NAVIGATION_SYSTEM_CONSOLE_AUTOCOMPLETE
 #endif
@@ -3331,6 +3327,7 @@ NavigationAgentTypeID NavigationSystem::GetDebugDisplayAgentType() const
 {
     return m_debugDraw.GetAgentType();
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

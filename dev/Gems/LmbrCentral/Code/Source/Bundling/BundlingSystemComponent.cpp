@@ -169,7 +169,7 @@ namespace LmbrCentral
         }
     }
 
-    void BundlingSystemComponent::BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle)
+    void BundlingSystemComponent::BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle, AZStd::shared_ptr<AzFramework::AssetRegistry> bundleCatalog)
     {
         AZ_TracePrintf("BundlingSystem", "Opening bundle %s", bundleName);
         AZStd::lock_guard<AZStd::mutex> openBundleLock(m_openedBundleMutex);
@@ -212,7 +212,7 @@ namespace LmbrCentral
         if (bundleManifest)
         {
             m_openedBundles[bundleName]->m_manifest = bundleManifest;
-            m_openedBundles[bundleName]->m_catalog.reset(AZ::Utils::LoadObjectFromFile<AzFramework::AssetRegistry>(bundleManifest->GetCatalogName()));
+            m_openedBundles[bundleName]->m_catalog = AZStd::move(bundleCatalog);
             if (!m_openedBundles[bundleName]->m_catalog)
             {
                 AZ_Error("BundlingSystem", false, "Failed to load catalog %s from bundle %s", bundleManifest->GetCatalogName().c_str(), bundleName);

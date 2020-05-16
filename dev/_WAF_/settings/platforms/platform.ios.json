@@ -27,7 +27,11 @@
         "lib_prefix"             : "lib",
         "default_launcher_name"  : "IOSLauncher",
         "platform_folder"        : "iOS",
-        "platform_keyword"       : "ios"
+        "platform_keyword"       : "ios",
+        "sa_capability": {
+            "key"               : "compileios",
+            "description"       : "iOS"
+        }
     },
 
     "settings": {
@@ -77,7 +81,10 @@
             "CoreMotion"
         ],
         "CFLAGS,CXXFLAGS": [
-            "-Wno-shorten-64-to-32"
+            "-Wno-shorten-64-to-32",
+            "-ffast-math",          # Allow aggressive, lossy floating-point optimizations,
+            "-fno-rtti",            # Disable RTTI,
+            "-fno-exceptions"       # Disable Exceptions
         ],
         "LINKFLAGS": [
             "-Wl,-dead_strip"

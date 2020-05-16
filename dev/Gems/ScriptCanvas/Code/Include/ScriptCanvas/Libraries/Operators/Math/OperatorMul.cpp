@@ -28,15 +28,7 @@ namespace ScriptCanvas
                 Type operator()(const Type& a, const Datum& b)
                 {
                     const Type* dataB = b.GetAs<Type>();
-
-                    if (dataB)
-                    {
-                        return a * (*dataB);
-                    }
-                    else
-                    {
-                        return a;
-                    }
+                    return a * (*dataB);
                 }
             };
 
@@ -47,20 +39,13 @@ namespace ScriptCanvas
                 {
                     const AZ::Color* dataB = rhs.GetAs<AZ::Color>();
 
-                    if (dataB)
-                    {
-                        // TODO: clamping should happen at the AZ::Color level, not here - but it does not.
-                        float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetA(), 0.f, 1.f);
-                        float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetR(), 0.f, 1.f);
-                        float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetG(), 0.f, 1.f);
-                        float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetB(), 0.f, 1.f);
+                    // TODO: clamping should happen at the AZ::Color level, not here - but it does not.
+                    float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetA(), 0.f, 1.f);
+                    float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetR(), 0.f, 1.f);
+                    float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetG(), 0.f, 1.f);
+                    float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) * AZ::GetClamp<float>(dataB->GetB(), 0.f, 1.f);
 
-                        return AZ::Color(r, g, b, a);
-                    }
-                    else
-                    {
-                        return lhs;
-                    }
+                    return AZ::Color(r, g, b, a);
                 }
             };
 
@@ -102,39 +87,17 @@ namespace ScriptCanvas
                 }
             }
 
-            void OperatorMul::InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType)
+            void OperatorMul::InitializeSlot(const SlotId& slotId, const ScriptCanvas::Data::Type& dataType)
             {
-                switch (dataType.GetType())
-                {
-                case Data::eType::Number:
-                    datum->Set(ScriptCanvas::Data::One());
-                    break;
-                case Data::eType::Vector2:
-                    datum->Set(Data::Vector2Type::CreateOne());
-                    break;
-                case Data::eType::Vector3:
-                    datum->Set(Data::Vector3Type::CreateOne());
-                    break;
-                case Data::eType::Vector4:
-                    datum->Set(Data::Vector4Type::CreateOne());
-                    break;
-                case Data::eType::Quaternion:
-                    datum->Set(Data::QuaternionType::CreateIdentity());
-                    break;
-                case Data::eType::Matrix3x3:
-                    datum->Set(Data::Matrix3x3Type::CreateIdentity());
-                    break;
-                case Data::eType::Matrix4x4:
-                    datum->Set(Data::Matrix4x4Type::CreateIdentity());
-                    break;
-                default:
-                    break;
-                };
+                ModifiableDatumView datumView;
+                FindModifiableDatumView(slotId, datumView);
+
+                OnResetDatumToDefaultValue(datumView);
             }            
 
             bool OperatorMul::IsValidArithmeticSlot(const SlotId& slotId) const
             {
-                const Datum* datum = GetInput(slotId);
+                const Datum* datum = FindDatum(slotId);
 
                 if (datum)
                 {
@@ -152,13 +115,38 @@ namespace ScriptCanvas
                 return (datum != nullptr);
             }
 
-            void OperatorMul::OnResetDatumToDefaultValue(Datum* datum)
+            void OperatorMul::OnResetDatumToDefaultValue(ModifiableDatumView& datumView)            
             {
                 Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
-                
-                if (displayType.IsValid())
+
+                if (datumView.IsValid() && displayType.IsValid())
                 {
-                    InitializeDatum(datum, displayType);
+                    switch (displayType.GetType())
+                    {
+                    case Data::eType::Number:
+                        datumView.SetAs(ScriptCanvas::Data::One());
+                        break;
+                    case Data::eType::Vector2:
+                        datumView.SetAs(Data::Vector2Type::CreateOne());
+                        break;
+                    case Data::eType::Vector3:
+                        datumView.SetAs(Data::Vector3Type::CreateOne());
+                        break;
+                    case Data::eType::Vector4:
+                        datumView.SetAs(Data::Vector4Type::CreateOne());
+                        break;
+                    case Data::eType::Quaternion:
+                        datumView.SetAs(Data::QuaternionType::CreateIdentity());
+                        break;
+                    case Data::eType::Matrix3x3:
+                        datumView.SetAs(Data::Matrix3x3Type::CreateIdentity());
+                        break;
+                    case Data::eType::Matrix4x4:
+                        datumView.SetAs(Data::Matrix4x4Type::CreateIdentity());
+                        break;
+                    default:
+                        break;
+                    };
                 }
             }
         }

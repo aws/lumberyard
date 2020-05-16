@@ -25,7 +25,7 @@ namespace UnitTest
     {
         char executablePath[AZ_MAX_PATH_LEN];
         AZ::Utils::GetExecutablePathReturnType result = AZ::Utils::GetExecutablePath(executablePath, AZ_MAX_PATH_LEN);
-        ASSERT_TRUE(result.m_pathStored);
+        ASSERT_TRUE(result.m_pathStored == AZ::Utils::ExecutablePathResult::Success);
         EXPECT_TRUE(result.m_pathIncludesFilename);
         EXPECT_GT(strlen(executablePath), 0);
     }

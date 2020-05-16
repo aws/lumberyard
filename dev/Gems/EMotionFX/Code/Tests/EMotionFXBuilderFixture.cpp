@@ -29,16 +29,9 @@ using ::testing::_;
 
 namespace EMotionFX
 {
-    BuilderMockComponent::BuilderMockComponent()
-    {
-    }
-
-    BuilderMockComponent::~BuilderMockComponent() = default;
-
     void BuilderMockComponent::Activate()
     {
         EMotionFX::Integration::EMotionFXAllocator::Descriptor allocatorDescriptor;
-        allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
         AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create(allocatorDescriptor);
 
         ASSERT_TRUE(MCore::Initializer::Init());

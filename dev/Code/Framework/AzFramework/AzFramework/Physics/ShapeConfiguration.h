@@ -172,7 +172,7 @@ namespace Physics
         
         CookedMeshShapeConfiguration() = default;
         CookedMeshShapeConfiguration(const CookedMeshShapeConfiguration&);
-        void operator=(const CookedMeshShapeConfiguration&);
+        CookedMeshShapeConfiguration& operator=(const CookedMeshShapeConfiguration&);
         ~CookedMeshShapeConfiguration();
 
         ShapeType GetShapeType() const override;

@@ -11,7 +11,6 @@
 */
 
 #include "VideoPlayback_precompiled.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <platform_impl.h>
 
 #include "VideoPlaybackSystemComponent.h"
@@ -50,16 +49,6 @@ namespace AZ
                 return AZ::ComponentTypeList{
                     azrtti_typeid<VideoPlaybackSystemComponent>(),
                 };
-            }
-
-            void OnSystemEvent(ESystemEvent event, UINT_PTR, UINT_PTR) override
-            {
-                switch (event)
-                {
-                case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-                    RegisterExternalFlowNodes();
-                    break;
-                }
             }
         };
     }//namespace VideoPlayback

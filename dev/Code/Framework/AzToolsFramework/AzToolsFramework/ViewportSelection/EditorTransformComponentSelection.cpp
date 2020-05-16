@@ -868,9 +868,10 @@ namespace AzToolsFramework
             QPointFromScreenPoint(mouseInteraction.m_mousePick.m_screenCoordinates));
 
         // convert to local space - snap if enabled
-        const AZ::Vector3 finalSurfacePosition = GridSnapping(viewportId)
+        const GridSnapParameters gridSnapParams = GridSnapSettings(viewportId);
+        const AZ::Vector3 finalSurfacePosition = gridSnapParams.m_gridSnap
             ? CalculateSnappedTerrainPosition(
-                worldSurfacePosition, AZ::Transform::CreateIdentity(), viewportId, GridSize(viewportId))
+                worldSurfacePosition, AZ::Transform::CreateIdentity(), viewportId, gridSnapParams.m_gridSize)
             : worldSurfacePosition;
 
         return finalSurfacePosition;
@@ -958,8 +959,8 @@ namespace AzToolsFramework
         ToolsApplicationNotificationBus::Handler::BusConnect();
         Camera::EditorCameraNotificationBus::Handler::BusConnect();
         ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusConnect(entityContextId);
-        EditorContextVisibilityNotificationBus::Handler::BusConnect(entityContextId);
-        EditorContextLockComponentNotificationBus::Handler::BusConnect(entityContextId);
+        EditorEntityVisibilityNotificationBus::Router::BusRouterConnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterConnect();
         EditorManipulatorCommandUndoRedoRequestBus::Handler::BusConnect(entityContextId);
 
         RegisterActions();
@@ -977,8 +978,8 @@ namespace AzToolsFramework
         m_pivotOverrideFrame.Reset();
 
         EditorManipulatorCommandUndoRedoRequestBus::Handler::BusDisconnect();
-        EditorContextLockComponentNotificationBus::Handler::BusDisconnect();
-        EditorContextVisibilityNotificationBus::Handler::BusDisconnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterDisconnect();
+        EditorEntityVisibilityNotificationBus::Router::BusRouterDisconnect();
         ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusDisconnect();
         Camera::EditorCameraNotificationBus::Handler::BusDisconnect();
         ToolsApplicationNotificationBus::Handler::BusDisconnect();
@@ -1306,9 +1307,9 @@ namespace AzToolsFramework
             AZ::Vector3::CreateAxisY(),
             AZ::Vector3::CreateAxisZ());
         rotationManipulators->ConfigureView(
-            2.0f, 
-            AzFramework::ViewportColors::XAxisColor, 
-            AzFramework::ViewportColors::YAxisColor, 
+            2.0f,
+            AzFramework::ViewportColors::XAxisColor,
+            AzFramework::ViewportColors::YAxisColor,
             AzFramework::ViewportColors::ZAxisColor);
 
         struct SharedRotationState
@@ -1484,9 +1485,9 @@ namespace AzToolsFramework
             AZ::Vector3::CreateAxisY(),
             AZ::Vector3::CreateAxisZ());
         scaleManipulators->ConfigureView(
-            2.0f, 
-            AzFramework::ViewportColors::XAxisColor, 
-            AzFramework::ViewportColors::YAxisColor, 
+            2.0f,
+            AzFramework::ViewportColors::XAxisColor,
+            AzFramework::ViewportColors::YAxisColor,
             AzFramework::ViewportColors::ZAxisColor);
 
         // lambdas capture shared_ptr by value to increment ref count
@@ -3435,14 +3436,12 @@ namespace AzToolsFramework
         RegenerateManipulators();
     }
 
-    void EditorTransformComponentSelection::OnEntityVisibilityChanged(
-        const AZ::EntityId /*entityId*/, const bool /*visibility*/)
+    void EditorTransformComponentSelection::OnEntityVisibilityChanged(const bool /*visibility*/)
     {
         m_selectedEntityIdsAndManipulatorsDirty = true;
     }
 
-    void EditorTransformComponentSelection::OnEntityLockChanged(
-        const AZ::EntityId /*entityId*/, const bool /*locked*/)
+    void EditorTransformComponentSelection::OnEntityLockChanged(const bool /*locked*/)
     {
         m_selectedEntityIdsAndManipulatorsDirty = true;
     }
@@ -3450,19 +3449,17 @@ namespace AzToolsFramework
     void EditorTransformComponentSelection::EnteredComponentMode(
         const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
     {
-        EditorContextLockComponentNotificationBus::Handler::BusDisconnect();
-        EditorContextVisibilityNotificationBus::Handler::BusDisconnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterDisconnect();
+        EditorEntityVisibilityNotificationBus::Router::BusRouterDisconnect();
         ToolsApplicationNotificationBus::Handler::BusDisconnect();
     }
 
     void EditorTransformComponentSelection::LeftComponentMode(
         const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
     {
-        const AzFramework::EntityContextId entityContextId = GetEntityContextId();
-
         ToolsApplicationNotificationBus::Handler::BusConnect();
-        EditorContextVisibilityNotificationBus::Handler::BusConnect(entityContextId);
-        EditorContextLockComponentNotificationBus::Handler::BusConnect(entityContextId);
+        EditorEntityVisibilityNotificationBus::Router::BusRouterConnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterConnect();
     }
 
     void EditorTransformComponentSelection::CreateEntityManipulatorDeselectCommand(ScopedUndoBatch& undoBatch)

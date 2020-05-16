@@ -21,7 +21,7 @@ namespace Multiplayer
         template <typename T>
         T GridSessionParam(const GridMate::GridSessionParam& param, T orDefault)
         {
-            AZ_STATIC_ASSERT(AZStd::is_pod<T>::value == false, "ConvertGridSessionParam requires a conversion specialization.");
+            static_assert(AZStd::is_pod<T>::value == false, "ConvertGridSessionParam requires a conversion specialization.");
             return orDefault;
         }
 

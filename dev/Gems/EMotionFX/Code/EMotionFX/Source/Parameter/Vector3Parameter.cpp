@@ -75,7 +75,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeVector3::TYPE_ID)
         {
-            static_cast<MCore::AttributeVector3*>(attribute)->SetValue(AZ::PackedVector3f(m_defaultValue.GetX(), m_defaultValue.GetY(), m_defaultValue.GetZ()));
+            static_cast<MCore::AttributeVector3*>(attribute)->SetValue(m_defaultValue);
             return true;
         }
         else
@@ -88,8 +88,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeVector3::TYPE_ID)
         {
-            const AZ::PackedVector3f& value = static_cast<MCore::AttributeVector3*>(attribute)->GetValue();
-            SetDefaultValue(AZ::Vector3(value.GetX(), value.GetY(), value.GetZ()));
+            SetDefaultValue(static_cast<MCore::AttributeVector3*>(attribute)->GetValue());
             return true;
         }
         else
@@ -102,8 +101,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeVector3::TYPE_ID)
         {
-            const AZ::PackedVector3f& value = static_cast<MCore::AttributeVector3*>(attribute)->GetValue();
-            SetMinValue(AZ::Vector3(value.GetX(), value.GetY(), value.GetZ()));
+            SetMinValue(static_cast<MCore::AttributeVector3*>(attribute)->GetValue());
             return true;
         }
         else
@@ -116,8 +114,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeVector3::TYPE_ID)
         {
-            const AZ::PackedVector3f& value = static_cast<MCore::AttributeVector3*>(attribute)->GetValue();
-            SetMaxValue(AZ::Vector3(value.GetX(), value.GetY(), value.GetZ()));
+            SetMaxValue(static_cast<MCore::AttributeVector3*>(attribute)->GetValue());
             return true;
         }
         else

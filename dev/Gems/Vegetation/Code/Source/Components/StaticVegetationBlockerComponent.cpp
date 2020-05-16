@@ -159,7 +159,6 @@ namespace Vegetation
     {
         AreaComponentBase::Deactivate(); //must deactivate base first to ensure AreaRequestBus disconnect waits for other threads
         
-        AreaNotificationBus::Handler::BusConnect(GetEntityId());
         StaticVegetationNotificationBus::Handler::BusDisconnect();
         StaticVegetationBlockerRequestBus::Handler::BusDisconnect();
 

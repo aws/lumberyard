@@ -167,7 +167,15 @@ void CImagePainter::PaintBrush(const float fpx, const float fpy, TImage<LayerWei
             float dh = 1.0f - h;
             float fh = clamp_tpl((fAttenuation) * dh * fHardness + h, 0.0f, 1.0f);
 
-            sourceData[pos].SetWeight(brush.color, static_cast<uint8>(fh * 255.0f));
+            // A non-zero distance between our weight sample and the center point of the brush
+            // can cause fAttenuation to be ~0.999, so if h (the current weight) is 254, any
+            // value less than 1 * dh will give us a value between 254 and 255.
+            // As we convert from 0-1 back to 0-255 number ranges, it's important to round
+            // instead of truncating so that we don't have to have an exact distance of 0
+            // to reach a value of 255.  
+            uint8 weight = static_cast<uint8>(clamp_tpl(round(fh * 255.0f), 0.0f, 255.0f));
+
+            sourceData[pos].SetWeight(brush.color, weight);
         }
     }
 }

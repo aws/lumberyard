@@ -75,7 +75,7 @@ class SwaggerNavigator(object):
             elif required:
                 raise ValueError('{} does not contain {} so it cannot be removed.'.format(self, selector))
         elif self.is_array:
-            if selector >= 0 and selector < len(self.value):
+            if 0 <= selector < len(self.value):
                 del self.value[selector]
             elif required:
                 raise ValueError('{} does not contain {} so it cannot be removed.'.format(self, selector))
@@ -98,7 +98,7 @@ class SwaggerNavigator(object):
 
     @property
     def is_none(self):
-        return self.value == None
+        return self.value is None
 
     @property
     def is_empty(self):
@@ -191,7 +191,7 @@ class SwaggerNavigator(object):
 
     @property
     def is_string(self):
-        return isinstance(self.value, str) or isinstance(self.value, unicode)
+        return isinstance(self.value, str)
 
     def get_string(self, selector, default=REQUIRED):
 
@@ -253,7 +253,7 @@ class SwaggerNavigator(object):
         return navigator
 
     def get_root(self):
-        if self.parent == None:
+        if self.parent is None:
             return self
         return self.parent.get_root()
 

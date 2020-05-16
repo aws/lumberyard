@@ -24,24 +24,17 @@
 
 """Common functions for SelfTest modules"""
 
-__revision__ = "$Id$"
-
 import unittest
 import binascii
-import sys
-if sys.version_info[0] == 2 and sys.version_info[1] == 1:
-    from Crypto.Util.py21compat import *
-from Crypto.Util.py3compat import *
+from Crypto.Util.py3compat import b
 
-class _list_testloader(unittest.TestLoader):
-    suiteClass = list
 
 def list_test_cases(class_):
     """Return a list of TestCase instances given a TestCase class
 
     This is useful when you have defined test* methods on your TestCase class.
     """
-    return _list_testloader().loadTestsFromTestCase(class_)
+    return unittest.TestLoader().loadTestsFromTestCase(class_)
 
 def strip_whitespace(s):
     """Remove whitespace from a text or byte string"""

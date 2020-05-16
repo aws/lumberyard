@@ -8,6 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+from six import iteritems
 
 import copy
 
@@ -18,7 +19,7 @@ RESPONSE_DESCRIPTION_400 = "Response indicating the client's request was invalid
 RESPONSE_DESCRIPTION_403 = "Response indicating the client's request was not authenticated or authorized."
 RESPONSE_DESCRIPTION_404 = "Response indicating the resource requested by the client does not exist."
 RESPONSE_DESCRIPTION_500 = "Response indicating the service encountered an internal error when processing the request."
-ERROR_RESPONSE_SCHEMA_REF = { "$ref": "#/definitions/Error" }
+ERROR_RESPONSE_SCHEMA_REF = {"$ref": "#/definitions/Error"}
 ERROR_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -37,6 +38,7 @@ ERROR_RESPONSE_SCHEMA = {
 EMPTY_RESPONSE_SCHEMA = {
 }
 
+
 def process_lambda_dispatch_objects(context, swagger_navigator):
 
     # The x-amazon-cloud-canvas-lambda-dispatch objects can appear in the swagger object (root)
@@ -50,13 +52,13 @@ def process_lambda_dispatch_objects(context, swagger_navigator):
     # For additional_properties, additional_request_template_content, and additional_response_template_content
     # properties, the aggregate values are injected into the x-amazon-apigateway-integration.
     #
-    # We keep track of the lambda dispatch objects that are "in scope" in the displatch_object_stack.
+    # We keep track of the lambda dispatch objects that are "in scope" in the dispatch_object_stack.
     # This starts with the one in the swagger object, then the one for a "current" path, then
     # one for the "current" operation (the stack will never have more than three entries).
     #
     # As part of this processing, we need to know an operation's current parameters. Swagger 
     # allows parameters to be defined in the path or operation object, with parameters in the
-    # operation object overriding those in the path object. Swagger lets you put paramter 
+    # operation object overriding those in the path object. Swagger lets you put parameter
     # definitions in the swagger object, but these are not used for any path/operation unless
     # the path/operation parameters use $ref to identify one of these definitions. We use the
     # parameter_object_stack to keep track of the "current" path and operation parameters. 
@@ -92,7 +94,7 @@ def process_lambda_dispatch_objects(context, swagger_navigator):
             dispatch_object_stack.append(operation_object.remove_object(LAMBDA_DISPATCH_OBJECT_NAME, {}))
             parameters_object_stack.append(operation_object.get_array('parameters', []))
 
-            # Create an x-amazon-apigateway-intergration object only if the operation object 
+            # Create an x-amazon-apigateway-integration object only if the operation object
             # doesn't have one already.
 
             if not operation_object.contains(API_GATEWAY_INTEGRATION_OBJECT_NAME):
@@ -104,12 +106,12 @@ def process_lambda_dispatch_objects(context, swagger_navigator):
                     _ensure_error_definition(swagger_navigator)
 
                 # By default we want all APIs to be callable only when using valid AWS IAM 
-                # credentails. If no security object is present, add add one. 
+                # credentials. If no security object is present, add add one.
                 if _determine_if_iam_security_enabled(dispatch_object_stack):
                     if _add_iam_security_to_operation(operation_object):
                         _ensure_iam_security_definition(swagger_navigator)
 
-                # Construct the x-amazon-apigateway-intergration object using the information
+                # Construct the x-amazon-apigateway-integration object using the information
                 # we have in the x-amazon-cloud-canvas-lambda-dispatch objects that are currently
                 # in scope.
                 integration_object = _make_integration_object(dispatch_object_stack, parameters_object_stack, path, operation)
@@ -121,29 +123,29 @@ def process_lambda_dispatch_objects(context, swagger_navigator):
 
             # If no security has been declared or inserted above, API Gateway will make the operation public.
             if global_security_object.is_none:
-                security_array = operation_object.get_array('security', default = None)
+                security_array = operation_object.get_array('security', default=None)
                 if security_array.is_none:
                     missing_security_warnings.append('    {:<7} {}'.format(operation, path))
 
-            dispatch_object_stack.pop() # operation scope
+            dispatch_object_stack.pop()  # operation scope
             parameters_object_stack.pop()
 
         if options_operation_needed_for_cors and not options_operation_found:
             __add_options_operation_for_cors(path, path_object)
 
-        dispatch_object_stack.pop() # path scope
+        dispatch_object_stack.pop()  # path scope
         parameters_object_stack.pop()
 
-    dispatch_object_stack.pop() # swagger scope
+    dispatch_object_stack.pop()  # swagger scope
 
     if missing_security_warnings:
-        print ''
-        print 'WARNING: the following operations do not specify a swagger "security" object.'
-        print 'The Service APIs for these operations will be publically accessible.'
-        print ''
+        print('')
+        print('WARNING: the following operations do not specify a swagger "security" object.')
+        print('The Service APIs for these operations will be publicly accessible.')
+        print('')
         for warning in missing_security_warnings:
-            print warning
-        print ''
+            print(warning)
+        print('')
 
 
 def _add_error_response(operation_object):
@@ -205,16 +207,16 @@ def __add_cores_response_headers_to_operation(operation_object):
 
 def __add_cores_header_to_object(object, headername, headertype):
     headers = object.get_or_add_object('headers')
-    access_control_allow_orgin_header = headers.get_or_add_object(headername)
-    access_control_allow_orgin_header.value['type'] = headertype
+    access_control_allow_origin_header = headers.get_or_add_object(headername)
+    access_control_allow_origin_header.value['type'] = headertype
 
 def __add_options_operation_for_cors(path, path_object):
     
     _ensure_empty_response_definition(path_object.root)
 
-    # need to declare any path paramters that are not declared in the path object itself
+    # need to declare any path parameters that are not declared in the path object itself
     options_parameters = []
-    path_parameters = path_object.get_array('parameters', default = [])
+    path_parameters = path_object.get_array('parameters', default=[])
     path_parts = path.split('/')
     for path_part in path_parts:
         if path_part.startswith('{'):
@@ -225,11 +227,13 @@ def __add_options_operation_for_cors(path, path_object):
                     found = True
                     break
             if not found:
+                # path parameters are required
                 options_parameters.append(
                     {
                         "in": "path",
                         "name": parameter_name,
-                        "type": "string"
+                        "type": "string",
+                        "required": True
                     }
                 )
 
@@ -322,13 +326,13 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
     additional_request_template_content = _determine_additional_request_template_content(dispatch_object_stack)
     additional_response_template_content = _determine_additional_response_template_content(dispatch_object_stack)
 
-    # The API Gateway specified format for identifing the lambda to execute (I wonder
+    # The API Gateway specified format for identifying the lambda to execute (I wonder
     # why a normal lambda ARN wasn't sufficient).
 
     uri = "arn:aws:apigateway:$Region$:lambda:path/2015-03-31/functions/{}/invocations".format(lambda_arn)
 
-    # The request template tells API Gateway how to map data in an incomming request
-    # to the content sent to the labmda function for processing. This includes the
+    # The request template tells API Gateway how to map data in an incoming request
+    # to the content sent to the lambda function for processing. This includes the
     # module and function name that the dispatcher in the lambda will use to satisfy
     # the request. It also includes all the parameter values specified by the operation, 
     # which will also include the body for some operations.
@@ -339,7 +343,7 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
     # to the response sent to the client. For successful responses, this includes the body
     # of the lambda response. For client errors, the error message returned by the lambda
     # is forwarded on to the client. For service errors, an generic message is returned to
-    # the client (to prevent the service from leaking sensative information). The stack trace
+    # the client (to prevent the service from leaking sensitive information). The stack trace
     # is never sent to the client.
 
     response_template_200 = "{{\"result\":$input.json('$'){}}}".format(additional_response_template_content.get('200', ''))
@@ -373,7 +377,7 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
             # strings (done by the + on the end), otherwise it will match success 
             # responses as well.
             #
-            # Also note the use of (?s) to enable DOTALL mode, which casues . to 
+            # Also note the use of (?s) to enable DOTALL mode, which causes . to
             # match new lines. See https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#DOTALL.
 
             "(?s)(?!Client Error:|Forbidden:|Not Found:).+": {
@@ -415,7 +419,6 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
             integration_object['responses'][response]['responseParameters'] = {
                  "method.response.header.Access-Control-Allow-Origin": "'*'"
             }
-
 
     return integration_object
 
@@ -566,31 +569,35 @@ def _determine_additional_response_template_content(dispatch_object_stack):
 
 
 def _determine_if_cors_enabled(dispatch_object_stack):
-    return _get_top_of_stack_boolean_property(dispatch_object_stack, 'enable_cores', default_value = True)
+    return _get_top_of_stack_boolean_property(dispatch_object_stack, 'enable_cores', default_value=True)
+
 
 def _determine_if_iam_security_enabled(dispatch_object_stack):
-    return _get_top_of_stack_boolean_property(dispatch_object_stack, 'enable_iam', default_value = True)
+    return _get_top_of_stack_boolean_property(dispatch_object_stack, 'enable_iam', default_value=True)
+
 
 def _get_top_of_stack_string_property(dispatch_object_stack, property_name):
     # Items are appended to the stack, so traverse the list in reverse to 
     # find the first instance of the specified property.
     for dispatch_object in reversed(dispatch_object_stack):
         navigator = dispatch_object.get_string(property_name, None)
-        if not navigator.is_none: return navigator.value
+        if not navigator.is_none:
+            return navigator.value
     return None
 
 
-def _get_top_of_stack_boolean_property(dispatch_object_stack, property_name, default_value = None):
+def _get_top_of_stack_boolean_property(dispatch_object_stack, property_name, default_value=None):
     # Items are appended to the stack, so traverse the list in reverse to 
     # find the first instance of the specified property.
     for dispatch_object in reversed(dispatch_object_stack):
         navigator = dispatch_object.get_boolean(property_name, None)
-        if not navigator.is_none: return navigator.value
+        if not navigator.is_none:
+            return navigator.value
     return default_value
 
 
 def _merge_properties(destination, source):
-    for key, value in source.iteritems():
+    for key, value in iteritems(source):
         if key in destination and isinstance(value, dict):
             _merge_properties(destination[key], value)
         else:
@@ -624,7 +631,7 @@ def _make_request_template(path, operation, module, function, parameters_object_
         # The operation array is processed first, then the path array. References are
         # resolved. The parameters_seen set keeps track of the name/in combinations seen 
         # so far and is used to prevent path parameter definitions from overriding operation 
-        # prameter definitions.
+        # parameter definitions.
         #
         # We then check to see if any of the parameter names conflict independently of
         # location. This is a Cloud Canvas imposed limitation.
@@ -695,24 +702,24 @@ BODY_PARAMETER_REQUEST_TEMPLATE_MAPPING = '''
 def _get_body_parameter_request_template_mapping(path, operation, parameter_object, last_parameter):
 
     # Swagger allows the body parameter to specify required = false but it does
-    # not allow a default value to be povided. API Gateway seems to use the 
+    # not allow a default value to be provided. API Gateway seems to use the
     # application/json mapping for POST requests without any content type or 
     # body. 
     # 
     # The correct behavior here would be to check the content type and the body 
-    # length to determine if the body parameter was not provided. Unfortunatly 
+    # length to determine if the body parameter was not provided. Unfortunately
     # the test UI in the AWS console doesn't let you specify a content type (it 
     # always uses ""). So if we implement the correct behavior, the APIs can't
     # be tested using the AWS console, which would be unfortunate.
     #
     # API Gateway also uses "{}" as the body when no body was specified, so
-    # this prevents distingisuing between an missing body and empty object
+    # this prevents distinguishing between an missing body and empty object
     # impossible, when technically they are two very different things.
     #
-    # So, for lack of any other alturnative, we check for an {} body and 
+    # So, for lack of any other alternative, we check for an {} body and
     # pass along null if that is what we get. 
 
-    # So we check the content type and pass allong a null parameter value if it 
+    # So we check the content type and pass along a null parameter value if it
     # isn't provided and the lambda will check that all required parameters
     # are provided. Otherwise, the body content will be inserted into the message 
     # sent to the Lambda function without additional processing.
@@ -721,7 +728,7 @@ def _get_body_parameter_request_template_mapping(path, operation, parameter_obje
     name = parameter_object.get_string('name').value
 
     if operation in ['head', 'get']:
-        raise ValueError('{}/{} defines paramter "{}" with location body. Cloud Canvas does not allow body parameters with the {} operation.'.format(
+        raise ValueError('{}/{} defines parameter "{}" with location body. Cloud Canvas does not allow body parameters with the {} operation.'.format(
             path,
             operation.upper(),
             name,
@@ -808,7 +815,7 @@ QUERY_PARAMETER_REQUEST_TEMPLATE_MAPPING_NOT_STRING_WITHOUT_DEFAULT = '''
 def _get_query_parameter_request_template_mapping(path, operation, parameter_object, last_parameter):
 
     # Swagger allows query parameters to specify required = false and allows an optional
-    # default value to be provided. Reguardless of the required setting, we check to see
+    # default value to be provided. Regardless of the required setting, we check to see
     # if a query parameter was provided and pass the default value, if one was provided,
     # or null to the lambda and it does the check to see if all the required parameters 
     # are present.

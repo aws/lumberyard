@@ -30,7 +30,7 @@ namespace PhysX
 
         RigidBodyStatic() = default;
         RigidBodyStatic(const Physics::WorldBodyConfiguration& configuration);
-        ~RigidBodyStatic() = default;
+        ~RigidBodyStatic();
 
         // Physics::RigidBodyStatic
         void AddShape(const AZStd::shared_ptr<Physics::Shape>& shape) override;

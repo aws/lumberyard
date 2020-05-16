@@ -393,10 +393,10 @@ namespace AzToolsFramework
             switch (m_type)
             {
             case LogLine::TYPE_DEBUG:
-                severity = "DEBG";
+                severity = "DEBUG";
                 break;
             case LogLine::TYPE_ERROR:
-                severity = "EROR";
+                severity = "ERROR";
                 break;
             case LogLine::TYPE_WARNING:
                 severity = "Warn";

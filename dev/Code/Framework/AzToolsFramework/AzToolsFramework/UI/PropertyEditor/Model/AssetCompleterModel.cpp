@@ -22,6 +22,15 @@ namespace AzToolsFramework
     AssetCompleterModel::AssetCompleterModel(QObject* parent) 
         : QAbstractTableModel(parent)
     {
+
+        AssetBrowserModel* assetBrowserModel = nullptr;
+        AssetBrowserComponentRequestBus::BroadcastResult(assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
+
+        AZ_Error("AssetCompleterModel", (assetBrowserModel != nullptr), "Unable to setup Source Model, asset browser model was not returned correctly.");
+
+        m_assetBrowserFilterModel = AZStd::unique_ptr<AssetBrowserFilterModel>(aznew AssetBrowserFilterModel(this));
+        m_assetBrowserFilterModel->setSourceModel(assetBrowserModel);
+        m_assetBrowserFilterModel->sort(0, Qt::DescendingOrder);
     }
 
     AssetCompleterModel::~AssetCompleterModel()
@@ -30,30 +39,25 @@ namespace AzToolsFramework
 
     void AssetCompleterModel::SetFilter(AZ::Data::AssetType filterType)
     {
-        beginResetModel();
-
-        m_assets.clear();
-
-        AssetBrowserModel* assetBrowserModel = nullptr;
-        AssetBrowserComponentRequestBus::BroadcastResult(assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
-
-        AZ_Error("AssetCompleterModel", (assetBrowserModel != nullptr), "Unable to setup Source Model, asset browser model was not returned correctly.");
-
-        AssetBrowserFilterModel* assetBrowserFilterModel = aznew AssetBrowserFilterModel(this);
-        assetBrowserFilterModel->setSourceModel(assetBrowserModel);
-
         AssetTypeFilter* typeFilter = new AssetTypeFilter();
         typeFilter->SetAssetType(filterType);
         typeFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
 
-        assetBrowserFilterModel->sort(0, Qt::DescendingOrder);
-        assetBrowserFilterModel->SetFilter(FilterConstType(typeFilter));
+        m_assetBrowserFilterModel->SetFilter(FilterConstType(typeFilter));
 
-        FetchResources(assetBrowserFilterModel, QModelIndex());
+        RefreshAssetList();
+    }
+
+    void AssetCompleterModel::RefreshAssetList()
+    {
+        beginResetModel();
+
+        m_assets.clear();
+        FetchResources(QModelIndex());
 
         endResetModel();
 
-        emit dataChanged(this->index(0, 0), this->index(rowCount(), columnCount()));
+        emit dataChanged(index(0, 0), index(rowCount(), columnCount()));
     }
 
     void AssetCompleterModel::SearchStringHighlight(QString searchString)
@@ -115,9 +119,9 @@ namespace AzToolsFramework
         return static_cast<AssetBrowserEntry*>(index.internalPointer());
     }
 
-    void AssetCompleterModel::FetchResources(AssetBrowserFilterModel* filter, QModelIndex index)
+    void AssetCompleterModel::FetchResources(QModelIndex index)
     {
-        int rows = filter->rowCount(index);
+        int rows = m_assetBrowserFilterModel->rowCount(index);
         if (rows == 0)
         {
             if (index != QModelIndex()) {
@@ -128,8 +132,8 @@ namespace AzToolsFramework
 
         for (int i = 0; i < rows; ++i)
         {
-            QModelIndex childIndex = filter->index(i, 0, index);
-            AssetBrowserEntry* childEntry = GetAssetEntry(filter->mapToSource(childIndex));
+            QModelIndex childIndex = m_assetBrowserFilterModel->index(i, 0, index);
+            AssetBrowserEntry* childEntry = GetAssetEntry(m_assetBrowserFilterModel->mapToSource(childIndex));
 
             if (childEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product)
             {
@@ -143,7 +147,7 @@ namespace AzToolsFramework
 
             if (childEntry->GetChildCount() > 0) 
             {
-                FetchResources(filter, childIndex);
+                FetchResources(childIndex);
             }
         }
     }

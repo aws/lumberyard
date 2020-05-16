@@ -27,11 +27,19 @@ namespace Vegetation
         AZ_EDITOR_COMPONENT(EditorAreaBlenderComponent, EditorAreaBlenderComponentTypeId, BaseClassType);
         static void Reflect(AZ::ReflectContext* context);
 
+        // AZ::Component overrides ...
+        void Init() override;
+        void Activate() override;
+        AZ::u32 ConfigurationChanged() override;
+
         static constexpr const char* const s_categoryName = "Vegetation";
         static constexpr const char* const s_componentName = "Vegetation Layer Blender";
         static constexpr const char* const s_componentDescription = "Combines a collection of vegetation areas and applies them in a specified order";
         static constexpr const char* const s_icon = "Editor/Icons/Components/Vegetation.svg";
         static constexpr const char* const s_viewportIcon = "Editor/Icons/Components/Viewport/Vegetation.png";
         static constexpr const char* const s_helpUrl = "https://docs.aws.amazon.com/console/lumberyard/vegetation/vegetation-layer-blender";
+
+    private:
+        void ForceOneEntry();
     };
 }

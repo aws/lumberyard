@@ -12,28 +12,17 @@
 
 # Python
 import json
-import mock
-import os
-import StringIO
-import types
 import unittest
+from unittest import mock
 import zipfile
-from time import time, sleep
 
-# Boto3
-import boto3
-from botocore.exceptions import ClientError
+# Python 2.7/3.7 Compatibility
+from io import BytesIO
+from six.moves import reload_module
+
 
 # ProjectResourceHandler
-from cgf_utils import properties
 import LambdaConfigurationResourceHandler
-from cgf_utils.test.mock_properties import PropertiesMatcher
-
-# ServiceClient
-import cgf_service_client.mock
-
-# ResourceManagerCommon
-from resource_manager_common import stack_info
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResourceHandler(unittest.TestCase):
@@ -42,8 +31,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
 
     context = {}
 
+    mock_iam_client = None
+    mock_s3_client = None
+
     def setUp(self):
-        reload(LambdaConfigurationResourceHandler) # reset any accumulated state
+        self.mock_iam_client = mock.MagicMock()
+        self.mock_s3_client = mock.MagicMock()
+        reload_module(LambdaConfigurationResourceHandler)  # reset any accumulated state
         self.event = {
             'ResourceProperties': {
                 'ConfigurationBucket': 'TestBucket',
@@ -69,10 +63,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
             'LogicalResourceId': 'TestLogicalResourceId'
         }
 
-
     @mock.patch('cgf_utils.custom_resource_response.succeed')
     @mock.patch('cgf_utils.role_utils.create_access_control_role')
     @mock.patch('cgf_utils.role_utils.get_access_control_role_name')
+    @mock.patch('LambdaConfigurationResourceHandler.iam', mock_iam_client)
+    @mock.patch('LambdaConfigurationResourceHandler.s3', mock_s3_client)
     @mock.patch('LambdaConfigurationResourceHandler._inject_settings')
     @mock.patch('LambdaConfigurationResourceHandler._add_built_in_settings')
     @mock.patch('LambdaConfigurationResourceHandler._get_project_service_lambda_arn')
@@ -120,7 +115,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         mock_get_access_control_role_name.return_value = expected_data['RoleName']
         mock_get_input_key.return_value = '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey'])
         mock_inject_settings.return_value = expected_data['ConfigurationKey']
-        mock_get_project_service_lambda_arn.return_value = None
+        mock_get_project_service_lambda_arn.return_value = "arn:partition:lambda:region:account:function:FunctionName"
 
         LambdaConfigurationResourceHandler.handler(self.event, self.context)
 
@@ -130,13 +125,14 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
             expected_data,
             expected_physical_id)
 
+        function_name = self.event['ResourceProperties']['FunctionName']
         mock_create_role.assert_called_once_with(
             mock_StackInfoManager.return_value,
             {},
             self.event['StackId'],
-            self.event['ResourceProperties']['FunctionName'],
+            function_name,
             'lambda.amazonaws.com',
-            default_policy = LambdaConfigurationResourceHandler.get_default_policy(None))
+            default_policy=LambdaConfigurationResourceHandler.get_default_policy("arn:partition:lambda:region:account:function:FunctionName"))
 
         mock_inject_settings.assert_called_once_with(
             self.event['ResourceProperties']['Settings'],
@@ -155,10 +151,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         mock_get_stack_info.assert_called_once_with(
             self.event['StackId'])
 
-
     @mock.patch('cgf_utils.custom_resource_response.succeed')
     @mock.patch('cgf_utils.role_utils.get_access_control_role_arn')
     @mock.patch('cgf_utils.role_utils.get_access_control_role_name')
+    @mock.patch('LambdaConfigurationResourceHandler.iam', mock_iam_client)
+    @mock.patch('LambdaConfigurationResourceHandler.s3', mock_s3_client)
     @mock.patch('LambdaConfigurationResourceHandler._inject_settings')
     @mock.patch('LambdaConfigurationResourceHandler._add_built_in_settings')
     @mock.patch('LambdaConfigurationResourceHandler._get_input_key')
@@ -234,6 +231,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
 
     @mock.patch('cgf_utils.custom_resource_response.succeed')
     @mock.patch('cgf_utils.role_utils.delete_access_control_role')
+    @mock.patch('LambdaConfigurationResourceHandler.iam', mock_iam_client)
+    @mock.patch('LambdaConfigurationResourceHandler.s3', mock_s3_client)
     def test_handler_delete(
         self,
         mock_delete_role,
@@ -259,13 +258,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         expected_settings = self.event['ResourceProperties']['Settings']
         expected_zip_name = 'cgf_lambda_settings/settings.json'
 
-        zip_file = zipfile.ZipFile(StringIO.StringIO(), 'w')
+        zip_file = zipfile.ZipFile(BytesIO(), 'w')
 
         LambdaConfigurationResourceHandler._inject_settings_python(zip_file, expected_settings)
 
         with zip_file.open(expected_zip_name, 'r') as zip_content_file:
             actual_settings = json.load(zip_content_file)
-            self.assertEquals(expected_settings, actual_settings)
+            self.assertEqual(expected_settings, actual_settings)
 
     def test_get_settings_injector(self):
 
@@ -275,15 +274,15 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         nodejs_injector = LambdaConfigurationResourceHandler._SETTINGS_INJECTORS.get('nodejs')
         self.assertIsNotNone(nodejs_injector)
 
-        self.assertIs(python_injector, LambdaConfigurationResourceHandler._get_settings_injector('python2.7'))
-        self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs4.3'))
-        self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs')) # legacy support
+        self.assertIs(python_injector, LambdaConfigurationResourceHandler._get_settings_injector('python3.7'))
+        self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs12.x'))
+        self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs10.x'))
+        self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs'))  # legacy support
         self.assertIs(python_injector, LambdaConfigurationResourceHandler._get_settings_injector('python999'))
         self.assertIs(nodejs_injector, LambdaConfigurationResourceHandler._get_settings_injector('nodejs999'))
 
         with self.assertRaises(RuntimeError):
             LambdaConfigurationResourceHandler._get_settings_injector('something')
-
 
 
 class AnyZipFileObject(object):
@@ -301,7 +300,7 @@ class AnyValidZipFileContent(object):
         pass
 
     def __eq__(self, other):
-        zip_file = zipfile.ZipFile(StringIO.StringIO(other))
+        zip_file = zipfile.ZipFile(BytesIO(other))
         return zip_file.testzip() is None
 
 

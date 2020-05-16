@@ -22,12 +22,6 @@
             "Include/Gestures/IGestureRecognizer.h"
         ],
         "Source": [
-            "Source/GestureRecognizerClickOrTapFlowNode.cpp",
-            "Source/GestureRecognizerDragFlowNode.cpp",
-            "Source/GestureRecognizerHoldFlowNode.cpp",
-            "Source/GestureRecognizerPinchFlowNode.cpp",
-            "Source/GestureRecognizerRotateFlowNode.cpp",
-            "Source/GestureRecognizerSwipeFlowNode.cpp",
             "Source/GesturesModule.cpp",
             "Source/GesturesSystemComponent.cpp",
             "Source/GesturesSystemComponent.h",

@@ -79,6 +79,8 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        AZStd::string GetSimulatedJointName(int index) const;
+
         AZStd::vector<AZStd::string> m_simulatedJointNames;
     };
 } // namespace EMotionFX

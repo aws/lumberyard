@@ -28,6 +28,7 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
     QAction* action1 = new QAction(QIcon(":/stylesheet/img/table_error.png"), "Action 1", this);
     QAction* action2 = new QAction(QIcon(":/stylesheet/img/table_error.png"), "Action 2", this);
     QAction* action3 = new QAction(QIcon(":/stylesheet/img/table_error.png"), "Action 3", this);
+    QAction* actionAddTab = new QAction(QIcon(QStringLiteral(":/stylesheet/img/logging/add-filter.svg")), "", this);
 
     connect(action1, &QAction::triggered, this, [this]() {
         QMessageBox messageBox({}, "Action 1 triggered", "Action 1 has been triggered", QMessageBox::Ok);
@@ -44,9 +45,14 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
         messageBox.exec();
     });
 
+    connect(actionAddTab, &QAction::triggered, this, [this]() {
+        ui->tabWidgetBig->addTab(new QWidget(), "New tab");
+    });
+
     ui->tabWidget->setActionToolBarVisible();
     ui->tabWidget_2->setActionToolBarVisible();
     ui->tabWidget_3->setActionToolBarVisible();
+    ui->tabWidgetBig->setActionToolBarVisible();
 
     ui->tabWidget->addAction(action1);
     ui->tabWidget->addAction(action2);
@@ -60,11 +66,15 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
     ui->tabWidget_3->addAction(action2);
     ui->tabWidget_3->addAction(action3);
 
+    ui->tabWidgetBig->addAction(actionAddTab);
+
     auto* removeFirstAction = new QPushButton("Remove first action");
     auto* removeLastAction = new QPushButton("Remove last action");
     auto* changeActions = new QPushButton("Change actions");
     auto* toggleActionToolBars = new QPushButton("Toggle action toolbars");
     int* changeIdx = new int(0);
+
+    connect(ui->tabWidgetBig, &QTabWidget::tabCloseRequested, ui->tabWidgetBig, &QTabWidget::removeTab);
 
     connect(removeFirstAction, &QPushButton::clicked, this, [this]() {
         if (ui->tabWidget->actions().count())
@@ -128,6 +138,7 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
         ui->tabWidget->setActionToolBarVisible(!ui->tabWidget->isActionToolBarVisible());
         ui->tabWidget_2->setActionToolBarVisible(!ui->tabWidget_2->isActionToolBarVisible());
         ui->tabWidget_3->setActionToolBarVisible(!ui->tabWidget_3->isActionToolBarVisible());
+        ui->tabWidgetBig->setActionToolBarVisible(!ui->tabWidgetBig->isActionToolBarVisible());
     });
 
     ui->verticalLayout->addWidget(removeFirstAction);

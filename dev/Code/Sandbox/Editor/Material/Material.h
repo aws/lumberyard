@@ -74,9 +74,11 @@ struct SMaterialLayerResources
     XmlNodeRef m_publicVarsCache;
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class CRYEDIT_API CMaterial
     : public IEditorMaterial
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     //////////////////////////////////////////////////////////////////////////
     CMaterial(const QString& name, int nFlags = 0);

@@ -30,6 +30,17 @@ namespace GraphCanvas
     {
     }
 
+    void GraphCanvasTreeCategorizer::RegisterCategoryNode(GraphCanvas::GraphCanvasTreeItem* treeItem, const char* subCategory, GraphCanvas::GraphCanvasTreeItem* parentRoot)
+    {
+        CategoryKey key(parentRoot, subCategory);
+        auto rootIter = m_rootMaps.find(key);
+
+        if (rootIter == m_rootMaps.end())
+        {
+            m_rootMaps[key] = treeItem;
+        }        
+    }
+
     GraphCanvas::GraphCanvasTreeItem* GraphCanvasTreeCategorizer::GetCategoryNode(const char* categoryPath, GraphCanvas::GraphCanvasTreeItem* parentRoot)
     {
         AZ_Warning("GraphCanvas", parentRoot, "Null parent root passed into Categorizer.");

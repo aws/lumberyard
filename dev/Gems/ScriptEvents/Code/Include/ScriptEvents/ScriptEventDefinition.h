@@ -60,7 +60,8 @@ namespace ScriptEvents
                     m_name.Set(name);
                 }
 
-                if (dc.GetNumArguments() > 1)
+                // \todo align with ScriptEvents error reporting policy, if the there is an argument but it is not an aztypeid
+                if (dc.GetNumArguments() > 1 && dc.IsClass<AZ::Uuid>(1))
                 {
                     AZ::Uuid addressType;
                     if (dc.ReadArg(1, addressType))
@@ -82,9 +83,12 @@ namespace ScriptEvents
 
         void AddMethod(AZ::ScriptDataContext& dc)
         {
-            Method& method = NewMethod();
-            method.FromScript(dc);
-            dc.PushResult(method);
+            if (dc.GetNumArguments() > 0)
+            {
+                Method& method = NewMethod();
+                method.FromScript(dc);
+                dc.PushResult(method);
+            }
         }
 
         void RegisterInternal();
@@ -180,6 +184,19 @@ namespace ScriptEvents
             }
 
             ++m_version; 
+        }
+
+        void Flatten()
+        {
+            m_name.Flatten();
+            m_category.Flatten();
+            m_tooltip.Flatten();
+            m_addressType.Flatten();
+
+            for (Method& method : m_methods)
+            {
+                method.Flatten();
+            }
         }
 
     private:

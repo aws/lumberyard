@@ -17,7 +17,6 @@ import validation_common
 import errors
 import json
 import time
-import StringIO
 import uuid
 from botocore.exceptions import ClientError
 

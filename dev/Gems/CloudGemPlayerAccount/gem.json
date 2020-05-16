@@ -9,13 +9,6 @@
     "Tags": ["Cloud Canvas", "AWS", "Cognito", "DynamoDB"],
     "Dependencies": [
         {
-            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
-            "VersionConstraints": [
-                "~>0.1"
-            ],
-            "_comment": "CloudCanvas (AWS)"
-        },
-        {
             "Uuid" : "6fc787a982184217a5a553ca24676cfa",
             "VersionConstraints": [ "~>1.0" ],
             "_comment": "CloudGemFramework"

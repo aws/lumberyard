@@ -11,9 +11,12 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
+# System Imports
 import os
-from waflib.TaskGen import feature, after_method
+
+# waflib imports
 from waflib import Logs, Utils
+from waflib.TaskGen import after_method, feature
 
 
 LAUNCHER_SCRIPT='''#!/bin/bash

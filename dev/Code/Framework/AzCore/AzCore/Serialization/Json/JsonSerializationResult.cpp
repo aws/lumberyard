@@ -93,6 +93,9 @@ namespace AZ
                 case Outcomes::Skipped:
                     target.append("because a field or value was skipped");
                     break;
+                case Outcomes::PartialSkip:
+                    target.append("because one or more fields or values were skipped");
+                    break;
                 case Outcomes::Unavailable:
                     target.append("because the target was unavailable");
                     break;
@@ -131,6 +134,7 @@ namespace AZ
             {
             case Outcomes::Success:          // fall through
             case Outcomes::Skipped:          // fall through
+            case Outcomes::PartialSkip:      // fall through
             case Outcomes::DefaultsUsed:     // fall through
             case Outcomes::PartialDefaults:
                 m_options.m_processing = Processing::Completed;
@@ -189,6 +193,11 @@ namespace AZ
                 (lhs.m_options.m_outcome == Outcomes::DefaultsUsed && rhs.m_options.m_outcome == Outcomes::Success))
             {
                 result.m_options.m_outcome = Outcomes::PartialDefaults;
+            }
+            else if ((lhs.m_options.m_outcome == Outcomes::Success && rhs.m_options.m_outcome == Outcomes::Skipped) ||
+                     (lhs.m_options.m_outcome == Outcomes::Skipped && rhs.m_options.m_outcome == Outcomes::Success))
+            {
+                result.m_options.m_outcome = Outcomes::PartialSkip;
             }
 
             if ((lhs.m_options.m_processing == Processing::Completed && rhs.m_options.m_processing == Processing::Altered) ||

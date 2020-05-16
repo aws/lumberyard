@@ -47,15 +47,15 @@ SET TOOLS_DIR=%BASE_PATH%\Tools
 SET PYTHON_DIR=%TOOLS_DIR%\Python
 IF EXIST "%PYTHON_DIR%" GOTO PYTHON_DIR_EXISTS
 
-ECHO Could not find Python in %TOOLS_DIR%
+ECHO Could not find Python3 in %TOOLS_DIR%
 GOTO :EOF
 
 :PYTHON_DIR_EXISTS
 
-SET PYTHON=%PYTHON_DIR%\python.cmd
+SET PYTHON=%PYTHON_DIR%\python3.cmd
 IF EXIST "%PYTHON%" GOTO PYTHON_EXISTS
 
-ECHO Could not find python.cmd in %PYTHON_DIR%
+ECHO Could not find python3.cmd in %PYTHON_DIR%
 GOTO :EOF
 
 :PYTHON_EXISTS

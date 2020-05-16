@@ -52,7 +52,7 @@ namespace ScriptCanvas
 
             void Error::OnInputSignal(const SlotId&)
             {
-                const Datum* input = GetInput(GetSlotId("Description"));
+                const Datum* input = FindDatum(GetSlotId("Description"));
                 if (const Data::StringType* desc = input ? input->GetAs<Data::StringType>() : nullptr)
                 {
                     SCRIPTCANVAS_REPORT_ERROR((*this), desc->data());

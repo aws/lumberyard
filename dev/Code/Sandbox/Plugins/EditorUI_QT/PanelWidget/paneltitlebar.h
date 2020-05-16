@@ -63,7 +63,9 @@ protected:
 private slots:
     void on_pushButton_clicked();
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::function<void()> m_callbackOnCollapse;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     virtual bool eventFilter(QObject* obj, QEvent* ev) override;
     virtual void paintEvent(QPaintEvent*) override;
 

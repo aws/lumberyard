@@ -125,7 +125,7 @@ namespace AzToolsFramework
             AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFileName() override;
             AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFilePath(const QString& levelAbsoluteFolder) override;
 
-            void SetLayerChildrenVisibility(bool visible) override { m_editableLayerProperties.m_isLayerVisible = visible; }
+            void SetLayerChildrenVisibility(bool visible) override;
             bool AreLayerChildrenVisible() override { return m_editableLayerProperties.m_isLayerVisible; }
 
             bool HasUnsavedChanges() override;

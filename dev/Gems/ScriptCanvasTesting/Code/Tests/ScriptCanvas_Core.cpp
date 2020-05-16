@@ -50,7 +50,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
     Graph* graph{};
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, graphEntity.get());
 
-    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+    ScriptCanvasId graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId outID;
     auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
@@ -179,6 +179,282 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
     numberAddEntity.reset();
 }
 
+TEST_F(ScriptCanvasTestFixture, InsertSlot_Basic)
+{
+    using namespace ScriptCanvas;
+
+    Graph* graph = CreateGraph();
+    ConfigurableUnitTestNode* basicNode = CreateConfigurableNode();
+
+    SlotId firstSlotAdded;
+    SlotId secondSlotAdded;
+    SlotId thirdSlotAdded;
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "A";
+        slotConfiguration.SetDefaultValue(0);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        Slot* slot = basicNode->AddTestingSlot(slotConfiguration);
+
+        firstSlotAdded = slot->GetId();
+    }
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "C";
+        slotConfiguration.SetDefaultValue(2);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        Slot* slot = basicNode->AddTestingSlot(slotConfiguration);
+
+        secondSlotAdded = slot->GetId();
+    }
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "B";
+        slotConfiguration.SetDefaultValue(1);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        auto index = basicNode->FindSlotIndex(secondSlotAdded);
+        EXPECT_EQ(index, 1);
+
+        Slot* slot = basicNode->InsertTestingSlot(index, slotConfiguration);
+
+        thirdSlotAdded = slot->GetId();
+    }
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->GetAllSlots();
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+
+    graph->Activate();
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->GetAllSlots();
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+
+    graph->Deactivate();
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->GetAllSlots();
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+}
+
+TEST_F(ScriptCanvasTestFixture, InsertSlot_FrontPadded)
+{
+    using namespace ScriptCanvas;
+
+    Graph* graph = CreateGraph();
+    ConfigurableUnitTestNode* basicNode = CreateConfigurableNode();
+
+    basicNode->AddTestingSlot(ExecutionSlotConfiguration("Input", ConnectionType::Input));
+    basicNode->AddTestingSlot(ExecutionSlotConfiguration("Input-1", ConnectionType::Input));
+    basicNode->AddTestingSlot(ExecutionSlotConfiguration("Input-2", ConnectionType::Input));
+    basicNode->AddTestingSlot(ExecutionSlotConfiguration("Input-3", ConnectionType::Input));
+
+    SlotId firstSlotAdded;
+    SlotId secondSlotAdded;
+    SlotId thirdSlotAdded;
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "A";
+        slotConfiguration.SetDefaultValue(0);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        Slot* slot = basicNode->AddTestingSlot(slotConfiguration);
+
+        firstSlotAdded = slot->GetId();
+    }
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "C";
+        slotConfiguration.SetDefaultValue(2);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        Slot* slot = basicNode->AddTestingSlot(slotConfiguration);
+
+        secondSlotAdded = slot->GetId();
+    }
+
+    {
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "B";
+        slotConfiguration.SetDefaultValue(1);
+        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+        auto index = basicNode->FindSlotIndex(secondSlotAdded);
+
+        Slot* slot = basicNode->InsertTestingSlot(index, slotConfiguration);
+
+        thirdSlotAdded = slot->GetId();
+    }
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->FindSlotsByDescriptor(SlotDescriptors::DataIn());
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+
+    graph->Activate();
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->FindSlotsByDescriptor(SlotDescriptors::DataIn());
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+
+    graph->Deactivate();
+
+    {
+        AZStd::vector< const Slot* > slotList = basicNode->FindSlotsByDescriptor(SlotDescriptors::DataIn());
+
+        EXPECT_EQ(slotList.size(), 3);
+
+        {
+            const Slot* firstSlot = slotList[0];
+            EXPECT_EQ(firstSlot->GetId(), firstSlotAdded);
+            EXPECT_EQ(firstSlot->GetName(), "A");
+            EXPECT_FLOAT_EQ(static_cast<float>((*firstSlot->FindDatum()->GetAs<Data::NumberType>())), 0.0f);
+        }
+
+        {
+            const Slot* secondSlot = slotList[1];
+            EXPECT_EQ(secondSlot->GetId(), thirdSlotAdded);
+            EXPECT_EQ(secondSlot->GetName(), "B");
+            EXPECT_FLOAT_EQ(static_cast<float>((*secondSlot->FindDatum()->GetAs<Data::NumberType>())), 1.0f);
+        }
+
+        {
+            const Slot* thirdSlot = slotList[2];
+            EXPECT_EQ(thirdSlot->GetId(), secondSlotAdded);
+            EXPECT_EQ(thirdSlot->GetName(), "C");
+            EXPECT_FLOAT_EQ(static_cast<float>((*thirdSlot->FindDatum()->GetAs<Data::NumberType>())), 2.0f);
+        }
+    }
+}
+
 TEST_F(ScriptCanvasTestFixture, InsertSlot)
 {
     RegisterComponentDescriptor<InsertSlotConcatNode>();
@@ -190,17 +466,17 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
     graphEntity->Init();
     
     SystemRequestBus::Broadcast(&SystemRequests::CreateEngineComponentsOnEntity, graphEntity.get());
-    Graph* graph = AZ::EntityUtils::FindFirstDerivedComponent<Graph>(graphEntity.get());
+    Graph* graph = AZ::EntityUtils::FindFirstDerivedComponent<Graph>(graphEntity.get());    
     
-    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+    ScriptCanvasId graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId outId;
     auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outId);
     auto insertSlotConcatNode = CreateTestNode<InsertSlotConcatNode>(graphUniqueId, outId);
     auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outId);
     VariableId resultVarId = CreateVariable(graphUniqueId, Data::StringType(), "result");
-    VariableId middleValueVarId = CreateVariable(graphUniqueId, Data::StringType(" Ice Cream"), "middleValue");
     setVariableNode->SetId(resultVarId);
+
     EXPECT_TRUE(setVariableNode->GetDataInSlotId().IsValid());
 
     //logic connections
@@ -222,16 +498,16 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
     ReportErrors(graph);
     graphEntity->Deactivate();
 
-    const VariableDatum* resultDatum{};
-    VariableRequestBus::EventResult(resultDatum, resultVarId, &VariableRequests::GetVariableDatumConst);
+    const GraphVariable* resultDatum{};
+    VariableRequestBus::EventResult(resultDatum, GraphScopedVariableId(graphUniqueId, resultVarId), &VariableRequests::GetVariableConst);
     ASSERT_NE(nullptr, resultDatum);
-    EXPECT_EQ("Hello World", resultDatum->GetData().ToString());
+    EXPECT_EQ("Hello World", resultDatum->GetDatum()->ToString());
 
     // insert additional slot between A and B
-    auto slotIndexOutcome = insertSlotConcatNode->FindSlotIndex(slotBId);
-    EXPECT_TRUE(slotIndexOutcome);
-    concatSlotId = insertSlotConcatNode->InsertSlot(slotIndexOutcome.GetValue(), "Alpha");
-    NodeRequestBus::Event(insertSlotConcatNode->GetEntityId(), &NodeRequests::SetSlotVariableId, concatSlotId, middleValueVarId);
+    auto slotIndex = insertSlotConcatNode->FindSlotIndex(slotBId);
+    EXPECT_GE(slotIndex, 0);
+    concatSlotId = insertSlotConcatNode->InsertSlot(slotIndex, "Alpha");
+    insertSlotConcatNode->SetInput_UNIT_TEST(concatSlotId, Data::StringType(" Ice Cream"));
 
     // re-execute the graph
     graphEntity->Activate();
@@ -239,7 +515,7 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
     graphEntity->Deactivate();
 
     // the new concatenated string should be in the middle
-    EXPECT_EQ("Hello Ice Cream World", resultDatum->GetData().ToString());
+    EXPECT_EQ("Hello Ice Cream World", resultDatum->GetDatum()->ToString());
 
     graphEntity.reset();
 }
@@ -256,7 +532,7 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
     EXPECT_NE(nullptr, graph);
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
@@ -357,7 +633,7 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
     ASSERT_NE(nullptr, graph);
 
     AZ::EntityId propertyEntityId = graphEntity->GetId();
-    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+    ScriptCanvasId graphUniqueId = graph->GetScriptCanvasId();
 
     graphEntity->Init();
 
@@ -463,7 +739,7 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
     ASSERT_NE(nullptr, graph);
 
     AZ::EntityId propertyEntityId = graphEntity->GetId();
-    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+    ScriptCanvasId graphUniqueId = graph->GetScriptCanvasId();
 
     graphEntity->Init();
 
@@ -583,7 +859,7 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityID = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
@@ -697,7 +973,7 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityID = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
@@ -844,7 +1120,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     // Make the nodes.
 
@@ -1200,7 +1476,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     // Make the nodes.
 
@@ -1256,8 +1532,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
 
 TEST_F(ScriptCanvasTestFixture, Error)
 {
-    
-    using namespace ScriptCanvas;    
+    using namespace ScriptCanvas;
 
     RegisterComponentDescriptor<UnitTestErrorNode>();
     RegisterComponentDescriptor<InfiniteLoopNode>();
@@ -1268,7 +1543,7 @@ TEST_F(ScriptCanvasTestFixture, Error)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     UnitTestEventsHandler unitTestHandler;
     unitTestHandler.BusConnect();
@@ -1303,70 +1578,9 @@ TEST_F(ScriptCanvasTestFixture, Error)
     const bool expectIrrecoverableErrors = true;
     ReportErrors(graph, expectErrors, expectIrrecoverableErrors);    
 
-    EXPECT_EQ(description, graph->GetLastErrorDescription());
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 0);
 
     graph->GetEntity()->Deactivate();
-    delete graph->GetEntity();
-}
-
-TEST_F(ScriptCanvasTestFixture, ErrorHandled)
-{
-    using namespace ScriptCanvas;
-
-    RegisterComponentDescriptor<UnitTestErrorNode>();
-
-    Graph* graph = nullptr;
-    SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
-    EXPECT_TRUE(graph != nullptr);
-    graph->GetEntity()->Init();
-
-    const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
-
-    UnitTestEventsHandler unitTestHandler;
-    unitTestHandler.BusConnect();
-
-    AZ::EntityId startID;
-    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
-
-    AZStd::string description = "Unit test error!";
-    AZ::EntityId stringNodeID;
-    CreateDataNode(graphUniqueId, description, stringNodeID);
-
-    AZStd::string sideFX1 = "Side FX 1";
-    AZ::EntityId sideFX1NodeID;
-    CreateDataNode(graphUniqueId, sideFX1, sideFX1NodeID);
-
-    AZStd::string sideFX2 = "Side FX 2";
-    AZ::EntityId sideFX2NodeID;
-    CreateDataNode(graphUniqueId, sideFX2, sideFX2NodeID);
-
-    AZ::EntityId errorNodeID;
-    CreateTestNode<UnitTestErrorNode>(graphUniqueId, errorNodeID);
-
-    AZ::EntityId sideEffectID1 = CreateClassFunctionNode(graphUniqueId, "UnitTestEventsBus", "SideEffect");
-    AZ::EntityId sideEffectID2 = CreateClassFunctionNode(graphUniqueId, "UnitTestEventsBus", "SideEffect");
-
-    AZ::EntityId errorHandlerID;
-    CreateTestNode<Nodes::Core::ErrorHandler>(graphUniqueId, errorHandlerID);
-
-    EXPECT_TRUE(Connect(*graph, sideFX1NodeID, "Get", sideEffectID1, "String: 0"));
-    EXPECT_TRUE(Connect(*graph, sideFX2NodeID, "Get", sideEffectID2, "String: 0"));
-    EXPECT_TRUE(Connect(*graph, startID, "Out", errorNodeID, "In"));
-    EXPECT_TRUE(Connect(*graph, errorNodeID, "Out", sideEffectID1, "In"));
-    EXPECT_TRUE(Connect(*graph, errorHandlerID, "Source", errorNodeID, "This"));
-    EXPECT_TRUE(Connect(*graph, errorHandlerID, "Out", sideEffectID2, "In"));
-
-    {
-        ScriptCanvasEditor::ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
-        graph->GetEntity()->Activate();
-    }
-    
-    ReportErrors(graph);
-    EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 0);
-    EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX2), 1);
-
     delete graph->GetEntity();
 }
 
@@ -1381,7 +1595,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     UnitTestEventsHandler unitTestHandler;
     unitTestHandler.BusConnect();
@@ -1418,7 +1632,6 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
     const bool expectIrrecoverableErrors = true;
     ReportErrors(graph, expectErrors, expectIrrecoverableErrors);
 
-    EXPECT_EQ(description, graph->GetLastErrorDescription());
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
     graph->GetEntity()->Deactivate();
@@ -1429,60 +1642,6 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
 
     // if the graph was allowed to execute, the side effect counter should be higher
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
-
-    delete graph->GetEntity();
-}
-
-TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
-{
-    
-    using namespace ScriptCanvas;
-
-    Graph* graph = nullptr;
-    SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
-    EXPECT_TRUE(graph != nullptr);
-    graph->GetEntity()->Init();
-
-    const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
-
-    UnitTestEventsHandler unitTestHandler;
-    unitTestHandler.BusConnect();
-
-    AZStd::string description = "Test Error Report";
-    AZ::EntityId stringNodeID;
-    CreateDataNode(graphUniqueId, description, stringNodeID);
-
-    AZStd::string sideFX1 = "Side FX 1";
-    AZ::EntityId sideFX1NodeID;
-    CreateDataNode(graphUniqueId, sideFX1, sideFX1NodeID);
-
-    AZ::EntityId startID;
-    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
-    AZ::EntityId errorNodeID;
-    CreateTestNode<Nodes::Core::Error>(graphUniqueId, errorNodeID);
-    AZ::EntityId errorHandlerID;
-    CreateTestNode<Nodes::Core::ErrorHandler>(graphUniqueId, errorHandlerID);
-    AZ::EntityId sideEffectID = CreateClassFunctionNode(graphUniqueId, "UnitTestEventsBus", "SideEffect");
-
-    EXPECT_TRUE(Connect(*graph, startID, "Out", errorNodeID, "In"));
-    EXPECT_TRUE(Connect(*graph, errorHandlerID, "Source", errorNodeID, "This"));
-    EXPECT_TRUE(Connect(*graph, errorHandlerID, "Out", sideEffectID, "In"));
-    EXPECT_TRUE(Connect(*graph, sideFX1NodeID, "Get", sideEffectID, "String: 0"));
-
-    {
-        ScriptCanvasEditor::ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
-        graph->GetEntity()->Activate();
-    }
-
-    ReportErrors(graph);
-    EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
-
-    graph->GetEntity()->Deactivate();
-    graph->GetEntity()->Activate();
-
-    ReportErrors(graph);
-    EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 2);
 
     delete graph->GetEntity();
 }
@@ -1499,7 +1658,7 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     UnitTestEventsHandler unitTestHandler;
     unitTestHandler.BusConnect();
@@ -1751,7 +1910,7 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
@@ -1852,7 +2011,7 @@ TEST_F(ScriptCanvasTestFixture, ExecutionLength)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityID = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);

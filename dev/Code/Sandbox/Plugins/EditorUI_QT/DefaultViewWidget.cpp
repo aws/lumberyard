@@ -78,7 +78,7 @@ void DefaultViewWidget::SetImage(QString path, QSize size)
 void DefaultViewWidget::AddButton(QString text, std::function<void()> onPressed)
 {
     m_buttons.push_back(new QPushButton(text, this));
-    connect(m_buttons.back(), &QPushButton::pressed, this, onPressed);
+    connect(m_buttons.back(), &QPushButton::clicked, this, onPressed);
     m_buttons.back()->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_buttonLayout->addWidget(m_buttons.back(), Qt::AlignTop | Qt::AlignHCenter);
     m_buttonLayout->addStretch(STRETCH_VALUE); //add a stretch after each button to keep them evenly spaced and correctly sized
@@ -88,7 +88,7 @@ void DefaultViewWidget::AddButton(QString text, QAction* action)
 {
     m_buttons.push_back(new QPushButton(text, this));
     m_buttons.back()->addAction(action);
-    connect(m_buttons.back(), &QPushButton::pressed, action, &QAction::trigger);
+    connect(m_buttons.back(), &QPushButton::clicked, action, &QAction::trigger);
     m_buttons.back()->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_buttonLayout->addWidget(m_buttons.back(), Qt::AlignTop | Qt::AlignHCenter);
     m_buttonLayout->addStretch(STRETCH_VALUE); //add a stretch after each button to keep them evenly spaced and correctly sized

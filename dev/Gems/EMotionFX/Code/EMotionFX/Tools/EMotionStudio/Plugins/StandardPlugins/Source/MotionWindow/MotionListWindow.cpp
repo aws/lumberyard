@@ -887,24 +887,28 @@ namespace EMStudio
     void MotionListWindow::OnRemoveMotionsButtonPressed()
     {
         const CommandSystem::SelectionList& selection = GetCommandManager()->GetCurrentSelection();
-
-        // get the number of selected motions
-        const uint32 numMotions = selection.GetNumSelectedMotions();
+        const AZ::u32 numMotions = selection.GetNumSelectedMotions();
         if (numMotions == 0)
         {
             return;
         }
 
-        // iterate through the selected motions and put them into some array
-        AZStd::vector<EMotionFX::Motion*> motionsToRemove;
-        motionsToRemove.reserve(numMotions);
-        for (uint32 i = 0; i < numMotions; ++i)
+        // Store the motion ids for the to be removed motions as the motion pointers might
+        // be invalidated by the save dirty motions and the reloading processes.
+        AZStd::vector<AZ::u32> motionIdsToRemove;
+        motionIdsToRemove.reserve(numMotions);
+        for (AZ::u32 i = 0; i < numMotions; ++i)
         {
-            EMotionFX::Motion* motion = selection.GetMotion(i);
+            const EMotionFX::Motion* motion = selection.GetMotion(i);
+            motionIdsToRemove.emplace_back(motion->GetID());
+        }
 
-            // in case we modified the motion ask if the user wants to save changes it before removing it
+        // In case the motions got modified, ask to save changes it before removing them.
+        EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
+        for (AZ::u32 motionId : motionIdsToRemove)
+        {
+            EMotionFX::Motion* motion = motionManager.FindMotionByID(motionId);
             mMotionWindowPlugin->SaveDirtyMotion(motion, nullptr, true, false);
-            motionsToRemove.push_back(motion);
         }
 
         // find the lowest row selected
@@ -920,6 +924,15 @@ namespace EMStudio
         }
 
         // construct the command group and remove the selected motions
+        AZStd::vector<EMotionFX::Motion*> motionsToRemove;
+        for (AZ::u32 motionId : motionIdsToRemove)
+        {
+            EMotionFX::Motion* motion = motionManager.FindMotionByID(motionId);
+            if (motion)
+            {
+                motionsToRemove.emplace_back(motion);
+            }
+        }
         AZStd::vector<EMotionFX::Motion*> failedRemoveMotions;
         CommandSystem::RemoveMotions(motionsToRemove, &failedRemoveMotions);
 

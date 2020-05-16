@@ -25,12 +25,12 @@ def main():
         metric_unit_enum = build_metrics_reporter.MetricUnit[metric_unit]
 
         if not build_metrics_reporter.metric_reporter.parse_command_line(sys.argv[4:]):
-            print '--metrics-namespace must be set to write a metric. {0} will not be written'.format(metric_name)
+            print('--metrics-namespace must be set to write a metric. {0} will not be written'.format(metric_name))
         else:
             build_metrics_reporter.start_metric_reporter()
             build_metrics_reporter.submit_build_metric(metric_name, metric_unit_enum, metric_value, [])
     else:
-        print 'Too few parameters for write_build_metric.  Expected at least 3 Got: {0}'.format(len(sys.argv )-1)
+        print('Too few parameters for write_build_metric.  Expected at least 3 Got: {0}'.format(len(sys.argv )-1))
 
     build_metrics_reporter.metric_reporter.stop(False, True)
 

@@ -19,8 +19,6 @@
 #include <ITimer.h>
 #include <PakVars.h>
 
-#define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
-
 using namespace LYGame;
 
 //////////////////////////////////////////////////////////////////////////////////////////

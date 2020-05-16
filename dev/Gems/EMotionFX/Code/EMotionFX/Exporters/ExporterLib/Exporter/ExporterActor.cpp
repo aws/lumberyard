@@ -22,6 +22,7 @@
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
+#include <MCore/Source/LogManager.h>
 
 
 //#define EMFX_DETAILED_SAVING_PERFORMANCESTATS
@@ -115,24 +116,16 @@ namespace ExporterLib
 
 
     // save the actor to a memory file
-    void SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    void SaveActor(MCore::MemoryFile* file, const EMotionFX::Actor* actorIn, MCore::Endian::EEndianType targetEndianType)
     {
-        if (actor == nullptr)
+        if (actorIn == nullptr)
         {
             MCore::LogError("SaveActor: Passed actor is not valid.");
             return;
         }
 
         // clone our actor before saving as we will modify its data
-        actor = actor->Clone();
-
-        // update the OBBs for the highest detail level
-        EMotionFX::GetEventManager().OnSubProgressText("Calculating OOBs");
-        EMotionFX::GetEventManager().OnSubProgressValue(0.0f);
-
-        EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(obbTimer);
-        actor->UpdateNodeBindPoseOBBs(0);
-        EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(obbTimer, "obbs");
+        AZStd::unique_ptr<EMotionFX::Actor> actor = actorIn->Clone();
 
         AZ::Debug::Timer saveTimer;
         saveTimer.Stamp();
@@ -141,26 +134,26 @@ namespace ExporterLib
         SaveActorHeader(file, targetEndianType);
 
         // save actor info
-        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), actor->GetRetargetRootNodeIndex(), "", "", actor->GetName(), actor->GetUnitType(), targetEndianType);
+        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), actor->GetRetargetRootNodeIndex(), "", "", actor->GetName(), actor->GetUnitType(), targetEndianType, actor->GetOptimizeSkeleton());
 
         // save nodes
         EMotionFX::GetEventManager().OnSubProgressText("Saving nodes");
         EMotionFX::GetEventManager().OnSubProgressValue(35.0f);
 
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(nodeTimer);
-        SaveNodes(file, actor, targetEndianType);
+        SaveNodes(file, actor.get(), targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(nodeTimer, "nodes");
 
-        SaveNodeGroups(file, actor, targetEndianType);
-        SaveNodeMotionSources(file, actor, nullptr, targetEndianType);
-        SaveAttachmentNodes(file, actor, targetEndianType);
+        SaveNodeGroups(file, actor.get(), targetEndianType);
+        SaveNodeMotionSources(file, actor.get(), nullptr, targetEndianType);
+        SaveAttachmentNodes(file, actor.get(), targetEndianType);
 
         // save materials
         EMotionFX::GetEventManager().OnSubProgressText("Saving materials");
         EMotionFX::GetEventManager().OnSubProgressValue(45.0f);
 
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(materialTimer);
-        SaveMaterials(file, actor, targetEndianType);
+        SaveMaterials(file, actor.get(), targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(materialTimer, "materials");
 
         // save meshes
@@ -168,7 +161,7 @@ namespace ExporterLib
         EMotionFX::GetEventManager().OnSubProgressValue(50.0f);
 
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(meshTimer);
-        SaveMeshes(file, actor, targetEndianType);
+        SaveMeshes(file, actor.get(), targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(meshTimer, "meshes");
 
         // save skins
@@ -176,7 +169,7 @@ namespace ExporterLib
         EMotionFX::GetEventManager().OnSubProgressValue(75.0f);
 
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(skinTimer);
-        SaveSkins(file, actor, targetEndianType);
+        SaveSkins(file, actor.get(), targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(skinTimer, "skins");
 
         // save morph targets
@@ -184,15 +177,12 @@ namespace ExporterLib
         EMotionFX::GetEventManager().OnSubProgressValue(90.0f);
 
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(morphTargetTimer);
-        SaveMorphTargets(file, actor, targetEndianType);
+        SaveMorphTargets(file, actor.get(), targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(morphTargetTimer, "morph targets");
 
-        SavePhysicsSetup(file, actor, targetEndianType);
+        SavePhysicsSetup(file, actor.get(), targetEndianType);
 
-        SaveSimulatedObjectSetup(file, actor, targetEndianType);
-
-        // get rid of the memory again and unregister the actor
-        actor->Destroy();
+        SaveSimulatedObjectSetup(file, actor.get(), targetEndianType);
 
         const float saveTime = saveTimer.GetDeltaTimeInSeconds() * 1000.0f;
         MCore::LogInfo("Actor saved in %.2f ms.", saveTime);
@@ -204,7 +194,7 @@ namespace ExporterLib
 
 
     // save the actor to disk
-    bool SaveActor(AZStd::string& filename, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    bool SaveActor(AZStd::string& filename, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
     {
         if (filename.empty())
         {

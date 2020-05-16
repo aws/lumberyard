@@ -65,7 +65,6 @@ namespace AzQtComponents
 
         m_mainLayout = new QVBoxLayout(this);
         m_mainLayout->setSizeConstraint(QLayout::SetMinimumSize);
-        m_mainLayout->setMargin(0);
         m_mainLayout->setContentsMargins(QMargins(0, 0, 0, 0));
         m_mainLayout->addWidget(m_header);
 
@@ -95,8 +94,6 @@ namespace AzQtComponents
         updateSecondaryContentVisibility();
 
         connect(m_secondaryHeader, &CardHeader::expanderChanged, this, &Card::setSecondaryContentExpanded);
-
-        setLayout(m_mainLayout);
 
         connect(m_header, &CardHeader::expanderChanged, this, &Card::setExpanded);
         connect(m_header, &CardHeader::contextMenuRequested, this, &Card::contextMenuRequested);
@@ -134,7 +131,7 @@ namespace AzQtComponents
         return m_header;
     }
 
-    CardNotification* Card::addNotification(QString message)
+    CardNotification* Card::addNotification(const QString& message)
     {
         CardNotification* notification = new CardNotification(this, message, m_warningIcon);
 
@@ -294,6 +291,7 @@ namespace AzQtComponents
 
         ConfigHelpers::read<int>(settings, QStringLiteral("HeaderIconSizeInPixels"), config.headerIconSizeInPixels);
         ConfigHelpers::read<int>(settings, QStringLiteral("ToolTipPaddingInPixels"), config.toolTipPaddingInPixels);
+        ConfigHelpers::read<int>(settings, QStringLiteral("MainLayoutSpacing"), config.mainLayoutSpacing);
 
         return config;
     }
@@ -304,6 +302,7 @@ namespace AzQtComponents
 
         config.toolTipPaddingInPixels = 5;
         config.headerIconSizeInPixels = CardHeader::defaultIconSize();
+        config.mainLayoutSpacing = 0;
 
         return config;
     }
@@ -312,8 +311,12 @@ namespace AzQtComponents
     {
         bool polished = false;
 
-        CardHeader* cardHeader = qobject_cast<CardHeader*>(widget);
-        if (cardHeader != nullptr)
+        if (auto card = qobject_cast<Card*>(widget))
+        {
+            card->m_mainLayout->setSpacing(config.mainLayoutSpacing);
+            polished = true;
+        }
+        else if (auto cardHeader = qobject_cast<CardHeader*>(widget))
         {
             CardHeader::setIconSize(config.headerIconSizeInPixels);
 
@@ -333,9 +336,25 @@ namespace AzQtComponents
         return polished;
     }
 
+    bool Card::unpolish(Style* style, QWidget* widget, const Card::Config& config)
+    {
+        (void)style;
+        (void)config;
+        
+        bool unpolished = false;
+
+        if (auto card = qobject_cast<Card*>(widget))
+        {
+            card->m_mainLayout->setSpacing(3); // restore to default
+            unpolished = true;
+        }
+
+        return unpolished;
+    }
+
     bool Card::hasSecondaryContent() const
     {
-        return ((m_secondaryHeader->title().length() > 0) || (m_secondaryContentWidget != nullptr));
+        return ((!m_secondaryHeader->title().isEmpty()) || (m_secondaryContentWidget != nullptr));
     }
 
     void Card::updateSecondaryContentVisibility()

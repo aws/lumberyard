@@ -37,7 +37,6 @@ namespace AzToolsFramework
         AZStd::string GetExtractFileCommand(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite);
         AZStd::string GetListFilesInArchiveCommand(const AZStd::string& archivePath);
         void ParseConsoleOutputFromListFilesInArchive(const AZStd::string& consoleOutput, AZStd::vector<AZStd::string>& fileEntries);
-        bool IsAddFilesToArchiveCommandSupported();
     }
 
     const char s_traceName[] = "ArchiveComponent";
@@ -295,61 +294,33 @@ namespace AzToolsFramework
 
     bool ArchiveComponent::AddFilesToArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath)
     {
-        bool operationSupported = Platform::IsAddFilesToArchiveCommandSupported();
         bool success = false;
-        if (operationSupported)
-        {   
-            auto addFileToArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
-                success = result;
-            };
 
-            AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath.c_str(), listFilePath.c_str());
+        auto addFileToArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
+            success = result;
+        };
 
-            if (commandLineArgs.empty())
-            {
-                // The platform-specific implementation has already thrown its own error, no need to throw another one
-                return false;
-            }
-            LaunchZipExe(m_zipExePath, commandLineArgs, addFileToArchiveCallback, AZ::Uuid::CreateNull(), workingDirectory);
-            return success;
-        }
-        else
+        AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath.c_str(), listFilePath.c_str());
+
+        if (commandLineArgs.empty())
         {
-            // read all list files and add it to the archive one by one
-            auto listFileResult = AzFramework::FileFunc::ReadTextFileByLine(listFilePath, [&](const char* line)
-            {
-                AZStd::string fileName(line);
-                success|= AddFileToArchiveBlocking(archivePath, workingDirectory, AzFramework::StringFunc::TrimWhiteSpace(fileName, true, true));
-                return true;
-            });
-
-            return success;
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return false;
         }
+        LaunchZipExe(m_zipExePath, commandLineArgs, addFileToArchiveCallback, AZ::Uuid::CreateNull(), workingDirectory);
+        return success;
     }
 
     void ArchiveComponent::AddFilesToArchive(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
     {
-        bool operationSupported = Platform::IsAddFilesToArchiveCommandSupported();
-        if (operationSupported)
+        AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath, listFilePath);
+        if (commandLineArgs.empty())
         {
-            AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath, listFilePath);
-            if (commandLineArgs.empty())
-            {
-                // The platform-specific implementation has already thrown its own error, no need to throw another one
-                return;
-            }
-            LaunchZipExe(m_zipExePath, commandLineArgs, respCallback, taskHandle, workingDirectory);
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return;
         }
-        else
-        {
-            // read all list files and add it to the archive one by one
-            auto listFileResult = AzFramework::FileFunc::ReadTextFileByLine(listFilePath, [&](const char* line)
-            {
-                AZStd::string fileName(line);
-                AddFileToArchive(archivePath, workingDirectory, AzFramework::StringFunc::TrimWhiteSpace(fileName, true, true), taskHandle, respCallback);
-                return true;
-            });
-        }
+
+        LaunchZipExe(m_zipExePath, commandLineArgs, respCallback, taskHandle, workingDirectory);
     }
 
 

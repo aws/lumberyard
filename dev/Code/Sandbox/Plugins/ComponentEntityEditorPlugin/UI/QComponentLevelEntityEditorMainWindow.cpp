@@ -26,6 +26,7 @@ QComponentLevelEntityEditorInspectorWindow::QComponentLevelEntityEditorInspector
     : QMainWindow(parent)
     , m_propertyEditor(nullptr)
 {
+    GetIEditor()->RegisterNotifyListener(this);
     AzToolsFramework::SliceMetadataEntityContextNotificationBus::Handler::BusConnect();
 
     Init();
@@ -34,6 +35,7 @@ QComponentLevelEntityEditorInspectorWindow::QComponentLevelEntityEditorInspector
 QComponentLevelEntityEditorInspectorWindow::~QComponentLevelEntityEditorInspectorWindow()
 {
     AzToolsFramework::SliceMetadataEntityContextNotificationBus::Handler::BusDisconnect();
+    GetIEditor()->UnregisterNotifyListener(this);
 }
 
 void QComponentLevelEntityEditorInspectorWindow::Init()
@@ -43,7 +45,8 @@ void QComponentLevelEntityEditorInspectorWindow::Init()
     m_propertyEditor = new AzToolsFramework::EntityPropertyEditor(nullptr, 0, true);
     layout->addWidget(m_propertyEditor);
 
-    SetRootMetadataEntity();
+    // On initialization, notify our property editor about the root metadata entity if it exists
+    RefreshPropertyEditor();
 
     QWidget* window = new QWidget();
     window->setLayout(layout);
@@ -61,32 +64,35 @@ void QComponentLevelEntityEditorInspectorWindow::OnMetadataEntityAdded(AZ::Entit
     }
 }
 
-void QComponentLevelEntityEditorInspectorWindow::SetRootMetadataEntity()
+void QComponentLevelEntityEditorInspectorWindow::RefreshPropertyEditor()
 {
     AZ::EntityId rootSliceMetaDataEntity = GetRootMetaDataEntityId();
-
-    if (rootSliceMetaDataEntity.IsValid())
-    {
-        AzToolsFramework::EntityIdList entities;
-        entities.push_back(rootSliceMetaDataEntity);
-        m_propertyEditor->SetOverrideEntityIds(entities);
-    }
+    OnMetadataEntityAdded(rootSliceMetaDataEntity);
 }
 
 AZ::EntityId QComponentLevelEntityEditorInspectorWindow::GetRootMetaDataEntityId() const
 {
-    AzFramework::EntityContextId editorEntityContextId = AzFramework::EntityContextId::CreateNull();
-    AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(editorEntityContextId, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorEntityContextId);
-    AZ::SliceComponent* rootSliceComponent = nullptr;
-    AzFramework::EntityContextRequestBus::EventResult(rootSliceComponent, editorEntityContextId, &AzFramework::EntityContextRequestBus::Events::GetRootSlice);
-    if (rootSliceComponent && rootSliceComponent->GetMetadataEntity())
-    {
-        return rootSliceComponent->GetMetadataEntity()->GetId();
-    }
-
-    return AZ::EntityId();
+    AZ::EntityId levelEntityId;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(levelEntityId, &AzToolsFramework::ToolsApplicationRequests::GetCurrentLevelEntityId);
+    return levelEntityId;
 }
 
+void QComponentLevelEntityEditorInspectorWindow::OnEditorNotifyEvent(EEditorNotifyEvent event)
+{
+    switch (event)
+    {
+            // Refresh the Level Component Property Editor any time we start or end
+            // a level creation or load.
+            case eNotify_OnBeginLoad:
+            case eNotify_OnEndLoad:
+            case eNotify_OnBeginCreate:
+            case eNotify_OnEndCreate:
+                RefreshPropertyEditor();
+                break;
+            default:
+                break;
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // End of context menu handling

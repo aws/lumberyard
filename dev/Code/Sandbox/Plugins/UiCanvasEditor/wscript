@@ -53,10 +53,11 @@ def build(bld):
         win_defines             = ['_SCL_SECURE_NO_WARNINGS'],
 
         win_x64_clang_cxxflags  = ['-fexceptions'],
-
+        linux_x64_cxxflags = ['-fexceptions'],
         darwin_features         = ['ExternalLyMetrics'],
         darwin_use              = bld.make_aws_library_task_list(['LyMetricsProducer']),
         darwin_enable_rtti      = True,
+        linux_enable_rtti       = True,
 
         # Testing
         test_all_file_list      = ['uicanvaseditor_test.waf_files'],

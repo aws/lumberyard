@@ -22,7 +22,6 @@
 
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Matrix4.h>
 #include <MCore/Source/AzCoreConversions.h>
 
 class EmotionFXMathLibTests
@@ -199,14 +198,6 @@ TEST_F(EmotionFXMathLibTests, QuaternionIdentity_Identity_Success)
 //Getting and setting of Quaternions
 //////////////////////////////////////////////////////////////////
 
-// MCore::Quaternion: Compare Get values to set values
-TEST_F(EmotionFXMathLibTests, EMQuaternionGet_Elements_Success)
-{
-    MCore::Quaternion test(0.1f, 0.2f, 0.3f, 0.4f);
-    ASSERT_TRUE(EmfxQuaternionCompareExact(test, 0.1f, 0.2f, 0.3f, 0.4f));
-}
-
-// AZ::Quaternion: Compare Get values to set values
 TEST_F(EmotionFXMathLibTests, AZQuaternionGet_Elements_Success)
 {
     AZ::Quaternion test(0.1f, 0.2f, 0.3f, 0.4f);
@@ -305,7 +296,7 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_Rotation1ComponentAxisZ_Success)
 }
 
 //AZ Quaternion Normalize Vertex test
-TEST_F(EmotionFXMathLibTests, AZEMQuaternion_NormalizedQuaternionRotationTest3DAxis_Success)
+TEST_F(EmotionFXMathLibTests, AZazQuaternion_NormalizedQuaternionRotationTest3DAxis_Success)
 {
     AZ::Vector3 axis = AZ::Vector3(1.0f, 0.7f, 0.3f);
     axis.Normalize();
@@ -438,42 +429,6 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTrans
 }
 
 
-
-//  FROM EULER
-// Compare setting quaternions from Euler values
-//no proof updated code from MCore works
-//switch to Transform
-//the SetEuler is making very different quaternions than ConvertEulerRadiansToQuaternion
-//this can be seen in the code. I am assuming it is related to an incomplete transition of the code
-//(which is my fault most likely) but this code will be removed shortly.
-//simple euler values are failing so it should be pretty easy to determine
-//when it is working correctly
-
-//TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_SetToEulerEquivalent_Success)
-//{
-//   // AZ::Vector3 azEulerIn(0.1f, 0.2f, 0.3f);
-//    AZ::Vector3 azEulerIn(0.0f, 3.14159f / 2.0f, 0.0f);
-//    MCore::Vector3 emEulerIn(azEulerIn.GetX(), azEulerIn.GetY(), azEulerIn.GetZ());
-//
-//    AZ::Quaternion azTest;
-//    MCore::Quaternion emTest;
-//
-//    emTest.SetEuler(emEulerIn.x, emEulerIn.y, emEulerIn.z);
-//    azTest = AzFramework::ConvertEulerRadiansToQuaternion(azEulerIn);
-//
-//    AZ::Vector3 azVectorIn(5, 0, 5);
-//    MCore::Vector3 emVectorIn(5, 0, 5);
-//
-//    AZ::Vector3 azVectorOut;
-//    MCore::Vector3 emVectorOut;
-//    azVectorOut = azTest * azVectorIn;
-//    emVectorOut = emTest * emVectorIn;
-//
-//    ASSERT_TRUE(true);
-//    //bool same = AZVector3CompareClose(azVectorOut, AZ::Vector3(emVectorOut.x, emVectorOut.y, emVectorOut.z), s_toleranceMedium);
-//    //ASSERT_TRUE(same);
-//}
-
 // EM Quaternion to Euler test
 TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_ToEulerEquivalent_Success)
 {
@@ -549,79 +504,79 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternion_OrderTest_Success)
 ///////////////////////////////////////////////////////////////////////////////
 
 // Test EM Quaternion made from Matrix X
-TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_FromMatrixXRot_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_FromAZTransformXRot_Success)
 {
-    MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixX(AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
+    AZ::Transform azTransform = AZ::Transform::CreateRotationX(AZ::Constants::HalfPi);
+    AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromTransform(azTransform);
 
     AZ::Vector3 emVertexIn(0.0f, 0.1f, 0.0f);
-    AZ::Vector3 emVertexOut = emQuaternion * emVertexIn;
+    AZ::Vector3 emVertexOut = azQuaternion * emVertexIn;
 
     bool same = AZVector3CompareClose(emVertexOut, 0.0f, 0.0f, 0.1f, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
 // Test EM Quaternion made from Matrix Y
-TEST_F(EmotionFXMathLibTests, EMQuaternionConversion_FromMatrixYRot_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_FromAZTransformYRot_Success)
 {
-    MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixY(AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
+    AZ::Transform azTransform = AZ::Transform::CreateRotationY(AZ::Constants::HalfPi);
+    AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromTransform(azTransform);
 
     AZ::Vector3 emVertexIn(0.0f, 0.0f, 0.1f);
-    AZ::Vector3 emVertexOut = emQuaternion * emVertexIn;
+    AZ::Vector3 emVertexOut = azQuaternion * emVertexIn;
 
     bool same = AZVector3CompareClose(emVertexOut, 0.1f, 0.0f, 0.0f, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
 // Compare Quaternion made from Matrix X
-TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixXRot_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_FromMatrixXRot_Success)
 {
     AZ::Matrix4x4 azMatrix = AZ::Matrix4x4::CreateRotationX(AZ::Constants::HalfPi);
     AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromMatrix4x4(azMatrix);
 
-    MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixX(AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
+    AZ::Transform azTransform = AZ::Transform::CreateRotationX(AZ::Constants::HalfPi);
+    AZ::Quaternion azQuaternionFromTransform = AZ::Quaternion::CreateFromTransform(azTransform);
 
     AZ::Vector3 azVertexIn(0.0f, 0.1f, 0.0f);
 
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
+    AZ::Vector3 emVertexOut = azQuaternionFromTransform * azVertexIn;
 
     bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
 // Compare Quaternion made from Matrix Y
-TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixYRot_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_FromMatrixYRot_Success)
 {
     AZ::Matrix4x4 azMatrix = AZ::Matrix4x4::CreateRotationY(AZ::Constants::HalfPi);
     AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromMatrix4x4(azMatrix);
 
-    MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixY(AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
+    AZ::Transform azTransform = AZ::Transform::CreateRotationY(AZ::Constants::HalfPi);
+    AZ::Quaternion azQuaternionFromTransform = AZ::Quaternion::CreateFromTransform(azTransform);
 
     AZ::Vector3 azVertexIn(0.1f, 0.0f, 0.0f);
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
+    AZ::Vector3 emVertexOut = azQuaternionFromTransform * azVertexIn;
 
     bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
 }
 
 // Compare Quaternion made from Matrix Z
-TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixZRot_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_FromMatrixZRot_Success)
 {
     AZ::Matrix4x4 azMatrix = AZ::Matrix4x4::CreateRotationZ(AZ::Constants::HalfPi);
     AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromMatrix4x4(azMatrix);
 
-    MCore::Matrix emMatrix = MCore::Matrix::RotationMatrixZ(AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion = MCore::Quaternion::ConvertFromMatrix(emMatrix);
+    AZ::Transform azTransform = AZ::Transform::CreateRotationZ(AZ::Constants::HalfPi);
+    AZ::Quaternion azQuaternionFromTransform = AZ::Quaternion::CreateFromTransform(azTransform);
 
     AZ::Vector3 azVertexIn(0.1f, 0.0f, 0.0f);
 
     AZ::Vector3 azVertexOut = azQuaternion * azVertexIn;
-    AZ::Vector3 emVertexOut = emQuaternion * azVertexIn;
+    AZ::Vector3 emVertexOut = azQuaternionFromTransform * azVertexIn;
 
     bool same = AZVector3CompareClose(azVertexOut, emVertexOut, s_toleranceMedium);
     ASSERT_TRUE(same);
@@ -630,25 +585,23 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_FromMatrixZRot_Success)
 // Compare Quaternion -> Matrix conversion
 // AZ - column major
 // Emfx - row major
-TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToMatrix_Success)
+TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_ToMatrix_Success)
 {
     AZ::Vector3 axis = AZ::Vector3(1.0f, 0.7f, 0.3f);
     axis.Normalize();
     AZ::Quaternion azQuaternion = AZ::Quaternion::CreateFromAxisAngle(axis, AZ::Constants::HalfPi);
-    MCore::Quaternion emQuaternion(azQuaternion.GetX(), azQuaternion.GetY(), azQuaternion.GetZ(), azQuaternion.GetW());
 
     AZ::Matrix4x4 azMatrix = AZ::Matrix4x4::CreateFromQuaternion(azQuaternion);
-
-    MCore::Matrix emMatrix = emQuaternion.ToMatrix();
+    AZ::Transform azTransform = AZ::Transform::CreateFromQuaternionAndTranslation(azQuaternion, AZ::Vector3::CreateZero());
 
     bool same = true;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 4; ++j)
         {
-            float emValue = emMatrix.GetRow4D(i).GetElement(j);
-            float azValue = azMatrix.GetElement(j, i);
+            float emValue = azTransform.GetElement(i, j);
+            float azValue = azMatrix.GetElement(i, j);
             if (!AZ::IsClose(emValue, azValue, s_toleranceReallyLow))
             {
                 same = false;
@@ -661,6 +614,10 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToMatrix_Success)
         }
     }
     ASSERT_TRUE(same);
+    ASSERT_TRUE(AZ::IsClose(azMatrix.GetElement(3, 0), 0.0f, s_toleranceReallyLow));
+    ASSERT_TRUE(AZ::IsClose(azMatrix.GetElement(3, 1), 0.0f, s_toleranceReallyLow));
+    ASSERT_TRUE(AZ::IsClose(azMatrix.GetElement(3, 2), 0.0f, s_toleranceReallyLow));
+    ASSERT_TRUE(AZ::IsClose(azMatrix.GetElement(3, 3), 1.0f, s_toleranceReallyLow));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

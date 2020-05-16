@@ -15,7 +15,6 @@
 // include the Core system
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/BoundingSphere.h>
-#include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Frustum.h>
 #include <MCore/Source/Ray.h>
 #include "MCommonConfig.h"
@@ -95,7 +94,7 @@ namespace MCommon
 
     protected:
         AZ::Vector3             mRotation;
-        MCore::Quaternion       mRotationQuat;
+        AZ::Quaternion          mRotationQuat;
         AZ::Vector3             mRotationAxis;
         AZ::Vector3             mClickPosition;
 

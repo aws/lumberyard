@@ -25,6 +25,8 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/Obb.h>
+#include <AzCore/Math/Plane.h>
 
 namespace GridMate
 {
@@ -38,7 +40,7 @@ namespace GridMate
     public:
         typedef OriginalType DataType;
 
-        static const AZStd::size_t MarshalSize = sizeof(SerializedType);
+        static constexpr AZStd::size_t MarshalSize = sizeof(SerializedType);
 
         void Marshal(WriteBuffer& wb, const DataType& value) const
         {
@@ -123,7 +125,7 @@ namespace GridMate
     public:
         typedef AZ::Aabb DataType;
 
-        static const AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 2;
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 2;
 
         void Marshal(WriteBuffer& wb, const DataType& aabb) const
         {
@@ -146,6 +148,92 @@ namespace GridMate
     };
 
     /**
+        Obb Marshaler
+    */
+    template<>
+    class Marshaler<AZ::Obb>
+    {
+    public:
+        typedef AZ::Obb DataType;
+
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 4 + sizeof(float) * 3;
+
+        void Marshal(WriteBuffer& wb, const DataType& obb) const
+        {
+            Marshaler<AZ::Vector3> vector3Marshaler;
+            vector3Marshaler.Marshal(wb, obb.GetPosition());
+            vector3Marshaler.Marshal(wb, obb.GetAxisX());
+            vector3Marshaler.Marshal(wb, obb.GetAxisY());
+            vector3Marshaler.Marshal(wb, obb.GetAxisZ());
+
+            Marshaler<float> floatMarshaler;
+            floatMarshaler.Marshal(wb, obb.GetHalfLengthX());
+            floatMarshaler.Marshal(wb, obb.GetHalfLengthY());
+            floatMarshaler.Marshal(wb, obb.GetHalfLengthZ());
+        }
+        void Unmarshal(DataType& obb, ReadBuffer& rb) const
+        {
+            Marshaler<AZ::Vector3> vector3Marshaler;
+
+            AZ::Vector3 position;
+            vector3Marshaler.Unmarshal(position, rb);
+            obb.SetPosition(position);
+
+            AZ::Vector3 axisX;
+            vector3Marshaler.Unmarshal(axisX, rb);
+            obb.SetAxisX(axisX);
+
+            AZ::Vector3 axisY;
+            vector3Marshaler.Unmarshal(axisY, rb);
+            obb.SetAxisY(axisY);
+
+            AZ::Vector3 axisZ;
+            vector3Marshaler.Unmarshal(axisZ, rb);
+            obb.SetAxisZ(axisZ);
+
+            Marshaler<float> floatMarshaler;
+
+            float halfLengthX;
+            floatMarshaler.Unmarshal(halfLengthX, rb);
+            obb.SetHalfLengthX(halfLengthX);
+
+            float halfLengthY;
+            floatMarshaler.Unmarshal(halfLengthY, rb);
+            obb.SetHalfLengthY(halfLengthY);
+
+            float halfLengthZ;
+            floatMarshaler.Unmarshal(halfLengthZ, rb);
+            obb.SetHalfLengthZ(halfLengthZ);
+        }
+    };
+
+    /**
+    Plane Marshaler
+    */
+    template<>
+    class Marshaler<AZ::Plane>
+    {
+    public:
+        typedef AZ::Plane DataType;
+
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector4>::MarshalSize;
+
+        void Marshal(WriteBuffer& wb, const DataType& plane) const
+        {
+            Marshaler<AZ::Vector4> marshaler;
+            marshaler.Marshal(wb, plane.GetPlaneEquationCoefficients());
+        }
+        void Unmarshal(DataType& plane, ReadBuffer& rb) const
+        {
+            Marshaler<AZ::Vector4> marshaler;
+
+            AZ::Vector4 coefficients;
+            marshaler.Unmarshal(coefficients, rb);
+            plane.Set(coefficients);
+        }
+    };
+
+    /**
     * Time Marshaler
     * Writes a specific Time duration as a 32 bit unsigned int
     */
@@ -154,6 +242,8 @@ namespace GridMate
     {
     public:
         typedef AZStd::chrono::duration<Rep, Period> Duration;
+
+        static constexpr AZStd::size_t MarshalSize = sizeof(AZ::u32);
 
         void Marshal(WriteBuffer& wb, Duration timeDuration) const
         {
@@ -168,8 +258,6 @@ namespace GridMate
             AZStd::chrono::milliseconds timeValue(timePeriod);
             timeDuration = AZStd::chrono::duration_cast<Duration>(timeValue);
         }
-
-        static const AZStd::size_t MarshalSize = sizeof(AZ::u32);
     };
 }
 

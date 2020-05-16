@@ -26,7 +26,7 @@ namespace AzQtComponents
         Q_PROPERTY(AZ::Color currentColor READ currentColor WRITE setCurrentColor)
         Q_PROPERTY(AZ::Color selectedColor READ selectedColor WRITE setSelectedColor)
         Q_PROPERTY(bool gammaEnabled READ isGammaEnabled WRITE setGammaEnabled)
-        Q_PROPERTY(qreal gamma READ gamma WRITE setGamma);
+        Q_PROPERTY(qreal gamma READ gamma WRITE setGamma)
 
     public:
         explicit ColorPreview(QWidget* parent = nullptr);
@@ -57,8 +57,10 @@ namespace AzQtComponents
     private:
         AZ::Color colorUnderPoint(const QPoint& p);
 
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         AZ::Color m_currentColor;
         AZ::Color m_selectedColor;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
         bool m_gammaEnabled;
         qreal m_gamma;
         QPoint m_dragStartPosition;

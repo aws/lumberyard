@@ -29,6 +29,7 @@
 #include "Terrain/Heightmap.h"
 #include "Terrain/TerrainGrid.h"
 #endif //#ifdef LY_TERRAIN_EDITOR
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 // This is the "Sun Trajectory Tool", so it's not directly related to the rest of the Terrain Editor code above.
 #include "TerrainLighting.h"
@@ -44,15 +45,12 @@
 #include "AI/NavDataGeneration/Navigation.h"
 #include "Material/MaterialManager.h"
 #include "Particles/ParticleManager.h"
-#include "HyperGraph/FlowGraphManager.h"
-#include "HyperGraph/FlowGraphModuleManager.h"
-#include "HyperGraph/FlowGraphDebuggerEditor.h"
 #include "UIEnumsDatabase.h"
 #include "EquipPackLib.h"
 #include "Util/Ruler.h"
-#include "CustomActions/CustomActionsEditorManager.h"
-#include "Material/MaterialFXGraphMan.h"
 #include "AnimationContext.h"
+#include "UndoViewPosition.h"
+#include "UndoViewRotation.h"
 #include <IAgent.h>
 #include <I3DEngine.h>
 #include <IAISystem.h>
@@ -63,7 +61,6 @@
 #include <IPhysics.h>
 #include <IEditorGame.h>
 #include <ITimer.h>
-#include <IFlowSystem.h>
 #include <ICryAnimation.h>
 #include <IGame.h>
 #include <IGameFramework.h>
@@ -72,7 +69,6 @@
 #include <IDeferredCollisionEvent.h>
 #include "platform_impl.h"
 #include "Prefabs/PrefabManager.h"
-#include "Prefabs/PrefabEvents.h"
 #include <ITimeOfDay.h>
 #include <LyShine/ILyShine.h>
 #include <ParseEngineConfig.h>
@@ -101,6 +97,7 @@
 #include <QThread>
 
 #include "ActionManager.h"
+#include "Util/ModalWindowDismisser.h"
 
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
@@ -391,6 +388,7 @@ CGameEngine::CGameEngine()
     , m_bIgnoreUpdates(false)
     , m_pEditorGame(0)
     , m_ePendingGameMode(ePGM_NotPending)
+    , m_modalWindowDismisser(nullptr)
 {
     m_pISystem = NULL;
     m_pNavigation = 0;
@@ -400,17 +398,18 @@ CGameEngine::CGameEngine()
     m_bSimulationModeAI = false;
     m_bSyncPlayerPosition = true;
     m_hSystemHandle = 0;
-    m_bUpdateFlowSystem = false;
     m_bJustCreated = false;
     m_pGameToEditorInterface = new CGameToEditorInterface;
     m_levelName = "Untitled";
     m_levelExtension = defaultFileExtension;
     m_playerViewTM.SetIdentity();
     GetIEditor()->RegisterNotifyListener(this);
+    AZ::Interface<IEditorCameraController>::Register(this);
 }
 
 CGameEngine::~CGameEngine()
 {
+    AZ::Interface<IEditorCameraController>::Unregister(this);
     GetIEditor()->UnregisterNotifyListener(this);
     m_pISystem->GetIMovieSystem()->SetCallback(NULL);
     CEntityScriptRegistry::Instance()->Release();
@@ -498,6 +497,38 @@ static void CmdGotoEditor(IConsoleCmdArgs* pArgs)
     }
 }
 
+void CGameEngine::SetCurrentViewPosition(const AZ::Vector3& position)
+{
+    CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+    if (pRenderViewport)
+    {
+        CUndo undo("Set Current View Position");
+        if (CUndo::IsRecording())
+        {
+            CUndo::Record(new CUndoViewPosition());
+        }
+        Matrix34 tm = pRenderViewport->GetViewTM();
+        tm.SetTranslation(Vec3(position.GetX(), position.GetY(), position.GetZ()));
+        pRenderViewport->SetViewTM(tm);
+    }
+}
+
+void CGameEngine::SetCurrentViewRotation(const AZ::Vector3& rotation)
+{
+    CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+    if (pRenderViewport)
+    {
+        CUndo undo("Set Current View Rotation");
+        if (CUndo::IsRecording())
+        {
+            CUndo::Record(new CUndoViewRotation());
+        }
+        Matrix34 tm = pRenderViewport->GetViewTM();
+        tm.SetRotationXYZ(Ang3(DEG2RAD(rotation.GetX()), DEG2RAD(rotation.GetY()), DEG2RAD(rotation.GetZ())), tm.GetTranslation());
+        pRenderViewport->SetViewTM(tm);
+    }
+}
+
 AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     bool bPreviewMode,
     bool bTestMode,
@@ -573,10 +604,15 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     if (sInCmdLine)
     {
         azstrncpy(sip.szSystemCmdLine, AZ_COMMAND_LINE_LEN, sInCmdLine, AZ_COMMAND_LINE_LEN);
-        if (strstr(sInCmdLine, "-export") || strstr(sInCmdLine, "/export"))
+        if (strstr(sInCmdLine, "-export") || strstr(sInCmdLine, "/export") || strstr(sInCmdLine, "-autotest_mode"))
         {
             sip.bUnattendedMode = true;
         }
+    }
+
+    if (sip.bUnattendedMode)
+    {
+        m_modalWindowDismisser = AZStd::make_unique<ModalWindowDismisser>();
     }
 
     if (bShaderCacheGen)
@@ -744,58 +780,12 @@ bool CGameEngine::InitGame(const char* sGameDLL)
         }
         CStartupLogoDialog::SetText("Loading Entity Scripts...");
         CEntityScriptRegistry::Instance()->LoadScripts();
-        CStartupLogoDialog::SetText("Loading Flowgraphs...");
+
         IEditor* pEditor = GetIEditor();
-
-        if (pEditor->GetFlowGraphManager())
-        {
-            pEditor->GetFlowGraphManager()->Init();
-        }
-
-        CStartupLogoDialog::SetText("Loading Material Effects Flowgraphs...");
-        if (GetIEditor()->GetMatFxGraphManager())
-        {
-            GetIEditor()->GetMatFxGraphManager()->Init();
-        }
-
-        CStartupLogoDialog::SetText("Initializing Flowgraph Debugger...");
-        if (GetIEditor()->GetFlowGraphDebuggerEditor())
-        {
-            GetIEditor()->GetFlowGraphDebuggerEditor()->Init();
-        }
-
-        CStartupLogoDialog::SetText("Initializing Flowgraph Module Manager...");
-        if (GetIEditor()->GetFlowGraphModuleManager())
-        {
-            GetIEditor()->GetFlowGraphModuleManager()->Init();
-        }
-
-        // Initialize prefab events after flowgraphmanager to avoid handling creation of flow node prototypes
-        CPrefabManager* pPrefabManager = pEditor->GetPrefabManager();
-        if (pPrefabManager)
-        {
-            CStartupLogoDialog::SetText("Initializing Prefab Events...");
-            CPrefabEvents* pPrefabEvents = pPrefabManager->GetPrefabEvents();
-            CRY_ASSERT(pPrefabEvents != NULL);
-            const bool bResult = pPrefabEvents->Init();
-            if (!bResult)
-            {
-                CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "CGameEngine::InitGame: Failed to init prefab events");
-            }
-        }
-
         if (pEditor->GetAI())
         {
             pEditor->GetAI()->Init(m_pISystem);
         }
-
-        CCustomActionsEditorManager* pCustomActionsManager = pEditor->GetCustomActionManager();
-
-        if (pCustomActionsManager)
-        {
-            pCustomActionsManager->Init(m_pISystem);
-        }
-
 
         CStartupLogoDialog::SetText("Loading Equipment Packs...");
         // Load Equipment packs from disk and export to Game
@@ -874,7 +864,9 @@ bool CGameEngine::LoadLevel(
         GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
         int physicsEntityGridSize = si.sectorSize * si.numSectors;
 #else
-        int physicsEntityGridSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        int physicsEntityGridSize = static_cast<int>(terrainAabb.GetWidth());
 #endif //#ifdef LY_TERRAIN_EDITOR
 
         //CryPhysics under performs if physicsEntityGridSize < nTerrainSize.
@@ -938,11 +930,6 @@ bool CGameEngine::LoadLevel(
     if (!bReleaseResources)
     {
         ReloadEnvironment();
-    }
-
-    if (GetIEditor()->GetMatFxGraphManager())
-    {
-        GetIEditor()->GetMatFxGraphManager()->ReloadFXGraphs();
     }
 
     return true;
@@ -1056,11 +1043,6 @@ void CGameEngine::SwitchToInGame()
         GetIEditor()->GetObjectManager()->GetLayersManager()->SetGameMode(true);
     }
 
-    if (GetIEditor()->GetFlowGraphManager())
-    {
-        GetIEditor()->GetFlowGraphManager()->OnEnteringGameMode(true);
-    }
-
     GetIEditor()->GetAI()->OnEnterGameMode(true);
 
     if (gEnv->pDynamicResponseSystem)
@@ -1080,14 +1062,6 @@ void CGameEngine::SwitchToInGame()
     if (pRuler)
     {
         pRuler->SetActive(false);
-    }
-
-    GetIEditor()->GetAI()->SaveAndReloadActionGraphs();
-
-    CCustomActionsEditorManager* pCustomActionsManager = GetIEditor()->GetCustomActionManager();
-    if (pCustomActionsManager)
-    {
-        pCustomActionsManager->SaveAndReloadCustomActionGraphs();
     }
 
     gEnv->p3DEngine->GetTimeOfDay()->EndEditMode();
@@ -1191,11 +1165,6 @@ void CGameEngine::SwitchToInEditor()
     if (GetIEditor()->GetObjectManager() && GetIEditor()->GetObjectManager()->GetLayersManager())
     {
         GetIEditor()->GetObjectManager()->GetLayersManager()->SetGameMode(false);
-    }
-
-    if (GetIEditor()->GetFlowGraphManager())
-    {
-        GetIEditor()->GetFlowGraphManager()->OnEnteringGameMode(false);
     }
 
     GetIEditor()->GetAI()->OnEnterGameMode(false);
@@ -1400,17 +1369,6 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
         }
 
         GetIEditor()->Notify(eNotify_OnBeginSimulationMode);
-
-        if (!bOnlyPhysics)
-        {
-            GetIEditor()->GetAI()->SaveAndReloadActionGraphs();
-
-            CCustomActionsEditorManager* pCustomActionsManager = GetIEditor()->GetCustomActionManager();
-            if (pCustomActionsManager)
-            {
-                pCustomActionsManager->SaveAndReloadCustomActionGraphs();
-            }
-        }
     }
     else
     {
@@ -1436,12 +1394,6 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
             if (m_pISystem->GetI3DEngine())
             {
                 m_pISystem->GetI3DEngine()->ResetPostEffects();
-            }
-
-            // make sure FlowGraph is initialized
-            if (m_pISystem->GetIFlowSystem())
-            {
-                m_pISystem->GetIFlowSystem()->Reset(false);
             }
 
             GetIEditor()->SetConsoleVar("ai_ignoreplayer", 1);
@@ -2124,7 +2076,7 @@ void CGameEngine::Update()
             updateFlags |= ESYSUPDATE_IGNORE_AI;
         }
 
-        bool bUpdateAIPhysics = GetSimulationMode() || m_bUpdateFlowSystem;
+        bool bUpdateAIPhysics = GetSimulationMode();
 
         if (bUpdateAIPhysics)
         {
@@ -2139,13 +2091,6 @@ void CGameEngine::Update()
         // Update flow system in simulation mode.
         if (bUpdateAIPhysics)
         {
-            IFlowSystem* pFlowSystem = GetIFlowSystem();
-
-            if (pFlowSystem)
-            {
-                pFlowSystem->Update();
-            }
-
             IDialogSystem* pDialogSystem = gEnv->pGame ? (gEnv->pGame->GetIGameFramework() ? gEnv->pGame->GetIGameFramework()->GetIDialogSystem() : NULL) : NULL;
 
             if (pDialogSystem)
@@ -2239,26 +2184,6 @@ IEntity* CGameEngine::GetPlayerEntity()
     return 0;
 }
 
-IFlowSystem* CGameEngine::GetIFlowSystem() const
-{
-    if (m_pEditorGame)
-    {
-        return m_pEditorGame->GetIFlowSystem();
-    }
-
-    return NULL;
-}
-
-IGameTokenSystem* CGameEngine::GetIGameTokenSystem() const
-{
-    if (m_pEditorGame)
-    {
-        return m_pEditorGame->GetIGameTokenSystem();
-    }
-
-    return NULL;
-}
-
 IEquipmentSystemInterface* CGameEngine::GetIEquipmentSystemInterface() const
 {
     if (m_pEditorGame)
@@ -2310,9 +2235,11 @@ void CGameEngine::OnTerrainModified(const Vec2& modPosition, float modAreaRadius
             AABB updateBox;
             updateBox.min = modPosition - offset;
             updateBox.max = modPosition + offset;
-            const float terrainHeight1 = gEnv->p3DEngine->GetTerrainElevation(updateBox.min.x, updateBox.min.y);
-            const float terrainHeight2 = gEnv->p3DEngine->GetTerrainElevation(updateBox.max.x, updateBox.max.y);
-            const float terrainHeight3 = gEnv->p3DEngine->GetTerrainElevation(modPosition.x, modPosition.y);
+            AzFramework::Terrain::TerrainDataRequests* terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+            AZ_Assert(terrain != nullptr, "Expecting a valid terrain handler when the terrain is modified");
+            const float terrainHeight1 = terrain->GetHeightFromFloats(updateBox.min.x, updateBox.min.y);
+            const float terrainHeight2 = terrain->GetHeightFromFloats(updateBox.max.x, updateBox.max.y);
+            const float terrainHeight3 = terrain->GetHeightFromFloats(modPosition.x, modPosition.y);
 
             updateBox.min.z = min(terrainHeight1, min(terrainHeight2, terrainHeight3)) - (modAreaRadius * 2.0f);
             updateBox.max.z = max(terrainHeight1, max(terrainHeight2, terrainHeight3)) + (modAreaRadius * 2.0f);

@@ -20,7 +20,6 @@
 #include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <Tests/AnimGraphFixture.h>
 
-
 namespace EMotionFX
 {
     class AnimGraphTransitionCommandsFixture
@@ -30,6 +29,8 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
+            m_motionNodeAnimGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+            m_rootStateMachine = m_motionNodeAnimGraph->GetRootStateMachine();
 
             /*
                 +---+    +---+    +---+
@@ -46,14 +47,8 @@ namespace EMotionFX
             stateStart->SetName("Start");
             m_rootStateMachine->SetEntryState(stateStart);
 
-            AnimGraphNode* stateA = aznew AnimGraphMotionNode();
-            stateA->SetName("A");
-            m_rootStateMachine->AddChildNode(stateA);
-
-            AnimGraphNode* stateB = aznew AnimGraphMotionNode();
-            stateB->SetName("B");
-            m_rootStateMachine->AddChildNode(stateB);
-
+            AnimGraphNode* stateA = m_motionNodeAnimGraph->GetMotionNodeA();
+            AnimGraphNode* stateB = m_motionNodeAnimGraph->GetMotionNodeB();
             AnimGraphNode* stateC = aznew AnimGraphMotionNode();
             stateC->SetName("C");
             m_rootStateMachine->AddChildNode(stateC);
@@ -67,11 +62,15 @@ namespace EMotionFX
 
             m_transitionRight = AddTransition(stateStart, stateC, 1.0f);
             m_transitionRight->SetCanInterruptOtherTransitions(true);
+
+            m_motionNodeAnimGraph->InitAfterLoading();
         }
 
         void SetUp()
         {
             AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_motionNodeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
         }
 
         void TearDown()
@@ -79,6 +78,7 @@ namespace EMotionFX
             AnimGraphFixture::TearDown();
         }
 
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_motionNodeAnimGraph;
         AnimGraphStateTransition* m_transitionLeft = nullptr;
         AnimGraphStateTransition* m_transitionMiddle = nullptr;
         AnimGraphStateTransition* m_transitionRight = nullptr;
@@ -112,7 +112,8 @@ namespace EMotionFX
         EXPECT_EQ(m_transitionLeft->GetCanBeInterruptedByTransitionIds(), canBeInterruptedByTransitionIds)
             << "The can be interrupted by transition ids list should contain both, the middle as well as the right transition ids";
 
-        // 2. Remove the middle transition that was part of the can be interrupted by transition ids list and make sure it got removed from there
+        // 2. Remove the middle transition that was part of the can be interrupted by transition ids list
+        //    and make sure it got removed from there.
         commandGroup.RemoveAllCommands();
         {
             AZStd::vector<EMotionFX::AnimGraphStateTransition*> transitionList;
@@ -192,6 +193,11 @@ namespace EMotionFX
 
         // 3. Undo remove transition
         EXPECT_TRUE(commandManager.Undo(result));
+
+        // Point m_transitionLeft to the newly created transition after undo.
+        const AnimGraphConnectionId connectionId = AnimGraphConnectionId::CreateFromString(result);
+        m_transitionLeft = m_motionNodeAnimGraph->RecursiveFindTransitionById(connectionId);
+
         EXPECT_EQ(m_transitionLeft->GetCanBeInterruptedByTransitionIds(), canBeInterruptedByTransitionIds)
             << "The transition should be back and the can be interrupted by transition ids contain the middle as well as the right transition ids.";
 
@@ -217,7 +223,7 @@ namespace EMotionFX
         size_t numTransitions = m_rootStateMachine->GetNumTransitions();
         AZStd::string commandString;
         commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"\" -targetNode \"A\" -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX 0 -endOffsetY 0 -transitionType \"%s\"", 
-            m_animGraph->GetID(), 
+            m_motionNodeAnimGraph->GetID(),
             azrtti_typeid<EMotionFX::AnimGraphStateTransition>().ToString<AZStd::string>().c_str());
         ASSERT_TRUE(commandManager.ExecuteCommand(commandString, result, /*addToHistory=*/true))
             << "The command execution failed";

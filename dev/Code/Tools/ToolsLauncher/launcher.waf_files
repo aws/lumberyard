@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Source Files": [
+            "ToolLauncher.cpp"
+        ],
+        "Resource Files": [
+            "resource.h"
+        ]
+    }
+}

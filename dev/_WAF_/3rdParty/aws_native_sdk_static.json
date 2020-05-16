@@ -37,12 +37,12 @@
             "aws-cpp-sdk-core"
         ],
         "aws_dependencies": [
-            "aws-c-common",
             "aws-c-event-stream",
+            "aws-c-common",
             "aws-checksums"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [

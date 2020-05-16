@@ -249,7 +249,7 @@
    <item>
     <widget class="QPushButton" name="m_terrainCollision">
      <property name="toolTip">
-      <string>Enable Terrain Camera Collision (Q)</string>
+      <string>Enable Terrain Camera Collision</string>
      </property>
      <property name="text">
       <string>Coll</string>

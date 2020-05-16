@@ -24,7 +24,6 @@ SUBFOLDERS = [
     'MaxCryExport',
     'MayaCryExport2',
     'SphericalHarmonics',
-    'CryTIFPlugin',
     'ShaderCacheGen',
     'CrySCompileServer',
     'HLSLCrossCompiler',

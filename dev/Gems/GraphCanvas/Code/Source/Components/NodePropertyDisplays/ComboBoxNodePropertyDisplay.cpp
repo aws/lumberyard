@@ -16,6 +16,7 @@
 #include <QGraphicsView>
 #include <QMenu>
 #include <QMimeData>
+#include <QSignalBlocker>
 
 #include <Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.h>
 
@@ -26,48 +27,22 @@
 #include <GraphCanvas/Widgets/NodePropertyBus.h>
 #include <Widgets/GraphCanvasLabel.h>
 
+#include <GraphCanvas/Utils/QtDrawingUtils.h>
+
 namespace GraphCanvas
 {
-    ////////////////////////////////
-    // ComboBoxGraphicsEventFilter
-    ////////////////////////////////
-    ComboBoxGraphicsEventFilter::ComboBoxGraphicsEventFilter(ComboBoxNodePropertyDisplay* propertyDisplay)
-        : QGraphicsItem(nullptr)
-        , m_owner(propertyDisplay)
-    {
-    }
-
-    bool ComboBoxGraphicsEventFilter::sceneEventFilter(QGraphicsItem*, QEvent* event)
-    {
-        switch (event->type())
-        {
-        case QEvent::GraphicsSceneDragEnter:
-            m_owner->dragEnterEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        case QEvent::GraphicsSceneDragLeave:
-            m_owner->dragLeaveEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        case QEvent::GraphicsSceneDrop:
-            m_owner->dropEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        default:
-            break;
-        }
-
-        return event->isAccepted();
-    }
-
     ////////////////////////////////
     // ComboBoxNodePropertyDisplay
     ////////////////////////////////
     ComboBoxNodePropertyDisplay::ComboBoxNodePropertyDisplay(ComboBoxDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_valueDirty(false)
+        , m_menuDisplayDirty(true)
+        , m_dataInterface(dataInterface)
         , m_comboBox(nullptr)
         , m_proxyWidget(nullptr)
-        , m_dragState(DragState::Idle)
+        , m_dataTypeOutlineEnabled(true)
     {
-        m_dataInterface->RegisterDisplay(this);
-
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
     }
@@ -93,6 +68,19 @@ namespace GraphCanvas
         delete m_dataInterface;
     }
 
+    void ComboBoxNodePropertyDisplay::SetDataTypeOutlineEnabled(bool dataTypeOutlineEnabled)
+    {
+        if (m_dataTypeOutlineEnabled != dataTypeOutlineEnabled)
+        {
+            m_dataTypeOutlineEnabled = dataTypeOutlineEnabled;
+
+            if (GetSlotId().IsValid())
+            {
+                UpdateOutlineColor();
+            }
+        }
+    }
+
     void ComboBoxNodePropertyDisplay::RefreshStyle()
     {
         m_disabledLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisabledLabelStyle("entityId").c_str());
@@ -105,22 +93,30 @@ namespace GraphCanvas
 
         if (m_comboBox)
         {
-            m_comboBox->setMinimumSize(minimumSize.width(), minimumSize.height());
-            m_comboBox->setMaximumSize(maximumSize.width(), maximumSize.height());
+            m_comboBox->setMinimumSize(aznumeric_cast<int>(minimumSize.width()), aznumeric_cast<int>(minimumSize.height()));
+            m_comboBox->setMaximumSize(aznumeric_cast<int>(maximumSize.width()), aznumeric_cast<int>(maximumSize.height()));
         }
+
+        UpdateOutlineColor();
     }
 
     void ComboBoxNodePropertyDisplay::UpdateDisplay()
     {
-        const AZStd::string& displayValue = m_dataInterface->GetDisplayString();
+        const QString& displayValue = m_dataInterface->GetDisplayString();
 
         if (m_comboBox)
         {
             QModelIndex selectedIndex = m_dataInterface->GetAssignedIndex();
-            m_comboBox->SetSelectedIndex(selectedIndex);
+            
+            {
+                QSignalBlocker signalBlocker(m_comboBox);
+                m_comboBox->SetSelectedIndex(selectedIndex);
+                m_valueDirty = false;
+            }
         }
 
-        QString displayLabel = displayValue.c_str();
+        QString displayLabel = displayValue;
+
         if (displayLabel.isEmpty())
         {
             displayLabel = "<None>";
@@ -152,67 +148,6 @@ namespace GraphCanvas
         return m_proxyWidget;
     }
 
-    void ComboBoxNodePropertyDisplay::dragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
-    {
-        bool isConnected = false;
-        SlotRequestBus::EventResult(isConnected, GetId(), &SlotRequests::HasConnections);
-
-        m_dragState = DragState::Invalid;
-
-        if (!isConnected)
-        {
-            const QMimeData* dropMimeData = dragDropEvent->mimeData();
-            if (m_dataInterface->ShouldAcceptMimeData(dropMimeData))
-            {
-                dragDropEvent->accept();
-                dragDropEvent->acceptProposedAction();
-
-                m_dragState = DragState::Valid;
-            }
-        }
-
-        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
-        switch (m_dragState)
-        {
-        case DragState::Valid:
-        {
-            styleHelper.AddSelector(Styling::States::ValidDrop);
-            break;
-        }
-        case DragState::Invalid:
-        {
-            styleHelper.AddSelector(Styling::States::InvalidDrop);
-            break;
-        }
-        default:
-            break;
-        }
-
-        m_displayLabel->update();
-    }
-
-    void ComboBoxNodePropertyDisplay::dragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
-    {
-        dragDropEvent->accept();
-        ResetDragState();
-    }
-
-    void ComboBoxNodePropertyDisplay::dropEvent(QGraphicsSceneDragDropEvent* dropEvent)
-    {
-        if (m_dragState == DragState::Valid)
-        {
-            const QMimeData* dropMimeData = dropEvent->mimeData();
-
-            if (m_dataInterface->HandleMimeData(dropMimeData))
-            {
-                dropEvent->accept();
-                UpdateDisplay();
-            }
-        }
-
-        ResetDragState();
-    }
-
     void ComboBoxNodePropertyDisplay::OnPositionChanged(const AZ::EntityId& targetEntity, const AZ::Vector2& position)
     {
         GraphId graphId;
@@ -234,47 +169,100 @@ namespace GraphCanvas
         }
     }
 
-    void ComboBoxNodePropertyDisplay::OnIdSet()
+    void ComboBoxNodePropertyDisplay::OnDisplayTypeChanged(const AZ::Uuid& dataTypes, const AZStd::vector<AZ::Uuid>& containerTypes)
     {
-        QGraphicsItem* ownerItem = nullptr;
-        VisualRequestBus::EventResult(ownerItem, GetId(), &VisualRequests::AsGraphicsItem);
+        UpdateOutlineColor();
+    }
 
-        if (ownerItem)
+    void ComboBoxNodePropertyDisplay::OnDragDropStateStateChanged(const DragDropState& dragState)
+    {
+        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
+        UpdateStyleForDragDrop(dragState, styleHelper);
+        m_displayLabel->update();
+    }
+
+    void ComboBoxNodePropertyDisplay::UpdateOutlineColor()
+    {
+        if (!m_dataTypeOutlineEnabled)
         {
-            ownerItem->setAcceptDrops(true);
+            return;
+        }
+        
+        DataValueType valueType = DataValueType::Unknown;
 
-            QGraphicsScene* scene = ownerItem->scene();
+        DataSlotRequests* dataSlotRequests = DataSlotRequestBus::FindFirstHandler(GetSlotId());
 
-            if (scene)
+        if (dataSlotRequests)
+        {
+            valueType = dataSlotRequests->GetDataValueType();
+
+            bool updatedOutline = false;
+            QBrush outlineBrush;
+
+            if (valueType == DataValueType::Container)
             {
-                if (m_dataInterface->EnableDropHandling())
+                size_t typeCount = dataSlotRequests->GetContainedTypesCount();
+
+                if (typeCount != 0)
                 {
-                    ComboBoxGraphicsEventFilter* filter = aznew ComboBoxGraphicsEventFilter(this);
-                    scene->addItem(filter);
-                    ownerItem->installSceneEventFilter(filter);
+                    updatedOutline = true;
+                    AZStd::vector< const Styling::StyleHelper* > containerColorPalettes;
+                    containerColorPalettes.reserve(typeCount);
+
+                    for (size_t i = 0; i < typeCount; ++i)
+                    {
+                        const Styling::StyleHelper* colorPalette = dataSlotRequests->GetContainedTypeColorPalette(i);
+
+                        if (colorPalette)
+                        {
+                            containerColorPalettes.emplace_back(colorPalette);
+                        }
+                    }
+
+                    QLinearGradient penGradient;
+                    QLinearGradient fillGradient;
+
+                    QtDrawingUtils::GenerateGradients(containerColorPalettes, m_displayLabel->GetDisplayedSize(), penGradient, fillGradient);
+
+                    m_displayLabel->SetBorderColorOverride(QBrush(penGradient));
+
+                    if (m_comboBox)
+                    {
+                        m_comboBox->SetOutlineColor(penGradient, m_displayLabel->GetStyleHelper().GetColor(GraphCanvas::Styling::Attribute::BackgroundColor));
+                    }
+                }
+            }
+
+            if (!updatedOutline)
+            {
+                const Styling::StyleHelper* colorPalette = dataSlotRequests->GetDataColorPalette();
+
+                if (colorPalette)
+                {
+                    QColor color = colorPalette->GetColor(GraphCanvas::Styling::Attribute::LineColor);
+                    m_displayLabel->SetBorderColorOverride(QBrush(color));
+
+                    if (m_comboBox)
+                    {
+                        m_comboBox->SetOutlineColor(color, m_displayLabel->GetStyleHelper().GetColor(GraphCanvas::Styling::Attribute::BackgroundColor));
+                    }
+                }
+                else
+                {
+                    m_displayLabel->ClearBorderColorOverride();
+
+                    if (m_comboBox)
+                    {
+                        m_comboBox->ClearOutlineColor();
+                    }
                 }
             }
         }
     }
 
-    void ComboBoxNodePropertyDisplay::ResetDragState()
+    void ComboBoxNodePropertyDisplay::OnSlotIdSet()
     {
-        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
-        switch (m_dragState)
-        {
-        case DragState::Valid:
-            styleHelper.RemoveSelector(Styling::States::ValidDrop);
-            break;
-        case DragState::Invalid:
-            styleHelper.RemoveSelector(Styling::States::InvalidDrop);
-            break;
-        default:
-            break;
-        }
-
-        m_displayLabel->update();
-
-        m_dragState = DragState::Idle;
+        UpdateOutlineColor();
     }
 
     void ComboBoxNodePropertyDisplay::EditStart()
@@ -288,6 +276,7 @@ namespace GraphCanvas
         if (m_comboBox)
         {
             QModelIndex index = m_comboBox->GetSelectedIndex();
+            
             m_dataInterface->AssignIndex(index);
         }
         else
@@ -300,7 +289,10 @@ namespace GraphCanvas
 
     void ComboBoxNodePropertyDisplay::EditFinished()
     {
-        SubmitValue();
+        if (m_valueDirty)
+        {
+            SubmitValue();
+        }
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
     }
 
@@ -318,7 +310,7 @@ namespace GraphCanvas
 
             QObject::connect(m_comboBox, &AzToolsFramework::PropertyEntityIdCtrl::customContextMenuRequested, [this](const QPoint& pos) { this->ShowContextMenu(pos); });
 
-            QObject::connect(m_comboBox, &GraphCanvasComboBox::SelectedIndexChanged, [this](const QModelIndex& index) { this->SubmitValue(); });
+            QObject::connect(m_comboBox, &GraphCanvasComboBox::SelectedIndexChanged, [this](const QModelIndex& index) { this->m_valueDirty = true; });
 
             QObject::connect(m_comboBox, &GraphCanvasComboBox::OnFocusIn, [this]() { this->EditStart();  });
             QObject::connect(m_comboBox, &GraphCanvasComboBox::OnFocusOut, [this]() { this->EditFinished();  });
@@ -337,8 +329,15 @@ namespace GraphCanvas
             SceneRequestBus::EventResult(viewId, graphId, &SceneRequests::GetViewId);
 
             m_comboBox->RegisterViewId(viewId);
+            m_comboBox->SetSelectedIndex(m_dataInterface->GetAssignedIndex());
 
+            m_valueDirty = false;
             m_menuDisplayDirty = true;
+
+            if (m_dataTypeOutlineEnabled)
+            {
+                m_comboBox->SetOutline(m_displayLabel->GetBorderColorOverride(), m_displayLabel->GetStyleHelper().GetColor(GraphCanvas::Styling::Attribute::BackgroundColor));
+            }
 
             ViewNotificationBus::Handler::BusConnect(viewId);
             GeometryNotificationBus::Handler::BusConnect(GetNodeId());
@@ -381,8 +380,8 @@ namespace GraphCanvas
     {
         if (m_proxyWidget && m_comboBox && (m_comboBox->IsMenuVisible() || forceUpdate))
         {
-            QPointF scenePoint = m_proxyWidget->mapToScene(QPoint(0, m_proxyWidget->size().height()));
-            QPointF widthPoint = m_proxyWidget->mapToScene(QPoint(m_proxyWidget->size().width(), m_proxyWidget->size().height()));
+            QPointF scenePoint = m_proxyWidget->mapToScene(QPoint(0, aznumeric_cast<int>(m_proxyWidget->size().height())));
+            QPointF widthPoint = m_proxyWidget->mapToScene(QPoint(aznumeric_cast<int>(m_proxyWidget->size().width()), aznumeric_cast<int>(m_proxyWidget->size().height())));
 
             AZ::Vector2 globalPoint;
             ViewRequestBus::EventResult(globalPoint, viewId, &ViewRequests::MapToGlobal, ConversionUtils::QPointToVector(scenePoint));

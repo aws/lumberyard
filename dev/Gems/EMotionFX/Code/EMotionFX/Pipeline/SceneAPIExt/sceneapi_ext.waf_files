@@ -25,7 +25,9 @@
             "Behaviors/MorphTargetRuleBehavior.h",
             "Behaviors/MorphTargetRuleBehavior.cpp",
             "Behaviors/LodRuleBehavior.h",
-            "Behaviors/LodRuleBehavior.cpp"
+            "Behaviors/LodRuleBehavior.cpp",
+            "Behaviors/SkeletonOptimizationRuleBehavior.h",
+            "Behaviors/SkeletonOptimizationRuleBehavior.cpp"
         ],
         "Pipeline/SceneAPIExt/Rules":
         [
@@ -62,7 +64,9 @@
             "Rules/LodRule.h",
             "Rules/LodRule.cpp",
             "Rules/MotionAdditiveRule.h",
-            "Rules/MotionAdditiveRule.cpp"
+            "Rules/MotionAdditiveRule.cpp",
+            "Rules/SkeletonOptimizationRule.h",
+            "Rules/SkeletonOptimizationRule.cpp"
         ],
         "Pipeline/SceneAPIExt/Data":
         [

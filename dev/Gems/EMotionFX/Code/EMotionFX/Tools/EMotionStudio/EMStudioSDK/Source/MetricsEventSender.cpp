@@ -183,10 +183,14 @@ namespace EMStudio
                 const EMotionFX::SkeletalSubMotion* subMotion = skeletalMotion->GetSubMotion(i);
 
                 auto* posKeytrack = subMotion->GetPosTrack();
-                EMotionFX::KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* rotKeytrack = subMotion->GetRotTrack();
-                auto* scaleKeytrack = subMotion->GetScaleTrack();
+                EMotionFX::KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>* rotKeytrack = subMotion->GetRotTrack();
 
+            #ifndef EMFX_SCALE_DISABLED
+                auto* scaleKeytrack = subMotion->GetScaleTrack();
                 if (posKeytrack || rotKeytrack || scaleKeytrack)
+            #else
+                if (posKeytrack || rotKeytrack)              
+            #endif
                 {
                     numAnimatedSubMotions++;
                 }
@@ -205,10 +209,13 @@ namespace EMStudio
                     numTotalKeyframes += rotKeytrack->GetNumKeys();
                 }
 
-                if (scaleKeytrack)
-                {
-                    numTotalKeyframes += scaleKeytrack->GetNumKeys();
-                }
+                EMFX_SCALECODE
+                (
+                    if (scaleKeytrack)
+                    {
+                        numTotalKeyframes += scaleKeytrack->GetNumKeys();
+                    }
+                )
             }
         }
 

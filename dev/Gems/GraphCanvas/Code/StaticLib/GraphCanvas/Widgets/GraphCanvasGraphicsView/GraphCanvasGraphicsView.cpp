@@ -381,8 +381,8 @@ namespace GraphCanvas
         AZ::Vector2 viewCenter(0, 0);
         QPointF centerPoint = mapToScene(rect()).boundingRect().center();
 
-        viewCenter.SetX(centerPoint.x());
-        viewCenter.SetY(centerPoint.y());
+        viewCenter.SetX(aznumeric_cast<float>(centerPoint.x()));
+        viewCenter.SetY(aznumeric_cast<float>(centerPoint.y()));
 
         return viewCenter;
     }
@@ -598,15 +598,40 @@ namespace GraphCanvas
 
     QImage* GraphCanvasGraphicsView::CreateImageOfGraphArea(QRectF graphArea)
     {
+        if (graphArea.isEmpty())
+        {
+            graphArea = QRectF(-1, -1, 2, 2);
+        }
+
+        QRectF windowSize = graphArea;
+        const int maxSize = 17500;
+        if (windowSize.width() > maxSize || windowSize.height() > maxSize)
+        {
+            ToastConfiguration toastConfiguration(ToastType::Information, "Screenshot", "Screenshot attempted to capture an area too large. Some down-ressing may occur.");
+            ShowToastNotification(toastConfiguration);
+
+            if (windowSize.width() > maxSize)
+            {
+                windowSize.setWidth(maxSize);
+            }
+
+            if (windowSize.height() > maxSize)
+            {
+                windowSize.setHeight(maxSize);
+            }
+        }
+
         QImage* image = nullptr;
         if (m_sceneId.IsValid())
         {
             graphArea.adjust(-40, -40, 40, 40);
+            windowSize.adjust(-40, -40, 40, 40);
+
             // Ensure that the fixed area is the same
             QGraphicsView* graphicsView = new QGraphicsView();
             graphicsView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            graphicsView->setFixedWidth(graphArea.width());
-            graphicsView->setFixedHeight(graphArea.height());
+            graphicsView->setFixedWidth(aznumeric_cast<int>(windowSize.width()));
+            graphicsView->setFixedHeight(aznumeric_cast<int>(windowSize.height()));
             graphicsView->adjustSize();
             graphicsView->updateGeometry();
             graphicsView->ensurePolished();
@@ -620,6 +645,18 @@ namespace GraphCanvas
 
             graphicsView->setScene(graphicsScene);
             graphicsView->centerOn(graphArea.center());
+
+            qreal xScale = windowSize.width() / graphArea.width();
+            qreal yScale = windowSize.height() / graphArea.height();
+
+            if (xScale < yScale)
+            {
+                graphicsView->scale(xScale, xScale);
+            }
+            else
+            {
+                graphicsView->scale(yScale, yScale);
+            }
 
             // Need to display it in the dialog, otherwise the viewport doesn't get updated correctly.
             // and then I can't use it to render out the correct target area.
@@ -640,14 +677,14 @@ namespace GraphCanvas
 
             QRect viewportRect = graphicsView->viewport()->rect();
 
-            image = new QImage(graphArea.width(), graphArea.height(), QImage::Format::Format_ARGB32);
+            image = new QImage(aznumeric_cast<int>(windowSize.width()), aznumeric_cast<int>(windowSize.height()), QImage::Format::Format_ARGB32);
             image->fill(Qt::transparent);
 
             QPainter localPainter;
             localPainter.begin(image);
             localPainter.setRenderHint(QPainter::HighQualityAntialiasing);
 
-            graphicsView->render(&localPainter, QRectF(0, 0, graphArea.width(), graphArea.height()), viewportRect);
+            graphicsView->render(&localPainter, QRectF(0, 0, windowSize.width(), windowSize.height()), viewportRect);
             localPainter.end();
         }
 
@@ -747,7 +784,7 @@ namespace GraphCanvas
 
     void GraphCanvasGraphicsView::PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration)
     {
-        if (AZ::IsClose(duration.count(), 0.0, 0.001))
+        if (duration.count() == 0)
         {
             centerOn(mapToScene(rect().center()) + repositioning);
         }
@@ -767,6 +804,11 @@ namespace GraphCanvas
         QPointF centerPoint = mapToScene(rect().center());
 
         PanSceneBy(scenePoint - centerPoint, duration);
+    }
+
+    void GraphCanvasGraphicsView::RefreshView()
+    {
+        invalidateScene(GetViewableAreaInSceneCoordinates());
     }
 
     void GraphCanvasGraphicsView::HideToastNotification(const ToastId& toastId)
@@ -1208,15 +1250,15 @@ namespace GraphCanvas
                 }
             }
         }
-
+        
         AZ::EntityId existingBookmark;
         BookmarkManagerRequestBus::EventResult(existingBookmark, sceneId, &BookmarkManagerRequests::FindBookmarkForShortcut, bookmarkShortcut);
 
-        if (existingBookmark.IsValid())
+        if (existingBookmark.IsValid() && (!remapId || bookmark != existingBookmark))
         {
             AZStd::string bookmarkName;
             BookmarkRequestBus::EventResult(bookmarkName, existingBookmark, &BookmarkRequests::GetBookmarkName);
-                
+            
             QMessageBox::StandardButton response = QMessageBox::StandardButton::No;
             response = QMessageBox::question(this, QString("Bookmarking Conflict"), QString("Bookmark (%1) already registered with shortcut (%2).\nProceed with action and remove previous bookmark?").arg(bookmarkName.c_str()).arg(bookmarkShortcut), QMessageBox::StandardButton::Yes|QMessageBox::No);
 
@@ -1349,8 +1391,8 @@ namespace GraphCanvas
         QPointF centerPoint = mapToScene(rect().center());
         QPointF anchorPoint = mapToScene(rect().topLeft());
 
-        m_viewParams.m_anchorPointX = anchorPoint.x();
-        m_viewParams.m_anchorPointY = anchorPoint.y();
+        m_viewParams.m_anchorPointX = aznumeric_cast<float>(anchorPoint.x());
+        m_viewParams.m_anchorPointY = aznumeric_cast<float>(anchorPoint.y());
 
         ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnViewParamsChanged, m_viewParams);
     }
@@ -1433,22 +1475,22 @@ namespace GraphCanvas
 
         if (screenPoint.x() < m_internalRectangle.left())
         {
-            horizontalDifference = screenPoint.x() - m_internalRectangle.left();
+            horizontalDifference = aznumeric_cast<float>(screenPoint.x() - m_internalRectangle.left());
         }
         else if (screenPoint.x() > m_internalRectangle.right())
         {
-            horizontalDifference = screenPoint.x() - m_internalRectangle.right();
+            horizontalDifference = aznumeric_cast<float>(screenPoint.x() - m_internalRectangle.right());
         }
 
         float verticalDifference = 0.0f;
 
         if (screenPoint.y() < m_internalRectangle.top())
         {
-            verticalDifference = screenPoint.y() - m_internalRectangle.top();
+            verticalDifference = aznumeric_cast<float>(screenPoint.y() - m_internalRectangle.top());
         }
         else if (screenPoint.y() > m_internalRectangle.bottom())
         {
-            verticalDifference = screenPoint.y() - m_internalRectangle.bottom();
+            verticalDifference = aznumeric_cast<float>(screenPoint.y() - m_internalRectangle.bottom());
         }
 
         if (AZ::IsClose(m_offsets.x(), 0.0, 0.001))
@@ -1476,7 +1518,7 @@ namespace GraphCanvas
             zoomLevel = qreal(1.0f);
         }
         
-        float zoomRepresentation = 1.0f / zoomLevel;
+        float zoomRepresentation = aznumeric_cast<float>(1.0f / zoomLevel);
         float modifier = AZStd::max(0.5f, zoomRepresentation);
 
         edgeConfig.first *= modifier;

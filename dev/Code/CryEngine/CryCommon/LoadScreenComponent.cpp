@@ -1,33 +1,19 @@
 /*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
-*
-* For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file. Do not
-* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-*/
-#include <ISystem.h>
-#include <IRenderer.h>
+ * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+ * its licensors.
+ *
+ * For complete copyright and license terms please see the LICENSE at the root of this
+ * distribution (the "License"). All use of this software is governed by the License,
+ * or, if provided, by the license below or the license accompanying this file. Do not
+ * remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *
+ */
 
-#include <AzCore/EBus/EBus.h>
-#include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
-
-#include <LyShine/ILyShine.h>
-#include <LyShine/Bus/UiCanvasBus.h>
-#include <LyShine/Animation/IUiAnimation.h>
 
 #include "LoadScreenComponent.h"
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>   // GetCurrentThreadId
-#endif
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
 
@@ -44,14 +30,14 @@ namespace
 
         return GetISystem()->GetGlobalEnvironment();
     }
-}
 
-LoadScreenComponent::LoadScreenComponent()
-{
-}
+    static const char* const s_gameFixedFpsCvarName = "game_load_screen_sequence_fixed_fps";
+    static const char* const s_gameMaxFpsCvarName = "game_load_screen_max_fps";
+    static const char* const s_gameMinimumLoadTimeCvarName = "game_load_screen_minimum_time";
 
-LoadScreenComponent::~LoadScreenComponent()
-{
+    static const char* const s_levelFixedFpsCvarName = "level_load_screen_sequence_fixed_fps";
+    static const char* const s_levelMaxFpsCvarName = "level_load_screen_max_fps";
+    static const char* const s_levelMinimumLoadTimeCvarName = "level_load_screen_minimum_time";
 }
 
 void LoadScreenComponent::Reflect(AZ::ReflectContext* context)
@@ -77,136 +63,71 @@ void LoadScreenComponent::Reflect(AZ::ReflectContext* context)
     }
 }
 
+void LoadScreenComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+{
+    provided.push_back(AZ_CRC("LoadScreenService", 0x901b031c));
+}
+
+void LoadScreenComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+{
+    incompatible.push_back(AZ_CRC("LoadScreenService", 0x901b031c));
+}
+
 void LoadScreenComponent::Reset()
 {
+    m_loadScreenState = LoadScreenState::None;
+
     m_fixedDeltaTimeInSeconds = -1.0f;
     m_maxDeltaTimeInSeconds = -1.0f;
     m_previousCallTimeForUpdateAndRender = CTimeValue();
-    m_isPlaying = false;
     m_processingLoadScreen.store(false);
 
-    if (GetGlobalEnv() && GetGlobalEnv()->pLyShine)
+    // Reset CVars so they're not carried over to other levels
+    SSystemGlobalEnvironment* pGEnv = GetGlobalEnv();
+    if (pGEnv && pGEnv->pConsole)
     {
-        AZ::Entity* canvasEntity = nullptr;
-
-        // Release the game canvas.
-        if (m_gameCanvasEntityId.IsValid())
+        if (ICVar* var = pGEnv->pConsole->GetCVar(s_levelFixedFpsCvarName))
         {
-            EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, m_gameCanvasEntityId);
-            if (canvasEntity)
-            {
-                GetGlobalEnv()->pLyShine->ReleaseCanvas(m_gameCanvasEntityId, false);
-                GetGlobalEnv()->pLyShine->OnLoadScreenUnloaded();
-            }
+            var->Set("");
         }
-
-        // Release the level canvas.
-        if (m_levelCanvasEntityId.IsValid())
+        if (ICVar* var = pGEnv->pConsole->GetCVar(s_levelMaxFpsCvarName))
         {
-            EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, m_levelCanvasEntityId);
-            if (canvasEntity)
-            {
-                GetGlobalEnv()->pLyShine->ReleaseCanvas(m_levelCanvasEntityId, false);
-                GetGlobalEnv()->pLyShine->OnLoadScreenUnloaded();
-            }
+            var->Set("");
         }
-    }
-
-    m_gameCanvasEntityId.SetInvalid();
-    m_levelCanvasEntityId.SetInvalid();
-
-    // IMPORTANT: It's NECESSARY to clear ALL the CVars, otherwise their
-    // values will be carried over into levels where they AREN'T set.
-    ClearCVars({"level_load_screen_uicanvas_path",
-                "level_load_screen_sequence_to_auto_play",
-                "level_load_screen_sequence_fixed_fps",
-                "level_load_screen_max_fps"});
-}
-
-void LoadScreenComponent::ClearCVars(const std::list<const char*>& varNames)
-{
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pConsole)
-    {
-        return;
-    }
-
-    for (auto name : varNames)
-    {
-        ICVar* var = GetGlobalEnv()->pConsole->GetCVar(name);
-        if (var)
+        if (ICVar* var = pGEnv->pConsole->GetCVar(s_levelMinimumLoadTimeCvarName))
         {
             var->Set("");
         }
     }
 }
 
-AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const char* autoPlayVarName, const char* fixedFpsVarName, const char* maxFpsVarName)
+void LoadScreenComponent::LoadConfigSettings(const char* fixedFpsVarName, const char* maxFpsVarName, const char* minimumLoadTimeVarName)
 {
-    ICVar* pathVar = GetGlobalEnv()->pConsole->GetCVar(pathVarName);
-    string path = pathVar ? pathVar->GetString() : "";
-    if (path.empty())
+    m_fixedDeltaTimeInSeconds = -1.0f;
+    m_maxDeltaTimeInSeconds = -1.0f;
+    m_minimumLoadTimeInSeconds = 0.0f;
+
+    SSystemGlobalEnvironment* pGEnv = GetGlobalEnv();
+    if (pGEnv && pGEnv->pConsole)
     {
-        // No canvas specified.
-        Reset();
-        return AZ::EntityId();
+        ICVar* fixedFpsVar = pGEnv->pConsole->GetCVar(fixedFpsVarName);
+        if (fixedFpsVar && fixedFpsVar->GetFVal() > 0.0f)
+        {
+            m_fixedDeltaTimeInSeconds = (1.0f / fixedFpsVar->GetFVal());
+        }
+
+        ICVar* maxFpsVar = pGEnv->pConsole->GetCVar(maxFpsVarName);
+        if (maxFpsVar && maxFpsVar->GetFVal() > 0.0f)
+        {
+            m_maxDeltaTimeInSeconds = (1.0f / maxFpsVar->GetFVal());
+        }
+
+        if (ICVar* minimumLoadTimeVar = pGEnv->pConsole->GetCVar(minimumLoadTimeVarName))
+        {
+            // Never allow values below 0 seconds
+            m_minimumLoadTimeInSeconds = AZStd::max<float>(minimumLoadTimeVar->GetFVal(), 0.0f);
+        }
     }
-
-    AZ::EntityId canvasId = GetGlobalEnv()->pLyShine->LoadCanvas(path);
-    AZ_Warning("LoadScreenComponent", canvasId.IsValid(), "Can't load canvas: %s", path.c_str());
-    if (!canvasId.IsValid())
-    {
-        // Error loading canvas.
-        Reset();
-        return AZ::EntityId();
-    }
-
-    EBUS_EVENT_ID(canvasId, UiCanvasBus, SetKeepLoadedOnLevelUnload, true);
-
-    // Set the load screen draw order so it renders in front of other canvases that may load during the level load
-    EBUS_EVENT_ID(canvasId, UiCanvasBus, SetDrawOrder, std::numeric_limits<int>::max());
-
-    ICVar* autoPlayVar = GetGlobalEnv()->pConsole->GetCVar(autoPlayVarName);
-    string sequence = autoPlayVar ? autoPlayVar->GetString() : "";
-    if (sequence.empty())
-    {
-        // Nothing to auto-play.
-        return canvasId;
-    }
-
-    IUiAnimationSystem* animSystem = nullptr;
-    EBUS_EVENT_ID_RESULT(animSystem, canvasId, UiCanvasBus, GetAnimationSystem);
-    if (!animSystem)
-    {
-        // Nothing can be auto-played.
-        return canvasId;
-    }
-
-    ICVar* fixedFpsVar = GetGlobalEnv()->pConsole->GetCVar(fixedFpsVarName);
-    if (fixedFpsVar &&
-        fixedFpsVar->GetFVal() > 0.0f)
-    {
-        m_fixedDeltaTimeInSeconds = (1.0f / fixedFpsVar->GetFVal());
-    }
-    else
-    {
-        m_fixedDeltaTimeInSeconds = -1.0f;
-    }
-
-    ICVar* maxFpsVar = GetGlobalEnv()->pConsole->GetCVar(maxFpsVarName);
-    if (maxFpsVar &&
-        maxFpsVar->GetFVal() > 0.0f)
-    {
-        m_maxDeltaTimeInSeconds = (1.0f / maxFpsVar->GetFVal());
-    }
-    else
-    {
-        m_maxDeltaTimeInSeconds = -1.0f;
-    }
-
-    animSystem->PlaySequence(sequence, nullptr, false, false);
-
-    return canvasId;
 }
 
 void LoadScreenComponent::Init()
@@ -228,13 +149,20 @@ void LoadScreenComponent::Deactivate()
 
 void LoadScreenComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
 {
-    if (system.GetGlobalEnvironment()->IsEditor())
+    SSystemGlobalEnvironment* pGEnv = system.GetGlobalEnvironment();
+
+    // Can't use macros here because we have to use our pointer.
+    if (pGEnv && pGEnv->pConsole)
     {
-        return;
+        pGEnv->pConsole->Register("ly_EnableLoadingThread", &m_loadingThreadEnabled, 0, VF_NULL,
+            "EXPERIMENTAL. Enable fully threaded loading where the LoadingScreen is drawn on a thread that isn't loading data.");
     }
 
-    // If not running from the editor, then run GameStart
-    GameStart();
+    if (pGEnv && !pGEnv->IsEditor())
+    {
+        // If not running from the editor, then run GameStart
+        GameStart();
+    }
 }
 
 void LoadScreenComponent::OnCrySystemShutdown(ISystem&)
@@ -243,155 +171,201 @@ void LoadScreenComponent::OnCrySystemShutdown(ISystem&)
 
 void LoadScreenComponent::UpdateAndRender()
 {
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pRenderer ||
-        !GetGlobalEnv()->pTimer ||
-        !GetGlobalEnv()->pLyShine ||
-        !m_isPlaying)
-    {
-        return;
-    }
+    SSystemGlobalEnvironment* pGEnv = GetGlobalEnv();
 
-    AZ_Assert(GetCurrentThreadId() == GetGlobalEnv()->mMainThreadId, "UpdateAndRender should only be called from the main thread");
-
-    // Throttling.
-    float deltaTimeInSeconds;
-    CTimeValue callTimeForUpdateAndRender;
+    if (m_loadScreenState == LoadScreenState::Showing && pGEnv && pGEnv->pTimer)
     {
+        AZ_Assert(GetCurrentThreadId() == pGEnv->mMainThreadId, "UpdateAndRender should only be called from the main thread");
+
+        // Throttling.
         if (!m_previousCallTimeForUpdateAndRender.GetValue())
         {
             // This is the first call to UpdateAndRender().
-            m_previousCallTimeForUpdateAndRender = GetGlobalEnv()->pTimer->GetAsyncTime();
+            m_previousCallTimeForUpdateAndRender = pGEnv->pTimer->GetAsyncTime();
         }
 
-        callTimeForUpdateAndRender = GetGlobalEnv()->pTimer->GetAsyncTime();
-        deltaTimeInSeconds = fabs((callTimeForUpdateAndRender - m_previousCallTimeForUpdateAndRender).GetSeconds());
-        if ((m_maxDeltaTimeInSeconds > 0.0f) &&
-            (deltaTimeInSeconds < m_maxDeltaTimeInSeconds))
+        const CTimeValue callTimeForUpdateAndRender = pGEnv->pTimer->GetAsyncTime();
+        const float deltaTimeInSeconds = fabs((callTimeForUpdateAndRender - m_previousCallTimeForUpdateAndRender).GetSeconds());
+
+        // Early-out: We DON'T need to execute UpdateAndRender() at a higher frequency than 30 FPS.
+        const bool shouldThrottle = m_maxDeltaTimeInSeconds > 0.0f && deltaTimeInSeconds < m_maxDeltaTimeInSeconds;
+
+        if (!shouldThrottle)
         {
-            // Early-out: We DON'T need to execute UpdateAndRender() at a higher frequency than 30 FPS.
-            return;
+            bool expectedValue = false;
+            if (m_processingLoadScreen.compare_exchange_strong(expectedValue, true))
+            {
+                m_previousCallTimeForUpdateAndRender = callTimeForUpdateAndRender;
+
+                const float updateDeltaTime = (m_fixedDeltaTimeInSeconds == -1.0f) ? deltaTimeInSeconds : m_fixedDeltaTimeInSeconds;
+
+                EBUS_EVENT(LoadScreenUpdateNotificationBus, UpdateAndRender, updateDeltaTime);
+
+                // Some platforms (iOS, OSX, AppleTV) require system events to be pumped in order to update the screen
+                AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+
+                m_processingLoadScreen.store(false);
+            }
         }
     }
-
-    bool expectedValue = false;
-    if (!m_processingLoadScreen.compare_exchange_strong(expectedValue, true))
-    {
-        // Don't do anything.
-        return;
-    }
-
-    m_previousCallTimeForUpdateAndRender = callTimeForUpdateAndRender;
-
-    // update the animation system
-    GetGlobalEnv()->pLyShine->Update((m_fixedDeltaTimeInSeconds == -1.0f) ? deltaTimeInSeconds : m_fixedDeltaTimeInSeconds);
-
-    // Render.
-    GetGlobalEnv()->pRenderer->SetViewport(0, 0, GetGlobalEnv()->pRenderer->GetOverlayWidth(), GetGlobalEnv()->pRenderer->GetOverlayHeight());
-
-    GetGlobalEnv()->pRenderer->BeginFrame();
-    GetGlobalEnv()->pLyShine->Render();
-    GetGlobalEnv()->pRenderer->EndFrame();
-
-    // Some platforms (iOS, OSX, AppleTV) require system events to be pumped in order to update the screen
-    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
-
-    m_processingLoadScreen.store(false);
 }
 
 void LoadScreenComponent::GameStart()
 {
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pRenderer ||
-        !GetGlobalEnv()->pLyShine ||
-        m_isPlaying)
+    if (m_loadScreenState == LoadScreenState::None)
     {
-        return;
-    }
+        LoadConfigSettings(s_gameFixedFpsCvarName, s_gameMaxFpsCvarName, s_gameMinimumLoadTimeCvarName);
 
-    if (!m_gameCanvasEntityId.IsValid())
-    {
-        // Load canvas.
-        m_gameCanvasEntityId = loadFromCfg("game_load_screen_uicanvas_path",
-                "game_load_screen_sequence_to_auto_play",
-                "game_load_screen_sequence_fixed_fps",
-                "game_load_screen_max_fps");
-    }
+        const bool usingLoadingThread = IsLoadingThreadEnabled();
 
-    if (m_gameCanvasEntityId.IsValid())
-    {
-        m_isPlaying = true;
+        AZ::EBusLogicalResult<bool, AZStd::logical_or<bool>> anyHandled(false);
+        EBUS_EVENT_RESULT(anyHandled, LoadScreenNotificationBus, NotifyGameLoadStart, usingLoadingThread);
 
-        // Kick-start the first frame.
-        UpdateAndRender();
+        if (anyHandled.value)
+        {
+            if (usingLoadingThread)
+            {
+                m_loadScreenState = LoadScreenState::ShowingMultiThreaded;
+
+                GetGlobalEnv()->pRenderer->StartLoadtimePlayback(this);
+            }
+            else
+            {
+                m_loadScreenState = LoadScreenState::Showing;
+
+                // Kick-start the first frame.
+                UpdateAndRender();
+            }
+
+            if (ITimer* timer = GetGlobalEnv()->pTimer)
+            {
+                m_lastStartTime = timer->GetAsyncTime();
+            }
+        }
     }
 }
 
 void LoadScreenComponent::LevelStart()
 {
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pRenderer ||
-        !GetGlobalEnv()->pLyShine ||
-        m_isPlaying ||
-        m_gameCanvasEntityId.IsValid())
+    if (m_loadScreenState == LoadScreenState::None)
     {
-        return;
-    }
+        LoadConfigSettings(s_levelFixedFpsCvarName, s_levelMaxFpsCvarName, s_levelMinimumLoadTimeCvarName);
 
-    if (!m_levelCanvasEntityId.IsValid())
-    {
-        // Load canvas.
-        m_levelCanvasEntityId = loadFromCfg("level_load_screen_uicanvas_path",
-                "level_load_screen_sequence_to_auto_play",
-                "level_load_screen_sequence_fixed_fps",
-                "level_load_screen_max_fps");
-    }
+        const bool usingLoadingThread = IsLoadingThreadEnabled();
 
-    if (m_levelCanvasEntityId.IsValid())
-    {
-        m_isPlaying = true;
+        AZ::EBusLogicalResult<bool, AZStd::logical_or<bool>> anyHandled(false);
+        EBUS_EVENT_RESULT(anyHandled, LoadScreenNotificationBus, NotifyLevelLoadStart, usingLoadingThread);
 
-        // Kick-start the first frame.
-        UpdateAndRender();
+        if (anyHandled.value)
+        {
+            if (usingLoadingThread)
+            {
+                m_loadScreenState = LoadScreenState::ShowingMultiThreaded;
+
+                GetGlobalEnv()->pRenderer->StartLoadtimePlayback(this);
+            }
+            else
+            {
+                m_loadScreenState = LoadScreenState::Showing;
+
+                // Kick-start the first frame.
+                UpdateAndRender();
+            }
+
+            if (ITimer* timer = GetGlobalEnv()->pTimer)
+            {
+                m_lastStartTime = timer->GetAsyncTime();
+            }
+        }
     }
 }
 
 void LoadScreenComponent::Pause()
 {
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pRenderer ||
-        !GetGlobalEnv()->pLyShine ||
-        !m_isPlaying ||
-        !(m_gameCanvasEntityId.IsValid() || m_levelCanvasEntityId.IsValid()))
+    if (m_loadScreenState == LoadScreenState::Showing)
     {
-        return;
+        m_loadScreenState = LoadScreenState::Paused;
     }
-
-    m_isPlaying = false;
+    else if (m_loadScreenState == LoadScreenState::ShowingMultiThreaded)
+    {
+        m_loadScreenState = LoadScreenState::PausedMultithreaded;
+    }
 }
 
 void LoadScreenComponent::Resume()
 {
-    if (!GetGlobalEnv() ||
-        !GetGlobalEnv()->pRenderer ||
-        !GetGlobalEnv()->pLyShine ||
-        m_isPlaying ||
-        !(m_gameCanvasEntityId.IsValid() || m_levelCanvasEntityId.IsValid()))
+    if (m_loadScreenState == LoadScreenState::Paused)
     {
-        return;
+        m_loadScreenState = LoadScreenState::Showing;
     }
-
-    m_isPlaying = true;
+    else if (m_loadScreenState == LoadScreenState::PausedMultithreaded)
+    {
+        m_loadScreenState = LoadScreenState::ShowingMultiThreaded;
+    }
 }
 
 void LoadScreenComponent::Stop()
 {
+    // If we were actually in a load screen, check if we need to wait longer.
+    if (m_loadScreenState != LoadScreenState::None && m_minimumLoadTimeInSeconds > 0.0f)
+    {
+        if (ITimer* timer = GetGlobalEnv()->pTimer)
+        {
+            CTimeValue currentTime = timer->GetAsyncTime();
+            float timeSinceStart = currentTime.GetDifferenceInSeconds(m_lastStartTime);
+
+            while (timeSinceStart < m_minimumLoadTimeInSeconds)
+            {
+                // Simple loop that makes sure the loading screens update but also doesn't consume the whole core.
+
+                if (m_loadScreenState == LoadScreenState::Showing)
+                {
+                    EBUS_EVENT(LoadScreenBus, UpdateAndRender);
+                }
+
+                CrySleep(0);
+
+                currentTime = timer->GetAsyncTime();
+                timeSinceStart = currentTime.GetDifferenceInSeconds(m_lastStartTime);
+            }
+        }
+    }
+
+    if (m_loadScreenState == LoadScreenState::ShowingMultiThreaded)
+    {
+        // This will block until the other thread completes.
+        GetGlobalEnv()->pRenderer->StopLoadtimePlayback();
+    }
+
+    if (m_loadScreenState != LoadScreenState::None)
+    {
+        EBUS_EVENT(LoadScreenNotificationBus, NotifyLoadEnd);
+    }
+
     Reset();
+
+    m_loadScreenState = LoadScreenState::None;
 }
 
 bool LoadScreenComponent::IsPlaying()
 {
-    return m_isPlaying;
+    return m_loadScreenState != LoadScreenState::None;
+}
+
+void LoadScreenComponent::LoadtimeUpdate(float deltaTime)
+{
+    if (m_loadScreenState == LoadScreenState::ShowingMultiThreaded)
+    {
+        EBUS_EVENT(LoadScreenUpdateNotificationBus, LoadThreadUpdate, deltaTime);
+    }
+}
+
+void LoadScreenComponent::LoadtimeRender()
+{
+    if (m_loadScreenState == LoadScreenState::ShowingMultiThreaded)
+    {
+        EBUS_EVENT(LoadScreenUpdateNotificationBus, LoadThreadRender);
+    }
 }
 
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED

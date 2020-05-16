@@ -17,13 +17,11 @@
 #include "PNoise3.h"
 #include "DebugDrawContext.h"
 #include "AIPlayer.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #if defined(GetObject)
 #undef GetObject
 #endif
-
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
 
 //====================================================================
 // CFireCommandInstant
@@ -459,7 +457,10 @@ bool CFireCommandInstant::DrawFireEffect::Update(float updateTime, CPuppet* pSho
 
         if (gAIEnv.CVars.DebugDrawAmbientFire)
         {
-            float terrainZ = gEnv->p3DEngine->GetTerrainElevation(aimTarget.x, aimTarget.y);
+            float terrainZ = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainZ
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , aimTarget.x, aimTarget.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
 
             GetAISystem()->AddDebugSphere(Vec3(aimTarget.x, aimTarget.y, terrainZ + 0.075f), 0.175f, 106, 90, 205, 1.5f);
             GetAISystem()->AddDebugSphere(targetPos, 0.25f, 255, 0, 0, 1.5f);

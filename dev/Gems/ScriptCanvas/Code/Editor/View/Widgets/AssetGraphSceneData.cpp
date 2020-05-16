@@ -26,7 +26,7 @@ namespace ScriptCanvasEditor
         if (sceneEntity)
         {
             m_tupleId.m_scriptCanvasEntityId = sceneEntity->GetId();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(m_tupleId.m_scriptCanvasGraphId, &ScriptCanvas::SystemRequests::FindGraphId, sceneEntity);
+            ScriptCanvas::SystemRequestBus::BroadcastResult(m_tupleId.m_scriptCanvasId, &ScriptCanvas::SystemRequests::FindScriptCanvasId, sceneEntity);
         }
     }
 
@@ -38,7 +38,7 @@ namespace ScriptCanvasEditor
         if (sceneEntity)
         {
             m_tupleId.m_scriptCanvasEntityId = sceneEntity->GetId();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(m_tupleId.m_scriptCanvasGraphId, &ScriptCanvas::SystemRequests::FindGraphId, sceneEntity);
+            ScriptCanvas::SystemRequestBus::BroadcastResult(m_tupleId.m_scriptCanvasId, &ScriptCanvas::SystemRequests::FindScriptCanvasId, sceneEntity);
         }
     }
 
@@ -88,16 +88,16 @@ namespace ScriptCanvasEditor
         return nullptr;
     }
 
-    AssetGraphSceneData* AssetGraphSceneMapper::GetByGraphId(AZ::EntityId graphId) const
+    AssetGraphSceneData* AssetGraphSceneMapper::GetByScriptCanvasId(ScriptCanvas::ScriptCanvasId scriptCanvasId) const
     {
-        if (!graphId.IsValid())
+        if (!scriptCanvasId.IsValid())
         {
             return nullptr;
         }
 
-        auto graphToAssetIt = AZStd::find_if(m_assetIdToDataMap.begin(), m_assetIdToDataMap.end(), [&graphId](const AZStd::pair<AZ::Data::AssetId, AZStd::unique_ptr<AssetGraphSceneData>>& assetPair)
+        auto graphToAssetIt = AZStd::find_if(m_assetIdToDataMap.begin(), m_assetIdToDataMap.end(), [&scriptCanvasId](const AZStd::pair<AZ::Data::AssetId, AZStd::unique_ptr<AssetGraphSceneData>>& assetPair)
         {
-            return assetPair.second->m_tupleId.m_scriptCanvasGraphId == graphId;
+            return assetPair.second->m_tupleId.m_scriptCanvasId == scriptCanvasId;
         });
 
         if (graphToAssetIt != m_assetIdToDataMap.end())
@@ -105,26 +105,6 @@ namespace ScriptCanvasEditor
             return graphToAssetIt->second.get();
         }
 
-        return nullptr;
-    }
-
-    AssetGraphSceneData* AssetGraphSceneMapper::GetBySceneId(AZ::EntityId sceneId) const
-    {
-        AssetGraphSceneId tupleId;
-        if (!sceneId.IsValid())
-        {
-            return nullptr;
-        }
-
-        auto sceneToAssetIt = AZStd::find_if(m_assetIdToDataMap.begin(), m_assetIdToDataMap.end(), [sceneId](const AZStd::pair<AZ::Data::AssetId, AZStd::unique_ptr<AssetGraphSceneData>>& assetPair)
-        {
-            return assetPair.second->m_tupleId.m_scriptCanvasEntityId == sceneId;
-        });
-
-        if (sceneToAssetIt != m_assetIdToDataMap.end())
-        {
-            return sceneToAssetIt->second.get();
-        }
         return nullptr;
     }
 }

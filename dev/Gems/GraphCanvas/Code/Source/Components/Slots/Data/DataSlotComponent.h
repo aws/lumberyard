@@ -20,7 +20,7 @@ namespace GraphCanvas
 {
     class DataSlotComponent
         : public SlotComponent
-        , public DataSlotRequestBus::Handler        
+        , public DataSlotRequestBus::Handler
     {
     public:
         AZ_COMPONENT(DataSlotComponent, "{DB13C73D-2453-44F8-BB38-316C90264B73}", SlotComponent);
@@ -38,10 +38,6 @@ namespace GraphCanvas
         void Deactivate();
         ////
 
-        // SceneMemberNotifications
-        void OnSceneMemberAboutToSerialize(GraphSerialization& sceneSerialization) override;
-        ////
-
         // SlotRequestBus
         void DisplayProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint) override;
         void RemoveProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint) override;
@@ -55,10 +51,6 @@ namespace GraphCanvas
         ////
 
         // DataSlotRequestBus
-        bool AssignVariable(const AZ::EntityId& variableId) override;
-
-        AZ::EntityId GetVariableId() const override;
-
         bool ConvertToReference() override;
         bool CanConvertToReference() const override;
 
@@ -66,6 +58,7 @@ namespace GraphCanvas
         bool CanConvertToValue() const override;
 
         DataSlotType GetDataSlotType() const override;
+        DataValueType GetDataValueType() const override;
 
         AZ::Uuid GetDataTypeId() const override;
         void SetDataTypeId(AZ::Uuid typeId) override;
@@ -76,7 +69,7 @@ namespace GraphCanvas
         AZ::Uuid GetContainedTypeId(size_t index) const override;
         const Styling::StyleHelper* GetContainedTypeColorPalette(size_t index) const override;
 
-        void SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds = AZStd::vector<AZ::Uuid>()) override;
+        void SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds, DataValueType valueType) override;
         ////
 
     protected:
@@ -94,19 +87,16 @@ namespace GraphCanvas
         DataSlotComponent& operator=(const DataSlotComponent&) = delete;
         AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) override;
 
-        bool            m_fixedType;
+        bool            m_canConvertSlotTypes;
         DataSlotType    m_dataSlotType;
+        DataValueType   m_valueType;
 
         AZ::Uuid                m_dataTypeId;
         AZStd::vector<AZ::Uuid> m_containedTypeIds;
-
-        AZ::EntityId    m_variableId;
-        AZ::u64         m_copiedVariableId;
 
         AZ::EntityId    m_displayedConnection;
 
         // Cached information for the display
         DataSlotType    m_previousDataSlotType;
-        AZ::EntityId    m_cachedVariableId;
     };
 }

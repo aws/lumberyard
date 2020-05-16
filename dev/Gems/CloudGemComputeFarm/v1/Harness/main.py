@@ -3,8 +3,7 @@ import boto3
 import json
 import os
 import sys
-import urllib
-import urllib.request
+from six.moves import urllib
 import uuid
 import traceback
 from botocore.exceptions import ClientError
@@ -56,7 +55,7 @@ if __name__ == "__main__":
         args.region = ec2_region
 
     # You can supply a profile to use if you are testing locally.
-    session = boto3.Session(profile_name=args.profile)
+    session = boto3.Session(region_name=args.region, profile_name=args.profile)
 
     # You can supply a role arn to use if you are testing locally.
     if args.role_arn:
@@ -66,6 +65,7 @@ if __name__ == "__main__":
             RoleArn=args.role_arn
         )['Credentials']
         session = boto3.Session(
+            region_name=args.region,
             aws_access_key_id=sts_result['AccessKeyId'],
             aws_secret_access_key=sts_result['SecretAccessKey'],
             aws_session_token=sts_result['SessionToken']

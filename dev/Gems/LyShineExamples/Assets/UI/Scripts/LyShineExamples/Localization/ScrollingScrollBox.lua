@@ -26,6 +26,8 @@ function ScrollingScrollBox:OnActivate()
 	self.buttonHandler = UiButtonNotificationBus.Connect(self, self.Properties.toggleButton)
 	-- Connect to the tick bus to be able to scroll
 	self.tickHandler = TickBus.Connect(self, 0)
+
+    self:InitAutomatedTestEvents()
 end
 
 function ScrollingScrollBox:OnDeactivate()
@@ -35,6 +37,8 @@ function ScrollingScrollBox:OnDeactivate()
 	if (self.tickHandler ~= nil) then
 		self.tickHandler:Disconnect()
 	end
+
+    self:DeInitAutomatedTestEvents()
 end
 
 function ScrollingScrollBox:OnTick(dt)
@@ -55,6 +59,30 @@ function ScrollingScrollBox:OnButtonClick()
 		-- Connect to the tick bus to toggle the scrolling on
 		self.tickHandler = TickBus.Connect(self, self.entityId)
 	end
+end
+
+-- [Automated Testing] setup
+function ScrollingScrollBox:InitAutomatedTestEvents()
+    self.automatedTestSetScrollValueId = GameplayNotificationId(EntityId(), "AutomatedTestScrollValue", "float");
+    self.automatedTestSetScrollHandler = GameplayNotificationBus.Connect(self, self.automatedTestSetScrollValueId);
+end
+
+-- [Automated Testing] event handling
+function ScrollingScrollBox:OnEventBegin(value)
+    if (GameplayNotificationBus.GetCurrentBusId() == self.automatedTestSetScrollValueId) then
+        -- Toggle scrolling off first, then you can set the scroll amount
+    	local scrollOffset = UiScrollBoxBus.Event.GetScrollOffset(self.entityId)
+    	scrollOffset.y = value
+    	UiScrollBoxBus.Event.SetScrollOffset(self.entityId, scrollOffset)
+    end
+end
+
+-- [Automated Testing] teardown
+function ScrollingScrollBox:DeInitAutomatedTestEvents()
+    if (self.automatedTestSetScrollHandler ~= nil) then
+        self.automatedTestSetScrollHandler:Disconnect();
+        self.automatedTestSetScrollHandler = nil;
+    end
 end
 
 return ScrollingScrollBox

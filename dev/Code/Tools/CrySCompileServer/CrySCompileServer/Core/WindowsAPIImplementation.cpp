@@ -76,33 +76,5 @@ DWORD Sleep(DWORD dwMilliseconds)
     return 0;
 }
 
-#if defined(AZ_PLATFORM_MAC)
-
-int32_t InterlockedIncrement(volatile int32_t* valueToIncrement)
-{
-    return OSAtomicIncrement32(valueToIncrement);
-}
-
-int64_t InterlockedIncrement(volatile int64_t* valueToIncrement)
-{
-    return OSAtomicIncrement64(valueToIncrement);
-}
-
-int32_t InterlockedDecrement(volatile int32_t* valueToDecrement)
-{
-    return OSAtomicDecrement32(valueToDecrement);
-}
-
-int64_t InterlockedDecrement(volatile int64_t* valueToDecrement)
-{
-    return OSAtomicDecrement64(valueToDecrement);
-}
-
-int64_t InterlockedAdd64(volatile int64_t* valueToUpdate, int64_t amountToAdd)
-{
-    return OSAtomicAdd64(amountToAdd, valueToUpdate);
-}
-
-#endif
 
 #endif

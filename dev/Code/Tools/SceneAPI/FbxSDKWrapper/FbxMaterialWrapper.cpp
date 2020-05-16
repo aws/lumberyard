@@ -108,6 +108,11 @@ namespace AZ
             return 10.f;
         }
 
+        uint64_t FbxMaterialWrapper::GetUniqueId() const
+        {
+            return m_fbxMaterial->GetUniqueID();
+        }
+
         float FbxMaterialWrapper::GetOpacity() const
         {
             // FBX materials are erroneously reporting a TransparencyFactor of 1.0 (fully transparent)
@@ -174,6 +179,8 @@ namespace AZ
                 return GetTextureFileName(FbxSurfaceMaterial::sSpecular);
             case MaterialMapType::Bump:
                 return GetTextureFileName(FbxSurfaceMaterial::sBump);
+            case MaterialMapType::Normal:
+                return GetTextureFileName(FbxSurfaceMaterial::sNormalMap);
             default:
                 AZ_TraceContext("Unknown value", aznumeric_cast<int>(textureType));
                 AZ_TracePrintf(SceneAPI::Utilities::WarningWindow, "Unrecognized MaterialMapType retrieved");

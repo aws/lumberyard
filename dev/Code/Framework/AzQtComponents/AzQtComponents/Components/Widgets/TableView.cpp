@@ -15,6 +15,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QHeaderView>
 #include <QPainter>
@@ -36,6 +37,9 @@ namespace AzQtComponents
         settings.beginGroup(QStringLiteral("HeaderView"));
         ConfigHelpers::read<int>(settings, QStringLiteral("BorderWidth"), config.borderWidth);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("BorderColor"), config.borderColor);
+        ConfigHelpers::read<qreal>(settings, QStringLiteral("FocusBorderWidth"), config.focusBorderWidth);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("FocusBorderColor"), config.focusBorderColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("FocusFillColor"), config.focusFillColor);
         settings.endGroup();
 
         return config;
@@ -46,6 +50,9 @@ namespace AzQtComponents
         Config config;
         config.borderWidth = 1;
         config.borderColor = QStringLiteral("#dddddd");
+        config.focusBorderWidth = 1;
+        config.focusBorderColor = QStringLiteral("#00a1c9");
+        config.focusFillColor = QStringLiteral("#10ffffff");
 
         return config;
     }
@@ -56,7 +63,7 @@ namespace AzQtComponents
     {
         setAlternatingRowColors(true);
         setSelectionBehavior(QAbstractItemView::SelectRows);
-        setRootIsDecorated(false); // Hide the branch decorations
+        setAllColumnsShowFocus(true);
         header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
         // default delegate is the one we specify
@@ -170,6 +177,27 @@ namespace AzQtComponents
         return true;
     }
 
+    bool TableView::drawFrameFocusRect(const Style* style, const QStyleOption* option, QPainter* painter, const Config& config)
+    {
+        Q_UNUSED(style);
+
+        if (!qobject_cast<TableView*>(option->styleObject))
+        {
+            return false;
+        }
+
+        const auto borderWidth = config.focusBorderWidth;
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->translate(0.5 * borderWidth, 0.5 * borderWidth);
+        painter->setPen(QPen(config.focusBorderColor, borderWidth));
+        painter->setBrush(config.focusFillColor);
+        painter->drawRect(QRectF(option->rect).adjusted(0, 0, -borderWidth, -borderWidth));
+        painter->restore();
+
+        return true;
+    }
+
     QRect TableView::itemViewItemRect(const Style* style, QStyle::SubElement element, const QStyleOptionViewItem* option, const QWidget* widget, const Config& config)
     {
         auto tableView = qobject_cast<const TableView*>(widget);
@@ -236,9 +264,8 @@ namespace AzQtComponents
     TableViewModel* TableView::getTableViewModel() const
     {
         QAbstractItemModel* m = model();
-        QSortFilterProxyModel* p = nullptr;
 
-        while ((p = qobject_cast<QSortFilterProxyModel*>(m)))
+        while (QSortFilterProxyModel* p = qobject_cast<QSortFilterProxyModel*>(m))
         {
             m = p->sourceModel();
         }
@@ -249,10 +276,9 @@ namespace AzQtComponents
     QModelIndex TableView::mapToTableViewModel(QModelIndex unmappedIndex) const
     {
         QAbstractItemModel* m = model();
-        QSortFilterProxyModel* p = nullptr;
 
         QModelIndex mappedIndex;
-        while ((p = qobject_cast<QSortFilterProxyModel*>(m)))
+        while (QSortFilterProxyModel* p = qobject_cast<QSortFilterProxyModel*>(m))
         {
             mappedIndex = p->mapToSource(unmappedIndex);
             m = p->sourceModel();
@@ -490,7 +516,7 @@ namespace AzQtComponents
             {
                 line.setLineWidth(lineWidth - (styleMargin * 2));
                 line.setPosition(QPointF(0, 0));
-                lineHeight = line.height();
+                lineHeight = aznumeric_cast<int>(line.height());
             }
             textLayout.endLayout();
         }
@@ -526,7 +552,7 @@ namespace AzQtComponents
 
         // Otherwise, take the unexpanded margin, driven by the stylesheet, into account
         // with the calculated height.
-        return (fullSize.height() + (unexpandedMargin * 2));
+        return aznumeric_cast<int>(fullSize.height() + (unexpandedMargin * 2));
     }
 
     bool TableViewItemDelegate::isSelected(const QModelIndex& unmappedIndex) const

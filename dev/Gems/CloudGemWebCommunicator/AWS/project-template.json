@@ -61,7 +61,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "IotService",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Fn::GetAtt": [
                         "ProjectResourceHandler",
@@ -278,7 +278,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "IotService",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Fn::GetAtt": [
                         "ProjectResourceHandler",

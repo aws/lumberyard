@@ -160,9 +160,8 @@ namespace TranslationBuilder
                     response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                     return;
                 }
-
+                AZ::u32 exitCode = 0;
                 bool result = watcher->WaitForProcessToExit(300);
-
                 if (result)
                 {
                     // grab output and append to logs, will help with any debugging down the road.
@@ -186,10 +185,12 @@ namespace TranslationBuilder
                         }
                     }
 
+#if defined(AZ_PLATFORM_LINUX)
                     // the process ran, but was it successful in its run?
-                    AZ::u32 exitCode = 0;
                     bool wasRunning = watcher->IsProcessRunning(&exitCode);
-
+#else
+                    bool wasRunning = false;
+#endif
                     if( !wasRunning && (exitCode == 0) )
                     {
                         // if you succeed in building assets into your temp dir, you should push them back into the response's product list
@@ -261,6 +262,9 @@ namespace TranslationBuilder
 #elif defined(AZ_PLATFORM_MAC)
         otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
         otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
+#elif defined(AZ_PLATFORM_LINUX)        
+        otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/gcc_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
+        otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/gcc_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
 #endif
         AZStd::string toolPath;
 

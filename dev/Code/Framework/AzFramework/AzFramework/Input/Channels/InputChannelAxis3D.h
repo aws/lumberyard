@@ -80,6 +80,10 @@ namespace AzFramework
         void ResetState() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputChannelRequests::SimulateRawInput3D
+        void SimulateRawInput3D(float rawValueX, float rawValueY, float rawValueZ) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Process a raw input event, that will in turn update the channel's state based on whether
         //! it's active/engaged or inactive/idle, broadcasting an input event if the channel is left
         //! in a non-idle state. This function (or InputChannel::UpdateState) should only be called

@@ -11,45 +11,54 @@
 # $Revision$
 
 import boto3
-import json
 from cgf_utils import custom_resource_utils
 from resource_manager_common import stack_info
-import user_pool
+from . import user_pool
 
 # Fields returned from describe_identity_pool that are also accepted as-is by update_identity_pool.
-IDENTITY_POOL_FIELDS = ['IdentityPoolId', 'IdentityPoolName', 'AllowUnauthenticatedIdentities', 'SupportedLoginProviders', 'DeveloperProviderName', 'OpenIdConnectProviderARNs', 'CognitoIdentityProviders', 'SamlProviderARNs']
+IDENTITY_POOL_FIELDS = ['IdentityPoolId', 'IdentityPoolName', 'AllowUnauthenticatedIdentities', 'SupportedLoginProviders', 'DeveloperProviderName',
+                        'OpenIdConnectProviderARNs', 'CognitoIdentityProviders', 'SamlProviderARNs']
+
 
 def get_identity_client():
     if not hasattr(get_identity_client, 'identity_client'):
         get_identity_client.identity_client = boto3.client('cognito-identity')
     return get_identity_client.identity_client
 
-# Returns the identity pool if one was found, or None if the identity_pool_id is missing or invalid.
+
 def get_identity_pool(identity_pool_id):
+    """Returns the identity pool if one was found, or None if the identity_pool_id is missing or invalid."""
     if not identity_pool_id or identity_pool_id.find(':') < 0:
         # The ID is missing or invalid.
         return None
     return get_identity_client().describe_identity_pool(
         IdentityPoolId=custom_resource_utils.get_embedded_physical_id(identity_pool_id))
 
-# Gets the Cognito identity providers mapped to an identity pool.
+
 def get_cognito_identity_providers(stack_manager, stack_arn, identity_pool_logical_id):
+    """Gets the Cognito identity providers mapped to an identity pool."""
     mappings = get_identity_mappings(stack_manager, stack_arn)
     for mapping in mappings:
         pool = mapping['identity_pool_resource']
         if pool.stack.stack_arn == stack_arn and pool.logical_id == identity_pool_logical_id:
-            print 'Cognito identity providers for {}: {}'.format(identity_pool_logical_id,  mapping['providers'])
+            print('Cognito identity providers for {}: {}'.format(identity_pool_logical_id,  mapping['providers']))
             return mapping['providers']
-    print 'No Cognito identity providers for {}'
+    print('No Cognito identity providers for {}'.format(identity_pool_logical_id))
     return []
 
-# This is called when a user pool is being updated, and identity pools need to be updated to match the new mappings from the template metadata.
-# Identity pools will be affected as follows:
-#   - Identity pools will be linked to the user pool if they aren't already.
-#   - Identity pools that are already linked will be updated with the user pool's current client ids.
-#   - Identity pools that are linked but no longer part of the mapping will be unlinked from the user pool.
-def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, updated_resources={}):
-    provider_to_update =  user_pool.get_provider_name(user_pool_id)
+
+def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, updated_resources=None):
+    """
+    This is called when a user pool is being updated, and identity pools need to be updated to match the new mappings from the template metadata.
+    Identity pools will be affected as follows:
+    - Identity pools will be linked to the user pool if they aren't already.
+    - Identity pools that are already linked will be updated with the user pool's current client ids.
+    - Identity pools that are linked but no longer part of the mapping will be unlinked from the user pool.
+    """
+    if updated_resources is None:
+        updated_resources = {}
+
+    provider_to_update = user_pool.get_provider_name(user_pool_id)
     mappings = get_identity_mappings(stack_manager, stack_arn, updated_resources)
     
     for mapping in mappings:
@@ -72,6 +81,7 @@ def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, up
 
                 # Update the pool.
                 get_identity_client().update_identity_pool(**update_request)
+
 
 # Gets identity mappings from Custom::CognitoIdentityPool and Custom::CognitoUserPool resource metadata.
 #
@@ -103,8 +113,11 @@ def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, up
 #           ]
 #       }
 #   ]
-def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
-    # Collect a list of stacks to search for resource metadata.
+def get_identity_mappings(stack_manager, stack_arn, updated_resources=None):
+    """Collect a list of stacks to search for resource metadata."""
+    if updated_resources is None:
+        updated_resources = {}
+
     stacks_to_search = []
     stack = stack_manager.get_stack_info(stack_arn)
     if stack.stack_type == stack_info.StackInfo.STACK_TYPE_DEPLOYMENT_ACCESS or stack.stack_type == stack_info.StackInfo.STACK_TYPE_RESOURCE_GROUP:
@@ -125,7 +138,7 @@ def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
                 identity_pool_mappings.append({
                     'identity_pool_resource': resource,
                 })
-                print 'Found CognitoIdentityPool {}.{}'.format(stack.stack_name, resource.logical_id)
+                print('Found CognitoIdentityPool {}.{}'.format(stack.stack_name, resource.logical_id))
             elif resource.type == 'Custom::CognitoUserPool':
                 identities = resource.metadata.get('CloudCanvas', {}).get('Identities', [])
                 updated_resource = updated_resources.get(stack.stack_arn, {}).get(resource.logical_id, {})
@@ -147,8 +160,8 @@ def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
 
                         if not client_id:
                             # A client may be missing if there's more than one pool updating at the same time and the list of clients is changing.
-                            print 'Unable to find client named {} in user pool with physical id {} defined in stack {} resource {}'.format(
-                                client_app, physical_id, stack.stack_name, resource.logical_id)
+                            print('Unable to find client named {} in user pool with physical id {} defined in stack {} resource {}'.format(
+                                client_app, physical_id, stack.stack_name, resource.logical_id))
                         else:
                             pools = idp_by_pool_name.get(pool_name, [])
                             pools.append({
@@ -157,7 +170,8 @@ def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
                                 'ServerSideTokenCheck': True
                             })
                             idp_by_pool_name[pool_name] = pools
-                            print 'Found CognitoUserPool {}.{} mapped to {} with client id {}'.format(stack.stack_name, resource.logical_id, pool_name, client_id)
+                            print('Found CognitoUserPool {}.{} mapped to {} with client id {}'.format(
+                                stack.stack_name, resource.logical_id, pool_name, client_id))
 
     # Combine the user pool mappings with the identity pool mappings.
     for mapping in identity_pool_mappings:

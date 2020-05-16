@@ -2,7 +2,7 @@
     "name": "dyad",
     "source": "@3P:Dyad@",
     "description": "DYAD Library",
-    "includes": [
+    "system_includes": [
         "src"
     ],
     "defines": [],

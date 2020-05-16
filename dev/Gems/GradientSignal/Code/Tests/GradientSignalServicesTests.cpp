@@ -69,7 +69,8 @@ namespace UnitTest
         };
 
         auto entityMock = CreateEntity();
-        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+        const AZ::EntityId id = entityMock->GetId();
+        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::DitherGradientConfig config;
         config.m_useSystemPointsPerUnit = false;
@@ -102,7 +103,8 @@ namespace UnitTest
         };
 
         auto entityMock = CreateEntity();
-        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+        const AZ::EntityId id = entityMock->GetId();
+        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::DitherGradientConfig config;
         config.m_useSystemPointsPerUnit = false;
@@ -139,7 +141,8 @@ namespace UnitTest
         };
 
         auto entityMock = CreateEntity();
-        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+        const AZ::EntityId id = entityMock->GetId();
+        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::DitherGradientConfig config;
         config.m_useSystemPointsPerUnit = false;
@@ -176,7 +179,8 @@ namespace UnitTest
         };
 
         auto entityMock = CreateEntity();
-        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+        const AZ::EntityId id = entityMock->GetId();
+        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::DitherGradientConfig config;
         config.m_useSystemPointsPerUnit = false;
@@ -210,7 +214,8 @@ namespace UnitTest
         };
 
         auto entityMock = CreateEntity();
-        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+        const AZ::EntityId id = entityMock->GetId();
+        UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::InvertGradientConfig config;
         config.m_gradientSampler.m_gradientId = entityMock->GetId();

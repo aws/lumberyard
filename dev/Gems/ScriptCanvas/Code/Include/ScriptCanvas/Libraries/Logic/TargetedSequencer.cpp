@@ -37,6 +37,21 @@ namespace ScriptCanvas
             {
                 FixupStateNames();
             }
+
+            void TargetedSequencer::ConfigureVisualExtensions()
+            {
+                {
+                    VisualExtensionSlotConfiguration visualExtensions(VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot);
+
+                    visualExtensions.m_name = "Add Output";
+                    visualExtensions.m_tooltip = "Adds a new output to switch between.";
+                    visualExtensions.m_connectionType = ConnectionType::Output;
+                    visualExtensions.m_identifier = AZ::Crc32("AddOutputGroup");
+                    visualExtensions.m_displayGroup = GetDisplayGroup();
+
+                    RegisterExtension(visualExtensions);
+                }
+            }
             
             bool TargetedSequencer::CanDeleteSlot(const SlotId& slotId) const
             {
@@ -49,29 +64,6 @@ namespace ScriptCanvas
                 }
 
                 return false;
-            }
-
-            bool TargetedSequencer::IsNodeExtendable() const
-            {
-                return true;
-            }
-            
-            int TargetedSequencer::GetNumberOfExtensions() const
-            {
-                return 1;
-            }
-            
-            ExtendableSlotConfiguration TargetedSequencer::GetExtensionConfiguration(int extensionCount) const
-            {
-                ExtendableSlotConfiguration slotConfiguration;
-                
-                slotConfiguration.m_name = "Add Output";
-                slotConfiguration.m_tooltip = "Adds a new output to switch between.";
-                slotConfiguration.m_connectionType = ConnectionType::Output;
-                slotConfiguration.m_identifier = AZ::Crc32("AddOutputGroup");
-                slotConfiguration.m_displayGroup = GetDisplayGroup();
-                
-                return slotConfiguration;
             }
 
             SlotId TargetedSequencer::HandleExtension(AZ::Crc32 extensionId)

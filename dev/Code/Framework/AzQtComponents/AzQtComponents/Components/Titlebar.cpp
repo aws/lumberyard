@@ -21,6 +21,8 @@
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/DockTabBar.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDpiScaling::m_logicalDpi': struct 'QPair<qreal,qreal>' needs to have dll-interface to be used by clients of class 'QHighDpiScaling'
+                                                               // 4244: 'argument': conversion from 'qreal' to 'int', possible loss of data
 #include <QApplication>
 #include <QDockWidget>
 #include <QHBoxLayout>
@@ -29,13 +31,11 @@
 #include <QPainter>
 #include <QMenu>
 #include <QDesktopWidget>
-AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDpiScaling::m_logicalDpi': struct 'QPair<qreal,qreal>' needs to have dll-interface to be used by clients of class 'QHighDpiScaling'
-                                                               // 4244: 'argument': conversion from 'qreal' to 'int', possible loss of data
 #include <QtGui/private/qhighdpiscaling_p.h>
-AZ_POP_DISABLE_WARNING
 #include <QLabel>
 #include <QStackedLayout>
 #include <QVector>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
@@ -127,7 +127,7 @@ namespace AzQtComponents
         config.title.visibleWhenSimple = false;
 
         config.buttons.showDividerButtons = false;
-        config.buttons.spacing = 12;
+        config.buttons.spacing = 8;
 
         return config;
     }
@@ -865,7 +865,8 @@ namespace AzQtComponents
     {
         // This is rect() - the button rect, so we can enable aero-snap dragging in that space
         QRect r = rect();
-        r.setWidth(m_firstButton->x() - layout()->spacing());
+        const QPoint firstButtonPos = mapFromGlobal(m_firstButton->mapToGlobal(m_firstButton->pos()));
+        r.setWidth(firstButtonPos.x() - layout()->spacing());
         return r;
     }
 

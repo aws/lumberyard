@@ -15,6 +15,7 @@
 #include <AzCore/Module/Module.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/Environment.h>
+#include <AzCore/Name/NameDictionary.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
@@ -25,6 +26,20 @@ namespace UnitTest
         : public AllocatorsFixture
     {
     public:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AZ::NameDictionary::Create();
+        }
+
+        void TearDown() override
+        {
+            AZ::NameDictionary::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+
         void LoadModule()
         {
             m_handle = DynamicModuleHandle::Create("AZCoreTestDLL");

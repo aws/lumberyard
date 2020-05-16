@@ -44,8 +44,10 @@ namespace GraphCanvas
         }
     }
     
-    ContextMenuAction::SceneReaction SetEnabledStateMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction SetEnabledStateMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         if (m_enableState)
         {
             SceneRequestBus::Event(graphId, &SceneRequests::EnableSelection);

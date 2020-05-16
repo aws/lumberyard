@@ -29,12 +29,14 @@ function AWSBehaviorLambdaTest:OnDeactivate()
 end
 
 function AWSBehaviorLambdaTest:OnSuccess(resultBody)
-    Debug.Log("Lua AWSBehaviorLambdaTest: AWS Lambda success: " .. resultBody)
+    Debug.Log("AWSBehaviorLambdaTest: Passed")
+    Debug.Log("Result body: " .. resultBody)
     self:NotifyMainEntity("success")
 end
 
 function AWSBehaviorLambdaTest:OnError(errorBody)
-    Debug.Log("Lua AWSBehaviorLambdaTest: AWS Lambda error: " .. errorBody)
+    Debug.Warning("Lua AWSBehaviorLambdaTest: Failed")
+    Debug.Log("Error Body: " .. errorBody)
     self:NotifyMainEntity("fail")
 end
 

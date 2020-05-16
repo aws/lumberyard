@@ -147,63 +147,6 @@ namespace AZ
             //! \return A global reference to the desired jclass.  Caller is responsible for making a
             //!         call to DeleteGlobalJniRef when the jclass is no longer needed.
             jclass LoadClass(const char* classPath);
-
-
-            // ----
-
-
-            //! \deprecated Use AZ::Android::JNI::GetClassName instead
-            //! \brief Get the fully qualified forward slash separated Java class path of Java class ref.
-            //!        e.g. android.app.NativeActivity ==> android/app/NativeActivity
-            //! \param classRef A valid reference to a java class
-            //! \return A copy of the class name
-            AZ_DEPRECATED(AZStd::string GetClassName(jclass classRef) const, "Use AZ::Android::JNI::GetClassName instead");
-
-            //! \deprecated Use AZ::Android::JNI::GetSimpleClassName instead
-            //! \brief Get just the name of the Java class from a Java class ref.
-            //!        e.g. android.app.NativeActivity ==> NativeActivity
-            //! \param classRef A valid reference to a java class
-            //! \return A copy of the class name
-            AZ_DEPRECATED(AZStd::string GetSimpleClassName(jclass classRef) const, "Use AZ::Android::JNI::GetSimpleClassName instead");
-
-            //! \deprecated This function is no longer available
-            //! \brief Get the game project name from the Java string resources.
-            AZ_DEPRECATED(const char* GetGameProjectName() const, "This function is no longer available")
-            {
-                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetGameProjectName.");
-                return "";
-            }
-
-            //! \deprecated This function is no longer available
-            //! \brief Get the root directory for external (or public) storage.
-            //!        e.g. /storage/sdcard0/, /storage/self/primary/, etc.
-            AZ_DEPRECATED(const char* GetExternalStorageRoot() const, "This function is no longer available")
-            {
-                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetExternalStorageRoot.");
-                return "";
-            }
-
-            //! \deprecated This function is no longer available
-            //! \brief Retrieve a boolean resource from the android resources
-            //! \param resourceName The name of the boolean resource.
-            //! \return The boolean value of the resource.
-            AZ_DEPRECATED(bool GetBooleanResource(const char* resourceName) const, "This function is no longer available")
-            {
-                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetBooleanResource.");
-                return false;
-            }
-
-            //! \deprecated Use AndroidEnv::GetAppPrivateStoragePath instead
-            //! \brief Get the hidden internal storage, typically this is where the application is installed on the device.
-            //!        e.g. /data/data/<package_name/files
-            AZ_DEPRECATED(const char* GetInternalStoragePath() const, "Use AndroidEnv::GetAppPrivateStoragePath instead") { return m_appPrivateStoragePath.c_str(); }
-
-            //! \deprecated Use AndroidEnv::GetAppPublicStoragePath instead
-            //! \brief Get the application specific directory for external (or public) storage.
-            //!        e.g. <public_storage>/Android/data/<package_name/files
-            AZ_DEPRECATED(const char* GetExternalStoragePath() const, "Use AndroidEnv::GetAppPublicStoragePath instead") { return m_appPublicStoragePath.c_str(); }
-
-
         private:
             template<typename StringType>
             friend class JNI::Internal::ClassName;

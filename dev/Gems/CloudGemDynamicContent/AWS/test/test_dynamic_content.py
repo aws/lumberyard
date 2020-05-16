@@ -14,6 +14,7 @@ import os
 import json
 import sys
 import unittest
+import warnings
 
 from botocore.exceptions import ClientError
 
@@ -33,6 +34,9 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
 
     def setUp(self):
         self.prepare_test_environment("dynamic_content_tests")
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between intergration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
         self.register_for_shared_resources()
         self.enable_shared_gem(self.gem_name)
 
@@ -67,7 +71,6 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         self.assertIn('New Local Key', self.lmbr_aws_stdout)
 
     def __105_upload_monitored_content(self):
-
         self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME)
         self.lmbr_aws('dynamic-content', 'list-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn(self.manifest_pak_name, self.lmbr_aws_stdout)
@@ -102,6 +105,6 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
         output_path = os.path.join(cache_dir, temp_file_name)
-        print 'writing ' + temp_file_content + ' to '+  output_path
+        print('writing {} to {}'.format(temp_file_content, output_path))
         with open(output_path, 'w') as f:
             f.write(temp_file_content)

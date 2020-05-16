@@ -21,7 +21,7 @@ def build(bld):
         use_required_gems = True,
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5'],
             uselib      = [
                            'QT5CORE',

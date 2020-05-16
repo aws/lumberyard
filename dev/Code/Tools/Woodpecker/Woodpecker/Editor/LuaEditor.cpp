@@ -74,5 +74,10 @@ int main(int argc, char* argv[])
         // if its in GUI mode or not.
     }
 
+    if (AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
+    }
+
     return exitCode;
 }

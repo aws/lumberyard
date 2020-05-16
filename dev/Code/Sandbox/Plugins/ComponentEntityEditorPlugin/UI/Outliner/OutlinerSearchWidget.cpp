@@ -116,7 +116,7 @@ namespace AzQtComponents
     {
     }
 
-    void OutlinerSearchItemDelegate::PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const
+    void OutlinerSearchItemDelegate::PaintRichText(QPainter* painter, QStyleOptionViewItem& opt, QString& text) const
     {
         int textDocDrawYOffset = 3;
         QPoint paintertextDocRenderOffset = QPoint(1, 4);
@@ -138,7 +138,7 @@ namespace AzQtComponents
         bool isGlobalOption = false;
         painter->save();
 
-        QStyleOptionViewItemV4 opt = option;
+        QStyleOptionViewItem opt = option;
         initStyleOption(&opt, index);
 
         const QWidget* widget = option.widget;
@@ -167,7 +167,7 @@ namespace AzQtComponents
         }
         else
         {
-            if (m_selector->GetFilterString().length() > 0 && !isGlobalOption && opt.features & QStyleOptionViewItemV4::ViewItemFeature::HasCheckIndicator)
+            if (m_selector->GetFilterString().length() > 0 && !isGlobalOption && opt.features & QStyleOptionViewItem::ViewItemFeature::HasCheckIndicator)
             {
                 // Create rich text menu text to show filterstring
                 QString label{ opt.text };

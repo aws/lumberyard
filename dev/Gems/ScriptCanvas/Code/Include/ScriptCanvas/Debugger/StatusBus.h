@@ -16,6 +16,7 @@
 #include <AzCore/Outcome/Outcome.h>
 
 #include <ScriptCanvas/Debugger/ValidationEvents/ValidationEvent.h>
+#include <ScriptCanvas/Core/Core.h>
 
 namespace ScriptCanvas
 {
@@ -66,6 +67,11 @@ namespace ScriptCanvas
             return m_validationEvents;
         }
 
+        void AddValidationEvent(ValidationEvent* validationEvent)
+        {
+            m_validationEvents.emplace_back(validationEvent);
+        }
+
     private:
 
         bool HasSeverity(const ValidationSeverity& severity) const
@@ -104,7 +110,7 @@ namespace ScriptCanvas
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
 
         //! Validates the graph for invalid connections between node's endpoints
         //! Any errors are logged to the "Script Canvas" window

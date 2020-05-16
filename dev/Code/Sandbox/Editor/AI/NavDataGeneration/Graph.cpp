@@ -43,6 +43,8 @@
 #include "CommonDefs.h"
 #include "Navigation.h"
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 #pragma warning(disable: 4244)
 
 #define BAI_TRI_FILE_VERSION 54
@@ -1848,8 +1850,6 @@ void CGraph::FillGraphNodeData(unsigned nodeIndex)
 {
     GraphNode* pNode = GetNodeManager().GetNode(nodeIndex);
 
-    I3DEngine* pEngine = gEnv->pSystem->GetI3DEngine();
-
     const STriangularNavData* pTriNavData = pNode->GetTriangularNavData();
 
     // get the triangle centre from the mean of the vertex points, weighting by the edge lengths.
@@ -1895,7 +1895,13 @@ void CGraph::FillGraphNodeData(unsigned nodeIndex)
     }
 
     // put it on the terrain (up a little bit)
-    pos.z = 0.2f + pEngine->GetTerrainElevation(pos.x, pos.y);
+    float terrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainHeight
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , pos.x, pos.y
+        , AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+        , nullptr);
+    pos.z = 0.2f + terrainHeight;
     MoveNode(nodeIndex, pos);
 }
 

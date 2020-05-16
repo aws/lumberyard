@@ -569,7 +569,7 @@ struct IMaterialManager
     virtual _smart_ptr<IMaterial> LoadCGFMaterial(CMaterialCGF* pMaterialCGF, const char* sCgfFilename, unsigned long nLoadingFlags = 0) = 0;
 
     // for statistics - call once to get the count (pData==0), again to get the data(pData!=0)
-    virtual void GetLoadedMaterials(std::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const = 0;
+    virtual void GetLoadedMaterials(AZStd::vector<_smart_ptr<IMaterial>>* pData, uint32& nObjCount) const = 0;
 
     // Updates material data in the renderer
     virtual void RefreshMaterialRuntime() = 0;

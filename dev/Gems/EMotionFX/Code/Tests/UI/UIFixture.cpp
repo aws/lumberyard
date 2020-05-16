@@ -23,30 +23,33 @@
 
 namespace EMotionFX
 {
+    void MakeQtApplicationBase::SetUp()
+    {
+        AzQtComponents::PrepareQtPaths();
+
+        int argc = 0;
+        m_uiApp = new QApplication(argc, nullptr);
+
+        AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyRegisterViews);
+    }
+
+    MakeQtApplicationBase::~MakeQtApplicationBase()
+    {
+        delete m_uiApp;
+    }
+
     void UIFixture::SetUp()
     {
         UIFixtureBase::SetUp();
+        MakeQtApplicationBase::SetUp();
 
-        AzQtComponents::PrepareQtPaths();
-
-        char arg0[] = {"test"};
-        char* argv[] = {&arg0[0], nullptr};
-        int argc = 1;
-        m_app = new QApplication(argc, argv);
-
-        AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyRegisterViews);
-
+        // Plugins have to be created after both the QApplication object and
+        // after the SystemComponent
         const uint32 numPlugins = EMStudio::GetPluginManager()->GetNumPlugins();
         for (uint32 i = 0; i < numPlugins; ++i)
         {
             EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->GetPlugin(i);
             EMStudio::GetPluginManager()->CreateWindowOfType(plugin->GetName());
         }
-    }
-
-    void UIFixture::TearDown()
-    {
-        UIFixtureBase::TearDown();
-        delete m_app;
     }
 } // namespace EMotionFX

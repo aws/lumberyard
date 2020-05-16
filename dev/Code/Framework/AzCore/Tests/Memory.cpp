@@ -1150,7 +1150,7 @@ namespace UnitTest
         class DebugSysAlloc
             : public AZ::IAllocatorAllocate
         {
-            virtual pointer_type    Allocate(size_type byteSize, size_type alignment, int flags, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0)
+            pointer_type    Allocate(size_type byteSize, size_type alignment, int flags, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
             {
                 (void)flags;
                 (void)name;
@@ -1159,11 +1159,11 @@ namespace UnitTest
                 (void)suppressStackRecord;
                 return AZ_OS_MALLOC(byteSize, alignment);
             }
-            virtual void                    DeAllocate(pointer_type ptr, size_type, size_type)
+            void                    DeAllocate(pointer_type ptr, size_type, size_type) override
             {
                 AZ_OS_FREE(ptr);
             }
-            virtual pointer_type    ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)
+            pointer_type    ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
             {
                 (void)ptr;
                 (void)newSize;
@@ -1172,17 +1172,17 @@ namespace UnitTest
                 return NULL;
             }
             /// Resize an allocated memory block. Returns the new expanded size (up to newSize) or AllocationSize(ptr) or 0 (if you don't support resize at all)
-            virtual size_type               Resize(pointer_type ptr, size_type newSize)  { (void)ptr; (void)newSize; return 0; }
+            size_type               Resize(pointer_type ptr, size_type newSize) override  { (void)ptr; (void)newSize; return 0; }
             /// Returns allocation size for given address. 0 if the address doesn't belong to the allocator.
-            virtual size_type               AllocationSize(pointer_type ptr)             { (void)ptr; return 0; }
+            size_type               AllocationSize(pointer_type ptr) override             { (void)ptr; return 0; }
 
-            virtual size_type               NumAllocatedBytes() const                    { return 0; }
+            size_type               NumAllocatedBytes() const override                    { return 0; }
             /// Returns the capacity of the Allocator in bytes. If the return value is 0 the Capacity is undefined (usually depends on another allocator)
-            virtual size_type               Capacity() const                             { return 1 * 1024 * 1024 * 1024; }
+            size_type               Capacity() const override                             { return 1 * 1024 * 1024 * 1024; }
             /// Returns max allocation size if possible. If not returned value is 0
-            virtual size_type               GetMaxAllocationSize() const                 { return 1 * 1024 * 1024 * 1024; }
+            size_type               GetMaxAllocationSize() const override                 { return 1 * 1024 * 1024 * 1024; }
             /// Returns a pointer to a sub-allocator or NULL.
-            virtual IAllocatorAllocate*     GetSubAllocator()                            { return NULL; }
+            IAllocatorAllocate*     GetSubAllocator() override                            { return NULL; }
         };
     public:
         void SetUp() override

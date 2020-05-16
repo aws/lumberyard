@@ -61,7 +61,7 @@ public:
 
     bool setValueFromString(const char* str) override
     {
-        float newValue = atof(str);
+        float newValue = aznumeric_cast<float>(atof(str));
         if (localValue_ != newValue)
         {
             localValue_ = newValue;
@@ -99,7 +99,7 @@ public:
     {
         double startPower = log10(fabs(double(incrementStartValue_) + 1.0)) - 3.0;
         double power = startPower + fabs(screenFraction) * 10.0f;
-        double delta = powf(10.0f, power) - powf(10.0f, startPower) + 10.0f * fabsf(screenFraction);
+        double delta = powf(10.0f, aznumeric_cast<float>(power)) - powf(10.0f, aznumeric_cast<float>(startPower)) + 10.0f * fabsf(screenFraction);
         double newValue;
         if (screenFraction > 0.0f)
         {
@@ -256,7 +256,7 @@ static void drawSlider(const PropertyDrawContext& context, float relativeVal, bo
     int width = sliderGroove.width() - sliderHandle.width() + 1;
     sliderOptions.maximum = width;
     sliderOptions.pageStep = width / 100;
-    sliderOptions.sliderPosition = width * relativeVal;
+    sliderOptions.sliderPosition = aznumeric_cast<int>(width * relativeVal);
     sliderOptions.state = !userReadOnly ? (QStyle::State_Enabled | (selected ? QStyle::State_HasFocus : QStyle::State())) : QStyle::State();
 
     context.tree->style()->drawComplexControl(QStyle::CC_Slider, &sliderOptions, context.painter,  &widgetForContext);
@@ -355,7 +355,7 @@ public:
     {
         double startPower = log10(fabs(double(incrementStartValue_) + 1.0)) - 3.0;
         double power = startPower + fabs(screenFraction) * 10.0f;
-        double delta = powf(10.0f, power) - powf(10.0f, startPower) + 1000.0f * fabsf(screenFraction);
+        double delta = powf(10.0f, aznumeric_cast<float>(power)) - powf(10.0f, aznumeric_cast<float>(startPower)) + 1000.0f * fabsf(screenFraction);
         double newValue;
         if (screenFraction > 0.0f)
         {
@@ -429,7 +429,7 @@ bool PropertyRowSliderI::handleMouse(QPropertyTree* tree, QPoint point)
 
 bool PropertyRowSliderI::onKeyDown(QPropertyTree* tree, const QKeyEvent* ev)
 {
-    int step = (value_.maxLimit - value_.minLimit) * 0.01f;
+    int step = aznumeric_cast<int>((value_.maxLimit - value_.minLimit) * 0.01f);
     if (ev->key() == Qt::Key_Left)
     {
         tree->model()->rowAboutToBeChanged(this);

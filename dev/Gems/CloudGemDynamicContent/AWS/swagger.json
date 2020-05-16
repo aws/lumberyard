@@ -18,11 +18,6 @@
         "lambda": "$ServiceLambdaArn$"
     },
     "paths": {
-        "/loadtest": {
-            "x-cloud-gem-framework-interface-implementation": {
-                "interface": "CloudGemDynamicContent_LoadTest_1_0_0"
-            }
-        },
         "/service/status": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
                 "module": "service_status"
@@ -48,10 +43,11 @@
                 "description": "Returns information about a specific file to the portal.",
                 "parameters": [
                     {
-						"description": "The pak file name to retrieve information about.",
+                        "description": "The pak file name to retrieve information about.",
                         "name": "file_name",
                         "in": "path",
-                        "type": "string"
+                        "type": "string",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -80,7 +76,8 @@
 						"description": "The pak file name to retrieve information about.",
                         "name": "file_name",
                         "in": "path",
-                        "type": "string"
+                        "type": "string",
+                        "required": true
                     }
                 ],
                 "responses": {

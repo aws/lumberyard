@@ -20,8 +20,7 @@ namespace ScriptCanvas
 {
     AZ::Outcome<void, AZStd::string> IsReferenceTypeContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
-        Data::Type targetType;
-        NodeRequestBus::EventResult(targetType, targetSlot.GetNodeId(), &NodeRequests::GetSlotDataType, targetSlot.GetId());
+        Data::Type targetType = targetSlot.GetDataType();
 
         if (EvaluateForType(targetType))
         {

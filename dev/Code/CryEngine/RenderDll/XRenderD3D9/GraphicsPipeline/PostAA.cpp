@@ -313,6 +313,22 @@ void PostAAPass::Execute()
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
 
+    // Slimming GBuffer process is done by encoding normals into format that can fit in only two channels 
+    // and then uses the third extra channel to encode specular's Y channel (in YPbPbr format). The CbCr channels can be  
+    // compressed down to two channels due to requiring only 4 bit prcision for them. This means we can't use the specular
+    // texture for temporary copies. Thus requiring the need to pick other unused textures to be the replacement.
+    if (CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        if (CRenderer::CV_r_AntialiasingMode == eAT_FXAA || CRenderer::CV_r_AntialiasingMode == eAT_SMAA1TX)
+        {
+            inOutBuffer = CTexture::s_ptexSceneDiffuse;
+        }
+        else
+        {
+            inOutBuffer = CTexture::s_ptexSceneNormalsMap;
+        }
+    }
+
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
     const int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
     const bool bDolbyHDRMode = DolbyCvarValue > eDVM_Disabled;
@@ -353,7 +369,19 @@ void PostAAPass::Execute()
 void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT)
 {
     CTexture* pEdgesTex = CTexture::s_ptexSceneNormalsMap; // Reusing esram resident target
-    CTexture* pBlendTex = CTexture::s_ptexSceneDiffuse;    // Reusing esram resident target (note that we access this FP16 RT using point filtering - full rate on GCN)
+    
+    // Need to use a different temporary texture for edge detection since it is using the normal map
+    // as inout for slimming GBuffer 
+    if(CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        pEdgesTex = CTexture::s_ptexSceneNormalsBent;
+    }
+    
+    CTexture* pBlendTex = CTexture::s_ptexSceneDiffuse;     // Reusing esram resident target (note that we access this FP16 RT using point filtering - full rate on GCN)
+    if(CRenderer::CV_r_SlimGBuffer == 1)
+    {
+        pBlendTex = CTexture::s_ptexSceneSpecularAccMap;
+    }
 
     CShader* pShader = CShaderMan::s_shPostAA;
 
@@ -417,6 +445,13 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, b
         }
 
         CTexture* pDstRT = CTexture::s_ptexSceneNormalsMap;
+
+        // Need to use a different temporary texture for edge detection since it is using the normal map
+        // as inout for slimming GBuffer 
+        if (CRenderer::CV_r_SlimGBuffer == 1)
+        {
+            pDstRT = pEdgesTex;
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
         // Final pass - blend neighborhood pixels

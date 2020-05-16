@@ -77,7 +77,7 @@ namespace ScriptCanvas
             void GraphActivated(const GraphActivation&) override;
             void GraphDeactivated(const GraphActivation&) override;
             bool IsNodeObserved(const Node&) override;
-            bool IsVariableObserved(const Node&, VariableId variableId) override;
+            bool IsVariableObserved(const VariableId& variableId) override;
             void NodeSignaledOutput(const OutputSignal&) override;
             void NodeSignaledInput(const InputSignal&) override;
             void NodeSignaledDataOuput(const OutputDataSignal&) override;
@@ -106,6 +106,8 @@ namespace ScriptCanvas
             //////////////////////////////////////////////////////////////////////////
 
         protected:
+            void SetTargetsObserved(const TargetEntities& targetEntities, bool observedState);
+
             template<typename t_SignalType, typename t_MessageType>
             void NodeSignalled(const t_SignalType& nodeSignal)
             {

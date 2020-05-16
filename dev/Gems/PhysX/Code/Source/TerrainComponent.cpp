@@ -25,9 +25,13 @@
 
 #include <Source/RigidBodyStatic.h>
 #include <Source/Utils.h>
+#include <Source/World.h>
 
 #include <Shape.h>
 #include <Material.h>
+
+#include <PhysX/PhysXLocks.h>
+
 
 namespace PhysX
 {
@@ -114,9 +118,18 @@ namespace PhysX
 
     float TerrainComponent::GetHeight(float x, float y)
     {
+        PhysX::World* world = Utils::GetDefaultWorld();
+        if (world == nullptr)
+        {
+            AZ_Warning("TerrainComponent", false, "Unable to retrieve default world");
+            return 0.0f;
+        }
+
         auto physxGenericShape = static_cast<PhysX::Shape*>(m_terrainTiles[0]->GetShape(0).get());
         physx::PxShape* pxShape = physxGenericShape->GetPxShape();
         physx::PxHeightFieldGeometry geometry;
+
+        PHYSX_SCENE_READ_LOCK(world->GetNativeWorld());
         if (pxShape->getHeightFieldGeometry(geometry))
         {
             return geometry.heightField->getHeight(x / m_configuration.m_scale.GetX(), y / m_configuration.m_scale.GetY()) * m_configuration.m_scale.GetZ();

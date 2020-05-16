@@ -13,11 +13,10 @@
 # make sure that this can be imported successfully
 
 import os
-import custom_resource_response
-import test_plugin_dependency
 
 calls_file_path = os.path.join(os.path.dirname(__file__), 'calls')
 call_count = 0
+
 
 def handler(event, context):
     global call_count

@@ -9,13 +9,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #17 $
-
 import json
 import os
-import resource_manager_common.constant as  c
+import warnings
+
+import resource_manager_common.constant as c
 from resource_manager.test import base_stack_test
 from resource_manager.test import lmbr_aws_test_support
-import test_constant
+from . import test_constant
+
 
 class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseStackTestCase):
 
@@ -23,10 +25,13 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
     FAST_TEST_RERUN = False
 
     def __init__(self, *args, **kwargs):
-        self.base = super(IntegrationTest_CloudGemFramework_ExternalResource, self)
-        self.base.__init__(*args, **kwargs)
+        self.base = super(IntegrationTest_CloudGemFramework_ExternalResource, self).__init__(*args, **kwargs)
 
     def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.set_deployment_name(lmbr_aws_test_support.unique_name())
         self.set_resource_group_name(lmbr_aws_test_support.unique_name('rg'))
         self.prepare_test_environment("cloud_gem_external_resource_test")
@@ -36,9 +41,10 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
         self.run_all_tests()
 
     def __000_create_stacks(self):
-       self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable', ignore_failure=True)
-       self.enable_shared_gem(self.TEST_RESOURCE_GROUP_NAME, 'v1', path=os.path.join(self.context[test_constant.ATTR_ROOT_DIR], os.path.join(test_constant.DIR_GEMS,  self.TEST_RESOURCE_GROUP_NAME)))
-       self.base_create_project_stack()
+        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable', ignore_failure=True)
+        self.enable_shared_gem(self.TEST_RESOURCE_GROUP_NAME, 'v1', path=os.path.join(self.context[test_constant.ATTR_ROOT_DIR],
+                                                                                      os.path.join(test_constant.DIR_GEMS,  self.TEST_RESOURCE_GROUP_NAME)))
+        self.base_create_project_stack()
 
     def __010_add_external_resources_to_project(self):
         project_template_path = self.get_gem_aws_path(
@@ -50,7 +56,7 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
             project_extension_resources = gem_project_template['Resources'] = {}
             project_extension_resources[_EXTERNAL_RESOURCE_1_NAME] = _EXTERNAL_RESOURCE_1_INSTANCE
             project_extension_resources[_EXTERNAL_RESOURCE_2_NAME] = _EXTERNAL_RESOURCE_2_INSTANCE
-            project_extension_resources['GameDBTableRefernece'] = _EXTERNAL_RESOURCE_1_REFERENCE
+            project_extension_resources['GameDBTableReference'] = _EXTERNAL_RESOURCE_1_REFERENCE
 
     def __020_update_project(self):
         self.base_update_project_stack()
@@ -68,18 +74,16 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
         project_service_lambda_role = self.get_lambda_function_execution_role(project_stack_arn, 'ServiceLambda')
 
         self.verify_role_permissions('project',
-            self.get_project_stack_arn(),
-            project_service_lambda_role,
-            [
-                {
-                    'Resources': map(lambda suffix: _EXTERNAL_RESOURCE_1_ARN + suffix, _EXTERNAL_RESOURCE_1_RESOURCE_SUFFIX),
-                    'Allow': _EXTERNAL_RESOURCE_1_ACTIONS
-                }
-            ])
+                                     self.get_project_stack_arn(),
+                                     project_service_lambda_role,
+                                     [{
+                                         'Resources': list(map(lambda suffix: _EXTERNAL_RESOURCE_1_ARN + suffix, _EXTERNAL_RESOURCE_1_RESOURCE_SUFFIX)),
+                                         'Allow': _EXTERNAL_RESOURCE_1_ACTIONS
+                                     }])
 
     def __999_cleanup(self):
         if self.FAST_TEST_RERUN:
-            print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
+            print('Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.')
             self.assertFalse(self.FAST_TEST_RERUN)
         self.unregister_for_shared_resources()
         self.base_delete_deployment_stack()
@@ -87,7 +91,7 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
 
     def get_lambda_function_execution_role(self, stack_arn, function_name):
         function_arn = self.get_stack_resource_arn(stack_arn, function_name)
-        res = self.aws_lambda.get_function(FunctionName = function_arn)
+        res = self.aws_lambda.get_function(FunctionName=function_arn)
         role_arn = res['Configuration']['Role']
         return role_arn[role_arn.rfind('/')+1:]
 
@@ -98,6 +102,7 @@ class IntegrationTest_CloudGemFramework_ExternalResource(base_stack_test.BaseSta
         self.verify_s3_object_exists(configuration_bucket, key)
         content = self.aws_s3.get_object(Bucket=configuration_bucket, Key=key)['Body'].read()
         self.assertEqual(json.loads(content), expected_content)
+
 
 _EXTERNAL_RESOURCE_1_NAME = 'ExternalResource1'
 _EXTERNAL_RESOURCE_2_NAME = 'ExternalResource2'
@@ -111,7 +116,7 @@ _EXTERNAL_RESOURCE_1_ACTIONS = [
     "dynamodb:GetItem",
 ]
 
-_EXTERNAL_RESOURCE_1_RESOURCE_SUFFIX = ["/*",""]
+_EXTERNAL_RESOURCE_1_RESOURCE_SUFFIX = ["/*", ""]
 
 _EXTERNAL_RESOURCE_1_REFERENCE_METADATA = {
     "Arn": _EXTERNAL_RESOURCE_1_ARN,
@@ -125,7 +130,8 @@ _EXTERNAL_RESOURCE_1_REFERENCE_METADATA = {
 _EXTERNAL_RESOURCE_1_INSTANCE = {
     "Type": "Custom::ExternalResourceInstance",
     "Properties": {
-        "ServiceToken": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectResourceHandler" } ] ] },
+        "ServiceToken": {"Fn::Join": ["", ["arn:aws:lambda:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":function:",
+                                           {"Ref": "ProjectResourceHandler"}]]},
         "ReferenceMetadata": _EXTERNAL_RESOURCE_1_REFERENCE_METADATA
     },
     "DependsOn": [
@@ -144,14 +150,15 @@ _EXTERNAL_RESOURCE_2_REFERENCE_METADATA = {
             "dynamodb:DeleteItem",
             "dynamodb:UpdateItem"
         ],
-        "ResourceSuffix": ["/*",""]
+        "ResourceSuffix": ["/*", ""]
     }
 }
 
 _EXTERNAL_RESOURCE_2_INSTANCE = {
     "Type": "Custom::ExternalResourceInstance",
     "Properties": {
-        "ServiceToken": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectResourceHandler" } ] ] },
+        "ServiceToken": {"Fn::Join": ["", ["arn:aws:lambda:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":function:",
+                                           {"Ref": "ProjectResourceHandler"}]]},
         "ReferenceMetadata": _EXTERNAL_RESOURCE_2_REFERENCE_METADATA
     },
     "DependsOn": [
@@ -160,7 +167,7 @@ _EXTERNAL_RESOURCE_2_INSTANCE = {
 }
 
 _EXTERNAL_RESOURCE_1_REFERENCE = {
-    "Type":"Custom::ExternalResourceReference",
+    "Type": "Custom::ExternalResourceReference",
     "Metadata": {
         "CloudCanvas": {
             "Permissions": [
@@ -172,7 +179,8 @@ _EXTERNAL_RESOURCE_1_REFERENCE = {
     },
     "Properties": {
         "ReferenceName": _EXTERNAL_RESOURCE_1_NAME,
-        "ServiceToken": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectResourceHandler" } ] ] }
+        "ServiceToken": {"Fn::Join": ["", ["arn:aws:lambda:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":function:",
+                                           {"Ref": "ProjectResourceHandler"}]]}
     },
     "DependsOn": [
         "CoreResourceTypes",

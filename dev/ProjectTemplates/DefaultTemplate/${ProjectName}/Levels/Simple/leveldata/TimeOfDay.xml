@@ -236,8 +236,8 @@
  <Variable Name="Ocean fog density" Value="1">
   <Spline Keys="0.5:1:36,"/>
  </Variable>
- <Variable Name="Skybox multiplier" Value="1">
-  <Spline Keys="0.5:1:36,"/>
+ <Variable Name="Static skybox multiplier" Value="1">
+  <Spline Keys="0:1:0,1:1:0,"/>
  </Variable>
  <Variable Name="Film curve shoulder scale" Value="8">
   <Spline Keys="0.5:8:36,0.583333:8:36,"/>
@@ -323,7 +323,7 @@
  <Variable Name="Cascade 4: Slope Bias" Value="1">
   <Spline Keys="0:1:0,0.208333:1:36,0.25:1:36,0.42125:1:36,0.5:1:65572,0.632917:1:36,0.65375:1:36,0.698333:1:36,0.75:1:36,0.889262:1:36,1:1:36,"/>
  </Variable>
- <Variable Name="Cascade 5: Bias" Value="0.0099999998">
+ <Variable Name="Cascade 5: Bias" Value="0.010000001">
   <Spline Keys="0:0.01:0,0.229167:0.01:36,0.25:0.01:36,0.270833:0.01:36,0.42125:0.01:36,0.439762:0.01:36,0.5:0.01:65572,0.503672:0.01:36,0.647917:0.01:36,0.667917:0.01:36,0.698333:0.01:36,0.75:0.01:36,0.889262:0.01:36,1:0.01:36,"/>
  </Variable>
  <Variable Name="Cascade 5: Slope Bias" Value="1">

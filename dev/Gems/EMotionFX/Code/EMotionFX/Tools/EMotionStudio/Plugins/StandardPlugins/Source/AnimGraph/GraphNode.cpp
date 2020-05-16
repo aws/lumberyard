@@ -38,7 +38,6 @@ namespace EMStudio
         mVisualizeColor         = QColor(0, 255, 0);
         mOpacity                = 1.0f;
         mFinalRect              = mRect;
-        mIsSelected             = false;
         mIsDeletable            = true;
         mIsHighlighted          = false;
         mConFromOutputOnly      = false;
@@ -167,7 +166,7 @@ namespace EMStudio
 
             // setup colors
             QColor textColor;
-            if (mIsSelected == false)
+            if (!GetIsSelected())
             {
                 if (mIsEnabled)
                     textColor = Qt::white;
@@ -453,7 +452,9 @@ namespace EMStudio
         // border color
         QColor borderColor;
         pen->setWidth(1);
-        if (mIsSelected)
+        const bool isSelected = GetIsSelected();
+
+        if (isSelected)
         {
             borderColor.setRgb(255, 128, 0);
 
@@ -474,7 +475,7 @@ namespace EMStudio
 
         // background and header colors
         QColor bgColor;
-        if (mIsSelected)
+        if (isSelected)
         {
             bgColor.setRgbF(0.93f, 0.547f, 0.0f, 1.0f); //  rgb(72, 63, 238)
         }
@@ -497,7 +498,7 @@ namespace EMStudio
 
         // text color
         QColor textColor;
-        if (mIsSelected == false)
+        if (!isSelected)
         {
             if (mIsEnabled)
             {
@@ -670,7 +671,7 @@ namespace EMStudio
         if (mParentGraph->GetScale() > 0.3f)
         {
             // draw the collapse triangle
-            if (mIsSelected)
+            if (isSelected)
             {
                 painter.setBrush(textColor);
                 painter.setPen(headerBgColor);
@@ -731,13 +732,13 @@ namespace EMStudio
         if (mCanHaveChildren || mHasVisualGraph)
         {
             const int indicatorSize = 13;
-            QRect childIndicatorRect(mRect.right() - indicatorSize - 2 * BORDER_RADIUS, mRect.top(), indicatorSize + 2 * BORDER_RADIUS + 1, indicatorSize + 2 * BORDER_RADIUS);
+            QRect childIndicatorRect(aznumeric_cast<int>(mRect.right() - indicatorSize - 2 * BORDER_RADIUS), mRect.top(), aznumeric_cast<int>(indicatorSize + 2 * BORDER_RADIUS + 1), aznumeric_cast<int>(indicatorSize + 2 * BORDER_RADIUS));
 
             // set the border color to the same one as the node border
             painter.setPen(borderColor);
 
             // set the background color for the indicator
-            if (mIsSelected)
+            if (GetIsSelected())
             {
                 painter.setBrush(bgColor);
             }
@@ -770,7 +771,7 @@ namespace EMStudio
     // get the border and background color for a node port
     void GraphNode::GetNodePortColors(NodePort* nodePort, const QColor& borderColor, const QColor& headerBgColor, QColor* outBrushColor, QColor* outPenColor)
     {
-        if (mIsSelected)
+        if (GetIsSelected())
         {
             *outPenColor    = borderColor;
             *outBrushColor  = headerBgColor;
@@ -876,7 +877,7 @@ namespace EMStudio
         }
 
         painter.setPen(mVisualizeHighlighted ? QColor(255, 128, 0) : vizBorder);
-        if (mIsSelected == false)
+        if (!GetIsSelected())
         {
             painter.setBrush(mVisualize ? mVisualizeColor : vizBackGround);
         }
@@ -896,18 +897,10 @@ namespace EMStudio
     }
 
 
-    // change selected flag
-    void GraphNode::SetIsSelected(bool selected)
-    {
-        mIsSelected = selected;
-        UpdateTextPixmap();
-    }
-
-
     // check if we are selected
     bool GraphNode::GetIsSelected() const
     {
-        return mIsSelected;
+        return mParentGraph->GetAnimGraphModel().GetSelectionModel().isSelected(m_modelIndex);
     }
 
 
@@ -1172,7 +1165,6 @@ namespace EMStudio
         return nullptr;
     }
 
-    
     // remove a given connection
     bool GraphNode::RemoveConnection(const void* connection, bool removeFromMemory)
     {
@@ -1181,6 +1173,27 @@ namespace EMStudio
         {
             // if this is the connection we're searching for
             if (mConnections[i]->GetModelIndex().data(AnimGraphModel::ROLE_POINTER).value<void*>() == connection)
+            {
+                if (removeFromMemory)
+                {
+                    delete mConnections[i];
+                }
+                mConnections.Remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    
+    // Remove a given connection by model index
+    bool GraphNode::RemoveConnection(const QModelIndex& modelIndex, bool removeFromMemory)
+    {
+        const uint32 numConnections = mConnections.GetLength();
+        for (uint32 i = 0; i < numConnections; ++i)
+        {
+            // if this is the connection we're searching for
+            if (mConnections[i]->GetModelIndex() == modelIndex)
             {
                 if (removeFromMemory)
                 {
@@ -1215,13 +1228,13 @@ namespace EMStudio
         painter.setPen(Qt::NoPen);
         painter.setBrush(textColor);
 
-        const float textWidth       = fontMetrics.width(text);
-        const float halfTextWidth   = textWidth * 0.5 + 0.5;
-        const float halfTextHeight  = fontMetrics.height() * 0.5 + 0.5;
+        const float textWidth       = aznumeric_cast<float>(fontMetrics.width(text));
+        const float halfTextWidth   = aznumeric_cast<float>(textWidth * 0.5 + 0.5);
+        const float halfTextHeight  = aznumeric_cast<float>(fontMetrics.height() * 0.5 + 0.5);
         const QPoint rectCenter     = rect.center();
 
         QPoint textPos;
-        textPos.setY(rectCenter.y() + halfTextHeight - 1);
+        textPos.setY(aznumeric_cast<int>(rectCenter.y() + halfTextHeight - 1));
 
         switch (textAlignment)
         {
@@ -1233,13 +1246,13 @@ namespace EMStudio
 
         case Qt::AlignRight:
         {
-            textPos.setX(rect.right() - textWidth + 1);
+            textPos.setX(aznumeric_cast<int>(rect.right() - textWidth + 1));
             break;
         }
 
         default:
         {
-            textPos.setX(rectCenter.x() - halfTextWidth + 1);
+            textPos.setX(aznumeric_cast<int>(rectCenter.x() - halfTextWidth + 1));
         }
         }
 

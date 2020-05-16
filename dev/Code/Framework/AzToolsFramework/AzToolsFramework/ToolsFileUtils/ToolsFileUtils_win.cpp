@@ -11,7 +11,14 @@
 */
 
 #include "ToolsFileUtils.h"
-#include <windows.h>
+
+#ifdef NOMINMAX
+#   include <windows.h>
+#else
+#   define NOMINMAX
+#       include <windows.h>
+#   undef NOMINMAX
+#endif
 
 namespace AzToolsFramework
 {

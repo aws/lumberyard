@@ -16,17 +16,18 @@
 namespace AzFramework
 {
     
-    const int AssetBundleManifest::CurrentBundleVersion = 1;
+    const int AssetBundleManifest::CurrentBundleVersion = 2;
     const char AssetBundleManifest::s_manifestFileName[] = "manifest.xml";
     void AssetBundleManifest::ReflectSerialize(AZ::SerializeContext* serializeContext)
     {
         if (serializeContext)
         {
             serializeContext->Class<AssetBundleManifest>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("BundleVersion", &AssetBundleManifest::m_bundleVersion)
                 ->Field("CatalogName", &AssetBundleManifest::m_catalogName)
-                ->Field("DependentBundleNames", &AssetBundleManifest::m_depedendentBundleNames);
+                ->Field("DependentBundleNames", &AssetBundleManifest::m_depedendentBundleNames)
+                ->Field("LevelNames", &AssetBundleManifest::m_levelDirs);
         }
     }
 } // namespace AzFramework

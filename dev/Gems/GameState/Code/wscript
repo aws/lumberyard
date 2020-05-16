@@ -14,8 +14,9 @@ def build(bld):
     bld.DefineGem(
         # General
         disable_pch             = True,
+        vs_filter               = 'Gems/PlatformServices',
         file_list               = ['gamestate.waf_files'],
-        
+		
         # Testing
         test_all_file_list      = ['gamestate_tests.waf_files'],
     )

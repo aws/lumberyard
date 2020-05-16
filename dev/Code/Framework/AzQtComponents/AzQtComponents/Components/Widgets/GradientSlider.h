@@ -75,8 +75,10 @@ namespace AzQtComponents
         void initGradientColors();
         QBrush gradientBrush() const;
 
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         ColorFunction m_colorFunction;
         ToolTipFunction m_toolTipFunction;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QLinearGradient m_gradient;
         QPoint m_toolTipOffset;
         int m_decimals = 7;

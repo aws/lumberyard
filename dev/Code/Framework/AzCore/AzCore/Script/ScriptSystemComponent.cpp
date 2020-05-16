@@ -20,6 +20,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/Debug/TraceReflection.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Math/MathReflection.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -842,6 +843,7 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
         // reflect default entity
         MathReflect(behaviorContext);
         ScriptDebug::Reflect(behaviorContext);
+        Debug::TraceReflect(behaviorContext);
 
         behaviorContext->Class<PlatformID>("Platform")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -869,9 +871,13 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
 
         behaviorContext->EBus<TickBus>("TickBus")
             ->Handler<TickBusBehaviorHandler>()
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "components")
             ;
 
         behaviorContext->EBus<TickRequestBus>("TickRequestBus")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "components")
             ->Event("GetTickDeltaTime", &TickRequestBus::Events::GetTickDeltaTime)
             ->Event("GetTimeAtCurrentTick", &TickRequestBus::Events::GetTimeAtCurrentTick)
             ;

@@ -15,12 +15,12 @@
             "Tests/LmbrCentralReflectionTest.h",
             "Tests/LmbrCentralReflectionTest.cpp",
             "Tests/LmbrCentralTest.cpp",
-            "Tests/MaterialDataAssetTest.cpp",
             "Tests/RigidPhysicsComponentTest.cpp",
             "Tests/StaticPhysicsComponentTest.cpp",
             "Tests/ShapeGeometryUtilTest.cpp",
             "Tests/SpawnerComponentTest.cpp",
-            "Tests/SplineComponentTests.cpp"
+            "Tests/SplineComponentTests.cpp",
+            "Tests/DiskShapeTest.cpp"
         ]
     }
 }

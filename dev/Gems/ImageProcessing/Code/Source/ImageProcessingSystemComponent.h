@@ -23,7 +23,6 @@ namespace ImageProcessing
 {
     class ImageProcessingSystemComponent
         : public AZ::Component
-        , protected ImageProcessingRequestBus::Handler
         , protected ImageProcessingEditor::ImageProcessingEditorRequestBus::Handler
         , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
         , protected AzToolsFramework::AssetBrowser::AssetBrowserTexturePreviewRequestsBus::Handler
@@ -40,11 +39,6 @@ namespace ImageProcessing
 
     protected:
         ////////////////////////////////////////////////////////////////////////
-        // ImageProcessingRequestBus interface implementation
-
-        ////////////////////////////////////////////////////////////////////////
-
-        ////////////////////////////////////////////////////////////////////////
         // ImageProcessingEditorRequestBus interface implementation
         void OpenSourceTextureFile(const AZ::Uuid& textureSourceID) override;
         ////////////////////////////////////////////////////////////////////////
@@ -58,7 +52,7 @@ namespace ImageProcessing
 
         ////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
-        void AddContextMenuActions(QWidget* /*caller*/, QMenu* menu, const AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>& entries) override;
+        void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -67,6 +61,10 @@ namespace ImageProcessing
         ////////////////////////////////////////////////////////////////////////
 
     private:
-        bool HandlesSource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* entry) const;
+        bool HandlesSource(AZStd::string_view fileName) const;
+
+        bool LoadTextureSettings();
+
+        bool m_textureSettingsLoaded = false;
     };
 } // namespace ImageProcessing

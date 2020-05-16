@@ -65,20 +65,26 @@ if __name__ == '__main__':
     code = """
 import sys
 import getopt
-import profile
+import cProfile
 
 from waflib import Scripting
 
 profile_mode = False
+profile_output = None
 if len(sys.argv)>1:
 	for arg in sys.argv:
 		if arg == '--profile-execution=True':
 			profile_mode = True
+		elif arg.startswith('--profile-output='):
+			profile_output = arg[len('--profile-output='):]
 
 if profile_mode:
 	print('WAF Execution Profile Enabled')
-	profile.run('Scripting.waf_entry_point(cwd, VERSION, wafdir)',sort='cumtime')
+	if profile_output:
+		cProfile.run('Scripting.waf_entry_point(cwd, VERSION, wafdir)', profile_output, sort='cumtime')
+	else:
+		cProfile.run('Scripting.waf_entry_point(cwd, VERSION, wafdir)',sort='cumtime')
 else:
-    Scripting.waf_entry_point(cwd, VERSION, wafdir)
+	Scripting.waf_entry_point(cwd, VERSION, wafdir)
 """
     exec(compile(code, '<string>', 'exec'))

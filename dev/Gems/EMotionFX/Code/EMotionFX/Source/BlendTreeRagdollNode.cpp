@@ -198,10 +198,10 @@ namespace EMotionFX
                 trajectoryDelta.mPosition = ragdollInstance->GetTrajectoryDeltaPos();
 
                 // Do the same for rotation, but extract and apply z rotation only to the trajectory node.
-                trajectoryDelta.mRotation = MCore::AzQuatToEmfxQuat(ragdollInstance->GetTrajectoryDeltaRot());
-                trajectoryDelta.mRotation.x = 0.0f;
-                trajectoryDelta.mRotation.y = 0.0f;
-                trajectoryDelta.mRotation.Normalize();
+                trajectoryDelta.mRotation = ragdollInstance->GetTrajectoryDeltaRot();
+                trajectoryDelta.mRotation.SetX(0.0f);
+                trajectoryDelta.mRotation.SetY(0.0f);
+                trajectoryDelta.mRotation.NormalizeExact();
             }
 
             data->SetTrajectoryDelta(trajectoryDelta);
@@ -284,9 +284,16 @@ namespace EMotionFX
                         const Physics::RagdollNodeState& currentRagdollRootNodeState = currentRagdollState[ragdollRootNodeIndex.GetValue()];
 
                         // Construct a world space transform for the ragdoll root. Preserve the scale of current node.
-                        Transform newGlobalTransform(currentRagdollRootNodeState.m_position,
-                            MCore::AzQuatToEmfxQuat(currentRagdollRootNodeState.m_orientation),
-                            outputPose.GetWorldSpaceTransform(jointIndex).mScale);
+                        #ifndef EMFX_SCALE_DISABLED
+                            Transform newGlobalTransform(
+                                currentRagdollRootNodeState.m_position,
+                                currentRagdollRootNodeState.m_orientation,
+                                outputPose.GetWorldSpaceTransform(jointIndex).mScale);
+                        #else
+                            Transform newGlobalTransform(
+                                currentRagdollRootNodeState.m_position,
+                                currentRagdollRootNodeState.m_orientation);
+                        #endif
 
                         // Project it to the ground and only keep rotation around the z axis.
                         newGlobalTransform.ApplyMotionExtractionFlags(EMotionExtractionFlags(0));
@@ -311,9 +318,16 @@ namespace EMotionFX
                     if (!ragdollParentJoint)
                     {
                         // No parent found, we're dealing with the ragdoll root.
-                        Transform newGlobalTransform = Transform(currentRagdollNodeState.m_position,
-                                MCore::AzQuatToEmfxQuat(currentRagdollNodeState.m_orientation),
-                                outputPose.GetWorldSpaceTransform(jointIndex).mScale);
+                        #ifndef EMFX_SCALE_DISABLED
+                            Transform newGlobalTransform = Transform(
+                                    currentRagdollNodeState.m_position,
+                                    currentRagdollNodeState.m_orientation,
+                                    outputPose.GetWorldSpaceTransform(jointIndex).mScale);
+                        #else
+                            Transform newGlobalTransform = Transform(
+                                    currentRagdollNodeState.m_position,
+                                    currentRagdollNodeState.m_orientation);
+                        #endif
 
                         outputPose.SetWorldSpaceTransform(jointIndex, newGlobalTransform, /*invalidateChildGlobalTransforms*/ false);
                     }
@@ -321,13 +335,25 @@ namespace EMotionFX
                     {
                         const Physics::RagdollNodeState& currentParentRagdollNodeState = currentRagdollState[ragdollParentJointIndex.GetValue()];
 
-                        Transform globalTransform = Transform(currentRagdollNodeState.m_position,
-                                MCore::AzQuatToEmfxQuat(currentRagdollNodeState.m_orientation),
-                                outputPose.GetWorldSpaceTransform(jointIndex).mScale);
+                        #ifndef EMFX_SCALE_DISABLED
+                            Transform globalTransform = Transform(
+                                    currentRagdollNodeState.m_position,
+                                    currentRagdollNodeState.m_orientation,
+                                    outputPose.GetWorldSpaceTransform(jointIndex).mScale);
 
-                        Transform parentGlobalTransform = Transform(currentParentRagdollNodeState.m_position,
-                                MCore::AzQuatToEmfxQuat(currentParentRagdollNodeState.m_orientation),
-                                outputPose.GetWorldSpaceTransform(ragdollParentJoint->GetNodeIndex()).mScale);
+                            Transform parentGlobalTransform = Transform(
+                                    currentParentRagdollNodeState.m_position,
+                                    currentParentRagdollNodeState.m_orientation,
+                                    outputPose.GetWorldSpaceTransform(ragdollParentJoint->GetNodeIndex()).mScale);
+                        #else
+                            Transform globalTransform = Transform(
+                                    currentRagdollNodeState.m_position,
+                                    currentRagdollNodeState.m_orientation);
+
+                            Transform parentGlobalTransform = Transform(
+                                    currentParentRagdollNodeState.m_position,
+                                    currentParentRagdollNodeState.m_orientation);
+                        #endif
 
                         // Calculate the local transform based of the current ragdoll node transform and its parent.
                         // NOTE: This does not yet account for joints in between in the animation skeleton that are not part of the ragdoll.
@@ -342,14 +368,14 @@ namespace EMotionFX
                         // Set the local space transform for powered ragdoll nodes.
                         const Transform& localTransform = targetPose->GetLocalSpaceTransform(jointIndex);
                         targetRagdollNodeState.m_position = localTransform.mPosition;
-                        targetRagdollNodeState.m_orientation = MCore::EmfxQuatToAzQuat(localTransform.mRotation);
+                        targetRagdollNodeState.m_orientation = localTransform.mRotation;
                     }
                     else
                     {
                         // We do not have a target pose connected to the input port, just forward what is currently in the output pose (bind pose).
                         const Transform& localTransform = outputPose.GetLocalSpaceTransform(jointIndex);
                         targetRagdollNodeState.m_position = localTransform.mPosition;
-                        targetRagdollNodeState.m_orientation = MCore::EmfxQuatToAzQuat(localTransform.mRotation);
+                        targetRagdollNodeState.m_orientation = localTransform.mRotation;
                     }
                 }
                 else
@@ -383,6 +409,11 @@ namespace EMotionFX
         return true;
     }
 
+    AZStd::string BlendTreeRagdollNode::GetSimulatedJointName(int index) const
+    {
+        return m_simulatedJointNames[index];
+    }
+
     void BlendTreeRagdollNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -398,14 +429,15 @@ namespace EMotionFX
             {
                 editContext->Class<BlendTreeRagdollNode>("Ragdoll", "Ragdoll node properties")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ_CRC("ActorRagdollJoints", 0xed1cae00), &BlendTreeRagdollNode::m_simulatedJointNames, "Simulated Joints", "The selected joints will be simulated as part of the ragdoll.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeRagdollNode::Reinit)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                    ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                    ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeRagdollNode::Reinit)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeRagdollNode::GetSimulatedJointName)
+                        ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
                 ;
             }
         }

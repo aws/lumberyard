@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from cgf_utils import custom_resource_response
 from athena import Query, Athena
 from glue import Glue
@@ -46,7 +58,7 @@ def main(event, request):
             prefix = metric_schema.s3_key_format().format(context[c.KEY_SEPERATOR_PARTITION], dt.year, dt.month, dt.day, dt.hour, type, dt.strftime(util.partition_date_format()))    
             found = crawler.exists(prefix) 
             if found: 
-                print "FOUND new events=>", prefix
+                print("FOUND new events=>", prefix)
                 break                
             dt += timedelta(hours=1)
         if found: 
@@ -62,17 +74,17 @@ def crawl(context, crawler_name, query_parser):
     result = context[c.KEY_GLUE_CRAWLER].get_crawler(crawler_name)
     state = result['Crawler']['State']
     if state != "READY":
-        print "Crawler '{}' is currently '{}'.  Quitting lambda.".format(crawler_name, state)
+        print("Crawler '{}' is currently '{}'.  Quitting lambda.".format(crawler_name, state))
         return
 
-    print "Starting crawler", crawler_name    
+    print("Starting crawler", crawler_name)
     context[c.KEY_GLUE_CRAWLER].start_crawler(crawler_name, sync=False)   
 
 """
 The GLUE crawler does not update partitions
 """
 def repair_partitions(context, crawler_name, query_parser):
-    print "Updating indexes for '{}'".format(crawler_name)    
+    print("Updating indexes for '{}'".format(crawler_name))
     #run the index repair on external tables if it is not currently running.
     context[recovery.STATE_CONTEXT_QUERY] = query_parser     
     query_id = recovery.db_key(crawler_name, "msck_query_id")         
@@ -103,7 +115,7 @@ def recover(context, crawler_name, query_parser):
     while idx < len(recovery_states):                
         query_id = recovery.db_query_id(crawler_name, idx, "query_id")   
         state = recovery_states[idx]
-        print state, 'is EXECUTING' 
+        print(state, 'is EXECUTING')
         result = state.execute(query_id)
         if result != None:
             idx+=1
@@ -121,7 +133,7 @@ def cleanup_crawler_broken_partition_tables(query):
     except_list = []
     
     tables = query.execute("SHOW TABLES")
-    print tables
+    print(tables)
     for table in tables:            
         name = table[0]   
         if name not in except_list and query.prefix in name:
@@ -143,7 +155,7 @@ def __create_state_context(context, crawler_name, query_parser):
     state_context[recovery.STATE_CONTEXT_QUERY] = query_parser       
     
     for key in context:
-        print "key..", key   
+        print("key..", key)
         if crawler_name in key:    
             state_context[ddl_key] = context[ddl_key]
     
@@ -158,7 +170,7 @@ def __is_table_data_not_valid(context, crawler_name, query_parser):
     validate = ValidateTableData(state_context)    
     result = None
     while True:                        
-        print validate, 'is EXECUTING' 
+        print(validate, 'is EXECUTING')
         result = validate.execute(query_id)
         if result != None:                        
             context[c.KEY_DB].delete_item(query_id)
@@ -166,13 +178,13 @@ def __is_table_data_not_valid(context, crawler_name, query_parser):
         time.sleep(10)            
 
     if result is None:
-        print "Validation query failed.   Validating table exists."          
+        print("Validation query failed.   Validating table exists.")
         if not __is_valid_table(context, crawler_name, query_parser):
             #No table found, which is a valid case.
-            print "Table not found"
+            print("Table not found")
             return False
         else:
-            print "Corrupt table found"
+            print("Corrupt table found")
             return True
    
     return False
@@ -219,7 +231,7 @@ def __update_partitions2(paths):
         break         
         
     glue = Glue()
-    print glue.delete_partitions(db_name, table_name, to_delete)
+    print(glue.delete_partitions(db_name, table_name, to_delete))
 
 def __get_partitions():
     to_delete =  []    

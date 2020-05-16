@@ -140,7 +140,7 @@ def generate_metadata(soundbank_info_path, output_path):
     if init_bank_exists:
         bank_paths.remove(init_bank_path)
     else:
-        print (str.format(no_init_bank_error, output_path))
+        print(str.format(no_init_bank_error, output_path))
         error_code = max(error_code, 1)
 
     # Check to see if the soundbankinfo file exists. If it doesn't then there are no streamed files.
@@ -154,7 +154,7 @@ def generate_metadata(soundbank_info_path, output_path):
     #   no way to generate dependencies properly without the XML.
     #   Just generate the dependency on the init bank and generate a warning.
     elif len(bank_paths) > 1:
-        print no_info_xml_error
+        print(no_info_xml_error)
         error_code = max(error_code, 1)
         banks = make_banks_from_file_paths(bank_paths)
         media_dictionary = build_media_to_bank_dictionary(banks)
@@ -170,7 +170,7 @@ def generate_metadata(soundbank_info_path, output_path):
 
     # There were no banks in the directory, and no metadata xml, then we can't generate any dependencies
     elif not init_bank_exists:
-        print (str.format(no_init_bank_error, output_path))
+        print(str.format(no_init_bank_error, output_path))
         error_code = max(error_code, 2)
 
     return banks_with_metadata, error_code

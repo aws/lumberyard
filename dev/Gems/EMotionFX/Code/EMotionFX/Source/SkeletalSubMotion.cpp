@@ -31,9 +31,9 @@ namespace EMotionFX
         )
 
         mBindPosePos.Set    (0.0f, 0.0f, 0.0f);
-        SetBindPoseRot      (MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+        SetBindPoseRot      (AZ::Quaternion::CreateIdentity());
         mPosePos.Set        (0.0f, 0.0f, 0.0f);
-        SetPoseRot          (MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+        SetPoseRot          (AZ::Quaternion::CreateIdentity());
 
         mPosTrack           = nullptr;
         mRotTrack           = nullptr;
@@ -54,9 +54,9 @@ namespace EMotionFX
         )
 
         mBindPosePos.Set    (0.0f, 0.0f, 0.0f);
-        SetBindPoseRot      (MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+        SetBindPoseRot      (AZ::Quaternion::CreateIdentity());
         mPosePos.Set        (0.0f, 0.0f, 0.0f);
-        SetPoseRot          (MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+        SetPoseRot          (AZ::Quaternion::CreateIdentity());
 
         mPosTrack           = nullptr;
         mRotTrack           = nullptr;
@@ -101,7 +101,7 @@ namespace EMotionFX
             return;
         }
 
-        mPosTrack = new KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>();
+        mPosTrack = new KeyTrackLinear<AZ::Vector3, AZ::Vector3>();
     }
 
 
@@ -113,7 +113,7 @@ namespace EMotionFX
             return;
         }
 
-        mRotTrack = new KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>();
+        mRotTrack = new KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>();
     }
 
 
@@ -126,7 +126,7 @@ namespace EMotionFX
             return;
         }
 
-        mScaleTrack = new KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>();
+        mScaleTrack = new KeyTrackLinear<AZ::Vector3, AZ::Vector3>();
     }
 #endif
 
@@ -177,7 +177,7 @@ namespace EMotionFX
         const uint32 numKeys = mScaleTrack->GetNumKeys();
         for (uint32 i = 0; i < numKeys; ++i)
         {
-            const AZ::Vector3& value = AZ::Vector3(mScaleTrack->GetKey(i)->GetValue());
+            const AZ::Vector3& value = mScaleTrack->GetKey(i)->GetValue();
             if (MCore::CheckIfIsUniform(value) == false)
             {
                 return false;

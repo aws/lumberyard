@@ -25,6 +25,7 @@
 #include <QScopedPointer>
 #include <QWidget>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
+#include <QSortFilterProxyModel>
 
 class QCloseEvent;
 class QLabel;
@@ -56,11 +57,38 @@ namespace AZ
                 class ProcessingOverlayWidget;
             }
 
+            namespace Internal
+            {
+                // This QSortFilterProxyModel filters out an erroneous message.
+                // ResourceCompiler loads all gems. There are some gems which depend on
+                // EditorLib, which loads QtWebEngineWidgets. QtWebEngineWidgets prints a
+                // warning if it is loaded after a QCoreApplication has been instantiated,
+                // but no QOpenGLContext exists, which is always the case with
+                // ResourceCompiler.
+                // The correct fix would be to remove all dependencies on EditorLib from
+                // gems.
+                class QtWebEngineMessageFilter
+                    : public QSortFilterProxyModel
+                {
+                    Q_OBJECT
+                public:
+                    explicit QtWebEngineMessageFilter(QObject* parent = nullptr);
+                    ~QtWebEngineMessageFilter() override;
+
+                protected:
+                    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
+                };
+            }
+
             class ProcessingHandler;
+            AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+            AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
             class SCENE_UI_API ProcessingOverlayWidget 
                 : public QWidget
                 , public Debug::TraceMessageBus::Handler
             {
+            AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
+            AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
                 Q_OBJECT
             public:
                 AZ_CLASS_ALLOCATOR(ProcessingOverlayWidget, SystemAllocator, 0);
@@ -113,10 +141,12 @@ namespace AZ
                 bool ShouldProcessMessage() const;
                 void CopyTraceContext(AzQtComponents::StyledDetailsTableModel::TableEntry& entry) const;
 
+                AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
                 AzToolsFramework::Debug::TraceContextMultiStackHandler m_traceStackHandler;
                 Uuid m_traceTag;
                 QScopedPointer<Ui::ProcessingOverlayWidget> ui;
                 AZStd::shared_ptr<ProcessingHandler> m_targetHandler;
+                AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
                 UI::OverlayWidget* m_overlay;
                 AzQtComponents::StyledBusyLabel* m_busyLabel;
                 AzQtComponents::StyledDetailsTableView* m_reportView;

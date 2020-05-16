@@ -67,7 +67,7 @@ class XCodeNode:
 	def tostring(self, value):
 		if isinstance(value, dict):
 			result = "{\n"
-			for k,v in value.items():
+			for k,v in list(value.items()):
 				result = result + "\t\t\t%s = %s;\n" % (k, self.tostring(v))
 			result = result + "\t\t}"
 			return result
@@ -86,7 +86,7 @@ class XCodeNode:
 
 	def write_recursive(self, value, file):
 		if isinstance(value, dict):
-			for k,v in value.items():
+			for k,v in list(value.items()):
 				self.write_recursive(v, file)
 		elif isinstance(value, list):
 			for i in value:
@@ -95,14 +95,14 @@ class XCodeNode:
 			value.write(file)
 
 	def write(self, file):
-		for attribute,value in self.__dict__.items():
+		for attribute,value in list(self.__dict__.items()):
 			if attribute[0] != '_':
 				self.write_recursive(value, file)
 
 		w = file.write
 		w("\t%s = {\n" % self._id)
 		w("\t\tisa = %s;\n" % self.__class__.__name__)
-		for attribute,value in self.__dict__.items():
+		for attribute,value in list(self.__dict__.items()):
 			if attribute[0] != '_':
 				w("\t\t%s = %s;\n" % (attribute, self.tostring(value)))
 		w("\t};\n\n")

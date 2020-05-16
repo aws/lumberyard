@@ -57,7 +57,7 @@ public:
         UserConnectionRole = Qt::UserRole + 1,
     };
 
-    explicit ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, QObject* parent = 0);
+    explicit ConnectionManager(QObject* parent = 0);
     virtual ~ConnectionManager();
     // Singleton pattern:
     static ConnectionManager* Get();
@@ -185,7 +185,6 @@ private:
     RouteMultiMap m_messageRoute;
     QHostAddress m_lastHostAddress = QHostAddress::Null;
     AZ::u64 m_lastConnectionTimeInUTCMilliSecs = 0;
-    AssetProcessor::PlatformConfiguration* m_platformConfig = nullptr;
 
 
     // keeps track of how many platforms are connected of a given type

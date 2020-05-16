@@ -8,16 +8,25 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import pytest, sys
-from waflib import Logs, Errors, Utils
-from waflib.Configure import ConfigurationContext
-from waflib.Build import BuildContext
 
-import settings_manager
-import utils
+# System Imports
+import argparse
+import copy
 import json
 import os
-import copy
+import pytest
+import sys
+
+# waflib imports
+from waflib import Errors, Logs, Utils
+from waflib.Build import BuildContext
+from waflib.Configure import ConfigurationContext
+
+# lmbrwaflib imports
+import settings_manager
+import unit_test
+import utils
+
 
 class MockSettingsManagerConfigureContext(ConfigurationContext):
     """ Mock context class based on ConfigurationContext"""
@@ -128,7 +137,7 @@ def test_ReportSettingsOverrides_ValidSettingsScenarios_Success(test_settings_ma
     settings_manager.report_settings_overrides(test_settings_manager_context_for_override_report)
     
     assert len(test_settings_manager_context_for_override_report.result_by_attribute) == len(expected_result_map)
-    for expected_key in expected_result_map.keys():
+    for expected_key in list(expected_result_map.keys()):
         assert expected_key in test_settings_manager_context_for_override_report.result_by_attribute
         assert expected_result_map[expected_key] == test_settings_manager_context_for_override_report.result_by_attribute[expected_key]
 
@@ -661,7 +670,7 @@ def test_ProcessSettingsIncludeFile_ValidInputs_Success(settings_include_file,
         return include_to_settings_dict[match_input_form]
     
     def _mock_process_env_dict(settings_include_dict, processed_env_dict):
-        for env_key, env_value in settings_include_dict.items():
+        for env_key, env_value in list(settings_include_dict.items()):
             if env_key.startswith('env'):
                 processed_env_dict[env_key] = env_value
     
@@ -675,7 +684,7 @@ def test_ProcessSettingsIncludeFile_ValidInputs_Success(settings_include_file,
                                      source_attributes_dict,
                                      merge_attributes_dict):
         if source_attributes_dict:
-            for key, value in source_attributes_dict.items():
+            for key, value in list(source_attributes_dict.items()):
                 merge_attributes_dict[key] = value
 
     
@@ -832,7 +841,7 @@ def test_PlatformSettings_ValidInputs_Success(platform_settings_file, platform_f
         return platform_file_to_settings_dict[match_input_form]
 
     def _mock_process_env_dict(settings_include_dict, processed_env_dict):
-        for env_key, env_value in settings_include_dict.items():
+        for env_key, env_value in list(settings_include_dict.items()):
             if env_key.startswith('env'):
                 processed_env_dict[env_key] = env_value
 
@@ -846,7 +855,7 @@ def test_PlatformSettings_ValidInputs_Success(platform_settings_file, platform_f
                                      source_attributes_dict,
                                      merge_attributes_dict):
         if source_attributes_dict:
-            for key, value in source_attributes_dict.items():
+            for key, value in list(source_attributes_dict.items()):
                 merge_attributes_dict[key] = value
 
     old_parse_json_file = utils.parse_json_file
@@ -956,7 +965,7 @@ MIN_DEFAULT_SETTINGS = {
 
 def join_with_default(input):
     
-    combined_items = input.items() + MIN_DEFAULT_SETTINGS.items()
+    combined_items = list(input.items()) + list(MIN_DEFAULT_SETTINGS.items())
     
     result = {}
     
@@ -1032,8 +1041,156 @@ BASIC_TEST_CONFIGURATIONS = {
 )
 def test_Settings_BasicTest_Success(tmpdir, mock_settings, default_settings, user_settings_options, build_configurations, test_platform_name, test_platform_content, expected_settings):
     
-    for expected_key, expected_value in expected_settings.items():
+    for expected_key, expected_value in list(expected_settings.items()):
         assert expected_key in mock_settings.settings_map
         assert mock_settings.settings_map[expected_key] == expected_value
     assert test_platform_name in mock_settings.platform_settings_map
+
+
+
+@pytest.fixture
+def mock_ctx_for_settings(tmpdir):
+    ctx = unit_test.FakeContext(str(tmpdir.realpath()), generate_engine_json=False)
+    return ctx
+
+@pytest.mark.parametrize(
+    "before_bootstrap_param,  vs2017_enabled, vs2019_enabled, expected_bootstrap_param", [
+        pytest.param(
+            "--none --enablecapability vc141 --3rdParty C:\\3rdParty",
+            True,
+            True,
+            "--none --enablecapability vc141 --enablecapability vc142 --3rdParty C:\\3rdParty",
+            id='01-UpdateFromEnableVc140DisableVc141ToEnableVc141Enablevc142'
+        ),
+        pytest.param(
+            "--none --enablecapability vc141 --enablecapability rungame --3rdParty C:\\3rdParty",
+            True,
+            True,
+            "--none --enablecapability rungame --enablecapability vc141 --enablecapability vc142 --3rdParty C:\\3rdParty",
+            id='02-UpdateFromEnableVc140DisableVc141ToEnableVc141Enablevc142ExtraRunGame'
+        ),
+        pytest.param(
+            "--none --enablecapability vc141 --enablecapability vc142",
+            False,
+            False,
+            "--none",
+            id='03-UpdateFromEnableVc140EnableVc141ToDisableVc141Disablevc142'
+        ),
+        pytest.param(
+            "--none",
+            True,
+            True,
+            "--none --enablecapability vc141 --enablecapability vc142",
+            id='04-UpdateFromDisableVc141DisableVc142ToEnableVc141Enablevc142'
+        ),
+        pytest.param(
+            "--none --enablecapability vc141",
+            False,
+            True,
+            "--none --enablecapability vc142",
+            id='05-UpdateFromEnableVc141DisableVc142ToDisableVc141Enablevc142'
+        ),
+        pytest.param(
+            "--none --enablecapability vc142",
+            True,
+            False,
+            "--none --enablecapability vc141",
+            id='06-UpdateFromEnableVc141DisableVc142ToDisableVc141Enablevc142'
+        ),
+        pytest.param(
+            "--none --enablecapability vc141 --enablecapability vc142",
+            True,
+            False,
+            "--none --enablecapability vc141",
+            id='07-NoUpdateVc141Vc142'
+        ),
+        pytest.param(
+            "--none --enablecapability vc141",
+            True,
+            False,
+            "--none --enablecapability vc141",
+            id='08-NoUpdateVc141'
+        ),
+        pytest.param(
+            "--none --enablecapability vc142",
+            False,
+            True,
+            "--none --enablecapability vc142",
+            id='09-NoUpdateVc142'
+        )
+    ]
+)
+def test_update_bootsrap_tool_param(mock_ctx_for_settings, before_bootstrap_param, vs2017_enabled, vs2019_enabled, expected_bootstrap_param):
+    original_platform_settings_map = settings_manager.LUMBERYARD_SETTINGS.platform_settings_map
+    original_is_platform_enabled = settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled
+    original_set_settings_value = settings_manager.LUMBERYARD_SETTINGS.set_settings_value
+    
+    try:
+        class MockPlatformSettings(object):
+            def __init__(self, platform, enabled, sa_key):
+                self.platform = platform
+                self.enabled = enabled
+                self.attributes = {}
+                if sa_key is not None:
+                    self.attributes['sa_capability'] = {
+                        'key':  sa_key
+                    }
+        platform_settings_map = {
+            'win_x64_clang': MockPlatformSettings('win_x64_clang', False, 'winclang'),
+            'switch': MockPlatformSettings('switch', True, None),
+            'switch2': MockPlatformSettings('switch2', True, ''),
+            'win_x64_vs2017': MockPlatformSettings('win_x64_vs2017', True, 'vc141'),
+            'win_x64_vs2019': MockPlatformSettings('win_x64_vs2019', True, 'vc142'),
+        }
+
+        def _mock_is_platform_enabled(platform):
+            if platform == 'win_x64_vs2017' and vs2017_enabled:
+                return True
+            elif platform == 'win_x64_vs2019' and vs2019_enabled:
+                return True
+            else:
+                return False
+            
+        def _mock_get_enabled_capabilities():
+    
+            capability_parser = argparse.ArgumentParser()
+            capability_parser.add_argument('--enablecapability', '-e', action='append')
+            params = [token.strip() for token in before_bootstrap_param.split()]
+            parsed_params = capability_parser.parse_known_args(params)[0]
+            parsed_capabilities = getattr(parsed_params, 'enablecapability', [])
+            return parsed_capabilities
+        
+        class MockOptionsForBootstrap(object):
+            def __init__(self,param):
+                self.bootstrap_tool_param = param
+                
+        def _mock_set_settings_value(settings_key, settings_value):
+            assert settings_key == 'bootstrap_tool_param'
+            assert settings_value == expected_bootstrap_param
+        settings_manager.LUMBERYARD_SETTINGS.set_settings_value = _mock_set_settings_value
+
+        def _update_user_settings_options():
+            assert before_bootstrap_param != expected_bootstrap_param
+
+        mock_ctx_for_settings.update_user_settings_options = _update_user_settings_options
+
+        mock_ctx_for_settings.options = MockOptionsForBootstrap(before_bootstrap_param)
+        
+        mock_ctx_for_settings.get_enabled_capabilities = _mock_get_enabled_capabilities
+
+        settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled = _mock_is_platform_enabled
+
+        settings_manager.LUMBERYARD_SETTINGS.platform_settings_map = platform_settings_map
+        
+        settings_manager.update_bootstrap_tool_param(mock_ctx_for_settings)
+        
+    except Exception as e:
+        print(str(e))
+    finally:
+        settings_manager.LUMBERYARD_SETTINGS.platform_settings_map = original_platform_settings_map
+        settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled = original_is_platform_enabled
+        settings_manager.LUMBERYARD_SETTINGS.set_settings_value = original_set_settings_value
+    
+
+
 

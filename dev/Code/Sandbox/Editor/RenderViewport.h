@@ -35,6 +35,8 @@
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <MathConversion.h>
 
+#include <AzFramework/Windowing/WindowBus.h>
+
 // forward declarations.
 class CBaseObject;
 class QMenu;
@@ -48,7 +50,7 @@ namespace AzToolsFramework
 }
 
 // CRenderViewport window
-
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API CRenderViewport
     : public QtViewport
     , public IEditorNotifyListener
@@ -56,10 +58,13 @@ class SANDBOX_API CRenderViewport
     , public Camera::EditorCameraRequestBus::Handler
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AzFramework::InputSystemCursorConstraintRequestBus::Handler
+    , public AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Handler
     , public AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Handler
     , public AzToolsFramework::ViewportInteraction::MainEditorViewportInteractionRequestBus::Handler
     , public AzToolsFramework::EditorEvents::Bus::Handler
+    , public AzFramework::WindowRequestBus::Handler
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
     struct SResolution
@@ -175,6 +180,10 @@ public:
     float AngleStep() override;
     QPoint ViewportWorldToScreen(const AZ::Vector3& worldPosition) override;
 
+    // AzToolsFramework::ViewportFreezeRequestBus
+    bool IsViewportInputFrozen() override;
+    void FreezeViewportInput(bool freeze) override;
+
     // AzToolsFramework::MainEditorViewportInteractionRequestBus
     AZ::EntityId PickEntity(const QPoint& point) override;
     AZ::Vector3 PickTerrain(const QPoint& point) override;
@@ -184,6 +193,10 @@ public:
     QWidget* GetWidgetForViewportContextMenu() override;
     void BeginWidgetContext() override;
     void EndWidgetContext() override;
+
+    // WindowRequestBus::Handler...
+    void SetWindowTitle(const AZStd::string& title) override;
+    AzFramework::WindowSize GetClientAreaSize() const override;
 
     void ConnectViewportInteractionRequestBus();
     void DisconnectViewportInteractionRequestBus();
@@ -299,7 +312,9 @@ public:
 
     static CRenderViewport* GetPrimaryViewport();
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     CCamera m_Camera;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 protected:
     struct SScopedCurrentContext;
@@ -417,6 +432,7 @@ protected:
     float m_moveSpeed = 1;
 
     float m_orbitDistance = 10.0f;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Vec3 m_orbitTarget;
 
     //-------------------------------------------
@@ -605,9 +621,11 @@ private:
     size_t m_cameraSetForWidgetRenderingCount = 0; ///< How many calls to PreWidgetRendering happened before
                                                    ///< subsequent calls to PostWidetRendering.
     AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // Used to prevent circular set camera events
     bool m_ignoreSetViewFromEntityPerspective = false;
+    bool m_windowResizedEvent = false;
 };
 
 #endif // CRYINCLUDE_EDITOR_RENDERVIEWPORT_H

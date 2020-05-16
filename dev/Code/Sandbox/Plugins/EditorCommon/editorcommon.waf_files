@@ -38,9 +38,9 @@
         ],
         "Shared Editor Code %28Editor%29":
         [
-            "../../Editor/RenderHelpers/AxisHelper.cpp",
+            "AxisHelper.cpp",
             "../../Editor/RenderHelpers/AxisHelper.h",
-            "../../Editor/Objects/DisplayContext.cpp",
+            "DisplayContext.cpp",
             "../../Editor/Objects/DisplayContext.h"
         ],
         "QPropertyTree":

@@ -17,7 +17,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
 
-#include <GraphCanvas/Widgets/EditorContextMenu/contextMenuActions/ContextMenuAction.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
 
 namespace GraphCanvas
 {
@@ -41,7 +41,7 @@ namespace GraphCanvas
 
         bool   IsFinalized() const;
         QMenu* FindSubMenu(AZStd::string_view subMenuPath);
-        
+
         void RefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId);
         
         void showEvent(QShowEvent* showEvent) override;

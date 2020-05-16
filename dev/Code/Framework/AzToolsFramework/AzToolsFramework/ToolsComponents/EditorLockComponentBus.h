@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
@@ -24,10 +25,10 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
-        /// Set whether this entity is locked
+        /// Set whether this entity is set to be locked in the editor (individual state/flag).
         virtual void SetLocked(bool locked) = 0;
 
-        /// Gets whether this entity is locked
+        /// Get whether this entity is set to be locked in the editor (individual state/flag).
         virtual bool GetLocked() = 0;
     };
 
@@ -42,7 +43,12 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
-        /// The entity's current lock state has changed.
+        /// The entity's current internal lock state/flag has changed.
+        /// ATTN: Only EditorEntityModelEntry listens to this notification.
+        virtual void OnEntityLockFlagChanged(bool /*locked*/) {}
+
+        /// The entity's current lock has changed (in terms of viewport interaction).
+        /// Note: The event may be caused by a layer lock changing or an individually entity lock changing.
         virtual void OnEntityLockChanged(bool /*locked*/) {}
     };
 
@@ -52,30 +58,9 @@ namespace AzToolsFramework
     /// Alias for EditorEntityLockComponentNotifications - prefer EditorEntityLockComponentNotifications,
     /// EditorLockComponentNotifications is deprecated.
     using EditorLockComponentNotifications = EditorEntityLockComponentNotifications;
+
     /// Alias for EditorEntityLockComponentNotificationBus - prefer EditorEntityLockComponentNotificationBus,
     /// EditorLockComponentNotificationBus is deprecated.
     using EditorLockComponentNotificationBus = EditorEntityLockComponentNotificationBus;
 
-    /**
-     * Notifications about whether an Entity is locked in the Editor.
-     * \see EditorLockRequests.
-     */
-    class EditorContextLockComponentNotifications
-        : public AZ::EBusTraits
-    {
-    public:
-        using BusIdType = AzFramework::EntityContextId;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-
-        /// The entity's current lock state has changed.
-        virtual void OnEntityLockChanged(AZ::EntityId /*entityId*/, bool /*locked*/) {}
-    
-    protected:
-        /// Non-virtual protected destructor.
-        /// Types implementing this interface should not be deleted through it.
-        ~EditorContextLockComponentNotifications() = default;
-    };
-
-    /// \ref EditorEntityLockComponentNotifications
-    using EditorContextLockComponentNotificationBus = AZ::EBus<EditorContextLockComponentNotifications>;
-}
+} // namespace AzToolsFramework

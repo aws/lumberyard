@@ -20,7 +20,7 @@
 
 struct SDynTexture2;
 struct SDynTexture;
-class CTerrainNode;
+struct ITerrainNode;
 class IDynTexture;
 class CameraViewParameters;
 
@@ -47,7 +47,7 @@ struct IImposterRenderElement
     virtual uint8 GetLastBestEdge() = 0;
     virtual float GetNear() = 0;
     virtual float GetFar() = 0;
-    virtual CTerrainNode* GetTerrainNode() = 0;
+    virtual ITerrainNode* GetTerrainNode() = 0;
     virtual float GetTransparency() = 0;
     virtual Vec3 GetPosition();
     virtual int GetLogResolutionX() = 0;
@@ -59,7 +59,7 @@ struct IImposterRenderElement
     virtual IDynTexture* GetDepthTexture() = 0;
     virtual const SMinMaxBox& GetWorldSpaceBounds() = 0;
 
-    virtual void SetTerrainNode(CTerrainNode* pTerrainNode) = 0;
+    virtual void SetTerrainNode(ITerrainNode* pTerrainNode) = 0;
     virtual void SetBBox(const Vec3& min, const Vec3& max) = 0;
     virtual void SetScreenImposterState(bool state) = 0;
     virtual void SetState(uint32 state) = 0;
@@ -72,7 +72,6 @@ struct IImposterRenderElement
     virtual void SetDepthTexture(IDynTexture* texture) = 0;
 };
 
-class CTerrainNode;
 class CREImposter
     : public CRendElementBase
 {
@@ -94,7 +93,7 @@ class CREImposter
     IDynTexture* m_pTextureDepth;
     float m_fErrorToleranceCosAngle;            // cosine of m_fErrorToleranceAngle used to check if IsImposterValid
     SMinMaxBox m_WorldSpaceBV;
-    CTerrainNode* m_pTerrainNode;
+    ITerrainNode* m_pTerrainNode;
     uint32 m_State;
     int m_AlphaRef;
     float m_fCurTransparency;
@@ -180,7 +179,7 @@ public:
     virtual uint8 GetLastBestEdge() { return m_nLastBestEdge; }
     virtual float GetNear() { return m_fNear; }
     virtual float GetFar() { return m_fFar; }
-    virtual CTerrainNode* GetTerrainNode() { return m_pTerrainNode; }
+    virtual ITerrainNode* GetTerrainNode() { return m_pTerrainNode; }
     virtual float GetTransparency() { return m_fCurTransparency; }
     virtual Vec3 GetPosition();
     virtual int GetLogResolutionX() { return m_nLogResolutionX; }
@@ -192,7 +191,7 @@ public:
     virtual IDynTexture** GetDepthTexture() { return &m_pTextureDepth; }
     virtual const SMinMaxBox& GetWorldSpaceBounds() { return m_WorldSpaceBV; }
     virtual int GetFrameReset() { return m_nFrameReset; }
-    virtual void SetTerrainNode(CTerrainNode* pTerrainNode) { m_pTerrainNode = pTerrainNode; }
+    virtual void SetTerrainNode(ITerrainNode* pTerrainNode) { m_pTerrainNode = pTerrainNode; }
     virtual void SetBBox(const Vec3& min, const Vec3& max) { m_WorldSpaceBV.SetMin(min); m_WorldSpaceBV.SetMax(max); }
     virtual void SetScreenImposterState(bool state) { m_bScreenImposter = state; }
     virtual void SetState(uint32 state) { m_State = state; }

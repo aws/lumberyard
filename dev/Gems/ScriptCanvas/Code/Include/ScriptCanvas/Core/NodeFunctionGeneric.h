@@ -150,8 +150,17 @@ namespace ScriptCanvas
         AZ_INLINE static void Help(Node& node, AZStd::index_sequence<Is...>, t_Args&&... args)
         {
             static int indices[] = { inputDatumIndices... };
-            AZ_STATIC_ASSERT(sizeof...(Is) == AZ_ARRAY_SIZE(indices), "size of default values doesn't match input datum indices for them");
-            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(*node.ModDatumByIndex(indices[Is])->template ModAs<AZStd::decay_t<t_Args>>() = AZStd::forward<t_Args>(args));
+            static_assert(sizeof...(Is) == AZ_ARRAY_SIZE(indices), "size of default values doesn't match input datum indices for them");
+            std::initializer_list<int> { (MoreHelp(node, indices[Is], AZStd::forward<t_Args>(args)), 0)... };
+        }
+
+        template<typename ArgType>
+        AZ_INLINE static void MoreHelp(Node& node, size_t datumIndex, ArgType&& arg)
+        {
+            ModifiableDatumView datumView;
+            node.FindModifiableDatumViewByIndex(datumIndex, datumView);
+
+            datumView.template SetAs<AZStd::remove_cvref_t<ArgType>>(AZStd::forward<ArgType>(arg));
         }
     };
 

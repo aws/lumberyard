@@ -201,7 +201,7 @@ namespace ScriptCanvasEditor
 
         for (auto dataMap : inputSignal.m_data)
         {
-            AZStd::string valueString = dataMap.second.m_value.GetData().ToString();
+            AZStd::string valueString = dataMap.second.m_datum.ToString();
             treeItem->RegisterDataInput(ScriptCanvas::Endpoint(), dataMap.first, dataMap.first.m_name, valueString, GetTreeRoot()->GetUpdatePolicy() == DebugLogRootItem::UpdatePolicy::RealTime);
         }
     }
@@ -241,7 +241,7 @@ namespace ScriptCanvasEditor
 
         for (auto dataMap : outputSignal.m_data)
         {
-            AZStd::string valueString = dataMap.second.m_value.GetData().ToString();
+            AZStd::string valueString = dataMap.second.m_datum.ToString();
             treeItem->RegisterDataOutput(dataMap.first, dataMap.first.m_name, valueString, GetTreeRoot()->GetUpdatePolicy() == DebugLogRootItem::UpdatePolicy::RealTime);
         }
     }
@@ -277,7 +277,7 @@ namespace ScriptCanvasEditor
 
         ScriptCanvas::Timestamp relativeTimeStamp = outputDataSignal.GetTimestamp() - m_anchorTimeStamp;
 
-        AZStd::string valueString = outputDataSignal.m_outputValue.m_value.GetData().ToString();
+        AZStd::string valueString = outputDataSignal.m_outputValue.m_datum.ToString();
         treeItem->RegisterDataOutput(outputDataSignal.m_endpoint.GetSlotId(), outputDataSignal.m_endpoint.GetSlotName(), valueString, GetTreeRoot()->GetUpdatePolicy() == DebugLogRootItem::UpdatePolicy::RealTime);
     }
 

@@ -13,11 +13,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/std/config.h>
-
-#if defined(AZ_HAS_INITIALIZERS_LIST) // Do we need this at a root level?
-#   include <initializer_list>
-#endif
-
+#include <initializer_list>
 
 #define AZSTD_PRINTF printf
 

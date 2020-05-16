@@ -176,11 +176,6 @@ SEditorSettings::SEditorSettings()
     bGeometryBrowserPanel = true;
     bBackupOnSave = true;
     backupOnSaveMaxCount = 3;
-    bFlowGraphMigrationEnabled = true;
-    bFlowGraphShowNodeIDs = false;
-    bFlowGraphShowToolTip = true;
-    bFlowGraphEdgesOnTopOfNodes = false;
-    bFlowGraphHighlightEdges = true;
     bApplyConfigSpecInEditor = true;
     useLowercasePaths = 0;
     showErrorDialogOnLoad = 1;
@@ -238,11 +233,6 @@ SEditorSettings::SEditorSettings()
     sAssetBrowserSettings.bHideLods = false;
     sAssetBrowserSettings.bAutoChangeViewportSelection = false;
     sAssetBrowserSettings.bAutoFilterFromViewportSelection = false;
-
-    //////////////////////////////////////////////////////////////////////////
-    // FlowGraph
-    //////////////////////////////////////////////////////////////////////////
-    showFlowgraphNotification = true;
 
     //////////////////////////////////////////////////////////////////////////
     // Mannequin settings
@@ -619,52 +609,6 @@ void SEditorSettings::Save()
     SaveValue("Settings\\Snap", "GridGetFromSelected", snap.bGridGetFromSelected);
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // HyperGraph Colors
-    //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings\\HyperGraph", "Opacity", hyperGraphColors.opacity);
-    SaveValue("Settings\\HyperGraph", "ColorArrow", hyperGraphColors.colorArrow);
-    SaveValue("Settings\\HyperGraph", "ColorInArrowHighlighted", hyperGraphColors.colorInArrowHighlighted);
-    SaveValue("Settings\\HyperGraph", "ColorOutArrowHighlighted", hyperGraphColors.colorOutArrowHighlighted);
-    SaveValue("Settings\\HyperGraph", "ColorPortEdgeHighlighted", hyperGraphColors.colorPortEdgeHighlighted);
-    SaveValue("Settings\\HyperGraph", "ColorArrowDisabled", hyperGraphColors.colorArrowDisabled);
-    SaveValue("Settings\\HyperGraph", "ColorNodeOutline", hyperGraphColors.colorNodeOutline);
-    SaveValue("Settings\\HyperGraph", "ColorNodeBkg", hyperGraphColors.colorNodeBkg);
-    SaveValue("Settings\\HyperGraph", "ColorNodeSelected", hyperGraphColors.colorNodeSelected);
-    SaveValue("Settings\\HyperGraph", "ColorTitleText", hyperGraphColors.colorTitleText);
-    SaveValue("Settings\\HyperGraph", "ColorTitleTextSelected", hyperGraphColors.colorTitleTextSelected);
-    SaveValue("Settings\\HyperGraph", "ColorText", hyperGraphColors.colorText);
-    SaveValue("Settings\\HyperGraph", "ColorBackground", hyperGraphColors.colorBackground);
-    SaveValue("Settings\\HyperGraph", "ColorGrid", hyperGraphColors.colorGrid);
-    SaveValue("Settings\\HyperGraph", "BreakPoint", hyperGraphColors.colorBreakPoint);
-    SaveValue("Settings\\HyperGraph", "BreakPointDisabled", hyperGraphColors.colorBreakPointDisabled);
-    SaveValue("Settings\\HyperGraph", "BreakPointArrow", hyperGraphColors.colorBreakPointArrow);
-    SaveValue("Settings\\HyperGraph", "EntityPortNotConnected", hyperGraphColors.colorEntityPortNotConnected);
-    SaveValue("Settings\\HyperGraph", "Port", hyperGraphColors.colorPort);
-    SaveValue("Settings\\HyperGraph", "PortSelected", hyperGraphColors.colorPortSelected);
-    SaveValue("Settings\\HyperGraph", "EntityTextInvalid", hyperGraphColors.colorEntityTextInvalid);
-    SaveValue("Settings\\HyperGraph", "DownArrow", hyperGraphColors.colorDownArrow);
-    SaveValue("Settings\\HyperGraph", "CustomNodeBkg", hyperGraphColors.colorCustomNodeBkg);
-    SaveValue("Settings\\HyperGraph", "CustomSelectedNodeBkg", hyperGraphColors.colorCustomSelectedNodeBkg);
-    SaveValue("Settings\\HyperGraph", "PortDebugging", hyperGraphColors.colorPortDebugging);
-    SaveValue("Settings\\HyperGraph", "PortDebuggingText", hyperGraphColors.colorPortDebuggingText);
-    SaveValue("Settings\\HyperGraph", "QuickSearchBackground", hyperGraphColors.colorQuickSearchBackground);
-    SaveValue("Settings\\HyperGraph", "QuickSearchResultText", hyperGraphColors.colorQuickSearchResultText);
-    SaveValue("Settings\\HyperGraph", "QuickSearchCountText", hyperGraphColors.colorQuickSearchCountText);
-    SaveValue("Settings\\HyperGraph", "QuickSearchBorder", hyperGraphColors.colorQuickSearchBorder);
-    SaveValue("Settings\\HyperGraph", "ColorDebugNodeTitle", hyperGraphColors.colorDebugNodeTitle);
-    SaveValue("Settings\\HyperGraph", "ColorDebugNode", hyperGraphColors.colorDebugNode);
-
-    //////////////////////////////////////////////////////////////////////////
-    // HyperGraph Expert
-    //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings\\HyperGraph", "EnableMigration", bFlowGraphMigrationEnabled);
-    SaveValue("Settings\\HyperGraph", "ShowNodeIDs", bFlowGraphShowNodeIDs);
-    SaveValue("Settings\\HyperGraph", "ShowToolTip", bFlowGraphShowToolTip);
-    SaveValue("Settings\\HyperGraph", "EdgesOnTopOfNodes", bFlowGraphEdgesOnTopOfNodes);
-    SaveValue("Settings\\HyperGraph", "HighlightEdges", bFlowGraphHighlightEdges);
-    //////////////////////////////////////////////////////////////////////////
-
     SaveValue("Settings", "TerrainTextureExport", terrainTextureExport);
 
     //////////////////////////////////////////////////////////////////////////
@@ -697,12 +641,7 @@ void SEditorSettings::Save()
     SaveValue("Settings\\AssetBrowser", "AutoFilterFromViewportSelection", sAssetBrowserSettings.bAutoFilterFromViewportSelection);
     SaveValue("Settings\\AssetBrowser", "VisibleColumnNames", sAssetBrowserSettings.sVisibleColumnNames);
     SaveValue("Settings\\AssetBrowser", "ColumnNames", sAssetBrowserSettings.sColumnNames);
-    
-    //////////////////////////////////////////////////////////////////////////
-    // FlowGraph
-    //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings\\FlowGraph", "ShowFlowGraphNotification", showFlowgraphNotification);
-    
+      
     //////////////////////////////////////////////////////////////////////////
     // Deep Selection Settings
     //////////////////////////////////////////////////////////////////////////
@@ -913,54 +852,6 @@ void SEditorSettings::Load()
     LoadValue("Settings\\Snap", "GridGetFromSelected", snap.bGridGetFromSelected);
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // HyperGraph
-    //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings\\HyperGraph", "Opacity", hyperGraphColors.opacity);
-    LoadValue("Settings\\HyperGraph", "ColorArrow", hyperGraphColors.colorArrow);
-    LoadValue("Settings\\HyperGraph", "ColorInArrowHighlighted", hyperGraphColors.colorInArrowHighlighted);
-    LoadValue("Settings\\HyperGraph", "ColorOutArrowHighlighted", hyperGraphColors.colorOutArrowHighlighted);
-    LoadValue("Settings\\HyperGraph", "ColorPortEdgeHighlighted", hyperGraphColors.colorPortEdgeHighlighted);
-    LoadValue("Settings\\HyperGraph", "ColorArrowDisabled", hyperGraphColors.colorArrowDisabled);
-    LoadValue("Settings\\HyperGraph", "ColorNodeOutline", hyperGraphColors.colorNodeOutline);
-    LoadValue("Settings\\HyperGraph", "ColorNodeBkg", hyperGraphColors.colorNodeBkg);
-    LoadValue("Settings\\HyperGraph", "ColorNodeSelected", hyperGraphColors.colorNodeSelected);
-    LoadValue("Settings\\HyperGraph", "ColorTitleText", hyperGraphColors.colorTitleText);
-    LoadValue("Settings\\HyperGraph", "ColorTitleTextSelected", hyperGraphColors.colorTitleTextSelected);
-    LoadValue("Settings\\HyperGraph", "ColorText", hyperGraphColors.colorText);
-    LoadValue("Settings\\HyperGraph", "ColorBackground", hyperGraphColors.colorBackground);
-    LoadValue("Settings\\HyperGraph", "ColorGrid", hyperGraphColors.colorGrid);
-    LoadValue("Settings\\HyperGraph", "BreakPoint", hyperGraphColors.colorBreakPoint);
-    LoadValue("Settings\\HyperGraph", "BreakPointDisabled", hyperGraphColors.colorBreakPointDisabled);
-    LoadValue("Settings\\HyperGraph", "BreakPointArrow", hyperGraphColors.colorBreakPointArrow);
-    LoadValue("Settings\\HyperGraph", "EntityPortNotConnected", hyperGraphColors.colorEntityPortNotConnected);
-    LoadValue("Settings\\HyperGraph", "Port", hyperGraphColors.colorPort);
-    LoadValue("Settings\\HyperGraph", "PortSelected", hyperGraphColors.colorPortSelected);
-    LoadValue("Settings\\HyperGraph", "EntityTextInvalid", hyperGraphColors.colorEntityTextInvalid);
-    LoadValue("Settings\\HyperGraph", "DownArrow", hyperGraphColors.colorDownArrow);
-    LoadValue("Settings\\HyperGraph", "CustomNodeBkg", hyperGraphColors.colorCustomNodeBkg);
-    LoadValue("Settings\\HyperGraph", "CustomSelectedNodeBkg", hyperGraphColors.colorCustomSelectedNodeBkg);
-    LoadValue("Settings\\HyperGraph", "PortDebugging", hyperGraphColors.colorPortDebugging);
-    LoadValue("Settings\\HyperGraph", "PortDebuggingText", hyperGraphColors.colorPortDebuggingText);
-    LoadValue("Settings\\HyperGraph", "QuickSearchBackground", hyperGraphColors.colorQuickSearchBackground);
-    LoadValue("Settings\\HyperGraph", "QuickSearchResultText", hyperGraphColors.colorQuickSearchResultText);
-    LoadValue("Settings\\HyperGraph", "QuickSearchCountText", hyperGraphColors.colorQuickSearchCountText);
-    LoadValue("Settings\\HyperGraph", "QuickSearchBorder", hyperGraphColors.colorQuickSearchBorder);
-    LoadValue("Settings\\HyperGraph", "ColorDebugNodeTitle", hyperGraphColors.colorDebugNodeTitle);
-    LoadValue("Settings\\HyperGraph", "ColorDebugNode", hyperGraphColors.colorDebugNode);
-    //////////////////////////////////////////////////////////////////////////
-
-    //////////////////////////////////////////////////////////////////////////
-    // HyperGraph Expert
-    //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings\\HyperGraph", "EnableMigration", bFlowGraphMigrationEnabled);
-    LoadValue("Settings\\HyperGraph", "ShowNodeIDs", bFlowGraphShowNodeIDs);
-    LoadValue("Settings\\HyperGraph", "ShowToolTip", bFlowGraphShowToolTip);
-    LoadValue("Settings\\HyperGraph", "EdgesOnTopOfNodes", bFlowGraphEdgesOnTopOfNodes);
-    LoadValue("Settings\\HyperGraph", "HighlightEdges", bFlowGraphHighlightEdges);
-
-    //////////////////////////////////////////////////////////////////////////
-
     LoadValue("Settings", "TerrainTextureExport", terrainTextureExport);
 
     //////////////////////////////////////////////////////////////////////////
@@ -1000,11 +891,6 @@ void SEditorSettings::Load()
         sAssetBrowserSettings.sColumnNames =
             sAssetBrowserSettings.sVisibleColumnNames = kDefaultColumnsForAssetBrowserList;
     }
-
-    //////////////////////////////////////////////////////////////////////////
-    // FlowGraph
-    //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings\\FlowGraph", "ShowFlowGraphNotification", showFlowgraphNotification);
 
     //////////////////////////////////////////////////////////////////////////
     // Deep Selection Settings

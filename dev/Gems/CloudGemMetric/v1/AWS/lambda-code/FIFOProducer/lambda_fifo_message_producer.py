@@ -1,8 +1,20 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from dynamodb import DynamoDb
 from sqs import Sqs
-from StringIO import StringIO
 from aws_lambda import Lambda
 from cgf_utils import custom_resource_response
+from cgf_lambda_service import ClientError
 from thread_pool import ThreadPool
 from resource_manager_common import stack_info
 from compression import Compress, NoCompression, CompressionClassFactory
@@ -60,12 +72,12 @@ def main(event, lambdacontext):
     compression_mode = CompressionClassFactory.instance(compression_mode)    
     sensitivity_type = SensitivityClassFactory.instance(sensitivity_type)
     payload_type = PayloadClassFactory.instance(context, payload_type, compression_mode, sensitivity_type, source_IP)
-      
-    print "[{}]Using SQS queue URL '{}'".format(context[c.KEY_REQUEST_ID],aws_sqs.queue_url) 
+
+    print("[{}]Using SQS queue URL '{}'".format(context[c.KEY_REQUEST_ID], aws_sqs.queue_url))
     if os.environ[c.ENV_VERBOSE]== "True":
-        print "The post request contains a paylod of\n{}".format(data)
+        print("The post request contains a paylod of\n{}".format(data))
     if data is None:   
-        print "Terminating, there is no data."
+        print("Terminating, there is no data.")
         return ok_response
         
     total_metrics = "all"    
@@ -74,14 +86,14 @@ def main(event, lambdacontext):
         message_chunks, total_metrics = payload_type.chunk(data)   
     
         for message in message_chunks:                    
-            print "Sending a sqs message with {} bytes".format(len(message))            
+            print("Sending a sqs message with {} bytes".format(len(message)))
             aws_sqs.send_message(message, sensitivity_type, compression_mode, payload_type)    
     except Exception as e:        
         traceback.print_exc()                
-        raise errors.ClientError(e.message)     
+        raise ClientError(str(e))
 
-    print "The job sent {} metric(s) to the FIFO queue '{}'".format(total_metrics, aws_sqs.queue_url)    
-    print "The job took {} seconds.".format(time.time() -start)
+    print("The job sent {} metric(s) to the FIFO queue '{}'".format(total_metrics, aws_sqs.queue_url))
+    print("The job took {} seconds.".format(time.time() - start))
     return ok_response
 
 def ip_address_network(ip_address):

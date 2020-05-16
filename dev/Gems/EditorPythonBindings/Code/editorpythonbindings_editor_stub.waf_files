@@ -1,0 +1,10 @@
+{
+    "none": {
+      "Include": [
+        "Include/EditorPythonBindings/EditorPythonBindingsBus.h"
+      ],
+      "Source": [
+        "Source/EditorPythonBindingsModuleStub.cpp"
+      ]
+    }
+}

@@ -137,7 +137,9 @@ typedef HANDLE THREAD_HANDLE;
 #define _O_SEQUENTIAL   0x0020  /* file access is primarily sequential */
 #define _O_RANDOM       0x0010  /* file access is primarily random */
 
-#define MemoryBarrier() __sync_synchronize()
+inline void MemoryBarrier() {
+    __sync_synchronize();
+}
 // Memory barrier implementation taken from https://code.google.com/p/gperftools/
 //inline void MemoryBarrier() {
 //  __asm__ __volatile__("mfence" : : : "memory");
@@ -314,9 +316,6 @@ inline uint32 GetTickCount()
 #endif
 //begin--------------------------------findfirst/-next declaration/implementation----------------------------------------------------
 
-//////////////////////////////////////////////////////////////////////////
-
-typedef int64 __time64_t;     /* 64-bit time value */
 
 //////////////////////////////////////////////////////////////////////////
 // function renaming
@@ -342,10 +341,10 @@ typedef struct __finddata64_t
 {
     //!< atributes set by find request
     unsigned    int attrib;         //!< attributes, only directory and readonly flag actually set
-    __time64_t  time_create;        //!< creation time, cannot parse under linux, last modification time is used instead (game does nowhere makes decision based on this values)
-    __time64_t  time_access;        //!< last access time
-    __time64_t  time_write;         //!< last modification time
-    __time64_t  size;                       //!< file size (for a directory it will be the block size)
+    int64  time_create;        //!< creation time, cannot parse under linux, last modification time is used instead (game does nowhere makes decision based on this values)
+    int64  time_access;        //!< last access time
+    int64  time_write;         //!< last modification time
+    int64  size;                       //!< file size (for a directory it will be the block size)
     char        name[256];          //!< file/directory name
 
 private:

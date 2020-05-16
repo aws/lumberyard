@@ -180,8 +180,8 @@ namespace AzToolsFramework
                     const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType);
             PlaceHolderComponentMode(const PlaceHolderComponentMode&) = delete;
             PlaceHolderComponentMode& operator=(const PlaceHolderComponentMode&) = delete;
-            PlaceHolderComponentMode(PlaceHolderComponentMode&&) = default;
-            PlaceHolderComponentMode& operator=(PlaceHolderComponentMode&&) = default;
+            PlaceHolderComponentMode(PlaceHolderComponentMode&&) = delete;
+            PlaceHolderComponentMode& operator=(PlaceHolderComponentMode&&) = delete;
             ~PlaceHolderComponentMode();
 
             // EditorBaseComponentMode ...
@@ -205,8 +205,8 @@ namespace AzToolsFramework
                 const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType);
             AnotherPlaceHolderComponentMode(const AnotherPlaceHolderComponentMode&) = delete;
             AnotherPlaceHolderComponentMode& operator=(const AnotherPlaceHolderComponentMode&) = delete;
-            AnotherPlaceHolderComponentMode(AnotherPlaceHolderComponentMode&&) = default;
-            AnotherPlaceHolderComponentMode& operator=(AnotherPlaceHolderComponentMode&&) = default;
+            AnotherPlaceHolderComponentMode(AnotherPlaceHolderComponentMode&&) = delete;
+            AnotherPlaceHolderComponentMode& operator=(AnotherPlaceHolderComponentMode&&) = delete;
             ~AnotherPlaceHolderComponentMode() = default;
 
             // EditorBaseComponentMode ...

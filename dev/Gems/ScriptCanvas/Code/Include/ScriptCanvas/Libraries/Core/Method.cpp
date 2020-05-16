@@ -99,11 +99,14 @@ namespace ScriptCanvas
                     AZ::BehaviorValueParameter* paramIter = paramFirst;
 
                     // all input should have been pushed into this node already
-                    int argIndex(0);
-                    for (const VariableDatumBase& varDatum : GetVarDatums())
+                    int argIndex(0);                    
+
+                    Node::DatumVector inputDatums = GatherDatumsForDescriptor(SlotDescriptors::DataIn());
+
+                    for (const Datum* datum : inputDatums)
                     {
                         auto behaviorParameter = m_method->GetArgument(argIndex);
-                        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = varDatum.GetData().ToBehaviorValueParameter(*behaviorParameter);
+                        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = datum->ToBehaviorValueParameter(*behaviorParameter);
 
                         if (!inputParameter.IsSuccess())
                         {
@@ -207,11 +210,12 @@ namespace ScriptCanvas
                         {
                             if (const auto defaultValue = config.m_method.GetDefaultValue(argIndex))
                             {
-                                Datum* input = ModInput(*this, addedSlot);
+                                ModifiableDatumView datumView;
+                                FindModifiableDatumView(addedSlot, datumView);
 
-                                if (input && Data::IsValueType(input->GetType()))
+                                if (datumView.IsValid() && Data::IsValueType(datumView.GetDataType()))
                                 {
-                                    *input = Datum(defaultValue->m_value);
+                                    datumView.AssignToDatum(AZStd::move(Datum(defaultValue->m_value)));
                                 }
                             }
                         }
@@ -485,12 +489,28 @@ namespace ScriptCanvas
                 AZ::BehaviorEBus* ebus = ebusIterator->second;
                 AZ_Assert(ebus, "ebus == nullptr in %s", ebusName.data());
 
-                const auto& sender = ebus->m_events.find(eventName);
+                auto sender = ebus->m_events.find(eventName);
 
                 if (sender == ebus->m_events.end())
                 {
-                    AZ_Error("Script Canvas", false, "No event by name of %s found in the ebus %s", eventName.data(), ebusName.data());
-                    return false;
+                    sender = ebus->m_events.begin();
+
+                    while (sender != ebus->m_events.end())
+                    {
+                        if (sender->second.m_deprecatedName == eventName)
+                        {
+                            m_lookupName = sender->first;
+                            break;
+                        }
+
+                        ++sender;
+                    }
+
+                    if (sender == ebus->m_events.end())
+                    {
+                        AZ_Error("Script Canvas", false, "No event by name of %s found in the ebus %s", eventName.data(), ebusName.data());
+                        return false;
+                    }
                 }
 
                 AZ::EBusAddressPolicy addressPolicy
@@ -510,6 +530,19 @@ namespace ScriptCanvas
                 }
 
                 outMethod = method;
+
+                // If the bus name and the class name are different. Assumedly we
+                // are using a deprecated name
+                if (ebus->m_name.compare(m_className) != 0)
+                {
+                    if (m_className.compare(m_classNamePretty) == 0)
+                    {
+                        m_classNamePretty = ebus->m_name;
+                    }
+
+                    m_className = ebus->m_name;
+                }
+
                 return true;
             }
 

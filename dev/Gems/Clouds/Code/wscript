@@ -50,7 +50,7 @@ def build(bld):
 
         ## Editor build configuration
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5'],
             includes    = [
                 'Source',
@@ -101,4 +101,4 @@ def build(bld):
             win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED'],
         ),
     )
-        
+

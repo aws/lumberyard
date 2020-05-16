@@ -233,6 +233,19 @@
 * ---------------------------------------------------------------------------------------------------------- */
 #define ScriptCanvas_PropertyWithDefaults(...)
 
+/*
+*----------------------------------------------------------------------------------------------------------
+*
+* ScriptCanvas_Include
+*
+* When it is necessary for the generated file to contain a specific include.
+* Note: The include directive will use the brackets syntax. (e.g. ScriptCanvas_Include("AzCore/Script/ScriptTimePoint.h")
+* will produce:
+* #include <AzCore/Script/ScriptTimePoint.h>
+* in the generated.h file
+* ---------------------------------------------------------------------------------------------------------- */
+#define ScriptCanvas_Include(IncludeDeclaration, ...)
+
 #else
 
 // These are the tag definitions as seen by AzCodeGenerator during code traversal, they will produce the necessary 
@@ -251,8 +264,10 @@
 
 #define ScriptCanvas_SerializeProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, __VA_ARGS__) Type Name;
 #define ScriptCanvas_EditProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, EditProperty, __VA_ARGS__) Type Name;
-#define ScriptCanvas_SerializePropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, (__VA_ARGS__) Type Name{ DefaultVal };
+#define ScriptCanvas_SerializePropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, __VA_ARGS__) Type Name{ DefaultVal };
 #define ScriptCanvas_EditPropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, EditProperty, __VA_ARGS__) Type Name{ DefaultVal };
+
+#define ScriptCanvas_Include(IncludeDeclaration, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Includes, Identifier(IncludeDeclaration), __VA_ARGS__) int AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 
 #endif
 
@@ -363,6 +378,14 @@ namespace ScriptCanvas_Node
     struct GraphEntryPoint
     {
         GraphEntryPoint(bool) {}
+    };
+
+    // Signals whether or not the ordering of dynamically added slots on the node will change during edit time.
+    //
+    // Main use cases are for user input that will add/remove slots where order is desired to be maintained
+    struct DynamicSlotOrdering
+    {
+        DynamicSlotOrdering(bool) {}
     };
 
 }

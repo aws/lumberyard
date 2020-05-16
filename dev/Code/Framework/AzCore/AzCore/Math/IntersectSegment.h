@@ -236,6 +236,18 @@ namespace AZ
         }
 
         /**
+         * @param      rayOrigin      The origin of the ray to test.
+         * @param      rayDir         The direction of the ray to test. It has to be unit length.
+         * @param      diskCenter     Center point of the disk
+         * @param      diskRadius     Radius of the disk
+         * @param      diskNormal     A normal perpendicular to the disk
+         * @param[out] t              If returning 1 (indicating a hit), this contains distance from rayOrigin along the normalized rayDir that the hit occured at.
+         * @return                    The number of intersecting points.
+         */
+        int IntersectRayDisk(
+            const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& diskCenter, const VectorFloat& diskRadius, const AZ::Vector3& diskNormal, VectorFloat& t);
+
+        /**
          * If there is only one intersecting point, the coefficient is stored in \ref t1.
          * 
          * @param      rayOrigin      The origin of the ray to test.

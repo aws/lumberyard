@@ -14,7 +14,6 @@
 #include <PhysX_precompiled.h>
 
 #include <AzFramework/Physics/PhysicsComponentBus.h>
-#include <AzFramework/Physics/CharacterBus.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/TransformBus.h>
@@ -23,9 +22,10 @@
 
 #include <Source/BaseColliderComponent.h>
 #include <Source/RigidBodyComponent.h>
-#include <Source/RigidBodyStatic.h>
+#include <Source/StaticRigidBodyComponent.h>
 #include <Source/SystemComponent.h>
 #include <Source/Utils.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysX
 {
@@ -60,6 +60,9 @@ namespace PhysX
 
         if (numShapes > 0)
         {
+            auto world = Utils::GetDefaultWorld();
+            PHYSX_SCENE_READ_LOCK(world->GetNativeWorld());
+
             auto pxShape = static_cast<physx::PxShape*>(shapes[0]->GetNativePointer());
             physx::PxTransform pxWorldTransform = PxMathConvert(m_worldTransform);
             physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(pxShape->getGeometry().any(),
@@ -181,22 +184,20 @@ namespace PhysX
 
     bool BaseColliderComponent::IsStaticRigidBody()
     {
-        return m_staticRigidBody != nullptr;
+        const auto* component = GetEntity()->FindComponent<StaticRigidBodyComponent>();
+        return component != nullptr;
     }
 
     PhysX::RigidBodyStatic* BaseColliderComponent::GetStaticRigidBody()
     {
-        return m_staticRigidBody.get();
+        auto* component = GetEntity()->FindComponent<StaticRigidBodyComponent>();
+        return component ? component->GetStaticRigidBody() : nullptr;
     }
 
     // TransformNotificationsBus
     void BaseColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_shapeInfoCache.SetWorldTransform(world);
-        if (m_staticRigidBody)
-        {
-            m_staticRigidBody->SetTransform(world);
-        }
         m_shapeInfoCache.InvalidateCache();
     }
 
@@ -228,15 +229,89 @@ namespace PhysX
         return false;
     }
 
+    void BaseColliderComponent::SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag)
+    {
+        for(auto& shape : m_shapes) 
+        {
+            if (Physics::Utils::FilterTag(shape->GetTag(), colliderTag))
+            {
+                bool success = false;
+                Physics::CollisionLayer layer;
+                Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionLayerByName, layerName, layer);
+                if (success)
+                {
+                    shape->SetCollisionLayer(layer);
+                }
+            }
+        }
+    }
+
+    AZStd::string BaseColliderComponent::GetCollisionLayerName()
+    {
+        AZStd::string layerName;
+        if (!m_shapes.empty())
+        {
+            Physics::CollisionRequestBus::BroadcastResult(layerName, &Physics::CollisionRequests::GetCollisionLayerName, m_shapes[0]->GetCollisionLayer());
+        }
+        return layerName;
+    }
+
+    void BaseColliderComponent::SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 colliderTag)
+    {
+        for (auto& shape : m_shapes)
+        {
+            if (Physics::Utils::FilterTag(shape->GetTag(), colliderTag))
+            {
+                bool success = false;
+                Physics::CollisionGroup group;
+                Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionGroupByName, groupName, group);
+                if (success)
+                {
+                    shape->SetCollisionGroup(group);
+                }
+            }
+        }
+    }
+
+    AZStd::string BaseColliderComponent::GetCollisionGroupName()
+    {
+        AZStd::string groupName;
+        if (!m_shapes.empty())
+        {
+            Physics::CollisionRequestBus::BroadcastResult(groupName, &Physics::CollisionRequests::GetCollisionGroupName, m_shapes[0]->GetCollisionGroup());
+        }
+        return groupName;
+    }
+
+    void BaseColliderComponent::ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled)
+    {
+        for (const auto& shape : m_shapes)
+        {
+            if (Physics::Utils::FilterTag(shape->GetTag(), colliderTag))
+            {
+                bool success = false;
+                Physics::CollisionLayer layer;
+                Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionLayerByName, layerName, layer);
+                if (success)
+                {
+                    auto group = shape->GetCollisionGroup();
+                    group.SetLayer(layer, enabled);
+                    shape->SetCollisionGroup(group);
+                }
+            }
+        }
+    }
+
+
     // AZ::Component
     void BaseColliderComponent::Activate()
     {
         const AZ::EntityId entityId = GetEntityId();
 
         ColliderComponentRequestBus::Handler::BusConnect(entityId);
-        AZ::EntityBus::Handler::BusConnect(entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
         ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::CollisionFilteringRequestBus::Handler::BusConnect(GetEntityId());
 
         AZ::Transform worldTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(worldTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
@@ -247,30 +322,12 @@ namespace PhysX
 
     void BaseColliderComponent::Deactivate()
     {
-        Physics::Utils::DeferDelete(AZStd::move(m_staticRigidBody));
+        m_shapes.clear();
+
+        Physics::CollisionFilteringRequestBus::Handler::BusDisconnect();
         ColliderShapeRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
-        AZ::EntityBus::Handler::BusDisconnect();
         ColliderComponentRequestBus::Handler::BusDisconnect();
-    }
-
-    // AZ::EntityBus
-    void BaseColliderComponent::OnEntityActivated(const AZ::EntityId& parentEntityId)
-    {
-        InitStaticRigidBody();
-    }
-
-    // BaseColliderComponent
-    AZ::Vector3 BaseColliderComponent::GetNonUniformScale() const
-    {
-        AZ::Vector3 localScale = AZ::Vector3::CreateOne();
-        AZ::TransformBus::EventResult(localScale, GetEntityId(), &AZ::TransformBus::Events::GetLocalScale);
-        return localScale;
-    }
-
-    float BaseColliderComponent::GetUniformScale() const
-    {
-        return GetNonUniformScale().GetMaxElement();
     }
 
     void BaseColliderComponent::UpdateScaleForShapeConfigs()
@@ -278,81 +335,72 @@ namespace PhysX
         // Overridden by each collider component
     }
 
-    void BaseColliderComponent::InitStaticRigidBody()
-    {
-        bool hasRigidBodyComponent = GetEntity()->FindComponent<PhysX::RigidBodyComponent>() != nullptr;
-        bool hasCharacterComponent = Physics::CharacterRequestBus::FindFirstHandler(GetEntityId()) != nullptr;
-        
-        if (!hasRigidBodyComponent && !hasCharacterComponent)
-        {
-            bool noOtherStaticBodies = true;
-
-            ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [&noOtherStaticBodies](ColliderComponentRequests* handler)
-            {
-                noOtherStaticBodies = noOtherStaticBodies && !handler->IsStaticRigidBody();
-                // if there are other bodies no need to continue iterating
-                return noOtherStaticBodies;
-            });
-
-            if (noOtherStaticBodies)
-            {
-                AZ::Transform lyTransform = AZ::Transform::CreateIdentity();
-                AZ::TransformBus::EventResult(lyTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-                lyTransform.ExtractScale();
-
-                Physics::WorldBodyConfiguration configuration;
-                configuration.m_orientation = AZ::Quaternion::CreateFromTransform(lyTransform);
-                configuration.m_position = lyTransform.GetPosition();
-                configuration.m_entityId = GetEntityId();
-                configuration.m_debugName = GetEntity()->GetName();
-
-                m_staticRigidBody = AZStd::make_unique<PhysX::RigidBodyStatic>(configuration);
-
-                ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
-                {
-                    const AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& shapes = handler->GetShapes();
-                    for (auto& shape : shapes)
-                    {
-                        m_staticRigidBody->AddShape(shape);
-                    }
-
-                    return true;
-                });
-
-                auto world = Utils::GetDefaultWorld();
-                world->AddBody(*m_staticRigidBody);
-            }
-        }
-    }
-
-    void BaseColliderComponent::InitShapes()
+    bool BaseColliderComponent::InitShapes()
     {
         UpdateScaleForShapeConfigs();
-        m_shapes.reserve(m_shapeConfigList.size());
-
-        for (const auto& shapeConfigPair : m_shapeConfigList)
+        
+        if (IsMeshCollider())
         {
-            const AZStd::shared_ptr<Physics::ShapeConfiguration>& shapeConfiguration = shapeConfigPair.second;
-            Physics::ColliderConfiguration colliderConfiguration = *shapeConfigPair.first;
+            return InitMeshCollider();
+        }
+        else
+        {
+            const AZ::Vector3 nonUniformScale = Utils::GetNonUniformScale(GetEntityId());
 
-            colliderConfiguration.m_position *= GetNonUniformScale();
+            m_shapes.reserve(m_shapeConfigList.size());
 
-            if (!shapeConfiguration)
+            for (const auto& shapeConfigPair : m_shapeConfigList)
             {
-                AZ_Error("PhysX", false, "Unable to create a physics shape because shape configuration is null. Entity: %s", 
-                    GetEntity()->GetName().c_str());
-                return;
+                const AZStd::shared_ptr<Physics::ShapeConfiguration>& shapeConfiguration = shapeConfigPair.second;
+                if (!shapeConfiguration)
+                {
+                    AZ_Error("PhysX", false, "Unable to create a physics shape because shape configuration is null. Entity: %s",
+                        GetEntity()->GetName().c_str());
+                    return false;
+                }
+
+                Physics::ColliderConfiguration colliderConfiguration = *shapeConfigPair.first;
+                colliderConfiguration.m_position *= nonUniformScale;
+
+                AZStd::shared_ptr<Physics::Shape> shape;
+                Physics::SystemRequestBus::BroadcastResult(shape, &Physics::SystemRequests::CreateShape, colliderConfiguration, *shapeConfiguration);
+                
+                if (!shape)
+                {
+                    AZ_Error("PhysX", false, "Failed to create a PhysX shape. Entity: %s", GetEntity()->GetName().c_str());
+                    return false;
+                }
+
+                m_shapes.push_back(shape);
             }
 
-            auto shape = AZStd::make_shared<Shape>(colliderConfiguration, *shapeConfiguration);
-
-            if (!shape->GetPxShape())
-            {
-                AZ_Error("PhysX", false, "Failed to create a PhysX shape. Entity: %s", GetEntity()->GetName().c_str());
-                return;
-            }
-
-            m_shapes.push_back(shape);
+            return true;
         }
     }
+    
+    bool BaseColliderComponent::IsMeshCollider() const
+    {
+        return m_shapeConfigList.size() == 1 && m_shapeConfigList.begin()->second &&
+            m_shapeConfigList.begin()->second->GetShapeType() == Physics::ShapeType::PhysicsAsset;
+    }
+
+    bool BaseColliderComponent::InitMeshCollider()
+    {
+        AZ_Assert(IsMeshCollider(), "InitMeshCollider called for a non-mesh collider.");
+
+        const Physics::ShapeConfigurationPair& shapeConfigurationPair = *(m_shapeConfigList.begin());
+        const Physics::ColliderConfiguration& componentColliderConfiguration = *(shapeConfigurationPair.first.get());
+        const Physics::PhysicsAssetShapeConfiguration& physicsAssetConfiguration = 
+            *(static_cast<const Physics::PhysicsAssetShapeConfiguration*>(shapeConfigurationPair.second.get()));
+
+        if (!physicsAssetConfiguration.m_asset.IsReady())
+        {
+            return false;
+        }
+
+        Utils::GetShapesFromAsset(physicsAssetConfiguration, componentColliderConfiguration, m_shapes);
+
+        return true;
+    }
+
 }

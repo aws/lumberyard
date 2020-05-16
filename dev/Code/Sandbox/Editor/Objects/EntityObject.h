@@ -35,12 +35,10 @@
 #define CLASS_RIGIDBODY_LIGHT "RigidBodyLight"
 #define CLASS_ENVIRONMENT_LIGHT "EnvironmentLight"
 
-class CFlowGraph;
 class CEntityObject;
 class QMenu;
 class IOpticsElementBase;
 class CPanelTreeBrowser;
-struct SPyWrappedProperty;
 class CTrackViewAnimNode;
 
 /*!
@@ -80,6 +78,7 @@ struct IPickEntitesOwner
     virtual void RemoveEntity(int nIdx) = 0;
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /*!
  *  CEntity is an static object on terrain.
  *
@@ -90,6 +89,7 @@ class CRYEDIT_API CEntityObject
     , protected AZ::CharacterBoundsNotificationBus::MultiHandler
     , public IEntityEventListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
     ~CEntityObject();
@@ -290,13 +290,6 @@ public:
     void AcceptPhysicsState();
     void ResetPhysicsState();
 
-    bool CreateFlowGraphWithGroupDialog();
-    void SetFlowGraph(CFlowGraph* pGraph);
-    // Open Flow Graph associated with this entity in the view window.
-    void OpenFlowGraph(const QString& groupName);
-    void RemoveFlowGraph(bool bInitFlowGraph = true);
-    CFlowGraph* GetFlowGraph() const { return m_pFlowGraph; }
-
     // Find CEntity from game entityId.
     static CEntityObject* FindFromEntityId(EntityId id);
     // Find CEntity from AZ::EntityId, which can also handle legacy game Ids stored as AZ::EntityIds
@@ -349,9 +342,6 @@ protected:
     void SetEntityProperty(const char* name, T value);
     template <typename T>
     T GetEntityProperty(const char* name, T defaultvalue) const;
-
-    void PySetEntityProperty(const char* name, const SPyWrappedProperty& value);
-    SPyWrappedProperty PyGetEntityProperty(const char* name) const;
 
     virtual bool SetEntityScript(CEntityScript* pEntityScript, bool bForceReload = false, bool bGetScriptProperties = true,
         XmlNodeRef xmlProperties = XmlNodeRef(), XmlNodeRef xmlProperties2 = XmlNodeRef());
@@ -491,8 +481,6 @@ protected:
     void AdjustLightProperties(CVarBlockPtr& properties, const char* pSubBlock);
     IVariable* FindVariableInSubBlock(CVarBlockPtr& properties, IVariable* pSubBlockVar, const char* pVarName);
 
-    void OnMenuCreateFlowGraph();
-    void OnMenuFlowGraphOpen(CFlowGraph* pFlowGraph);
     void OnMenuScriptEvent(int eventIndex);
     void OnMenuOpenTrackView(CTrackViewAnimNode* pAnimNode);
     void OnMenuReloadAllScripts();
@@ -599,10 +587,6 @@ protected:
     // Physics state, as a string.
     XmlNodeRef m_physicsState;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Associated FlowGraph.
-    CFlowGraph* m_pFlowGraph;
-
     static int m_rollupId;
     static class CEntityPanel* m_panel;
     static float m_helperScale;
@@ -635,11 +619,6 @@ private:
 
     CListenerSet<IEntityObjectListener*> m_listeners;
     std::vector< std::pair<IVariable*, IVariable::OnSetCallback> > m_callbacks;
-
-    friend SPyWrappedProperty PyGetEntityProperty(const char* entityName, const char* propName);
-    friend void PySetEntityProperty(const char* entityName, const char* propName, SPyWrappedProperty value);
-    friend SPyWrappedProperty PyGetEntityParam(const char* pObjectName, const char* pVarPath);
-    friend void PySetEntityParam(const char* pObjectName, const char* pVarPath, SPyWrappedProperty value);
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_ENTITYOBJECT_H

@@ -14,27 +14,42 @@
 
 #include <Tests/SystemComponentFixture.h>
 
+#include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
 
 namespace EMotionFX
 {
+    class MakeQtApplicationBase
+    {
+    public:
+        MakeQtApplicationBase() = default;
+        AZ_DEFAULT_COPY_MOVE(MakeQtApplicationBase);
+        virtual ~MakeQtApplicationBase();
+
+        void SetUp();
+
+    protected:
+        QApplication* m_uiApp = nullptr;
+    };
+
     using UIFixtureBase = ComponentFixture<
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
         AZ::UserSettingsComponent,
         AzToolsFramework::Components::PropertyManagerComponent,
         EMotionFX::Integration::SystemComponent
     >;
+
+    // MakeQtApplicationBase is listed as the first base class, so that the
+    // QApplication object is destroyed after the EMotionFX SystemComponent is
+    // shut down
     class UIFixture
-        : public UIFixtureBase
+        : public MakeQtApplicationBase
+        , public UIFixtureBase
     {
     public:
         void SetUp() override;
-
-        void TearDown() override;
-
-    protected:
-        QApplication* m_app = nullptr;
     };
 } // end namespace EMotionFX

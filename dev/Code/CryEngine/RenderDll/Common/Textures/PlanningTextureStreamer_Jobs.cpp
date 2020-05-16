@@ -15,9 +15,6 @@
 #include "PlanningTextureStreamer.h"
 
 //#define PLAN_TEXSTRM_DEBUG
-#if defined(PLAN_TEXSTRM_DEBUG)
-#pragma optimize("",off)
-#endif
 
 static int GetTexReqStreamSizePreClamped(const SPlanningTextureOrderKey& key, int reqMip)
 {
@@ -256,7 +253,7 @@ void CPlanningTextureStreamer::Job_UpdateEntry()
 void CPlanningTextureStreamer::StartUpdateJob()
 {
     m_jobExecutor.Reset();
-    m_jobExecutor.StartJob(	
+    m_jobExecutor.StartJob(
         [this]()
         {
             this->Job_UpdateEntry();
@@ -552,7 +549,7 @@ void CPlanningTextureStreamer::Job_Sort()
     int nOnScreenFrameId = sortState.nFrameId - 8;
     int nMinMip = sortState.fpMinMip >> 8;
 
-    int const nStreamLimit = sortState.nStreamLimit;
+    size_t const nStreamLimit = sortState.nStreamLimit;
 
     m_keys.resize(nTextures);
     SPlanningTextureOrderKey* pKeys = &m_keys[0];
@@ -630,7 +627,7 @@ void CPlanningTextureStreamer::Job_CheckEnqueueForStreaming(CTexture* pTexture, 
 
     if (CRenderer::CV_r_TexturesStreamingDebug == 2)
     {
-        iLog->Log("Updating mips: %s - Current: %i, Previous: %i", pTexture->m_SrcName.c_str(), pTexture->GetRequiredMipNonVirtual(), nNewMip);
+        iLog->Log("Updating mips: %s - Current: %i, Desired: %i", pTexture->m_SrcName.c_str(), pTexture->GetRequiredMipNonVirtual(), nNewMip);
     }
 
 #if defined(ENABLE_TEXTURE_STREAM_LISTENER)

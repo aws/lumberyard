@@ -6,9 +6,6 @@
         ]
     },
     "auto": {
-        "Include": [
-            "Include/VideoPlayback/VideoPlaybackBus.h"
-        ],
         "Source": [
             "Source/VideoPlaybackModule.cpp",
             "Source/VideoPlaybackSystemComponent.cpp",
@@ -16,9 +13,7 @@
             "Source/VideoPlaybackGameComponent.cpp",
             "Source/VideoPlaybackGameComponent.h",
             "Source/Decoder.h",
-            "Source/Decoder.cpp",
-            "Source/VideoPlaybackAsset.h",
-            "Source/VideoPlaybackFlowNodes.cpp"
+            "Source/Decoder.cpp"
         ]
     }
 }

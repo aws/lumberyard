@@ -24,6 +24,7 @@
 #include <MCore/Source/FileSystem.h>
 #include "ActorCommands.h"
 #include "CommandManager.h"
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <AzFramework/API/ApplicationAPI.h>
 
 
@@ -591,8 +592,12 @@ namespace CommandSystem
 
             actorInstance->GetTransformData()->ResetToBindPoseTransformations();
             actorInstance->SetLocalSpacePosition(AZ::Vector3::CreateZero());
-            actorInstance->SetLocalSpaceRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
-            actorInstance->SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
+            actorInstance->SetLocalSpaceRotation(AZ::Quaternion::CreateIdentity());
+
+            EMFX_SCALECODE
+            (
+                actorInstance->SetLocalSpaceScale(AZ::Vector3::CreateOne());
+            )
         }
 
         return true;
@@ -731,7 +736,7 @@ namespace CommandSystem
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
 
         // get rid of the actor
-        actor->Destroy();
+        EMotionFX::GetActorManager().UnregisterActor(EMotionFX::GetActorManager().FindSharedActorByID(actor->GetID()));
 
         // mark the workspace as dirty
         GetCommandManager()->SetWorkspaceDirtyFlag(true);

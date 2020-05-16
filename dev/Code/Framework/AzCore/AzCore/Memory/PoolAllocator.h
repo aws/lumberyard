@@ -100,7 +100,7 @@ namespace AZ
                 return isReady;
             }
 
-            void Destroy()
+            void Destroy() override
             {
                 static_cast<Schema*>(this->m_schema)->Destroy();
                 Base::Destroy();

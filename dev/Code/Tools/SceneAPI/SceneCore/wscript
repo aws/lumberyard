@@ -12,24 +12,40 @@
 ########################################################################################
 
 def build(bld):
+    
+    from waflib import Utils
+    host_platform = Utils.unversioned_sys_platform()
+    
+    if host_platform == 'linux':
+        # For linux platforms, build this module as a static library
+        build_func           = 'CryEngineStaticLibrary'
+        build_defines        = ['SCENE_CORE_STATIC', '_HAS_EXCEPTIONS=0']
+        build_export_defines = ['SCENE_CORE_STATIC']
+        build_features       = ['crcfix']
+    else:
+        # For all other platforms, build this module as a shared library
+        build_func           = 'CryEngineModule'
+        build_defines        = ['SCENE_CORE_EXPORTS', '_HAS_EXCEPTIONS=0']
+        build_export_defines = []
+        build_features       = ['crcfix', 'link_running_program']
 
-    bld.CryEngineModule(
-        target              = 'SceneCore',
-        vs_filter           = 'Tools/SceneAPI',
-        file_list           = 'scenecore.waf_files',
-        platforms           = ['win', 'darwin'],
-        client_only         = True,
-        exclude_monolithic  = True,
-        disable_pch         = True,
-        includes            = [ bld.Path('Code/Tools') ],
-        use                 = [ 'AzCore', 'AzFramework', 'AzToolsFramework', 'GFxFramework' ],
-        defines             = [ 'SCENE_CORE_EXPORTS', '_HAS_EXCEPTIONS=0' ],
-        features            = [ 'crcfix', 'link_running_program' ],
+    getattr(bld, build_func)(
+        target                  = 'SceneCore',
+        vs_filter               = 'Tools/SceneAPI',
+        file_list               = 'scenecore.waf_files',
+        platforms               = ['win', 'darwin', 'linux'],
+        client_only             = True,
+        exclude_monolithic      = True,
+        disable_pch             = True,
+        includes                = [bld.Path('Code/Tools')],
+        use                 = [ 'AzCore', 'AzFramework', 'AzToolsFramework', 'GFxFramework', 'AssetBuilderSDK' ],
+        defines                 = build_defines,
+        export_defines          = build_export_defines,
+        features                = build_features,
 
-        output_sub_folder_copy = 'rc',
+        output_sub_folder_copy  = 'rc',
 
-        #==============================
         # Testing
-        #==============================
-        test_all_file_list = 'scenecore_testing.waf_files',
+        test_all_file_list      = 'scenecore_testing.waf_files',
     )
+

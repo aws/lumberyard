@@ -11,9 +11,11 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QEvent>
 #include <QGraphicsWidget>
 #include <QObject>
+AZ_POP_DISABLE_WARNING
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
 
@@ -58,7 +60,10 @@ namespace GraphCanvas
 
         int GetIndex() const;
 
+        GraphCanvasLabel* GetTextLabel();
         const GraphCanvasLabel* GetTextLabel() const;
+        
+        GraphCanvasLabel* GetValueLabel();
         const GraphCanvasLabel* GetValueLabel() const;
     
     private:    
@@ -89,6 +94,10 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetDisabledGraphicsLayoutItem() override;
         QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() override;
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
+        ////
+
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragState);
         ////
     
     private:

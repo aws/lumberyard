@@ -31,7 +31,7 @@ else:
 	is_vista = getattr(sys, "getwindowsversion", None) and sys.getwindowsversion()[0] >= 6
 
 	try:
-		_type = unicode
+		_type = str
 	except NameError:
 		_type = str
 

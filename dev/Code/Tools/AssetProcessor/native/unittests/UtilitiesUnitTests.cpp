@@ -35,6 +35,11 @@
 #include <QFile>
 #endif
 
+#if defined(AZ_PLATFORM_LINUX)
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 using namespace UnitTestUtils;
 using namespace AssetUtilities;
 using namespace AssetProcessor;
@@ -227,9 +232,11 @@ void UtilitiesUnitTests::StartTest()
         // but on other platforms, this is not the case.
         QFile lockTestFile(lockTestFileName);
         lockTestFile.open(QFile::ReadOnly);
-#else // AZ_PLATFORM_WINDOWS
+#elif defined(AZ_PLATFORM_LINUX)
+        int handle = open(lockTestFileName.toUtf8().constData(), O_RDONLY | O_EXCL | O_NONBLOCK);
+#else
         int handle = open(lockTestFileName.toUtf8().constData(), O_RDONLY | O_EXLOCK | O_NONBLOCK);       
-#endif
+#endif // AZ_PLATFORM_WINDOWS
         UNIT_TEST_EXPECT_FALSE(AssetUtilities::CheckCanLock(lockTestFileName));
 #if defined(AZ_PLATFORM_WINDOWS)
         lockTestFile.close();

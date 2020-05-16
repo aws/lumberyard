@@ -89,7 +89,7 @@ namespace ScriptCanvas
             source.SetElement(AZ::GetClamp(aznumeric_cast<int>(index), 0, 1), ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromElement, "Math/Vector2", "{D10C2172-CB42-44E3-9C16-FA51F8A5A235}", "returns a vector with the element corresponding to the index (0 -> x) (1 -> y)set to the value", "Source", "Index", "Value");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromElement, "Math/Vector2", "{BE4D21C2-7485-4759-B215-32874D741FD9}", "returns a vector with the element corresponding to the index (0 -> x) (1 -> y)set to the value", "Source", "Index", "Value");
 
         AZ_INLINE Vector2Type FromLength(Vector2Type source, const NumberType length)
         {

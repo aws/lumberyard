@@ -15,6 +15,7 @@
 #include "CloudGemMetric/MetricsQueue.h"
 #include "CloudGemMetric/MetricsPriority.h"
 #include "CloudGemMetric/MetricManager.h"
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/JSON/stringbuffer.h>
 #include <AzCore/JSON/prettywriter.h>
 #include <AzFramework/FileFunc/FileFunc.h>
@@ -182,7 +183,7 @@ namespace CloudGemMetric
             return;
         }
 
-        nextIdx = end == m_metrics.end() ? -1 : end - m_metrics.begin();
+        nextIdx = end == m_metrics.end() ? -1 : aznumeric_caster(end - m_metrics.begin());
 
         AZStd::vector<rapidjson::Document*> docs;
         //1 document for each type of payloads
@@ -285,7 +286,7 @@ namespace CloudGemMetric
             return;
         }
 
-        nextIdx = end == m_metrics.end() ? -1 : end - m_metrics.begin();
+        nextIdx = end == m_metrics.end() ? -1 : aznumeric_caster(end - m_metrics.begin());
 
         rapidjson::Document doc;
 

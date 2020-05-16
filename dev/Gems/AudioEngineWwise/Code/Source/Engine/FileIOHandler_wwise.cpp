@@ -33,32 +33,32 @@ namespace Audio
     // AkFileHandle must be able to store our AZ::IO::HandleType
     static_assert(sizeof(AkFileHandle) >= sizeof(AZ::IO::HandleType), "AkFileHandle must be able to store at least the size of a AZ::IO::HandleType");
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    namespace Platform
+    {
+        AkFileHandle GetAkFileHandle(AZ::IO::HandleType realFileHandle);
+        AZ::IO::HandleType GetRealFileHandle(AkFileHandle akFileHandle);
+
+        void SetThreadProperties(AkThreadProperties& threadProperties);
+    }
+
     AkFileHandle GetAkFileHandle(AZ::IO::HandleType realFileHandle)
     {
         if (realFileHandle == AZ::IO::InvalidHandle)
         {
-            return AkFileHandle(INVALID_HANDLE_VALUE);
+            return InvalidAkFileHandle;
         }
 
-        return (AkFileHandle)static_cast<uintptr_t>(realFileHandle);
+        return Platform::GetAkFileHandle(realFileHandle);
     }
 
     AZ::IO::HandleType GetRealFileHandle(AkFileHandle akFileHandle)
     {
-        if (akFileHandle == AkFileHandle(INVALID_HANDLE_VALUE))
+        if (akFileHandle == InvalidAkFileHandle)
         {
             return AZ::IO::InvalidHandle;
         }
 
-        // On 64 bit systems, strict compilers throw an error trying to reinterpret_cast
-        // from AkFileHandle (a 64 bit pointer) to AZ::IO::HandleType (a uint32_t) because:
-        //
-        // cast from pointer to smaller type 'AZ::IO::HandleType' (aka 'unsigned int') loses information
-        //
-        // However, this is safe because AkFileHandle is a "blind" type that serves as a token.
-        // We create the token and hand it off, and it is handed back whenever file IO is done.
-        return static_cast<AZ::IO::HandleType>((uintptr_t)akFileHandle);
+        return Platform::GetRealFileHandle(akFileHandle);
     }
 
     CBlockingDevice_wwise::~CBlockingDevice_wwise()
@@ -74,7 +74,7 @@ namespace Audio
         AK::StreamMgr::GetDefaultDeviceSettings(deviceSettings);
         deviceSettings.uIOMemorySize = poolSize;
         deviceSettings.uSchedulerTypeFlags = AK_SCHEDULER_BLOCKING;
-        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_AUDIOENGINEWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
+        Platform::SetThreadProperties(deviceSettings.threadProperties);
 
         m_deviceID = AK::StreamMgr::CreateDevice(deviceSettings, this);
         return m_deviceID != AK_INVALID_DEVICE_ID;
@@ -91,8 +91,6 @@ namespace Audio
 
     bool CBlockingDevice_wwise::Open(const char* filename, AkOpenMode openMode, AkFileDesc& fileDesc)
     {
-        AZ_Assert(m_deviceID == AK_INVALID_DEVICE_ID, "Unable to open file, Wwise device hasn't been initialized.");
-
         const char* openModeString = nullptr;
         switch (openMode)
         {
@@ -136,8 +134,6 @@ namespace Audio
     AKRESULT CBlockingDevice_wwise::Read(AkFileDesc& fileDesc, const AkIoHeuristics&, void* buffer, AkIOTransferInfo& transferInfo)
     {
         AZ_Assert(buffer, "Wwise didn't provide a valid buffer to write to.");
-        AZ_Assert(fileDesc.hFile != AkFileHandle(INVALID_HANDLE_VALUE), "Trying to read a Wwise file before it has been opened.");
-        AZ_Assert(m_deviceID != AK_INVALID_DEVICE_ID, "Unable to read before the Wwise file IO device has been initialized.");
 
         AZ::IO::HandleType fileHandle = GetRealFileHandle(fileDesc.hFile);
         const long nCurrentFileReadPos = gEnv->pCryPak->FTell(fileHandle);
@@ -157,9 +153,7 @@ namespace Audio
     AKRESULT CBlockingDevice_wwise::Write(AkFileDesc& fileDesc, const AkIoHeuristics&, void* data, AkIOTransferInfo& transferInfo)
     {
         AZ_Assert(data, "Wwise didn't provide a valid buffer to read from.");
-        AZ_Assert(fileDesc.hFile != AkFileHandle(INVALID_HANDLE_VALUE), "Trying to write a Wwise file before it has been opened.");
-        AZ_Assert(m_deviceID != AK_INVALID_DEVICE_ID, "Unable to write before the Wwise file IO device has been initialized.");
-        
+
         AZ::IO::HandleType fileHandle = GetRealFileHandle(fileDesc.hFile);
 
         const long nCurrentFileWritePos = gEnv->pCryPak->FTell(fileHandle);
@@ -182,9 +176,6 @@ namespace Audio
 
     AKRESULT CBlockingDevice_wwise::Close(AkFileDesc& fileDesc)
     {
-        AZ_Assert(m_deviceID != AK_INVALID_DEVICE_ID, "Unable to close files before the Wwise file IO device has been initialized.");
-        AZ_Assert(fileDesc.hFile != AkFileHandle(INVALID_HANDLE_VALUE), "Trying to close a Wwise file before it has been opened.");
-
         return gEnv->pCryPak->FClose(GetRealFileHandle(fileDesc.hFile)) ? AK_Success : AK_Fail;
     }
 
@@ -229,7 +220,7 @@ namespace Audio
         AK::StreamMgr::GetDefaultDeviceSettings(deviceSettings);
         deviceSettings.uIOMemorySize = poolSize;
         deviceSettings.uSchedulerTypeFlags = AK_SCHEDULER_DEFERRED_LINED_UP;
-        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_AUDIOENGINEWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
+        Platform::SetThreadProperties(deviceSettings.threadProperties);
 
         m_deviceID = AK::StreamMgr::CreateDevice(deviceSettings, this);
         return m_deviceID != AK_INVALID_DEVICE_ID;
@@ -250,7 +241,7 @@ namespace Audio
         const size_t fileSize = gEnv->pCryPak->FGetSize(filename);
         if (fileSize)
         {
-            fileDesc.hFile = 0;
+            fileDesc.hFile = AkFileHandle();
             fileDesc.iFileSize = static_cast<AkInt64>(fileSize);
             fileDesc.uSector = 0;
             fileDesc.deviceID = m_deviceID;
@@ -353,22 +344,6 @@ namespace Audio
     {
         AZ_Assert(false, "Wwise Async File IO - Writing audio data is not supported for AZ::IO::Streamer based device.\n");
         return AK_Fail;
-    }
-
-    void CStreamingDevice_wwise::Cancel(AkFileDesc& fileDesc, AkAsyncIOTransferInfo& transferInfo, bool& cancelAllTransfersForThisFile)
-    {
-        AZ_Assert(transferInfo.pUserData, "AZ::IO::Streamer request handle has not been set in Wwise's async transfer info.");
-
-        AsyncUserData* request = reinterpret_cast<AsyncUserData*>(transferInfo.pUserData);
-        AZ::IO::Streamer::Instance().CancelRequestAsync(request->m_request);
-        
-        // As every request holds a AZ::IO::Streamer Request, individually cancel each of them to make sure all the requests are
-        // properly cleaned up.
-        cancelAllTransfersForThisFile = false;
-
-        // There's no need to call the callback here. When CancelRequest is called the callback registered with the AZ::IO::Stream
-        // request will be called, which in this case is the lambda that was registered when ReadAsync was called. This lambda
-        // will take care of calling the required callback in the transferInfo.
     }
 
     AKRESULT CStreamingDevice_wwise::Close(AkFileDesc& fileDesc)

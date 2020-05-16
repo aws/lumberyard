@@ -375,7 +375,7 @@ namespace AzFramework
             NetBindableRpcDesc(const char* name, ptrdiff_t offset)
                 : RpcDescBase(name, offset)
             {
-                AZ_STATIC_ASSERT((AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value), "NetBindableRpcDesc is intended for use only with NetBindableRpcs");
+                static_assert((AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value), "NetBindableRpcDesc is intended for use only with NetBindableRpcs");
             }
 
             void ConstructRpc(void* mem) const override { RpcBindType::ConstructRpc(mem, m_name); }
@@ -531,7 +531,7 @@ namespace AzFramework
     template <class ClassType>
     NetworkContext::ClassBuilderPtr NetworkContext::Class()
     {
-        AZ_STATIC_ASSERT((AZStd::is_base_of<NetBindable, ClassType>::value), "Classes reflected through NetworkContext must be derived from NetBindable");
+        static_assert((AZStd::is_base_of<NetBindable, ClassType>::value), "Classes reflected through NetworkContext must be derived from NetBindable");
         const AZ::Uuid& typeId = AZ::AzTypeInfo<ClassType>::Uuid();
         ClassDescPtr binding = nullptr;
         if (IsRemovingReflection()) // Just remove the entire class definition
@@ -771,8 +771,8 @@ namespace AzFramework
     {
         if (!m_context->IsRemovingReflection())
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<ReplicaChunkBase, ChunkType>::value), "ReplicaChunks being registered with the NetworkContext must derive from ReplicaChunk");
-            AZ_STATIC_ASSERT((AZStd::is_base_of<NetworkContextChunkDescriptor, DescriptorType>::value), "Chunk bindings via NetworkContext must use a NetworkContextChunkDescriptor derived descriptor");
+            static_assert((AZStd::is_base_of<ReplicaChunkBase, ChunkType>::value), "ReplicaChunks being registered with the NetworkContext must derive from ReplicaChunk");
+            static_assert((AZStd::is_base_of<NetworkContextChunkDescriptor, DescriptorType>::value), "Chunk bindings via NetworkContext must use a NetworkContextChunkDescriptor derived descriptor");
             AZ_Assert(!m_binding->m_typeId.IsNull(), "Cannot register a ReplicaChunk for a class which has not been declared to the NetworkContext");
             AZ_Assert(!m_binding->m_chunkDesc.m_chunkId, "Cannot register more than one ReplicaChunk binding for a class in the NetworkContext");
 
@@ -820,7 +820,7 @@ namespace AzFramework
     {
         if (!m_context->IsRemovingReflection())
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<ReplicaChunkInterface, InterfaceType>::value), "Cannot bind an RPC call to an object which is not a ReplicaChunkInterface");
+            static_assert((AZStd::is_base_of<ReplicaChunkInterface, InterfaceType>::value), "Cannot bind an RPC call to an object which is not a ReplicaChunkInterface");
             AZ_Assert(!m_binding->m_typeId.IsNull(), "Cannot register an RPC for a class which has not been declared to the NetworkContext");
 
             ptrdiff_t offset = reinterpret_cast<ptrdiff_t>(&(reinterpret_cast<ClassType const volatile*>(0)->*rpc));
@@ -836,7 +836,7 @@ namespace AzFramework
     {
         if (!m_context->IsRemovingReflection())
         {
-            AZ_STATIC_ASSERT((AZStd::is_base_of<ReplicaChunkInterface, InterfaceType>::value), "Cannot bind an RPC call to an object which is not a ReplicaChunkInterface");
+            static_assert((AZStd::is_base_of<ReplicaChunkInterface, InterfaceType>::value), "Cannot bind an RPC call to an object which is not a ReplicaChunkInterface");
             AZ_Assert(!m_binding->m_typeId.IsNull(), "Cannot register an RPC for a class which has not been declared to the NetworkContext");
 
             m_context->InitReflectedChunkBinding<ClassType>(m_binding);

@@ -96,7 +96,7 @@ namespace AZ
         {                
         }
 
-        virtual ~ScriptPropertyGenericClassMapImpl()
+        ~ScriptPropertyGenericClassMapImpl() override
         {
             for (auto& mapPair : m_pairMapping)
             {
@@ -345,7 +345,7 @@ namespace AZ
         explicit ScriptPropertyTable(const char* name);
         ScriptPropertyTable(const char* name, const ScriptPropertyTable* scriptPropertyTable);
 
-        virtual ~ScriptPropertyTable();
+        ~ScriptPropertyTable() override;
 
         ScriptProperty* FindTableValue(AZ::ScriptDataContext& scriptDataContext, int keyIndex) const;
         ScriptProperty* FindTableValue(const AZ::ScriptPropertyGenericClass* scriptProperty) const;        
@@ -403,8 +403,8 @@ namespace AZ
         // Bypasses the metatable indexing, and writes out the actual raw values of the table.
         bool WriteRawTable(AZ::ScriptContext& context);
         
-        void EnableInPlaceControls();
-        void DisableInPlaceControls();
+        void EnableInPlaceControls() override;
+        void DisableInPlaceControls() override;
 
         AZ::ScriptContext* GetScriptContext() const;
         

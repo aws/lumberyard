@@ -19,7 +19,7 @@ end
 
 function closedcaption:initUiCanvas()
 	-- Let's load the canvas
-   self.canvasEntityId = UiCanvasManagerBus.Broadcast.FindLoadedCanvasByPathName("Levels/TextToSpeechSample/UI/InputUi.uicanvas")
+   self.canvasEntityId = UiCanvasManagerBus.Broadcast.FindLoadedCanvasByPathName("Levels/TextToSpeechSample/UI/InputUi.uicanvas", false)
 	if self.canvasEntityId == nil then
 		Debug.Log("(Closed Caption) Could not find InputUiCanvas")
 		return false

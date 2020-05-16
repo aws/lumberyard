@@ -35,6 +35,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{E1940FB4-83FE-4594-9AFF-375FF7603338}")
                     ScriptCanvas_Node::Category("Utilities/Debug")
                     ScriptCanvas_Node::EditAttributes(AZ::Edit::Attributes::CategoryStyle(".string"), ScriptCanvas::Attributes::Node::TitlePaletteOverride("StringNodeTitlePalette"))
+                    ScriptCanvas_Node::DynamicSlotOrdering(true)
                     ScriptCanvas_Node::Version(0)
                 );
 

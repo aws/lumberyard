@@ -46,11 +46,13 @@ namespace EMStudio
     /**
     * @brief: Checks out or adds a file to source control
     *
-    * @param[in] parameters The MCore commandline for this Command, to query the
-    *                       value of the -sourceControl parameter
-    * @param[in] filename The name of the file to check out or add
-    * @param[out] outResult A description of any errors that happen
-    * @param[in] add True when adding a newly-created file, false otherwise
+    * @param[in] parameters The MCore commandline for this Command, to query the value of the -sourceControl parameter.
+    * @param[in] filename The name of the file to check out or add.
+    * @param[out] outResult A description of any errors that happen.
+    * @param[in,out] inOutFileExistedBefore True in case the file was already checked into source control before, false if not.
+    *                                       In case the file gets added during the function call, the parameter will be adjusted accordingly.
+    * @param[in] useSourceControl Checkout or add the file in case of true, only do a file existance check when false.
+    * @param[in] add True when adding a newly-created file, false otherwise.
     *
     * @return: True on success, false otherwise
     *
@@ -65,22 +67,19 @@ namespace EMStudio
     * checked out before editing it, a new file must be added after it is
     * created.
     */
-
-    bool SourceControlCommand::CheckOutFile(const MCore::CommandLine& parameters, const char* filename, AZStd::string& outResult, bool add)
+    bool SourceControlCommand::CheckOutFile(const char* filename, bool& inOutFileExistedBefore, AZStd::string& outResult, bool useSourceControl, bool add)
     {
-        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
-
-        if (add && m_fileExistsBeforehand)
+        if (add && inOutFileExistedBefore)
         {
             // We do not need to add the file if it existed before the save
             // operation, it will already have been checked out
             return true;
         }
 
-        m_fileExistsBeforehand = AZ::IO::FileIOBase::GetInstance()->Exists(filename);
+        inOutFileExistedBefore = AZ::IO::FileIOBase::GetInstance()->Exists(filename);
 
         bool checkoutResult = true;
-        if (sourceControl && m_fileExistsBeforehand)
+        if (useSourceControl && inOutFileExistedBefore)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             ApplicationBus::BroadcastResult(checkoutResult,
@@ -97,6 +96,12 @@ namespace EMStudio
         }
 
         return checkoutResult;
+    }
+
+    bool SourceControlCommand::CheckOutFile(const MCore::CommandLine& parameters, const char* filename, AZStd::string& outResult, bool add)
+    {
+        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
+        return CheckOutFile(filename, m_fileExistsBeforehand, outResult, sourceControl, add);
     }
 
     //--------------------------------------------------------------------------------
@@ -351,6 +356,22 @@ namespace EMStudio
         }
     }
 
+    CommandEditorLoadAnimGraph::CommandEditorLoadAnimGraph(MCore::Command* orgCommand)
+        : CommandSystem::CommandLoadAnimGraph(orgCommand)
+    {
+        m_relocateFilenameFunction = RelocateFilename;
+    }
+
+    void CommandEditorLoadAnimGraph::RelocateFilename(AZStd::string& filename)
+    {
+        GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename);
+    }
+
+    CommandEditorLoadMotionSet::CommandEditorLoadMotionSet(MCore::Command* orgCommand)
+        : CommandSystem::CommandLoadMotionSet(orgCommand)
+    {
+        m_relocateFilenameFunction = CommandEditorLoadAnimGraph::RelocateFilename;
+    }
 
     bool CommandSaveMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
@@ -391,6 +412,8 @@ namespace EMStudio
 
         if (saveResult)
         {
+            GetMainWindow()->GetFileManager()->SourceAssetChanged(filename);
+
             // Add file in case it did not exist before (when saving it the first time).
             if (!CheckOutFile(parameters, filename.c_str(), outResult, true))
             {
@@ -499,6 +522,8 @@ namespace EMStudio
             {
                 animGraph->SetFileName(filename.c_str());
             }
+
+            GetMainWindow()->GetFileManager()->SourceAssetChanged(filename);
 
             // Add file in case it did not exist before (when saving it the first time).
             if (!CheckOutFile(parameters, filename.c_str(), outResult, true))

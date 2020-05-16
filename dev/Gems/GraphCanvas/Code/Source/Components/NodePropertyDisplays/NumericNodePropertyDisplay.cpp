@@ -27,13 +27,12 @@ namespace GraphCanvas
     // NumericNodePropertyDisplay
     ///////////////////////////////
     NumericNodePropertyDisplay::NumericNodePropertyDisplay(NumericDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_dataInterface(dataInterface)
         , m_displayLabel(nullptr)
         , m_spinBox(nullptr)
         , m_proxyWidget(nullptr)
     {
-        m_dataInterface->RegisterDisplay(this);
-        
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
     }
@@ -56,8 +55,8 @@ namespace GraphCanvas
             QSizeF minimumSize = m_displayLabel->minimumSize();
             QSizeF maximumSize = m_displayLabel->maximumSize();
 
-            m_spinBox->setMinimumSize(minimumSize.width(), minimumSize.height());
-            m_spinBox->setMaximumSize(maximumSize.width(), maximumSize.height());
+            m_spinBox->setMinimumSize(aznumeric_cast<int>(minimumSize.width()), aznumeric_cast<int>(minimumSize.height()));
+            m_spinBox->setMaximumSize(aznumeric_cast<int>(maximumSize.width()), aznumeric_cast<int>(maximumSize.height()));
         }
     }
     
@@ -97,6 +96,13 @@ namespace GraphCanvas
     {
         SetupProxyWidget();
         return m_proxyWidget;
+    }
+
+    void NumericNodePropertyDisplay::OnDragDropStateStateChanged(const DragDropState& dragState)
+    {
+        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
+        UpdateStyleForDragDrop(dragState, styleHelper);
+        m_displayLabel->update();
     }
 
     void NumericNodePropertyDisplay::EditStart()

@@ -24,6 +24,6 @@ namespace GraphCanvas
         AddCommentMenuAction(QObject* parent);
         virtual ~AddCommentMenuAction() = default;
 
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 }

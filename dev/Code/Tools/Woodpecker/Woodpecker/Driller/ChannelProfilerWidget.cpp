@@ -25,7 +25,7 @@ namespace Driller
     void ColorizeIcon(QIcon& icon, const char* iconPath, Aggregator* aggregator)
     {
         QImage alphaImage(iconPath);
-        alphaImage.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        alphaImage = alphaImage.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
         QImage colorizedImage(alphaImage.width(), alphaImage.height(), QImage::Format_ARGB32_Premultiplied);
 

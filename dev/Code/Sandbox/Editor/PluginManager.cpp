@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "EditorLoadDependencies.h"
 #include "Include/IPlugin.h"
 #include "PluginManager.h"
 #include "Util/FileUtil.h"
@@ -177,6 +178,7 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
         return false;
     }
 
+    Sandbox::LoadPluginDependencies();
 
     // Sort plugins by dependency
     SortPluginsByDependency(plugins);

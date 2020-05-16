@@ -1,0 +1,46 @@
+{
+    "name": "V_HACD",
+    "source": "@GEM@/External/v-hacd/2.0-az.1",
+    "description": "Approximate Convex Decomposition Library",
+    "includes": [
+        "src/VHACD_Lib/public"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "lib/win/Debug"
+            ],
+            "libpath_release": [
+                "lib/win/Release"
+            ],
+            "lib": [
+                "vhacd.lib"
+            ]
+        },
+        "win_x64_vs2019": "@win_x64_vs2017",
+        "darwin_x64": {
+            "libpath_debug": [
+                "lib/osx/Debug"
+            ],
+            "libpath_release": [
+                "lib/osx/Release"
+            ],
+            "lib": [
+                "libvhacd.a"
+            ]
+        },
+        "linux_x64": {
+            "libpath_debug": [
+                "lib/linux/Debug"
+            ],
+            "libpath_release": [
+                "lib/linux/Release"
+            ],
+            "lib": [
+                "libvhacd.a"
+            ]
+        }
+    }
+}

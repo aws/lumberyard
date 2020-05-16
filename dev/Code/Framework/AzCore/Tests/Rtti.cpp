@@ -223,7 +223,7 @@ namespace UnitTest
         : public MyBase
     {
     public:
-        virtual ~MyBase1() {}
+        ~MyBase1() override {}
         // Event though MyBase doesn't have RTTI we do allow to be noted as a base class, of course it will NOT be
         // part of the RTTI chain. The goal is to allow AZ_RTTI to declare any base classes without worry if they have RTTI or not
         AZ_RTTI(MyBase1, "{F3F97A32-15D2-48FF-B741-B89EA2DD2280}", MyBase);
@@ -235,7 +235,7 @@ namespace UnitTest
         : public MyBase1
     {
     public:
-        virtual ~MyDerived() {}
+        ~MyDerived() override {}
         AZ_RTTI(MyDerived, "{3BE0590A-F20F-4056-96AF-C2F0565C2EA5}", MyBase1);
         int dataMyDerived;
     };
@@ -252,7 +252,7 @@ namespace UnitTest
         : public MyDerived
     {
     public:
-        virtual ~MyDerived2() {}
+        ~MyDerived2() override {}
         AZ_RTTI(MyDerived2, "{8902C46B-61C5-4294-82A2-06CB61ACA314}", MyDerived);
         int dataMyDerived2;
     };
@@ -262,7 +262,7 @@ namespace UnitTest
         , public MyDerived1
     {
     public:
-        virtual ~MyClassMix() {}
+        ~MyClassMix() override {}
         AZ_RTTI(MyClassMix, "{F6CDCF25-3161-46AE-A46C-0F9B8A1027AF}", MyDerived2, MyDerived1);
         int dataMix;
     };
@@ -295,7 +295,7 @@ namespace UnitTest
         : public MyClassA
     {
     public:
-        virtual ~MyClassD() {}
+        ~MyClassD() override {}
         AZ_RTTI(MyClassD, "{8E047831-1445-4D13-8F6F-DD36C871FD05}", MyClassA);
         int dataClassD;
     };
@@ -308,7 +308,7 @@ namespace UnitTest
         , public MyClassD
     {
     public:
-        virtual ~MyClassMaxMix() {}
+        ~MyClassMaxMix() override {}
         AZ_RTTI(MyClassMaxMix, "{49A7F45B-D039-44ED-A6BF-E500CB84E867}", MyDerived2, MyDerived1, MyClassB, MyClassC, MyClassD);
         int dataMaxMix;
     };
@@ -689,7 +689,7 @@ namespace UnitTest
     {
     public:
         AZ_RTTI(MyDerivedIntrusive, "{6F3FA2A5-CD05-424F-8E37-1DEDA7CE8816}", MyBaseIntrusive);
-        virtual ~MyDerivedIntrusive() = default;
+        ~MyDerivedIntrusive() override = default;
         double m_doubleValue;
     };
 
@@ -717,7 +717,7 @@ namespace UnitTest
     {
     public:
         AZ_RTTI(MyIntrusiveDerivedFromExternalAndIntrusive, "{3822CF8D-6AC7-4B71-B755-5C69B9DF5A3C}", MyDerivedExternal, MyDerivedIntrusive);
-        virtual ~MyIntrusiveDerivedFromExternalAndIntrusive() = default;
+        ~MyIntrusiveDerivedFromExternalAndIntrusive() override = default;
     };
 
 

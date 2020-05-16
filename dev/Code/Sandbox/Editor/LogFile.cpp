@@ -181,17 +181,20 @@ void CLogFile::FormatLineV(const char * format, va_list argList)
 
 void CLogFile::AboutSystem()
 {
-#if defined(AZ_PLATFORM_WINDOWS)
+    char szBuffer[MAX_LOGBUFFER_SIZE];
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
     //////////////////////////////////////////////////////////////////////
     // Write the system informations to the log
     //////////////////////////////////////////////////////////////////////
 
-    char szBuffer[MAX_LOGBUFFER_SIZE];
     char szProfileBuffer[128];
     char szLanguageBuffer[64];
     //char szCPUModel[64];
     char* pChar = 0;
     MEMORYSTATUS MemoryStatus;
+#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
+
+#if defined(AZ_PLATFORM_WINDOWS)
     DEVMODE DisplayConfig;
     OSVERSIONINFO OSVerInfo;
     OSVerInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -299,6 +302,9 @@ void CLogFile::AboutSystem()
     str += szBuffer;
     str += ")";
     CryLog("%s", str.toUtf8().data());
+#elif defined(AZ_PLATFORM_LINUX)
+    // TODO: Add more detail about the current Linux Distro
+    CryLog("Linux");
 #elif AZ_TRAIT_OS_PLATFORM_APPLE
     QString operatingSystemName;
     if (QSysInfo::MacintoshVersion >= Q_MV_OSX(10, 12))
@@ -353,12 +359,14 @@ void CLogFile::AboutSystem()
     // Send system memory status
     //////////////////////////////////////////////////////////////////////
 
-#if defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
     GlobalMemoryStatus(&MemoryStatus);
     azsnprintf(szBuffer, MAX_LOGBUFFER_SIZE, "%zdMB phys. memory installed, %zdMB paging available",
         MemoryStatus.dwTotalPhys / 1048576 + 1,
         MemoryStatus.dwAvailPageFile / 1048576);
     CryLog("%s", szBuffer);
+#elif defined(AZ_PLATFORM_LINUX)
+    //KDAB_TODO
 #else
     SInt32 mb = 0, lmb = 0;
     Gestalt(gestaltPhysicalRAMSizeInMegabytes, &mb);

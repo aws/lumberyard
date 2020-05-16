@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QColumnWidget.h"
 #include <VariableWidgets/QColumnWidget.moc>
 #include "AttributeItem.h"

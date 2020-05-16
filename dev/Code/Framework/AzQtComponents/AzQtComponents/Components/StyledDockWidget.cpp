@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
@@ -147,13 +148,14 @@ namespace AzQtComponents
     }
 
     /**
-     * Override of event handler so that we can ignore the NonClientAreaXXX
-     * events on our dock widgets.  This fixes an issue where the QDockWidget
-     * only respects the movable feature on mouse press, not on non client area
-     * events (e.g. resizing).  We disable the movable feature on our dock widgets
-     * so that we can use our own custom docking solution instead of the default qt
-     * docking, but we need to override these events that get triggered when resizing
-     * otherwise it will activate the default qt docking.
+     * Override of event handler so that we can ignore the Mouse events on our dock widgets.
+     * This fixes an issue where the QDockWidget only respects the movable feature on mouse press,
+     * not on non client area events (e.g. resizing); this also fixes another issue affecting
+     * DockWidgets in a standalone QWindow, that could be detached from said Window through
+     * the legacy Qt dragging.
+     * We disable the movable feature on our dock widgets so that we can use our own custom
+     * docking solution instead of the default Qt docking, but we need to override these events
+     * that get triggered when resizing otherwise it will activate the default qt docking.
      */
     bool StyledDockWidget::event(QEvent* event)
     {
@@ -163,7 +165,21 @@ namespace AzQtComponents
         case QEvent::NonClientAreaMouseButtonPress:
         case QEvent::NonClientAreaMouseButtonRelease:
         case QEvent::NonClientAreaMouseButtonDblClick:
-            return true;
+            {
+                return true;
+            }
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseMove:
+        case QEvent::MouseButtonRelease:
+            {
+                // For these events, make sure FancyDocking is being used or it will disable
+                // Mouse events for the whole Widget
+                DockMainWindow* parentMainWindow = qobject_cast<DockMainWindow*>(parentWidget());
+                if (parentMainWindow && parentMainWindow->property("fancydocking_owner").isValid())
+                {
+                    return true;
+                }
+            }
         }
 
         return QDockWidget::event(event);

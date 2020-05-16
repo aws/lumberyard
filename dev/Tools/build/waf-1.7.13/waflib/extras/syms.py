@@ -49,7 +49,7 @@ class compile_sym(Task):
 			slist = eval(x.read())
 			for s in slist:
 				syms[s] = 1
-		lsyms = syms.keys()
+		lsyms = list(syms.keys())
 		lsyms.sort()
 		if self.env.DEST_BINFMT == 'pe':
 			self.outputs[0].write('EXPORTS\n' + '\n'.join(lsyms))

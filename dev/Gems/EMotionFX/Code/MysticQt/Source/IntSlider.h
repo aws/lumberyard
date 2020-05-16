@@ -92,7 +92,7 @@ namespace MysticQt
         void SetSingleStep(float delta)                             { mSpinBox->setSingleStep(delta); }
         void BlockSignals(bool flag);
 
-        MCORE_INLINE float GetValue() const                         { return mSpinBox->value(); }
+        MCORE_INLINE float GetValue() const                         { return static_cast<float>(mSpinBox->value()); }
         MCORE_INLINE Slider* GetSlider() const                      { return mSlider; }
         MCORE_INLINE DoubleSpinBox* GetSpinBox() const              { return mSpinBox; }
         MCORE_INLINE bool GetIsPressed()                            { return mSlider->isSliderDown(); }

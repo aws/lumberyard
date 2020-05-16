@@ -20,6 +20,8 @@
 //Local
 #include "api.h"
 
+#include <Cry_Color.h>
+
 struct IStatObj;
 struct ICharacterInstance;
 struct SRenderingPassInfo;
@@ -35,11 +37,13 @@ namespace RotationDrawHelper
     class Axis;
 }
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class EDITOR_QT_UI_API CPreviewModelView
     : public QViewport
     , public QViewportConsumer
     , public IEditorNotifyListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     enum class PlayState
     {
@@ -150,6 +154,7 @@ private:
     float GetSpeedScale() const;
 
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     ColorF m_GridColor;
     ColorF m_BackgroundColor;
 
@@ -162,6 +167,7 @@ private:
 protected:
     PostUpdateCallback m_PostUpdateCallback;
     ContextMenuCallback m_ContextMenuCallback;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 protected:
     PlayState m_PlayState;

@@ -23,9 +23,10 @@ AZ_POP_DISABLE_WARNING
 #include <QStyleOption>
 #include <QMouseEvent>
 #include <QSettings>
-#include <QToolButton>
+#include <QPushButton>
 #include <QToolTip>
 #include <QAction>
+#include <QStyleOptionFrame>
 
 namespace AzQtComponents
 {
@@ -34,7 +35,7 @@ namespace AzQtComponents
     struct BrowseEdit::InternalData
     {
         QLineEdit* m_lineEdit = nullptr;
-        QToolButton* m_attachedButton = nullptr;
+        QPushButton* m_attachedButton = nullptr;
         QString m_errorToolTip;
         bool m_hasAcceptableInput = true;
     };
@@ -46,19 +47,21 @@ namespace AzQtComponents
         AzQtComponents::Style::addClass(this, "AzQtComponentsBrowseEdit");
         setObjectName("browse-edit");
         setToolTipDuration(1000 * 10);
+        setAttribute(Qt::WA_Hover, true);
 
         QHBoxLayout* boxLayout = new QHBoxLayout(this);
-        setLayout(boxLayout);
 
-        boxLayout->setMargin(0);
         boxLayout->setContentsMargins(0, 0, 0, 0);
         boxLayout->setSpacing(0);
 
         m_data->m_lineEdit = new QLineEdit(this);
+        // Do not draw custom style, but we polish/unpolish manually to use
+        // custom LineEdit behaviour
         Style::flagToIgnore(m_data->m_lineEdit);
         setFocusProxy(m_data->m_lineEdit);
         m_data->m_lineEdit->setObjectName("line-edit");
         m_data->m_lineEdit->installEventFilter(this);
+        setClearButtonEnabled(true);
         boxLayout->addWidget(m_data->m_lineEdit);
 
         connect(m_data->m_lineEdit, &QLineEdit::returnPressed, this, &BrowseEdit::returnPressed);
@@ -66,11 +69,10 @@ namespace AzQtComponents
         connect(m_data->m_lineEdit, &QLineEdit::textChanged, this, &BrowseEdit::onTextChanged);
         connect(m_data->m_lineEdit, &QLineEdit::textEdited, this, &BrowseEdit::textEdited);
 
-        m_data->m_attachedButton = new QToolButton(this);
+        m_data->m_attachedButton = new QPushButton(this);
         m_data->m_attachedButton->setObjectName("attached-button");
-        AzQtComponents::PushButton::applyAttachedStyle(m_data->m_attachedButton);
         boxLayout->addWidget(m_data->m_attachedButton);
-        connect(m_data->m_attachedButton, &QToolButton::pressed, this, &BrowseEdit::attachedButtonTriggered);
+        connect(m_data->m_attachedButton, &QPushButton::clicked, this, &BrowseEdit::attachedButtonTriggered);
     }
 
     BrowseEdit::~BrowseEdit()
@@ -103,17 +105,6 @@ namespace AzQtComponents
         if (isClearButtonEnabled() != enable)
         {
             m_data->m_lineEdit->setClearButtonEnabled(enable);
-            if (enable)
-            {
-                QAction* action = m_data->m_lineEdit->findChild<QAction*>(clearButtonActionNameC);
-                if (action)
-                {
-                    const QPixmap iconPixmap = Style::cachedPixmap(QStringLiteral(":/stylesheet/img/titlebar/titlebar_close_dark.png"));
-                    QIcon icon = QIcon(iconPixmap);
-                    icon.addPixmap(iconPixmap, QIcon::Disabled);
-                    action->setIcon(icon);
-                }
-            }
         }
     }
 
@@ -157,6 +148,7 @@ namespace AzQtComponents
         if (errorToolTip != m_data->m_errorToolTip)
         {
             m_data->m_errorToolTip = errorToolTip;
+            LineEdit::setErrorMessage(m_data->m_lineEdit, errorToolTip);
         }
     }
 
@@ -245,14 +237,63 @@ namespace AzQtComponents
         return QFrame::event(event);
     }
 
-    void BrowseEdit::onTextChanged(const QString& text)
+    void BrowseEdit::setHasAcceptableInput(bool acceptable)
     {
-        if (m_data->m_hasAcceptableInput != hasAcceptableInput())
+        if (m_data->m_hasAcceptableInput != acceptable)
         {
-            m_data->m_hasAcceptableInput = hasAcceptableInput();
+            m_data->m_hasAcceptableInput = acceptable;
+            emit hasAcceptableInputChanged(m_data->m_hasAcceptableInput);
             update();
         }
-        Q_EMIT textChanged(text);
+    }
+
+    void BrowseEdit::onTextChanged(const QString& text)
+    {
+        setHasAcceptableInput(hasAcceptableInput());
+        emit textChanged(text);
+    }
+
+    bool BrowseEdit::polish(Style* style, QWidget* widget, const Config& config, const LineEdit::Config& lineEditConfig)
+    {
+        Q_UNUSED(config);
+        auto browseEdit = qobject_cast<BrowseEdit*>(widget);
+
+        if (browseEdit)
+        {
+            style->repolishOnSettingsChange(browseEdit);
+            auto lineEdit = browseEdit->m_data->m_lineEdit;
+            LineEdit::polish(style, lineEdit, lineEditConfig);
+
+            QAction* action = lineEdit->findChild<QAction*>(clearButtonActionNameC);
+            if (action)
+            {
+                QStyleOptionFrame option;
+                option.initFrom(lineEdit);
+                action->setIcon(LineEdit::clearButtonIcon(&option, lineEdit, lineEditConfig));
+            }
+        }
+        return browseEdit;
+    }
+
+    bool BrowseEdit::unpolish(Style* style, QWidget* widget, const Config& config, const LineEdit::Config& lineEditConfig)
+    {
+        Q_UNUSED(config);
+        auto browseEdit = qobject_cast<BrowseEdit*>(widget);
+
+        if (browseEdit)
+        {
+            auto lineEdit = browseEdit->m_data->m_lineEdit;
+            LineEdit::unpolish(style, lineEdit, lineEditConfig);
+
+            QAction* action = lineEdit->findChild<QAction*>(clearButtonActionNameC);
+            if (action)
+            {
+                QStyleOptionFrame option;
+                option.initFrom(lineEdit);
+                action->setIcon(lineEdit->style()->standardIcon(QStyle::SP_LineEditClearButton, &option, lineEdit));
+            }
+        }
+        return browseEdit;
     }
 
     bool BrowseEdit::drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const BrowseEdit::Config& config)
@@ -263,26 +304,46 @@ namespace AzQtComponents
             return false;
         }
 
-        const QStyleOptionFrame* frameOption = qstyleoption_cast<const QStyleOptionFrame*>(option);
-        const bool isFocused = browserEdit->m_data->m_lineEdit->hasFocus() || browserEdit->m_data->m_attachedButton->hasFocus();
-        const QBrush backgroundColor = option->palette.brush(widget->backgroundRole());
-        const QPen frameColor(!browserEdit->hasAcceptableInput()
-                                  ? config.errorBorderColor
-                                  : (isFocused
-                                            ? config.focusedBorderColor
-                                            : (config.borderColor.isValid()
-                                                      ? config.borderColor
-                                                      : backgroundColor)),
-            frameOption->lineWidth);
+        const bool hasError = !browserEdit->hasAcceptableInput();
+        const int lineWidth = config.getLineWidth(option, hasError);
 
-        const auto frameRect = style->borderLineEditRect(browserEdit->rect(), frameOption->lineWidth, config.borderRadius + (frameOption->lineWidth / 2));
-        QPen framePen(frameColor);
-        if (frameColor.color().rgba64().isTransparent())
+        if (lineWidth > 0)
         {
-            framePen = QPen(Qt::NoPen);
+            const QColor frameColor = config.getBorderColor(option, hasError);
+            const auto borderRect = style->borderLineEditRect(browserEdit->rect(), lineWidth, config.borderRadius);
+            Style::drawFrame(painter, borderRect, Qt::NoPen, frameColor);
+        }
+        else
+        {
+            // Draw attached button border
+            const int borderRadius = config.borderRadius;
+            const int borderWidth = 1;
+
+            const auto borderAdjustment = borderRadius - borderWidth;
+            const auto radius = borderRadius + borderWidth;
+
+            auto contentsRect = browserEdit->rect();
+            auto buttonRect = browserEdit->m_data->m_attachedButton->rect();
+            buttonRect.moveCenter(contentsRect.center());
+            buttonRect.moveRight(contentsRect.right() - borderRadius);
+            buttonRect.adjust(0, -borderAdjustment, borderAdjustment, borderAdjustment);
+
+            const auto diameter = radius * 2;
+            const auto adjustedDiamter = diameter - borderAdjustment;
+            QRect tr(buttonRect.right() - adjustedDiamter, buttonRect.top(), diameter, diameter);
+            QRect br(buttonRect.right() - adjustedDiamter, buttonRect.bottom() - adjustedDiamter, diameter, diameter);
+
+            QPainterPath pathRect;
+            pathRect.moveTo(buttonRect.topLeft());
+            pathRect.lineTo(tr.topLeft());
+            pathRect.arcTo(tr, 90, -90);
+            pathRect.lineTo(br.right() + borderWidth, br.top());
+            pathRect.arcTo(br, 0, -90);
+            pathRect.lineTo(buttonRect.left(), buttonRect.bottom() + borderWidth);
+
+            Style::drawFrame(painter, pathRect, Qt::NoPen, config.hoverBorderColor);
         }
 
-        Style::drawFrame(painter, frameRect, framePen, QBrush(Qt::NoBrush));
         return true;
     }
 

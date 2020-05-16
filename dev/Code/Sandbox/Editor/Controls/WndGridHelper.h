@@ -60,8 +60,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
    QPoint WorldToClient(Vec2 v)
     {
-        QPoint p(floor((v.x - origin.x) * zoom.x + 0.5f) + rect.left(),
-            floor((v.y - origin.y) * zoom.y + 0.5f) + rect.top());
+        QPoint p(aznumeric_cast<int>(floor((v.x - origin.x) * zoom.x + 0.5f) + rect.left()),
+            aznumeric_cast<int>(floor((v.y - origin.y) * zoom.y + 0.5f) + rect.top()));
         return p;
     }
 
@@ -97,8 +97,8 @@ public:
         zoom = newzoom;
 
         // Calculate new offset to center zoom on mouse.
-        float x2 = center.x() - rect.left();
-        float y2 = center.y() - rect.top();
+        float x2 = aznumeric_cast<float>(center.x() - rect.left());
+        float y2 = aznumeric_cast<float>(center.y() - rect.top());
         ofsx = -(x2 / z2.x - x2 / z1.x - ofsx);
         ofsy = -(y2 / z2.y - y2 / z1.y - ofsy);
         origin.x = ofsx;
@@ -151,19 +151,19 @@ public:
             }
         }
 
-        firstGridLine.rx() = origin.x / step.x;
-        firstGridLine.ry() = origin.y / step.y;
+        firstGridLine.rx() = aznumeric_cast<int>(origin.x / step.x);
+        firstGridLine.ry() = aznumeric_cast<int>(origin.y / step.y);
 
-        numGridLines.rx() = (rect.width() / zoom.x) / step.x + 1;
-        numGridLines.ry() = (rect.height() / zoom.y) / step.y + 1;
+        numGridLines.rx() = aznumeric_cast<int>((rect.width() / zoom.x) / step.x + 1);
+        numGridLines.ry() = aznumeric_cast<int>((rect.height() / zoom.y) / step.y + 1);
     }
     int GetGridLineX(int nGridLineX) const
     {
-        return floor((nGridLineX * step.x - origin.x) * zoom.x + 0.5f);
+        return aznumeric_cast<int>(floor((nGridLineX * step.x - origin.x) * zoom.x + 0.5f));
     }
     int GetGridLineY(int nGridLineY) const
     {
-        return floor((nGridLineY * step.y - origin.y) * zoom.y + 0.5f);
+        return aznumeric_cast<int>(floor((nGridLineY * step.y - origin.y) * zoom.y + 0.5f));
     }
     float GetGridLineXValue(int nGridLineX) const
     {

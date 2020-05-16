@@ -49,6 +49,10 @@ namespace EMStudio
 
         static AZStd::string GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId);
 
+        void SourceAssetChanged(AZStd::string filename);
+        bool DidSourceAssetGetSaved(const AZStd::string& filename) const;
+        void RemoveFromSavedSourceAssets(AZStd::string filename);
+
         static bool IsAssetLoaded(const char* filename);
         static bool IsSourceAssetLoaded(const char* filename);
 
@@ -101,13 +105,14 @@ namespace EMStudio
         AZStd::string SaveControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
 
     private:
-        QString                                         mLastActorFolder;
-        QString                                         mLastMotionSetFolder;
-        QString                                         mLastAnimGraphFolder;
-        QString                                         mLastWorkspaceFolder;
-        QString                                         mLastNodeMapFolder;
+        AZStd::vector<AZStd::string> m_savedSourceAssets;
+        QString mLastActorFolder;
+        QString mLastMotionSetFolder;
+        QString mLastAnimGraphFolder;
+        QString mLastWorkspaceFolder;
+        QString mLastNodeMapFolder;
 
-        bool                                            mSkipFileChangedCheck;
+        bool mSkipFileChangedCheck;
 
         void UpdateLastUsedFolder(const char* filename, QString& outLastFolder) const;
         QString GetLastUsedFolder(const QString& lastUsedFolder) const;

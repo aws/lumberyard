@@ -40,6 +40,12 @@ namespace ScriptCanvasEditor
         }
     }
 
+    SetVariableNodeDescriptorComponent::SetVariableNodeDescriptorComponent()
+        : VariableNodeDescriptorComponent(NodeDescriptorType::SetVariable)
+    {
+
+    }
+
     void SetVariableNodeDescriptorComponent::UpdateTitle(AZStd::string_view variableName)
     {
         AZStd::string titleName = AZStd::string::format("Set %s", variableName.data());

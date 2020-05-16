@@ -143,6 +143,7 @@ public:
 private:
     QString m_name;
     typedef std::vector<TSmartPtr<CBaseObject> > Objects;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Objects m_objects;
     // Objects set, for fast searches.
     std::set<CBaseObject*> m_objectsSet;
@@ -161,6 +162,7 @@ private:
 
     EMoveSelectionFlag m_LastestMoveSelectionFlag;
     Quat m_LastestMovedObjectRot;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // Description:
     //     Tries to snap a given position to the nearest vertex.

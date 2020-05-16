@@ -96,9 +96,9 @@ class IntegrationTest_CloudGemSpeechRecognition_APISecurity(base_stack_test.Base
         spec = {
             'desc_file' : self.TEST_BOT_SPEC
         }
-        print "Sending bot desc to create test bot"
+        print("Sending bot desc to create test bot")
         response = self.__service_put('/admin/botdesc', spec, admin_auth=True)
-        print "Response to put bot desc: " + str(response)
+        print("Response to put bot desc: {}".format(response))
         while True:
             response = self.__service_get('/admin/botstatus/' + self.TEST_BOT_SPEC['bot']['name'], admin_auth=True)
             if 'status' not in response:
@@ -110,7 +110,7 @@ class IntegrationTest_CloudGemSpeechRecognition_APISecurity(base_stack_test.Base
                 if "ERROR" in response['status']:
                     break;    
                 else:
-                    print "Waiting for bot build: " + response['status']
+                    print("Waiting for bot build: {}".format(response['status']))
             time.sleep(5)
 
     def __020_test_game_client_check_posttext(self):
@@ -160,7 +160,7 @@ class IntegrationTest_CloudGemSpeechRecognition_APISecurity(base_stack_test.Base
 
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
-        self.assertEquals(response.status_code, expected_status_code,
+        self.assertEqual(response.status_code, expected_status_code,
             'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:

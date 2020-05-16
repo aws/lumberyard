@@ -13,10 +13,23 @@ from .thrift_structures import parquet_thrift
 from .util import byte_buffer
 
 
+@numba.njit(nogil=True)
+def unpack_boolean(data, out):
+    for i in range(len(data)):
+        d = data[i]
+        for j in range(8):
+            out[i * 8 + j] = d & 1
+            d >>= 1
+
+
 def read_plain_boolean(raw_bytes, count):
     """Read `count` booleans using the plain encoding."""
-    return np.unpackbits(np.fromstring(raw_bytes, dtype=np.uint8)).reshape(
-            (-1, 8))[:, ::-1].ravel().astype(bool)[:count]
+    data = np.frombuffer(raw_bytes, dtype='uint8')
+    padded = len(raw_bytes) * 8
+    out = np.empty(padded, dtype=bool)
+    unpack_boolean(data, out)
+    return out[:count]
+
 
 DECODE_TYPEMAP = {
     parquet_thrift.Type.INT32: np.int32,
@@ -211,7 +224,7 @@ spec32 = [('data', numba.uint32[:]), ('loc', numba.int64), ('len', numba.int64)]
 Numpy32 = numba.jitclass(spec32)(NumpyIO)
 
 
-def _assemble_objects(assign, defi, rep, val, dic, d, null, null_val, max_defi):
+def _assemble_objects(assign, defi, rep, val, dic, d, null, null_val, max_defi, prev_i):
     """Dremel-assembly of arrays of values into lists
 
     Parameters
@@ -232,12 +245,14 @@ def _assemble_objects(assign, defi, rep, val, dic, d, null, null_val, max_defi):
         can list elements be None
     max_defi: int
         value of definition level that corresponds to non-null
+    prev_i: int
+        1 + index where the last row in the previous page was inserted (0 if first page)
     """
     ## TODO: good case for cython
     if d:
         # dereference dict values
         val = dic[val]
-    i = 0
+    i = prev_i
     vali = 0
     part = []
     started = False
@@ -252,7 +267,11 @@ def _assemble_objects(assign, defi, rep, val, dic, d, null, null_val, max_defi):
                 part = []
                 i += 1
             else:
-                # first time: no row to save yet
+                # first time: no row to save yet, unless it's a row continued from previous page
+                if vali > 0:
+                    assign[i - 1].extend(part) # add the items to previous row
+                    part = []
+                    # don't increment i since we only filled i-1
                 started = True
         if de == max_defi:
             # append real value to current item
@@ -263,7 +282,10 @@ def _assemble_objects(assign, defi, rep, val, dic, d, null, null_val, max_defi):
             part.append(None)
         # next object is None as opposed to an object
         have_null = de == 0 and null
-    assign[i] = None if have_null else part
+    if started: # normal case - add the leftovers to the next row
+        assign[i] = None if have_null else part
+    else: # can only happen if the only elements in this page are the continuation of the last row from previous page
+        assign[i - 1].extend(part)
     return i
 
 

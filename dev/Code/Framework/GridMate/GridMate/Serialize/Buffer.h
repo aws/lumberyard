@@ -278,7 +278,7 @@ namespace GridMate
         EndianType m_endianType;
 
     private:
-        WriteBuffer(const WriteBuffer&) AZ_DELETE_METHOD;
+        WriteBuffer(const WriteBuffer&) = delete;
 
         // Note, do take the current bits offset as well
         AZ_FORCE_INLINE char* GetRawBytePtr(AZStd::size_t offsetInBytes = 0) const

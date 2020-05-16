@@ -474,6 +474,7 @@ void CTransitionEditorPage::OnToggleTimelineUnits()
 //////////////////////////////////////////////////////////////////////////
 void CTransitionEditorPage::OnReloadAnimations()
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (m_modelViewport == NULL)
     {
         return;
@@ -501,6 +502,7 @@ void CTransitionEditorPage::OnReloadAnimations()
 
     OnSequenceRestart(0.0f);
     SetTime(0.0f);
+#endif // EDITOR_PCDEBUGCODE
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -58,9 +58,9 @@ tobytes(s)
     a byte string and make a byte string.
 """
 
-__revision__ = "$Id$"
-
 import sys
+import abc
+
 
 if sys.version_info[0] == 2:
     def b(s):
@@ -71,18 +71,41 @@ if sys.version_info[0] == 2:
         return str(s)
     def bord(s):
         return ord(s)
-    if sys.version_info[1] == 1:
-        def tobytes(s):
-            try:
-                return s.encode('latin-1')
-            except:
-                return ''.join(s)
+    def tobytes(s, encoding="latin-1"):
+        if isinstance(s, unicode):
+            return s.encode(encoding)
+        elif isinstance(s, str):
+            return s
+        elif isinstance(s, bytearray):
+            return bytes(s)
+        else:
+            return ''.join(s)
+    def tostr(bs):
+        return bs
+    def byte_string(s):
+        return isinstance(s, str)
+
+    # In Pyton 2.x, StringIO is a stand-alone module
+    from StringIO import StringIO as BytesIO
+
+    from sys import maxint
+
+    if sys.version_info[1] < 7:
+        import types
+        _memoryview = types.NoneType
     else:
-        def tobytes(s):
-            if isinstance(s, unicode):
-                return s.encode("latin-1")
-            else:
-                return ''.join(s)
+        _memoryview = memoryview
+    
+    iter_range = xrange
+
+    def is_native_int(x):
+        return isinstance(x, (int, long))
+
+    def is_string(x):
+        return isinstance(x, basestring)
+
+    ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
+
 else:
     def b(s):
        return s.encode("latin-1") # utf-8 would cause some side-effects we don't want
@@ -95,13 +118,47 @@ else:
             return bytes(s)
     def bord(s):
         return s
-    def tobytes(s):
-        if isinstance(s,bytes):
+    def tobytes(s, encoding="latin-1"):
+        if isinstance(s, bytes):
             return s
+        elif isinstance(s, bytearray):
+            return bytes(s)
+        elif isinstance(s,str):
+            return s.encode(encoding)
         else:
-            if isinstance(s,str):
-                return s.encode("latin-1")
-            else:
-                return bytes(s)
+            return bytes([s])
+    def tostr(bs):
+        return bs.decode("latin-1")
+    def byte_string(s):
+        return isinstance(s, bytes)
 
-# vim:set ts=4 sw=4 sts=4 expandtab:
+    # In Python 3.x, StringIO is a sub-module of io
+    from io import BytesIO
+    from sys import maxsize as maxint
+
+    _memoryview = memoryview
+
+    iter_range = range
+
+    def is_native_int(x):
+        return isinstance(x, int)
+
+    def is_string(x):
+        return isinstance(x, str)
+
+    from abc import ABC
+
+
+def _copy_bytes(start, end, seq):
+    """Return an immutable copy of a sequence (byte string, byte array, memoryview)
+    in a certain interval [start:seq]"""
+
+    if isinstance(seq, _memoryview):
+        return seq[start:end].tobytes()
+    elif isinstance(seq, bytearray):
+        return bytes(seq[start:end])
+    else:
+        return seq[start:end]
+
+del sys
+del abc

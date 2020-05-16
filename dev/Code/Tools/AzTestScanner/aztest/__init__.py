@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 
 def get_parser():
     parser = argparse.ArgumentParser(description="AZ Test Scanner")
-    parser.add_argument('--verbosity', '-v', default='INFO', choices=logging._levelNames,
+
+    try:
+        log_levels = logging._levelNames
+    except AttributeError:
+        log_levels = logging._levelToName
+    parser.add_argument('--verbosity', '-v', default='INFO', choices=log_levels,
                         help="set the verbosity of logging")
     subparsers = parser.add_subparsers()
     # adding plugins subparsers first allows AzTest to clobber any conflicting options, instead of vice versa

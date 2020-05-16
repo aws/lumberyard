@@ -61,6 +61,7 @@ namespace EMotionFX
         m_skeletonModel = AZStd::make_unique<SkeletonModel>();
 
         m_treeView = new ReselectingTreeView();
+        m_treeView->setObjectName("skeletonOutlinerTreeView");
 
         m_filterProxyModel = new SkeletonSortFilterProxyModel(m_skeletonModel.get(), &m_skeletonModel->GetSelectionModel(), m_treeView);
         m_filterProxyModel->setFilterKeyColumn(-1);
@@ -223,10 +224,12 @@ namespace EMotionFX
             return;
         }
 
-        QMenu contextMenu(m_mainWidget);
+        QMenu* contextMenu = new QMenu(m_mainWidget);
+        contextMenu->setObjectName("contextMenu");
+        contextMenu;
 
         // Allow all external places to plug into the context menu.
-        SkeletonOutlinerNotificationBus::Broadcast(&SkeletonOutlinerNotifications::OnContextMenu, &contextMenu, selectedRowIndices);
+        SkeletonOutlinerNotificationBus::Broadcast(&SkeletonOutlinerNotifications::OnContextMenu, contextMenu, selectedRowIndices);
 
         // Zoom to selected joints
         if (!selectedRowIndices.empty())
@@ -241,17 +244,18 @@ namespace EMotionFX
 
             ActorInstance* selectedActorInstance = selectedRowIndices[0].data(SkeletonModel::ROLE_ACTOR_INSTANCE_POINTER).value<ActorInstance*>();
 
-            QAction* zoomToJointAction = contextMenu.addAction("Zoom to selected joints");
+            QAction* zoomToJointAction = contextMenu->addAction("Zoom to selected joints");
             connect(zoomToJointAction, &QAction::triggered, this, [=]
                 {
                     SkeletonOutlinerNotificationBus::Broadcast(&SkeletonOutlinerNotifications::ZoomToJoints, selectedActorInstance, selectedJoints);
                 });
         }
 
-        if (!contextMenu.isEmpty())
+        if (!contextMenu->isEmpty())
         {
-            contextMenu.exec(m_treeView->mapToGlobal(position));
+            contextMenu->popup(m_treeView->mapToGlobal(position));
         }
+        connect(contextMenu, &QMenu::triggered, contextMenu, &QMenu::deleteLater);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

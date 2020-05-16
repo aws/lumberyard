@@ -86,7 +86,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // AZ::EntitySystemBus
     void OnEntityDestruction(const AZ::EntityId& entityId) override;
-    //~AZ::EntitySystemBus 
+    //~AZ::EntitySystemBus
 
 public: // static functions
 
@@ -177,6 +177,7 @@ private:
     void SetNodeForTracksToolBar(CTrackViewAnimNode* pNode) { m_pNodeForTracksToolBar = pNode; }
 
     void SetEditLock(bool bLock);
+    void OnGameOrSimModeLock(bool lock);
 
     void InitMenu();
     void InitToolbar();
@@ -204,6 +205,12 @@ private:
 
     void OnSequenceAdded(CTrackViewSequence* pSequence) override;
     void OnSequenceRemoved(CTrackViewSequence* pSequence) override;
+
+    void AddSequenceListeners(CTrackViewSequence* sequence);
+    void RemoveSequenceListeners(CTrackViewSequence* sequence);
+
+    void AddDialogListeners();
+    void RemoveDialogListeners();
 
     virtual void BeginUndoTransaction();
     virtual void EndUndoTransaction();
@@ -248,6 +255,7 @@ private:
     bool m_lazyInitDone;
     bool m_bEditLock;
     bool m_enteringGameOrSimModeLock = false;
+    bool m_needReAddListeners = false;
 
     float m_fLastTime;
     float m_fAutoRecordStep;

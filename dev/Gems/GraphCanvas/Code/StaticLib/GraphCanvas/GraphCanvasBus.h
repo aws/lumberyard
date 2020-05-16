@@ -21,6 +21,8 @@
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+
+#include <GraphCanvas/Components/NodePropertyDisplay/AssetIdDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/ComboBoxDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
@@ -104,16 +106,6 @@ namespace GraphCanvas
             return InitActivateEntity(CreateCommentNode());
         }
 
-        AZ_DEPRECATED(AZ::Entity* CreateBlockCommentNode() const, "CreateBlockCommentNode has been renamed to CreateNodeGroup to better reflect functionality.")
-        {
-            return CreateNodeGroup();
-        }
-
-        AZ_DEPRECATED(AZ::Entity* CreateBlockCommentNodeAndActivate() const, "CreateBlockCommentNodeAndActivate has been renamed to CreateNodeGroupAndActivate to better reflect functionality.")
-        {
-            return CreateNodeGroupAndActivate();
-        }
-
         virtual AZ::Entity* CreateNodeGroup() const = 0;
 
         AZ::Entity* CreateNodeGroupAndActivate() const
@@ -141,24 +133,6 @@ namespace GraphCanvas
 
         virtual AZ::Entity* CreateSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const = 0;
 
-        //! Create a data slot
-        //! param: nodeId is the parent node
-        //! param: typeId is the data type of the data slot.
-        //! param: slotConfiguration is the various configurable aspects of the slot.
-        AZ_DEPRECATED(AZ::Entity* CreateDataSlot(const AZ::EntityId& nodeId, const DataSlotConfiguration& dataSlotConfiguration, const SlotConfiguration& slotConfiguration) const, "DataSlotConfiguration now inherit from SlotConfiguration. Please make a single configuration and invoke CreateSlot.")
-        {
-            DataSlotConfiguration mergedConfiguration = dataSlotConfiguration;
-
-            mergedConfiguration.m_connectionType = slotConfiguration.m_connectionType;
-
-            mergedConfiguration.m_name = slotConfiguration.m_name;
-            mergedConfiguration.m_tooltip = slotConfiguration.m_tooltip;
-
-            mergedConfiguration.m_slotGroup = slotConfiguration.m_slotGroup;
-
-            return CreateSlot(nodeId, mergedConfiguration);
-        }
-
         //! Creates a BooleanNodeProperty display using the specified BooleanDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
@@ -168,11 +142,6 @@ namespace GraphCanvas
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateNumericNodePropertyDisplay(NumericDataInterface* dataInterface) const = 0;
-
-        AZ_DEPRECATED(NodePropertyDisplay* CreateDoubleNodePropertyDisplay(NumericDataInterface* dataInterface) const, "CreateDoubleNodePropertyDisplay renamed to CreateNumericNdoePropertyDisplay.")
-        {
-            return CreateNumericNodePropertyDisplay(dataInterface);
-        }
 
         //! Creates a ComboBoxNodePropertyDisplay using the specified ComboBoxInterface
         //! param: dataInterface is the interface to the local data to be used in the operation of the NodePropertyDisplay.
@@ -199,14 +168,10 @@ namespace GraphCanvas
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const = 0;
 
-        //! Create an execution slot
-        //! param: nodeId is the parent node
-        //! param: slotConfiguration is the various configurable aspects of the slot.
-        AZ_DEPRECATED(AZ::Entity* CreateExecutionSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const, "Execution Slots now have their own configuration. Please construct a ExecutionSlotConfiguration object, and invoke CreateSlot.")
-        {
-            ExecutionSlotConfiguration executionConfiguration(slotConfiguration);
-            return CreateSlot(nodeId, executionConfiguration);
-        }
+        //! Creates an AssetIdNodeProperty display using the specified AssetIdDataInterface
+        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
+        //! The PropertyDisplay will take ownership of the DataInterface
+        virtual NodePropertyDisplay* CreateAssetIdNodePropertyDisplay(AssetIdDataInterface* dataInterface) const = 0;
 
         //! Create a property slot
         //! param: nodeId is the parent node

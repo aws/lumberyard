@@ -327,13 +327,35 @@ namespace MCore
     // use this version when calling a command from inside a command execute or undo function
     bool CommandManager::ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult)
     {
-        return ExecuteCommand(command, outCommandResult, false, nullptr, nullptr, false, false, false);
+        return ExecuteCommand(command,
+            outCommandResult,
+            /*addToHistory=*/false,
+            /*outExecutedCommand=*/nullptr,
+            /*outExecutedParameters=*/nullptr,
+            /*callFromCommandGroup=*/false,
+            /*clearErrors=*/false,
+            /*handleErrors=*/false);
     }
-
 
     bool CommandManager::ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult)
     {
-        return ExecuteCommand(command.c_str(), outCommandResult, false, nullptr, nullptr, false, false, false);
+        return ExecuteCommand(command.c_str(),
+            outCommandResult,
+            /*addToHistory=*/false,
+            /*outExecutedCommand=*/nullptr,
+            /*outExecutedParameters=*/nullptr,
+            /*callFromCommandGroup=*/false,
+            /*clearErrors=*/false,
+            /*handleErrors=*/false);
+    }
+
+    bool CommandManager::ExecuteCommandInsideCommand(Command* command, AZStd::string& outCommandResult)
+    {
+        return ExecuteCommand(command,
+            outCommandResult,
+            /*addToHistory=*/false,
+            /*clearErrors=*/false,
+            /*handleErrors=*/false);
     }
 
     bool CommandManager::ExecuteCommandOrAddToGroup(const AZStd::string& command, MCore::CommandGroup* commandGroup, bool executeInsideCommand)
@@ -922,7 +944,7 @@ namespace MCore
         Timer commandTimer;
 #endif
 
-        if (command == nullptr)
+        if (!command)
         {
             return false;
         }
@@ -931,6 +953,13 @@ namespace MCore
         Timer preCallbacksTimer;
 #endif
         ++m_commandsInExecution;
+
+        // Set the original command. This is needed for the command callbacks to function
+        if (!command->GetOriginalCommand() || (command->GetOriginalCommand() == command))
+        {
+            MCore::Command* orgCommand = FindCommand(command->GetNameString());
+            command->SetOriginalCommand(orgCommand);
+        }
 
         // execute command manager callbacks
         for (CommandManagerCallback* managerCallback : mCallbacks)

@@ -48,10 +48,40 @@ namespace AzToolsFramework
             int exitCode = 0;
             int result = waitpid(childProcessId, &exitCode, WNOHANG);
 
+            // result == 0 means child PID is still running, nothing to check
             if (result == -1)
             {
                 AZ_TracePrintf("ProcessWatcher", "IsChildProcessDone could not determine child process status (waitpid errno %d). assuming process either failed to launch or terminated unexpectedly\n", errno);
                 exitCode = 0;
+            }
+            else if (result == childProcessId)
+            {
+                // result == child PID indicates done
+                int realExitCode = 0;
+                if (WIFEXITED(exitCode))
+                {
+                    realExitCode = WEXITSTATUS(exitCode);
+                }
+                else if (WIFSIGNALED(exitCode))
+                {
+                    int termSig = WTERMSIG(exitCode);
+                    if (termSig != 0)
+                    {
+                        realExitCode = termSig;
+                    }
+
+                    int coreDump = WCOREDUMP(exitCode);
+                    if (coreDump != 0)
+                    {
+                        realExitCode = coreDump;
+                    }
+                }
+                else if (WIFSTOPPED(exitCode))
+                {
+                    int stopSig = WSTOPSIG(exitCode);
+                    realExitCode = stopSig;
+                }
+                exitCode = realExitCode;
             }
 
             if (outExitCode)
@@ -198,7 +228,7 @@ namespace AzToolsFramework
                 // Allow quote literals to go through as quotes which do NOT alter our "in quotes" bool below
                 // This is to conform with our PC parameter strings which will sometimes include path parameters which
                 // Can have spaces and commas and need to be output as paramname="\"Some pa,ram\"" in order to capture both correctly
-                if(outputString.length() && outputString.back() == '\\')
+                if (outputString.length() && outputString.back() == '\\')
                 {
                     outputString.back() = currentChar;
                 }
@@ -327,7 +357,7 @@ namespace AzToolsFramework
     ProcessWatcher::ProcessWatcher()
         : m_pCommunicator(nullptr)
     {
-        m_pWatcherData = aznew ProcessData {};
+        m_pWatcherData = AZStd::make_unique<ProcessData>();
     }
 
     ProcessWatcher::~ProcessWatcher()
@@ -338,8 +368,6 @@ namespace AzToolsFramework
         }
 
         delete m_pCommunicator;
-        delete m_pWatcherData;
-        m_pWatcherData = nullptr;
     }
 
     bool ProcessWatcher::IsProcessRunning(AZ::u32* outExitCode)
@@ -354,8 +382,10 @@ namespace AzToolsFramework
         return !m_pWatcherData->m_childProcessIsDone;
     }
 
-    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds)
+    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds, AZ::u32* outExitCode /*= nullptr*/)
     {
+        AZ_UNUSED(outExitCode);
+
         if (IsChildProcessDone(m_pWatcherData->m_childProcessId))
         {
             // Already exited
@@ -369,11 +399,16 @@ namespace AzToolsFramework
         while (((currentTime - startTime) < waitTimeInSeconds) && !isProcessDone)
         {
             usleep(100);
-            int result = waitpid(m_pWatcherData->m_childProcessId, NULL, WNOHANG);
+            int wait_status = 0;
+            int result = waitpid(m_pWatcherData->m_childProcessId, &wait_status, WNOHANG);
             if (result == m_pWatcherData->m_childProcessId)
             {
                 isProcessDone = true;
                 m_pWatcherData->m_childProcessIsDone = true;
+                if (outExitCode)
+                {
+                    *outExitCode = static_cast<AZ::u32>(WEXITSTATUS(wait_status));
+                }
             }
             currentTime = time(0);
         }

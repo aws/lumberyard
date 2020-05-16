@@ -9,14 +9,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import pytest
+import shutil
+
+# waflib imports
 from waflib import Errors, Logs
 
-import unit_test
-import pytest
-
-import android
-import packaging
-import shutil
+# lmbrwaflib imports
+from lmbrwaflib import unit_test
+from lmbrwaflib import android
+from lmbrwaflib import packaging
 
 
 @pytest.fixture

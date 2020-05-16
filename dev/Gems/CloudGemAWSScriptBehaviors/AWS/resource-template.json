@@ -95,7 +95,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "AWSBehaviorLambdaExample",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },

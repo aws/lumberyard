@@ -63,6 +63,7 @@ namespace GraphCanvas
         NodePropertyDisplay* CreateReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateStringNodePropertyDisplay(StringDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const override;
+        NodePropertyDisplay* CreateAssetIdNodePropertyDisplay(AssetIdDataInterface* dataInterface) const override;
 
         AZ::Entity* CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& slotConfiguration) const override;
         ////

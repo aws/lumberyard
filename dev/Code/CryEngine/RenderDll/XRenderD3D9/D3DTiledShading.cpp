@@ -924,12 +924,16 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_TOON_SHADING];
     }
-	
+
     if (CRenderer::CV_r_ssdo)
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
     }
-	
+
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
+    }
 
     if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
     {

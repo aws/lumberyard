@@ -14,7 +14,6 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <QProxyStyle>
 
-class QCheckBox;
 class QSettings;
 
 namespace AzQtComponents

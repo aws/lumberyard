@@ -292,8 +292,8 @@ namespace GridMate
             Teardown();
         }
 
-        SecureConnectionContextImpl(const SecureConnectionContextImpl &) AZ_DELETE_METHOD;
-        SecureConnectionContextImpl& operator =(const SecureConnectionContextImpl&) AZ_DELETE_METHOD;
+        SecureConnectionContextImpl(const SecureConnectionContextImpl &) = delete;
+        SecureConnectionContextImpl& operator =(const SecureConnectionContextImpl&) = delete;
 
         bool PrepareToAccept() override
         {

@@ -182,6 +182,8 @@ namespace Physics
         : public AZ::EBusTraits
     {
     public:
+        AZ_RTTI(TouchBendingRequest, "{4E9DE1BE-F0C7-47E7-B315-9302F62D044C}");
+
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;

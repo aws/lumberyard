@@ -141,6 +141,7 @@ namespace AzToolsFramework
             void SetLocalScaleZ(float scaleZ) override;
 
             AZ::Vector3 GetLocalScale() override;
+            AZ::Vector3 GetWorldScale() override;
 
             AZ::EntityId  GetParentId() override;
             AZ::TransformInterface* GetParent() override;
@@ -148,7 +149,9 @@ namespace AzToolsFramework
             void SetParentRelative(AZ::EntityId parentId) override;
             AZStd::vector<AZ::EntityId> GetChildren() override;
             AZStd::vector<AZ::EntityId> GetAllDescendants() override;
+            AZStd::vector<AZ::EntityId> GetEntityAndAllDescendants() override;
             bool IsStaticTransform() override;
+            void SetIsStaticTransform(bool isStatic) override;
 
             // TransformComponentMessages::Bus
             void TranslateBy(const AZ::Vector3&) override;

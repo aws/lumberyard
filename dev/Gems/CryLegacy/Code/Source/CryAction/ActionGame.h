@@ -29,7 +29,6 @@ struct SGameStartParams;
 struct IGameObject;
 struct INetwork;
 struct IActor;
-struct IGameTokenSystem;
 struct IScriptTable;
 class CScriptRMI;
 class CGameStats;
@@ -437,7 +436,6 @@ private:
     CGameContext* m_pGameContext;
     IEntitySystem* m_pEntitySystem;
     INetwork* m_pNetwork;
-    IGameTokenSystem* m_pGameTokenSystem;
     IPhysicalWorld* m_pPhysicalWorld;
     IMaterialEffects* m_pMaterialEffects;
 

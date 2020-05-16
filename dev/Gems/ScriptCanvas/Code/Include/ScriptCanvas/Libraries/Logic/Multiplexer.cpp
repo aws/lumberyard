@@ -25,14 +25,12 @@ namespace ScriptCanvas
 
             void Multiplexer::OnInputSignal(const SlotId& slotId)
             {
-                auto findSlotOutcome = FindSlotIndex(slotId);
-                if (!findSlotOutcome)
+                auto slotIndex = FindSlotIndex(slotId);
+                if (!slotIndex)
                 {
-                    AZ_Warning("Script Canvas", false, "%s", findSlotOutcome.GetError().data());
+                    AZ_Warning("Script Canvas", false, "Could not find slot with Id %s", slotId.ToString());
                     return;
                 }
-
-                const AZ::s64 inputIndex = findSlotOutcome.GetValue();
 
                 // These are generated from CodeGen, they essentially
                 // check if there's anything connected on the slot and
@@ -40,7 +38,7 @@ namespace ScriptCanvas
                 // they use the default property value.
                 const AZ::s64 selectedIndex = MultiplexerProperty::GetIndex(this);
 
-                if (selectedIndex == inputIndex)
+                if (selectedIndex == slotIndex)
                 {
                     const SlotId outSlotId = MultiplexerProperty::GetOutSlotId(this);
                     SignalOutput(outSlotId);

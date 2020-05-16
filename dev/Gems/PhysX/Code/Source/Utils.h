@@ -17,8 +17,8 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
-#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
 
 #include <PxPhysicsAPI.h>
@@ -46,8 +46,8 @@ namespace PhysX
 
     namespace Pipeline
     {
-        class MeshAssetCookedData;
-    }
+        class MeshAssetData;
+    } // namespace Pipeline
 
     namespace Utils
     {
@@ -64,7 +64,9 @@ namespace PhysX
         AZStd::string ConvexCookingResultToString(physx::PxConvexMeshCookingResult::Enum convexCookingResultCode);
         AZStd::string TriMeshCookingResultToString(physx::PxTriangleMeshCookingResult::Enum triangleCookingResultCode);
 
-        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetCookedData& cookedMesh);
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetData& assetData);
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& physxData, 
+            Physics::CookedMeshShapeConfiguration::MeshType meshType);
 
         bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream);
 
@@ -122,6 +124,17 @@ namespace PhysX
 
         bool TriggerColliderExists(AZ::EntityId entityId);
 
+        void GetShapesFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& resultingShapes);
+
+        void GetColliderShapeConfigsFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            Physics::ShapeConfigurationList& resultingColliderShapes);
+
+        AZ::Vector3 GetNonUniformScale(AZ::EntityId entityId);
+        AZ::Vector3 GetUniformScale(AZ::EntityId entityId);
+
         /// Logs a warning if there is more than one connected bus of the particular type.
         template<typename BusT>
         void LogWarningIfMultipleComponents(const char* messageCategroy, const char* messageFormat)
@@ -132,32 +145,27 @@ namespace PhysX
                 WarnEntityNames(entityIds, messageCategroy, messageFormat);
             }
         }
-    }
+
+        namespace Geometry
+        {
+            using PointList = AZStd::vector<AZ::Vector3>;
+
+            /// Generates a list of points on a box.
+            PointList GenerateBoxPoints(const AZ::Vector3& min, const AZ::Vector3& max);
+
+            /// Generates a list of points on the surface of a sphere.
+            PointList GenerateSpherePoints(float radius);
+
+            /// Generates a list of points on the surface of a cylinder.
+            PointList GenerateCylinderPoints(float height, float radius);
+        } // namespace Geometry
+    } // namespace Utils
 
     namespace ReflectionUtils
     {
-        /// Forwards invokation of CalculateNetForce in a force region to script canvas.
-        class ForceRegionBusBehaviorHandler
-            : public ForceRegionNotificationBus::Handler
-            , public AZ::BehaviorEBusHandler
-        {
-        public:
-            AZ_EBUS_BEHAVIOR_BINDER(ForceRegionBusBehaviorHandler, "{EB6C0F7A-0BDA-4052-84C0-33C05E3FF739}", AZ::SystemAllocator
-                , OnCalculateNetForce
-            );
-
-            static void Reflect(AZ::ReflectContext* context);
-
-            /// Callback invoked when net force exerted on object is computed by a force region.
-            void OnCalculateNetForce(AZ::EntityId forceRegionEntityId
-                , AZ::EntityId targetEntityId
-                , const AZ::Vector3& netForceDirection
-                , float netForceMagnitude) override;
-        };
-
         /// Reflect API specific to PhysX physics. Generic physics API should be reflected in Physics::ReflectionUtils::ReflectPhysicsApi.
         void ReflectPhysXOnlyApi(AZ::ReflectContext* context);
-    }
+    } // namespace ReflectionUtils
 
     namespace PxActorFactories
     {
@@ -165,5 +173,11 @@ namespace PhysX
         physx::PxRigidStatic* CreatePxStaticRigidBody(const Physics::WorldBodyConfiguration& configuration);
 
         void ReleaseActor(physx::PxActor* actor);
-    }
-}
+    } // namespace PxActorFactories
+
+    namespace StaticRigidBodyUtils
+    {
+        bool CanCreateRuntimeComponent(const AZ::Entity& editorEntity);
+        bool TryCreateRuntimeComponent(const AZ::Entity& editorEntity, AZ::Entity& gameEntity);
+    } // namespace StaticRigidBodyComponent
+} // namespace PhysX

@@ -20,7 +20,8 @@
 
 #include <stdio.h>
 
-using namespace AZ::IO;
+namespace AZ::IO
+{
 
 namespace
 {
@@ -672,3 +673,5 @@ namespace Platform
     }
 
 }
+
+} // namespace AZ::IO

@@ -97,6 +97,7 @@ namespace ScriptEvents
             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
             {
                 behaviorContext->Class<Parameter>("Parameter")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Property("Name", BehaviorValueProperty(&Parameter::m_name))
                     ->Property("Type", BehaviorValueProperty(&Parameter::m_type))
                     ;
@@ -168,6 +169,13 @@ namespace ScriptEvents
             m_name.PreSave();
             m_tooltip.PreSave();
             m_type.PreSave();
+        }
+
+        void Flatten()
+        {
+            m_name.Flatten();
+            m_tooltip.Flatten();
+            m_type.Flatten();
         }
 
     private:

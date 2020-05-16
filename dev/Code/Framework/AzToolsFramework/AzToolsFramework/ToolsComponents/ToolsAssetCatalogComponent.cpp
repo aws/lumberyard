@@ -53,25 +53,43 @@ namespace AssetProcessor
 
     AZ::Data::AssetStreamInfo ToolsAssetCatalogComponent::GetStreamInfoForLoad(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType)
     {
-        AZ::Data::AssetInfo assetInfo;
-        AZStd::string rootFilePath;
-        bool result = false;
-
-        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetInfoById, assetId, assetType, assetInfo, rootFilePath);
-
-        if (result)
+        AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+        if (!engineConnection || !engineConnection->IsConnected())
         {
-            AZStd::string sourceFileFullPath;
+            return {};
+        }
 
-            AzFramework::StringFunc::Path::Join(rootFilePath.c_str(), assetInfo.m_relativePath.c_str(), sourceFileFullPath);
+        AzFramework::AssetSystem::AssetInfoRequest request(assetId);
+        AzFramework::AssetSystem::AssetInfoResponse response;
+
+        request.m_assetType = assetType;
+
+        if (!SendRequest(request, response))
+        {
+            AZ_Error("ToolsAssetCatalogComponent", false, "Failed to send GetAssetInfoById request for %s", assetId.ToString<AZStd::string>().c_str());
+            return {};
+        }
+
+        if (response.m_found)
+        {
+            AZStd::string fullPath;
+
+            if(response.m_rootFolder.empty())
+            {
+                fullPath = response.m_assetInfo.m_relativePath;
+            }
+            else
+            {
+                AzFramework::StringFunc::Path::Join(response.m_rootFolder.c_str(), response.m_assetInfo.m_relativePath.c_str(), fullPath);
+            }
 
             AZ::Data::AssetStreamInfo streamInfo;
-            streamInfo.m_dataLen = assetInfo.m_sizeBytes;
+            streamInfo.m_dataLen = response.m_assetInfo.m_sizeBytes;
 
             // All asset handlers are presently required to use the LoadAssetData override
             // that takes a path, in order to pipe the IO through FileIO / VFS.
             streamInfo.m_isCustomStreamType = true;
-            streamInfo.m_streamName = sourceFileFullPath;
+            streamInfo.m_streamName = fullPath;
 
             return streamInfo;
         }
@@ -119,7 +137,7 @@ namespace AssetProcessor
 
         if (!SendRequest(request, response))
         {
-            AZ_Error("Editor", false, "Failed to send GetAssetIdByPath request for %s", path);
+            AZ_Error("ToolsAssetCatalogComponent", false, "Failed to send GetAssetIdByPath request for %s", path);
             return {};
         }
 
@@ -139,7 +157,7 @@ namespace AssetProcessor
 
         if (!SendRequest(request, response))
         {
-            AZ_Error("Editor", false, "Failed to send GetAssetInfoById request for %s", id.ToString<AZStd::string>().c_str());
+            AZ_Error("ToolsAssetCatalogComponent", false, "Failed to send GetAssetInfoById request for %s", id.ToString<AZStd::string>().c_str());
             return {};
         }
 

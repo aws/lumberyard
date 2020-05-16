@@ -33,7 +33,11 @@ namespace AZ
         }
         namespace Events
         {
+#if defined(AZ_PLATFORM_LINUX)
+            class SCENE_CORE_API GraphMetaInfo
+#else
             class GraphMetaInfo
+#endif
                 : public AZ::EBusTraits
             {
             public:
@@ -53,7 +57,7 @@ namespace AZ
                 // Provides a list of string CRCs that indicate the virtual type the given node can act as.
                 //      Virtual types are none custom types that are different interpretations of existing types based on
                 //      their name or attributes.
-                SCENE_CORE_API virtual void GetVirtualTypes(AZStd::set<Crc32>& types, const Containers::Scene& scene, 
+                SCENE_CORE_API virtual void GetVirtualTypes(AZStd::set<Crc32>& types, const Containers::Scene& scene,
                     Containers::SceneGraph::NodeIndex node);
 
                 // Provides a list of string CRCs that indicate all available virtual types.

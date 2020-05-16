@@ -17,11 +17,7 @@
         "CryPhysics",
         "CryRenderNULL",
         "CrySystem",
-        "CryAction",
-        "CryAction_AutoFlowNode",
-        "LmbrAWS",
         "GridMate",
-        "CryRenderNULL",
         "GemRegistry",
         "LyIdentity_shared",
         "LyIdentity_static"

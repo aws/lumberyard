@@ -21,6 +21,7 @@ import os
 from random import randint
 from requests_aws4auth import AWS4Auth
 import requests
+from six import iteritems # Python 2.7/3.7 Compatibility
 import subprocess
 import time
 import uuid
@@ -90,25 +91,25 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __010_create_test_user_and_sign_in(self):
         self.context['test_username'] = self.TEST_USERNAME_PREFIX + '5-' + self.__generate_id()
-        print 'Creating user {} in pool {}'.format(self.context['test_username'], self.context['user_pool_id'])
+        print('Creating user {} in pool {}'.format(self.context['test_username'], self.context['user_pool_id']))
 
         self.__signup(self.context['test_username'], self.TEST_PASSWORD, self.TEST_EMAIL)
         authResult = self.__signin(self.context['test_username'], self.TEST_PASSWORD)
         self.context['auth_tokens'] = authResult
         self.context['account_id'] = self.__get_account_id(self.context['test_username'])
-        print 'Account ID: {}'.format(self.context['account_id'])
+        print('Account ID: {}'.format(self.context['account_id']))
 
         self.context['identity_id'] = self.__get_identity_id(authResult)
         self.context['aws_credentials'] = self.__get_aws_credentials(self.context['identity_id'], authResult)
 
     def __020_create_blacklist_user(self):
         self.context['test_username_blacklisted_true'] = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
-        print 'Creating user {} in pool {}'.format(self.context['test_username_blacklisted_true'], self.context['user_pool_id'])
+        print('Creating user {} in pool {}'.format(self.context['test_username_blacklisted_true'], self.context['user_pool_id']))
 
         self.__signup(self.context['test_username_blacklisted_true'], self.TEST_PASSWORD, self.TEST_EMAIL)
         authResult = self.__signin(self.context['test_username_blacklisted_true'], self.TEST_PASSWORD)
         self.context['account_id_blacklisted_true'] = self.__get_account_id(self.context['test_username_blacklisted_true'])
-        print 'Account ID: {}'.format(self.context['account_id_blacklisted_true'])
+        print('Account ID: {}'.format(self.context['account_id_blacklisted_true']))
 
         self.context['identity_id_blacklisted_true'] = self.__get_identity_id(authResult)
         self.context['aws_credentials_blacklisted_true'] = self.__get_aws_credentials(self.context['identity_id_blacklisted_true'], authResult)
@@ -117,17 +118,17 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.__service_put('/admin/accounts/{}'.format(self.context['account_id_blacklisted_true']), {'AccountBlacklisted': True}, admin_auth=True)
 
         # Existing access tokens should now be invalid.
-        with self.assertRaisesRegexp(ClientError, 'NotAuthorizedException') as context_manager:
+        with self.assertRaisesRegex(ClientError, 'NotAuthorizedException') as context_manager:
             self.aws_cognito_idp.get_user(AccessToken=authResult['AccessToken'])
 
     def __030_create_no_longer_blacklisted_user(self):
         self.context['test_username_blacklisted_false'] = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
-        print 'Creating user {} in pool {}'.format(self.context['test_username_blacklisted_false'], self.context['user_pool_id'])
+        print('Creating user {} in pool {}'.format(self.context['test_username_blacklisted_false'], self.context['user_pool_id']))
 
         self.__signup(self.context['test_username_blacklisted_false'], self.TEST_PASSWORD, self.TEST_EMAIL)
         authResult = self.__signin(self.context['test_username_blacklisted_false'], self.TEST_PASSWORD)
         self.context['account_id_blacklisted_false'] = self.__get_account_id(self.context['test_username_blacklisted_false'])
-        print 'Account ID: {}'.format(self.context['account_id_blacklisted_false'])
+        print('Account ID: {}'.format(self.context['account_id_blacklisted_false']))
 
         # Blacklist/unblacklist the user
         self.__service_put('/admin/accounts/{}'.format(self.context['account_id_blacklisted_false']), {'AccountBlacklisted': True}, admin_auth=True)
@@ -139,7 +140,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.context['aws_credentials_blacklisted_false'] = self.__get_aws_credentials(self.context['identity_id_blacklisted_false'], authResult)
 
     def __040_custom_auth_flow_fails_when_wrong_password(self):
-        with self.assertRaisesRegexp(ClientError, 'Authentication failed') as context_manager:
+        with self.assertRaisesRegex(ClientError, 'Authentication failed') as context_manager:
             self.__signin(self.context['test_username'], 'InvalidPassword')
 
     def __050_get_anonymous_aws_credentials(self):
@@ -152,7 +153,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         }
 
     def __060_custom_auth_flow_rejects_blacklisted_accounts(self):
-        with self.assertRaisesRegexp(ClientError, 'blacklist') as context_manager:
+        with self.assertRaisesRegex(ClientError, 'blacklist') as context_manager:
             self.__signin(self.context['test_username_blacklisted_true'], self.TEST_PASSWORD)
 
     def __070_custom_auth_flow_allows_no_longer_blacklisted(self):
@@ -237,7 +238,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IndexedPlayerName', result)
         self.assertNotIn('PlayerNameSortKey', result)
-        self.assertEquals(result.get('PlayerName', None), name)
+        self.assertEqual(result.get('PlayerName', None), name)
 
         result = self.__service_get('/account', player_auth=True)
         self.assertIn('AccountId', result)
@@ -245,7 +246,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IndexedPlayerName', result)
         self.assertNotIn('PlayerNameSortKey', result)
-        self.assertEquals(result.get('PlayerName', None), name)
+        self.assertEqual(result.get('PlayerName', None), name)
 
     def __230_call_put_account_to_create_anonymous_account(self):
         name = 'TestName' + str(randint(0,1000))
@@ -256,7 +257,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IndexedPlayerName', result)
         self.assertNotIn('PlayerNameSortKey', result)
-        self.assertEquals(result.get('PlayerName', None), name)
+        self.assertEqual(result.get('PlayerName', None), name)
 
         result = self.__service_get('/account', anonymous_auth=True)
         self.assertIn('AccountId', result)
@@ -264,7 +265,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IndexedPlayerName', result)
         self.assertNotIn('PlayerNameSortKey', result)
-        self.assertEquals(result.get('PlayerName', None), name)
+        self.assertEqual(result.get('PlayerName', None), name)
 
     def __235_call_put_account_with_admin_credentials(self):
         self.__service_put('/account', {'PlayerName': 'TestName'}, admin_auth=True, expected_status_code=403)
@@ -287,9 +288,9 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         result = self.__service_get('/admin/accounts/{}'.format(self.context['account_id']), admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), {'email': self.TEST_EMAIL}, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
         self.assertFalse(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
 
     def __305_call_admin_get_account_for_non_existent_account(self):
         self.__service_get('/admin/accounts/non-existent', admin_auth=True, expected_status_code=400)
@@ -305,7 +306,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         result = self.__service_get('/admin/accounts/{}'.format(accountId), admin_auth=True)
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IdentityProviders', result)
-        self.assertEquals(result.get('AccountId'), accountId)
+        self.assertEqual(result.get('AccountId'), accountId)
         self.assertFalse(result.get('AccountBlacklisted'))
         self.assertNotIn('CognitoIdentityId', result)
 
@@ -316,18 +317,18 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         result = self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), {'AccountBlacklisted': True, 'PlayerName': name}, admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), {'email': self.TEST_EMAIL}, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
         self.assertTrue(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('PlayerName'), name)
 
         result = self.__service_get('/admin/accounts/{}'.format(self.context['account_id']), admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), {'email': self.TEST_EMAIL}, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
         self.assertTrue(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('PlayerName'), name)
 
     def __330_call_admin_put_account_blacklist(self):
         name = 'TestName' + str(randint(0,1000))
@@ -335,20 +336,20 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         # Blacklist stays true
         result = self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), {'PlayerName': name}, admin_auth=True)
         self.assertTrue(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
         result = self.__service_get('/admin/accounts/{}'.format(self.context['account_id']), admin_auth=True)
         self.assertTrue(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
         # Change blacklist to false, no player name given.
         result = self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), {'AccountBlacklisted': False}, admin_auth=True)
         self.assertFalse(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
         result = self.__service_get('/admin/accounts/{}'.format(self.context['account_id']), admin_auth=True)
         self.assertFalse(result.get('AccountBlacklisted'))
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
     def __335_call_admin_put_account_with_player_credentials(self):
         self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), {'PlayerName': 'TestName'}, player_auth=True, expected_status_code=403)
@@ -366,8 +367,8 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         result = self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), request, admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), {'email': self.TEST_EMAIL}, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
 
     def __350_call_admin_put_identity_provider_partial_update(self):
         request = {
@@ -384,8 +385,8 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
             'address': request['IdentityProviders'][self.IDP_COGNITO]['address']
         }
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), expectedAttributes, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
 
     def __355_call_admin_put_identity_provider_full_update(self):
         request = {
@@ -396,14 +397,14 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         result = self.__service_put('/admin/accounts/{}'.format(self.context['account_id']), request, admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), self.TEST_ATTRIBUTES, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
 
         result = self.__service_get('/admin/accounts/{}'.format(self.context['account_id']), admin_auth=True)
         self.__assert_username_is_correct(result)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), self.TEST_ATTRIBUTES, self.context['test_username'])
-        self.assertEquals(result.get('AccountId'), self.context['account_id'])
-        self.assertEquals(result.get('CognitoIdentityId'), self.context['identity_id'])
+        self.assertEqual(result.get('AccountId'), self.context['account_id'])
+        self.assertEqual(result.get('CognitoIdentityId'), self.context['identity_id'])
 
     def __360_call_admin_put_identity_provider_fail_and_undo_playername(self):
         account = self.__create_account({'PlayerName': 'OriginalPlayerName', 'CognitoUsername': 'invalid'}, None)
@@ -416,7 +417,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.__service_put('/admin/accounts/{}'.format(account['AccountId']), request, admin_auth=True, expected_status_code=400)
 
         result = self.__service_get('/admin/accounts/{}'.format(account['AccountId']), admin_auth=True)
-        self.assertEquals(result.get('PlayerName'), 'OriginalPlayerName')
+        self.assertEqual(result.get('PlayerName'), 'OriginalPlayerName')
 
     def __365_call_admin_put_identity_provider_fail_and_delete_playername(self):
         account = self.__create_account({'CognitoUsername': 'invalid'}, None)
@@ -435,7 +436,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __375_call_admin_put_account_with_long_attributes(self):
         long_value = 'x' * 3000
-        for key,value in self.TEST_ATTRIBUTES.iteritems():
+        for key,value in iteritems(self.TEST_ATTRIBUTES):
             request = {
                 'IdentityProviders': {
                     self.IDP_COGNITO: {key: long_value}
@@ -452,16 +453,16 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         self.assertIsNotNone(result.get('AccountId'))
         self.assertFalse(result.get('AccountBlacklisted'))
         self.assertNotIn('CognitoIdentityId', result)
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
         account_id = result.get('AccountId')
 
         result = self.__service_get('/admin/accounts/{}'.format(account_id), admin_auth=True)
         self.assertNotIn('CognitoUsername', result)
         self.assertNotIn('IdentityProviders', result)
-        self.assertEquals(result.get('AccountId'), account_id)
+        self.assertEqual(result.get('AccountId'), account_id)
         self.assertFalse(result.get('AccountBlacklisted'))
         self.assertNotIn('CognitoIdentityId', result)
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
     def __385_call_admin_create_account_with_user(self):
         name = 'TestName' + str(randint(0,1000))
@@ -475,21 +476,21 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         }
 
         result = self.__service_post('/admin/accounts', request, admin_auth=True)
-        self.assertEquals(result.get('CognitoUsername'), username)
+        self.assertEqual(result.get('CognitoUsername'), username)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), self.TEST_ATTRIBUTES, username)
         self.assertIsNotNone(result.get('AccountId'))
         self.assertFalse(result.get('AccountBlacklisted'))
         self.assertNotIn('CognitoIdentityId', result)
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
         account_id = result.get('AccountId')
 
         result = self.__service_get('/admin/accounts/{}'.format(account_id), admin_auth=True)
-        self.assertEquals(result.get('CognitoUsername'), username)
+        self.assertEqual(result.get('CognitoUsername'), username)
         self.__assert_cognito_user_equals(result.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}), self.TEST_ATTRIBUTES, username)
-        self.assertEquals(result.get('AccountId'), account_id)
+        self.assertEqual(result.get('AccountId'), account_id)
         self.assertFalse(result.get('AccountBlacklisted'))
         self.assertNotIn('CognitoIdentityId', result)
-        self.assertEquals(result.get('PlayerName'), name)
+        self.assertEqual(result.get('PlayerName'), name)
 
     def __390_call_admin_create_account_with_existing_user(self):
         name = 'TestName' + str(randint(0,1000))
@@ -510,7 +511,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         )
 
         response = self.__service_post('/admin/accounts', request, admin_auth=True, expected_status_code=400)
-        self.assertRegexpMatches(response, 'username already exists')
+        self.assertRegex(response, 'username already exists')
 
     def __395_cleanup_user_attributes(self):
         self.aws_cognito_idp.admin_delete_user_attributes(
@@ -543,7 +544,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __415_call_admin_get_identity_provider_user_without_identity(self):
         username = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
-        print 'Creating user {} in pool {}'.format(username, self.context['user_pool_id'])
+        print('Creating user {} in pool {}'.format(username, self.context['user_pool_id']))
         self.aws_cognito_idp.admin_create_user(
             UserPoolId=self.context['user_pool_id'],
             Username=username,
@@ -590,7 +591,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __455_call_admin_confirm_signup(self):
         username = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
-        print 'Creating user {} in pool {}'.format(username, self.context['user_pool_id'])
+        print('Creating user {} in pool {}'.format(username, self.context['user_pool_id']))
         self.aws_cognito_idp.sign_up(
             ClientId=self.context['user_pool_client_id'],
             Username=username,
@@ -669,21 +670,21 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __605_call_admin_account_search_no_parameters(self):
         result = self.__service_get('/admin/accountSearch', admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems()])
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts'])])
 
     def __610_call_admin_account_search_with_start_name(self):
         result = self.__service_get('/admin/accountSearch', {'StartPlayerName': 'a'}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems() if 'PlayerName' in account])
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts']) if 'PlayerName' in account])
 
     def __615_call_admin_account_search_with_username(self):
         username = self.context['testAccounts']['accountWithUser1']['CognitoUsername']
         result = self.__service_get('/admin/accountSearch', {'CognitoUsername': username}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems() if account.get('CognitoUsername') == username])
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts']) if account.get('CognitoUsername') == username])
 
     def __616_call_admin_account_search_with_username_prefix(self):
         username = self.context['testAccounts']['accountWithUser1']['CognitoUsername'][:4]
         result = self.__service_get('/admin/accountSearch', {'CognitoUsername': username}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems() if account.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}).get('username', '').startswith(username)])
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts']) if account.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}).get('username', '').startswith(username)])
 
     def __620_call_admin_account_search_with_invalid_username(self):
         username = self.context['testAccounts']['accountWithInvalidUser1']['CognitoUsername']
@@ -698,17 +699,17 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
     def __630_call_admin_account_search_with_email(self):
         # The double quote should be stripped by the lambda.
         result = self.__service_get('/admin/accountSearch', {'Email': self.TEST_EMAIL + '"'}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems()
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts'])
             if account.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}).get('email') == self.TEST_EMAIL and name != 'duplicateUsername2'])
 
     def __631_call_admin_account_search_with_email_prefix(self):
         result = self.__service_get('/admin/accountSearch', {'Email': 'nobody'}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems()
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts'])
             if account.get('IdentityProviders', {}).get(self.IDP_COGNITO, {}).get('email') == self.TEST_EMAIL and name != 'duplicateUsername2'])
 
     def __635_call_admin_account_search_with_identity_id(self):
         result = self.__service_get('/admin/accountSearch', {'CognitoIdentityId': 'identity1'}, admin_auth=True)
-        self.__assert_search_results_equal(result, [account for name, account in self.context['testAccounts'].iteritems() if account.get('CognitoIdentityId') == 'identity1'])
+        self.__assert_search_results_equal(result, [account for name, account in iteritems(self.context['testAccounts']) if account.get('CognitoIdentityId') == 'identity1'])
 
     def __640_call_admin_account_search_with_player_credentials(self):
         self.__service_get('/admin/accountSearch', player_auth=True, expected_status_code=403)
@@ -724,7 +725,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
     def __655_player_name_search_pagination(self):
         def check_page_results(results, page_size, page_offset, has_next, has_previous):
-            print results
+            print(results)
             self.assertEqual('next' in results, has_next)
             self.assertEqual('previous' in results, has_previous)
             self.assertEqual(len(results['Accounts']), page_size)
@@ -754,13 +755,13 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
     def __900_run_cpp_tests(self):
 
         if not os.environ.get("ENABLE_CLOUD_CANVAS_CPP_INTEGRATION_TESTS", None):
-            print '\n*** SKIPPING cpp tests because the ENABLE_CLOUD_CANVAS_CPP_INTEGRATION_TESTS envionment variable is not set.\n'
+            print('\n*** SKIPPING cpp tests because the ENABLE_CLOUD_CANVAS_CPP_INTEGRATION_TESTS envionment variable is not set.\n')
         else:
 
             self.lmbr_aws('update-mappings', '--release', '-d', self.TEST_DEPLOYMENT_NAME)
 
             mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.player.awsLogicalMappings.json')
-            print 'Using mappings from', mappings_file
+            print('Using mappings from {}'.format(mappings_file))
             os.environ["cc_override_resource_map"] = mappings_file
 
             lmbr_test_cmd = os.path.join(self.REAL_ROOT_DIR, 'lmbr_test.cmd')
@@ -772,7 +773,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
                 '--only', 'Gem.CloudGemPlayerAccount.fd4ea4ff80a64bb9a90e55b46e9539ef.v0.1.0.dll',
                 '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc141.Debug.Test")
             ]
-            print 'EXECUTING', ' '.join(args)
+            print('EXECUTING {}'.format(' '.join(args)))
 
             result = subprocess.call(args, shell=True)
 
@@ -794,29 +795,29 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
             self.context['anonymous_aws_credentials']['SecretKey'],
             self.context['anonymous_aws_credentials']['SessionToken']
         ]
-        print 'Checking logs'
+        print('Checking logs')
         found = False
         for log_group in self.__get_log_groups():
             log_group_name = log_group['logGroupName']
-            print '    Log group: {}'.format(log_group_name)
+            print('    Log group: {}'.format(log_group_name))
             for log_stream in self.__get_log_streams(log_group_name):
                 log_stream_name = log_stream['logStreamName']
-                print '        Log stream: {}'.format(log_stream_name)
+                print('        Log stream: {}'.format(log_stream_name))
                 for event in GetLogEvents(self.aws_logs, log_group_name, log_stream_name):
                     for value in prohibited_strings:
                         find_result = event.get('message', '').find(value)
                         if find_result >= 0:
                             found = True
-                            print 'Found "{}" that should not be logged in log group {} stream {} at {} position {}: {}'.format(
+                            print('Found "{}" that should not be logged in log group {} stream {} at {} position {}: {}'.format(
                                 value, log_group_name, log_stream_name, event.get('timestamp'), find_result, event.get('message')
-                            )
+                            ))
         self.assertFalse(found, "Found strings in the logs that should not have been logged, see above.")
 
     # ------------------------------------------------ Cleanup ------------------------------------------------
 
     def __999_cleanup(self):
         if self.FAST_TEST_RERUN:
-            print 'Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.'
+            print('Tests passed enough to reach cleanup, failing in cleanup to prevent stack deletion since FAST_TEST_RERUN is true.')
             self.assertFalse(self.FAST_TEST_RERUN)
         self.teardown_base_stack()
 
@@ -872,7 +873,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
-        self.assertEquals(response.status_code, expected_status_code,
+        self.assertEqual(response.status_code, expected_status_code,
             'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:
@@ -920,7 +921,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
                 username = user['username']
             else:
                 username = self.TEST_USERNAME_PREFIX + '-' + self.__generate_id()
-            print 'Creating user {} in pool {}'.format(username, self.context['user_pool_id'])
+            print('Creating user {} in pool {}'.format(username, self.context['user_pool_id']))
 
             resultUser = user.copy()
             resultUser['username'] = username
@@ -930,7 +931,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
             result['CognitoUsername'] = username
 
             updates = []
-            for key, value in user.iteritems():
+            for key, value in iteritems(user):
                 if key in self.COGNITO_ATTRIBUTES:
                     updates.append({'Name': key, 'Value': value})
 
@@ -964,7 +965,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
                 dynamoItem['IndexedPlayerName'] = {'S': account['PlayerName'].lower()}
                 dynamoItem['PlayerNameSortKey'] = {'N': str(randint(1, 3))}
                 result['PlayerName'] = account['PlayerName']
-            print 'Creating account {}'.format(accountId)
+            print('Creating account {}'.format(accountId))
             self.aws_dynamo.put_item(TableName=self.context['accounts_table'], Item=dynamoItem)
 
         return result
@@ -973,13 +974,13 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         listUsersResponse = self.aws_cognito_idp.list_users(UserPoolId=self.context['user_pool_id'])
         for user in listUsersResponse['Users']:
             self.aws_cognito_idp.admin_delete_user(UserPoolId=self.context['user_pool_id'], Username=user['Username'])
-            print 'Deleted user {}'.format(user['Username'])
+            print('Deleted user {}'.format(user['Username']))
 
     def __delete_all_accounts(self):
         scanResponse = self.aws_dynamo.scan(TableName=self.context['accounts_table'])
         for account in scanResponse['Items']:
             self.aws_dynamo.delete_item(TableName=self.context['accounts_table'], Key={'AccountId': account['AccountId']})
-            print 'Deleted account {}'.format(account['AccountId'])
+            print('Deleted account {}'.format(account['AccountId']))
 
     def __get_identity_id(self, auth_tokens):
         logins = {self.context['user_pool_provider_id']: auth_tokens['IdToken']}
@@ -1012,12 +1013,12 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
         expectedUsers = {account['CognitoUsername']:account for account in expected if 'AccountId' not in account and 'CognitoUsername' in account}
 
         for account in actual.get('Accounts', []):
-            print 'Checking account: ', account
+            print('Checking account: {}'.format(account))
             accountId = account.get('AccountId')
             if accountId:
                 expectedAccount = expectedAccounts.get(accountId)
                 self.assertFalse(expectedAccount.get('matched'))
-                print 'Expected: ', expectedAccount
+                print('Expected: {}'.format(expectedAccount))
 
                 self.assertEqual(account.get('CognitoIdentityId'), expectedAccount.get('CognitoIdentityId'))
                 self.assertEqual(account.get('PlayerName'), expectedAccount.get('PlayerName'))
@@ -1033,7 +1034,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
                 expectedUser = expectedUsers.get(username)
                 self.assertIsNotNone(expectedUser, 'User {} should not have been in the search results.'.format(username))
                 self.assertFalse(expectedUser.get('matched'))
-                print 'Expected: ', expectedUser
+                print('Expected: {}'.format(expectedUser))
 
                 actualAttributes = account.get('IdentityProviders', {}).get(self.IDP_COGNITO, {})
                 expectedAttributes = expectedUser.get('IdentityProviders', {}).get(self.IDP_COGNITO, {})
@@ -1041,9 +1042,9 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
 
                 expectedUser['matched'] = True
 
-        for accountId, account in expectedAccounts.iteritems():
+        for accountId, account in iteritems(expectedAccounts):
             self.assertTrue(account.get('matched'), 'Account {} should have been in the search results'.format(accountId))
-        for username, user in expectedUsers.iteritems():
+        for username, user in iteritems(expectedUsers):
             self.assertTrue(user.get('matched'), 'User {} should have been in the search results'.format(username))
 
     def __assert_cognito_user_equals(self, actual, expectedAttributes, username):
@@ -1057,7 +1058,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
             self.assertTrue(actual['last_modified_date'] > 0)
             self.assertTrue(actual['enabled'])
             self.assertEqual(actual['IdentityProviderId'], self.IDP_COGNITO)
-            for key, value in expectedAttributes.iteritems():
+            for key, value in iteritems(expectedAttributes):
                 self.assertEqual(actual[key], value)
             # Check that the standard cognito attributes were not present in the request if they were not expected.
             for attribute in self.COGNITO_ATTRIBUTES:
@@ -1099,7 +1100,7 @@ class GetLogEvents:
         self.__initialized = False
     def __iter__(self):
         return self
-    def next(self):
+    def __next__(self):
         if not self.__initialized:
             response = self.__logs_client.get_log_events(logGroupName=self.__log_group, logStreamName=self.__log_stream)
             self.__next_token = response.get('nextBackwardToken')

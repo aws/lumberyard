@@ -9,20 +9,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import json
 import os
 import uuid
 import string
+from six import iteritems
 
 from resource_manager.errors import HandledError
 from swagger_json_navigator import SwaggerNavigator
+
 QUOTE = "\""
 ESCAPE_QUOTE = "\\\""
 
 SWAGGER_TO_CPP_TYPE = {
     "boolean": "bool",
-    "integer" : "int",
-    "string" : "AZStd::string",
+    "integer": "int",
+    "string": "AZStd::string",
     "number": "double"
 }
 
@@ -34,8 +35,8 @@ SWAGGER_TO_CPP_INITIALIZERS = {
 
 SWAGGER_TO_CS_TYPE = {
     "boolean": "bool",
-    "integer" : "int",
-    "string" : "string",
+    "integer": "int",
+    "string": "string",
     "number": "double"
 }
 
@@ -54,7 +55,7 @@ VALID_HTTP_METHODS = [
 
 def __get_UUID(source_file, UUID_name):
     if not os.path.isfile(source_file):
-        #get new UUID
+        # get new UUID
         return "{" + str(uuid.uuid4()) + "}"
     # read UUID from file to preserve ids through regeneration of the file
     full_def = "const char* LmbrAWS_CodeGen_{}_UUID".format(UUID_name)
@@ -62,7 +63,7 @@ def __get_UUID(source_file, UUID_name):
         for line in file:
             if full_def in line:
                 UUID = line.split('=')[1].strip()
-                return UUID[1:-2] # strip of the quotes and semicolon
+                return UUID[1:-2]  # strip of the quotes and semicolon
     return "{" + str(uuid.uuid4()) + "}"
 
 
@@ -74,9 +75,10 @@ def has_stdafx_files(gem_code_folder):
 def get_UUIDs(source_file, jinja_json):
     # make list of the UUIDs we need
     UUID_names = ["Component",
-        "NotificationBus1",
-        "RequestBus1",
-        "ResponseHandler"]
+                  "NotificationBus1",
+                  "RequestBus1",
+                  "ResponseHandler"
+                  ]
     for struct in [struct for struct in jinja_json["otherClasses"] if not struct['isArray']]:
         UUID_names.append(struct["name"])
 
@@ -132,14 +134,14 @@ class ComponentJsonBuilder:
 
         function_name = None
 
-        client_generation_extension_object = method.get_object('x-amazon-cloud-canvas-client-generation', default = None)
+        client_generation_extension_object = method.get_object('x-amazon-cloud-canvas-client-generation', default=None)
         if not client_generation_extension_object.is_none:
-            function_name = client_generation_extension_object.get_string_value('function', default = None)
+            function_name = client_generation_extension_object.get_string_value('function', default=None)
             if function_name and not self.__is_valid_cpp_symbol(function_name):
                 raise HandledError("x-amazon-cloud-canvas-client-generation.function ({}) for method {} must be a valid C++ symbol".format(function_name, method))
 
         if not function_name:
-            function_name = method.get_string_value('operationId', default = None)
+            function_name = method.get_string_value('operationId', default=None)
             if function_name and not self.__is_valid_cpp_symbol(function_name):
                 raise HandledError("operationId ({}) for method {} must be a valid C++ symbol".format(function_name, method))
 
@@ -150,7 +152,7 @@ class ComponentJsonBuilder:
 
             function_name = ""
             for word in path_name:
-                if word[0] in string.letters:
+                if word[0] in string.ascii_letters:
                     word = word[0:1].upper() + word[1:]
                     function_name += word
 
@@ -161,28 +163,28 @@ class ComponentJsonBuilder:
 
 
     def __check_supported_response_type(self, path, response_type):
-        if not response_type in [item["name"] for item in self._component_json["otherClasses"]]:
-            raise HandledError("{} does not have a object reponse type. The lmbr_aws swagger client generator only supports object response types".format(path))
+        if response_type not in [item["name"] for item in self._component_json["otherClasses"]]:
+            raise HandledError("{} does not have a object response type. The lmbr_aws swagger client generator only supports object response types".format(path))
         if [item for item in self._component_json["otherClasses"] if item["name"] == response_type and item["isArray"]]:
-           print "WARNING - {} has an array reponse type. The lmbr_aws swagger client generator only supports object response types".format(path)
+            print("WARNING - {} has an array response type. The lmbr_aws swagger client generator only supports object response types".format(path))
 
     def __read_functions(self, paths):
         for path in paths.values():
             for method in path.values():
                 if not method.selector.upper() in VALID_HTTP_METHODS:
                     continue
-                if method.get("x-amazon-cloud-canvas-client-generation", {}).get("no-client", False).value == True:
+                if method.get("x-amazon-cloud-canvas-client-generation", {}).get("no-client", False).value:
                     continue
                 func_def = {}
 
                 function_name = self.__generate_function_name(method, path)
                 func_def["functionName"] = function_name
 
-                param_list = [] # for method definition
-                param_name_list = [] # for WriteJson body (should not include query or path params)
-                path_params = [] # for request.SetPathParameter
-                query_params = [] # for request.AddQueryParameter
-                signature_params = [] # for function signature
+                param_list = []  # for method definition
+                param_name_list = []  # for WriteJson body (should not include query or path params)
+                path_params = []  # for request.SetPathParameter
+                query_params = []  # for request.AddQueryParameter
+                signature_params = []  # for function signature
 
                 params = method.get("parameters", {})
 
@@ -251,7 +253,7 @@ class ComponentJsonBuilder:
 
         if return_type == "object":
             if not self.__type_defined(generated_name):
-                self.__generate_from_schema(generated_name, param)
+                self.__generate_from_schema(generated_name, response_schema)
             return generated_name
 
         if not return_type:
@@ -266,7 +268,7 @@ class ComponentJsonBuilder:
 
     def __get_param_type(self, function_name, param):
         raw_type = self.__get_raw_param_type(function_name, param)
-        if not "type" in param.value and "schema" in param.value:
+        if "type" not in param.value and "schema" in param.value:
             schema = param.get("schema")
             if schema.get("$ref", []).value:
                 type_name = raw_type.split("/")[-1]
@@ -289,7 +291,7 @@ class ComponentJsonBuilder:
                 self.__generate_from_schema(generated_name, param)
             return generated_name
 
-        if not param_type: # there must be a schema definition here
+        if not param_type:  # there must be a schema definition here
             schema = param.get("schema", {})
             if not schema.value:
                 raise HandledError("No param type given for {}".format(param))
@@ -319,18 +321,18 @@ class ComponentJsonBuilder:
                 return item
         raise HandledError("No definition found for {}".format(name))
 
-
     def __get_type(self, schema):
         if "type" in schema:
             return schema["type"]
-        return "object" # seems that the proper default is object
-
+        return "object"  # seems that the proper default is object
 
     def __generate_object_from_schema(self, name, schema):
-        obj_def = {}
-        obj_def["name"] = name
-        obj_def["props"] = []
-        obj_def["isArray"] = False
+        obj_def = {
+            "name": name,
+            "props": [],
+            "isArray": False
+        }
+
         for item in schema.get("allOf", []).values():
             if "$ref" in item.value:
                 ref_path = item.value["$ref"]
@@ -353,8 +355,7 @@ class ComponentJsonBuilder:
         self.__add_struct_def(obj_def)
 
     def __read_property(self, properties, prop_name, obj_name):
-        prop = {}
-        prop["name"] = prop_name
+        prop = {"name": prop_name}
         if "type" in properties.get(prop_name).value:
             def_type = properties.get(prop_name).get("type").value
             if def_type in ["array", "object"]:
@@ -366,7 +367,7 @@ class ComponentJsonBuilder:
                 prop["type"] = self.get_symbol_type(def_type, def_type)
                 prop["init"] = self.get_symbol_initializer(def_type, "")
 
-        elif "$ref" in properties.get(prop_name).value: # must be a ref
+        elif "$ref" in properties.get(prop_name).value:  # must be a ref
             item = properties.get(prop_name)
             ref_path = item.value['$ref']
             ref_name = ref_path.split("/")[-1]
@@ -383,9 +384,10 @@ class ComponentJsonBuilder:
 
 
     def __generate_array_from_schema(self, name, schema):
-        array_def = {}
-        array_def["name"] = name
-        array_def["isArray"] = True
+        array_def = {
+            "name": name,
+            "isArray": True
+        }
         # items is a required field
         items = schema.get("items")
         if "$ref" in items.value:
@@ -401,16 +403,18 @@ class ComponentJsonBuilder:
         array_def["elements"] = self.get_symbol_type(elements, elements)
         self._component_json["otherClasses"].append(array_def)
 
-
     def __generate_redef(self, name, def_type):
-        redef = {}
-        redef["primitiveType"] = self.get_symbol_type(def_type, def_type)
-        redef["name"] = name
+        redef = {
+            "primitiveType": self.get_symbol_type(def_type, def_type),
+            "name": name
+        }
         self._component_json["redefinitions"].append(redef)
 
-
-    def __generate_from_schema(self, name, schema, json_path = []):
+    def __generate_from_schema(self, name, schema, json_path=None):
         # here we don't know what it looks like. Could be primitive, object, or array
+        if json_path is None:
+            json_path = []
+
         if not json_path:
             json_path = ["definitions", name]
         def_type = self.__get_type(schema.value)
@@ -423,15 +427,15 @@ class ComponentJsonBuilder:
 
 
     def __is_valid_cpp_symbol(self, symbol):
-        if not symbol[0] in string.letters + "_":
+        if not symbol[0] in string.ascii_letters + "_":
             return False
         for char in symbol:
-            if not char in string.letters + string.digits + "_":
+            if char not in string.ascii_letters + string.digits + "_":
                 return False
         return True
 
     def add_def_to_struct_type_conversions(self):
-        for def_name, info in self._swagger.get("definitions", {}).iteritems():
+        for def_name, info in iteritems(self._swagger.get("definitions", {})):
             this_type = info.get("type", "")
             if this_type in ["string", "boolean", "integer", "number"]:
                 self._swagger_type_map[def_name] = self._swagger_type_map[this_type]
@@ -439,9 +443,11 @@ class ComponentJsonBuilder:
             else:
                 self._swagger_type_map["#/definitions/{}".format(def_name)] = def_name
 
+
 class CSJsonBuilder(ComponentJsonBuilder):
 
     def __init__(self, resource_group, swagger):
+        ComponentJsonBuilder.__init__(self, resource_group, swagger)
         self._swagger = swagger
         self._resource_group_name = resource_group
         self._component_json = {}

@@ -217,7 +217,7 @@ namespace JsonSerializationTests
             azrtti_typeid<float>(), m_path, m_serializationSettings);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_FLOAT_EQ(value, convertedValue.GetDouble());
+        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
     }
 
     TEST_F(JsonDoubleSerializerTests, Store_StoreSameFloatAsDefault_ValueIsIgnored)
@@ -246,7 +246,7 @@ namespace JsonSerializationTests
             azrtti_typeid<float>(), m_path, m_serializationSettings);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_FLOAT_EQ(value, convertedValue.GetDouble());
+        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
     }
 
     TEST_F(JsonDoubleSerializerTests, Store_StoreDoubleValue_ValueStored)

@@ -18,12 +18,15 @@
 // ToolButton.h : header file
 //
 
+#include <AzCore/PlatformDef.h>
 #include <QPushButton>
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API QEditorToolButton
     : public QPushButton
     , public IEditorNotifyListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
     // Construction
 public:

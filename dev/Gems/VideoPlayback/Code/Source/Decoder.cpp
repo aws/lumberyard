@@ -16,7 +16,7 @@
 
 #if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
 #include <AzCore/std/functional.h>
-#include <Include/VideoPlayback/VideoPlaybackBus.h>
+#include <VideoPlaybackFramework/VideoPlaybackBus.h>
 
 namespace AZ
 {

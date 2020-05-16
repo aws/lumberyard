@@ -13,7 +13,7 @@
             "libp4script_sqlite"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": [],

@@ -16,11 +16,6 @@
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 
-namespace AZFramework
-{
-    class EntityContextId;
-}
-
 namespace AzToolsFramework
 {
     /**

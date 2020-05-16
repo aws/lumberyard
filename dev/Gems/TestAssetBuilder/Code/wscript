@@ -13,7 +13,7 @@
 def build(bld):
     bld.DefineGem(
         includes            = [],
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['debug', 'debug_test', 'profile', 'profile_test'],
         disable_pch             = True,
         file_list               = ['testassetbuilder.waf_files'],

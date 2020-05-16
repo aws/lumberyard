@@ -179,7 +179,7 @@ namespace ScriptCanvasEditor
         if (entity)
         {
             auto graph = entity->CreateComponent<Graph>();
-            entity->CreateComponent<EditorGraphVariableManagerComponent>(graph->GetUniqueId());
+            entity->CreateComponent<EditorGraphVariableManagerComponent>(graph->GetScriptCanvasId());
         }
     }
 
@@ -225,8 +225,9 @@ namespace ScriptCanvasEditor
 
                 if (entity)
                 {
-                    AZ::EBusAggregateResults<AZ::EntityId> graphIds;
-                    EditorContextMenuRequestBus::EventResult(graphIds, entity->GetId(), &EditorContextMenuRequests::GetGraphId);
+                    // TODO: Refactor this to work off of AssetId rather then runtime ids
+                    AZ::EBusAggregateResults<ScriptCanvas::ScriptCanvasId> graphIds;
+                    EditorContextMenuRequestBus::EventResult(graphIds, entity->GetId(), &EditorContextMenuRequests::GetScriptCanvasId);
 
                     if (!graphIds.values.empty())
                     {
@@ -236,7 +237,7 @@ namespace ScriptCanvasEditor
                             entityMenu = scriptCanvasMenu->addMenu(entity->GetName().c_str());
                         }
 
-                        AZStd::unordered_set< AZ::EntityId > usedIds;
+                        AZStd::unordered_set< ScriptCanvas::ScriptCanvasId > usedIds;
 
                         for (const auto& graphId : graphIds.values)
                         {
@@ -297,25 +298,10 @@ namespace ScriptCanvasEditor
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
         AZ_Assert(behaviorContext, "Behavior Context should not be missing at this point");
 
-        bool showExcludedPreviewNodes = false;
-
-        // Local User Settings are not registered in an asset builders
-        if (AZ::UserSettingsBus::GetNumOfEventHandlers(AZ::UserSettings::CT_LOCAL) > 0)
-        {
-            AZStd::intrusive_ptr<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
-            showExcludedPreviewNodes = settings ? settings->m_showExcludedNodes : false;
-        }
-        else
-        {
-            // If we don't have any user settings, hook up to the notification bus to redo this work again once we have the user settings so
-            // we an manage the exclude flags correctly
-            AZ::UserSettingsNotificationBus::Handler::BusConnect(AZ::UserSettings::CT_LOCAL);
-        }
-
         auto dataRegistry = ScriptCanvas::GetDataRegistry();
         for (const auto& scType : dataRegistry->m_creatableTypes)
         {
-            if (!showExcludedPreviewNodes && scType.first.GetType() == ScriptCanvas::Data::eType::BehaviorContextObject)
+            if (scType.first.GetType() == ScriptCanvas::Data::eType::BehaviorContextObject)
             {
                 if (const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, ScriptCanvas::Data::ToAZType(scType.first)))
                 {

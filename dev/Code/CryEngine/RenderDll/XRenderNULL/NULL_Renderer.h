@@ -164,7 +164,7 @@ public:
     virtual void  SelectTMU(int tnum);
 
     virtual bool ChangeDisplay(unsigned int width, unsigned int height, unsigned int cbpp);
-    virtual void ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false);
+    virtual void ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false, float scaleWidth = 1.0f, float scaleHeight = 1.0f);
 
     virtual   bool SaveTga(unsigned char* sourcedata, int sourceformat, int w, int h, const char* filename, bool flip) const { return false; }
 
@@ -428,6 +428,8 @@ public:
     void BeginProfilerSection(const char* name, uint32 eProfileLabelFlags = 0) override {}
     void EndProfilerSection(const char* name) override {}
     void AddProfilerLabel(const char* name) override {}
+
+    void RT_DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments) override {}
 
 private:
     CNULLRenderAuxGeom* m_pNULLRenderAuxGeom;

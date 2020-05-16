@@ -19,6 +19,7 @@
 #include "WaveletCache.h"
 #include "EMotionFXManager.h"
 #include <EMotionFX/Source/Allocators.h>
+#include <MCore/Source/LogManager.h>
 
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobCompletion.h>

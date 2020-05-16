@@ -14,9 +14,6 @@
 
 // include MCore related files
 #include "EMotionFXConfig.h"
-#include <MCore/Source/Vector.h>
-#include <MCore/Source/Quaternion.h>
-#include <MCore/Source/Matrix4.h>
 #include "Attachment.h"
 
 

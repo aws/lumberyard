@@ -68,6 +68,7 @@
 #include <LoadScreenBus.h>
 #include <LyShine/Bus/UiSystemBus.h>
 #include <AzFramework/Logging/MissingAssetLogger.h>
+#include <AzFramework/Render/RenderSystemBus.h>
 
 #if defined(APPLE) || defined(LINUX) && !defined(DEDICATED_SERVER)
 #include <dlfcn.h>
@@ -119,7 +120,6 @@
 #include "Statistics/LocalMemoryUsage.h"
 #include "ThreadProfiler.h"
 #include "ThreadConfigManager.h"
-#include "IHardwareMouse.h"
 #include "Validator.h"
 #include "ServerThrottle.h"
 #include "SystemCFG.h"
@@ -221,7 +221,7 @@ extern LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExce
     #endif
 #endif
 
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
 
 #include <execinfo.h>
 #include <signal.h>
@@ -256,7 +256,7 @@ void CryEngineSignalHandler(int signal)
     abort();
 }
 
-#endif // AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
 
 #if defined(USE_UNIXCONSOLE)
 #if defined(LINUX) && !defined(ANDROID)
@@ -291,6 +291,7 @@ CUNIXConsole* pUnixConsole;
 #define DLL_RENDERER_METAL  "CryRenderMetal"
 #define DLL_RENDERER_GL   "CryRenderGL"
 #define DLL_RENDERER_NULL "CryRenderNULL"
+#define DLL_RENDERER_OTHER "CryRenderOther"
 #define DLL_GAME                    "GameDLL"
 #define DLL_UNITTESTS       "CryUnitTests"
 #define DLL_SHINE           "LyShine"
@@ -1081,6 +1082,10 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
     if (CryCreateClassInstance(moduleClassName, pModule))
     {
         bResult = pModule->Initialize(m_env, initParams);
+        
+        // After initializing the module, give it a chance to register any AZ console vars
+        // declared within the module.
+        pModule->RegisterConsoleVars();
     }
 
     if (GetIMemoryManager())
@@ -1188,7 +1193,13 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
         return OpenRenderLibrary(R_NULL_RENDERER, initParams);
     }
 
-    if (azstricmp(t_rend, "DX9") == 0)
+    AZStd::string rendererName;
+    AzFramework::Render::RenderSystemRequestBus::BroadcastResult(rendererName, &AzFramework::Render::RenderSystemRequestBus::Events::GetRendererName);
+    if (rendererName == "Other")
+    {
+        return OpenRenderLibrary(R_OTHER_RENDERER, initParams);
+    }
+    else if (azstricmp(t_rend, "DX9") == 0)
     {
         return OpenRenderLibrary(R_DX9_RENDERER, initParams);
     }
@@ -1405,6 +1416,10 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     else if (type == R_DX12_RENDERER)
     {
         libname = DLL_RENDERER_DX12;
+    }
+    else if (type == R_OTHER_RENDERER)
+    {
+        libname = DLL_RENDERER_OTHER;
     }
     else if (type == R_NULL_RENDERER)
     {
@@ -2176,7 +2191,7 @@ bool CSystem::InitPhysicsRenderer(const SSystemInitParams& initParams)
     {
         m_pPhysRenderer = new CPhysRenderer;
         m_pPhysRenderer->Init(); // needs to be created after physics and renderer
-        m_p_draw_helpers_str = REGISTER_STRING_CB("p_draw_helpers", "0", VF_CHEAT,
+        m_p_draw_helpers_str = REGISTER_STRING_CB("p_draw_helpers", "0", VF_DEV_ONLY,
                 "Same as p_draw_helpers_num, but encoded in letters\n"
                 "Usage [Entity_Types]_[Helper_Types] - [t|s|r|R|l|i|g|a|y|e]_[g|c|b|l|t(#)]\n"
                 "Entity Types:\n"
@@ -2280,14 +2295,15 @@ bool CSystem::LaunchAssetProcessor()
     static const char* asset_processor_ext = "";
 #endif
 
-    const char* appRoot = nullptr;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
-    if (appRoot != nullptr)
+    // Determine the asset processor path based on the engine folder
+    const char* engineRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+    if (engineRoot != nullptr)
     {
         AZStd::string_view binFolderName;
         AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
 
-        AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, binFolderName.data());
+        AZStd::string engineBinFolder = AZStd::string::format("%s%s", engineRoot, binFolderName.data());
         azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
         AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s%s",
@@ -2297,11 +2313,10 @@ bool CSystem::LaunchAssetProcessor()
                                                                        asset_processor_ext);
         azstrncpy(assetProcessorExe, AZ_ARRAY_SIZE(assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
     }
-
-
 #if defined(AZ_PLATFORM_WINDOWS)
-    if (appRoot == nullptr)
+    if (engineRoot == nullptr)
     {
+        // Fallback to using the same executable path as the current running program and use that as the engine root folder
         char exeName[AZ_MAX_PATH_LEN] = { 0 };
         ::GetModuleFileName(::GetModuleHandle(nullptr), exeName, AZ_MAX_PATH_LEN);
         char drive[AZ_MAX_PATH_LEN] = { 0 };
@@ -2310,7 +2325,12 @@ bool CSystem::LaunchAssetProcessor()
         _makepath_s(assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
         _makepath_s(workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
     }
+#endif // defined(AZ_PLATFORM_WINDOWS)
 
+    const char* appRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+
+#if defined(AZ_PLATFORM_WINDOWS)
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
@@ -2678,7 +2698,8 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     AZStd::string branch = initParams.branchToken;
     AZStd::string platform = m_env.pSystem->GetAssetsPlatform();
     AZStd::string identifier = GetConnectionIdentifier(m_env);
-    EBUS_EVENT_RESULT(connInitialized, AzFramework::AssetSystemRequestBus, ConfigureSocketConnection, branch, platform, identifier);
+    AZStd::string projectName = initParams.gameFolderName;
+    AzFramework::AssetSystemRequestBus::BroadcastResult(connInitialized, &AzFramework::AssetSystemRequestBus::Events::ConfigureSocketConnection, branch, platform, identifier, projectName);
 
     AzFramework::AssetSystem::AssetProcessorConnection* engineConnection = static_cast<AzFramework::AssetSystem::AssetProcessorConnection*>(AzFramework::SocketConnection::GetInstance());
     if (engineConnection)
@@ -2747,6 +2768,18 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         }
     }
 
+    // VERY early on, as soon as we can, request that the asset system make sure the following assets take priority over others,
+    // so that by the time we ask for them there is a greater likelyhood that they're already good to go.
+
+    // these can be loaded later but are still important:
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetBySearchTerm, "/texturemsg/");
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetBySearchTerm, "engineassets/materials");
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetBySearchTerm, "engineassets/geomcaches");
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetBySearchTerm, "engineassets/objects");
+
+    // some are specifically extra important and will cause issues if missing completely:
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::CompileAssetSync, "engineassets/objects/default.cgf");
+
 #endif
 
     // The SetInstance calls below will assert if this has already been set and we don't clear first
@@ -2792,7 +2825,8 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
     if (initParams.userPath[0] == 0)
     {
-        string outPath = PathUtil::Make(rootPath, "user");
+        string outPath = PathUtil::Make(m_env.pFileIO->GetAlias("@root@"), "user");
+        
         m_env.pFileIO->SetAlias("@user@", outPath.c_str());
     }
     else
@@ -2936,7 +2970,6 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     // during file system init, so that systems do not reload assets that were already compiled in the
     // critical compilation section.
 
-    AzFramework::AssetSystemBus::ClearQueuedEvents();
     AzFramework::LegacyAssetEventBus::ClearQueuedEvents();
 
     //we are good to go
@@ -3015,6 +3048,16 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
 
     // Load game-specific folder.
     LoadConfiguration("game.cfg");
+
+#if defined (DEDICATED_SERVER)
+    // Load the dedicated-server-specific configuration
+    static const char* g_additionalConfig = "server_cfg";
+#else
+    // Load the client-specific configuration
+    static const char* g_additionalConfig = "client_cfg";
+#endif // DEDICATED_SERVER
+
+    LoadConfiguration(g_additionalConfig, nullptr, false);
 
     if (initParams.bShaderCacheGen)
     {
@@ -3495,7 +3538,7 @@ void OnLevelLoadingDump(ICVar* pArgs)
 #if defined(WIN32) || defined(WIN64)
 static wstring GetErrorStringUnsupportedCPU()
 {
-    static const wchar_t s_EN[] = L"Unsupported CPU detected. CPU needs to support SSE, SSE2 and SSE3.";
+    static const wchar_t s_EN[] = L"Unsupported CPU detected. CPU needs to support SSE, SSE2, SSE3 and SSE4.1.";
     static const wchar_t s_FR[] = { 0 };
     static const wchar_t s_RU[] = { 0 };
     static const wchar_t s_ES[] = { 0 };
@@ -3539,11 +3582,11 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 {
 #if !defined(DEDICATED_SERVER)
 #if defined(WIN32) || defined(WIN64)
-    if (!gEnv->IsEditor() && !gEnv->IsDedicated())
+    if (!gEnv->IsDedicated())
     {
-        if (!(pCpu->hasSSE() && pCpu->hasSSE2() && pCpu->hasSSE3()))
+        if (!(pCpu->hasSSE() && pCpu->hasSSE2() && pCpu->hasSSE3() && pCpu->hasSSE41()))
         {
-            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Unsupported CPU! Need SSE, SSE2 and SSE3 instructions to be available.");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Unsupported CPU! Need SSE, SSE2, SSE3 and SSE4.1 instructions to be available.");
 
 #if !defined(_RELEASE)
             const bool allowPrompts = pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == 0;
@@ -3582,17 +3625,61 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
     return true;
 }
 
+
+class AzConsoleToCryConsoleBinder final
+    : public AZ::IConsole::FunctorVisitorInterface
+{
+public:
+
+    static void OnInvoke(IConsoleCmdArgs* args)
+    {
+        std::string command = args->GetCommandLine();
+        const size_t delim = command.find_first_of('=');
+        if (delim != std::string::npos)
+        {
+            // All Cry executed cfg files will come in through this pathway in addition to regular commands
+            // We strip out the = sign at this layer to maintain compatibility with cvars that use the '=' as a separator
+            // Swap the '=' character for a space
+            command[delim] = ' ';
+        }
+
+        AZ::Interface<AZ::IConsole>::Get()->PerformCommand(command.c_str());
+    }
+
+    void Visit(AZ::ConsoleFunctorBase* functor) override
+    {
+        if (gEnv->pConsole == nullptr)
+        {
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Cry console was NULL while attempting to register Az CVars and CFuncs.\n");
+            return;
+        }
+
+        gEnv->pConsole->RemoveCommand(functor->GetName());
+        gEnv->pConsole->AddCommand(functor->GetName(), AzConsoleToCryConsoleBinder::OnInvoke, VF_NULL, functor->GetDesc());
+    }
+};
+
+
 // System initialization
 /////////////////////////////////////////////////////////////////////////////////
 // INIT
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::Init(const SSystemInitParams& startupParams)
 {
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
     signal(SIGSEGV, CryEngineSignalHandler);
     signal(SIGTRAP, CryEngineSignalHandler);
     signal(SIGILL, CryEngineSignalHandler);
-#endif // AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
+
+    // Temporary Fix for an issue accessing gEnv from this object instance. The gEnv is not resolving to the 
+    // global gEnv, instead its resolving an some uninitialized gEnv elsewhere (NULL). Since gEnv is 
+    // initialized to this instance's SSystemGlobalEnvironment (m_env), we will force set it again here
+    // to m_env
+    if (!gEnv)
+    {
+        gEnv = &m_env;
+    }
 
     LOADING_TIME_PROFILE_SECTION;
 
@@ -3607,6 +3694,12 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     m_env.bNoAssertDialog = startupParams.bTesting;
     m_env.bNoRandomSeed = startupParams.bNoRandom;
     m_bShaderCacheGenMode = startupParams.bShaderCacheGen;
+
+#if defined(DEDICATED_SERVER)
+    m_bNoCrashDialog = true;
+#else
+    m_bNoCrashDialog = false;
+#endif
 
     if (startupParams.bUnattendedMode)
     {
@@ -3697,11 +3790,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif // defined(CVARS_WHITELIST)
     m_bDedicatedServer = startupParams.bDedicatedServer;
     m_currentLanguageAudio = "";
-#if defined(DEDICATED_SERVER)
-    m_bNoCrashDialog = true;
-#else
-    m_bNoCrashDialog = false;
-#endif
 
     memcpy(gEnv->pProtectedFunctions, startupParams.pProtectedFunctions, sizeof(startupParams.pProtectedFunctions));
 
@@ -4030,8 +4118,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         GetIRemoteConsole()->Update();
 #endif
 
-        LogVersion();
-
         // CPU features detection.
         m_pCpu = new CCpuFeatures;
         m_pCpu->Detect();
@@ -4133,8 +4219,13 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         InitStreamEngine();
         InlineInitializationProcessing("CSystem::Init StreamEngine");
 
+
         {
-            if (m_pCmdLine->FindArg(eCLAT_Pre, "DX11"))
+            if (m_pCmdLine->FindArg(eCLAT_Pre, "NullRenderer"))
+            {
+                m_env.pConsole->LoadConfigVar("r_Driver", "NULL");
+            }
+            else if (m_pCmdLine->FindArg(eCLAT_Pre, "DX11"))
             {
                 m_env.pConsole->LoadConfigVar("r_Driver", "DX11");
             }
@@ -4295,16 +4386,20 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
                     m_env.pRenderer->SetViewport(0, 0, screenWidth, screenHeight);
 
-                    // make sure it's rendered in full screen mode when triple buffering is enabled as well
-                    for (size_t n = 0; n < 3; n++)
+                    // Skip splash screen rendering when other is active, Draw2dImage is not yet implemented
+                    if (m_env.pRenderer->GetRenderType() != eRT_Other)
                     {
-                        m_env.pRenderer->BeginFrame();
-                        m_env.pRenderer->SetCullMode(R_CULL_NONE);
-                        m_env.pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
-                        m_env.pRenderer->Draw2dImageStretchMode(true);
-                        m_env.pRenderer->Draw2dImage(x * vx, y * vy, w * vx, h * vy, pTex->GetTextureID(), 0.0f, 1.0f, 1.0f, 0.0f);
-                        m_env.pRenderer->Draw2dImageStretchMode(false);
-                        m_env.pRenderer->EndFrame();
+                        // make sure it's rendered in full screen mode when triple buffering is enabled as well
+                        for (size_t n = 0; n < 3; n++)
+                        {
+                            m_env.pRenderer->BeginFrame();
+                            m_env.pRenderer->SetCullMode(R_CULL_NONE);
+                            m_env.pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
+                            m_env.pRenderer->Draw2dImageStretchMode(true);
+                            m_env.pRenderer->Draw2dImage(x * vx, y * vy, w * vx, h * vy, pTex->GetTextureID(), 0.0f, 1.0f, 1.0f, 0.0f);
+                            m_env.pRenderer->Draw2dImageStretchMode(false);
+                            m_env.pRenderer->EndFrame();
+                        }
                     }
 
 #if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_MAC)
@@ -4374,9 +4469,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             m_pUserCallback->OnInitProgress("First time asset processing - may take a minute...");
         }
 
-        // may as well make sure everything in the texturemsg folder is precompiled now.
-        EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, "/texturemsg/");
-
         //////////////////////////////////////////////////////////////////////////
         // POST RENDERER
         //////////////////////////////////////////////////////////////////////////
@@ -4441,9 +4533,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
                                                             &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
                                                             AzFramework::SystemCursorState::ConstrainedAndHidden);
-
-            // Legacy, should be removed along with the deprecated IHardwareMouse interface
-            m_env.pHardwareMouse = new IHardwareMouse();
         }
 #endif
 
@@ -4891,6 +4980,10 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         }
 
         InlineInitializationProcessing("CSystem::Init InitLmbrAWS");
+
+        // Az to Cry console binding
+        AzConsoleToCryConsoleBinder binder;
+        AZ::Interface<AZ::IConsole>::Get()->VisitRegisteredFunctors(binder);
 
         // final tryflush to be sure that all framework init request have been processed
         if (!startupParams.bShaderCacheGen && m_env.pRenderer)
@@ -6080,6 +6173,8 @@ void CSystem::CreateSystemVars()
     m_level_load_screen_sequence_fixed_fps = REGISTER_FLOAT("level_load_screen_sequence_fixed_fps", 60.0f, 0, "Fixed frame rate fed to updates of the level load screen sequence.");
     m_game_load_screen_max_fps = REGISTER_FLOAT("game_load_screen_max_fps", 30.0f, 0, "Max frame rate to update the game load screen sequence.");
     m_level_load_screen_max_fps = REGISTER_FLOAT("level_load_screen_max_fps", 30.0f, 0, "Max frame rate to update the level load screen sequence.");
+    m_game_load_screen_minimum_time = REGISTER_FLOAT("game_load_screen_minimum_time", 0.0f, 0, "Minimum amount of time to show the game load screen. Important to prevent short loads from flashing the load screen. 0 means there is no limit.");
+    m_level_load_screen_minimum_time = REGISTER_FLOAT("level_load_screen_minimum_time", 0.0f, 0, "Minimum amount of time to show the level load screen. Important to prevent short loads from flashing the load screen. 0 means there is no limit.");
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
 
     m_cvGameName = REGISTER_STRING("sys_game_name", "Lumberyard", VF_DUMPTODISK,    "Specifies the name to be displayed in the Launcher window title bar");
@@ -6175,6 +6270,12 @@ void CSystem::CreateSystemVars()
         REGISTER_CVAR2("sys_splashscreen", &g_cvars.sys_splashscreen, "EngineAssets/Textures/startscreen.tif", VF_NULL,
             "The splash screen to render during game initialization");
     }
+
+    static const int fileSystemCaseSensitivityDefault = 0;
+    REGISTER_CVAR2("sys_FilesystemCaseSensitivity", &g_cvars.sys_FilesystemCaseSensitivity, fileSystemCaseSensitivityDefault, VF_NULL,
+        "0 - CryPak lowercases all input file names\n"
+        "1 - CryPak preserves file name casing\n"
+        "Default is 1");
 
     REGISTER_CVAR2("sys_deferAudioUpdateOptim", &g_cvars.sys_deferAudioUpdateOptim, 1, VF_NULL,
         "0 - disable optimisation\n"
@@ -6475,7 +6576,8 @@ void CSystem::CreateSystemVars()
 #endif
 
     REGISTER_CVAR2("sys_update_profile_time", &g_cvars.sys_update_profile_time, 1.0f, 0, "Time to keep updates timings history for.");
-    REGISTER_CVAR2("sys_no_crash_dialog", &g_cvars.sys_no_crash_dialog, m_bNoCrashDialog, VF_NULL, "");
+    REGISTER_CVAR2("sys_no_crash_dialog", &g_cvars.sys_no_crash_dialog, m_bNoCrashDialog, VF_NULL, "Whether to disable the crash dialog window");
+    REGISTER_CVAR2("sys_no_error_report_window", &g_cvars.sys_no_error_report_window, m_bNoErrorReportWindow, VF_NULL, "Whether to disable the error report list");
 #if !defined(DEDICATED_SERVER) && defined(_RELEASE)
     REGISTER_CVAR2("sys_WER", &g_cvars.sys_WER, 1, 0, "Enables Windows Error Reporting");
 #else

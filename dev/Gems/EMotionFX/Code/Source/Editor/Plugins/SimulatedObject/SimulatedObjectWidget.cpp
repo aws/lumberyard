@@ -112,6 +112,8 @@ namespace EMotionFX
         });
 
         m_addSimulatedObjectButton = new QPushButton("Add simulated object");
+        m_addSimulatedObjectButton->setObjectName("addSimulatedObjectButton");
+
         connect(m_addSimulatedObjectButton, &QPushButton::clicked, this, [this]()
         {
             m_actionManager->OnAddNewObjectAndAddJoints(m_actor, /*selectedJoints=*/{}, /*addChildJoints=*/false, mDock);
@@ -440,8 +442,13 @@ namespace EMotionFX
         }
 
         EMStudio::RenderViewWidget* activeViewWidget = renderPlugin->GetActiveViewWidget();
+        if (!activeViewWidget)
+        {
+            return;
+        }
+
         const bool renderSimulatedJoints = activeViewWidget->GetRenderFlag(EMStudio::RenderViewWidget::RENDER_SIMULATEJOINTS);
-        if (!activeViewWidget || !renderSimulatedJoints)
+        if (!renderSimulatedJoints)
         {
             return;
         }
@@ -495,7 +502,12 @@ namespace EMotionFX
 
     void SimulatedObjectWidget::RenderJointRadius(const SimulatedJoint* joint, ActorInstance* actorInstance,  const AZ::Color& color)
     {
-        const float scale = actorInstance->GetWorldSpaceTransform().mScale.GetX();
+        #ifndef EMFX_SCALE_DISABLED
+            const float scale = actorInstance->GetWorldSpaceTransform().mScale.GetX();
+        #else
+            const float scale = 1.0f;
+        #endif
+
         const float radius = joint->GetCollisionRadius() * scale;
         if (radius <= AZ::g_fltEps)
         {
@@ -508,7 +520,7 @@ namespace EMotionFX
         DebugDraw& debugDraw = GetDebugDraw();
         DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(actorInstance);
         drawData->Lock();
-        drawData->DrawWireframeSphere(jointTransform.mPosition, radius, color, MCore::EmfxQuatToAzQuat(jointTransform.mRotation), 12, 12);
+        drawData->DrawWireframeSphere(jointTransform.mPosition, radius, color, jointTransform.mRotation, 12, 12);
         drawData->Unlock();
     }
 } // namespace EMotionFX

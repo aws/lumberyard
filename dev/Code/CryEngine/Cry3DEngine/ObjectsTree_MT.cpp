@@ -21,6 +21,7 @@
 #include "ICryAnimation.h"
 #include "LightEntity.h"
 #include <CryProfileMarker.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #ifdef WIN32
 #include <CryWindows.h>
@@ -51,12 +52,12 @@ void CObjManager::BeginOcclusionCulling(const SRenderingPassInfo& passInfo)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CObjManager::EndOcclusionCulling()
+void CObjManager::EndOcclusionCulling(bool waitForOcclusionJobCompletion)
 {
     AZ_TRACE_METHOD();
     if (!gEnv->IsDedicated())
     {
-        m_CullThread.CullEnd();
+        m_CullThread.CullEnd(waitForOcclusionJobCompletion);
     }
 }
 
@@ -106,11 +107,9 @@ void CObjManager::RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo)
                 outputData.rendItemSorter);
             break;
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
         case SCheckOcclusionOutput::TERRAIN:
-            GetTerrain()->AddVisSector(outputData.terrain.pTerrainNode);
+            LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::AddVisSector, outputData.terrain.pTerrainNode);
             break;
-#endif
 
         case SCheckOcclusionOutput::DEFORMABLE_BRUSH:
             outputData.deformable_brush.pBrush->m_pDeform->RenderInternalDeform(outputData.deformable_brush.pRenderObject,

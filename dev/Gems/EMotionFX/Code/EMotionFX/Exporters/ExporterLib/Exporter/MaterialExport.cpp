@@ -16,6 +16,7 @@
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
 
 #include <MCore/Source/AttributeFloat.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace ExporterLib

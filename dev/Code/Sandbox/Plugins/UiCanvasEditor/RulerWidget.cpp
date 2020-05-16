@@ -33,7 +33,7 @@ void RulerWidget::SetCursorPos(const QPoint& pos)
 {
     // store the cursor value to use when painting the ruler
     QPoint localCursorPos = mapFromGlobal(pos);
-    m_cursorPos = (m_orientation == Orientation::Horizontal) ? localCursorPos.x() : localCursorPos.y();
+    m_cursorPos = aznumeric_cast<float>((m_orientation == Orientation::Horizontal) ? localCursorPos.x() : localCursorPos.y());
 
     update();
 }
@@ -190,8 +190,8 @@ void RulerWidget::DrawTickMarksWithLabels(QPainter* painter, QRectF rulerRect, f
     float canvasPixelsPerSection = selectedRulerScale->canvasPixelsPerSection;
 
     // Compute the visible range of the ruler 
-    float rulerRectMin = (m_orientation == Orientation::Horizontal) ? rulerRect.left() : rulerRect.top();
-    float rulerRectMax = (m_orientation == Orientation::Horizontal) ? rulerRect.right() : rulerRect.bottom();
+    float rulerRectMin = aznumeric_cast<float>((m_orientation == Orientation::Horizontal) ? rulerRect.left() : rulerRect.top());
+    float rulerRectMax = aznumeric_cast<float>((m_orientation == Orientation::Horizontal) ? rulerRect.right() : rulerRect.bottom());
 
     float rulerStartInCanvasPixels = ((rulerRectMin - translation) / scale) + m_origin;
     float rulerEndInCanvasPixels = ((rulerRectMax - translation) / scale) + m_origin;
@@ -242,12 +242,12 @@ void RulerWidget::DrawRulerSection(QPainter* painter, QRectF rulerRect, float st
     float directionAlongSection = 1.0f;
     if (m_orientation == Orientation::Horizontal)
     {
-        rulerBreadth = rulerRect.height();
+        rulerBreadth = aznumeric_cast<float>(rulerRect.height());
         painter->translate(posOnRuler, rulerBreadth);
     }
     else
     {
-        rulerBreadth = rulerRect.width();
+        rulerBreadth = aznumeric_cast<float>(rulerRect.width());
         painter->translate(rulerBreadth, posOnRuler);
         painter->rotate(-90);
         directionAlongSection = -1.0f; // for the vertical section the major tick is visually at the "end" of the section
@@ -290,10 +290,10 @@ void RulerWidget::DrawRulerSection(QPainter* painter, QRectF rulerRect, float st
     else
     {
         QFontMetrics fontMetrics(painter->font());
-        textPosAlongSection = -(2 + fontMetrics.width(label));
+        textPosAlongSection = aznumeric_cast<float>(-(2 + fontMetrics.width(label)));
     }
 
-    painter->drawText(textPosAlongSection, -(rulerBreadth-8) , label);
+    painter->drawText(aznumeric_cast<int>(textPosAlongSection), aznumeric_cast<int>(-(rulerBreadth-8)) , label);
 
     // restore the painter translation and rotation
     painter->restore();
@@ -313,14 +313,14 @@ void RulerWidget::DrawCursorPos(QPainter* painter, QRectF rulerRect)
     if (m_orientation == Orientation::Horizontal)
     {
         x1 = x2 = m_cursorPos;
-        y1 = rulerRect.top();
-        y2 = rulerRect.bottom();
+        y1 = aznumeric_cast<float>(rulerRect.top());
+        y2 = aznumeric_cast<float>(rulerRect.bottom());
     }
     else
     {
         y1 = y2 = m_cursorPos;
-        x1 = rulerRect.left();
-        x2 = rulerRect.right();
+        x1 = aznumeric_cast<float>(rulerRect.left());
+        x2 = aznumeric_cast<float>(rulerRect.right());
     }
 
     painter->drawLine(QLineF(x1,y1,x2,y2));

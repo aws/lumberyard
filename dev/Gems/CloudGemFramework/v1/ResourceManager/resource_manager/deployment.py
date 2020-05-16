@@ -10,27 +10,25 @@
 #
 # $Revision: #2 $
 
-from errors import HandledError
-import util
 import copy
 import json
 import time
 import os
-
-import resource_group
-import mappings
-import project
-import stack
-import cognito_pools
-from cgf_utils import custom_resource_utils
-
+import six
 
 from botocore.exceptions import NoCredentialsError
 
-from uploader import ProjectUploader, Phase, Uploader
+from .errors import HandledError
+from . import util
+from . import resource_group
+from . import mappings
+from . import stack
+from . import cognito_pools
+from cgf_utils import custom_resource_utils
+from .uploader import ProjectUploader, Uploader
 from resource_manager_common import constant
 from resource_manager_common import stack_info
-
+from . import security
 
 PENDING_CREATE_REASON = 'The deployment''s resource group defined resources have not yet been created in AWS.'
 ACCESS_PENDING_CREATE_REASON = 'The deployment''s access control resources have not been created in AWS.'
@@ -39,7 +37,6 @@ CONFIGURATION_KEY_SUFFIX = 'ConfigurationKey'
 
 
 def create_stack(context, args):
-
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
@@ -82,7 +79,9 @@ def create_stack(context, args):
     deployment_region = util.get_region_from_arn(context.config.project_stack_id)
     if pending_deployment_stack_id is None or deployment_stack_name != util.get_stack_name_from_arn(pending_deployment_stack_id):
         if context.stack.name_exists(deployment_stack_name, deployment_region):
-            raise HandledError('An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(deployment_stack_name, deployment_region))
+            raise HandledError(
+                'An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(
+                    deployment_stack_name, deployment_region))
 
     # Resource group (and other) file write checks
     create_and_validate_writable_list(context)
@@ -94,14 +93,14 @@ def create_stack(context, args):
     __check_custom_definitions(context, pending_resource_status)
 
     capabilities = context.stack.confirm_stack_operation(
-        None, # stack id
+        None,  # stack id
         'deployment {}'.format(args.deployment),
         args,
         pending_resource_status,
-        ignore_resource_types = [ 'Custom::EmptyDeployment' ]
+        ignore_resource_types=['Custom::EmptyDeployment']
     )
 
-    # We have the following scenerios to deal with:
+    # We have the following scenarios to deal with:
     #
     # 1) This is the first attempt to create the deployment, or previous attempts didn't
     #    get as far as creating any stacks.
@@ -116,7 +115,7 @@ def create_stack(context, args):
     # stack and attempt to create a new one.
     #
     # 4) Both the deployment and access stacks were created successfully, but the pending
-    # stack id properites in the config were not replaced with the non-pending properties
+    # stack id properties in the config were not replaced with the non-pending properties
     # (this could happen if someone kills the client during the access stack creation
     # process, which then runs to a successful completion). In this case we update both
     # stacks to make sure they reflect any changes, then replace the "pending" stack id
@@ -129,7 +128,7 @@ def create_stack(context, args):
     if os.path.exists(context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME)):
         deployment_uploader.upload_file(constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME))
 
-    deployment_stack_parameters = __get_deployment_stack_parameters(context, args.deployment, uploader = deployment_uploader)
+    deployment_stack_parameters = __get_deployment_stack_parameters(context, args.deployment, uploader=deployment_uploader)
 
     for resource_group in context.resource_groups.values():
         if resource_group.is_enabled:
@@ -152,7 +151,7 @@ def create_stack(context, args):
                 pending_deployment_stack_id,
                 template_url,
                 deployment_stack_parameters,
-                capabilities = capabilities
+                capabilities=capabilities
             )
             deployment_stack_id = pending_deployment_stack_id
 
@@ -169,7 +168,7 @@ def create_stack(context, args):
 
             if args.parallel or is_empty_deployment:
 
-                # case 1 and 2 - deployment stack wasn't creatred previously or was just
+                # case 1 and 2 - deployment stack wasn't created previously or was just
                 # deleted, attempt to create it
 
                 deployment_stack_id = context.stack.create_using_url(
@@ -251,13 +250,13 @@ def create_stack(context, args):
         access_template_url = deployment_uploader.upload_content(
             constant.DEPLOYMENT_ACCESS_TEMPLATE_FILENAME,
             json.dumps(context.config.deployment_access_template_aggregator.effective_template, indent=4, sort_keys=True),
-            'processed deployment access temmplate')
+            'processed deployment access template')
 
         access_stack_parameters = __get_access_stack_parameters(
             context,
             args.deployment,
-            deployment_stack_id = deployment_stack_id,
-            uploader = deployment_uploader
+            deployment_stack_id=deployment_stack_id,
+            uploader=deployment_uploader
         )
 
         if pending_deployment_access_stack_status not in [None, context.stack.STATUS_ROLLBACK_COMPLETE, context.stack.STATUS_DELETE_COMPLETE]:
@@ -269,7 +268,7 @@ def create_stack(context, args):
                 pending_deployment_access_stack_id,
                 access_template_url,
                 deployment_stack_parameters,
-                capabilities = capabilities
+                capabilities=capabilities
             )
 
             deployment_access_stack_id = pending_deployment_access_stack_id
@@ -277,7 +276,6 @@ def create_stack(context, args):
         else:
 
             if pending_deployment_access_stack_status == context.stack.STATUS_ROLLBACK_COMPLETE:
-
                 # case 3 - access stack failed to create previously, delete it
 
                 context.stack.delete(pending_deployment_access_stack_id)
@@ -291,9 +289,9 @@ def create_stack(context, args):
                 deployment_access_stack_name,
                 access_template_url,
                 deployment_region,
-                parameters = access_stack_parameters,
+                parameters=access_stack_parameters,
                 created_callback=lambda id: context.config.set_pending_deployment_access_stack_id(args.deployment, id),
-                capabilities = capabilities)
+                capabilities=capabilities)
 
     except:
         context.config.force_gui_refresh()
@@ -325,6 +323,7 @@ def create_stack(context, args):
             __update_mappings(context, args.deployment)
 
     after_update(context, deployment_uploader, args.record_cognito_pools)
+    context.view.deployment_updated(args.deployment)
 
 
 def __set_release_deployment(context, deployment):
@@ -336,12 +335,11 @@ def __set_release_deployment(context, deployment):
 
 
 def delete_stack(context, args):
-
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
 
-    if not args.deployment in context.config.deployment_names:
+    if args.deployment not in context.config.deployment_names:
         raise HandledError('The project has no {} deployment.'.format(args.deployment))
 
     deployment_stack_id = _get_effective_deployment_stack_id(context, args.deployment)
@@ -358,7 +356,7 @@ def delete_stack(context, args):
             descriptions.update(context.stack.describe_resources(deployment_stack_id, recursive=True))
         if deployment_access_stack_id is not None:
             access_descriptions = context.stack.describe_resources(deployment_access_stack_id, recursive=True)
-            descriptions.update({'Access.' + k:v for k,v in access_descriptions.iteritems()})
+            descriptions.update({'Access.' + k: v for k, v in six.iteritems(access_descriptions)})
         context.view.confirm_resource_deletion(descriptions, '{} deployment and access stacks'.format(args.deployment))
 
     if deployment_access_stack_id is not None:
@@ -371,7 +369,7 @@ def delete_stack(context, args):
                 old_template = context.stack.get_current_template(deployment_stack_id)
                 old_params = context.stack.get_current_parameters(deployment_stack_id)
                 old_resources = old_template['Resources']
-                remove_stacks = [k for k, v in old_resources.iteritems() if v['Type'] == "AWS::CloudFormation::Stack"]
+                remove_stacks = [k for k, v in six.iteritems(old_resources) if v['Type'] == "AWS::CloudFormation::Stack"]
 
                 # Remove the cross gem resolver first, if it exists
                 old_resources.pop(constant.CROSS_GEM_RESOLVER_KEY, None)
@@ -410,7 +408,6 @@ def delete_stack(context, args):
 
 
 def default(context, args):
-
     # Has the project been initialized?
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
@@ -426,7 +423,7 @@ def default(context, args):
             context.config.set_project_default_deployment(args.set)
         else:
             context.config.set_user_default_deployment(args.set)
-    
+
     mappings.update(context, args)
 
     context.view.default_deployment(context.config.user_default_deployment, context.config.project_default_deployment)
@@ -443,7 +440,7 @@ def protect(context, args):
     if args.clear:
         context.config.unprotect_deployment(args.clear)
 
-    context.view.protected_deployment_list(context.config.get_protected_depolyment_names())
+    context.view.protected_deployment_list(context.config.get_protected_deployment_name())
 
 
 def release(context, args):
@@ -468,9 +465,8 @@ def release(context, args):
 
 
 def upload_resources(context, args):
-
-    # call deployment.update_stack, resoure_group.update_stack, resoure_group.create_stack,
-    # or resoure_group.delete_stack as needed
+    # call deployment.update_stack, resource_group.update_stack, resource_group.create_stack,
+    # or resource_group.delete_stack as needed
 
     if args.deployment is None:
         if context.config.default_deployment is None:
@@ -488,6 +484,7 @@ def upload_resources(context, args):
         __resource_group_upload(context, args)
     else:
         update_stack(context, args)
+
 
 def __resource_group_upload(context, args):
     # is the resource group from a gem which isn't enabled for the project?
@@ -523,12 +520,12 @@ def __resource_group_upload(context, args):
 
 
 def update_stack(context, args):
-
     # Use default deployment if necessary
 
     if args.deployment is None:
         if context.config.default_deployment is None:
-            raise HandledError('No default deployment has been set. Provide the --deployment parameter or use the default-deployment command to set a default deployment.')
+            raise HandledError(
+                'No default deployment has been set. Provide the --deployment parameter or use the default-deployment command to set a default deployment.')
         args.deployment = context.config.default_deployment
 
     # Does deployment-template.json include resource group from a gem which isn't enabled for the project?
@@ -551,8 +548,8 @@ def update_stack(context, args):
         'deployment {}'.format(args.deployment),
         args,
         pending_resource_status,
-        ignore_resource_types = [ 'Custom::EmptyDeployment' ],
-        only_resource_types = []
+        ignore_resource_types=['Custom::EmptyDeployment'],
+        only_resource_types=[]
     )
 
     # Is it ok to do this?
@@ -561,7 +558,7 @@ def update_stack(context, args):
         'deployment {}'.format(args.deployment),
         args,
         pending_resource_status,
-        ignore_resource_types = [ 'Custom::EmptyDeployment' ]
+        ignore_resource_types=['Custom::EmptyDeployment']
     )
 
     # Do the upload ...
@@ -574,11 +571,12 @@ def update_stack(context, args):
         deployment_uploader.upload_file(
             constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME))
 
-    parameters = __get_deployment_stack_parameters(context, args.deployment, uploader = deployment_uploader)
+    parameters = __get_deployment_stack_parameters(context, args.deployment, uploader=deployment_uploader)
     enabled_resource_groups = [resource_group for resource_group in context.resource_groups.values() if resource_group.is_enabled]
     configuration_key = parameters[CONFIGURATION_KEY_SUFFIX]
     parameters.update(
-        {resource_group.name + CONFIGURATION_KEY_SUFFIX: None if parameters.get(resource_group.name + CONFIGURATION_KEY_SUFFIX) else configuration_key for resource_group in enabled_resource_groups})
+        {resource_group.name + CONFIGURATION_KEY_SUFFIX: None if parameters.get(resource_group.name + CONFIGURATION_KEY_SUFFIX) else configuration_key for
+         resource_group in enabled_resource_groups})
 
     # wait a bit for S3 to help insure that templates can be read by cloud formation
     time.sleep(constant.STACK_UPDATE_DELAY_TIME)
@@ -590,8 +588,8 @@ def update_stack(context, args):
             deployment_stack_id,
             deployment_template_url,
             parameters,
-            pending_resource_status = pending_resource_status,
-            capabilities = capabilities
+            pending_resource_status=pending_resource_status,
+            capabilities=capabilities
         )
 
     else:
@@ -614,7 +612,7 @@ def update_stack(context, args):
         new_resources = new_template['Resources']
         new_parameter_defs = new_template['Parameters']
 
-        stack_resources = {k: v for k, v in pending_resource_status.iteritems() if v['ResourceType'] == "AWS::CloudFormation::Stack"}
+        stack_resources = {k: v for k, v in six.iteritems(pending_resource_status) if v['ResourceType'] == "AWS::CloudFormation::Stack"}
         config_resources = {k + "Configuration": pending_resource_status[k + "Configuration"] for k in stack_resources.keys()}
         create_resources = {}
         update_resources = {}
@@ -627,7 +625,7 @@ def update_stack(context, args):
 
         # Iterate through all of our stack resources and attempt to discern if they are being created, updated or
         # deleted. (Sometimes the PendingAction exists on the main stack, sometimes it exists on the Configuration.)
-        for k, v in stack_resources.iteritems():
+        for k, v in six.iteritems(stack_resources):
             pending_action = v.get('PendingAction', None) or \
                              config_resources[k + "Configuration"].get('PendingAction', None)
             if pending_action:
@@ -700,7 +698,6 @@ def update_stack(context, args):
                     throw_failed_resources=True
                 )
 
-
             # Re-add the cross gem resolver last
             if cross_gem_resolver:
                 new_resources[constant.CROSS_GEM_RESOLVER_KEY] = cross_gem_resolver
@@ -724,11 +721,11 @@ def update_stack(context, args):
 
 
 def update_access_stack(context, args):
-
     # Use default deployment if necessary
     if args.deployment is None:
         if context.config.default_deployment is None:
-            raise HandledError('No default deployment has been set. Provide the --deployment parameter or use the default-deployment command to set a default deployment.')
+            raise HandledError(
+                'No default deployment has been set. Provide the --deployment parameter or use the default-deployment command to set a default deployment.')
         args.deployment = context.config.default_deployment
 
     if args.deployment == '*':
@@ -739,7 +736,6 @@ def update_access_stack(context, args):
 
 
 def _update_access_stack(context, args, deployment_name):
-
     # Get the data we need...
 
     deployment_stack_id = context.config.get_deployment_stack_id(deployment_name)
@@ -770,8 +766,8 @@ def _update_access_stack(context, args, deployment_name):
     parameters = __get_access_stack_parameters(
         context,
         deployment_name,
-        deployment_stack_id = deployment_stack_id,
-        uploader = deployment_uploader
+        deployment_stack_id=deployment_stack_id,
+        uploader=deployment_uploader
     )
 
     # wait a bit for S3 to help insure that templates can be read by cloud formation
@@ -781,13 +777,13 @@ def _update_access_stack(context, args, deployment_name):
         deployment_access_stack_id,
         access_template_url,
         parameters,
-        pending_resource_status = pending_resource_status,
-        capabilities = capabilities
+        pending_resource_status=pending_resource_status,
+        capabilities=capabilities
     )
 
 
 def upload_resource_group_settings(context, deployment_name):
-    settings_uploader = Uploader(context, key='{}/{}'.format(constant.RESOURCE_SETTINGS_FOLDER,deployment_name))
+    settings_uploader = Uploader(context, key='{}/{}'.format(constant.RESOURCE_SETTINGS_FOLDER, deployment_name))
     settings_uploader.upload_content(
         constant.DEPLOYMENT_RESOURCE_GROUP_SETTINGS,
         json.dumps(context.config.aggregate_settings, indent=4, sort_keys=True),
@@ -795,7 +791,6 @@ def upload_resource_group_settings(context, deployment_name):
 
 
 def before_update(context, deployment_uploader):
-
     context.config.aggregate_settings = {}
 
     for group in context.resource_groups.values():
@@ -805,13 +800,13 @@ def before_update(context, deployment_uploader):
                 group.name
             )
 
-    upload_resource_group_settings(context,deployment_uploader.deployment_name)
+    upload_resource_group_settings(context, deployment_uploader.deployment_name)
 
     context.view.processing_template('{} deployment'.format(deployment_uploader.deployment_name))
 
     deployment_template_url = deployment_uploader.upload_content(
         constant.DEPLOYMENT_TEMPLATE_FILENAME,
-        json.dumps(context.config.deployment_template_aggregator.effective_template, indent = 4, sort_keys = True),
+        json.dumps(context.config.deployment_template_aggregator.effective_template, indent=4, sort_keys=True),
         "Configured Deployment Template")
 
     # Deprecated in 1.9. TODO remove
@@ -821,7 +816,6 @@ def before_update(context, deployment_uploader):
 
 
 def after_update(context, deployment_uploader, record_pools):
-
     for group in context.resource_groups.values():
         if group.is_enabled:
             resource_group.after_update(
@@ -835,9 +829,11 @@ def after_update(context, deployment_uploader, record_pools):
 
     # Deprecated in 1.9 - TODO: remove
     context.hooks.call_module_handlers('cli-plugin-code/resource_group_hooks.py', 'on_post_update',
-        args = [deployment_uploader.deployment_name, None],
-        deprecated = True
-    )
+                                       args=[deployment_uploader.deployment_name, None],
+                                       deprecated=True)
+
+    security.run_project_patcher_internal(context, identifier=security.DEFAULT_PATCH_IDENTIFIER,
+                                          dry_run=False, should_log=True, deployment_name=deployment_uploader.deployment_name)
 
 
 def __record_cognito_pools(context, deployment_uploader):
@@ -846,10 +842,10 @@ def __record_cognito_pools(context, deployment_uploader):
     pools = {
         "DeploymentAccess": {}
     }
-    if access_stack_arn != None:
+    if access_stack_arn is not None:
         access_resources = context.stack.describe_resources(
             access_stack_arn, recursive=True)
-        for resource_name, definition in access_resources.iteritems():
+        for resource_name, definition in six.iteritems(access_resources):
             if definition["ResourceType"] in ["Custom::CognitoIdentityPool", "Custom::CognitoUserPool"]:
                 pools["DeploymentAccess"][resource_name] = {
                     "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
@@ -878,30 +874,30 @@ def tags(context, args):
 
 
 def clear_tags(context, deployment):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         return
     context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     context.config.local_project_settings.save()
 
 
 def add_tags(context, deployment, tags):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS] = {}
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     for tag in tags:
-        if not tag in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
+        if tag not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
             context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment].append(tag)
     context.config.local_project_settings.save()
 
 
 def delete_tags(context, deployment, tags):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS] = {}
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     for tag in tags:
-        if not tag in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
+        if tag not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
             context.view._output_message("Tried to delete tag {}, but it was not found on the deployment {}".format(tag, deployment))
         else:
             context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment].remove(tag)
@@ -909,15 +905,14 @@ def delete_tags(context, deployment, tags):
 
 
 def list_tags(context, deployment):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         return []
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         return []
     return json.dumps(context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment])
 
 
 def list(context, args):
-
     deployments = []
 
     for deployment_name in context.config.deployment_names:
@@ -935,9 +930,10 @@ def describe_stack(context, args):
 def __validate_resource_group_resources(resource_group):
     if not resource_group.is_enabled:
         return
-    for name, description in resource_group.template["Resources"].iteritems():
+    for name, description in six.iteritems(resource_group.template["Resources"]):
         if description["Type"] == "Custom::ResourceTypes":
-            raise HandledError("{}:{} is of the type Custom::ResourceTypes, that type is not allowed outside of a ProjectStack.".format(resource_group.name, name))
+            raise HandledError(
+                "{}:{} is of the type Custom::ResourceTypes, that type is not allowed outside of a ProjectStack.".format(resource_group.name, name))
 
 
 def _get_effective_deployment_stack_id(context, deployment_name):
@@ -955,10 +951,9 @@ def _get_effective_access_stack_id(context, deployment_name):
 
 
 def _get_deployment_stack_description(context, deployment_name):
-
     description = {
         'Name': deployment_name,
-        'Protected': deployment_name in context.config.get_protected_depolyment_names(),
+        'Protected': deployment_name in context.config.get_protected_deployment_name(),
         'UserDefault': context.config.user_default_deployment == deployment_name,
         'ProjectDefault': context.config.project_default_deployment == deployment_name,
         'Release': context.config.release_deployment == deployment_name,
@@ -982,9 +977,8 @@ def _get_deployment_stack_description(context, deployment_name):
         else:
             try:
 
-                description_update = context.stack.describe_stack(stack_id, optional = True)
+                description_update = context.stack.describe_stack(stack_id, optional=True)
                 if description_update is None or description_update.get('StackStatus', None) == context.stack.STATUS_DELETE_COMPLETE:
-
                     # have deployment stack id (maybe pending) but the stack doesn't actually exist
 
                     description_update = {
@@ -998,26 +992,27 @@ def _get_deployment_stack_description(context, deployment_name):
                     # deployment stack exists but wasn't created successfully
 
                     description_update['StackStatus'] = context.stack.STATUS_CREATE_FAILED
-                    description_update['StackStatusReason'] = 'The creation of the stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
+                    description_update['StackStatusReason'] = \
+                        'The creation of the stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
 
                 elif description_update.get('StackStatus', None) in [context.stack.STATUS_CREATE_COMPLETE, context.stack.STATUS_UPDATE_COMPLETE]:
 
                     # The deployment stack exists, isn't in an error state and isn't currently
                     # being updated. Use the status of the access stack instead.
                     #
-                    # TODO: change the ui to have a seperate table access stack status. This
+                    # TODO: change the ui to have a separate table access stack status. This
                     # will be a lot simpler then.
 
                     deployment_access_stack_id = _get_effective_access_stack_id(context, deployment_name)
 
-                    deployment_acesss_stack_description = None
+                    deployment_access_stack_description = None
                     if deployment_access_stack_id is not None:
-                        deployment_acesss_stack_description = context.stack.describe_stack(deployment_access_stack_id, optional=True)
+                        deployment_access_stack_description = context.stack.describe_stack(deployment_access_stack_id, optional=True)
 
-                    if deployment_acesss_stack_description is None:
+                    if deployment_access_stack_description is None:
                         deployment_access_stack_status = None
                     else:
-                        deployment_access_stack_status = deployment_acesss_stack_description.get('StackStatus', None)
+                        deployment_access_stack_status = deployment_access_stack_description.get('StackStatus', None)
 
                     if deployment_access_stack_status in [None, context.stack.STATUS_DELETE_COMPLETE]:
 
@@ -1034,14 +1029,15 @@ def _get_deployment_stack_description(context, deployment_name):
                         # Creating the access stack failed.
 
                         description_update['StackStatus'] = context.stack.STATUS_CREATE_FAILED
-                        description_update['StackStatusReason'] = 'The creation of the access control stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
+                        description_update['StackStatusReason'] = \
+                            'The creation of the access control stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
 
                     elif deployment_access_stack_status not in [context.stack.STATUS_CREATE_COMPLETE, context.stack.STATUS_UPDATE_COMPLETE]:
 
                         # Use access stack status.
 
                         description_update['StackStatus'] = deployment_access_stack_status
-                        description_update['StackStatusReason'] = deployment_acesss_stack_description.get('StackStatusReason', '')
+                        description_update['StackStatusReason'] = deployment_access_stack_description.get('StackStatusReason', '')
 
             except NoCredentialsError:
                 description_update = {
@@ -1058,16 +1054,9 @@ def gather_writable_check_list(context):
     write_check_list = []
 
     # Deprecated in 1.9 - TODO: remove
-    context.hooks.call_module_handlers('cli-plugin-code/resource_group_hooks.py','gather_writable_check_list',
-        args = [write_check_list],
-        deprecated = True
-    )
+    context.hooks.call_module_handlers('cli-plugin-code/resource_group_hooks.py', 'gather_writable_check_list', args=[write_check_list], deprecated=True)
 
-    context.hooks.call_module_handlers('resource-manager-code/update.py', 'gather_writable_check_list',
-        kwargs = {
-            'check_list': write_check_list
-        }
-    )
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'gather_writable_check_list', kwargs={'check_list': write_check_list})
 
     return write_check_list
 
@@ -1078,7 +1067,6 @@ def create_and_validate_writable_list(context):
 
 
 def list_deployment_resources(context, args):
-
     # Use default deployment if necessary
     deployment_name = args.deployment
     if deployment_name is None:
@@ -1086,7 +1074,7 @@ def list_deployment_resources(context, args):
             raise HandledError('No deployment was specified and there is no default deployment configured.')
         deployment_name = context.config.default_deployment
 
-    # TODO: change the ui to have a seperate table for access stack resources
+    # TODO: change the ui to have a separate table for access stack resources
 
     pending_resource_status = __get_pending_combined_resource_status(context, deployment_name)
 
@@ -1095,7 +1083,7 @@ def list_deployment_resources(context, args):
     context.view.deployment_resource_list(deployment_stack_id, deployment_name, pending_resource_status)
 
 
-def __get_deployment_stack_parameters(context, deployment_name, uploader = None):
+def __get_deployment_stack_parameters(context, deployment_name, uploader=None):
     return {
         'ConfigurationBucket': uploader.bucket if uploader else None,
         'ConfigurationKey': uploader.key if uploader else None,
@@ -1105,7 +1093,7 @@ def __get_deployment_stack_parameters(context, deployment_name, uploader = None)
     }
 
 
-def __get_access_stack_parameters(context, deployment_name, deployment_stack_id = None, uploader = None):
+def __get_access_stack_parameters(context, deployment_name, deployment_stack_id=None, uploader=None):
     return {
         'ConfigurationBucket': uploader.bucket if uploader else None,
         'ConfigurationKey': uploader.key if uploader else None,
@@ -1119,79 +1107,77 @@ def __get_access_stack_parameters(context, deployment_name, deployment_stack_id 
 
 
 def __get_pending_access_resource_status(context, deployment_name):
-
     access_stack_id = _get_effective_access_stack_id(context, deployment_name)
     deployment_stack_id = _get_effective_deployment_stack_id(context, deployment_name)
 
     template = context.config.deployment_access_template_aggregator.effective_template
-    parameters = __get_access_stack_parameters(context, deployment_name, deployment_stack_id = deployment_stack_id, uploader = None)
+    parameters = __get_access_stack_parameters(context, deployment_name, deployment_stack_id=deployment_stack_id, uploader=None)
 
     return context.stack.get_pending_resource_status(
         access_stack_id,
-        new_template = template,
-        new_parameter_values = parameters
+        new_template=template,
+        new_parameter_values=parameters
     )
 
 
 def __get_pending_deployment_resource_status(context, deployment_name):
-
     deployment_stack_id = _get_effective_deployment_stack_id(context, deployment_name)
 
     template = context.config.deployment_template_aggregator.effective_template
-    parameters = __get_deployment_stack_parameters(context, deployment_name, uploader = None)
+    parameters = __get_deployment_stack_parameters(context, deployment_name, uploader=None)
 
     return get_pending_deployment_resource_status(context, deployment_name, deployment_stack_id, template, parameters)
+
 
 def get_pending_deployment_resource_status(context, deployment_name, deployment_stack_id, template, parameters):
     pending_resource_status = context.stack.get_pending_resource_status(
         deployment_stack_id,
-        new_template = template,
-        new_parameter_values = parameters
+        new_template=template,
+        new_parameter_values=parameters
     )
 
     # add pending delete descriptions for all resources in nested stacks
     # only supports a single level of nesting (deployment / resource group)
     pending_resource_status_updates = {}
-    for resource_name, resource_description in pending_resource_status.iteritems():
+    for resource_name, resource_description in six.iteritems(pending_resource_status):
         if resource_description.get('ResourceType') == 'AWS::CloudFormation::Stack':
             stack_id = resource_description.get('PhysicalResourceId')
             if stack_id:
                 resource_group_pending_resource_status = context.stack.get_pending_resource_status(
                     stack_id,
-                    new_template = {} # resource status will be pending DELETE
+                    new_template={}  # resource status will be pending DELETE
                 )
-                for key, value in resource_group_pending_resource_status.iteritems():
+                for key, value in six.iteritems(resource_group_pending_resource_status):
                     pending_resource_status_updates[resource_name + '.' + key] = value
     pending_resource_status.update(pending_resource_status_updates)
 
     for group in context.resource_groups.values():
         resource_group_pending_resource_status = group.get_pending_resource_status(deployment_name)
-        for key, value in resource_group_pending_resource_status.iteritems():
+        for key, value in six.iteritems(resource_group_pending_resource_status):
             pending_resource_status[group.name + '.' + key] = value
 
     return pending_resource_status
 
 
 def __get_pending_combined_resource_status(context, deployment_name):
-
     pending_resource_status = __get_pending_deployment_resource_status(context, deployment_name)
 
     pending_access_resource_status = __get_pending_access_resource_status(context, deployment_name)
-    for key, value in pending_access_resource_status.iteritems():
+    for key, value in six.iteritems(pending_access_resource_status):
         pending_resource_status['(Access) ' + key] = value
 
     return pending_resource_status
 
 
 def __check_resource_group_gem_status(context, resource_group_name):
-    #it is valid if the resource group exists in the set of enabled gems    
+    # it is valid if the resource group exists in the set of enabled gems
     for gem in context.gem.enabled_gems:
         if gem.name == resource_group_name:
             return True
     return False
 
 
-def __update_mappings(context, deployment_name, force = False):
+def __update_mappings(context, deployment_name, force=False):
     if deployment_name != context.config.default_deployment and deployment_name != context.config.release_deployment:
         return
     temp_args = util.Args()
@@ -1202,12 +1188,12 @@ def __update_mappings(context, deployment_name, force = False):
 
 def __check_custom_definitions(context, pending_resources):
     stack = stack_info.StackInfoManager().get_stack_info(context.config.project_stack_id, no_logging=True)
-    for resource_name, resource_info in pending_resources.iteritems():
+    for resource_name, resource_info in six.iteritems(pending_resources):
         if resource_info.get("ResourceStatus", None) == "DISABLED":
             continue
         if not __resource_handler_exists(stack, resource_info["ResourceType"]):
             raise HandledError(
-                "The project stack has no definition for resource type {} to stand up resource {} "\
+                "The project stack has no definition for resource type {} to stand up resource {} "
                 "Update your project stack to add new custom resource handlers".format(resource_info["ResourceType"], resource_name))
 
 

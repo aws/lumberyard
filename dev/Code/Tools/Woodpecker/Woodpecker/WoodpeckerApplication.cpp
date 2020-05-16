@@ -22,19 +22,18 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/Core/IPCComponent.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 #ifndef AZ_PLATFORM_WINDOWS
 int __argc;
-char **__argv;
+char** __argv;
 #endif
 
 namespace Woodpecker
 {
-    BaseApplication::BaseApplication(int &argc, char **argv)
+    BaseApplication::BaseApplication(int&, char**)
         : LegacyFramework::Application()
     {
-        __argc = argc;
-        __argv = argv;
         AZ::UserSettingsFileLocatorBus::Handler::BusConnect();
     }
 
@@ -103,16 +102,6 @@ namespace Woodpecker
         (void)launched;
     }
 
-    void BaseApplication::ReflectSerializeDeprecated()
-    {
-        LegacyFramework::Application::ReflectSerializeDeprecated();
-
-        // A "convenient" function to place all high level (no other place to put) deprecated reflections.
-        // IMPORTANT: Please to time stamp each deprecation so we can remove after some time (we know all
-        // old data had been converted)
-        GetSerializeContext()->ClassDeprecate("EditorDataComponent", "{15E08C28-B98E-49ac-B60C-CCC6EF2E46B4}"); // 11/12/2012
-    }
-
     bool BaseApplication::LaunchDiscoveryService()
     {
 #ifdef WIN32
@@ -144,7 +133,7 @@ namespace Woodpecker
         {
             if (fork() == 0)
             {
-                char *args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
+                char* args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
                 execv(applicationFilePath.c_str(), args);
             }
             return true;
@@ -154,7 +143,7 @@ namespace Woodpecker
         {
             if (fork() == 0)
             {
-                char *args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
+                char* args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
                 execv(applicationFilePath.c_str(), args);
             }
             return true;
@@ -163,19 +152,25 @@ namespace Woodpecker
 #endif
     }
 
-    AZStd::string BaseApplication::ResolveFilePath(AZ::u32 providerId)
+    AZStd::string BaseApplication::GetStoragePath() const
     {
-        AZStd::string userStoragePath;
-        FrameworkApplicationMessages::Bus::BroadcastResult(userStoragePath, &FrameworkApplicationMessages::GetApplicationGlobalStoragePath);
+        AZStd::string storagePath;
+        FrameworkApplicationMessages::Bus::BroadcastResult(storagePath, &FrameworkApplicationMessages::GetApplicationGlobalStoragePath);
 
-        if (userStoragePath.size() == 0)
+        if (storagePath.empty())
         {
-            FrameworkApplicationMessages::Bus::BroadcastResult(userStoragePath, &FrameworkApplicationMessages::GetApplicationDirectory);
+            FrameworkApplicationMessages::Bus::BroadcastResult(storagePath, &FrameworkApplicationMessages::GetApplicationDirectory);
         }
 
+        return storagePath;
+    }
+
+    AZStd::string BaseApplication::ResolveFilePath(AZ::u32 providerId)
+    {
         AZStd::string appName;
         FrameworkApplicationMessages::Bus::BroadcastResult(appName, &FrameworkApplicationMessages::GetApplicationName);
 
+        AZStd::string userStoragePath = GetStoragePath();
         AzFramework::StringFunc::Path::Join(userStoragePath.c_str(), appName.c_str(), userStoragePath);
         AZ::IO::SystemFile::CreateDir(userStoragePath.c_str());
 

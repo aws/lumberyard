@@ -2,8 +2,8 @@
     "name": "tiff",
     "source": "@3P:tiff@",
     "description": "Tiff Library",
-    "includes": [
-        "."
+    "system_includes": [
+        "include"
     ],
     "defines": [],
     "lib_required": "True"

@@ -44,9 +44,21 @@ namespace EMotionFX
         return newPlugin;
     }
 
+    bool ClothJointInspectorPlugin::IsNvClothGemAvailable() const
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+        // TypeId of NvCloth::SystemComponent
+        const char* typeIDClothSystem = "{89DF5C48-64AC-4B8E-9E61-0D4C7A7B5491}";
+
+        return serializeContext
+            && serializeContext->FindClassData(AZ::TypeId::CreateString(typeIDClothSystem));
+    }
+
     bool ClothJointInspectorPlugin::Init()
     {
-        if (ColliderHelpers::AreCollidersReflected())
+        if (IsNvClothGemAvailable() && ColliderHelpers::AreCollidersReflected())
         {
             m_jointWidget = new ClothJointWidget();
             m_jointWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -63,7 +75,7 @@ namespace EMotionFX
         }
         else
         {
-            mDock->SetContents(CreateErrorContentWidget("Cloth collider editor depends on the PhysX gem. Please enable it in the project configurator."));
+            mDock->SetContents(CreateErrorContentWidget("Cloth collider editor depends on NVIDIA Cloth gem. Please enable it in the project configurator."));
         }
 
         return true;
@@ -162,8 +174,13 @@ namespace EMotionFX
     void ClothJointInspectorPlugin::Render(EMStudio::RenderPlugin* renderPlugin, RenderInfo* renderInfo)
     {
         EMStudio::RenderViewWidget* activeViewWidget = renderPlugin->GetActiveViewWidget();
+        if (!activeViewWidget)
+        {
+            return;
+        }
+
         const bool renderColliders = activeViewWidget->GetRenderFlag(EMStudio::RenderViewWidget::RENDER_CLOTH_COLLIDERS);
-        if (!activeViewWidget || !renderColliders)
+        if (!renderColliders)
         {
             return;
         }

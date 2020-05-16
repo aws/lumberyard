@@ -699,6 +699,36 @@ namespace AzToolsFramework
                 SqlParam<AZ::u32>(":typeOfDependency"),
                 SqlParam<AZ::u32>(":wildCardDependency"));
 
+            static const char* QUERY_PRODUCTDEPENDENCIES_THAT_DEPEND_ON_PRODUCT_BY_SOURCEID = "AzToolsFramework::AssetDatabase::QueryProductDependenciesThatDependOnProductBySourceId";
+            static const char* QUERY_PRODUCTDEPENDENCIES_THAT_DEPEND_ON_PRODUCT_BY_SOURCEID_STATEMENT =
+                "select ProductDependencies.* from Sources A "
+                "inner join ProductDependencies on A.SourceGuid = DependencySourceGuid "
+                "inner join products on productpk = ProductID "
+                "inner join jobs on jobid = JobPK "
+                "inner join sources B on B.SourceID = sourcepk "
+                "where A.sourceid = :sourceid;";
+
+            static const auto s_queryProductDependenciesThatDependOnProductBySourceId = MakeSqlQuery(QUERY_PRODUCTDEPENDENCIES_THAT_DEPEND_ON_PRODUCT_BY_SOURCEID, QUERY_PRODUCTDEPENDENCIES_THAT_DEPEND_ON_PRODUCT_BY_SOURCEID_STATEMENT, LOG_NAME,
+                SqlParam<AZ::s64>(":sourceid"));
+
+            static const char* QUERY_ALL_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE = "AzToolsFramework::AssetDatabase::QueryAllSourceDependencyByDependsOnSource";
+            static const char* QUERY_ALL_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT =
+                "WITH RECURSIVE "
+                "    allSourceDeps AS ( "
+                "        SELECT * FROM SourceDependency "
+                "        WHERE DependsOnSource = :dependsOnSource "
+                "        AND TypeOfDependency & :typeOfDependency "
+                "        UNION "
+                "        SELECT SourceDependency.* FROM SourceDependency, allSourceDeps "
+                "        WHERE SourceDependency.DependsOnSource = allSourceDeps.Source "
+                "        AND SourceDependency.TypeOfDependency & :typeOfDependency "
+                "    ) "
+                "SELECT * FROM allSourceDeps;";
+
+            static const auto s_queryAllSourceDependencyByDependsOnSource = MakeSqlQuery(QUERY_ALL_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, QUERY_ALL_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT, LOG_NAME,
+                SqlParam<const char*>(":dependsOnSource"),
+                SqlParam<AZ::u32>(":typeOfDependency"));
+
             static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE = "AzToolsFramework::AssetDatabase::QueryDependsOnSourceBySource";
             static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE_STATEMENT =
                 "SELECT * from SourceDependency WHERE "
@@ -725,6 +755,19 @@ namespace AzToolsFramework
 
             static const auto s_queryProductdependencyByProductid = MakeSqlQuery(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
                     SqlParam<AZ::s64>(":productid"));
+
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_SOURCEGUID_SUBID = "AzToolsFramework::AssetDatabase::QueryProductDependencyBySourceGuidSubId";
+            static const char* QUERY_PRODUCTDEPENDENCY_BY_SOURCEGUID_SUBID_STATEMENT =
+                "select ProductDependencies.* from sources "
+                "left join jobs on jobs.SourcePK = sources.SourceID and jobs.Platform = :platform "
+                "left join products on products.JobPK = jobs.JobID and SubId = :subid "
+                "left join ProductDependencies on ProductDependencies.ProductPK = products.ProductID "
+                "where sources.SourceGuid = :uuid;";
+
+            static const auto s_queryProductdependencyBySourceGuidSubId = MakeSqlQuery(QUERY_PRODUCTDEPENDENCY_BY_SOURCEGUID_SUBID, QUERY_PRODUCTDEPENDENCY_BY_SOURCEGUID_SUBID_STATEMENT, LOG_NAME,
+                SqlParam<AZ::Uuid>(":uuid"),
+                SqlParam<AZ::u32>(":subid"),
+                SqlParam<const char*>(":platform"));
 
             static const char* QUERY_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID =
                 "AzToolsFramework::AssetDatabase::QueryMissingProductDependencyByProductId";
@@ -756,6 +799,17 @@ namespace AzToolsFramework
 
             static const auto s_queryDirectProductdependencies = MakeSqlQuery(QUERY_DIRECT_PRODUCTDEPENDENCIES, QUERY_DIRECT_PRODUCTDEPENDENCIES_STATEMENT, LOG_NAME,
                     SqlParam<AZ::s64>(":productid"));
+
+            static const char* QUERY_DIRECT_REVERSE_PRODUCTDEPENDENCIES_BY_SOURCE_GUID_SUB_ID = "AzToolsFramework::AssetDatabase::QueryDirectReverseProductDependenciesBySourceGuidSubId";
+            static const char* QUERY_DIRECT_REVERSE_PRODUCTDEPENDENCIES_BY_SOURCE_GUID_SUB_ID_STATEMENT =
+                "SELECT * FROM Products "
+                "LEFT OUTER JOIN ProductDependencies "
+                "   ON ProductDependencies.ProductPK = Products.ProductID "
+                "WHERE ProductDependencies.DependencySourceGuid = :dependencySourceGuid "
+                "   AND ProductDependencies.DependencySubID = :dependencySubId;";
+
+            static const auto s_queryDirectReverseProductdependenciesBySourceGuidSubId = MakeSqlQuery(QUERY_DIRECT_REVERSE_PRODUCTDEPENDENCIES_BY_SOURCE_GUID_SUB_ID,
+                QUERY_DIRECT_REVERSE_PRODUCTDEPENDENCIES_BY_SOURCE_GUID_SUB_ID_STATEMENT, LOG_NAME, SqlParam<AZ::Uuid>(":dependencySourceGuid"), SqlParam<AZ::s32>(":dependencySubId"));
 
             static const char* QUERY_ALL_PRODUCTDEPENDENCIES = "AzToolsFramework::AssetDatabase::QueryAllProductDependencies";
             static const char* QUERY_ALL_PRODUCTDEPENDENCIES_STATEMENT =
@@ -1061,18 +1115,19 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         //SourceFileDependencyEntry
 
-        SourceFileDependencyEntry::SourceFileDependencyEntry(AZ::Uuid builderGuid, const char *source, const char* dependsOnSource, SourceFileDependencyEntry::TypeOfDependency dependencyType)
+        SourceFileDependencyEntry::SourceFileDependencyEntry(AZ::Uuid builderGuid, const char *source, const char* dependsOnSource, SourceFileDependencyEntry::TypeOfDependency dependencyType, AZ::u32 fromAssetId)
             : m_builderGuid(builderGuid)
             , m_source(source)
             , m_dependsOnSource(dependsOnSource)
             , m_typeOfDependency(dependencyType)
+            , m_fromAssetId(fromAssetId)
         {
             AZ_Assert(dependencyType != SourceFileDependencyEntry::DEP_Any, "You may only store actual dependency types in the database, not DEP_Any");
         }
 
         AZStd::string SourceFileDependencyEntry::ToString() const
         {
-            return AZStd::string::format("SourceFileDependencyEntry id:%i builderGuid: %s source: %s dependsOnSource: %s type: %s", m_sourceDependencyID, m_builderGuid.ToString<AZStd::string>().c_str(), m_source.c_str(), m_dependsOnSource.c_str(), m_typeOfDependency == DEP_SourceToSource ? "source" : "job");
+            return AZStd::string::format("SourceFileDependencyEntry id:%i builderGuid: %s source: %s dependsOnSource: %s type: %s fromAssetId: %d", m_sourceDependencyID, m_builderGuid.ToString<AZStd::string>().c_str(), m_source.c_str(), m_dependsOnSource.c_str(), m_typeOfDependency == DEP_SourceToSource ? "source" : "job", m_fromAssetId);
         }
 
         auto SourceFileDependencyEntry::GetColumns()
@@ -1082,7 +1137,8 @@ namespace AzToolsFramework
                 MakeColumn("BuilderGuid", m_builderGuid),
                 MakeColumn("Source", m_source),
                 MakeColumn("DependsOnSource", m_dependsOnSource),
-                MakeColumn("TypeOfDependency", m_typeOfDependency)
+                MakeColumn("TypeOfDependency", m_typeOfDependency),
+                MakeColumn("FromAssetId", m_fromAssetId)
             );
         }
 
@@ -1335,7 +1391,7 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         //ProductDependencyDatabaseEntry
-        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType)
+        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType, AZ::u32 fromAssetId)
             : m_productDependencyID(productDependencyID)
             , m_productPK(productPK)
             , m_dependencySourceGuid(dependencySourceGuid)
@@ -1344,10 +1400,11 @@ namespace AzToolsFramework
             , m_platform(platform)
             , m_unresolvedPath(unresolvedPath)
             , m_dependencyType(dependencyType)
+            , m_fromAssetId(fromAssetId)
         {
         }
 
-        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType)
+        ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, AZ::u32 fromAssetId, const AZStd::string& unresolvedPath, DependencyType dependencyType)
             : m_productPK(productPK)
             , m_dependencySourceGuid(dependencySourceGuid)
             , m_dependencySubID(dependencySubID)
@@ -1355,6 +1412,7 @@ namespace AzToolsFramework
             , m_platform(platform)
             , m_unresolvedPath(unresolvedPath)
             , m_dependencyType(dependencyType)
+            , m_fromAssetId(fromAssetId)
         {
         }
 
@@ -1372,7 +1430,7 @@ namespace AzToolsFramework
 
         AZStd::string ProductDependencyDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %i unresolvedPath: %s dependencyType: %i", m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags, m_unresolvedPath.c_str(), m_dependencyType);
+            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %i unresolvedPath: %s dependencyType: %i fromAssetId: %d", m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags, m_unresolvedPath.c_str(), m_dependencyType, m_fromAssetId);
         }
 
         auto ProductDependencyDatabaseEntry::GetColumns()
@@ -1385,7 +1443,8 @@ namespace AzToolsFramework
                 MakeColumn("DependencyFlags", m_dependencyFlags),
                 MakeColumn("Platform", m_platform),
                 MakeColumn("UnresolvedPath", m_unresolvedPath),
-                MakeColumn("UnresolvedDependencyType", m_dependencyType)
+                MakeColumn("UnresolvedDependencyType", m_dependencyType),
+                MakeColumn("FromAssetId", m_fromAssetId)
             );
         }
 
@@ -1528,6 +1587,11 @@ namespace AzToolsFramework
         AssetDatabaseConnection::~AssetDatabaseConnection()
         {
             CloseDatabase();
+
+            if (SQLite::SQLiteQueryLogBus::Handler::BusIsConnected())
+            {
+                SQLite::SQLiteQueryLogBus::Handler::BusDisconnect();
+            }
         }
 
         void AssetDatabaseConnection::CloseDatabase()
@@ -1709,14 +1773,18 @@ namespace AzToolsFramework
             AddStatement(m_databaseConnection, s_querySourcedependencyByDependsonsource);
             AddStatement(m_databaseConnection, s_querySourcedependencyByDependsonsourceWildcard);
             AddStatement(m_databaseConnection, s_queryDependsonsourceBySource);
+            AddStatement(m_databaseConnection, s_queryAllSourceDependencyByDependsOnSource);
 
             AddStatement(m_databaseConnection, s_queryProductdependencyByProductdependencyid);
             AddStatement(m_databaseConnection, s_queryProductdependencyByProductid);
+            AddStatement(m_databaseConnection, s_queryProductdependencyBySourceGuidSubId);
+            AddStatement(m_databaseConnection, s_queryProductDependenciesThatDependOnProductBySourceId);
             
             AddStatement(m_databaseConnection, s_queryMissingProductDependencyByProductId);
             AddStatement(m_databaseConnection, s_queryMissingProductDependencyByMissingProductDependencyId);
             
             AddStatement(m_databaseConnection, s_queryDirectProductdependencies);
+            AddStatement(m_databaseConnection, s_queryDirectReverseProductdependenciesBySourceGuidSubId);
             AddStatement(m_databaseConnection, s_queryAllProductdependencies);
             AddStatement(m_databaseConnection, s_queryUnresolvedProductDependencies);
 
@@ -2359,6 +2427,16 @@ namespace AzToolsFramework
             return s_queryDependsonsourceBySource.BindAndQuery(*m_databaseConnection, handler, &GetSourceDependencyResult, sourceDependency, dependencyFilter == nullptr ? "%" : dependencyFilter, dependencyType);
         }
 
+        bool AssetDatabaseConnection::QueryAllSourceDependencyByDependsOnSource(const char* dependsOnSource, SourceFileDependencyEntry::TypeOfDependency dependencyType, sourceFileDependencyHandler handler)
+        {
+            return s_queryAllSourceDependencyByDependsOnSource.BindAndQuery(*m_databaseConnection, handler, &GetSourceDependencyResult, dependsOnSource, dependencyType);
+        }
+
+        bool AzToolsFramework::AssetDatabase::AssetDatabaseConnection::QueryProductDependenciesThatDependOnProductBySourceId(AZ::s64 sourceId, productDependencyHandler handler)
+        {
+            return s_queryProductDependenciesThatDependOnProductBySourceId.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult, sourceId);
+        }
+
         // Product Dependencies
         bool AssetDatabaseConnection::QueryProductDependencyByProductDependencyId(AZ::s64 productDependencyID, productDependencyHandler handler)
         {
@@ -2375,6 +2453,11 @@ namespace AzToolsFramework
             return s_queryProductdependencyByProductid.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult, productID);
         }
 
+        bool AssetDatabaseConnection::QueryProductDependencyBySourceGuidSubId(AZ::Uuid guid, AZ::u32 subId, const AZStd::string& platform, productDependencyHandler handler)
+        {
+            return s_queryProductdependencyBySourceGuidSubId.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult, guid, subId, platform.c_str());
+        }
+
         bool AssetDatabaseConnection::QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler)
         {
             return s_queryMissingProductDependencyByProductId.BindAndQuery(*m_databaseConnection, handler, &GetMissingProductDependencyResult, productId);
@@ -2388,6 +2471,11 @@ namespace AzToolsFramework
         bool AssetDatabaseConnection::QueryDirectProductDependencies(AZ::s64 productID, productHandler handler)
         {
             return s_queryDirectProductdependencies.BindAndQuery(*m_databaseConnection, handler, &GetProductResultSimple, productID);
+        }
+
+        bool AssetDatabaseConnection::QueryDirectReverseProductDependenciesBySourceGuidSubId(AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubId, productHandler handler)
+        {
+            return s_queryDirectReverseProductdependenciesBySourceGuidSubId.BindAndQuery(*m_databaseConnection, handler, &GetProductResultSimple, dependencySourceGuid, dependencySubId);
         }
 
         bool AssetDatabaseConnection::QueryAllProductDependencies(AZ::s64 productID, productHandler handler)
@@ -2420,6 +2508,38 @@ namespace AzToolsFramework
         bool AssetDatabaseConnection::QueryFileByFileNameScanFolderID(const char* fileName, AZ::s64 scanFolderID, fileHandler handler)
         {
             return s_queryFileByFileNameScanfolderid.BindAndQuery(*m_databaseConnection, handler, &GetFileResult, scanFolderID, fileName);
+        }
+
+        void AssetDatabaseConnection::SetQueryLogging(bool enableLogging)
+        {
+            if (enableLogging)
+            {
+                if (!SQLite::SQLiteQueryLogBus::Handler::BusIsConnected())
+                {
+                    SQLite::SQLiteQueryLogBus::Handler::BusConnect();
+                }
+            }
+            else
+            {
+                if (SQLite::SQLiteQueryLogBus::Handler::BusIsConnected())
+                {
+                    SQLite::SQLiteQueryLogBus::Handler::BusDisconnect();
+                }
+            }
+        }
+
+        void AssetDatabaseConnection::LogQuery(const char* statement, const AZStd::string& params)
+        {
+            // Some builds, like dedicated server builds, compile out AZ_TracePrintf.
+            AZ_UNUSED(statement);
+            AZ_UNUSED(params);
+            AZ_TracePrintf("SQLiteQuery", "%s = Params %s\n", statement, params.c_str());
+        }
+
+        void AssetDatabaseConnection::LogResultId(AZ::s64 rowId)
+        {
+            AZ_UNUSED(rowId);
+            AZ_TracePrintf("SQLiteQuery", "Last Insert Row Id: %d\n", rowId);
         }
 
         bool AssetDatabaseConnection::QueryBuilderInfoTable(const BuilderInfoHandler& handler)

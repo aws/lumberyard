@@ -17,7 +17,8 @@ namespace Physics
 {
     namespace ReflectionUtils
     {
-        CollisionNotificationBusBehaviorHandler::CollisionNotificationBusBehaviorHandler() {
+        CollisionNotificationBusBehaviorHandler::CollisionNotificationBusBehaviorHandler()
+        {
             m_events.resize(FN_MAX);
             SetEvent(&CollisionNotificationBusBehaviorHandler::OnCollisionBeginDummy, "OnCollisionBegin");
             SetEvent(&CollisionNotificationBusBehaviorHandler::OnCollisionPersistDummy, "OnCollisionPersist");
@@ -56,6 +57,8 @@ namespace Physics
                     ;
 
                 behaviorContext->EBus<Physics::CollisionNotificationBus>("CollisionNotificationBus")
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                     ->Handler<CollisionNotificationBusBehaviorHandler>()
                     ;
             }

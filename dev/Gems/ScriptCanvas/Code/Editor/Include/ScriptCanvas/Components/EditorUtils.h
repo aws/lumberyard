@@ -32,6 +32,7 @@ namespace ScriptCanvasEditor
     {
     public:
         static ScriptCanvas::NodeTypeIdentifier ConstructNodeIdentifier(const GraphCanvas::GraphCanvasTreeItem* treeItem);
+        static AZStd::vector< ScriptCanvas::NodeTypeIdentifier > ConstructNodeIdentifiers(const GraphCanvas::GraphCanvasTreeItem* treeItem);
     };
     
     class GraphStatisticsHelper

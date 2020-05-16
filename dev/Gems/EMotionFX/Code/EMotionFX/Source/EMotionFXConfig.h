@@ -52,8 +52,4 @@ constexpr AZ::u64 InvalidIndex64 = 0xffffffffffffffff;
 constexpr AZ::u32 InvalidIndex32 = 0xffffffff;
 constexpr AZ::u16 InvalidIndex16 = 0xffff;
 constexpr AZ::u8 InvalidIndex8 = 0xff;
-#if defined(AZ_OS64)
-    constexpr size_t InvalidIndex = 0xffffffffffffffff;
-#else
-    constexpr size_t InvalidIndex = 0xffffffff;
-#endif
+constexpr size_t InvalidIndex = 0xffffffffffffffff;

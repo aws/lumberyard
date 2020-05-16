@@ -21,6 +21,7 @@
 #include <PhysX/MathConversion.h>
 #include <PhysX/Utils.h>
 #include <PhysX/SystemComponentBus.h>
+#include <PhysX/PhysXLocks.h>
 
 #include "PhysicsComponent.h"
 
@@ -179,11 +180,12 @@ namespace TouchBending
                 for (Physics::TouchBendingTriggerHandle* triggerHandle : m_triggerActors)
                 {
                     triggerHandle->m_spineTreeArchetype = nullptr;
-                    if (m_world)
+                    if (PxScene* pxScene = triggerHandle->m_staticTriggerActor->getScene())
                     {
-                        PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
+                        PHYSX_SCENE_WRITE_LOCK(pxScene);
                         pxScene->removeActor(*(triggerHandle->m_staticTriggerActor));
                     }
+
                     triggerHandle->m_staticTriggerActor->release();
 
                     if (triggerHandle->m_skeleton && !triggerHandle->m_isSkeletonOwnedByEngine)
@@ -224,6 +226,7 @@ namespace TouchBending
                 }
                 m_world->SetTriggerEventCallback(this);
                 PxScene* pxSceneForDominanceGroup = (PxScene*)m_world->GetNativePointer();
+                PHYSX_SCENE_WRITE_LOCK(pxSceneForDominanceGroup);
                 pxSceneForDominanceGroup->setDominanceGroupPair(0, 1, PxDominanceGroupPair(0, 1));
             }
 
@@ -263,7 +266,10 @@ namespace TouchBending
 
             //Add the body to the scene.
             PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
-            pxScene->addActor(*rigidStatic);
+            {
+                PHYSX_SCENE_WRITE_LOCK(pxScene);
+                pxScene->addActor(*rigidStatic);
+            }
 
             AZStd::lock_guard<AZStd::mutex> lock(m_triggerActorsLock);
             m_triggerActors.insert(retHandle);
@@ -301,9 +307,9 @@ namespace TouchBending
             AZ_Assert(skeletonHandle != nullptr, "There's no reason for skeletonHandle to be nullptr");
             PhysicalizedSkeleton* skeleton = static_cast<PhysicalizedSkeleton*>(skeletonHandle);
 
-            if (m_world)
+            if (PxScene* pxScene = skeleton->GetScene())
             {
-                PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
+                PHYSX_SCENE_WRITE_LOCK(pxScene);
                 skeleton->RemoveFromScene(*pxScene);
             }
 
@@ -322,6 +328,8 @@ namespace TouchBending
             Physics::JointPositions* jointPositions)
         {
             PhysicalizedSkeleton* skeleton = static_cast<PhysicalizedSkeleton*>(skeletonHandle);
+
+            PHYSX_SCENE_READ_LOCK(static_cast<physx::PxScene*>(m_world->GetNativePointer()));
             skeleton->ReadJointPositions(jointPositions);
         }
 
@@ -508,7 +516,6 @@ namespace TouchBending
                 m_triggerActorsWithSkeletonReadyToBeAddedToScene.clear();
             } //Unlock m_triggerActorsWithTreelock
 
-            PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
             for (Physics::TouchBendingTriggerHandle* triggerActor : triggerActorsWithSkeletons)
             {
                 const bool success = triggerActor->m_callback->OnPhysicalizedTouchBendingSkeleton(triggerActor->m_callbackPrivateData, triggerActor->m_skeleton);
@@ -647,9 +654,9 @@ namespace TouchBending
                 }
             }
 
-            if (m_world)
+            if (PxScene* pxScene = triggerHandle->m_staticTriggerActor->getScene())
             {
-                PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
+                PHYSX_SCENE_WRITE_LOCK(pxScene);
                 pxScene->removeActor(*(triggerHandle->m_staticTriggerActor));
             }
 

@@ -1,0 +1,12 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "system_ios_ios.cfg",
+            "outFile": "system_ios_ios.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

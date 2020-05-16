@@ -16,18 +16,18 @@ def build(bld):
         #==============================
         # Common
         #==============================
-        includes    = [ 'Include' ,
+        includes    = [ '.',
                         bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction'),
+                        'Include' ,
                         bld.Path('Gems/LmbrCentral/Code/include')
                         ],
         
         editor = dict(
             defines     = ['VISIBILITY_EDITOR', 'EDITOR_COMMON_IMPORTS'],
             use         = ['EditorCommon', 'EditorCore'],
-            includes    = ['Include',
+            includes    = ['.',
                            bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
+                           'Include',
                            bld.Path('Gems/LmbrCentral/Code/include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox'),

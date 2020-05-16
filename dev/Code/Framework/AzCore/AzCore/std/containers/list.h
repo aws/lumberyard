@@ -271,14 +271,12 @@ namespace AZStd
             insert(begin(), rhs.begin(), rhs.end());
         }
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE list(std::initializer_list<T> list)
             : m_numElements(0)
         {
             m_head.m_next = m_head.m_prev = &m_head;
             insert(begin(), list.begin(), list.end());
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         AZ_FORCE_INLINE ~list()
         {
@@ -419,12 +417,10 @@ namespace AZStd
             return iterator((--insertPos).m_node);
         }
 
-#if defined(AZ_HAS_INITIALIZERS_LIST)
         iterator insert(const_iterator insertPos, std::initializer_list<T> ilist)
         {
             return insert(insertPos, ilist.begin(), ilist.end());
         }
-#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         inline iterator insert(const_iterator insertPos, const_reference value)
         {

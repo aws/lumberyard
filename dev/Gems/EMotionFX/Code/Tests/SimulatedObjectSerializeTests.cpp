@@ -20,20 +20,7 @@
 
 namespace EMotionFX
 {
-    class SimulatedObjectSerializeTests
-        : public ActorFixture
-    {
-    public:
-        void SetUp()
-        {
-            ActorFixture::SetUp();
-        }
-
-        void TearDown()
-        {
-            ActorFixture::TearDown();
-        }
-    };
+    using SimulatedObjectSerializeTests = ActorFixture;
     
     TEST_F(SimulatedObjectSerializeTests, SerializeTest)
     {
@@ -67,7 +54,7 @@ namespace EMotionFX
         object->GetSimulatedJoint(0)->SetPinned(true);
 
         // Serialize it and deserialize it.
-        const AZStd::string serialized = SerializeSimulatedObjectSetup(m_actor);
+        const AZStd::string serialized = SerializeSimulatedObjectSetup(m_actor.get());
         AZStd::unique_ptr<SimulatedObjectSetup> loadedSetup(DeserializeSimulatedObjectSetup(serialized));
 
         // Verify some of the contents of the deserialized version.

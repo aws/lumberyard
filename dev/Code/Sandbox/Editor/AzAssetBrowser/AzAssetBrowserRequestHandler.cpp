@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
+#include <Editor/AzAssetBrowser/Preview/LegacyPreviewerFactory.h>
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/Utils.h>
@@ -46,6 +47,7 @@
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/AssetBrowser/Previewer/PreviewerBus.h>
 
 #include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
@@ -245,13 +247,18 @@ namespace AzAssetBrowserRequestHandlerPrivate
 }
 
 AzAssetBrowserRequestHandler::AzAssetBrowserRequestHandler()
+    : m_previewerFactory(aznew LegacyPreviewerFactory)
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
+    using namespace AzToolsFramework::AssetBrowser;
+
+    AssetBrowserInteractionNotificationBus::Handler::BusConnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorViewport);
+    AzToolsFramework::AssetBrowser::PreviewerRequestBus::Handler::BusConnect();
 }
 
 AzAssetBrowserRequestHandler::~AzAssetBrowserRequestHandler()
 {
+    AzToolsFramework::AssetBrowser::PreviewerRequestBus::Handler::BusDisconnect();
     AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect();
 }
@@ -351,7 +358,6 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         {
             AzToolsFramework::SliceUtilities::CreateSliceAssetContextMenu(menu, fullFilePath);
 
-            const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productEntry = products[0];
             // SliceUtilities is in AZToolsFramework and can't open viewports, so add the relationship view open command here.
             if (!products.empty())
             {
@@ -492,6 +498,15 @@ void AzAssetBrowserRequestHandler::Drop(QDropEvent* event, AzQtComponents::DragA
     }
 }
 
+const AzToolsFramework::AssetBrowser::PreviewerFactory* AzAssetBrowserRequestHandler::GetPreviewerFactory(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const
+{
+    if (m_previewerFactory->IsEntrySupported(entry))
+    {
+        return m_previewerFactory.get();
+    }
+    return nullptr;
+}
+
 void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
 {
     using namespace AzToolsFramework;
@@ -522,26 +537,6 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
                 }
             });
     }
-#if defined(AZ_PLATFORM_WINDOWS)
-    else if (assetGroup.compare("Texture", Qt::CaseInsensitive) == 0)
-    {
-        // Open the texture in RC editor
-        // note that as a special case, DDS files cannot be "opened" with RC editor as they are just copied as-is into the cache.
-        if (!AZStd::wildcard_match("*.dds", fullSourceFileName))
-        {
-            openers.push_back(
-            {
-                "Lumberyard_Resource_Compiler",
-                "Open in Resource Compiler...",
-                QIcon(),
-            [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
-                {
-                    gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
-                }
-            });
-        }
-    }
-#endif //  AZ_PLATFORM_WINDOWS
 
     if (!openers.empty())
     {

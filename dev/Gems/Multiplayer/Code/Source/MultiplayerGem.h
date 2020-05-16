@@ -23,6 +23,7 @@ namespace GridMate
 namespace Multiplayer
 {
     class GameLiftListener;
+    class GameLiftMatchmakingComponent;
 
     class MultiplayerModule
         : public CryHooksModule
@@ -79,6 +80,8 @@ namespace Multiplayer
         GameLiftListener* m_gameLiftListener;
 
         static int s_NetsecEnabled;
-        static int s_NetsecVerifyClient;        
+        static int s_NetsecVerifyClient;
+
+        GameLiftMatchmakingComponent* m_matchmakingComponent;
     };
 } // namespace Multiplayer

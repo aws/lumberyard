@@ -45,18 +45,19 @@ namespace ScriptCanvas
             genericInfo->Reflect(serializeContext);
 
             serializeContext->Class<GraphData>()
-                ->Version(3, &GraphData::VersionConverter)
+                ->Version(4, &GraphData::VersionConverter)
                 ->EventHandler<GraphDataEventHandler>()
                 ->Field("m_nodes", &GraphData::m_nodes)
                 ->Field("m_connections", &GraphData::m_connections)
                 ->Field("m_dependentAssets", &GraphData::m_dependentAssets)
+                ->Field("m_scriptEventAssets", &GraphData::m_scriptEventAssets)
                 ;
         }
     }
 
     bool GraphData::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootElement)
     {
-        enum 
+        enum
         {
             FixedDependentAssetContainerType = 3
         };
@@ -134,11 +135,13 @@ namespace ScriptCanvas
         , m_connections(AZStd::move(other.m_connections))
         , m_endpointMap(AZStd::move(other.m_endpointMap))
         , m_dependentAssets(AZStd::move(other.m_dependentAssets))
+        , m_scriptEventAssets(AZStd::move(other.m_scriptEventAssets))
     {
         other.m_nodes.clear();
         other.m_connections.clear();
         other.m_endpointMap.clear();
         other.m_dependentAssets.clear();
+        other.m_scriptEventAssets.clear();
     }
 
     GraphData& GraphData::operator=(GraphData&& other)
@@ -149,10 +152,12 @@ namespace ScriptCanvas
             m_connections = AZStd::move(other.m_connections);
             m_endpointMap = AZStd::move(other.m_endpointMap);
             m_dependentAssets = AZStd::move(other.m_dependentAssets);
+            m_scriptEventAssets = AZStd::move(other.m_scriptEventAssets);
             other.m_nodes.clear();
             other.m_connections.clear();
             other.m_endpointMap.clear();
             other.m_dependentAssets.clear();
+            other.m_scriptEventAssets.clear();
         }
 
         return *this;
@@ -190,10 +195,12 @@ namespace ScriptCanvas
         m_nodes.clear();
         m_connections.clear();
         m_dependentAssets.clear();
+        m_scriptEventAssets.clear();
     }
 
     void GraphData::LoadDependentAssets()
     {
+        // For version conversion purposes only
         for (auto& assetData : m_dependentAssets)
         {
             AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset(assetData.first, assetData.second.second, true, nullptr, true);
@@ -201,6 +208,13 @@ namespace ScriptCanvas
             {
                 AZ_Error("Script Canvas", false, "Error loading dependent asset with ID: %s", asset.GetId().ToString<AZStd::string>().c_str());
             }
+
+            if (asset.GetType() == azrtti_typeid<ScriptEvents::ScriptEventsAsset>())
+            {
+                m_scriptEventAssets.push_back(AZStd::make_pair(assetData.second.first, asset));
+            }
         }
+
+        m_dependentAssets.clear();
     }
 }

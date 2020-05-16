@@ -85,9 +85,9 @@ namespace Vegetation
         }
     }
 
-    AZStd::function<float(float)> DistributionFilterConfig::GetFilterFunc()
+    AZStd::function<float(float, const GradientSignal::GradientSampleParams&)> DistributionFilterConfig::GetFilterFunc()
     {
-        return [this](float sampleValue)
+        return [this](float sampleValue, const GradientSignal::GradientSampleParams& /*params*/)
         {
             return ((sampleValue >= m_thresholdMin) && (sampleValue <= m_thresholdMax)) ? 1.0f : 0.0f;
         };

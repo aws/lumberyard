@@ -115,6 +115,8 @@ namespace GraphCanvas
         void PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration) override;
         void PanSceneTo(QPointF scenePoint, AZStd::chrono::milliseconds duration) override;
 
+        void RefreshView() override;
+
         void HideToastNotification(const ToastId& toastId) override;
 
         ToastId ShowToastNotification(const ToastConfiguration& toastConfiguration) override;

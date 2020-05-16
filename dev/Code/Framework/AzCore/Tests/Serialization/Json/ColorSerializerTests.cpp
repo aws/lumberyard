@@ -739,7 +739,7 @@ namespace JsonSerializationTests
         for (rapidjson::SizeType i = 0; i < 4; ++i)
         {
             ASSERT_TRUE(document[i].IsDouble());
-            EXPECT_FLOAT_EQ(document[i].GetDouble(), values[i]);
+            EXPECT_DOUBLE_EQ(document[i].GetDouble(), values[i]);
         }
     }
 
@@ -775,7 +775,7 @@ namespace JsonSerializationTests
         for (rapidjson::SizeType i = 0; i < 3; ++i)
         {
             ASSERT_TRUE(document[i].IsDouble());
-            EXPECT_FLOAT_EQ(document[i].GetDouble(), values[i]);
+            EXPECT_DOUBLE_EQ(document[i].GetDouble(), values[i]);
         }
     }
 
@@ -798,7 +798,7 @@ namespace JsonSerializationTests
         for (rapidjson::SizeType i = 0; i < 4; ++i)
         {
             ASSERT_TRUE(document[i].IsDouble());
-            EXPECT_FLOAT_EQ(document[i].GetDouble(), values[i]);
+            EXPECT_DOUBLE_EQ(document[i].GetDouble(), values[i]);
         }
     }
 
@@ -821,7 +821,7 @@ namespace JsonSerializationTests
         for (rapidjson::SizeType i = 0; i < 3; ++i)
         {
             ASSERT_TRUE(document[i].IsDouble());
-            EXPECT_FLOAT_EQ(document[i].GetDouble(), values[i]);
+            EXPECT_DOUBLE_EQ(document[i].GetDouble(), values[i]);
         }
     }
 } // namespace JsonSerializationTests

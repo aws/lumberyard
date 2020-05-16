@@ -16,7 +16,7 @@
 
 #include "StdAfx.h"
 #include "ScriptHelpDialog.h"
-#include "Util/BoostPythonHelpers.h"
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 #include <ui_ScriptHelpDialog.h>
 
 #include <QVBoxLayout>
@@ -207,16 +207,21 @@ void ScriptHelpModel::Reload()
 {
     beginResetModel();
 
-    CAutoRegisterPythonCommandHelper* pCurrent = CAutoRegisterPythonCommandHelper::s_pFirst;
-    while (pCurrent)
+    using namespace AzToolsFramework;
+    EditorPythonConsoleInterface* editorPythonConsoleInterface = AZ::Interface<EditorPythonConsoleInterface>::Get();
+    if (editorPythonConsoleInterface)
     {
-        Item item;
-        item.command = pCurrent->m_name;
-        item.module = QString(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name);
-        item.description = pCurrent->m_description;
-        item.example = pCurrent->m_example;
-        m_items.push_back(item);
-        pCurrent = pCurrent->m_pNext;
+        EditorPythonConsoleInterface::GlobalFunctionCollection globalFunctionCollection;
+        editorPythonConsoleInterface->GetGlobalFunctionList(globalFunctionCollection);
+        m_items.reserve(globalFunctionCollection.size());
+        for (const EditorPythonConsoleInterface::GlobalFunction& globalFunction : globalFunctionCollection)
+        {
+            Item item;
+            item.command = globalFunction.m_functionName.data();
+            item.module = globalFunction.m_moduleName.data();
+            item.description = globalFunction.m_description.data();
+            m_items.push_back(item);
+        }
     }
 
     endResetModel();

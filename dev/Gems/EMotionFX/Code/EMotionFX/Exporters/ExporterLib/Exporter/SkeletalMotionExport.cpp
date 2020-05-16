@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Math/Transform.h>
 #include "Exporter.h"
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/SkeletalSubMotion.h>
@@ -17,6 +18,7 @@
 #include <EMotionFX/Source/KeyTrackLinear.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/Actor.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 
 // file format structures
@@ -31,10 +33,16 @@ namespace ExporterLib
         // get the animation start pose and the bind pose transformation information
         AZ::PackedVector3f                  posePosition        = AZ::PackedVector3f(subMotion->GetPosePos());
         MCore::Compressed16BitQuaternion    poseRotation        = subMotion->GetCompressedPoseRot();
-        AZ::PackedVector3f                  poseScale           = AZ::PackedVector3f(subMotion->GetPoseScale());
         AZ::PackedVector3f                  bindPosePosition    = AZ::PackedVector3f(subMotion->GetBindPosePos());
         MCore::Compressed16BitQuaternion    bindPoseRotation    = subMotion->GetCompressedBindPoseRot();
-        AZ::PackedVector3f                  bindPoseScale       = AZ::PackedVector3f(subMotion->GetBindPoseScale());
+
+        #ifndef EMFX_SCALE_DISABLED
+            AZ::PackedVector3f                  bindPoseScale       = AZ::PackedVector3f(subMotion->GetBindPoseScale());
+            AZ::PackedVector3f                  poseScale           = AZ::PackedVector3f(subMotion->GetPoseScale());
+        #else
+            AZ::PackedVector3f                  bindPoseScale       = AZ::PackedVector3f(1.0f, 1.0f, 1.0f);
+            AZ::PackedVector3f                  poseScale           = AZ::PackedVector3f(1.0f, 1.0f, 1.0f);
+        #endif
 
         EMotionFX::FileFormat::Motion_SkeletalSubMotion subMotionChunk;
 
@@ -49,14 +57,20 @@ namespace ExporterLib
         CopyVector(subMotionChunk.mBindPoseScale, bindPoseScale);
 
         // create an uncompressed version of the fixed and compressed rotation quaternions
-        MCore::Quaternion uncompressedPoseRot       = MCore::Compressed16BitQuaternion(subMotionChunk.mPoseRot.mX, subMotionChunk.mPoseRot.mY, subMotionChunk.mPoseRot.mZ, subMotionChunk.mPoseRot.mW).ToQuaternion();
-        MCore::Quaternion uncompressedBindPoseRot   = MCore::Compressed16BitQuaternion(subMotionChunk.mBindPoseRot.mX, subMotionChunk.mBindPoseRot.mY, subMotionChunk.mBindPoseRot.mZ, subMotionChunk.mBindPoseRot.mW).ToQuaternion();
+        AZ::Quaternion uncompressedPoseRot       = MCore::Compressed16BitQuaternion(subMotionChunk.mPoseRot.mX, subMotionChunk.mPoseRot.mY, subMotionChunk.mPoseRot.mZ, subMotionChunk.mPoseRot.mW).ToQuaternion();
+        AZ::Quaternion uncompressedBindPoseRot   = MCore::Compressed16BitQuaternion(subMotionChunk.mBindPoseRot.mX, subMotionChunk.mBindPoseRot.mY, subMotionChunk.mBindPoseRot.mZ, subMotionChunk.mBindPoseRot.mW).ToQuaternion();
 
         // check which components are animated
-        bool translationAnimated    = subMotion->GetPosTrack() == nullptr ? false : subMotion->GetPosTrack()->CheckIfIsAnimated(AZ::PackedVector3f(posePosition), MCore::Math::epsilon);
+        bool translationAnimated    = subMotion->GetPosTrack() == nullptr ? false : subMotion->GetPosTrack()->CheckIfIsAnimated(AZ::Vector3(posePosition), MCore::Math::epsilon);
         bool rotationAnimated       = subMotion->GetRotTrack() == nullptr ? false : subMotion->GetRotTrack()->CheckIfIsAnimated(uncompressedPoseRot, 0.0001f);
-        bool scaleAnimated          = subMotion->GetScaleTrack() == nullptr ? false : subMotion->GetScaleTrack()->CheckIfIsAnimated(AZ::PackedVector3f(poseScale), 0.0001f);
-        bool isUniformScaled        = subMotion->CheckIfIsUniformScaled();
+
+        #ifndef EMFX_SCALE_DISABLED
+            bool scaleAnimated          = subMotion->GetScaleTrack() == nullptr ? false : subMotion->GetScaleTrack()->CheckIfIsAnimated(subMotion->GetPoseScale(), 0.0001f);
+            bool isUniformScaled        = subMotion->CheckIfIsUniformScaled();
+        #else
+            bool scaleAnimated          = false;
+            bool isUniformScaled        = true;
+        #endif
 
         // get number of keyframes
         uint32 numPosKeys, numRotKeys, numScaleKeys;
@@ -76,20 +90,15 @@ namespace ExporterLib
         {
             numRotKeys     = 0;
         }
+
+        numScaleKeys = 0;
         if (scaleAnimated)
         {
-            numScaleKeys  = subMotion->GetScaleTrack()->GetNumKeys();
+            EMFX_SCALECODE
+            (
+                numScaleKeys  = subMotion->GetScaleTrack()->GetNumKeys();
+            )
         }
-        else
-        {
-            numScaleKeys   = 0;
-        }
-
-        // remove scale rotation as well when scaling is not animated at all! the static pose scales have to be uniform then though (like with animated scale)
-        //if (scaleAnimated == false && poseScale.CheckIfIsUniform() && bindPoseScale.CheckIfIsUniform())
-        //{
-        //numScaleRotKeys = 0;
-        //}
 
         subMotionChunk.mNumPosKeys      = numPosKeys;
         subMotionChunk.mNumRotKeys      = numRotKeys;
@@ -97,10 +106,10 @@ namespace ExporterLib
 
         MCore::LogDetailedInfo("- SubMotion: %s", subMotion->GetName());
         MCore::LogDetailedInfo("   + Pose Translation: x=%f y=%f z=%f", subMotionChunk.mPosePos.mX, subMotionChunk.mPosePos.mY, subMotionChunk.mPosePos.mZ);
-        MCore::LogDetailedInfo("   + Pose Rotation:    x=%f y=%f z=%f w=%f", uncompressedPoseRot.x, uncompressedPoseRot.y, uncompressedPoseRot.z, uncompressedPoseRot.w);
+        MCore::LogDetailedInfo("   + Pose Rotation:    x=%f y=%f z=%f w=%f", static_cast<float>(uncompressedPoseRot.GetX()), static_cast<float>(uncompressedPoseRot.GetY()), static_cast<float>(uncompressedPoseRot.GetZ()), static_cast<float>(uncompressedPoseRot.GetW()));
         MCore::LogDetailedInfo("   + Pose Scale:       x=%f y=%f z=%f", subMotionChunk.mPoseScale.mX, subMotionChunk.mPoseScale.mY, subMotionChunk.mPoseScale.mZ);
         MCore::LogDetailedInfo("   + Bind Pose Translation: x=%f y=%f z=%f", subMotionChunk.mBindPosePos.mX, subMotionChunk.mBindPosePos.mY, subMotionChunk.mBindPosePos.mZ);
-        MCore::LogDetailedInfo("   + Bind Pose Rotation:    x=%f y=%f z=%f w=%f", uncompressedBindPoseRot.x, uncompressedBindPoseRot.y, uncompressedBindPoseRot.z, uncompressedBindPoseRot.w);
+        MCore::LogDetailedInfo("   + Bind Pose Rotation:    x=%f y=%f z=%f w=%f", static_cast<float>(uncompressedBindPoseRot.GetX()), static_cast<float>(uncompressedBindPoseRot.GetY()), static_cast<float>(uncompressedBindPoseRot.GetZ()), static_cast<float>(uncompressedBindPoseRot.GetW()));
         MCore::LogDetailedInfo("   + Bind Pose Scale:       x=%f y=%f z=%f", subMotionChunk.mBindPoseScale.mX, subMotionChunk.mBindPoseScale.mY, subMotionChunk.mBindPoseScale.mZ);
         if (translationAnimated)
         {
@@ -169,36 +178,23 @@ namespace ExporterLib
         }
 
         // iterate through all scale keyframes
-        for (k = 0; k < numScaleKeys; ++k)
-        {
-            // create and fill the keyframe
-            EMotionFX::FileFormat::Motion_Vector3Key keyframe;
-            keyframe.mTime = subMotion->GetScaleTrack()->GetKey(k)->GetTime();
-            CopyVector(keyframe.mValue, AZ::PackedVector3f(subMotion->GetScaleTrack()->GetKey(k)->GetValue()));
-
-            //LOG("       + Key#%i: Time=%f, Scale(%f, %f, %f)", k, keyframe.mTime, keyframe.mValue.mX, keyframe.mValue.mY, keyframe.mValue.mZ);
-
-            // convert endian and write the keyframe
-            ConvertFloat(&keyframe.mTime, targetEndianType);
-            ConvertFileVector3(&keyframe.mValue, targetEndianType);
-            file->Write(&keyframe, sizeof(EMotionFX::FileFormat::Motion_Vector3Key));
-        }
-        /*
-            // iterate through all scale rotation keyframes
-            for (k=0; k<numScaleRotKeys; ++k)
+        EMFX_SCALECODE
+        (
+            for (k = 0; k < numScaleKeys; ++k)
             {
                 // create and fill the keyframe
-                EMotionFX::FileFormat::Motion_16BitQuaternionKey keyframe;
-                keyframe.mTime = 0.0f;//subMotion->GetScaleRotTrack()->GetKey(k)->GetTime();
-                //Copy16BitQuaternion( keyframe.mValue, subMotion->GetScaleRotTrack()->GetKey(k)->GetStorageTypeValue() );
+                EMotionFX::FileFormat::Motion_Vector3Key keyframe;
+                keyframe.mTime = subMotion->GetScaleTrack()->GetKey(k)->GetTime();
+                CopyVector(keyframe.mValue, AZ::PackedVector3f(subMotion->GetScaleTrack()->GetKey(k)->GetValue()));
 
-                //LOG("       + Key#%i: Time=%f, ScaleRot(%i, %i, %i, %i)", k, keyframe.mTime, keyframe.mValue.mX, keyframe.mValue.mY, keyframe.mValue.mZ, keyframe.mValue.mW);
+                //LOG("       + Key#%i: Time=%f, Scale(%f, %f, %f)", k, keyframe.mTime, keyframe.mValue.mX, keyframe.mValue.mY, keyframe.mValue.mZ);
 
                 // convert endian and write the keyframe
-                ConvertFloat( &keyframe.mTime, targetEndianType );
-                ConvertFile16BitQuaternion( &keyframe.mValue, targetEndianType );
-                file->Write( &keyframe, sizeof(EMotionFX::FileFormat::Motion_16BitQuaternionKey) );
-            }*/
+                ConvertFloat(&keyframe.mTime, targetEndianType);
+                ConvertFileVector3(&keyframe.mValue, targetEndianType);
+                file->Write(&keyframe, sizeof(EMotionFX::FileFormat::Motion_Vector3Key));
+            }
+        )
     }
 
 
@@ -225,17 +221,22 @@ namespace ExporterLib
             // TODO: this is not most efficient! this is already done at another time in code when saving the submotion, remove duplicated code
             AZ::Vector3                         posePosition    = subMotion->GetPosePos();
             MCore::Compressed16BitQuaternion    poseRotation    = subMotion->GetCompressedPoseRot();
-            AZ::Vector3                         poseScale       = subMotion->GetPoseScale();
-            //Vector3                       bindPosePosition= subMotion->GetBindPosePos();
-            //Compressed16BitQuaternion bindPoseRotation= subMotion->GetCompressedBindPoseRot();
-            //Vector3                       bindPoseScale   = subMotion->GetBindPoseScale();
-            //Compressed16BitQuaternion bindPoseScaleRot= subMotion->GetCompressedBindPoseScaleRot();
+
+            #ifndef EMFX_SCALE_DISABLED
+                AZ::Vector3 poseScale = subMotion->GetPoseScale();
+            #else
+                AZ::Vector3 poseScale = AZ::Vector3::CreateOne();
+            #endif
 
             // check which components are animated
-            bool translationAnimated    = subMotion->GetPosTrack() == nullptr ? false : subMotion->GetPosTrack()->CheckIfIsAnimated(AZ::PackedVector3f(posePosition), MCore::Math::epsilon);
+            bool translationAnimated    = subMotion->GetPosTrack() == nullptr ? false : subMotion->GetPosTrack()->CheckIfIsAnimated(posePosition, MCore::Math::epsilon);
             bool rotationAnimated       = subMotion->GetRotTrack() == nullptr ? false : subMotion->GetRotTrack()->CheckIfIsAnimated(poseRotation.ToQuaternion(), 0.0001f);
-            bool scaleAnimated          = subMotion->GetScaleTrack() == nullptr ? false : subMotion->GetScaleTrack()->CheckIfIsAnimated(AZ::PackedVector3f(poseScale), 0.0001f);
-            //bool isUniformScaled      = subMotion->IsUniformScaled();
+
+            #ifndef EMFX_SCALE_DISABLED
+                bool scaleAnimated = subMotion->GetScaleTrack() == nullptr ? false : subMotion->GetScaleTrack()->CheckIfIsAnimated(poseScale, 0.0001f);
+            #else
+                bool scaleAnimated = false;
+            #endif
 
             // get number of keyframes
             uint32 numPosKeys, numRotKeys, numScaleKeys;
@@ -255,13 +256,14 @@ namespace ExporterLib
             {
                 numRotKeys     = 0;
             }
+
+            numScaleKeys = 0;
             if (scaleAnimated)
             {
-                numScaleKeys  = subMotion->GetScaleTrack()->GetNumKeys();
-            }
-            else
-            {
-                numScaleKeys   = 0;
+                EMFX_SCALECODE
+                (
+                    numScaleKeys  = subMotion->GetScaleTrack()->GetNumKeys();
+                )
             }
 
             chunkHeader.mSizeInBytes    += numPosKeys * sizeof(EMotionFX::FileFormat::Motion_Vector3Key);
@@ -365,159 +367,22 @@ namespace ExporterLib
             }
         }
 
-        //#ifndef EMFX_SCALE_DISABLED
-        // optimize the scale keytrack
-        if (optimizeScale && subMotion->GetScaleTrack())
-        {
-            uint32 numScaleKeys     = subMotion->GetScaleTrack()->GetNumKeys();
-            uint32 numScaleRemoved  = subMotion->GetScaleTrack()->Optimize(maxScaleError);
-            if (numScaleRemoved > 0)
+        EMFX_SCALECODE
+        (
+            if (optimizeScale && subMotion->GetScaleTrack())
             {
-                MCore::LogInfo("   + Scale    keys removed = %d out of %d, which is a reduction of %.2f%%", numScaleRemoved, numScaleKeys, (numScaleRemoved / (float)numScaleKeys) * 100.0f);
-            }
-        }
-        /*
-            // optimize the scale rotation keytrack
-            if (optimizeScaleRot && subMotion->GetScaleRotTrack())
-            {
-                uint32 numScaleRotKeys      = subMotion->GetScaleRotTrack()->GetNumKeys();
-                uint32 numScaleRotRemoved   = subMotion->GetScaleRotTrack()->Optimize( maxScaleRotError );
-                if (numScaleRotRemoved > 0) LogInfo("   + ScaleRot keys removed = %d out of %d, which is a reduction of %.2f%%", numScaleRotRemoved, numScaleRotKeys, (numScaleRotRemoved / (float)numScaleRotKeys) * 100.0f);
-            }*/
-        //#endif
-    }
-
-
-    void FixTransformation(const MCore::Array<MCore::Matrix>& deltaMatrices, uint32 nodeIndex, uint32 parentNodeIndex, const AZ::PackedVector3f& inPosition, const MCore::Quaternion& inRotation, const AZ::PackedVector3f& inScale, AZ::PackedVector3f* outPosition, MCore::Quaternion* outRotation, AZ::PackedVector3f* outScale)
-    {
-        // calculate the local space matrix for the current keyframe
-        MCore::Matrix localTM;
-        localTM.InitFromPosRotScale(AZ::Vector3(inPosition), inRotation, AZ::Vector3(inScale));
-
-        // conform process
-        MCore::Matrix newLocalTM;
-        if (parentNodeIndex == MCORE_INVALIDINDEX32)
-        {
-            newLocalTM = deltaMatrices[nodeIndex] * localTM;
-        }
-        else
-        {
-            newLocalTM = deltaMatrices[nodeIndex] * localTM * deltaMatrices[parentNodeIndex].Inversed();
-        }
-
-        // decompose the new local transformation matrix again
-        //MatrixDecomposer decomposer;
-        //decomposer.InitFromMatrix( newLocalTM );
-        AZ::Vector3 op, os;
-        newLocalTM.DecomposeQRGramSchmidt(op, *outRotation, os);
-        *outPosition = AZ::PackedVector3f(op);
-        *outScale = AZ::PackedVector3f(os);
-
-        // set the conformed transformation back to the keyframe
-        //*outPosition  = decomposer.GetTranslation();
-        //*outRotation  = decomposer.GetRotation();
-        //*outScale     = decomposer.GetScale();
-    }
-
-
-    void ConformSkeletalMotion(EMotionFX::SkeletalMotion* motion, EMotionFX::Actor* actor, const MCore::Array<MCore::Matrix>& deltaMatrices)
-    {
-        // get the number of submotions and iterate through them
-        const uint32 numSubMotions = motion->GetNumSubMotions();
-        for (uint32 i = 0; i < numSubMotions; ++i)
-        {
-            EMotionFX::SkeletalSubMotion* subMotion = motion->GetSubMotion(i);
-
-            // get the node to which this submotion belongs to and skip if it fails
-            EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(subMotion->GetName());
-            if (node == nullptr)
-            {
-                MCore::LogWarning("Could not map submotion '%s' to a node.", subMotion->GetName());
-                continue;
-            }
-
-            // get the node and parent indices
-            const uint32 nodeIndex  = node->GetNodeIndex();
-            const uint32 parentIndex = node->GetParentIndex();
-
-            // fix the bind pose transformation
-            AZ::PackedVector3f  bindPosePosition    = AZ::PackedVector3f(subMotion->GetBindPosePos());
-            MCore::Quaternion   bindPoseRotation    = subMotion->GetBindPoseRot();
-            AZ::PackedVector3f  bindPoseScale       = AZ::PackedVector3f(subMotion->GetBindPoseScale());
-            //Quaternion    bindPoseScaleRot    = subMotion->GetBindPoseScaleRot();
-
-            FixTransformation(deltaMatrices, nodeIndex, parentIndex,
-                bindPosePosition, bindPoseRotation, bindPoseScale,
-                &bindPosePosition, &bindPoseRotation, &bindPoseScale);
-
-            subMotion->SetBindPosePos(AZ::Vector3(bindPosePosition));
-            subMotion->SetBindPoseRot(bindPoseRotation);
-            subMotion->SetBindPoseScale(AZ::Vector3(bindPoseScale));
-            //subMotion->SetBindPoseScaleRot( bindPoseScaleRot );
-
-
-            // fix the pose transformation
-            AZ::PackedVector3f  posePosition        = AZ::PackedVector3f(subMotion->GetPosePos());
-            MCore::Quaternion   poseRotation        = subMotion->GetPoseRot();
-            AZ::PackedVector3f  poseScale           = AZ::PackedVector3f(subMotion->GetPoseScale());
-            //Quaternion    poseScaleRot    = subMotion->GetPoseScaleRot();
-
-            FixTransformation(deltaMatrices, nodeIndex, parentIndex,
-                posePosition, poseRotation, poseScale,
-                &posePosition, &poseRotation, &poseScale);
-
-            subMotion->SetPosePos(AZ::Vector3(posePosition));
-            subMotion->SetPoseRot(poseRotation);
-            subMotion->SetPoseScale(AZ::Vector3(poseScale));
-
-
-            // get the number of keyframes in the keytracks
-            const uint32 numPosKeys         = subMotion->GetPosTrack()      ? subMotion->GetPosTrack()->GetNumKeys()        : 0;
-            const uint32 numRotKeys         = subMotion->GetRotTrack()      ? subMotion->GetRotTrack()->GetNumKeys()        : 0;
-            const uint32 numScaleKeys       = subMotion->GetScaleTrack()    ? subMotion->GetScaleTrack()->GetNumKeys()      : 0;
-
-            // check if the keytracks hold the same amount of keyframes
-            if ((numPosKeys == numRotKeys &&
-                 numPosKeys == numScaleKeys) == false)
-            {
-                MCore::LogWarning("Conforming skeletal motion failed. Number of keys in pos, rot, scale and scalerot keytracks are not equal.");
-                return;
-            }
-
-            // iterate through all keyframes and conform the transformations
-            for (uint32 keyNr = 0; keyNr < numPosKeys; ++keyNr)
-            {
-                EMotionFX::KeyFrame<AZ::PackedVector3f, AZ::PackedVector3f>*                posKey      = subMotion->GetPosTrack()->GetKey(keyNr);
-                EMotionFX::KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>*   rotKey      = subMotion->GetRotTrack()->GetKey(keyNr);
-                EMotionFX::KeyFrame<AZ::PackedVector3f, AZ::PackedVector3f>*                scaleKey    = subMotion->GetScaleTrack()->GetKey(keyNr);
-
-                // check if the current keyframe index has the same time value for all keyframes
-                if ((MCore::Compare<float>::CheckIfIsClose(posKey->GetTime(), rotKey->GetTime(), MCore::Math::epsilon) &&
-                     MCore::Compare<float>::CheckIfIsClose(posKey->GetTime(), scaleKey->GetTime(), MCore::Math::epsilon)) == false)
+                uint32 numScaleKeys     = subMotion->GetScaleTrack()->GetNumKeys();
+                uint32 numScaleRemoved  = subMotion->GetScaleTrack()->Optimize(maxScaleError);
+                if (numScaleRemoved > 0)
                 {
-                    MCore::LogWarning("Conforming skeletal motion failed. Times of keyframes for node '%s' are not equal.", subMotion->GetName());
-                    //LOG("PosTime=%f, RotTime=%f, ScaleTime=%f, ScaleRotTime=%f", posKeyGetTime(), rotKeyGetTime(), scaleKeyGetTime(), scaleRotKeyGetTime());
+                    MCore::LogInfo("   + Scale    keys removed = %d out of %d, which is a reduction of %.2f%%", numScaleRemoved, numScaleKeys, (numScaleRemoved / (float)numScaleKeys) * 100.0f);
                 }
-
-                // get the keyframe components
-                AZ::PackedVector3f  position    = posKey->GetValue();
-                MCore::Quaternion   rotation    = rotKey->GetValue();
-                AZ::PackedVector3f  scale       = scaleKey->GetValue();
-
-                FixTransformation(deltaMatrices, nodeIndex, parentIndex,
-                    position, rotation, scale,
-                    &position, &rotation, &scale);
-
-                // set the conformed transformation back to the keyframe
-                posKey->SetValue(position);
-                rotKey->SetValue(rotation);
-                scaleKey->SetValue(scale);
             }
-        }
+        )
     }
 
 
-    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const AZ::Vector3& position, const MCore::Quaternion& rotation, const AZ::Vector3& scale)
+    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const AZ::Vector3& position, const AZ::Quaternion& rotation, const AZ::Vector3& scale)
     {
         if (subMotion->GetPosTrack() == nullptr)
         {
@@ -529,24 +394,31 @@ namespace ExporterLib
             subMotion->CreateRotTrack();
         }
 
-        if (subMotion->GetScaleTrack() == nullptr)
-        {
-            subMotion->CreateScaleTrack();
-        }
+        EMFX_SCALECODE
+        (
+            if (subMotion->GetScaleTrack() == nullptr)
+            {
+                subMotion->CreateScaleTrack();
+            }
+        )
 
         // position
-        subMotion->GetPosTrack()->AddKeySorted(time, AZ::PackedVector3f(position));
+        subMotion->GetPosTrack()->AddKeySorted(time, position);
 
         // rotation
-        MCore::Quaternion fixedRot = rotation;
-        if (fixedRot.w < 0.0f)
+        AZ::Quaternion fixedRot = rotation;
+        if (fixedRot.GetW() < 0.0f)
         {
             fixedRot = -fixedRot;
         }
-        subMotion->GetRotTrack()->AddKeySorted(time, fixedRot.Normalized());
+        fixedRot.NormalizeExact();
+        subMotion->GetRotTrack()->AddKeySorted(time, fixedRot);
 
         // scale
-        subMotion->GetScaleTrack()->AddKeySorted(time, AZ::PackedVector3f(scale));
+        EMFX_SCALECODE
+        (
+            subMotion->GetScaleTrack()->AddKeySorted(time, scale);
+        )
     }
 
 

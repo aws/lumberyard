@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/Asset/AssetManager.h>
 
 #include <AzFramework/Entity/GameEntityContextBus.h>
 
@@ -24,7 +25,7 @@
 #ifdef LMBR_CENTRAL_EDITOR
 #include "EditorSpawnerComponent.h"
 #endif
-
+ 
 namespace LmbrCentral
 {
     // BehaviorContext SpawnerComponentNotificationBus forwarder
@@ -140,12 +141,10 @@ namespace LmbrCentral
                 ->Event("DestroySpawnedSlice", &SpawnerComponentRequestBus::Events::DestroySpawnedSlice)
                 ->Event("DestroyAllSpawnedSlices", &SpawnerComponentRequestBus::Events::DestroyAllSpawnedSlices)
                 ->Event("GetCurrentlySpawnedSlices", &SpawnerComponentRequestBus::Events::GetCurrentlySpawnedSlices)
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
                 ->Event("HasAnyCurrentlySpawnedSlices", &SpawnerComponentRequestBus::Events::HasAnyCurrentlySpawnedSlices)
                 ->Event("GetCurrentEntitiesFromSpawnedSlice", &SpawnerComponentRequestBus::Events::GetCurrentEntitiesFromSpawnedSlice)
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
                 ->Event("GetAllCurrentlySpawnedEntities", &SpawnerComponentRequestBus::Events::GetAllCurrentlySpawnedEntities)
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
+                ->Event("SetDynamicSlice", &SpawnerComponentRequestBus::Events::SetDynamicSliceByAssetId)
                 ;
 
             behaviorContext->EBus<SpawnerComponentNotificationBus>("SpawnerComponentNotificationBus")
@@ -203,6 +202,7 @@ namespace LmbrCentral
         SpawnerComponentRequestBus::Handler::BusDisconnect();
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect();
         AZ::EntityBus::MultiHandler::BusDisconnect();
+        AZ::Data::AssetBus::Handler::BusDisconnect();
 
         if (m_destroyOnDeactivate)
         {
@@ -239,9 +239,25 @@ namespace LmbrCentral
     }
 
     //=========================================================================
-    void SpawnerComponent::SetDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& dynamicSliceAsset)
+    void SpawnerComponent::SetDynamicSlice(const AZ::Data::Asset<AZ::DynamicSliceAsset>& dynamicSliceAsset)
     {
         m_sliceAsset = dynamicSliceAsset;
+    }
+
+    //=========================================================================
+    void SpawnerComponent::SetDynamicSliceByAssetId(AZ::Data::AssetId& assetId)
+    {
+        auto sliceAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, AZ::AzTypeInfo<AZ::DynamicSliceAsset>::Uuid());
+
+        if (sliceAsset.IsReady())
+        {
+            m_sliceAsset = sliceAsset;
+        }
+        else
+        {
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            AZ::Data::AssetBus::Handler::BusConnect(assetId);
+        }
     }
 
     //=========================================================================
@@ -516,4 +532,13 @@ namespace LmbrCentral
             }
         }
     }
+
+
+    void SpawnerComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        AZ::Data::AssetBus::Handler::BusDisconnect();
+
+        m_sliceAsset = asset;  
+    }
+
 } // namespace LmbrCentral

@@ -95,12 +95,12 @@ namespace AzToolsFramework
     ////////////////////////////////////////////////////////////////////////////////////////////
     // AssetFileDebugInfoList
     ////////////////////////////////////////////////////////////////////////////////////////////
-
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetFileDebugInfoList::GetAllProductDependenciesDebug(
         const AZ::Data::AssetId& assetId,
         const AzFramework::PlatformId& platformIndex,
         AssetFileDebugInfoList* debugList,
-        AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet)
+        AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet,
+        const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
     {
         using namespace AzToolsFramework::AssetCatalog;
 
@@ -122,7 +122,9 @@ namespace AzToolsFramework
         }
 
         AZStd::vector<AZ::Data::ProductDependency> entries = currentDependenciesResult.TakeValue();
-        AZStd::vector<AZ::Data::ProductDependency> allFoundProducts = entries;
+        AZStd::vector<AZ::Data::ProductDependency> allFoundProducts;
+
+        allFoundProducts.reserve(allFoundProducts.size());
 
         cyclicalDependencySet->insert(assetId);
 
@@ -132,6 +134,13 @@ namespace AzToolsFramework
             {
                 continue;
             }
+
+            if (exclusionList.find(productDependency.m_assetId) != exclusionList.end())
+            {
+                continue;
+            }
+
+            allFoundProducts.push_back(productDependency);
 
             // Cyclical Dependency detection
             if (cyclicalDependencySet->find(productDependency.m_assetId) != cyclicalDependencySet->end())
@@ -146,7 +155,7 @@ namespace AzToolsFramework
             debugList->m_fileDebugInfoList[productDependency.m_assetId].m_filesThatReferenceMe.insert(assetId);
 
             // Recurse
-            auto recursiveResult = GetAllProductDependenciesDebug(productDependency.m_assetId, platformIndex, debugList, cyclicalDependencySet);
+            auto recursiveResult = GetAllProductDependenciesDebug(productDependency.m_assetId, platformIndex, debugList, cyclicalDependencySet, exclusionList);
             if (!recursiveResult.IsSuccess())
             {
                 return recursiveResult;

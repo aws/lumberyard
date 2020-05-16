@@ -119,6 +119,7 @@ enum ERenderCommand
     eRC_ParseShader,
     eRC_SetShaderQuality,
     eRC_UpdateShaderItem,
+    eRC_RefreshShaderResourceConstants,
     eRC_ReleaseDeviceTexture,
     eRC_FlashRender,
     eRC_FlashRenderLockless,
@@ -200,6 +201,10 @@ enum ERenderCommand
     eRC_SetRendererCVar,
     eRC_SetColorOp,
     eRC_SetSrgbWrite,
+
+    eRC_InitializeVideoRenderer,
+    eRC_CleanupVideoRenderer,
+    eRC_DrawVideoRenderer,
 
     eRC_AzFunction
 };
@@ -374,6 +379,8 @@ struct SRenderThread
         return *(int*)&m_nFlush != 0;
     }
 
+    static constexpr size_t RenderThreadStackSize = 128ull * 1024ull;
+
     void StartRenderThread()
     {
         if (m_pThread != NULL)
@@ -388,12 +395,7 @@ struct SRenderThread
             renderThreadPriority = sched_get_priority_max(thread_policy) - 2;
 #endif
             
-#if defined(_DEBUG) || !defined(__OPTIMIZE__) || !defined(__OPTIMIZE_SIZE__)
-            // Note that we need bigger stack for debug routines
-            m_pThread->Start(AFFINITY_MASK_RENDERTHREAD, RENDER_THREAD_NAME, renderThreadPriority, 128 * 1024);
-#else
-            m_pThread->Start(AFFINITY_MASK_RENDERTHREAD, RENDER_THREAD_NAME, renderThreadPriority, 72 * 1024);
-#endif
+            m_pThread->Start(AFFINITY_MASK_RENDERTHREAD, RENDER_THREAD_NAME, renderThreadPriority, RenderThreadStackSize);
             m_pThread->m_started.Wait();
         }
     }
@@ -402,7 +404,7 @@ struct SRenderThread
     {
         if (m_pThreadLoading != NULL)
         {
-            m_pThreadLoading->Start(AFFINITY_MASK_USERTHREADS, RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY + 1, 72 * 1024);
+            m_pThreadLoading->Start(AFFINITY_MASK_USERTHREADS, RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY + 1, RenderThreadStackSize);
             m_pThreadLoading->m_started.Wait();
         }
     }
@@ -669,6 +671,7 @@ struct SRenderThread
     void    RC_ParseShader (CShader* pSH, uint64 nMaskGen, uint32 flags, CShaderResources* pRes);
     void        RC_SetShaderQuality(EShaderType eST, EShaderQuality eSQ);
     void    RC_UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
+    void    RC_RefreshShaderResourceConstants(SShaderItem* pShaderItem, IMaterial* pMaterial);
     void    RC_SetCamera();
     void    RC_RenderScene(int nFlags, RenderFunc pRenderFunc);
     void    RC_BeginFrame();
@@ -722,6 +725,10 @@ struct SRenderThread
     void        RC_RenderDebug(bool bRenderStats = true);
     void    RC_PushSkinningPoolId(uint32);
     void        RC_ReleaseRemappedBoneIndices(IRenderMesh* pRenderMesh, uint32 guid);
+
+    void RC_InitializeVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer);
+    void RC_CleanupVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer);
+    void RC_DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments);
 
     using RenderCommandCB = AZStd::function<void()>;
     void EnqueueRenderCommand(RenderCommandCB command);

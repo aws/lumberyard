@@ -16,7 +16,7 @@
 
 #include "api.h"
 
-#include <QtWidgets/QtWidgets>
+#include <QtWidgets>
 #include <QVBoxLayout>
 #include <QVector>
 #include <QMap>
@@ -182,6 +182,7 @@ private:
     QLabel* m_defaultLabel;
     QWidget* m_widget;
     CAttributeView* m_attributeView;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     AttributeList m_children;
     CallbackList m_callbacks;
     QString m_attributePath;
@@ -197,6 +198,7 @@ private:
     AttributeItemLogicCallback m_uiLogicUpdateCallback;
 
     QMultiMap<QString, QPair<QString, QString> > m_VariableRelations;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITORUI_QT_ATTRIBUTEITEM_H

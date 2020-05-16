@@ -47,8 +47,11 @@
 namespace PhysX
 {
     SystemComponent::PhysXSDKGlobals SystemComponent::m_physxSDKGlobals;
-    static const char* defaultWorldName = "PhysX Default";
-    static const char* defaultConfigurationPath = "default.physxconfiguration";
+    static const char* const DefaultWorldName = "PhysX Default";
+    static const char* const ProjectPhysicsConfigurationPath = "project.physicsconfiguration";
+    static const char* const ProjectPhysXConfigurationPath = "project.physxconfiguration";
+    // This config is undergoing deprecation, replaced by above configs.
+    static const char* const DefaultConfigurationPath = "default.physxconfiguration";
 
     bool SystemComponent::VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement)
@@ -110,7 +113,7 @@ namespace PhysX
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
         D6JointLimitConfiguration::Reflect(context);
-        Pipeline::MeshAssetCookedData::Reflect(context);
+        Pipeline::MeshAssetData::Reflect(context);
 
         PhysX::ReflectionUtils::ReflectPhysXOnlyApi(context);
 
@@ -151,6 +154,19 @@ namespace PhysX
                 ->Field("CollisionGroups", &Configuration::m_collisionGroups)
                 ->Field("EditorConfiguration", &Configuration::m_editorConfiguration)
                 ->Field("MaterialLibrary", &Configuration::m_materialLibrary)
+            ;
+
+            serialize->Class<PhysXConfiguration>()
+                ->Version(1)
+                ->Field("Settings", &PhysXConfiguration::m_settings)
+                ->Field("EditorConfiguration", &PhysXConfiguration::m_editorConfiguration)
+            ;
+
+            serialize->Class<PhysicsConfiguration>()
+                ->Version(1)
+                ->Field("WorldConfiguration", &PhysicsConfiguration::m_defaultWorldConfiguration)
+                ->Field("CollisionConfiguration", &PhysicsConfiguration::m_collisionConfiguration)
+                ->Field("MaterialLibrary", &PhysicsConfiguration::m_defaultMaterialLibrary)
             ;
 
             serialize->Class<SystemComponent, AZ::Component>()
@@ -264,7 +280,7 @@ namespace PhysX
 
     SystemComponent::SystemComponent()
         : m_enabled(true)
-        , m_configurationPath(defaultConfigurationPath)
+        , m_configurationPath(DefaultConfigurationPath)
     {
     }
 
@@ -282,7 +298,9 @@ namespace PhysX
 
         // create PhysX basis
         m_physxSDKGlobals.m_foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_physxSDKGlobals.m_azAllocator, m_physxSDKGlobals.m_azErrorCallback);
+#ifdef AZ_PHYSICS_DEBUG_ENABLED
         m_physxSDKGlobals.m_pvd = PxCreatePvd(*m_physxSDKGlobals.m_foundation);
+#endif
         m_physxSDKGlobals.m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_physxSDKGlobals.m_foundation, physx::PxTolerancesScale(), true, m_physxSDKGlobals.m_pvd);
         PxInitExtensions(*m_physxSDKGlobals.m_physics, m_physxSDKGlobals.m_pvd);
 
@@ -307,8 +325,11 @@ namespace PhysX
         m_physxSDKGlobals.m_physics->release();
         m_physxSDKGlobals.m_physics = nullptr;
 
-        m_physxSDKGlobals.m_pvd->release();
-        m_physxSDKGlobals.m_pvd = nullptr;
+        if (m_physxSDKGlobals.m_pvd)
+        {
+            m_physxSDKGlobals.m_pvd->release();
+            m_physxSDKGlobals.m_pvd = nullptr;
+        }
 
         m_physxSDKGlobals.m_foundation->release();
         m_physxSDKGlobals.m_foundation = nullptr;
@@ -378,6 +399,8 @@ namespace PhysX
 #else
         m_cpuDispatcher = AzPhysXCpuDispatcherCreate();
 #endif
+        
+        PxSetProfilerCallback(&m_pxAzProfilerCallback);
 
         // Set Physics API constants to PhysX-friendly values
         Physics::DefaultRigidBodyConfiguration::m_computeInertiaTensor = true;
@@ -388,10 +411,11 @@ namespace PhysX
 
     bool SystemComponent::ConnectToPvd()
     {
+#ifdef AZ_PHYSICS_DEBUG_ENABLED
         DisconnectFromPvd();
 
         // Select current PhysX Pvd debug type
-        switch (m_configuration.m_settings.m_pvdTransportType)
+        switch (m_physxConfiguration.m_settings.m_pvdTransportType)
         {
             case PhysX::Settings::PvdTransportType::File:
             {
@@ -399,12 +423,12 @@ namespace PhysX
                 AZ::u64 currentTimeStamp = AZStd::GetTimeUTCMilliSecond() / 1000;
 
                 // Strip any filename used as .pxd2 forced (only .pvd or .px2 valid for PVD version 3.2016.12.21494747)
-                AzFramework::StringFunc::Path::StripExtension(m_configuration.m_settings.m_pvdFileName);
+                AzFramework::StringFunc::Path::StripExtension(m_physxConfiguration.m_settings.m_pvdFileName);
 
                 // Create output filename (format: <TimeStamp>-<FileName>.pxd2)
                 AZStd::string filename = AZStd::to_string(currentTimeStamp);
                 AzFramework::StringFunc::Append(filename, "-");
-                AzFramework::StringFunc::Append(filename, m_configuration.m_settings.m_pvdFileName.c_str());
+                AzFramework::StringFunc::Append(filename, m_physxConfiguration.m_settings.m_pvdFileName.c_str());
                 AzFramework::StringFunc::Append(filename, ".pxd2");
 
                 AZStd::string rootDirectory;
@@ -426,15 +450,15 @@ namespace PhysX
             {
                 m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate
                     (
-                    m_configuration.m_settings.m_pvdHost.c_str(),
-                    m_configuration.m_settings.m_pvdPort,
-                    m_configuration.m_settings.m_pvdTimeoutInMilliseconds
+                    m_physxConfiguration.m_settings.m_pvdHost.c_str(),
+                    m_physxConfiguration.m_settings.m_pvdPort,
+                    m_physxConfiguration.m_settings.m_pvdTimeoutInMilliseconds
                     );
                 break;
             }
             default:
             {
-                AZ_Error("PhysX", false, "Invalid PhysX Visual Debugger (PVD) Debug Type used %d.", m_configuration.m_settings.m_pvdTransportType);
+                AZ_Error("PhysX", false, "Invalid PhysX Visual Debugger (PVD) Debug Type used %d.", m_physxConfiguration.m_settings.m_pvdTransportType);
                 break;
             }
         }
@@ -454,10 +478,14 @@ namespace PhysX
         }
 
         return pvdConnectionSuccessful;
+#else
+        return false;
+#endif
     }
 
     void SystemComponent::DisconnectFromPvd()
     {
+#ifdef AZ_PHYSICS_DEBUG_ENABLED
         if (m_physxSDKGlobals.m_pvd)
         {
             m_physxSDKGlobals.m_pvd->disconnect();
@@ -469,11 +497,12 @@ namespace PhysX
             m_pvdTransport = nullptr;
             AZ_Printf("PhysX", "Successfully disconnected from the PhysX Visual Debugger (PVD).\n");
         }
+#endif
     }
 
     void SystemComponent::UpdateColliderProximityVisualization(bool enabled, const AZ::Vector3& cameraPosition, float radius)
     {
-        Settings::ColliderProximityVisualization& colliderProximityVisualization = m_configuration.m_settings.m_colliderProximityVisualization;
+        Settings::ColliderProximityVisualization& colliderProximityVisualization = m_physxConfiguration.m_settings.m_colliderProximityVisualization;
         colliderProximityVisualization.m_enabled = enabled;
         colliderProximityVisualization.m_cameraPosition = cameraPosition;
         colliderProximityVisualization.m_radius = radius;
@@ -499,6 +528,7 @@ namespace PhysX
         PhysX::ConfigurationRequestBus::Handler::BusDisconnect();
         PhysX::SystemRequestsBus::Handler::BusDisconnect();
         Physics::SystemRequestBus::Handler::BusDisconnect();
+        AZ::Data::AssetBus::Handler::BusDisconnect();
 
         // Reset material manager
         m_materialManager.ReleaseAllMaterials();
@@ -528,6 +558,10 @@ namespace PhysX
     {
         AZ_Assert(m_cpuDispatcher, "PhysX CPU dispatcher was not created");
 
+#ifdef PHYSX_ENABLE_MULTI_THREADING
+        sceneDesc.flags |= physx::PxSceneFlag::eREQUIRE_RW_LOCK;
+#endif
+
         sceneDesc.cpuDispatcher = m_cpuDispatcher;
         return m_physxSDKGlobals.m_physics->createScene(sceneDesc);
     }
@@ -550,14 +584,12 @@ namespace PhysX
 
     bool SystemComponent::CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount)
     {
-        physx::PxDefaultMemoryOutputStream memoryStream;
+        AZStd::vector<AZ::u8> physxData;
 
-        if (Utils::CookConvexToPxOutputStream(vertices, vertexCount, memoryStream))
+        if (CookConvexMeshToMemory(vertices, vertexCount, physxData))
         {
-            Pipeline::MeshAssetCookedData assetFileContent(memoryStream);
-            assetFileContent.m_isConvexMesh = true;
-
-            return Utils::WriteCookedMeshToFile(filePath, assetFileContent);
+            return Utils::WriteCookedMeshToFile(filePath, physxData, 
+                Physics::CookedMeshShapeConfiguration::MeshType::Convex);
         }
 
         AZ_Error("PhysX", false, "CookConvexMeshToFile. Convex cooking failed for %s.", filePath);
@@ -566,15 +598,13 @@ namespace PhysX
 
     bool SystemComponent::CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
         const AZ::u32* indices, AZ::u32 indexCount)
-    {
-        physx::PxDefaultMemoryOutputStream memoryStream;
+    {   
+        AZStd::vector<AZ::u8> physxData;
 
-        if (Utils::CookTriangleMeshToToPxOutputStream(vertices, vertexCount, indices, indexCount, memoryStream))
+        if (CookTriangleMeshToMemory(vertices, vertexCount, indices, indexCount, physxData))
         {
-            Pipeline::MeshAssetCookedData assetFileContent(memoryStream);
-            assetFileContent.m_isConvexMesh = false;
-
-            return Utils::WriteCookedMeshToFile(filePath, assetFileContent);
+            return Utils::WriteCookedMeshToFile(filePath, physxData,
+                Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh);
         }
 
         AZ_Error("PhysX", false, "CookTriangleMeshToFile. Mesh cooking failed for %s.", filePath);
@@ -623,13 +653,60 @@ namespace PhysX
 
     AZStd::shared_ptr<Physics::World> SystemComponent::CreateWorld(AZ::Crc32 id)
     {
-        return CreateWorldCustom(id, m_configuration.m_worldConfiguration);
+        return CreateWorldCustom(id, m_physicsConfiguration.m_defaultWorldConfiguration);
     }
 
     AZStd::shared_ptr<Physics::World> SystemComponent::CreateWorldCustom(AZ::Crc32 id, const Physics::WorldConfiguration& settings)
     {
         AZStd::shared_ptr<World> physxWorld = AZStd::make_shared<World>(id, settings);
         return physxWorld;
+    }
+
+    void SystemComponent::SetDefaultWorldConfiguration(const Physics::WorldConfiguration& worldConfiguration)
+    {
+        const bool gravityChanged =
+            m_physicsConfiguration.m_defaultWorldConfiguration.m_gravity != worldConfiguration.m_gravity;
+        const bool maxTimeStepChanged =
+            m_physicsConfiguration.m_defaultWorldConfiguration.m_maxTimeStep != worldConfiguration.m_maxTimeStep;
+        const bool fixedTimeStepChanged =
+            m_physicsConfiguration.m_defaultWorldConfiguration.m_fixedTimeStep != worldConfiguration.m_fixedTimeStep;
+
+        m_physicsConfiguration.m_defaultWorldConfiguration = worldConfiguration;
+
+        if (gravityChanged)
+        {
+            Physics::WorldRequestBus::Broadcast(
+                &Physics::WorldRequests::SetGravity, m_physicsConfiguration.m_defaultWorldConfiguration.m_gravity);
+        }
+
+        if (maxTimeStepChanged)
+        {
+            Physics::WorldRequestBus::Broadcast(
+                &Physics::WorldRequests::SetMaxDeltaTime, m_physicsConfiguration.m_defaultWorldConfiguration.m_maxTimeStep);
+        }
+
+        if (fixedTimeStepChanged)
+        {
+            Physics::WorldRequestBus::Broadcast(
+                &Physics::WorldRequests::SetFixedDeltaTime, m_physicsConfiguration.m_defaultWorldConfiguration.m_fixedTimeStep);
+        }
+
+        SaveConfiguration();
+    }
+
+    void SystemComponent::SetDefaultMaterialLibrary(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary)
+    {
+        if (m_physicsConfiguration.m_defaultMaterialLibrary == materialLibrary)
+        {
+            return;
+        }
+        m_physicsConfiguration.m_defaultMaterialLibrary = materialLibrary;
+        LoadDefaultMaterialLibrary();
+#ifdef PHYSX_EDITOR
+        PhysX::ConfigurationNotificationBus::Broadcast(
+            &PhysX::ConfigurationNotifications::OnDefaultMaterialLibraryChanged, materialLibrary.GetId());
+#endif
+        SaveConfiguration();
     }
 
     AZStd::unique_ptr<Physics::RigidBodyStatic> SystemComponent::CreateStaticRigidBody(const Physics::WorldBodyConfiguration& configuration)
@@ -680,6 +757,19 @@ namespace PhysX
     AZStd::shared_ptr<Physics::Material> SystemComponent::GetDefaultMaterial()
     {
         return m_materialManager.GetDefaultMaterial();
+    }
+
+    void SystemComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        if (m_physicsConfiguration.m_defaultMaterialLibrary == asset)
+        {
+            m_physicsConfiguration.m_defaultMaterialLibrary = asset;
+
+#ifdef PHYSX_EDITOR
+            PhysX::ConfigurationNotificationBus::Broadcast(
+                &PhysX::ConfigurationNotifications::OnDefaultMaterialLibraryChanged, asset.GetId());
+#endif
+        }
     }
 
     AZStd::vector<AZ::TypeId> SystemComponent::GetSupportedJointTypes()
@@ -733,9 +823,9 @@ namespace PhysX
         }
     }
 
-    Configuration SystemComponent::CreateDefaultConfiguration() const
+    Physics::CollisionConfiguration SystemComponent::CreateDefaultCollisionConfiguration() const
     {
-        Configuration configuration;
+        Physics::CollisionConfiguration configuration;
         configuration.m_collisionLayers.SetName(Physics::CollisionLayer::Default, "Default");
 
         configuration.m_collisionGroups.CreateGroup("All", Physics::CollisionGroup::All, Physics::CollisionGroups::Id(), true);
@@ -751,40 +841,41 @@ namespace PhysX
 
     void SystemComponent::LoadConfiguration()
     {
-        m_configuration = Configuration();
-
-        // Load configuration from asset cache
-        AZStd::string assetRoot, fullpath;
-
-        // Retrieve the asset root from fileIO as first option since it's available in some cases before GetAssetRoot()
-        if (AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance())
+        // Initialize collision configuration with default one.
+        m_physicsConfiguration.m_collisionConfiguration = CreateDefaultCollisionConfiguration();
+        
+        // Try loading deprecated configs first.
         {
-            const char* aliasPath = fileIO->GetAlias("@assets@");
-            if (aliasPath && aliasPath[0] != '\0')
+            bool loaded = AZ::Utils::LoadObjectFromFileInPlace<Configuration>(DefaultConfigurationPath, m_configuration);
+
+            if (loaded)
             {
-                assetRoot.assign(aliasPath);
+                m_physicsConfiguration.m_defaultWorldConfiguration = m_configuration.m_worldConfiguration;
+                m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers = m_configuration.m_collisionLayers;
+                m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups = m_configuration.m_collisionGroups;
+                m_physxConfiguration.m_editorConfiguration = m_configuration.m_editorConfiguration;
+                m_physxConfiguration.m_settings = m_configuration.m_settings;
+                m_physicsConfiguration.m_defaultMaterialLibrary = m_configuration.m_materialLibrary;
+                PhysX::ConfigurationNotificationBus::Broadcast(&PhysX::ConfigurationNotificationBus::Events::OnPhysXConfigurationLoaded);
             }
         }
 
-        // If there is no asset root, retrieve it from GetAssetRoot()
-        if (assetRoot.empty())
+        // Load PhysX configuration.
         {
-            EBUS_EVENT_RESULT(assetRoot, AzFramework::ApplicationRequests::Bus, GetAssetRoot);
-        }
-        
-        AZStd::string fullPath;
-        AzFramework::StringFunc::Path::Join(assetRoot.c_str(), m_configurationPath.c_str(), fullPath);
+            bool loaded = AZ::Utils::LoadObjectFromFileInPlace<PhysXConfiguration>(ProjectPhysXConfigurationPath, m_physxConfiguration);
 
-        // Load configuration
-        bool loaded = AZ::Utils::LoadObjectFromFileInPlace<Configuration>(fullPath.c_str(), m_configuration);
-        if (loaded)
-        {
-            PhysX::ConfigurationNotificationBus::Broadcast(&PhysX::ConfigurationNotificationBus::Events::OnConfigurationLoaded);
+            if (loaded)
+            {
+                PhysX::ConfigurationNotificationBus::Broadcast(&PhysX::ConfigurationNotificationBus::Events::OnPhysXConfigurationLoaded);
+            }
         }
-        else
+
+        // Load Physics configuration.
         {
-            SetConfiguration(CreateDefaultConfiguration());
+            AZ::Utils::LoadObjectFromFileInPlace<PhysicsConfiguration>(ProjectPhysicsConfigurationPath, m_physicsConfiguration);
         }
+
+        SaveConfiguration();
     }
 
     void SystemComponent::SaveConfiguration()
@@ -793,37 +884,60 @@ namespace PhysX
 #ifdef PHYSX_EDITOR
         auto assetRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
 
-        AZStd::string fullPath;
-        AzFramework::StringFunc::Path::Join(assetRoot, m_configurationPath.c_str(), fullPath);
-
-        bool saved = AZ::Utils::SaveObjectToFile<Configuration>(fullPath.c_str(), AZ::DataStream::ST_XML, &m_configuration);
-        AZ_Warning("PhysXSystemComponent", saved, "Failed to save PhysX configuration");
-        if (saved)
+        if (!assetRoot)
         {
-            PhysX::ConfigurationNotificationBus::Broadcast(
-                &PhysX::ConfigurationNotificationBus::Events::OnConfigurationRefreshed, m_configuration);
+            return;
+        }
+
+        // Save PhysX configuration.
+        {
+            AZStd::string fullPath;
+            AzFramework::StringFunc::Path::Join(assetRoot, ProjectPhysXConfigurationPath, fullPath);
+
+            bool saved = AZ::Utils::SaveObjectToFile<PhysXConfiguration>(fullPath.c_str(), AZ::DataStream::ST_XML,
+                                                                         &m_physxConfiguration);
+            AZ_Warning("PhysXSystemComponent", saved, "Failed to save PhysX configuration");
+            if (saved)
+            {
+                PhysX::ConfigurationNotificationBus::Broadcast(
+                    &PhysX::ConfigurationNotificationBus::Events::OnPhysXConfigurationRefreshed, m_physxConfiguration);
+            }
+        }
+
+        // Save physics configuration.
+        {
+            AZStd::string fullPath;
+            AzFramework::StringFunc::Path::Join(
+                assetRoot, ProjectPhysicsConfigurationPath, fullPath);
+
+            bool saved = AZ::Utils::SaveObjectToFile<PhysicsConfiguration>(
+                fullPath.c_str(), AZ::DataStream::ST_XML, &m_physicsConfiguration);
+            AZ_Warning("PhysXSystemComponent", saved, "Failed to save physics configuration");
         }
 #endif
     }
 
     void SystemComponent::CheckoutConfiguration()
     {
-        // Checkout the configuration file so we can write to it later on
+        // Checkout the configuration files so we can write to it later on
 #ifdef PHYSX_EDITOR
         using AzToolsFramework::SourceControlFileInfo;
         using AzToolsFramework::SourceControlCommandBus;
+        
+        const auto assetRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
 
-        auto assetRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
-
-        AZStd::string fullPath;
-        AzFramework::StringFunc::Path::Join(assetRoot, m_configurationPath.c_str(), fullPath);
-
-        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEdit,
-            fullPath.c_str(), true,
-            [fullPath, this](bool /*success*/, const AzToolsFramework::SourceControlFileInfo& info)
+        for (const auto path : {DefaultConfigurationPath, ProjectPhysicsConfigurationPath, ProjectPhysXConfigurationPath})
         {
-            // File is checked out
-        });
+            AZStd::string fullPath;
+            AzFramework::StringFunc::Path::Join(assetRoot, path, fullPath);
+            
+            AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEdit,
+                fullPath.c_str(), true,
+                [](bool /*success*/, const AzToolsFramework::SourceControlFileInfo& info)
+            {
+                // File is checked out
+            });            
+        }
 #endif
     }
 
@@ -877,42 +991,54 @@ namespace PhysX
 
     const Configuration& SystemComponent::GetConfiguration()
     {
+        m_configuration.m_worldConfiguration = m_physicsConfiguration.m_defaultWorldConfiguration;
+        m_configuration.m_collisionLayers = m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers;
+        m_configuration.m_collisionGroups = m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups;
+        m_configuration.m_editorConfiguration = m_physxConfiguration.m_editorConfiguration;
+        m_configuration.m_settings = m_physxConfiguration.m_settings;
+        m_configuration.m_materialLibrary = m_physicsConfiguration.m_defaultMaterialLibrary;
+
         return m_configuration;
     }
 
     void SystemComponent::SetConfiguration(const Configuration& configuration)
     {
+        SetDefaultWorldConfiguration(configuration.m_worldConfiguration);
+        SetDefaultMaterialLibrary(configuration.m_materialLibrary);
+
+        Physics::CollisionConfiguration collisionConfiguration;
+        collisionConfiguration.m_collisionGroups = configuration.m_collisionGroups;
+        collisionConfiguration.m_collisionLayers = configuration.m_collisionLayers;
+        SetCollisionConfiguration(collisionConfiguration);
+
+        PhysXConfiguration physxConfiguration;
+        physxConfiguration.m_settings = configuration.m_settings;
+        physxConfiguration.m_editorConfiguration = configuration.m_editorConfiguration;
+        SetPhysXConfiguration(physxConfiguration);
+    }
+
+    void SystemComponent::SetPhysXConfiguration(const PhysXConfiguration& configuration)
+    {
+        m_physxConfiguration = configuration;
 #ifdef PHYSX_EDITOR
-        const bool defaultMaterialLibraryChanged =
-            m_configuration.m_materialLibrary.GetId() != configuration.m_materialLibrary.GetId();
-
-        if (defaultMaterialLibraryChanged)
-        {
-            PhysX::ConfigurationNotificationBus::Broadcast(
-                &PhysX::ConfigurationNotifications::OnDefaultMaterialLibraryChanged, configuration.m_materialLibrary.GetId());
-
-            OnEditorConfigurationChanged();
-        }
+        OnEditorConfigurationChanged();
 #endif
-
-        const bool gravityChanged =
-            m_configuration.m_worldConfiguration.m_gravity != configuration.m_worldConfiguration.m_gravity;
-
-        m_configuration = configuration;
-        LoadDefaultMaterialLibrary();
-
-        if (gravityChanged)
-        {
-            Physics::WorldRequestBus::Broadcast(
-                &Physics::WorldRequests::SetGravity, m_configuration.m_worldConfiguration.m_gravity);
-        }
-
         SaveConfiguration();
+    }
+
+    const PhysXConfiguration& SystemComponent::GetPhysXConfiguration()
+    {
+        return m_physxConfiguration;
+    }
+
+    const Physics::WorldConfiguration& SystemComponent::GetDefaultWorldConfiguration()
+    {
+        return m_physicsConfiguration.m_defaultWorldConfiguration;
     }
 
     const AZ::Data::Asset<Physics::MaterialLibraryAsset>* SystemComponent::GetDefaultMaterialLibraryAssetPtr()
     {
-        return &m_configuration.m_materialLibrary;
+        return &m_physicsConfiguration.m_defaultMaterialLibrary;
     }
 
     void SystemComponent::OnCrySystemInitialized(ISystem&, const SSystemInitParams&)
@@ -932,17 +1058,68 @@ namespace PhysX
 
     Physics::CollisionLayer SystemComponent::GetCollisionLayerByName(const AZStd::string& layerName)
     {
-        return m_configuration.m_collisionLayers.GetLayer(layerName);
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers.GetLayer(layerName);
+    }
+
+    AZStd::string SystemComponent::GetCollisionLayerName(const Physics::CollisionLayer& layer)
+    {
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers.GetName(layer);
+    }
+
+    bool SystemComponent::TryGetCollisionLayerByName(const AZStd::string& layerName, Physics::CollisionLayer& layer)
+    {
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers.TryGetLayer(layerName, layer);
     }
 
     Physics::CollisionGroup SystemComponent::GetCollisionGroupByName(const AZStd::string& groupName)
     {
-        return m_configuration.m_collisionGroups.FindGroupByName(groupName);
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups.FindGroupByName(groupName);
+    }
+
+    bool SystemComponent::TryGetCollisionGroupByName(const AZStd::string& groupName, Physics::CollisionGroup& group)
+    {
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups.TryFindGroupByName(groupName, group);
+    }
+
+    AZStd::string SystemComponent::GetCollisionGroupName(const Physics::CollisionGroup& collisionGroup)
+    {
+        AZStd::string groupName;
+        for (const auto& group : m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups.GetPresets())
+        {
+            if (group.m_group.GetMask() == collisionGroup.GetMask())
+            {
+                groupName = group.m_name;
+                break;
+            }
+        }
+        return groupName;
     }
 
     Physics::CollisionGroup SystemComponent::GetCollisionGroupById(const Physics::CollisionGroups::Id& groupId)
     {
-        return m_configuration.m_collisionGroups.FindGroupById(groupId);
+        return m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups.FindGroupById(groupId);
+    }
+
+    void SystemComponent::SetCollisionLayerName(int index, const AZStd::string& layerName)
+    {
+        m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers.SetName(index, layerName);
+    }
+
+    void SystemComponent::CreateCollisionGroup(const AZStd::string& groupName, const Physics::CollisionGroup& group)
+    {
+        m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups.CreateGroup(groupName, group);
+    }
+
+    void SystemComponent::SetCollisionConfiguration(const Physics::CollisionConfiguration& collisionConfiguration)
+    {
+        m_physicsConfiguration.m_collisionConfiguration = collisionConfiguration;
+
+        SaveConfiguration();
+    }
+
+    Physics::CollisionConfiguration SystemComponent::GetCollisionConfiguration()
+    {
+        return m_physicsConfiguration.m_collisionConfiguration;
     }
 
     physx::PxFilterData SystemComponent::CreateFilterData(const Physics::CollisionLayer& layer, const Physics::CollisionGroup& group)
@@ -996,7 +1173,7 @@ namespace PhysX
     bool SystemComponent::LoadDefaultMaterialLibrary()
     {
         AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary 
-            = m_configuration.m_materialLibrary;
+            = m_physicsConfiguration.m_defaultMaterialLibrary;
 
         if (!materialLibrary.GetId().IsValid())
         {
@@ -1005,8 +1182,18 @@ namespace PhysX
             return false;
         }
 
+        const bool queueLoadData = true;
+        const AZ::Data::AssetFilterCB assetLoadFilterCB = nullptr;
+        const bool loadBlocking = true;
         materialLibrary = AZ::Data::AssetManager::Instance().GetAsset<Physics::MaterialLibraryAsset>(
-            materialLibrary.GetId(), true, nullptr, true);
+            materialLibrary.GetId(), queueLoadData, assetLoadFilterCB, loadBlocking);
+
+        // Listen for material library asset modification events
+        if (!AZ::Data::AssetBus::Handler::BusIsConnectedId(materialLibrary.GetId()))
+        {
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            AZ::Data::AssetBus::Handler::BusConnect(materialLibrary.GetId());
+        }
 
         AZ_Warning("PhysX", (materialLibrary.GetData() != nullptr),
             "LoadDefaultMaterialLibrary: Default Material Library asset data is invalid.");
@@ -1092,7 +1279,7 @@ namespace PhysX
         }
 
         // Set the slots from the mesh asset
-        materialSelection.SetMaterialSlots(meshAsset->GetMaterialSlots());
+        materialSelection.SetMaterialSlots(meshAsset->m_assetData.m_surfaceNames);
 
         if (!assetConfiguration.m_useMaterialsFromAsset)
         {
@@ -1100,18 +1287,18 @@ namespace PhysX
         }
 
         const Physics::MaterialLibraryAsset* materialLibrary = materialSelection.GetMaterialLibraryAssetData();
-        const AZStd::vector<Physics::MaterialConfiguration>& meshMaterials = meshAsset->GetMaterialsData();
+        const AZStd::vector<AZStd::string>& meshMaterialNames = meshAsset->m_assetData.m_materialNames;
 
         // Update material IDs in the selection for each slot
         int slotIndex = 0;
-        for (const Physics::MaterialConfiguration& meshMaterial : meshMaterials)
+        for (const AZStd::string& meshMaterialName : meshMaterialNames)
         {
             Physics::MaterialFromAssetConfiguration materialData;
-            bool found = materialLibrary->GetDataForMaterialName(meshMaterial.m_surfaceType, materialData);
+            bool found = materialLibrary->GetDataForMaterialName(meshMaterialName, materialData);
 
             AZ_Warning("PhysX", found, 
                 "UpdateMaterialSelectionFromPhysicsAsset: No material found for surfaceType (%s) in the collider material library", 
-                meshMaterial.m_surfaceType.c_str());
+                meshMaterialName.c_str());
 
             if (found)
             {
@@ -1122,6 +1309,18 @@ namespace PhysX
         }
 
         return true;
+    }
+
+    void* PxAzProfilerCallback::zoneStart(const char* eventName, bool /*detached*/, uint64_t /*contextId*/)
+    {
+        AZ_PROFILE_EVENT_BEGIN(AZ::Debug::ProfileCategory::Physics, eventName);
+        return nullptr;
+    }
+
+    void PxAzProfilerCallback::zoneEnd(void* /*profilerData*/, 
+        const char* /*eventName*/, bool /*detached*/, uint64_t /*contextId*/)
+    {
+        AZ_PROFILE_EVENT_END(AZ::Debug::ProfileCategory::Physics);
     }
 
 } // namespace PhysX

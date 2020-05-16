@@ -36,14 +36,14 @@ namespace EMotionFX
             INPUTPORT_STIFFNESSFACTOR = 1,
             INPUTPORT_GRAVITYFACTOR = 2,
             INPUTPORT_DAMPINGFACTOR = 3,
-            INPUTPORT_WEIGHT = 4,
+            INPUTPORT_ACTIVE = 4,
             OUTPUTPORT_POSE = 0
         };
 
         enum
         {
             PORTID_INPUT_POSE = 0,
-            PORTID_INPUT_WEIGHT = 1,
+            PORTID_INPUT_ACTIVE = 1,
             PORTID_INPUT_STIFFNESSFACTOR = 2,
             PORTID_INPUT_GRAVITYFACTOR = 3,
             PORTID_INPUT_DAMPINGFACTOR = 4,
@@ -106,12 +106,13 @@ namespace EMotionFX
     private:
         using PropertyChangeFunction = AZStd::function<void(UniqueData*)>;
 
+        static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode);
+
         void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Output(AnimGraphInstance* animGraphInstance) override;
         void AdjustParticles(const SpringSolver::ParticleAdjustFunction& func);
         void OnNumIterationsChanged();
-        void OnUpdateRateChanged();
         void OnPropertyChanged(const PropertyChangeFunction& func);
         bool InitSolvers(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         float GetStiffnessFactor(AnimGraphInstance* animGraphInstance) const;
@@ -120,7 +121,6 @@ namespace EMotionFX
 
         AZStd::vector<AZStd::string> m_simulatedObjectNames;
         AZ::u32 m_numIterations = 2;
-        AZ::u32 m_updateRate = 60;
         float m_stiffnessFactor = 1.0f;
         float m_gravityFactor = 1.0f;
         float m_dampingFactor = 1.0f;

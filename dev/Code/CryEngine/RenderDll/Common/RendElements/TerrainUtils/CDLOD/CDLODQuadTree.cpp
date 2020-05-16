@@ -40,26 +40,13 @@ bool CDLODQuadTree::Create(const CreateDesc& desc)
         "CDLODQuadTree::Create() | Invalid LODLevelCount!");
 
     //////////////////////////////////////////////////////////////////////////
-    // Determine how many nodes will we use, and the size of the top (root) tree
-    // node.
-    int totalNodeCount = 0;
-
-    AZ::u32 nodeSize = static_cast<AZ::u32>(desc.m_leafRenderNodeSize);
+    // Determine the size of the top (root) tree node.
     m_nodeSizes[0] = desc.m_leafRenderNodeSize;
 
     // determine top node size using the LODCount and leaf node size
-    for (int i = 0; i < m_desc.m_lodLevelCount; i++)
+    for (int i = 1; i < m_desc.m_lodLevelCount; i++)
     {
-        if (i != 0)
-        {
-            nodeSize *= 2;
-            m_nodeSizes[i] = nodeSize;
-        }
-
-        int nodeCountX = static_cast<int>(desc.m_mapDims.SizeX() / GetTopNodeSize() + 1);
-        int nodeCountY = static_cast<int>(desc.m_mapDims.SizeY() / GetTopNodeSize() + 1);
-
-        totalNodeCount += (nodeCountX) * (nodeCountY);
+        m_nodeSizes[i] = m_nodeSizes[i - 1] * 2;
     }
 
     // Lowest LOD nodes
@@ -427,10 +414,74 @@ void CDLODQuadTree::GetMinMaxHeight(AZ::u32 localX, AZ::u32 localY, int lodLevel
     maxHeight = m_desc.m_mapDims.MaxZ();
 }
 
-void CDLODQuadTree::HeightmapVersionUpdate()
+void CDLODQuadTree::OnTerrainHeightDataChanged(const AZ::Aabb& dirtyRegion)
 {
-    // Clear min max data cache
-    Clean();
+    AZStd::lock_guard<AZStd::recursive_mutex> minMaxMapGuard(m_minMaxDataMutex);
+
+    // Clear min/max height data
+    if (dirtyRegion.IsValid())
+    {
+        AZ::u32 topNodeSize = GetTopNodeSize();
+
+        // For each top-level node in our quadtree, check for overlaps with the dirtyRegion and refresh the data
+        // within each affected top-level node.
+        for (unsigned int y = 0; y < m_topNodeCountY; y++)
+        {
+            for (unsigned int x = 0; x < m_topNodeCountX; x++)
+            {
+                float xNodeMin = static_cast<float>(x * topNodeSize) + m_desc.m_mapDims.MinX();
+                float yNodeMin = static_cast<float>(y * topNodeSize) + m_desc.m_mapDims.MinY();
+                float xNodeMax = static_cast<float>((x + 1) * topNodeSize) + m_desc.m_mapDims.MinX();
+                float yNodeMax = static_cast<float>((y + 1) * topNodeSize) + m_desc.m_mapDims.MinY();
+
+                // Get the largest possible xy values that fall within the node's bounds without including the max edge.
+                float xNodeMaxExclusive = std::nextafter(xNodeMax, xNodeMin);
+                float yNodeMaxExclusive = std::nextafter(yNodeMax, yNodeMin);
+
+                // Create a region that's inclusive of the min values, exclusive of the max xy values, and inclusive of the
+                // max z values.  We need to be *inclusive* for the Z values to ensure that we capture any overlaps that occur
+                // directly on the top boundary.  However, we want to be *exclusive* for the xy values to ensure that we don't
+                // accidentally update an entire top node if the dirty region touches one of the max xy boundaries.
+                AZ::Aabb topNodeRegion = AZ::Aabb::CreateFromMinMax(
+                    AZ::Vector3(xNodeMin,          yNodeMin,          m_desc.m_mapDims.MinZ()),
+                    AZ::Vector3(xNodeMaxExclusive, yNodeMaxExclusive, m_desc.m_mapDims.MaxZ()));
+
+                if (dirtyRegion.Overlaps(topNodeRegion))
+                {
+                    // Get the union of dirty region and the top node region.
+                    AZ::Aabb clampedDirtyRegion = dirtyRegion.GetClamped(topNodeRegion);
+                    AZ::u32 nodeIndex = x + y * m_topNodeCountX;
+
+                    auto nodeData = m_topNodeIndexToMinMaxData.find(nodeIndex);
+
+                    // Only update data that we've previously requested.  If this top-level node hasn't been created yet, there's no
+                    // need to refresh it.
+                    if (nodeData != m_topNodeIndexToMinMaxData.end())
+                    {
+                        // bufferOrigin represents the relative start of this node in world space, which will be used to convert back and forth between
+                        // world space and buffer-relative indexing space.
+                        AZ::Vector2 bufferOrigin = AZ::Vector2(x * topNodeSize + m_desc.m_mapDims.MinX(), y * topNodeSize + m_desc.m_mapDims.MinY());
+                        // Define the world min and world max range that contains the union of the node AABB and the dirtyRegion AABB.
+                        // This is an inclusive range, but since we've already made the node AABB exclusive on the max edge, the net result
+                        // is an exclusive range.
+                        AZ::Vector2 nodeWorldMin = AZ::Vector2(clampedDirtyRegion.GetMin().GetX(), clampedDirtyRegion.GetMin().GetY());
+                        AZ::Vector2 nodeWorldMax = AZ::Vector2(clampedDirtyRegion.GetMax().GetX(), clampedDirtyRegion.GetMax().GetY());
+                        // Provide information on how big each leaf node is in world space, and how many total leaf nodes we have per row in our buffer
+                        const int lod = 0;
+                        const int leafNodesPerRow = 1 << (m_desc.m_lodLevelCount - lod - 1);
+                        const int metersPerLeafNode = m_nodeSizes[lod];
+
+                        RequestMinMaxHeightmapData(nodeWorldMin, nodeWorldMax, metersPerLeafNode, leafNodesPerRow, bufferOrigin, nodeData->second);
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        // Invalid dirty region, so just clear everything.
+        m_topNodeIndexToMinMaxData.clear();
+    }
 }
 
 // Keeping around just in-case
@@ -444,28 +495,19 @@ void CDLODQuadTree::RequestMinMaxHeightData(int topNodeX, int topNodeY) const
     AZStd::shared_ptr<CDLODMinMaxHeightData> pMinMaxData = AZStd::make_shared<CDLODMinMaxHeightData>(m_desc.m_lodLevelCount);
     m_topNodeIndexToMinMaxData[nodeIndex] = pMinMaxData;
 
-    AZ::JobContext* jobContext = nullptr;
-    AZ::JobManagerBus::BroadcastResult(jobContext, &AZ::JobManagerEvents::GetGlobalContext);
-
-    auto buildMinMaxMapJob = [pMinMaxData]()
-        {
-            pMinMaxData->ProcessLod0AndMarkReady();
-        };
-
-    // Kick off lod processing in a job when the request is fulfilled
-    auto buildMinMaxMapJobStart = [jobContext, buildMinMaxMapJob]()
-        {
-            AZ::Job* pJob = AZ::CreateJobFunction(buildMinMaxMapJob, true, jobContext);
-            pJob->Start();
-        };
-
     // Set up request
     int topNodeSize = GetTopNodeSize();
-    AZ::Vector2 nodeMin = AZ::Vector2(topNodeX * topNodeSize + m_desc.m_mapDims.MinX(), topNodeY * topNodeSize + m_desc.m_mapDims.MinY());
-    AZ::Vector2 nodeMax = AZ::Vector2(nodeMin.GetX() + topNodeSize, nodeMin.GetY() + topNodeSize);
-    float leafNodeSize = static_cast<float>(m_nodeSizes[0]);
-    float* tileMinMaxDataPtr = pMinMaxData->GetDataPtr();
-    Terrain::TerrainProviderRequestBus::Broadcast(&Terrain::TerrainProviderRequestBus::Events::RequestMinMaxHeightmapData, nodeMin, nodeMax, leafNodeSize, tileMinMaxDataPtr, buildMinMaxMapJobStart);
+    // bufferOrigin represents the relative start of this node in world space, which will be used to convert back and forth between
+    // world space and buffer-relative indexing space.
+    AZ::Vector2 bufferOrigin = AZ::Vector2(topNodeX * topNodeSize + m_desc.m_mapDims.MinX(), topNodeY * topNodeSize + m_desc.m_mapDims.MinY());
+    // Define the world min and max range (exclusive) for this node.
+    AZ::Vector2 topNodeWorldMin = bufferOrigin;
+    AZ::Vector2 topNodeWorldMax = AZ::Vector2(std::nextafter(topNodeWorldMin.GetX() + topNodeSize, topNodeWorldMin.GetX()),
+                                              std::nextafter(topNodeWorldMin.GetY() + topNodeSize, topNodeWorldMin.GetY()));
+    const int lod = 0;
+    const int leafNodesPerRow = 1 << (m_desc.m_lodLevelCount - lod - 1);
+    const int metersPerLeafNode = m_nodeSizes[lod];
+    RequestMinMaxHeightmapData(topNodeWorldMin, topNodeWorldMax, metersPerLeafNode, leafNodesPerRow, bufferOrigin, pMinMaxData);
 }
 
 
@@ -655,5 +697,119 @@ void CDLODQuadTree::Node::GetAABB(AZ::Aabb& aabb, const MapDimensions& mapDims, 
     aabb.SetMin(AZ::Vector3(fMinX, fMinY, minZ));
     aabb.SetMax(AZ::Vector3(fMaxX, fMaxY, maxZ));
 }
+
+
+// Utility function for filling in the min/max heights for a given region.  This assumes *inclusive* region boundaries.
+// i.e. If worldMax lands on the start of a new node index, that node will be included in the set that's recalculated.
+void CDLODQuadTree::BuildMinMaxMap(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, AZ::u32 metersPerLeafNode, AZ::u32 leafNodesPerRow, AZ::Vector2 bufferOrigin, float* dstBuffer) const
+{
+    // This routine assumes that dstBuffer is large enough to contain nodesPerRow x nodesPerRow nodes, where each node
+    // contains 2 float values for min and max height for a world region that's metersPerNode x metersPerNode in size.
+
+    // We're also making the assumption that our dstBuffer is square, and contains the same number of nodes in both directions.
+    // If this assumption ever changes, leafNodesPerCol would need to be passed in as a separate parameter.
+    const AZ::u32 leafNodesPerCol = leafNodesPerRow;
+
+    // Get the min/max height range of the entire world.  These values will define the absolute possible min/max values.
+    AZ::Vector2 heightRange(0.0f);
+    Terrain::TerrainProviderRequestBus::BroadcastResult(heightRange, &Terrain::TerrainProviderRequestBus::Events::GetHeightRange);
+
+    // Start by clearing the appropriate subset of the buffer.  "Clearing" in this case means setting the min to the max height,
+    // and the max to the min height.
+
+    int bufferIndexMinX = static_cast<AZ::u32>((worldMin.GetX() - bufferOrigin.GetX()) / metersPerLeafNode);
+    int bufferIndexMinY = static_cast<AZ::u32>((worldMin.GetY() - bufferOrigin.GetY()) / metersPerLeafNode);
+
+    // Make sure our max buffer indices are inclusive of the worldMax range, but still don't overflow the buffer size.
+    int bufferIndexMaxX = AZ::GetMin(static_cast<AZ::u32>((worldMax.GetX() - bufferOrigin.GetX()) / metersPerLeafNode), leafNodesPerRow);
+    int bufferIndexMaxY = AZ::GetMin(static_cast<AZ::u32>((worldMax.GetY() - bufferOrigin.GetY()) / metersPerLeafNode), leafNodesPerCol);
+
+    // Init all the min/max values to max and min values
+    for (int yIndex = bufferIndexMinY; yIndex <= bufferIndexMaxY; yIndex++)
+    {
+        for (int xIndex = bufferIndexMinX; xIndex <= bufferIndexMaxX; xIndex++)
+        {
+            int dstBufferIndex = (yIndex * leafNodesPerRow * 2) + (xIndex * 2);
+
+            dstBuffer[dstBufferIndex] = heightRange.GetY();
+            dstBuffer[dstBufferIndex + 1] = heightRange.GetX();
+        }
+    }
+
+    // Expand our requested world region to exactly cover all the nodes it overlaps.
+    // Since we just cleared out our min/max values for each node, if we only *partially* recalculated a node,
+    // we would be missing some of the data.
+    float adjustedWorldMinX = static_cast<float>(bufferIndexMinX * metersPerLeafNode) + bufferOrigin.GetX();
+    float adjustedWorldMinY = static_cast<float>(bufferIndexMinY * metersPerLeafNode) + bufferOrigin.GetY();
+    // The adjustedWorldMax values are *exclusive* in range.  We will get every height up *until* this value.
+    // This is how we ensure we get all the values in a node without overflowing into the next one.
+    float adjustedWorldMaxX = static_cast<float>((bufferIndexMaxX + 1) * metersPerLeafNode) + bufferOrigin.GetX();
+    float adjustedWorldMaxY = static_cast<float>((bufferIndexMaxY + 1) * metersPerLeafNode) + bufferOrigin.GetY();
+
+    // To get the min/max values for a node, we need to request all the unique terrain height values for that
+    // node's area.  The step size that we'll use should therefore match the terrain grid.
+    float cellSize = 1.0f;
+    Terrain::TerrainDataRequestBus::BroadcastResult(cellSize, &Terrain::TerrainDataRequestBus::Events::GetHeightmapCellSize);
+    AZ::Vector2 stepSize(cellSize);
+
+    // Get all the height values within the requested world region and use them to calculate the appropriate min/max
+    // ranges for each node.  Because each node represents a metersPerNode x metersPerNode world space area, 
+    // multiple height values end up being used to set the min/max range for each node (i.e. pair of values in dstBuffer).
+    // Specifically, we'll end up with "metersPerNode / stepSize" values mapping to the same dstBuffer index in each
+    // direction, and contributing to the same min/max value pairs.
+    for (float worldY = adjustedWorldMinY; worldY < adjustedWorldMaxY; worldY += stepSize.GetY())
+    {
+        for (float worldX = adjustedWorldMinX; worldX < adjustedWorldMaxX; worldX += stepSize.GetX())
+        {
+            float tileZ = 0.0f;
+            Terrain::TerrainProviderRequestBus::BroadcastResult(tileZ, &Terrain::TerrainProviderRequestBus::Events::GetHeightAtWorldPosition, worldX, worldY);
+
+            int xIndex = static_cast<AZ::u32>((worldX - bufferOrigin.GetX()) / metersPerLeafNode);
+            int yIndex = static_cast<AZ::u32>((worldY - bufferOrigin.GetY()) / metersPerLeafNode);
+
+            int dstBufferIndex = (yIndex * leafNodesPerRow * 2) + (xIndex * 2);
+
+            dstBuffer[dstBufferIndex] = AZ::GetMin(dstBuffer[dstBufferIndex], tileZ);
+            dstBuffer[dstBufferIndex + 1] = AZ::GetMax(dstBuffer[dstBufferIndex + 1], tileZ);
+        }
+    }
+}
+
+void CDLODQuadTree::RequestMinMaxHeightmapData(const AZ::Vector2& worldMin, const AZ::Vector2& worldMax, AZ::u32 metersPerLeafNode, AZ::u32 leafNodesPerRow, AZ::Vector2 bufferOrigin, AZStd::shared_ptr<CDLODMinMaxHeightData> minMaxData) const
+{
+    float* dstBuffer= minMaxData->GetDataPtr();
+
+    // request all of the tiles necessary for this height map
+    // once we have all of the tiles (or none, if none are found), then call the callback and send the data to the renderer
+    AZ::JobContext* jobContext = nullptr;
+    AZ::JobManagerBus::BroadcastResult(jobContext, &AZ::JobManagerEvents::GetGlobalContext);
+
+    // Prepare and kick off a separate job
+    // We do this to guarantee that the work BuildMinMaxMap performs doesn't block the calling thread
+
+    auto tileDataProcessFunc = [worldMin, worldMax, metersPerLeafNode, leafNodesPerRow, dstBuffer, bufferOrigin, minMaxData, this]()
+    {
+        // We use EnumerateHandlers here to hold a lock around the TerrainProviderRequestBus for the entire call
+        // to BuildMinMaxMap.  Since multiple of these BuildMinMaxMap jobs exist in parallel, we get significant
+        // lock contention on the inner loop of BuildMinMaxMap.  If/when the inner loop gets converted to a single
+        // terrain range query, this outer lock can be removed.
+        auto enumerationCallback = [worldMin, worldMax, metersPerLeafNode, leafNodesPerRow, dstBuffer, bufferOrigin, minMaxData, this](Terrain::TerrainProviderRequests* terrain) -> bool
+        {
+            BuildMinMaxMap(worldMin, worldMax, metersPerLeafNode, leafNodesPerRow, bufferOrigin, dstBuffer);
+
+            // Once the highest LOD has been filled out, generate the lower LODs, mark the data ready, then return from the job.
+            minMaxData->ProcessLod0AndMarkReady();
+
+            // Only one handler should exist.
+            return false;
+        };
+        Terrain::TerrainProviderRequestBus::EnumerateHandlers(enumerationCallback);
+
+    };
+
+    AZ::Job* pTileProcess = AZ::CreateJobFunction(tileDataProcessFunc, true, jobContext);
+    pTileProcess->Start();
+}
+
 
 #endif

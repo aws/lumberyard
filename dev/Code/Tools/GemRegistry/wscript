@@ -29,4 +29,8 @@ def build(bld):
 
         # Testing
         test_all_file_list = ['gemregistry_test.waf_files'],
+
+        # running "lmbr_waf clean_win_x64_*" should not remove this output target as ProjectConfigurator and Lyzard requires it
+        # ProjectConfigurator cannot re-built from a package build
+        exclude_from_clean        = True
     )

@@ -47,6 +47,11 @@ namespace AzToolsFramework
             GenericComponentWrapper(const AZ::SerializeContext::ClassData* templateClassData);
             GenericComponentWrapper(AZ::Component* templateClass);
             ~GenericComponentWrapper();
+            GenericComponentWrapper(const GenericComponentWrapper& RHS);
+            GenericComponentWrapper(GenericComponentWrapper&& RHS);
+
+            GenericComponentWrapper& operator=(const GenericComponentWrapper& RHS);
+            GenericComponentWrapper& operator=(GenericComponentWrapper&& RHS);
 
             const char* GetDisplayName();
             const char* GetDisplayDescription();
@@ -66,7 +71,8 @@ namespace AzToolsFramework
             void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
             AZ::ComponentValidationResult ValidateComponentRequirements(
-                const AZ::ImmutableEntityVector& sliceEntities) const override;
+                const AZ::ImmutableEntityVector& sliceEntities,
+                const AZStd::unordered_set<AZ::Crc32>& platformTags) const override;
 
             AZ::Component* GetTemplate() const { return m_template; }
 

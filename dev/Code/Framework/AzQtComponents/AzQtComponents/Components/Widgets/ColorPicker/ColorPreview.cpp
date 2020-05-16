@@ -16,6 +16,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
 #include <AzQtComponents/Utilities/Conversions.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <QPainter>
 #include <QMouseEvent>
 #include <QApplication>
@@ -44,7 +45,7 @@ ColorPreview::ColorPreview(QWidget* parent)
         emit colorContextMenuRequested(pos, colorUnderPoint(pos));
     });
 
-    int size = static_cast<double>(DRAGGED_SWATCH_SIZE) * devicePixelRatioF();
+    int size = aznumeric_cast<int>(static_cast<double>(DRAGGED_SWATCH_SIZE) * devicePixelRatioF());
 
     m_draggedSwatch->hide();
     m_draggedSwatch->setFixedSize({ size, size });
@@ -132,8 +133,8 @@ void ColorPreview::paintEvent(QPaintEvent*)
     AZ::Color selected, current;
     if (m_gammaEnabled)
     {
-        selected = AdjustGamma(m_selectedColor, m_gamma);
-        current = AdjustGamma(m_currentColor, m_gamma);
+        selected = AdjustGamma(m_selectedColor, aznumeric_cast<float>(m_gamma));
+        current = AdjustGamma(m_currentColor, aznumeric_cast<float>(m_gamma));
     }
     else
     {
@@ -192,7 +193,7 @@ void ColorPreview::mouseMoveEvent(QMouseEvent* event)
 
     if (m_gammaEnabled)
     {
-        color = AdjustGamma(color, m_gamma);
+        color = AdjustGamma(color, aznumeric_cast<float>(m_gamma));
     }
 
     m_draggedSwatch->setColor(color);

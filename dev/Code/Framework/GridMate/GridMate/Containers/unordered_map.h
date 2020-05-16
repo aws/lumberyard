@@ -17,23 +17,10 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class Key, class MappedType, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key>, class Allocator = SysContAlloc>
     using unordered_map = AZStd::unordered_map<Key, MappedType, Hasher, EqualKey, Allocator>;
 
     template<class Key, class MappedType, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key>, class Allocator = SysContAlloc>
     using unordered_multimap = AZStd::unordered_multimap<Key, MappedType, Hasher, EqualKey, Allocator>;
-#else
-    template<class Key, class MappedType, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key> >
-    struct unordered_map
-        : public AZStd::unordered_map<Key, MappedType, Hasher, EqualKey, SysContAlloc>
-    {
-    };
-    template<class Key, class MappedType, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key> >
-    struct unordered_multimap
-        : public AZStd::unordered_multimap<Key, MappedType, Hasher, EqualKey, SysContAlloc>
-    {
-    };
-#endif
 }
 #endif // GM_CONTAINERS_UNORDERED_MAP_H

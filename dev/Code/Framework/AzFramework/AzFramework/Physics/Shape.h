@@ -47,7 +47,6 @@ namespace Physics
         AZ::Crc32 GetIsTriggerVisibility() const;
         AZ::Crc32 GetCollisionLayerVisibility() const;
         AZ::Crc32 GetMaterialSelectionVisibility() const;
-        AZ_DEPRECATED(AZ::Crc32 GetIsVisibleVisibility() const, "This function will be removed in a future version");
         AZ::Crc32 GetOffsetVisibility() const;
 
         Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on.
@@ -90,5 +89,8 @@ namespace Physics
         virtual void* GetNativePointer() = 0;
 
         virtual AZ::Crc32 GetTag() const = 0;
+
+        virtual void AttachedToActor(void* actor) = 0;
+        virtual void DetachedFromActor() = 0;
     };
 } // namespace Physics

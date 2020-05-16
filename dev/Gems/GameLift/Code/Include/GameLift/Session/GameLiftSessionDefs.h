@@ -13,7 +13,7 @@
 
 #include <GridMate/Session/Session.h>
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #pragma warning(push)
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
@@ -39,7 +39,7 @@ namespace GridMate
 }
 #endif // BUILD_GAMELIFT_SERVER
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 namespace GridMate
 {
@@ -49,7 +49,11 @@ namespace GridMate
     struct GameLiftSessionRequestParams
         : public SessionParams
     {
+        string m_fleetId; // GameLift fleet Id
+        string m_aliasId; // GameLift fleet alias
+        string m_queueName; // GameLift queue name
         string m_instanceName; //! Name of the game instance. Title players will see when browsing for instances.
+        bool m_useFleetId;
     };
 
     /*!
@@ -59,7 +63,9 @@ namespace GridMate
         : public SearchInfo
     {
         string m_fleetId; //< GameLift fleet Id
-        string m_gameInstanceId; //< GameLift game instance id
+        string m_queueName; // GameLift queue name
+        string m_ipAddress; // GameLift game session ip address
+        string m_playerSessionId; // GameLift player session id
     };
 
     /*!
@@ -68,8 +74,13 @@ namespace GridMate
     struct GameLiftSearchParams
         : public SearchParams
     {
+        string m_fleetId; // GameLift fleet Id
+        string m_aliasId; // GameLift fleet alias
+        string m_queueName; // GameLift queue name
+        bool m_useFleetId;
         string m_gameInstanceId; //< if not empty, only specific session with the given instance id will be returned
     };
+
 } // namespace GridMate
 
 #endif // BUILD_GAMELIFT_CLIENT

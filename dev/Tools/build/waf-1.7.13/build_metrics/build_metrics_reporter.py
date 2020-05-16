@@ -11,7 +11,12 @@
 
 import datetime
 import json
-import Queue
+
+try:
+    import queue            # Python 2
+except ImportError:
+    import Queue as queue   # Python 3
+
 import threading
 import time
 import traceback
@@ -98,7 +103,7 @@ class MetricReporter(object):
     METRIC_QUEUE_TIMEOUT_SECS = 1
     SHUTDOWN_TIMEOUT_SECS = 5
 
-    def __init__(self, namespace, async=True):
+    def __init__(self, namespace, async_option=True):
         """Create a new Metric Reporter.
 
         If async=True (the default), the reporter will not transmit
@@ -109,7 +114,7 @@ class MetricReporter(object):
 
         self.namespace = namespace
         self.global_dimensions = {}
-        self.async = async
+        self.async_option = async_option
         self.project_spec = None
         self.metrics_namespace = None
         self.use_incredibuild = False
@@ -118,7 +123,7 @@ class MetricReporter(object):
 
         self.additional_metric_metadata = {}
         self._last_transmit_time = None
-        self._pending_metrics_queue = Queue.Queue()
+        self._pending_metrics_queue = queue.Queue()
         self._running = False
         self._metric_send_thread = None
         self._pending_condition = threading.Condition()
@@ -144,7 +149,7 @@ class MetricReporter(object):
 
     def _wake_up_background_thread(self):
         """Signal the background thread to wake up and check the metric queue."""
-        if not self.async:
+        if not self.async_option:
             return
 
         self._pending_condition.acquire()
@@ -190,7 +195,7 @@ class MetricReporter(object):
 
         self._logger.info('Starting MetricReporter.')
 
-        if not self.async or self._running:
+        if not self.async_option or self._running:
             return
 
         self._running = True
@@ -227,12 +232,12 @@ class MetricReporter(object):
         transmitted or shutdown times out.
 
         Has no effect if async=False or if background thread is not running."""
-        if not self.async or not self._running:
+        if not self.async_option or not self._running:
             return
 
         # setting async to false here will make the flush call later on dump the queue immediately instead of trying
         # to wake up the background thread
-        self.async = False
+        self.async_option = False
 
         if gather_output_sizes:
             self.gather_output_sizes()
@@ -253,7 +258,7 @@ class MetricReporter(object):
         """If async=True, wakes up background thread and forces a flush of any stored metrics.
 
         If async=False, this call will block on a synchronous flush of metrics to file."""
-        if self.async:
+        if self.async_option:
             self._force_flush = True
             self._wake_up_background_thread()
         else:
@@ -296,10 +301,10 @@ class MetricReporter(object):
         try:
             self._logger.info('MetricsReporter:Metric submitted: %s' % metric.name)
             self._pending_metrics_queue.put_nowait(metric)
-        except Queue.Full:
+        except queue.Full:
             self._logger.error('Metrics queue is full.  Ignoring new metric named "%s"' % metric.name)
 
-        if self.async:
+        if self.async_option:
             self._wake_up_background_thread()
 
     def add_output_directory(self, out_dir):
@@ -331,7 +336,7 @@ class MetricReporter(object):
                 metric = self._pending_metrics_queue.get(True, MetricReporter.METRIC_QUEUE_TIMEOUT_SECS)
                 if metric:
                         metrics_to_write.append(metric.to_api_format())
-            except Queue.Empty:
+            except queue.Empty:
                 pass
 
         self._logger.info('Writing %s metrics to file' % str(len(metrics_to_write)))
@@ -347,7 +352,7 @@ class MetricReporter(object):
         """
         Function for background daemon thread (only used if async=True) to consistently loop and write metrics to file.
         """
-        if not self.async:
+        if not self.async_option:
             return
 
         if self._last_transmit_time is None:

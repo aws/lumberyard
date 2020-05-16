@@ -4,6 +4,7 @@
         "Tests": 
         [
             "Tests/ActorBuilderTests.cpp",
+            "Tests/BlendTreeParameterNodeTests.cpp",
             "Tests/CommandRemoveMotionTests.cpp",
             "Tests/EMotionFXTest.cpp",
             "Tests/InitSceneAPIFixture.h",
@@ -11,8 +12,11 @@
             "Tests/MorphTargetPipelineTests.cpp",
             "Tests/Printers.cpp",
             "Tests/SimulatedObjectModelTests.cpp",
+            "Tests/SimulatedObjectPipelineTests.cpp",
             "Tests/SystemComponentFixture.h",
             "Tests/Bugs/CanDeleteMotionSetWhenSameMotionInTwoMotionSets.cpp",
+            "Tests/UI/CanAddSimulatedObject.cpp",
+            "Tests/UI/CanAddAnimGraph.cpp",
             "Tests/UI/CommandRunnerFixture.cpp",
             "Tests/UI/CommandRunnerFixture.h",
             "Tests/UI/UIFixture.cpp",
@@ -25,6 +29,20 @@
         [
             "Tests/Bugs/CanDeleteMotionWhenMotionIsBeingBlended.cpp",
             "Tests/Bugs/LY-92860.cpp"
+        ],
+        "Tests/Editor":
+        [
+            "Tests/Editor/FileManagerTests.cpp",
+            "Tests/Editor/ParametersGroupDefaultValues.cpp"
+        ],
+        "Tests/ProvidesUI/AnimGraph": 
+        [
+            "Tests/ProvidesUI/AnimGraph/AnimGraphActivateTests.cpp",
+            "Tests/ProvidesUI/AnimGraph/AnimGraphModelTests.cpp"
+        ],
+        "Tests/ProvidesUI/AnimGraph/Transitions": 
+        [
+            "Tests/ProvidesUI/AnimGraph/Transitions/RemoveTransition.cpp"
         ],
         "Tests/EMotionFXBuilder": 
         [

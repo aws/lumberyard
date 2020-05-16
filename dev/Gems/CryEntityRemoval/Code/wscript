@@ -13,12 +13,11 @@
 
 def build(bld):
     bld.DefineGem(
-        includes     = [bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')
-                       ],
+        includes     = ['.',
+                        bld.Path('Code/CryEngine/CryCommon')],
         win_features = ['crcfix'],
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             defines    = ['CRY_ENTITY_REMOVAL_EDITOR',
                           'EDITOR_COMMON_IMPORTS'],
             uselib     = ['QT5CORE',
@@ -32,7 +31,6 @@ def build(bld):
             includes   = ['Include',
                           'Source',
                           bld.Path('Code/CryEngine/CryCommon'),
-                          bld.Path('Code/CryEngine/CryAction'),
                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                           bld.Path('Code/Sandbox/Editor'),
                           bld.Path('Code/Sandbox/Editor/Include')

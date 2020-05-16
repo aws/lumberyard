@@ -35,7 +35,6 @@
 #include "Components/ComponentClipVolume.h"
 #include "Components/ComponentAudio.h"
 #include "Components/ComponentArea.h"
-#include "Components/ComponentFlowGraph.h"
 #include "Components/ComponentTrigger.h"
 #include "Components/ComponentEntityNode.h"
 #include "Components/ComponentCamera.h"

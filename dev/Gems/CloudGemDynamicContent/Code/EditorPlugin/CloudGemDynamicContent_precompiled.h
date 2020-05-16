@@ -24,7 +24,7 @@
 #include <ISerialize.h>
 #include <IGem.h>
 #include <EditorDefs.h>
-#include <PythonWorker.h>
+#include <PythonWorkerBus.h>
 #include <QtViewPane.h>
 #include <Util/PathUtil.h>
 #include <IAWSResourceManager.h>

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1082
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemMessageOfTheDay", "..\..\..\CloudGemMessageOfTheDay\AWS\cgp-resource-code\src\CloudGemMessageOfTheDay.njsproj", "{6F12808A-2619-4C81-9F36-F4132F0359E7}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -40,10 +40,6 @@ EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemMetric", "..\..\..\CloudGemMetric\v1\AWS\cgp-resource-code\src\CloudGemMetric.njsproj", "{C06682C2-F0E4-46DD-9D4A-82BCFC60CFBA}"
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemWebCommunicator", "..\..\..\CloudGemWebCommunicator\AWS\cgp-resource-code\src\CloudGemWebCommunicator.njsproj", "{861857DE-0904-411C-984E-EF19FBD28060}"
-EndProject
-Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemReferral", "..\..\..\CloudGemReferral\v1\AWS\cgp-resource-code\src\CloudGemReferral.njsproj", "{38572D3E-7C9F-4490-96EA-874237F01148}"
-EndProject
-Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemRewards", "..\..\..\CloudGemRewards\v1\AWS\cgp-resource-code\src\CloudGemRewards.njsproj", "{EE563A8F-7066-43BC-A1A0-51438521A6DE}"
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemComputeFarm", "..\..\..\CloudGemComputeFarm\v1\AWS\cgp-resource-code\src\CloudGemComputeFarm.njsproj", "{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}"
 EndProject
@@ -95,14 +91,6 @@ Global
 		{861857DE-0904-411C-984E-EF19FBD28060}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{861857DE-0904-411C-984E-EF19FBD28060}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{861857DE-0904-411C-984E-EF19FBD28060}.Release|Any CPU.Build.0 = Release|Any CPU
-		{38572D3E-7C9F-4490-96EA-874237F01148}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{38572D3E-7C9F-4490-96EA-874237F01148}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{38572D3E-7C9F-4490-96EA-874237F01148}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{38572D3E-7C9F-4490-96EA-874237F01148}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EE563A8F-7066-43BC-A1A0-51438521A6DE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CA705668-09C3-4CFC-AF1A-6452F3BAB8C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -114,5 +102,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1F137AD9-57E0-411E-A2E9-74539C15D0C2}
 	EndGlobalSection
 EndGlobal

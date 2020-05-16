@@ -129,13 +129,12 @@ namespace EMotionFX
 
         //==========================================================================
 
-        ActorMorphBuilderContext::ActorMorphBuilderContext(const AZ::SceneAPI::Containers::Scene& scene, bool useMeshOptimization,
+        ActorMorphBuilderContext::ActorMorphBuilderContext(const AZ::SceneAPI::Containers::Scene& scene,
             AZStd::vector<AZ::u32>* meshNodeIndices, const Group::IActorGroup& actorGroup,
             EMotionFX::Actor* actor,
             CoordinateSystemConverter& coordinateSystemConverter,
             AZ::RC::Phase phase)
             : m_scene(scene)
-            , m_useMeshOptimization(useMeshOptimization)
             , m_meshNodeIndices(meshNodeIndices)
             , m_group(actorGroup)
             , m_actor(actor)

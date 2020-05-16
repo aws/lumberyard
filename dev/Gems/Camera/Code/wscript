@@ -13,9 +13,7 @@
 def build(bld):
 
     bld.DefineGem(
-        includes        = [ bld.Path('Code/CryEngine/CryCommon'),
-                            bld.Path('Code/CryEngine/CryAction')
-                          ],
+        includes        = [bld.Path('Code/CryEngine/CryCommon') ],
         disable_tests   = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
 
         editor = dict(
@@ -27,7 +25,7 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include')
                            ],
-            use         = ['EditorUI_QT','EditorCommon','EditorCore','EditorLib'],
+            use         = ['EditorCommon', 'EditorCore','EditorUI_QT', 'EditorLib'],
 
             # AWS dependency is coming from EditorLib, which depends on LyMetrics, which uses AWS. Need to include the AWS libraries otherwise we get linker errors (undefined symbol)
             darwin_uselib = ['AWS_CPP_SDK_CORE',

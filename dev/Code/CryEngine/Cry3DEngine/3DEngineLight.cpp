@@ -20,7 +20,6 @@
 #include "ObjMan.h"
 #include "VisAreas.h"
 #include "AABBSV.h"
-#include "terrain.h"
 #include "LightEntity.h"
 #include "ObjectsTree.h"
 #include "Brush.h"

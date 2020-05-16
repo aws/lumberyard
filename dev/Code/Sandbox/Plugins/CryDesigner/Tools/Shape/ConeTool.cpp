@@ -61,7 +61,7 @@ void ConeTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
     if (m_ConePhase == eConePhase_Radius)
     {
         BrushVec2 vSpotPos2D = GetPlane().W2P(GetCurrentSpotPos());
-        m_ConeParameter.m_Radius = (vSpotPos2D - m_vCenterOnPlane).GetLength();
+        m_ConeParameter.m_Radius = aznumeric_cast<float>((vSpotPos2D - m_vCenterOnPlane).GetLength());
         const BrushFloat kSmallestRadius = 0.05f;
         if (m_ConeParameter.m_Radius < kSmallestRadius)
         {
@@ -73,7 +73,7 @@ void ConeTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
     }
     else if (m_ConePhase == eConePhase_RaiseHeight)
     {
-        m_ConeParameter.m_Height = s_HeightManipulator.UpdateHeight(GetWorldTM(), view, point);
+        m_ConeParameter.m_Height = aznumeric_cast<float>(s_HeightManipulator.UpdateHeight(GetWorldTM(), view, point));
         if (m_ConeParameter.m_Height < (BrushFloat)0.01f)
         {
             m_ConeParameter.m_Height = (BrushFloat)0.01f;

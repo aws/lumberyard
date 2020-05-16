@@ -1040,9 +1040,9 @@ void CMannequinModelViewport::OnRender()
             DrawMoveTool(pAuxGeom);
         }
 
+        uint32 resetMode = 0;
 #ifdef EDITOR_PCDEBUGCODE
         ICharacterInstance* charBase = GetCharacterBase();
-        uint32 resetMode = 0;
         if (charBase)
         {
             resetMode = charBase->GetResetMode();
@@ -1141,6 +1141,7 @@ void CMannequinModelViewport::OnRender()
                     }
                     else
                     {
+#if defined(EDITOR_PCDEBUGCODE)
                         //maybe object is an attached character
                         ICharacterInstance* pICharacterInstance = pIAttachmentObject->GetICharacterInstance();
                         if (pICharacterInstance)
@@ -1152,11 +1153,13 @@ void CMannequinModelViewport::OnRender()
                         {
                             pIAttachmentSkin->DrawWireframeStatic(m34, 0, RGBA8(0x00, 0x1f, 0x00, 0x00));
                         }
+#endif // defined(EDITOR_PCDEBUGCODE)
                     }
                 }
             }
             else
             {
+#if defined(EDITOR_PCDEBUGCODE)
                 if (m_ClosestPoint.m_nBaseModel)
                 {
                     f32 fUniformScale = GetCharacterBase()->GetUniformScale();
@@ -1166,6 +1169,7 @@ void CMannequinModelViewport::OnRender()
                     //ypos+=10;
                     GetCharacterBase()->DrawWireframeStatic(Matrix34(IDENTITY) * fUniformScale, 0, RGBA8(0x1f, 0x00, 0x00, 0x00));
                 }
+#endif // defined(EDITOR_PCDEBUGCODE)
             }
 
 
@@ -1462,7 +1466,9 @@ void CMannequinModelViewport::UpdateCharacter(IEntity* pEntity, ICharacterInstan
     ISkeletonAnim& skeletonAnimation = *pInstance->GetISkeletonAnim();
     ISkeletonPose& skeletonPose = *pInstance->GetISkeletonPose();
 
+#if defined(EDITOR_PCDEBUGCODE)
     pInstance->SetCharEditMode(CA_CharacterTool);
+#endif // defined(EDITOR_PCDEBUGCODE)
     skeletonPose.SetForceSkeletonUpdate(1);
 
     const bool useAnimationDrivenMotion = UseAnimationDrivenMotionForEntity(pEntity);
@@ -1687,6 +1693,7 @@ void CMannequinModelViewport::DrawEntityAndChildren(CEntityObject* pEntityObject
 
 void CMannequinModelViewport::DrawCharacter(ICharacterInstance* pInstance, const SRendParams& rRP, const SRenderingPassInfo& passInfo)
 {
+#ifdef EDITOR_PCDEBUGCODE
     f32 FrameTime = GetIEditor()->GetSystem()->GetITimer()->GetFrameTime();
     m_AverageFrameTime = pInstance->GetAverageFrameTime();
 
@@ -1752,6 +1759,7 @@ void CMannequinModelViewport::DrawCharacter(ICharacterInstance* pInstance, const
             }
         }
     }
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CMannequinModelViewport::OnCreateEmitter(IParticleEmitter* pEmitter, QuatTS const& qLoc, const IParticleEffect* pEffect, uint32 uEmitterFlags)
@@ -2059,10 +2067,12 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
         {
             CLogFile::WriteLine("Importing Character Definitions...");
             m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toUtf8().data(), CA_CharEditModel);
+#ifdef EDITOR_PCDEBUGCODE
             if (m_pCharacterBase)
             {
                 m_pAnimationSystem->CreateDebugInstances(file.toUtf8().data());
             }
+#endif // EDITOR_PCDEBUGCODE
 
             /*      for (uint32 i=0; i<NUM_INSTANCE; i++)
                             arrCharacterBase[i] = m_pAnimationSystem->CreateInstance( file ); */
@@ -2074,10 +2084,12 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
         {
             CLogFile::WriteLine("Loading Character Model...");
             m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toUtf8().data(), CA_CharEditModel);
+#ifdef EDITOR_PCDEBUGCODE
             if (m_pCharacterBase)
             {
                 m_pAnimationSystem->CreateDebugInstances(file.toUtf8().data());
             }
+#endif //EDITOR_PCDEBUGCODE
         }
 
         //-------------------------------------------------------
@@ -2145,7 +2157,9 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
         ::CryCreateClassInstance<IAnimationGroundAlignment>("AnimationPoseModifier_GroundAlignment", m_groundAlignment);
     }
 
+#ifdef EDITOR_PCDEBUGCODE
     m_pAnimationSystem->ClearCDFCache();
+#endif // EDITOR_PCDEBUGCODE
 }
 
 f32 CMannequinModelViewport::Picking_BaseMesh(const Ray& mray)
@@ -2206,6 +2220,7 @@ f32 CMannequinModelViewport::Picking_BaseMesh(const Ray& mray)
 f32 CMannequinModelViewport::Picking_AttachedMeshes(const Ray& mray, IAttachment* pIAttachment, const Matrix34& m34)
 {
     f32 distance = 9999999.0f;
+#ifdef EDITOR_PCDEBUGCODE
     Vec3 output(ZERO);
     IAttachmentObject* pIAttachmentObject = pIAttachment->GetIAttachmentObject();
     if (pIAttachmentObject)
@@ -2332,6 +2347,7 @@ f32 CMannequinModelViewport::Picking_AttachedMeshes(const Ray& mray, IAttachment
             distance = (output - m_Camera.GetPosition()).GetLength();
         }
     }
+#endif //EDITOR_PCDEBUGCODE
 
     return distance;
 }
@@ -2367,6 +2383,7 @@ void CMannequinModelViewport::DrawMoveTool(IRenderAuxGeom* pAuxGeom)
 
 void CMannequinModelViewport::CELButtonDown(QPoint point)
 {
+#ifdef EDITOR_PCDEBUGCODE
     ICharacterInstance* pCharacter = GetCharacterBase();
     if (pCharacter)
     {
@@ -2410,6 +2427,7 @@ void CMannequinModelViewport::CELButtonDown(QPoint point)
             m_highlightedBoneID = -1;
         }
     }
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CMannequinModelViewport::CELButtonUp(QPoint point)

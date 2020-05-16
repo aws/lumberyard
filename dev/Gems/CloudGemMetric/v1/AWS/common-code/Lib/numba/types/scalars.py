@@ -4,7 +4,8 @@ import enum
 
 import numpy as np
 
-from .abstract import *
+from .abstract import Dummy, Hashable, Literal, Number, Type
+from functools import total_ordering
 from .. import npdatetime, utils
 from ..typeconv import Conversion
 
@@ -15,16 +16,28 @@ class Boolean(Hashable):
         return bool(value)
 
 
-@utils.total_ordering
+def parse_integer_bitwidth(name):
+    for prefix in ('int', 'uint'):
+        if name.startswith(prefix):
+            bitwidth = int(name[len(prefix):])
+    return bitwidth
+
+
+def parse_integer_signed(name):
+    signed = name.startswith('int')
+    return signed
+
+
+@total_ordering
 class Integer(Number):
-    def __init__(self, *args, **kws):
-        super(Integer, self).__init__(*args, **kws)
-        # Determine bitwidth
-        for prefix in ('int', 'uint'):
-            if self.name.startswith(prefix):
-                bitwidth = int(self.name[len(prefix):])
+    def __init__(self, name, bitwidth=None, signed=None):
+        super(Integer, self).__init__(name)
+        if bitwidth is None:
+            bitwidth = parse_integer_bitwidth(name)
+        if signed is None:
+            signed = parse_integer_signed(name)
         self.bitwidth = bitwidth
-        self.signed = self.name.startswith('int')
+        self.signed = signed
 
     @classmethod
     def from_bitwidth(cls, bitwidth, signed=True):
@@ -62,7 +75,28 @@ class Integer(Number):
             return 0
 
 
-@utils.total_ordering
+class IntegerLiteral(Literal, Integer):
+    def __init__(self, value):
+        self._literal_init(value)
+        name = 'Literal[int]({})'.format(value)
+        basetype = self.literal_type
+        Integer.__init__(
+            self,
+            name=name,
+            bitwidth=basetype.bitwidth,
+            signed=basetype.signed,
+            )
+
+    def can_convert_to(self, typingctx, other):
+        conv = typingctx.can_convert(self.literal_type, other)
+        if conv is not None:
+            return max(conv, Conversion.promote)
+
+
+Literal.ctor_map[int] = IntegerLiteral
+
+
+@total_ordering
 class Float(Number):
     def __init__(self, *args, **kws):
         super(Float, self).__init__(*args, **kws)
@@ -80,7 +114,7 @@ class Float(Number):
         return self.bitwidth < other.bitwidth
 
 
-@utils.total_ordering
+@total_ordering
 class Complex(Number):
     def __init__(self, name, underlying_float, **kwargs):
         super(Complex, self).__init__(name, **kwargs)
@@ -105,7 +139,7 @@ class _NPDatetimeBase(Type):
     """
 
     def __init__(self, unit, *args, **kws):
-        name = '%s(%s)' % (self.type_name, unit)
+        name = '%s[%s]' % (self.type_name, unit)
         self.unit = unit
         self.unit_code = npdatetime.DATETIME_UNITS[self.unit]
         super(_NPDatetimeBase, self).__init__(name, *args, **kws)
@@ -126,11 +160,11 @@ class _NPDatetimeBase(Type):
             return cls(value)
 
 
-@utils.total_ordering
+@total_ordering
 class NPTimedelta(_NPDatetimeBase):
     type_name = 'timedelta64'
 
-@utils.total_ordering
+@total_ordering
 class NPDatetime(_NPDatetimeBase):
     type_name = 'datetime64'
 

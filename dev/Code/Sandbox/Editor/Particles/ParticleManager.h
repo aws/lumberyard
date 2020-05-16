@@ -21,11 +21,13 @@ class CParticleItem;
 class CParticleLibrary;
 struct SExportParticleEffect;
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Manages Particle libraries and systems.
 */
 class CRYEDIT_API CEditorParticleManager
     : public IEditorParticleManager
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CEditorParticleManager();
     ~CEditorParticleManager();

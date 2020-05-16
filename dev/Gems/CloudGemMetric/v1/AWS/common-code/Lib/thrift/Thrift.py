@@ -69,9 +69,21 @@ class TMessageType(object):
 
 
 class TProcessor(object):
-    """Base class for procsessor, which works on two streams."""
+    """Base class for processor, which works on two streams."""
 
-    def process(iprot, oprot):
+    def process(self, iprot, oprot):
+        """
+        Process a request.  The normal behvaior is to have the
+        processor invoke the correct handler and then it is the
+        server's responsibility to write the response to oprot.
+        """
+        pass
+
+    def on_message_begin(self, func):
+        """
+        Install a callback that receives (name, type, seqid)
+        after the message header is read.
+        """
         pass
 
 

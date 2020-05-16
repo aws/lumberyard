@@ -181,12 +181,13 @@ private:
     QScrollBar* m_scrollBar;
     QWidget* m_cornerWidget;
 
-    // State
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     STimelineViewState m_viewState;
     STimelineContent* m_pContent;
     SAnimTime m_time;
     std::unique_ptr<STimelineLayout> m_layout;
     std::unique_ptr<SMouseHandler> m_mouseHandler;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // Filtering
     QLineEdit* m_pFilterLineEdit;

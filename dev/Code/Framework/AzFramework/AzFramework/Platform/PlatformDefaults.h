@@ -30,6 +30,8 @@ namespace AzFramework
     constexpr char PlatformProvo[] = "provo";
     constexpr char PlatformSalem[] = "salem";
     constexpr char PlatformServer[] = "server";
+    constexpr char PlatformAll[] = "all";
+    constexpr char PlatformAllCient[] = "all_client";
 
     //! This platform enum have platform values in sequence and can also be used to get the platform count.
     enum PlatformId : int
@@ -43,11 +45,14 @@ namespace AzFramework
         PROVO,
         SALEM,
         SERVER, // Corresponds to the customer's flavor of "server" which could be windows, ubuntu, etc
+        ALL,
+        ALL_CLIENT,
 
         // Add new platforms above this
-        NumPlatforms,
+        NumPlatformIds,
     };
-
+    constexpr int NumClientPlatforms = 7;
+    constexpr int NumPlatforms = NumClientPlatforms + 1; // 1 "Server" platform currently
     enum class PlatformFlags : AZ::u32
     {
         Platform_NONE = 0x00,
@@ -60,12 +65,18 @@ namespace AzFramework
         Platform_SALEM = 1 << PlatformId::SALEM,
         Platform_SERVER = 1 << PlatformId::SERVER,
 
-        AllPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XENIA | Platform_PROVO | Platform_SALEM | Platform_SERVER,
+        // A special platform that will always correspond to all platforms, even if new ones are added
+        Platform_ALL = 1ULL << 30,
+
+        // A special platform that will always correspond to all non-server platforms, even if new ones are added
+        Platform_ALL_CLIENT = 1ULL << 31,
+
+        AllNamedPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XENIA | Platform_PROVO | Platform_SALEM | Platform_SERVER,
     };
 
     AZ_DEFINE_ENUM_BITWISE_OPERATORS(PlatformFlags);
 
-    extern const char* PlatformNames[PlatformId::NumPlatforms];
+    extern const char* PlatformNames[PlatformId::NumPlatformIds];
 
     //! Platform Helper is an utility class that can be used to retrieve platform related information
     class PlatformHelper
@@ -84,13 +95,28 @@ namespace AzFramework
 
         //! Given a platformFlags returns all the platform identifiers that are set.
         static AZStd::vector<AZStd::string> GetPlatforms(const PlatformFlags& platformFlags);
+        //! Given a platformFlags returns all the platform identifiers that are set, with special flags interpreted.  Do not use the result for saving
+        static AZStd::vector<AZStd::string> GetPlatformsInterpreted(const PlatformFlags& platformFlags);
 
         //! Given a platformFlags return a list of PlatformId indices
         static AZStd::vector<PlatformId> GetPlatformIndices(const PlatformFlags& platformFlags);
+        //! Given a platformFlags return a list of PlatformId indices, with special flags interpreted.  Do not use the result for saving
+        static AZStd::vector<PlatformId> GetPlatformIndicesInterpreted(const PlatformFlags& platformFlags);
 
         //! Given a platform identifier returns its corresponding platform flag.
         static PlatformFlags GetPlatformFlag(const AZStd::string& platform);
 
+        //! Given any platformFlags returns a string listing the input platforms
+        static AZStd::string GetCommaSeparatedPlatformList(const PlatformFlags& platformFlags);
+
+        //! If platformFlags contains any special flags, they are removed and replaced with the normal flags they represent
+        static PlatformFlags GetPlatformFlagsInterpreted(const PlatformFlags& platformFlags);
+
+        //! Returns true if platformFlags contains any special flags
+        static bool IsSpecialPlatform(const PlatformFlags& platformFlags);
+
+        //! Returns true if platformFlags has checkPlatform flag set.
+        static bool HasPlatformFlag(PlatformFlags platformFlags, PlatformId checkPlatform);
     };
 }
 

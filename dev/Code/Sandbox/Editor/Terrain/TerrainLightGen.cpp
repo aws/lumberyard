@@ -746,8 +746,6 @@ bool CTerrainLightGen::GenerateLightmap(const QPoint& sector, LightingSettings* 
 //! Generate shadows from static objects and place them in shadow map bitarray.
 void CTerrainLightGen::GenerateShadowmap(const QPoint& sector, CByteImage& shadowmap, float shadowAmmount, const Vec3& sunVector)
 {
-    //  if(!m_pTerrain)
-    //  return;
     SSectorInfo si;
     GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
 

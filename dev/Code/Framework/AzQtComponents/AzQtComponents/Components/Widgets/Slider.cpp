@@ -33,6 +33,8 @@ namespace AzQtComponents
 
 static QString g_horizontalSliderClass = QStringLiteral("HorizontalSlider");
 static QString g_verticalSliderClass = QStringLiteral("VerticalSlider");
+static QPoint g_horizontalToolTip;
+static QPoint g_verticalToolTip;
 
 static void ReadBorder(QSettings& settings, const QString& name, Slider::Border& border)
 {
@@ -72,7 +74,8 @@ static void ReadHandle(QSettings& settings, const QString& name, Slider::SliderC
     ConfigHelpers::read<QColor>(settings, QStringLiteral("Color"), handle.color);
     ConfigHelpers::read<QColor>(settings, QStringLiteral("DisabledColor"), handle.colorDisabled);
     ConfigHelpers::read<int>(settings, QStringLiteral("Size"), handle.size);
-    ConfigHelpers::read<int>(settings, QStringLiteral("DisabledMargin"), handle.disabledMargin);
+    ConfigHelpers::read<int>(settings, QStringLiteral("SizeMinusMargin"), handle.sizeMinusMargin);
+    ConfigHelpers::read<int>(settings, QStringLiteral("HoverSize"), handle.hoverSize);
 
     settings.endGroup();
 }
@@ -89,6 +92,23 @@ static void ReadSlider(QSettings& settings, const QString& name, Slider::SliderC
 
 static QString g_midPointStyleClass = QStringLiteral("MidPoint");
 
+CustomSlider::CustomSlider(Qt::Orientation orientation, QWidget *parent)
+    : QSlider(orientation, parent)
+{
+
+}
+
+void CustomSlider::mousePressEvent(QMouseEvent* ev)
+{
+    Q_EMIT moveSlider(true);
+    QSlider::mousePressEvent(ev);
+}
+void CustomSlider::mouseReleaseEvent(QMouseEvent* ev)
+{
+    Q_EMIT moveSlider(false);
+    QSlider::mouseReleaseEvent(ev);
+}
+
 Slider::Slider(QWidget* parent)
     : Slider(Qt::Horizontal, parent)
 {
@@ -98,13 +118,11 @@ Slider::Slider(Qt::Orientation orientation, QWidget* parent)
     : QWidget(parent)
 {
     QVBoxLayout* noFrameLayout = new QVBoxLayout(this);
-    noFrameLayout->setMargin(0);
     noFrameLayout->setContentsMargins(0, 0, 0, 0);
-    setLayout(noFrameLayout);
 
-    m_slider = new QSlider(orientation, this);
+    m_slider = new CustomSlider(orientation, this);
     noFrameLayout->addWidget(m_slider);
-
+    connect(m_slider, &CustomSlider::moveSlider, this, &Slider::sliderIsInMoving);
     m_slider->installEventFilter(this);
 
     connect(m_slider, &QSlider::sliderPressed, this, &Slider::sliderPressed);
@@ -113,6 +131,18 @@ Slider::Slider(Qt::Orientation orientation, QWidget* parent)
     connect(m_slider, &QSlider::actionTriggered, this, &Slider::actionTriggered);
 
     m_slider->setMouseTracking(true);
+}
+
+
+void Slider::initStaticVars(const QPoint& verticalToolTipOffset, const QPoint& horizontalToolTipOffset)
+{
+    g_horizontalToolTip = horizontalToolTipOffset;
+    g_verticalToolTip = verticalToolTipOffset;
+}
+
+void Slider::sliderIsInMoving(bool b)
+{
+    m_moveSlider = b;
 }
 
 QSize Slider::sizeHint() const
@@ -151,7 +181,7 @@ void Slider::applyMidPointStyle(Slider* slider)
     slider->m_slider->setProperty("class", g_midPointStyleClass);
 }
 
-void Slider::setToolTipFormatting(QString prefix, QString postFix)
+void Slider::setToolTipFormatting(const QString& prefix, const QString& postFix)
 {
     m_toolTipPrefix = prefix;
     m_toolTipPostfix = postFix;
@@ -183,13 +213,14 @@ Slider::Config Slider::defaultConfig()
     config.gradientSlider.handleBorder.color = QColor(0xff, 0xff, 0xff);
     config.gradientSlider.handleBorder.radius = 1.5;
 
-    config.slider.handle.color = { "#B48BFF" };
+    config.slider.handle.color = { "#0185D7" };
     config.slider.handle.colorDisabled = { "#999999" };
     config.slider.handle.size = 12;
-    config.slider.handle.disabledMargin = 4;
+    config.slider.handle.sizeMinusMargin = 8;
+    config.slider.handle.hoverSize = 12;
 
     config.slider.grove.color = { "#999999" };
-    config.slider.grove.colorHovered = { "#DBCCF5" };
+    config.slider.grove.colorHovered = { "#CCDFF5" };
     config.slider.grove.width = 2;
     config.slider.grove.midMarkerHeight = 16;
 
@@ -217,7 +248,7 @@ int Slider::valueFromPos(const QPoint& pos) const
     return valueFromPosition(m_slider, pos, width(), height(), rect().bottom());
 }
 
-void Slider::showHoverToolTip(QString toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset)
+void Slider::showHoverToolTip(const QString& toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset)
 {
     QPoint toolTipPosition;
 
@@ -241,7 +272,7 @@ void Slider::showHoverToolTip(QString toolTipText, const QPoint& globalPosition,
 
 bool Slider::eventFilter(QObject* watched, QEvent* event)
 {
-    if (isEnabled())
+    if (isEnabled() && !m_moveSlider)
     {
         switch (event->type())
         {
@@ -253,7 +284,17 @@ bool Slider::eventFilter(QObject* watched, QEvent* event)
                 const QString toolTipText = QStringLiteral("%1%2%3").arg(m_toolTipPrefix, hoverValueText(valueFromPos(m_mousePos)), m_toolTipPostfix);
 
                 QPoint globalPosition = parentWidget()->mapToGlobal(pos());
-                showHoverToolTip(toolTipText, globalPosition, m_slider, this, width(), height(), m_toolTipOffset);
+
+                QPoint offsetPos;
+                if (m_slider->orientation() == Qt::Horizontal)
+                {
+                    offsetPos = g_horizontalToolTip + m_toolTipOffset;
+                }
+                else
+                {
+                    offsetPos = g_verticalToolTip + m_toolTipOffset;
+                }
+                showHoverToolTip(toolTipText, globalPosition, m_slider, this, width(), height(), offsetPos);
             }
             break;
 
@@ -299,7 +340,7 @@ int Slider::sliderLength(const Style* style, const QStyleOption* option, const Q
     return -1;
 }
 
-QRect Slider::sliderHandleRect(const Style* style, const QStyleOptionSlider* option, const QWidget* widget, const Config& config)
+QRect Slider::sliderHandleRect(const Style* style, const QStyleOptionSlider* option, const QWidget* widget, const Config& config, bool isHovered)
 {
     Q_ASSERT(widget);
 
@@ -314,7 +355,12 @@ QRect Slider::sliderHandleRect(const Style* style, const QStyleOptionSlider* opt
     {
         const auto grooveRect = sliderGrooveRect(style, option, widget, config);
         const auto center = style->QCommonStyle::subControlRect(QStyle::CC_Slider, option, QStyle::SC_SliderHandle, widget).center();
-        QRect handle(0, 0, config.slider.handle.size, config.slider.handle.size);
+        int handleSize = config.slider.handle.sizeMinusMargin;
+        if (isHovered)
+        {
+            handleSize = config.slider.handle.hoverSize;
+        }
+        QRect handle(0, 0, handleSize, handleSize);
         if (option->orientation == Qt::Horizontal)
         {
             handle.moveCenter({ center.x(), grooveRect.center().y() });
@@ -411,10 +457,11 @@ bool Slider::drawSlider(const Style* style, const QStyleOption* option, QPainter
         {
             const QColor handleColor = option->state & QStyle::State_Enabled ? config.slider.handle.color : config.slider.handle.colorDisabled;
             const QRect grooveRect = sliderGrooveRect(style, sliderOption, widget, config);
-            const QRect handleRect = sliderHandleRect(style, sliderOption, widget, config);
 
             // only show the hover highlight if the mouse is hovered over the control, and the slider isn't being clicked on or dragged
-            const bool isHovered = !sliderWidget->m_mousePos.isNull() && !(QApplication::mouseButtons() & Qt::MouseButton::LeftButton);
+            const bool mouseIsOnHandler = !sliderWidget->m_mousePos.isNull();
+            const bool isHovered = mouseIsOnHandler && !(QApplication::mouseButtons() & Qt::MouseButton::LeftButton);
+            const QRect handleRect = sliderHandleRect(style, sliderOption, widget, config, mouseIsOnHandler);
 
             //draw the groove background, without highlight colors from the mouse hover or the selected value
             painter->fillRect(grooveRect, config.slider.grove.color);
@@ -446,7 +493,7 @@ void Slider::drawMidPointMarker(QPainter* painter, const Slider::Config& config,
     auto rect = QRect(0, 0, width, height);
     rect.moveCenter(grooveRect.center());
     painter->fillRect(rect, midMarkerColor);
-};
+}
 
 void Slider::drawMidPointGrooveHighlights(QPainter* painter, const Slider::Config& config, const QRect& grooveRect, const QRect& handleRect, const QColor& handleColor, bool isHovered, const QPoint& mousePos, Qt::Orientation orientation)
 {
@@ -531,6 +578,7 @@ void Slider::drawGrooveHighlights(QPainter* painter, const Slider::Config& confi
 void Slider::drawHandle(const QStyleOption* option, QPainter* painter, const Slider::Config& config, const QRect& handleRect, const QColor& handleColor)
 {
     //handle
+    Q_UNUSED(config);
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
     if (option->state & QStyle::State_Enabled)
@@ -541,7 +589,6 @@ void Slider::drawHandle(const QStyleOption* option, QPainter* painter, const Sli
     {
         auto pen = painter->pen();
         pen.setBrush(option->palette.background());
-        pen.setWidth(config.slider.handle.disabledMargin);
         painter->setPen(pen);
     }
     painter->setBrush(handleColor);

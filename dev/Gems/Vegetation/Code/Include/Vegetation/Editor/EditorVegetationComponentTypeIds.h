@@ -37,4 +37,10 @@ namespace Vegetation
     static const char* EditorRotationModifierComponentTypeId = "{6E4B91BC-DAD7-4630-A78C-261D96EEA979}";
     static const char* EditorScaleModifierComponentTypeId = "{D2391F8A-BB54-463E-9691-9290A802C6DE}";
     static const char* EditorSlopeAlignmentModifierComponentTypeId = "{B0C62968-562B-4A8C-9969-E2AAB5379F66}";
+
+    // Vegetation Area Selectors
+    static const char* EditorDescriptorWeightSelectorComponentTypeId = "{0FB90550-149B-4E05-B22C-2753F6526E97}";
+
+    // Vegetation Reference Shape
+    static const char* EditorReferenceShapeComponentTypeId = "{21BC79CA-C2F4-428F-AF2E-B76E233D4254}";
 }

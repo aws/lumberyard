@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import importlib
 import boto3
 import CloudCanvas
@@ -69,46 +70,46 @@ def show_principal_policies(cognitoId):
     response = iot_client.list_principal_policies(principal=cognitoId)
     
     policyList = response['policies']
-    print 'Policies on principal {} : {}'.format(cognitoId, policyList)
-    
+    print('Policies on principal {} : {}'.format(cognitoId, policyList))
+
     for thisPolicy in policyList:
-        print 'Policy: {}'.format(thisPolicy.get('policyName'))
+        print('Policy: {}'.format(thisPolicy.get('policyName')))
 
 
 def check_add_policy(cognitoId, policyname):
-    print 'Attempting to add policy {}'.format(policyname)
+    print('Attempting to add policy {}'.format(policyname))
     response = iot_client.list_principal_policies(principal=cognitoId)
     
     policyList = response['policies']
     
     for thisPolicy in policyList:
         if(thisPolicy.get('policyName') == policyname):
-            print 'Policy {} Already on principal {}, removing and re-adding'.format(policyname, cognitoId)
+            print('Policy {} Already on principal {}, removing and re-adding'.format(policyname, cognitoId))
             iot_client.detach_policy(policyName=policyname,target=cognitoId)
             response = iot_client.attach_policy(policyName=policyname,target=cognitoId)
-            print 'Readding policy returns {}'.format(response)
+            print('Readding policy returns {}'.format(response))
             return
     
     response = iot_client.attach_policy(policyName=policyname,target=cognitoId)
-    
-    print 'Policy {} not found on principal {} - Adding returned {}'.format(policyname, cognitoId,response)
-        
-        
+
+    print('Policy {} not found on principal {} - Adding returned {}'.format(policyname, cognitoId, response))
+
+
 def clear_principal_policies(cognitoId):
     response = iot_client.list_principal_policies(principal=cognitoId)
     
     policyList = response['policies']
-    print 'Policies on principal {} : {}'.format(cognitoId, policyList)
-    
+    print('Policies on principal {} : {}'.format(cognitoId, policyList))
+
     for thisPolicy in policyList:
         iot_client.detach_policy(policyName=thisPolicy.get('policyName'),target=cognitoId)
-        print 'Detached {} from {}'.format(thisPolicy.get('policyName'), cognitoId)
+        print('Detached {} from {}'.format(thisPolicy.get('policyName'), cognitoId))
 
 
 def create_user_entry(clientId, status, cgp = False, certificateArn = None):
 
-    print 'Creating User entry for {} - status {}'.format(clientId, status)
-    
+    print('Creating User entry for {} - status {}'.format(clientId, status))
+
     attribute_updates = ''
     expression_attribute_values = {}
     new_status = status
@@ -141,5 +142,5 @@ def create_user_entry(clientId, status, cgp = False, certificateArn = None):
 
     item_data = response_info.get('Attributes', None)
 
-    print 'Registration table update returned {}'.format(item_data)
+    print('Registration table update returned {}'.format(item_data))
 

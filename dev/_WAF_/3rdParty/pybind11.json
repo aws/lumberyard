@@ -1,0 +1,11 @@
+{
+    "name": "PYBIND11",
+    "source": "@3P:pybind11@",
+    "description": "Python bindings library",
+    "header_only": "True",
+    "system_includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "False"
+}

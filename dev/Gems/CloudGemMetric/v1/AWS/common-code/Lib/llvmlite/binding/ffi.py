@@ -1,5 +1,6 @@
 import ctypes
 import os
+import threading
 
 from .common import _decode_string, _is_shutting_down
 from ..utils import get_library_name
@@ -23,11 +24,94 @@ LLVMTargetLibraryInfoRef = _make_opaque_ref("LLVMTargetLibraryInfo")
 LLVMTargetRef = _make_opaque_ref("LLVMTarget")
 LLVMTargetMachineRef = _make_opaque_ref("LLVMTargetMachine")
 LLVMMemoryBufferRef = _make_opaque_ref("LLVMMemoryBuffer")
+LLVMAttributeListIterator = _make_opaque_ref("LLVMAttributeListIterator")
+LLVMAttributeSetIterator = _make_opaque_ref("LLVMAttributeSetIterator")
 LLVMGlobalsIterator = _make_opaque_ref("LLVMGlobalsIterator")
 LLVMFunctionsIterator = _make_opaque_ref("LLVMFunctionsIterator")
+LLVMBlocksIterator = _make_opaque_ref("LLVMBlocksIterator")
+LLVMArgumentsIterator = _make_opaque_ref("LLVMArgumentsIterator")
+LLVMInstructionsIterator = _make_opaque_ref("LLVMInstructionsIterator")
+LLVMOperandsIterator = _make_opaque_ref("LLVMOperandsIterator")
+LLVMTypesIterator = _make_opaque_ref("LLVMTypesIterator")
 LLVMObjectCacheRef = _make_opaque_ref("LLVMObjectCache")
 LLVMObjectFileRef = _make_opaque_ref("LLVMObjectFile")
 LLVMSectionIteratorRef = _make_opaque_ref("LLVMSectionIterator")
+
+
+class _lib_wrapper(object):
+    """Wrap libllvmlite with a lock such that only one thread may access it at
+    a time.
+
+    This class duck-types a CDLL.
+    """
+    __slots__ = ['_lib', '_fntab', '_lock']
+
+    def __init__(self, lib):
+        self._lib = lib
+        self._fntab = {}
+        # The reentrant lock is needed for callbacks that re-enter
+        # the Python interpreter.
+        self._lock = threading.RLock()
+
+    def __getattr__(self, name):
+        try:
+            return self._fntab[name]
+        except KeyError:
+            # Lazily wraps new functions as they are requested
+            cfn = getattr(self._lib, name)
+            wrapped = _lib_fn_wrapper(self._lock, cfn)
+            self._fntab[name] = wrapped
+            return wrapped
+
+    @property
+    def _name(self):
+        """The name of the library passed in the CDLL constructor.
+
+        For duck-typing a ctypes.CDLL
+        """
+        return self._lib._name
+
+    @property
+    def _handle(self):
+        """The system handle used to access the library.
+
+        For duck-typing a ctypes.CDLL
+        """
+        return self._lib._handle
+
+
+class _lib_fn_wrapper(object):
+    """Wraps and duck-types a ctypes.CFUNCTYPE to provide
+    automatic locking when the wrapped function is called.
+
+    TODO: we can add methods to mark the function as threadsafe
+          and remove the locking-step on call when marked.
+    """
+    __slots__ = ['_lock', '_cfn']
+
+    def __init__(self, lock, cfn):
+        self._lock = lock
+        self._cfn = cfn
+
+    @property
+    def argtypes(self):
+        return self._cfn.argtypes
+
+    @argtypes.setter
+    def argtypes(self, argtypes):
+        self._cfn.argtypes = argtypes
+
+    @property
+    def restype(self):
+        return self._cfn.restype
+
+    @restype.setter
+    def restype(self, restype):
+        self._cfn.restype = restype
+
+    def __call__(self, *args, **kwargs):
+        with self._lock:
+            return self._cfn(*args, **kwargs)
 
 
 _lib_dir = os.path.dirname(__file__)
@@ -37,18 +121,40 @@ if os.name == 'nt':
     # (Windows uses PATH for DLL loading, see http://msdn.microsoft.com/en-us/library/7d83bc18.aspx).
     os.environ['PATH'] += ';' + _lib_dir
 
+
 _lib_name = get_library_name()
+
+
+# Possible CDLL loading paths
+_lib_paths = [
+    os.path.join(_lib_dir, _lib_name),  # Absolute
+    _lib_name,  # In PATH
+    os.path.join('.', _lib_name),  # Current directory
+]
+
+# If pkg_resources is available, try to use it to load the shared object.
+# This allows direct import from egg files.
 try:
-    lib = ctypes.CDLL(os.path.join(_lib_dir, _lib_name))
-except OSError as e:
-    # Allow finding the llvmlite DLL in the current directory, for ease
-    # of bundling with frozen applications.
+    from pkg_resources import resource_filename
+except ImportError:
+    pass
+else:
+    _lib_paths.append(resource_filename(__name__, _lib_name))
+
+
+# Try to load from all of the different paths
+for _lib_path in _lib_paths:
     try:
-        lib = ctypes.CDLL(_lib_name)
+        lib = ctypes.CDLL(_lib_path)
     except OSError:
-        if PY2:
-            raise e
-        raise
+        continue
+    else:
+        break
+else:
+    raise OSError("Could not load shared object file: {}".format(_lib_name))
+
+
+lib = _lib_wrapper(lib)
 
 
 class _DeadPointer(object):
@@ -63,8 +169,20 @@ class OutputString(object):
     """
     _as_parameter_ = _DeadPointer()
 
-    def __init__(self, owned=True):
-        self._ptr = ctypes.c_char_p(None)
+    @classmethod
+    def from_return(cls, ptr):
+        """Constructing from a pointer returned from the C-API.
+        The pointer must be allocated with LLVMPY_CreateString.
+
+        Note
+        ----
+        Because ctypes auto-converts *restype* of *c_char_p* into a python
+        string, we must use *c_void_p* to obtain the raw pointer.
+        """
+        return cls(init=ctypes.cast(ptr, ctypes.c_char_p))
+
+    def __init__(self, owned=True, init=None):
+        self._ptr = init if init is not None else ctypes.c_char_p(None)
         self._as_parameter_ = ctypes.byref(self._ptr)
         self._owned = owned
 
@@ -85,7 +203,8 @@ class OutputString(object):
         # Avoid errors trying to rely on globals and modules at interpreter
         # shutdown.
         if not _is_shutting_down():
-            self.close()
+            if self.close is not None:
+                self.close()
 
     def __str__(self):
         if self._ptr is None:
@@ -98,6 +217,27 @@ class OutputString(object):
         return bool(self._ptr)
 
     __nonzero__ = __bool__
+
+    @property
+    def bytes(self):
+        """Get the raw bytes of content of the char pointer.
+        """
+        return self._ptr.value
+
+
+def ret_string(ptr):
+    """To wrap string return-value from C-API.
+    """
+    if ptr is not None:
+        return str(OutputString.from_return(ptr))
+
+def ret_bytes(ptr):
+    """To wrap bytes return-value from C-API.
+    """
+    if ptr is not None:
+        return OutputString.from_return(ptr).bytes
+
+
 
 
 class ObjectRef(object):
@@ -159,15 +299,22 @@ class ObjectRef(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def __del__(self):
-        self.close()
+    def __del__(self, _is_shutting_down=_is_shutting_down):
+        if not _is_shutting_down():
+            if self.close is not None:
+                self.close()
 
     def __bool__(self):
         return bool(self._ptr)
+
+    def __eq__(self, other):
+        if not hasattr(other, "_ptr"):
+            return False
+        return ctypes.addressof(self._ptr[0]) == \
+                ctypes.addressof(other._ptr[0])
 
     __nonzero__ = __bool__
 
     # XXX useful?
     def __hash__(self):
         return hash(ctypes.cast(self._ptr, ctypes.c_void_p).value)
-

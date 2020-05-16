@@ -121,7 +121,7 @@ namespace GraphCanvas
                     nodePoint = dropPosition;
                 }
 
-                AZ::Vector2 scenePos = AZ::Vector2(nodePoint.x(), nodePoint.y());
+                AZ::Vector2 scenePos = AZ::Vector2(aznumeric_cast<float>(nodePoint.x()), aznumeric_cast<float>(nodePoint.y()));
                 GraphCanvas::SceneRequestBus::Event(graphId, &GraphCanvas::SceneRequests::DispatchSceneDropEvent, scenePos, &this->m_initialDropMimeData);
             });
         }

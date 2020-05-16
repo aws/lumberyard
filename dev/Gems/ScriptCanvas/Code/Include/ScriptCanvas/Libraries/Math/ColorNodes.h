@@ -152,7 +152,7 @@ namespace ScriptCanvas
         {
             return -source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Negate, "Math/Color", "{B29F22BE-2378-4DE0-A28A-CF6ABBC894DF}", "returns Source with every element multiplied by -1", "Source");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Negate, "Math/Color", "{B29F22BE-2378-4DE0-A28A-CF6ABBC894DF}", "returns Source with every element multiplied by -1", "Source");
 
         AZ_INLINE ColorType One()
         {

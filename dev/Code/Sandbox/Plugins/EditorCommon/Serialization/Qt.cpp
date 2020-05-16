@@ -270,7 +270,9 @@ static const char* g_paletteColorRoleNames[QPalette::NColorRoles] = {
     "AlternateBase",
     "NoRole",
     "ToolTipBase", "ToolTipText",
-    "PlaceholderText"
+#if !defined(AZ_PLATFORM_LINUX)
+    "PlaceholderText",
+#endif // !defined(AZ_PLATFORM_LINUX)
 };
 
 struct QPaletteSerializable

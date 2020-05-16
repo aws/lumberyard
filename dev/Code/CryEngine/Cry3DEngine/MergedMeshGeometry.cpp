@@ -4958,10 +4958,10 @@ void CMergedMeshRenderNode::CalculateDensity()
     }
 }
 
-void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuffer)
+// This function executes synchronously as a part of the AsyncReadCallback, so we perform the least amount of work necessary
+// here to convert from the read buffer to instance data, and then later fire off a job to finish the data fixups and notifications.
+void CMergedMeshRenderNode::InitializeSamplesFromBuffer(const uint8* pBuffer)
 {
-    Vec3 vInternalAABBMin = m_internalAABB.min;
-    size_t stepcount = 0u;
     for (size_t i = 0; i < m_nGroups; ++i)
     {
         SMMRMGroupHeader* header = &m_groups[i];
@@ -4970,17 +4970,25 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
             const SMergedMeshSectorChunk& sectorChunk = *AdvancePtr<SMergedMeshSectorChunk>(pBuffer);
             if (sectorChunk.ver != c_MergedMeshChunkVersion)
             {
+                // If we have bad data, clear out the number of samples and move on.
+                AZ_Assert(false, "Invalid merged mesh chunk version.");
+                header->numSamples = 0;
                 continue;
             }
         }
 
+        if (header->specMismatch)
+        {
+            // If we have bad data, clear out the number of samples and move on.
+            header->numSamples = 0;
+            continue;
+        }
+
         for (size_t j = 0; j < header->numSamples; ++j)
         {
+            AZ_Assert(header->instances, "Merged mesh data has unexpectedly streamed out between streaming in and initializing.");
+
             SMergedMeshInstanceCompressed* pSampleChunk = AdvancePtr<SMergedMeshInstanceCompressed>(pBuffer);
-            if (m_groups[i].specMismatch)
-            {
-                continue;
-            }
 
             SwapEndian(pSampleChunk->pos_x, eLittleEndian);
             SwapEndian(pSampleChunk->pos_y, eLittleEndian);
@@ -4991,7 +4999,6 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
             SwapEndian(pSampleChunk->rot[2], eLittleEndian);
             SwapEndian(pSampleChunk->rot[3], eLittleEndian);
 
-            AZ_Assert(header->instances, "Merged mesh data has unexpectedly streamed out between streaming in and initializing.");
             SMMRMInstance& instance = header->instances[j];
 
             instance.pos_x = pSampleChunk->pos_x;
@@ -5003,6 +5010,24 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
             instance.qw = pSampleChunk->rot[3];
             instance.scale = pSampleChunk->scale;
             instance.lastLod = -2;
+        }
+    }
+}
+
+// After the data has been filled into the instance buffers, we asynchronously broadcast out InstanceAdded messages and
+// calculate the density of the vegetation.
+void CMergedMeshRenderNode::FinishInitializingSamples()
+{
+    Vec3 vInternalAABBMin = m_internalAABB.min;
+    for (size_t i = 0; i < m_nGroups; ++i)
+    {
+        SMMRMGroupHeader* header = &m_groups[i];
+
+        for (size_t j = 0; j < header->numSamples; ++j)
+        {
+            AZ_Assert(header->instances, "Merged mesh data has unexpectedly streamed out between streaming in and initializing.");
+
+            SMMRMInstance& instance = header->instances[j];
 
             AZ::Aabb aabb = LyAABBToAZAabb(header->procGeom->aabb);
 
@@ -5026,6 +5051,7 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
 
     // We've finished building up our instances, now mark the state as streamed in.  Note that the state is also used by
     // other threads, so setting it earlier in this function can lead to threading issues.
+    AZ_Assert(m_State == STREAMING, "State is expected to be set to STREAMING before changing to STREAMED_IN.");
     m_State = STREAMED_IN;
 }
 

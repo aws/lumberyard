@@ -70,12 +70,8 @@ namespace EMStudio
 
         mApp = app;
 
-        {
-            UIAllocator::Descriptor uiAllocatorDescriptor;
-            uiAllocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-            AZ::AllocatorInstance<UIAllocator>::Create();
-        }
-
+        AZ::AllocatorInstance<UIAllocator>::Create();
+        
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         if (!serializeContext)
@@ -97,6 +93,8 @@ namespace EMStudio
         mCommandManager->RegisterCommand(new CommandSaveMotionSet());
         mCommandManager->RegisterCommand(new CommandSaveAnimGraph());
         mCommandManager->RegisterCommand(new CommandSaveWorkspace());
+        mCommandManager->RegisterCommand(new CommandEditorLoadAnimGraph());
+        mCommandManager->RegisterCommand(new CommandEditorLoadMotionSet());
 
         mEventPresetManager         = new MotionEventPresetManager();
         mPluginManager              = new PluginManager();
@@ -266,9 +264,9 @@ namespace EMStudio
 
     const char* EMStudioManager::ConstructHTMLLink(const char* text, const MCore::RGBAColor& color)
     {
-        int32 r = color.r * 256;
-        int32 g = color.g * 256;
-        int32 b = color.b * 256;
+        int32 r = aznumeric_cast<int32>(color.r * 256);
+        int32 g = aznumeric_cast<int32>(color.g * 256);
+        int32 b = aznumeric_cast<int32>(color.b * 256);
 
         mHTMLLinkString = AZStd::string::format("<qt><style>a { color: rgb(%i, %i, %i); } a:hover { color: rgb(40, 40, 40); }</style><a href='%s'>%s</a></qt>", r, g, b, text, text);
         return mHTMLLinkString.c_str();
@@ -452,13 +450,13 @@ namespace EMStudio
         painter.setPen(Qt::NoPen);
         painter.setBrush(textColor);
 
-        const float textWidth       = fontMetrics.width(text);
-        const float halfTextWidth   = textWidth * 0.5 + 0.5;
-        const float halfTextHeight  = fontMetrics.height() * 0.5 + 0.5;
+        const float textWidth       = aznumeric_cast<float>(fontMetrics.width(text));
+        const float halfTextWidth   = aznumeric_cast<float>(textWidth * 0.5 + 0.5);
+        const float halfTextHeight  = aznumeric_cast<float>(fontMetrics.height() * 0.5 + 0.5);
         const QPoint rectCenter     = rect.center();
 
         QPoint textPos;
-        textPos.setY(rectCenter.y() + halfTextHeight - 1);
+        textPos.setY(aznumeric_cast<int>(rectCenter.y() + halfTextHeight - 1));
 
         switch (textAlignment)
         {
@@ -470,13 +468,13 @@ namespace EMStudio
 
         case Qt::AlignRight:
         {
-            textPos.setX(rect.right() - textWidth + 1);
+            textPos.setX(aznumeric_cast<int>(rect.right() - textWidth + 1));
             break;
         }
 
         default:
         {
-            textPos.setX(rectCenter.x() - halfTextWidth + 1);
+            textPos.setX(aznumeric_cast<int>(rectCenter.x() - halfTextWidth + 1));
         }
         }
 

@@ -123,7 +123,7 @@ CInfoBar::CInfoBar(QWidget* parent)
         ui->m_vectorLock->setToolTip(checked ? tr("Unlock Axis Vectors") : tr("Lock Axis Vectors"));
     });
     connect(ui->m_terrainCollision, &QAbstractButton::toggled, ui->m_terrainCollision, [this](bool checked) {
-        ui->m_terrainCollision->setToolTip(checked ? tr("Disable Terrain Camera Collision (Q)") : tr("Enable Terrain Camera Collision (Q)"));
+        ui->m_terrainCollision->setToolTip(checked ? tr("Disable Terrain Camera Collision") : tr("Enable Terrain Camera Collision"));
     });
     connect(ui->m_physicsBtn, &QAbstractButton::toggled, ui->m_physicsBtn, [this](bool checked) {
         ui->m_physicsBtn->setToolTip(checked ? tr("Disable Physics/AI (Ctrl+P)") : tr("Enable Physics/AI (Ctrl+P)"));

@@ -1,0 +1,10 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/ExpressionEngineTestFixture.h",
+            "Tests/ExpressionEngineTests.cpp",
+            "Tests/ExpressionEvaluationGemTest.cpp",            
+            "Tests/MathExpressionTests.cpp"
+        ]
+    }
+}

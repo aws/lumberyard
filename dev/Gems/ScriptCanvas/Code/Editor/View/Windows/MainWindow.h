@@ -156,8 +156,8 @@ namespace ScriptCanvasEditor
         //
 
         // Undo Handlers
-        void PostUndoPoint(AZ::EntityId sceneId) override;
-        void SignalSceneDirty(const AZ::EntityId& sceneId) override;
+        void PostUndoPoint(ScriptCanvas::ScriptCanvasId sceneId) override;
+        void SignalSceneDirty(const ScriptCanvas::ScriptCanvasId& sceneId) override;
 
         void PushPreventUndoStateUpdate() override;
         void PopPreventUndoStateUpdate() override;
@@ -327,16 +327,17 @@ namespace ScriptCanvasEditor
 
         void OnChangeActiveGraphTab(const Widget::GraphTabMetadata&) override;
         GraphCanvas::GraphId GetActiveGraphCanvasGraphId() const override;
-        AZ::EntityId GetActiveScriptCanvasGraphId() const override;
+        ScriptCanvas::ScriptCanvasId GetActiveScriptCanvasId() const override;
 
         bool IsInUndoRedo(const AZ::EntityId& graphCanvasGraphId) const override;
-        bool IsActiveInUndoRedo() const override;
+        bool IsScriptCanvasInUndoRedo(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
+        bool IsActiveGraphInUndoRedo() const override;
 
-        GraphCanvas::GraphId GetGraphCanvasGraphId(const AZ::EntityId& scriptCanvasGraphId) const override;
-        AZ::EntityId GetScriptCanvasGraphId(const GraphCanvas::GraphId& graphCanvasCanvasGraphId) const override;
+        GraphCanvas::GraphId GetGraphCanvasGraphId(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
+        ScriptCanvas::ScriptCanvasId GetScriptCanvasId(const GraphCanvas::GraphId& graphCanvasCanvasGraphId) const override;
 
         AZ::EntityId FindGraphCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const override;
-        AZ::EntityId FindScriptCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const override;
+        ScriptCanvas::ScriptCanvasId FindScriptCanvasIdByAssetId(const AZ::Data::AssetId& assetId) const override;
         ////////////////////////////
 
         // GraphCanvasSettingsRequestBus
@@ -353,7 +354,7 @@ namespace ScriptCanvasEditor
         bool IsDropConnectionSpliceEnabled() const override;
         AZStd::chrono::milliseconds GetDropConnectionSpliceTime() const override;
 
-        bool IsSplicedNodeNudgingEnabled() const override;
+        bool IsNodeNudgingEnabled() const override;
 
         bool IsShakeToDespliceEnabled() const override;
         int GetShakesToDesplice() const override;
@@ -376,6 +377,7 @@ namespace ScriptCanvasEditor
         GraphCanvas::Styling::ConnectionCurveType GetDataConnectionCurveType() const override;
 
         bool AllowNodeDisabling() const override;
+        bool AllowDataReferenceSlots() const override;
         ////
 
         // AutomationRequestBus
@@ -434,7 +436,7 @@ namespace ScriptCanvasEditor
         void OpenFile(const char* fullPath);
         void CreateMenus();
 
-        void SignalActiveSceneChanged(const AZ::EntityId& scriptCanvasGraphId);
+        void SignalActiveSceneChanged(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
 
         void SaveWorkspace(bool updateAssetList = true);
         void RestoreWorkspace();
@@ -480,6 +482,7 @@ namespace ScriptCanvasEditor
         void OnSelectedEntitiesAboutToShow();
         void OnAssignToSelectedEntities();
         void OnAssignToEntity(const AZ::EntityId& entityId);
+        void AssignGraphToEntityImpl(const AZ::EntityId& entityId);
         ////
 
         bool HasSystemTickAction(SystemTickActionFlag action);

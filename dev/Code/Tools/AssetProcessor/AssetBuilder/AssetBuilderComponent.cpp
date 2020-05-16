@@ -29,6 +29,7 @@
 #include <AzFramework/API/BootstrapReaderBus.h>
 #include <AzCore/Memory/AllocatorManager.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <AzFramework/Asset/AssetSystemComponent.h>
 
 // Command-line parameter options:
 static const char* const s_paramHelp = "help"; // Print help information.
@@ -240,7 +241,12 @@ bool AssetBuilderComponent::ConnectToAssetProcessor()
         ip = "127.0.0.1"; // default to localhost
     }
 
-    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::SetAssetProcessorIP, ip);
+    AZStd::string branchToken, platform;
+
+    AzFramework::BootstrapReaderRequestBus::Broadcast(&AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, AzFramework::AssetSystem::BranchToken, false, branchToken);
+    AzFramework::BootstrapReaderRequestBus::Broadcast(&AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, AzFramework::AssetSystem::Assets, false, platform);
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::ConfigureSocketConnection, branchToken, platform, "Asset Builder", m_gameName);
+    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::SetAssetProcessorIP, ip);
 
     bool connected = false;
     AzFramework::AssetSystemRequestBus::BroadcastResult(connected, &AzFramework::AssetSystem::AssetSystemRequests::Connect, "Asset Builder");

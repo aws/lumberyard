@@ -62,7 +62,7 @@ namespace PhysXDebug
         void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
         // PhysX::ConfigurationNotificationBus
-        void OnConfigurationRefreshed(const PhysX::Configuration& configuration) override;
+        void OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration) override;
 
         /// Initially connect to the PhysX Visualization debugger based on the current PhysX configuration.
         void AutoConnectPVD();

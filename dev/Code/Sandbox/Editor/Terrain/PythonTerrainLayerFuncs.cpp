@@ -15,7 +15,6 @@
 #include "IEditor.h"
 #include "GameEngine.h"
 #include "ViewManager.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Terrain/Heightmap.h"
 #include "BitFiddling.h"
 
@@ -259,32 +258,3 @@ void AzToolsFramework::TerrainLayerPythonFuncsHandler::Reflect(AZ::ReflectContex
         addTerrainLayer(behaviorContext->Method("export_megaterrain", PyTerrainLayers::ExportMegaterrain, nullptr, "Exports the active megaterrain texture."));
     }
 }
-
-///////////////////////////////////////////////////////////////////
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::GetTileCountX, terrain, get_tile_count_x,
-    "Gets the number of terrain layer tiles in the X direction of the RGB layer, which is the Y world direction.",
-    "int terrain.get_tile_count_x()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::GetTileCountY, terrain, get_tile_count_y,
-    "Gets the number of terrain layer tiles in the Y direction or the RGB layer, which is the X world direction.",
-    "int terrain.get_tile_count_y()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::GetTileResolution, terrain, get_tile_resolution,
-    "Gets the input resolution of the requested terrain layer tile.\n" \
-    "Note: the tile indices are rotated 90 degrees from the world axis, so the X index is along the Y world axis and vice versa.",
-    "int terrain.get_tile_resolution(int tile_index_x, int tile_index_y)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::SetTileResolution, terrain, set_tile_resolution,
-    "Sets the input resolution of the requested terrain layer tile.\n" \
-    "Note: the tile indices are rotated 90 degrees from the world axis, so the X index is along the Y world axis and vice versa.",
-    "bool terrain.set_tile_resolution(int tile_index_x, int tile_index_y, int resolution)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::SetTileCount, terrain, set_tile_count,
-    "Sets the number of terrain layer tiles.",
-    "bool terrain.set_tile_count(int num_tiles_x, int num_tiles_y)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::GetColorAt, terrain, get_color_at,
-    "Returns the pixel color from the megaterrain texture given a normalized texture coordinate.",
-    "int terrain.get_color_at(float xPercent, float yPercent)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::ImportMegaterrain, terrain, import_megaterrain,
-    "Imports and applies a megaterrain texture.",
-    "bool terrain.import_megaterrain(string file_name, int left, int top, int right, int bottom)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTerrainLayers::ExportMegaterrain, terrain, export_megaterrain,
-    "Exports the active megaterrain texture.",
-    "void terrain.export_megaterrain(string file_name, int left, int top, int right, int bottom)");

@@ -1119,7 +1119,7 @@
                     "type": "string"
                 },
                 "creation_time": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "answers": {
                     "type": "array",

@@ -146,7 +146,7 @@ namespace EMotionFX
             ASSERT_NE(footIndex, MCORE_INVALIDINDEX32);
             EMotionFX::Transform transform = m_actorInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(footIndex);
             const BlendTreeFootIKNode::UniqueData* uniqueData = static_cast<const BlendTreeFootIKNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_ikNode));
-            const float correction = (MCore::EmfxQuatToAzQuat(m_actorInstance->GetWorldSpaceTransform().mRotation) * AZ::Vector3(0.0f, 0.0f, uniqueData->m_legs[legId].m_footHeight)).GetZ();
+            const float correction = (m_actorInstance->GetWorldSpaceTransform().mRotation * AZ::Vector3(0.0f, 0.0f, uniqueData->m_legs[legId].m_footHeight)).GetZ();
             const float pos = transform.mPosition.GetZ() - correction;
             EXPECT_NEAR(pos, height, tolerance);
         }
@@ -228,16 +228,12 @@ namespace EMotionFX
         ASSERT_FLOAT_EQ(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_weight, 1.0f);
 
         // Make sure the leg length is about correct.
-        ASSERT_GE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_legLength, 0.897f);
-        ASSERT_GE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_legLength, 0.897f);
-        ASSERT_LE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_legLength, 0.9f);
-        ASSERT_LE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_legLength, 0.9f);
+        EXPECT_NEAR(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_legLength, 0.898f, 0.003f);
+        EXPECT_NEAR(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_legLength, 0.898f, 0.003f);
 
         // Check the foot height offset.
-        ASSERT_GE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_footHeight, 0.0932f);
-        ASSERT_GE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_footHeight, 0.0932f);
-        ASSERT_LE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_footHeight, 0.094f);
-        ASSERT_LE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_footHeight, 0.094f);
+        EXPECT_NEAR(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_footHeight, 0.093f, 0.002f);
+        EXPECT_NEAR(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Right].m_footHeight, 0.093f, 0.002f);
     }
 
     TEST_F(BlendTreeFootIKNodeTests, LegIK)
@@ -333,7 +329,7 @@ namespace EMotionFX
         // Rotate the actor instance 180 degrees over the X axis as well.
         EMotionFX::Transform transform;
         transform.Identity();
-        transform.mRotation = MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::pi);
+        transform.mRotation = AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::pi);
         m_actorInstance->SetLocalSpaceTransform(transform);
 
         // Tests where the leg can reach the target position just fine, make sure the hip adjustment doesn't break it.

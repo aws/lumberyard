@@ -191,7 +191,6 @@ public:
     IEditorParticleManager* GetParticleManager() override { return m_particleManager; }
     CMusicManager* GetMusicManager() { return m_pMusicManager; };
     CPrefabManager* GetPrefabManager() { return m_pPrefabManager; };
-    CGameTokenManager* GetGameTokenManager() { return m_pGameTokenManager; };
     CLensFlareManager* GetLensFlareManager()    { return m_pLensFlareManager; };
 
     IBackgroundTaskManager* GetBackgroundTaskManager() override;
@@ -203,19 +202,13 @@ public:
     IIconManager* GetIconManager();
     float GetTerrainElevation(float x, float y);
     CHeightmap* GetHeightmap();
+    IHeightmap* GetIHeightmap();
     CVegetationMap* GetVegetationMap();
     Editor::EditorQtApplication* GetEditorQtApplication() { return m_QtApplication; }
     const QColor& GetColorByName(const QString& name) override;
-    //////////////////////////////////////////////////////////////////////////
-    // Special FG
-    //////////////////////////////////////////////////////////////////////////
-    CEditorFlowGraphModuleManager* GetFlowGraphModuleManager(){return m_pFlowGraphModuleManager; }
-    CFlowGraphDebuggerEditor* GetFlowGraphDebuggerEditor(){return m_pFlowGraphDebuggerEditor; }
-    CMaterialFXGraphMan*    GetMatFxGraphManager() { return m_pMatFxGraphManager; }
     CAIManager* GetAI();
 
     //////////////////////////////////////////////////////////////////////////
-    CCustomActionsEditorManager* GetCustomActionManager();
     IMovieSystem* GetMovieSystem()
     {
         if (m_pSystem)
@@ -337,6 +330,7 @@ public:
     CToolBoxManager* GetToolBoxManager() { return m_pToolBoxManager; };
     IErrorReport* GetErrorReport() { return m_pErrorReport; }
     IErrorReport* GetLastLoadedLevelErrorReport() { return m_pLasLoadedLevelErrorReport; }
+    void StartLevelErrorReportRecording() override;
     void CommitLevelErrorReport() {SAFE_DELETE(m_pLasLoadedLevelErrorReport); m_pLasLoadedLevelErrorReport = new CErrorReport(*m_pErrorReport); }
     virtual IFileUtil* GetFileUtil() override { return m_pFileUtil;  }
     void Notify(EEditorNotifyEvent event);
@@ -355,7 +349,6 @@ public:
     bool IsSourceControlConnected() override;
     //! Setup Material Editor mode
     void SetMatEditMode(bool bIsMatEditMode);
-    CFlowGraphManager* GetFlowGraphManager() { return m_pFlowGraphManager; };
     CUIEnumsDatabase* GetUIEnumsDatabase() { return m_pUIEnumsDatabase; };
     void AddUIEnums();
     void GetMemoryUsage(ICrySizer* pSizer);
@@ -472,10 +465,6 @@ protected:
     _smart_ptr<CEditTool> m_pPickTool;
     class CAxisGizmo* m_pAxisGizmo;
     CAIManager* m_pAIManager;
-    CCustomActionsEditorManager* m_pCustomActionsManager;
-    CEditorFlowGraphModuleManager* m_pFlowGraphModuleManager;
-    CMaterialFXGraphMan* m_pMatFxGraphManager;
-    CFlowGraphDebuggerEditor* m_pFlowGraphDebuggerEditor;
     CEquipPackLib* m_pEquipPackLib;
     CGameEngine* m_pGameEngine;
     CAnimationContext* m_pAnimationContext;
@@ -488,7 +477,6 @@ protected:
     IEditorParticleUtils* m_particleEditorUtils;
     CMusicManager* m_pMusicManager;
     CPrefabManager* m_pPrefabManager;
-    CGameTokenManager* m_pGameTokenManager;
     CLensFlareManager* m_pLensFlareManager;
     CErrorReport* m_pErrorReport;
     IMissingAssetResolver* m_pFileNameResolver;
@@ -498,7 +486,6 @@ protected:
     CErrorsDlg* m_pErrorsDlg;
     //! Source control interface.
     ISourceControl* m_pSourceControl;
-    CFlowGraphManager* m_pFlowGraphManager;
 
     CSelectionTreeManager* m_pSelectionTreeManager;
 

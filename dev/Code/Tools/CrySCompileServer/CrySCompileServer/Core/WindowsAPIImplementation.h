@@ -73,18 +73,6 @@ const volatile T InterlockedDecrement(volatile T* pT)
     return *pT;
 }
 
-#elif defined(AZ_PLATFORM_MAC)
-
-int32_t InterlockedIncrement(volatile int32_t* valueToIncrement);
-
-int64_t InterlockedIncrement(volatile int64_t* valueToIncrement);
-
-int32_t InterlockedDecrement(volatile int32_t* valueToDecrement);
-
-int64_t InterlockedDecrement(volatile int64_t* valueToDecrement);
-
-int64_t InterlockedAdd64(volatile int64_t* valueToUpdate, int64_t amountToAdd);
-
 #endif
 
 #endif

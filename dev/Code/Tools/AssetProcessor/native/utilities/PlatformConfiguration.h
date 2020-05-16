@@ -203,8 +203,8 @@ namespace AssetProcessor
         //! given a relative name, loop over folders and resolve it to a full path with the first existing match.
         QString FindFirstMatchingFile(QString relativeName) const;
 
-        //! given a relative name with wildcard characters (* allowed) find a set of matching files
-        QStringList FindWildcardMatches(const QString& sourceFolder, QString relativeName) const;
+        //! given a relative name with wildcard characters (* allowed) find a set of matching files or optionally folders
+        QStringList FindWildcardMatches(const QString& sourceFolder, QString relativeName, bool includeFolders = false) const;
 
         //! given a fileName (as a full path), return the database source name which includes the output prefix.
         //!

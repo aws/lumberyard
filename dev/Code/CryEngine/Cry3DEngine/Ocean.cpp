@@ -22,6 +22,7 @@
 #include "ObjMan.h"
 #include "MatMan.h"
 #include "VisAreas.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include "Environment/OceanEnvironmentBus.h"
 
@@ -553,11 +554,8 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
 
     {
         CMatInfo* pMatInfo = (CMatInfo*)m_pMaterial.get();
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        const float fInstanceDistance = GetTerrain()->GetDistanceToSectorWithWater();
-#else
-        const float fInstanceDistance = OCEAN_IS_VERY_FAR_AWAY;
-#endif
+        float fInstanceDistance = AZ::OceanConstants::s_oceanIsVeryFarAway;
+        LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(fInstanceDistance, &LegacyTerrain::LegacyTerrainDataRequests::GetDistanceToSectorWithWater);
         pMatInfo->PrecacheMaterial(fInstanceDistance, 0, false);
     }
 

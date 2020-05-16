@@ -11,8 +11,11 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
     
+# waflib imports
 from waflib.Configure import conf
-from cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list, append_unique_kw_entry
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list, append_unique_kw_entry
 
 
 @conf

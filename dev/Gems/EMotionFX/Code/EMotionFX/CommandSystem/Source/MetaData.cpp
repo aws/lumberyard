@@ -24,6 +24,7 @@
 #include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
+#include <MCore/Source/LogManager.h>
 
 #include <AzCore/Serialization/Utils.h>
 
@@ -291,7 +292,7 @@ namespace CommandSystem
         {
             if (outResult.empty() == false)
             {
-                MCore::LogError(outResult.c_str());
+                 MCore::LogError(outResult.c_str());
             }
 
             return false;

@@ -59,12 +59,12 @@ namespace UnitTest
         , public ::testing::WithParamInterface<HphaSchemaTestParameters>
     {
     public:
-        void SetUp()
+        void SetUp() override
         {
             AZ::AllocatorInstance<TestAllocator>::Create();
         }
 
-        void TearDown()
+        void TearDown() override
         {
             AZ::AllocatorInstance<TestAllocator>::Destroy();
         }
@@ -127,11 +127,13 @@ namespace Benchmark
     public:
         void SetUp(const ::benchmark::State& state)
         {
+            AZ_UNUSED(state);
             AZ::AllocatorInstance<TestAllocator>::Create();
         }
 
         void TearDown(const ::benchmark::State& state)
         {
+            AZ_UNUSED(state);
             AZ::AllocatorInstance<TestAllocator>::Destroy();
         }
 

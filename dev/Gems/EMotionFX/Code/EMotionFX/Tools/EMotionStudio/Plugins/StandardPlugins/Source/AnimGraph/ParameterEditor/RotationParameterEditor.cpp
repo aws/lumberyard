@@ -26,7 +26,7 @@ namespace EMStudio
 
     RotationParameterEditor::RotationParameterEditor(EMotionFX::AnimGraph* animGraph, const EMotionFX::ValueParameter* valueParameter, const AZStd::vector<MCore::Attribute*>& attributes)
         : ValueParameterEditor(animGraph, valueParameter, attributes)
-        , m_currentValue(0.0f, 0.0f, 0.0f, 1.0f)
+        , m_currentValue(AZ::Quaternion::CreateIdentity())
         , m_gizmoButton(nullptr)
         , m_transformationGizmo(nullptr)
     {
@@ -80,7 +80,7 @@ namespace EMStudio
         if (!m_attributes.empty())
         {
             MCore::AttributeQuaternion* attribute = static_cast<MCore::AttributeQuaternion*>(m_attributes[0]);
-            m_currentValue = AZ::Quaternion(attribute->GetValue().x, attribute->GetValue().y, attribute->GetValue().z, attribute->GetValue().w);
+            m_currentValue = attribute->GetValue();
         }
         else
         {
@@ -132,7 +132,7 @@ namespace EMStudio
         for (MCore::Attribute* attribute : m_attributes)
         {
             MCore::AttributeQuaternion* typedAttribute = static_cast<MCore::AttributeQuaternion*>(attribute);
-            typedAttribute->SetValue(MCore::Quaternion(m_currentValue.GetX(), m_currentValue.GetY(), m_currentValue.GetZ(), m_currentValue.GetW()));
+            typedAttribute->SetValue(m_currentValue);
         }
     }
 
@@ -141,18 +141,18 @@ namespace EMStudio
     {
     public:
         Callback(const AZStd::function<void()>& manipulatorCallback, const AZ::Quaternion& oldValue, RotationParameterEditor* parentEditor = nullptr)
-            : MCommon::ManipulatorCallback(nullptr, MCore::Quaternion(oldValue.GetX(), oldValue.GetY(), oldValue.GetZ(), oldValue.GetW()))
+            : MCommon::ManipulatorCallback(nullptr, oldValue)
             , m_parentEditor(parentEditor)
             , m_manipulatorCallback(manipulatorCallback)
         {}
 
-        void Update(const MCore::Quaternion& value) override
+        void Update(const AZ::Quaternion& value) override
         {
             // call the base class update function
             MCommon::ManipulatorCallback::Update(value);
 
             // update the value of the attribute
-            m_parentEditor->SetValue(AZ::Quaternion(value.x, value.y, value.z, value.w));
+            m_parentEditor->SetValue(value);
 
             if (m_manipulatorCallback)
             {

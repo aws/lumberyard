@@ -650,7 +650,7 @@ QPoint AbstractSplineWidget::TimeToPoint(float time, ISplineInterpolator* pSplin
 //////////////////////////////////////////////////////////////////////////
 float AbstractSplineWidget::TimeToXOfs(float x)
 {
-    return WorldToClient(Vec2(float(x), 0.0f)).x();
+    return aznumeric_cast<float>(WorldToClient(Vec2(float(x), 0.0f)).x());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -841,8 +841,8 @@ void SplineWidget::DrawSpline(QPainter* painter, SSplineInfo& splineInfo, float 
     int nTotalNumberOfDimensions(0);
     int nCurrentDimension(0);
 
-    int left = TimeToXOfs(startTime);//rcClip.left;
-    int right = TimeToXOfs(endTime);//rcClip.right;
+    int left = aznumeric_cast<int>(TimeToXOfs(startTime));
+    int right = aznumeric_cast<int>(TimeToXOfs(endTime));
     QPoint p0 = TimeToPoint(pSpline->GetKeyTime(0), pSpline);
     QPoint p1 = TimeToPoint(pSpline->GetKeyTime(pSpline->GetKeyCount() - 1), pSpline);
 
@@ -907,7 +907,7 @@ void SplineWidget::DrawSpline(QPainter* painter, SSplineInfo& splineInfo, float 
 
             if ((x == right && pointsInLine >= 0) || (pointsInLine > 0 && fabs(lineStart.y() + gradient * (pt.x() - lineStart.x()) - pt.y()) > 1.0f))
             {
-                lineStart = QPoint(pt.x() - 1, lineStart.y() + gradient * (pt.x() - 1 - lineStart.x()));
+                lineStart = QPoint(pt.x() - 1, aznumeric_cast<int>(lineStart.y() + gradient * (pt.x() - 1 - lineStart.x())));
                 path.lineTo(lineStart);
                 gradient = float(pt.y() - lineStart.y()) / (pt.x() - lineStart.x());
                 pointsInLine = 1;
@@ -1071,7 +1071,7 @@ void SplineWidget::DrawTimeMarker(QPainter* painter)
 {
     const QPen pOldPen = painter->pen();
     painter->setPen(QColor(255, 0, 255));
-    float x = TimeToXOfs(m_fTimeMarker);
+    int x = aznumeric_cast<int>(TimeToXOfs(m_fTimeMarker));
     if (x >= m_rcSpline.left() && x <= m_rcSpline.right())
     {
         painter->drawLine(x, m_rcSpline.top(), x, m_rcSpline.bottom());
@@ -2058,8 +2058,8 @@ void AbstractSplineWidget::TimeScaleKeys(float time, float startTime, float endT
         }
     }
 
-    int rangeMin = TimeToXOfs(affectedRangeMin);
-    int rangeMax = TimeToXOfs(affectedRangeMax);
+    int rangeMin = aznumeric_cast<int>(TimeToXOfs(affectedRangeMin));
+    int rangeMax = aznumeric_cast<int>(TimeToXOfs(affectedRangeMax));
 
     if (m_timeRange.start == affectedRangeMin)
     {
@@ -2203,8 +2203,8 @@ void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
         }
     }
 
-    int rangeMin = TimeToXOfs(affectedRangeMin);
-    int rangeMax = TimeToXOfs(affectedRangeMax);
+    int rangeMin = aznumeric_cast<int>(TimeToXOfs(affectedRangeMin));
+    int rangeMax = aznumeric_cast<int>(TimeToXOfs(affectedRangeMax));
 
     if (m_timeRange.start == affectedRangeMin)
     {
@@ -2339,12 +2339,11 @@ void AbstractSplineWidget::RedrawWindowAroundMarker()
     UpdateKeyTimes();
     std::vector<KeyTime>::iterator itKeyTime = std::lower_bound(m_keyTimes.begin(), m_keyTimes.end(), KeyTime(m_fTimeMarker, 0));
     int keyTimeIndex = (itKeyTime != m_keyTimes.end() ? itKeyTime - m_keyTimes.begin() : m_keyTimes.size());
-    int redrawRangeStart = (keyTimeIndex >= 2 ? TimeToXOfs(m_keyTimes[keyTimeIndex - 2].time) : m_rcSpline.left());
-    int redrawRangeEnd = (keyTimeIndex < int(m_keyTimes.size()) - 2 ? TimeToXOfs(m_keyTimes[keyTimeIndex + 2].time) : m_rcSpline.right());
+    int redrawRangeStart = (keyTimeIndex >= 2 ? aznumeric_cast<int>(TimeToXOfs(m_keyTimes[keyTimeIndex - 2].time)) : m_rcSpline.left());
+    int redrawRangeEnd = (keyTimeIndex < int(m_keyTimes.size()) - 2 ? aznumeric_cast<int>(TimeToXOfs(m_keyTimes[keyTimeIndex + 2].time)) : m_rcSpline.right());
 
     QRect rc(QPoint(redrawRangeStart, m_rcSpline.top()), QPoint(redrawRangeEnd, m_rcSpline.bottom()));
-    rc.normalized();
-    rc = rc.intersected(m_rcSpline);
+    rc = rc.normalized().intersected(m_rcSpline);
 
     m_TimeUpdateRect = QRect(QPoint(1, 2), QPoint(3, 4));
     update(rc);
@@ -2468,8 +2467,8 @@ void AbstractSplineWidget::SetTimeMarker(float fTime)
     }
 
     // Erase old first.
-    float x1 = TimeToXOfs(m_fTimeMarker);
-    float x2 = TimeToXOfs(fTime);
+    int x1 = aznumeric_cast<int>(TimeToXOfs(m_fTimeMarker));
+    int x2 = aznumeric_cast<int>(TimeToXOfs(fTime));
     QRect rc(QPoint(x1, m_rcSpline.top()), QPoint(x2, m_rcSpline.bottom()));
     rc = rc.normalized().adjusted(-3, 0, 3, 0).intersected(m_rcSpline);
 

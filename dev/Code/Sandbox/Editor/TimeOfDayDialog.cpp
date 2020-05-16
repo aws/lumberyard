@@ -438,7 +438,7 @@ void CTimeOfDayDialog::RegisterViewClass()
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
     options.isDockable = false;
 
-    AzToolsFramework::RegisterViewPane<CTimeOfDayDialog>("Time Of Day", LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CTimeOfDayDialog>(LyViewPane::TimeOfDayEditor, LyViewPane::CategoryOther, options);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,6 @@ def build(bld):
         #==============================
         includes    = [ '.' ,
                         bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Code/CryEngine/CrySystem')
                       ],
 

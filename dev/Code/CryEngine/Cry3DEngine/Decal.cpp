@@ -21,9 +21,8 @@
 #include "ObjMan.h"
 #include "Vegetation.h"
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#endif
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 IGeometry* CDecal::s_pSphere = 0;
 
@@ -382,7 +381,6 @@ void CDecal::FreeRenderData()
 
 void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderingPassInfo& passInfo)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     float fRadius = m_fSize * fScale;
 
     // check terrain bounds
@@ -390,15 +388,27 @@ void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderin
     {
         return;
     }
-    if (m_vPos.x >= CTerrain::GetTerrainSize() + fRadius || m_vPos.y >= CTerrain::GetTerrainSize() + fRadius)
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    if (!terrain)
     {
         return;
     }
 
-    const int nUsintSize = CTerrain::GetHeightMapUnitSize();
+    const AZ::Aabb terrainAabb = terrain->GetTerrainAabb();
+    const float terrainSizeX = terrainAabb.GetWidth();
+    const float terrainSizeY = terrainAabb.GetHeight();
+
+    if (m_vPos.x >= terrainSizeX + fRadius || m_vPos.y >= terrainSizeY + fRadius)
+    {
+        return;
+    }
+
+    const AZ::Vector2 terrainGridResolution = terrain->GetTerrainGridResolution();
+    const int nUsintSize = static_cast<int>(AZ::GetMax(terrainGridResolution.GetX(), terrainGridResolution.GetY()));
     fRadius += nUsintSize;
 
-    if (fabs(m_vPos.z - Get3DEngine()->GetTerrainZ(int(m_vPos.x), int(m_vPos.y))) > fRadius)
+    const float terrainHeight = terrain->GetHeightFromFloats(m_vPos.x, m_vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
+    if (fabs(m_vPos.z - terrainHeight) > fRadius)
     {
         return; // too far from ground surface
     }
@@ -484,7 +494,7 @@ void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderin
     planes[3].SetPlane(-m_vUp,   -m_vUp * m_fSize    + m_vPos);
 
     // m_pRenderMesh might get updated by the following function
-    GetTerrain()->RenderArea(m_vPos, fRadius, m_pRenderMesh,
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::RenderArea
+        , m_vPos, fRadius, m_pRenderMesh,
         pObj, m_pMaterial, "BigDecalOnTerrain", m_arrBigDecalRMCustomData, GetCVars()->e_DecalsClip ? planes : NULL, passInfo);
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }

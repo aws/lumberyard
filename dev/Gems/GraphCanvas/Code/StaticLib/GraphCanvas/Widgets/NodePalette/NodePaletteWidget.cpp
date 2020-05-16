@@ -57,7 +57,11 @@ namespace GraphCanvas
         {
             painter->save();
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
             QStyleOptionViewItemV4 options = option;
+#else
+            QStyleOptionViewItem options = option;
+#endif
             initStyleOption(&options, index);
 
             // paint the original node item
@@ -140,6 +144,7 @@ namespace GraphCanvas
 
         QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &NodePaletteWidget::OnFilterTextChanged);        
         QObject::connect(m_ui->treeView, &QTreeView::doubleClicked, this, &NodePaletteWidget::OnIndexDoubleClicked);
+        QObject::connect(m_model, &QAbstractItemModel::rowsAboutToBeRemoved, this, &NodePaletteWidget::OnRowsAboutToBeRemoved);
 
         if (paletteConfig.m_allowArrowKeyNavigation)
         {
@@ -609,6 +614,11 @@ namespace GraphCanvas
         QModelIndex sourceIndex = m_model->mapToSource(index);
         void* value = sourceIndex.internalPointer();
         emit OnTreeItemDoubleClicked(static_cast<GraphCanvasTreeItem*>(value));
+    }
+
+    void NodePaletteWidget::OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last)
+    {
+        m_ui->treeView->clearSelection();
     }
 
     void NodePaletteWidget::TrySpawnItem()

@@ -22,7 +22,6 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="api-definition\LoadTest_1_0_0.json" />
     <Content Include="lambda-code\AmoebaLauncher\.ignore" />
     <Content Include="lambda-code\AmoebaLauncher\.import" />
     <Content Include="lambda-code\Amoeba\.ignore" />
@@ -72,7 +71,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="common-code\Constant\metric_constant.py" />
-    <Compile Include="common-code\LoadTest\LoadTest__CloudGemMetric.py" />
     <Compile Include="common-code\MemoryUtils\mem_util.py" />
     <Compile Include="common-code\MetricUtils\data_generator.py" />
     <Compile Include="common-code\MetricUtils\enum_type.py">
@@ -98,8 +96,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="lambda-code\ServiceLambda\api\dashboard.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_setup.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_teardown.py" />
     <Compile Include="lambda-code\ServiceLambda\api\query_athena.py" />
     <Compile Include="project-code\lambda-code\CustomResource\resource_types\Custom_AutoScaleFifoQueue.py" />
     <Compile Include="project-code\lambda-code\CustomResource\resource_types\Custom_Glue.py" />
@@ -134,7 +130,6 @@
     <Folder Include="common-code\" />
     <Folder Include="common-code\AWSCommon\" />
     <Folder Include="common-code\Constant\" />
-    <Folder Include="common-code\LoadTest\" />
     <Folder Include="common-code\MetricUtils\" />
     <Folder Include="common-code\MemoryUtils\" />
     <Folder Include="common-code\ParquetUtils\" />

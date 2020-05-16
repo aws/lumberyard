@@ -22,7 +22,8 @@
             "Include/PhysX/ComponentTypeIds.h",
             "Include/PhysX/ForceRegionComponentBus.h",
             "Include/PhysX/ColliderShapeBus.h",
-            "Include/PhysX/TriggerEventCallback.h"
+            "Include/PhysX/TriggerEventCallback.h",
+            "Include/PhysX/PhysXLocks.h"
         ],
         "Source/Components": [
             "Source/SystemComponent.cpp",
@@ -44,7 +45,9 @@
             "Source/ShapeColliderComponent.cpp",
             "Source/ShapeColliderComponent.h",
             "Source/ForceRegionComponent.cpp",
-            "Source/ForceRegionComponent.h"
+            "Source/ForceRegionComponent.h",
+            "Source/StaticRigidBodyComponent.cpp",
+            "Source/StaticRigidBodyComponent.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/MeshAssetHandler.cpp",

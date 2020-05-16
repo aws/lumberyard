@@ -25,7 +25,7 @@
 
 #define MAX_LMG_DIMENSIONS (4)
 
-#if (defined(WIN32) || defined(WIN64) || defined(APPLE)) && !defined(RELEASE)
+#if (defined(WIN32) || defined(WIN64) || defined(APPLE)) || defined(LINUX) && !defined(RELEASE)
 #define BLENDSPACE_VISUALIZATION (1)
 #define EDITOR_PCDEBUGCODE (1)
 #endif

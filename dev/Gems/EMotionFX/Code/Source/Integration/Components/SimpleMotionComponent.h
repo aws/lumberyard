@@ -121,12 +121,10 @@ namespace EMotionFX
             static EMotionFX::MotionInstance* PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight);
 
             Configuration                               m_configuration;        ///< Component configuration.
-            EMotionFX::ActorInstance*                   m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).
+            EMotionFXPtr<EMotionFX::ActorInstance>      m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).
             EMotionFX::MotionInstance*                  m_motionInstance;       ///< Motion to play on the actor
             AZ::Data::Asset<MotionAsset>                m_lastMotionAsset;      ///< Last active motion asset, kept alive for blending.
             EMotionFX::MotionInstance*                  m_lastMotionInstance;   ///< Last active motion instance, kept alive for blending.
         };
-
     } // namespace Integration
 } // namespace EMotionFX
-

@@ -2,7 +2,7 @@
     "description"           : "Configuration to build AmazonQtControlGallery",
     "visual_studio_name"    : "AmazonQtControlGallery",
     "disable_game_projects" : true,
-    "platforms" : ["win", "darwin"],
+    "platforms" : ["win", "darwin", "linux"],
     "modules" :
     [
         "AmazonQtControlGallery"

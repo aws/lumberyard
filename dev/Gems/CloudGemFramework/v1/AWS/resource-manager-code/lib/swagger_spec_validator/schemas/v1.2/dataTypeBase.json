@@ -1,80 +1,144 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "Data type fields (section 4.3.3)",
-    "type": "object",
-    "oneOf": [
-        { "required": [ "type" ] },
-        { "required": [ "$ref" ] }
-    ],
-    "properties": {
-        "type": { "type": "string" },
-        "$ref": { "type": "string" },
-        "format": { "type": "string" },
-        "defaultValue": {
-            "not": { "type": [ "array", "object", "null" ] }
-        },
-        "enum": {
-            "type": "array",
-            "items": { "type": "string" },
-            "uniqueItems": true,
-            "minItems": 1
-        },
-        "minimum": { "type": "string" },
-        "maximum": { "type": "string" },
-        "items": { "$ref": "#/definitions/itemsObject" },
-        "uniqueItems": { "type": "boolean" }
+    "definitions": {
+        "itemsObject": {
+            "oneOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "$ref": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "$ref"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "allOf": [
+                        {
+                            "$ref": "#"
+                        },
+                        {
+                            "additionalProperties": false,
+                            "properties": {
+                                "format": {},
+                                "type": {}
+                            },
+                            "required": [
+                                "type"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
     },
     "dependencies": {
         "format": {
             "oneOf": [
                 {
                     "properties": {
-                        "type": { "enum": [ "integer" ] },
-                        "format": { "enum": [ "int32", "int64" ] }
-                    }
-                },
-                {
-                    "properties": {
-                        "type": { "enum": [ "number" ] },
-                        "format": { "enum": [ "float", "double" ] }
-                    }
-                },
-                {
-                    "properties": {
-                        "type": { "enum": [ "string" ] },
                         "format": {
-                            "enum": [ "byte", "date", "date-time" ]
+                            "enum": [
+                                "int32",
+                                "int64"
+                            ]
+                        },
+                        "type": {
+                            "enum": [
+                                "integer"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "format": {
+                            "enum": [
+                                "float",
+                                "double"
+                            ]
+                        },
+                        "type": {
+                            "enum": [
+                                "number"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "format": {
+                            "enum": [
+                                "byte",
+                                "date",
+                                "date-time"
+                            ]
+                        },
+                        "type": {
+                            "enum": [
+                                "string"
+                            ]
                         }
                     }
                 }
             ]
         }
     },
-    "definitions": {
-        "itemsObject": {
-            "oneOf": [
-                {
-                    "type": "object",
-                    "required": [ "$ref" ],
-                    "properties": {
-                        "$ref": { "type": "string" }
-                    },
-                    "additionalProperties": false
-                },
-                {
-                    "allOf": [
-                        { "$ref": "#" },
-                        {
-                            "required": [ "type" ],
-                            "properties": {
-                                "type": {},
-                                "format": {}
-                            },
-                            "additionalProperties": false
-                        }
-                    ]
-                }
+    "description": "Data type fields (section 4.3.3)",
+    "oneOf": [
+        {
+            "required": [
+                "type"
+            ]
+        },
+        {
+            "required": [
+                "$ref"
             ]
         }
-    }
+    ],
+    "properties": {
+        "$ref": {
+            "type": "string"
+        },
+        "defaultValue": {
+            "not": {
+                "type": [
+                    "array",
+                    "object",
+                    "null"
+                ]
+            }
+        },
+        "enum": {
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        },
+        "format": {
+            "type": "string"
+        },
+        "items": {
+            "$ref": "#/definitions/itemsObject"
+        },
+        "maximum": {
+            "type": "string"
+        },
+        "minimum": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uniqueItems": {
+            "type": "boolean"
+        }
+    },
+    "type": "object"
 }

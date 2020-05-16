@@ -24,6 +24,7 @@ namespace AzFramework
             m_mostRecentSample = 0.0;
             m_minimum = 0.0;
             m_maximum = 0.0;
+            m_sum = 0.0;
             m_average = 0.0;
             m_varianceTracking = 0.0;
         }
@@ -32,6 +33,7 @@ namespace AzFramework
         {
             m_numSamples++;
             m_mostRecentSample = value;
+            m_sum += value;
 
             if (m_numSamples == 1)
             {

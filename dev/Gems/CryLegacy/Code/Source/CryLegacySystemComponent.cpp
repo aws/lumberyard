@@ -77,18 +77,6 @@ namespace CryLegacy
     {
         CryLegacyAllocatorScope::ActivateAllocators();
 
-#if !defined(AZ_MONOLITHIC_BUILD)
-        // Legacy games containing code to explicitly load CryAction and call the CreateGameFramework function
-        // were failing because the EBus call to CryGameFrameworkRequests::CreateFramework was returning nullptr
-        // due to the global environment not yet having been attached to the CryAction module (when running a non
-        // monolithic build). Explicitly loading the module here ensures that the global environment gets attached.
-        m_cryActionHandle = AZ::DynamicModuleHandle::Create("CryAction");
-        if (m_cryActionHandle)
-        {
-            m_cryActionHandle->Load(true);
-        }
-#endif // !defined(AZ_MONOLITHIC_BUILD)
-
         CryLegacy::CryLegacyRequestBus::Handler::BusConnect();
         CryGameFrameworkBus::Handler::BusConnect();
         CryLegacyInputRequestBus::Handler::BusConnect();
@@ -108,14 +96,6 @@ namespace CryLegacy
         CryGameFrameworkBus::Handler::BusDisconnect();
         CryLegacy::CryLegacyRequestBus::Handler::BusDisconnect();
 
-#if !defined(AZ_MONOLITHIC_BUILD)
-        if (m_cryActionHandle)
-        {
-            m_cryActionHandle->Unload();
-            m_cryActionHandle.reset(nullptr);
-        }
-#endif // !defined(AZ_MONOLITHIC_BUILD)
-        
         CryLegacyAllocatorScope::DeactivateAllocators();
     }
 

@@ -85,7 +85,7 @@ namespace ScriptCanvasEditor
 
         //=====================================================================
         // EditorContextMenuRequestBus
-        AZ::EntityId GetGraphId() const override;
+        ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const override;
         //=====================================================================
         AZ::EntityId GetGraphEntityId() const;
 
@@ -127,11 +127,11 @@ namespace ScriptCanvasEditor
         void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         //=====================================================================
 
-        void AddVariable(AZStd::string_view varName, const ScriptCanvas::VariableDatum& varDatum);
+        void AddVariable(AZStd::string_view varName, const ScriptCanvas::GraphVariable& varDatum);
         void AddNewVariables(const ScriptCanvas::VariableData& graphVarData);
         void RemoveVariable(const ScriptCanvas::VariableId& varId);
         void RemoveOldVariables(const ScriptCanvas::VariableData& graphVarData);
-        bool UpdateVariable(const ScriptCanvas::VariableDatum& graphDatum, ScriptCanvas::VariableDatum& updateDatum, ScriptCanvas::VariableDatum& originalDatum);
+        bool UpdateVariable(const ScriptCanvas::GraphVariable& graphDatum, ScriptCanvas::GraphVariable& updateDatum, ScriptCanvas::GraphVariable& originalDatum);
         void LoadVariables(AZ::Entity* scriptCanvasEntity);
         void ClearVariables();
 

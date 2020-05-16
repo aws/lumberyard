@@ -51,7 +51,7 @@ Q_SIGNALS:
         void SocketIPAddress(QString ipAddress);
         void SocketPort(int port);
         void Identifier(QString identifier);
-        void AssetPlatform(QString platform);
+        void AssetPlatformsString(QString platform);
         void ConnectionDisconnected();
         void ConnectionEstablished(QString ipAddress, quint16 port);
         void ErrorMessage(QString msg);

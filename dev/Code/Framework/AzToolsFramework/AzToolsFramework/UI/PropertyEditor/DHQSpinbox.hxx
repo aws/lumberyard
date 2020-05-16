@@ -10,45 +10,40 @@
 *
 */
 
-#ifndef AZ_SPINBOX_HXX
-#define AZ_SPINBOX_HXX
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // disable warnings spawned by QT
 #include <QtWidgets/QSpinBox>
-
-
-#pragma once
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
     class DHQSpinbox
         : public QSpinBox
-        , public EditorEvents::Bus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(DHQSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQSpinbox(QWidget* parent = 0);
+        explicit DHQSpinbox(QWidget* parent = nullptr);
 
         QSize minimumSizeHint() const override;
 
         bool event(QEvent* event) override;
 
-        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
-        // YOU MUST USE A POINTER TO DHQSpinbox, NOT A POINTER TO QSpinBox
-        // Needed so that we can track of the last value properly for trapping the Escape key
-        void setValue(int value);
-
-        // EditorEvents
-        void OnEscape() override;
+        bool HasSelectedText() const;
+        int LastValue() const;
 
     protected:
-        QPoint lastMousePosition;
-        bool mouseCaptured = false;
+        QPoint m_lastMousePosition;
+        bool m_mouseCaptured = false;
+
+        // QSpinBox
+        bool eventFilter(QObject* object, QEvent* event) override;
+        void focusInEvent(QFocusEvent* event) override;
+        void wheelEvent(QWheelEvent* event) override;
 
     private:
         int m_lastValue;
@@ -56,35 +51,34 @@ namespace AzToolsFramework
 
     class DHQDoubleSpinbox
         : public QDoubleSpinBox
-        , public EditorEvents::Bus::Handler
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQDoubleSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQDoubleSpinbox(QWidget* parent = 0);
+        explicit DHQDoubleSpinbox(QWidget* parent = nullptr);
 
         QSize minimumSizeHint() const override;
 
-        bool event(QEvent* event) override;        
+        bool event(QEvent* event) override;
 
-        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
-        // YOU MUST USE A POINTER TO DHQDoubleSpinbox, NOT A POINTER TO QSpinBox
-        // Needed so that we can track of the last value properly for trapping the Escape key
-        void setValue(double value);
-
-        // EditorEvents
-        void OnEscape() override;
-
-        void SetDisplayDecimals(int precision);
+        // QDoubleSpinBox
         QString textFromValue(double value) const override;
 
+        bool HasSelectedText() const;
+        double LastValue() const;
+
+        void SetDisplayDecimals(int precision);
+
     protected:
+        // QDoubleSpinBox
+        bool eventFilter(QObject* object, QEvent* event) override;
         void focusInEvent(QFocusEvent* event) override;
         void focusOutEvent(QFocusEvent* event) override;
+        void wheelEvent(QWheelEvent* event) override;
 
-        QPoint lastMousePosition;
-        bool mouseCaptured = false;
+        QPoint m_lastMousePosition;
+        bool m_mouseCaptured = false;
 
     private Q_SLOTS:
         void UpdateToolTip(double value);
@@ -96,6 +90,14 @@ namespace AzToolsFramework
         double m_lastValue;
         int m_displayDecimals;
     };
-}
 
-#endif
+    inline int DHQSpinbox::LastValue() const
+    {
+        return m_lastValue;
+    }
+
+    inline double DHQDoubleSpinbox::LastValue() const
+    {
+        return m_lastValue;
+    }
+} // namespace AzToolsFramework

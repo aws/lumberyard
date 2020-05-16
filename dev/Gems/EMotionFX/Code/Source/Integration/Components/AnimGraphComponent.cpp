@@ -415,6 +415,7 @@ namespace EMotionFX
 
                     if (azrtti_istypeof<AZ::ScriptPropertyNumber>(parameter))
                     {
+                        // This will handle float and integer types.
                         SetNamedParameterFloat(paramName, aznumeric_caster(static_cast<AZ::ScriptPropertyNumber*>(parameter)->m_value));
                     }
                     else if (azrtti_istypeof<AZ::ScriptPropertyBoolean>(parameter))
@@ -693,8 +694,8 @@ namespace EMotionFX
                 MCore::AttributeVector3* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeVector3>(parameterIndex);
                 if (param)
                 {
-                    const AZ::Vector3 previousValue = AZ::Vector3(param->GetValue());
-                    param->SetValue(AZ::PackedVector3f(value));
+                    const AZ::Vector3 previousValue = param->GetValue();
+                    param->SetValue(value);
 
                     // Notify listeners about the parameter change
                     AnimGraphComponentNotificationBus::Event(
@@ -731,8 +732,8 @@ namespace EMotionFX
                 case MCore::AttributeQuaternion::TYPE_ID:
                 {
                     MCore::AttributeQuaternion* quaternionParam = static_cast<MCore::AttributeQuaternion*>(param);
-                    previousValue = MCore::EmfxQuatToAzQuat(quaternionParam->GetValue());
-                    quaternionParam->SetValue(MCore::AzEulerAnglesToEmfxQuat(value));
+                    previousValue = quaternionParam->GetValue();
+                    quaternionParam->SetValue(MCore::AzEulerAnglesToAzQuat(value));
                     break;
                 }
                 default:
@@ -747,7 +748,7 @@ namespace EMotionFX
                     m_animGraphInstance.get(),
                     parameterIndex,
                     previousValue,
-                    MCore::EmfxQuatToAzQuat(MCore::AzEulerAnglesToEmfxQuat(value)));
+                    MCore::AzEulerAnglesToAzQuat(value));
             }
         }
 
@@ -770,8 +771,8 @@ namespace EMotionFX
                 case MCore::AttributeQuaternion::TYPE_ID:
                 {
                     MCore::AttributeQuaternion* quaternionParam = static_cast<MCore::AttributeQuaternion*>(param);
-                    previousValue = MCore::EmfxQuatToAzQuat(quaternionParam->GetValue());
-                    quaternionParam->SetValue(MCore::AzQuatToEmfxQuat(value));
+                    previousValue = quaternionParam->GetValue();
+                    quaternionParam->SetValue(value);
                     break;
                 }
                 default:
@@ -1014,9 +1015,9 @@ namespace EMotionFX
 
             if (m_animGraphInstance)
             {
-                MCore::Quaternion value;
+                AZ::Quaternion value;
                 m_animGraphInstance->GetRotationParameterValue(parameterIndex, &value);
-                return value.ToEuler();
+                return MCore::AzQuaternionToEulerAngles(value);
             }
             return AZ::Vector3::CreateZero();
         }
@@ -1032,9 +1033,9 @@ namespace EMotionFX
 
             if (m_animGraphInstance)
             {
-                MCore::Quaternion value;
+                AZ::Quaternion value;
                 m_animGraphInstance->GetRotationParameterValue(parameterIndex, &value);
-                return EmfxQuatToAzQuat(value);
+                return value;
             }
             return AZ::Quaternion::CreateIdentity();
         }

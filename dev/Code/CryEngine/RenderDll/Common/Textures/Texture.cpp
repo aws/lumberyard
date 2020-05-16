@@ -1310,7 +1310,7 @@ bool CTexture::Load(CImageFile* pImage)
     td.m_pFilePath = pImage->mfGet_filename();
 
     // base range after normalization, fe. [0,1] for 8bit images, or [0,2^15] for RGBE/HDR data
-    if ((td.m_eTF == eTF_R9G9B9E5) || (td.m_eTF == eTF_BC6UH) || (td.m_eTF == eTF_BC6UH))
+    if ((td.m_eTF == eTF_R9G9B9E5) || (td.m_eTF == eTF_BC6UH) || (td.m_eTF == eTF_BC6SH))
     {
         td.m_cMinColor /= td.m_cMaxColor.a;
         td.m_cMaxColor /= td.m_cMaxColor.a;
@@ -2954,7 +2954,15 @@ void CTexture::LoadDefaultSystemTextures()
             s_ptexSceneNormalsMap = CTexture::CreateTextureObject("$SceneNormalsMap", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_NORMALMAP);
             s_ptexSceneNormalsBent = CTexture::CreateTextureObject("$SceneNormalsBent", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             s_ptexSceneDiffuse = CTexture::CreateTextureObject("$SceneDiffuse", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
-            s_ptexSceneSpecular = CTexture::CreateTextureObject("$SceneSpecular", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
+            ETEX_Format rtTextureFormat = eTF_R8G8B8A8;
+            
+            // Slimming GBuffer requires only one channel for specular due to packing of RGB values into YPbPr and
+            // specular components into less channels, thus saving bandwidth by not including G,B,A channels (75% saving)
+            if(CRenderer::CV_r_SlimGBuffer == 1)
+            {
+                rtTextureFormat = eTF_R8;
+            }
+            s_ptexSceneSpecular = CTexture::CreateTextureObject("$SceneSpecular", 0, 0, 1, eTT_2D, nRTFlags, rtTextureFormat);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_5
     #if defined(AZ_PLATFORM_XENIA)

@@ -12,24 +12,24 @@
 */
 
 
-.secondaryText
-{
-    color: #BBBBBB;
-}
-
 .primaryText
 {
-    color: white;
+    color: #FFFFFF;
+}
+
+.secondaryText
+{
+    color: #888888;
 }
 
 .highlightedText
 {
-    color: #C9AAFE;
+    color: #44B2F8;
 }
 
 .blackText
 {
-    color: black;
+    color: #000000;
 }
 
 /*
@@ -43,24 +43,31 @@
     margin-bottom: ((line-height - font-size) / 2) px;
 */
 
-QLabel
-{
-    font-size: 12px;
-    margin-top: 2px;
-    margin-bottom: 2px;
-    font-family: "Amazon Ember";
-}
+/*
+    Qt Style Sheets provide the font-weight property but it expects the following
+    values:
+        normal
+        | bold
+        | 100
+        | 200
+        ...
+        | 900
+
+    Using the QFont::Weight values as guidance, we extrapolate Light to 250.
+*/
 
 .Headline
 {
-    font-family: "Amazon Ember Light";
+    font-family: "Amazon Ember";
     font-size: 24px;
+    font-weight: 250;
     margin-top: 4px;
     margin-bottom: 4px;
 }
 
 .Title
 {
+    font-family: "Amazon Ember";
     font-size: 18px;
     margin-top: 7px;
     margin-bottom: 7px;
@@ -68,14 +75,32 @@ QLabel
 
 .Subtitle
 {
-    font-family: "Amazon Ember Light";
+    font-family: "Amazon Ember";
     font-size: 16px;
+    font-weight: 250;
     margin-top: 8px;
     margin-bottom: 8px;
 }
 
+.Menu
+{
+    font-family: "Amazon Ember";
+    font-size: 12px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.Label, QLabel
+{
+    font-family: "Amazon Ember";
+    font-size: 12px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
 .Paragraph
 {
+    font-family: "Amazon Ember";
     font-size: 12px;
 
     /*
@@ -88,5 +113,19 @@ QLabel
     margin-bottom: 4px;
 }
 
+.Tooltip
+{
+    font-family: "Amazon Ember";
+    font-size: 12px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
 
-
+.Button
+{
+    font-family: "Amazon Ember";
+    font-size: 12px;
+    font-weight: 570;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}

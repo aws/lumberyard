@@ -16,17 +16,17 @@ def build(bld):
         #==============================
         # Common
         #==============================
-        includes    = [ 'include' ,
+        includes    = [ '.',
                         bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction'),
+                        'include',
                         bld.Path('Gems/LmbrCentral/Code/include')
                         ],
         
         editor = dict(
             defines     = ['LIGHTNING_EDITOR'],
-            includes    = ['include',
+            includes    = ['.',
                            bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
+                           'include',
                            bld.Path('Gems/LmbrCentral/Code/include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox'),

@@ -971,7 +971,11 @@ void CSequenceBatchRenderDialog::CaptureItemStart()
     else
     {
         // Otherwise, try to adjust the viewport resolution accordingly.
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.resize_viewport %1 %2").arg(renderWidth).arg(renderHeight));
+        CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
+        if (viewPane)
+        {
+            viewPane->ResizeViewport(renderWidth, renderHeight);
+        }
     }
 
     // turn off debug info if requested

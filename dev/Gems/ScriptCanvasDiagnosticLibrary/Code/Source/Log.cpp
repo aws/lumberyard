@@ -21,7 +21,7 @@ namespace ScriptCanvas
         {
             void Log::OnInputSignal(const SlotId& slotId)
             {
-                auto valueDatum = GetInput(GetSlotId("Value"));
+                auto valueDatum = FindDatum(GetSlotId("Value"));
                 if (!valueDatum)
                 {
                     return;
@@ -36,7 +36,7 @@ namespace ScriptCanvas
                 if (!text.empty())
                 {
                     AZ_TracePrintf("Script Canvas", "%s\n", text.c_str());
-                    LogNotificationBus::Event(GetGraphId(), &LogNotifications::LogMessage, text);
+                    LogNotificationBus::Event(GetOwningScriptCanvasId(), &LogNotifications::LogMessage, text);
                 }
 
                 SignalOutput(GetSlotId("Out"));

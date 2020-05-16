@@ -65,13 +65,13 @@ namespace
             return;
         }
 
-        AZ::EntityId scriptCanvasGraphId;
-        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasId);
 
         AZ::EntityId graphCanvasGraphId;
         ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveGraphCanvasGraphId);
 
-        if (!(scriptCanvasGraphId.IsValid() &&
+        if (!(scriptCanvasId.IsValid() &&
             graphCanvasGraphId.IsValid()))
         {
             // Nothing active.
@@ -95,7 +95,7 @@ namespace
 
             ScriptCanvasEditor::Nodes::StyleConfiguration styleConfiguration;
 
-            NodeIdPair nodePair = ScriptCanvasEditor::Nodes::CreateNode(type, scriptCanvasGraphId, styleConfiguration);
+            NodeIdPair nodePair = ScriptCanvasEditor::Nodes::CreateNode(type, scriptCanvasId, styleConfiguration);
             GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, pos);
 
             // The next position to create a node at.

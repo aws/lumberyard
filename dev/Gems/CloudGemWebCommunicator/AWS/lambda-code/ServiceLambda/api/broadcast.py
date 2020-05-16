@@ -9,11 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
-import messaging
+from . import messaging
 
 @service.api
 def post(request, message_request):
-    print 'Got broadcast request: {} with context {} event {}'.format(request, request.context, request.event)
-    print 'Message request: {}'.format(message_request)  
+    print('Got broadcast request: {} with context {} event {}'.format(request, request.context, request.event))
+    print('Message request: {}'.format(message_request))
     return messaging.broadcast_message(message_request['channel'], message_request['message'])

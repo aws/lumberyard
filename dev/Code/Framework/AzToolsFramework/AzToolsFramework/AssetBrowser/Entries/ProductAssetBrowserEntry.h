@@ -25,7 +25,7 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {       
-        //! ProductAssetBrowserEntry represents product entrypp.
+        //! ProductAssetBrowserEntry represents product entry.
         class ProductAssetBrowserEntry
             : public AssetBrowserEntry
         {

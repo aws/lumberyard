@@ -105,7 +105,7 @@ namespace EMotionFX
                     editContext->Class<LodRule>("Level of Detail", "Set up the level of detail for the meshes in this group.")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute("AutoExpand", true)
-                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "Level of detail")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &LodRule::m_nodeSelectionLists, "Lod Meshes", "Select the meshes to assign to each level of detail.")
                         ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("LODTreeSelection", 0x25c27718))
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "Additional LOD")

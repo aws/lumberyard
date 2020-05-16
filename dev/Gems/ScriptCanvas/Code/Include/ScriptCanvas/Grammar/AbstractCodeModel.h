@@ -17,7 +17,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Variable/VariableCore.h>
-#include <ScriptCanvas/Variable/VariableDatum.h>
+#include <ScriptCanvas/Variable/GraphVariable.h>
 #include <AzCore/Outcome/Outcome.h>
 
 namespace ScriptCanvas
@@ -69,7 +69,7 @@ namespace ScriptCanvas
 
         struct Variable
         {
-            const VariableDatum* m_variable = nullptr;
+            const GraphVariable* m_variable = nullptr;
             bool m_isConstant = true;
             bool m_isMember = false;
         }; // struct Variable

@@ -13,10 +13,7 @@
 
 AzQtComponents--BrowseEdit
 {
-    border-color: transparent;
-    border-width: 2px;
-    border-style: solid;
-    border-radius: 3px;
+    margin: 2px;
 }
 
 AzQtComponents--BrowseEdit QLineEdit
@@ -25,8 +22,8 @@ AzQtComponents--BrowseEdit QLineEdit
     border-width: 0px;
     border-style: solid;
     border-color: #444444;
-    border-top-left-radius: 3px;
-    border-bottom-left-radius: 3px;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
     border-top-right-radius: 0px;
     border-bottom-right-radius: 0px;
 }
@@ -39,23 +36,41 @@ AzQtComponents--BrowseEdit QLineEdit:focus
 
 AzQtComponents--BrowseEdit QLineEdit:disabled
 {
-    background-color: #777777;
     border-color: #777777;
-    color: #999999;
 }
 
-AzQtComponents--BrowseEdit QToolButton
+AzQtComponents--BrowseEdit #attached-button
 {
-    max-width: 15px;
-    min-width: 15px;
-    max-height: 14px;
-    min-height: 14px;
-    background-color: #444444;
-    border-color: #000000;
-    border-width: 1px;
+    max-width: 16px;
+    min-width: 16px;
+    max-height: 16px;
+    min-height: 16px;
+
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #666666, stop: 1 #555555);
+
+    border-width: 0px;
     border-style: solid;
+    border-left: none;
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
     border-top-right-radius: 2px;
     border-bottom-right-radius: 2px;
+}
+
+AzQtComponents--BrowseEdit #attached-button:hover
+{
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #777777, stop: 1 #666666);
+}
+
+AzQtComponents--BrowseEdit #attached-button:pressed
+{
+    background-color: #444444;
+}
+
+AzQtComponents--BrowseEdit #attached-button:disabled
+{
+    background-color: #777777;
+    border-left: 1px solid #222222;
 }

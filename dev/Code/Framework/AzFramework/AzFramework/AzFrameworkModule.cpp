@@ -17,15 +17,18 @@
 #include <AzFramework/Asset/AssetSystemComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzFramework/Components/AzFrameworkConfigurationSystemComponent.h>
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
 #include <AzFramework/FileTag/FileTagComponent.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Scene/SceneSystemComponent.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzFramework/Debug/StatisticalProfilerProxySystemComponent.h>
 
 namespace AzFramework
 {
@@ -36,13 +39,14 @@ namespace AzFramework
             AzFramework::BootstrapReaderComponent::CreateDescriptor(),
             AzFramework::AssetCatalogComponent::CreateDescriptor(),
             AzFramework::CustomAssetTypeComponent::CreateDescriptor(),
-            AzFramework::FileTag::BlackListFileComponent::CreateDescriptor(),
+            AzFramework::FileTag::ExcludeFileComponent::CreateDescriptor(),
             AzFramework::NetBindingComponent::CreateDescriptor(),
             AzFramework::NetBindingSystemComponent::CreateDescriptor(),
             AzFramework::TransformComponent::CreateDescriptor(),
             AzFramework::GameEntityContextComponent::CreateDescriptor(),
     #if !defined(_RELEASE)
             AzFramework::TargetManagementComponent::CreateDescriptor(),
+            AzFramework::Debug::StatisticalProfilerProxySystemComponent::CreateDescriptor(),
     #endif
             AzFramework::CreateScriptDebugAgentFactory(),
             AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor(),
@@ -52,6 +56,18 @@ namespace AzFramework
     #if !defined(AZCORE_EXCLUDE_LUA)
             AzFramework::ScriptComponent::CreateDescriptor(),
     #endif
+            AzFramework::SceneSystemComponent::CreateDescriptor(),
+            AzFramework::AzFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
+    }
+
+    AZ::ComponentTypeList AzFrameworkModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList
+        {
+#if !defined(_RELEASE)
+            azrtti_typeid<AzFramework::Debug::StatisticalProfilerProxySystemComponent>(),
+#endif
+        };
     }
 }

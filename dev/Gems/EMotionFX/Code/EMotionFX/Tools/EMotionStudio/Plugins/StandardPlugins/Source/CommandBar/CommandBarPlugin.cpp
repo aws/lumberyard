@@ -423,7 +423,7 @@ namespace EMStudio
     // adjust the main progress bar
     void CommandBarPlugin::OnProgressValue(float percentage)
     {
-        mProgressBar->setValue(percentage);
+        mProgressBar->setValue(aznumeric_cast<int>(percentage));
         EMStudio::GetApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 

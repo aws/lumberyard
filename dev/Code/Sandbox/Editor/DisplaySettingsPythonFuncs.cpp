@@ -13,7 +13,6 @@
 #include "StdAfx.h"
 #include "DisplaySettings.h"
 #include "DisplaySettingsPythonFuncs.h"
-#include "Util/BoostPythonHelpers.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 
 namespace
@@ -64,10 +63,3 @@ namespace AzToolsFramework
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetMiscDisplaySettings, settings, get_misc_editor_settings,
-    "Get miscellaneous Editor settings (camera collides with terrain, AI/Physics enabled, etc).",
-    "settings.get_misc_editor_settings()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetMiscDisplaySettings, settings, set_misc_editor_settings,
-    "Set miscellaneous Editor settings (camera collides with terrain, AI/Physics enabled, etc).",
-    "settings.set_misc_editor_settings()");

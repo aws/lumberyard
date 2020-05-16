@@ -24,8 +24,8 @@ namespace EMotionFX
     public:
         AZ_RTTI(((RangedValueParameter<ValueType, Derived>), "{83572845-AFBD-4685-AACD-0D15CF79006A}", ValueType, Derived), BaseType);
 
-        RangedValueParameter(const ValueType& defaultValue, const ValueType& minValue, const ValueType& maxValue, bool hasMinValue = true, bool hasMaxValue = true)
-            : BaseType(defaultValue)
+        RangedValueParameter(const ValueType& defaultValue, const ValueType& minValue, const ValueType& maxValue, bool hasMinValue = true, bool hasMaxValue = true, AZStd::string name = {}, AZStd::string description = {})
+            : BaseType(defaultValue, AZStd::move(name), AZStd::move(description))
             , m_minValue(minValue)
             , m_maxValue(maxValue)
             , m_hasMinValue(hasMinValue)

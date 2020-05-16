@@ -1,19 +1,21 @@
 {
-    "none":
+    "none": 
     {
-        "Tests":
-        [
-            "Tests/test_Main.cpp",
-            "Tests/test_MaterialUtils.cpp",
-            "Tests/Test_CryPrimitives.cpp",
-            "Tests/Test_Localization.cpp",
+        "Tests": 
+		[
+            "Components/MathConversionTests.cpp",
+            "Serialization/Test_ArchiveHost.cpp",
+            "Tests/Test_BootProfiler.cpp",
             "Tests/Test_CLog.cpp",
             "Tests/Test_CommandRegistration.cpp",
+            "Tests/Test_CryPrimitives.cpp",
             "Tests/Test_CrySizer.cpp",
-            "Components/MathConversionTests.cpp",
-            "UnitTests/SerializationUnitTests.cpp",
+            "Tests/Test_Localization.cpp",
+            "Tests/test_Main.cpp",
+            "Tests/test_MaterialUtils.cpp",
+            "UnitTests/CryMathTests.cpp",
             "UnitTests/CryPakUnitTests.cpp",
-            "Serialization/Test_ArchiveHost.cpp"
+            "UnitTests/SerializationUnitTests.cpp"
         ]
     }
 }

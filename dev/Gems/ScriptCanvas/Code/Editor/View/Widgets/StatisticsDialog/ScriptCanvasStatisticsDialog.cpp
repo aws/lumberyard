@@ -11,6 +11,8 @@
 */
 #include <precompiled.h>
 
+#include <AzCore/Asset/AssetManagerBus.h>
+
 #include <Editor/View/Widgets/StatisticsDialog/ScriptCanvasStatisticsDialog.h>
 #include <Editor/View/Widgets/StatisticsDialog/ui_ScriptCanvasStatisticsDialog.h>
 
@@ -21,7 +23,7 @@
 
 namespace
 {
-    ScriptCanvasEditor::NodePaletteNodeUsageRootItem* ExternalCreatePaletteRoot(const ScriptCanvasEditor::NodePaletteModel& nodePaletteModel)
+    ScriptCanvasEditor::NodePaletteNodeUsageRootItem* ExternalCreatePaletteRoot(const ScriptCanvasEditor::NodePaletteModel& nodePaletteModel, AZStd::unordered_map< ScriptCanvas::NodeTypeIdentifier, GraphCanvas::GraphCanvasTreeItem* >& leafMap)
     {
         ScriptCanvasEditor::NodePaletteNodeUsageRootItem* root = aznew ScriptCanvasEditor::NodePaletteNodeUsageRootItem(nodePaletteModel);
 
@@ -39,6 +41,7 @@ namespace
             if (createdItem)
             {
                 modelInformation->PopulateTreeItem((*createdItem));
+                leafMap[modelInformation->m_nodeIdentifier] = createdItem;
             }
         }
 
@@ -174,20 +177,68 @@ namespace ScriptCanvasEditor
     {
     }
 
-    void StatisticsDialog::AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage message)
+    void StatisticsDialog::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
     {
-        // Might need to limit this based upon the message. But no clear message type jumps out at me.
-        if (message.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
+        AZ::Data::AssetInfo assetInfo;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
+        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
         {
-            m_scriptCanvasAssetTreeRoot->RegisterAsset(message.m_assetId);
+            m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId);
         }
     }
 
-    void StatisticsDialog::AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message)
+    void StatisticsDialog::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
     {
-        if (message.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
+        AZ::Data::AssetInfo assetInfo;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
+        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
         {
-            m_scriptCanvasAssetTreeRoot->RegisterAsset(message.m_assetId);
+            m_scriptCanvasAssetTreeRoot->RemoveAsset(assetId);
+        }
+    }
+
+    void StatisticsDialog::OnAssetModelRepopulated()
+    {
+        ResetModel();
+    }
+
+    void StatisticsDialog::OnAssetNodeAdded(NodePaletteModelInformation* modelInformation)
+    {
+        auto leafIter = m_leafMap.find(modelInformation->m_nodeIdentifier);
+
+        if (leafIter != m_leafMap.end())
+        {
+            // Duplicate Id. Ignore for now.
+            return;
+        }
+
+        GraphCanvas::GraphCanvasTreeItem* parentItem = m_treeRoot->GetCategoryNode(modelInformation->m_categoryPath.c_str());
+        GraphCanvas::NodePaletteTreeItem* createdItem = nullptr;
+
+        createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::NodePaletteNodeUsagePaletteItem>(modelInformation->m_nodeIdentifier, modelInformation->m_displayName);
+
+        if (createdItem)
+        {
+            modelInformation->PopulateTreeItem((*createdItem));
+            m_leafMap[modelInformation->m_nodeIdentifier] = createdItem;
+        }
+        else
+        {
+            m_treeRoot->PruneEmptyNodes();
+        }
+    }
+
+    void StatisticsDialog::OnAssetNodeRemoved(NodePaletteModelInformation* modelInformation)
+    {
+        auto leafIter = m_leafMap.find(modelInformation->m_nodeIdentifier);
+
+        if (leafIter != m_leafMap.end())
+        {
+            leafIter->second->DetachItem();
+            delete leafIter->second;
+            m_leafMap.erase(leafIter);
+
+            m_treeRoot->PruneEmptyNodes();
         }
     }
 
@@ -238,7 +289,7 @@ namespace ScriptCanvasEditor
             const ScriptCanvasAssetNodeUsageTreeItemRoot::ScriptCanvasAssetMap& assetMapping = m_scriptCanvasAssetTreeRoot->GetAssetTreeItems();
 
             int totalNodeCount = 0;
-            int uniqueGraphs = 0;            
+            int uniqueGraphs = 0;
 
             for (auto itemPair : assetMapping)
             {
@@ -295,7 +346,7 @@ namespace ScriptCanvasEditor
     {
         if (m_treeRoot == nullptr)
         {
-            m_treeRoot = ExternalCreatePaletteRoot(m_nodePaletteModel);
+            m_treeRoot = ExternalCreatePaletteRoot(m_nodePaletteModel, m_leafMap);
 
             GraphCanvas::NodePaletteConfig paletteConfig;
 
@@ -319,7 +370,7 @@ namespace ScriptCanvasEditor
 
             TraverseTree();
 
-            AzFramework::AssetSystemBus::Handler::BusConnect();
+            AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 
             m_ui->scriptCanvasAssetTree->setModel(m_scriptCanvasAssetFilterModel);
 
@@ -343,6 +394,8 @@ namespace ScriptCanvasEditor
             QObject::connect(m_scriptCanvasAssetBrowserModel, &QAbstractItemModel::rowsInserted, this, &StatisticsDialog::OnScriptCanvasAssetRowsInserted);
 
             OnSelectionCleared();
+
+            NodePaletteModelNotificationBus::Handler::BusConnect(m_nodePaletteModel.GetNotificationId());
         }
     }
 
@@ -350,7 +403,8 @@ namespace ScriptCanvasEditor
     {
         if (m_treeRoot)
         {
-            m_treeRoot = ExternalCreatePaletteRoot(m_nodePaletteModel);
+            m_leafMap.clear();
+            m_treeRoot = ExternalCreatePaletteRoot(m_nodePaletteModel, m_leafMap);
             m_ui->nodePaletteWidget->ResetModel(m_treeRoot);
         }
     }

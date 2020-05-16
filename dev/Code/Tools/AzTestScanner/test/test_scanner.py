@@ -9,7 +9,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os
-import mock
+try:
+    import mock
+except ImportError:
+    import unittest.mock as mock
 import unittest
 import aztest.scanner as scanner
 from aztest.errors import InvalidUseError
@@ -77,7 +80,7 @@ class GetDefaultWhitelistTests(unittest.TestCase):
 
         mock_abspath.assert_called_with(WHITELIST)
         mock_exists.assert_called_with(self.test_path)
-        self.assertEquals("", whitelist)
+        self.assertEqual("", whitelist)
 
     @mock.patch('os.path.abspath')
     @mock.patch('os.path.exists')
@@ -89,7 +92,7 @@ class GetDefaultWhitelistTests(unittest.TestCase):
 
         mock_abspath.assert_called_with(WHITELIST)
         mock_exists.assert_called_with(self.test_path)
-        self.assertEquals(self.test_path, whitelist)
+        self.assertEqual(self.test_path, whitelist)
 
 
 class GetDefaultBlacklistTests(unittest.TestCase):
@@ -106,7 +109,7 @@ class GetDefaultBlacklistTests(unittest.TestCase):
 
         mock_abspath.assert_called_with(BLACKLIST)
         mock_exists.assert_called_with(self.test_path)
-        self.assertEquals("", blacklist)
+        self.assertEqual("", blacklist)
 
     @mock.patch('os.path.abspath')
     @mock.patch('os.path.exists')
@@ -118,4 +121,4 @@ class GetDefaultBlacklistTests(unittest.TestCase):
 
         mock_abspath.assert_called_with(BLACKLIST)
         mock_exists.assert_called_with(self.test_path)
-        self.assertEquals(self.test_path, blacklist)
+        self.assertEqual(self.test_path, blacklist)

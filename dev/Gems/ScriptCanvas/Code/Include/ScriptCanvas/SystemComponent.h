@@ -62,9 +62,15 @@ namespace ScriptCanvas
         void CreateEngineComponentsOnEntity(AZ::Entity* entity) override;
         Graph* CreateGraphOnEntity(AZ::Entity* entity) override;
         ScriptCanvas::Graph* MakeGraph() override;
-        AZ::EntityId FindGraphId(AZ::Entity* graphEntity) override;
+        ScriptCanvasId FindScriptCanvasId(AZ::Entity* graphEntity) override;
         ScriptCanvas::Node* GetNode(const AZ::EntityId&, const AZ::Uuid&) override;
-        ScriptCanvas::Node* CreateNodeOnEntity(const AZ::EntityId& entityId, AZ::EntityId graphId, const AZ::Uuid& nodeType) override;
+        ScriptCanvas::Node* CreateNodeOnEntity(const AZ::EntityId& entityId, ScriptCanvasId scriptCanvasId, const AZ::Uuid& nodeType) override;
+        SystemComponentConfiguration GetSystemComponentConfiguration()
+        {
+            SystemComponentConfiguration configuration;
+            configuration.m_maxIterationsForInfiniteLoopDetection = m_infiniteLoopDetectionMaxIterations;
+            return configuration;
+        }
         ////
 
         // BehaviorEventBus::Handler
@@ -80,5 +86,8 @@ namespace ScriptCanvas
         using LockType = AZStd::lock_guard<MutexType>;
         AZStd::unordered_map<const void*, BehaviorContextObject*> m_ownedObjectsByAddress;
         MutexType m_ownedObjectsByAddressMutex;
+
+        int m_infiniteLoopDetectionMaxIterations = 3000;
+
     };
 }

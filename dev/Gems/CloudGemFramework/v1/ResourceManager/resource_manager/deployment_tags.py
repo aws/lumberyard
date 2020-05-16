@@ -8,14 +8,13 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
-from errors import HandledError
-
 import json
 import os
 import copy
-from resource_manager_common import constant
+import six
 
+from resource_manager_common import constant
+from .errors import HandledError
 
 # Class supporting modifying resource-template.json for a given deployment through modification tags
 # To use, within your region section in local-project-settings.json add a "DeploymentTags" section
@@ -79,7 +78,7 @@ from resource_manager_common import constant
 #        }
 # }
 
-class DeploymentTag():
+class DeploymentTag:
     def __init__(self, deployment_name, context):
         self._context = context
         self._tags = context.config.local_project_settings.get(constant.DEPLOYMENT_TAGS, {}).get(deployment_name, [])
@@ -103,7 +102,7 @@ class DeploymentTag():
     def apply_overrides(self, resource_group):
         overrides = self.get_tag_overrides(resource_group.name)
         template = copy.deepcopy(resource_group.template)
-        for override_name, override_data in overrides.iteritems():
+        for override_name, override_data in six.iteritems(overrides):
             operation = override_data.get("EditType", "")
             if operation == "Replace":
                 template = self.replace_template_content(
@@ -114,7 +113,7 @@ class DeploymentTag():
             elif operation == "Delete":
                 template = self.remove_template_content(override_name, template)
             else:
-                raise HandledError("Unkonwn operation, DeploymentTag operation {} is not valid".format(operation))
+                raise HandledError("Unknown operation, DeploymentTag operation {} is not valid".format(operation))
         return template
 
 
@@ -136,7 +135,7 @@ class DeploymentTag():
     def add_template_content(self, override_name, override_template_data, template):
         path_list = override_name.split(":")
         self.path_found = []
-        new_template =  self.recursive_edit(copy.deepcopy(path_list), override_template_data, template, "Add")
+        new_template = self.recursive_edit(copy.deepcopy(path_list), override_template_data, template, "Add")
         if self.path_found != path_list:
             message = "Template did not contain the object we were looking for at {}. Object was created to add content at {}".format(self.path_found, path_list)
             self._context.view._output_message(message)

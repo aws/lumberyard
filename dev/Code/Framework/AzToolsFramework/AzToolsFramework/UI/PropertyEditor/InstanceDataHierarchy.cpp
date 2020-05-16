@@ -321,6 +321,10 @@ namespace AzToolsFramework
         const AZ::SerializeContext::ClassElement* containerClassElement = container->GetElement(container->GetDefaultElementNameCrc());
 
         AZ_Assert(containerClassElement != NULL, "We should have a valid default element in the container, otherwise we don't know what elements to make!");
+        if (!containerClassElement)
+        {
+            return false;
+        }
 
         if (containerClassElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
         {

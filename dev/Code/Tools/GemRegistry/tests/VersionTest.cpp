@@ -39,7 +39,6 @@ protected:
     const char* m_errHasherIncorrect;
 };
 
-#ifdef AZ_HAS_INITIALIZERS_LIST
 TEST_F(VersionTest, InitializerListConstructor_ValidValues_ReturnSameValues)
 {
     GemVersion v0 = { 1, 2, 3 };
@@ -55,7 +54,6 @@ TEST_F(VersionTest, InitializerListConstructor_ValidValues_ReturnSameValues)
     ASSERT_EQ(v1.m_parts[2], 3) << m_errParseInvalid;
     ASSERT_EQ(v1.m_parts[3], 4) << m_errParseInvalid;
 }
-#endif
 
 TEST_F(VersionTest, ParseFromString_ValidString_ReturnSuccessOutcomeWithCorrectValues)
 {

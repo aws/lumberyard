@@ -79,11 +79,11 @@ namespace
     GraphCanvas::NodePaletteTreeItem* ExternalCreatePaletteRoot(const ScriptCanvasEditor::NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel)
     {
         ScriptCanvasEditor::Widget::ScriptCanvasRootPaletteTreeItem* root = aznew ScriptCanvasEditor::Widget::ScriptCanvasRootPaletteTreeItem(nodePaletteModel, assetModel);
-
         {
             GraphCanvas::NodePaletteTreeItem* utilitiesRoot = root->GetCategoryNode("Utilities");
 
-            root->CreateChildNode<ScriptCanvasEditor::LocalVariablesListNodePaletteTreeItem>("Variables");
+            GraphCanvas::NodePaletteTreeItem* variablesRoot = root->CreateChildNode<ScriptCanvasEditor::LocalVariablesListNodePaletteTreeItem>("Variables");
+            root->RegisterCategoryNode(variablesRoot, "Variables");
 
             // We always want to keep this one around as a place holder
             GraphCanvas::NodePaletteTreeItem* customEventRoot = root->GetCategoryNode("Script Events");
@@ -110,11 +110,17 @@ namespace
             }
             else if (auto ebusHandlerNodeModelInformation = azrtti_cast<const ScriptCanvasEditor::EBusHandlerNodeModelInformation*>(modelInformation))
             {
-                createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::EBusHandleEventPaletteTreeItem>(ebusHandlerNodeModelInformation->m_busName, ebusHandlerNodeModelInformation->m_eventName, ebusHandlerNodeModelInformation->m_busId, ebusHandlerNodeModelInformation->m_eventId);
+                if (!azrtti_istypeof<const ScriptCanvasEditor::ScriptEventHandlerNodeModelInformation*>(ebusHandlerNodeModelInformation))
+                {
+                    createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::EBusHandleEventPaletteTreeItem>(ebusHandlerNodeModelInformation->m_busName, ebusHandlerNodeModelInformation->m_eventName, ebusHandlerNodeModelInformation->m_busId, ebusHandlerNodeModelInformation->m_eventId);
+                }
             }
             else if (auto ebusSenderNodeModelInformation = azrtti_cast<const ScriptCanvasEditor::EBusSenderNodeModelInformation*>(modelInformation))
             {
-                createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::EBusSendEventPaletteTreeItem>(ebusSenderNodeModelInformation->m_busName, ebusSenderNodeModelInformation->m_eventName, ebusSenderNodeModelInformation->m_busId, ebusSenderNodeModelInformation->m_eventId);
+                if (!azrtti_istypeof<const ScriptCanvasEditor::ScriptEventSenderNodeModelInformation*>(ebusSenderNodeModelInformation))
+                {
+                    createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::EBusSendEventPaletteTreeItem>(ebusSenderNodeModelInformation->m_busName, ebusSenderNodeModelInformation->m_eventName, ebusSenderNodeModelInformation->m_busId, ebusSenderNodeModelInformation->m_eventId);
+                }
             }
 
             if (createdItem)
@@ -166,6 +172,16 @@ namespace ScriptCanvasEditor
             {
                 QObject::disconnect(connection);
             }
+        }
+
+        void ScriptCanvasRootPaletteTreeItem::RegisterCategoryNode(GraphCanvas::GraphCanvasTreeItem* treeItem, const char* subCategory, GraphCanvas::NodePaletteTreeItem* parentRoot)
+        {
+            if (parentRoot == nullptr)
+            {
+                parentRoot = this;
+            }
+
+            m_categorizer.RegisterCategoryNode(treeItem, subCategory, parentRoot);
         }
 
         // Given a category path (e.g. "My/Category") and a parent node, creates the necessary intermediate
@@ -321,8 +337,7 @@ namespace ScriptCanvasEditor
         NodePaletteDockWidget::NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, const ScriptCanvasNodePaletteConfig& paletteConfig)
             : GraphCanvas::NodePaletteDockWidget(parent, windowLabel, paletteConfig)
             , m_assetModel(paletteConfig.m_assetModel)
-            , m_nodePaletteModel(paletteConfig.m_nodePaletteModel)
-            , m_cyclingIdentifier(0)
+            , m_nodePaletteModel(paletteConfig.m_nodePaletteModel)            
             , m_nextCycleAction(nullptr)
             , m_previousCycleAction(nullptr)
             , m_ignoreSelectionChanged(false)
@@ -342,12 +357,12 @@ namespace ScriptCanvasEditor
                 QTreeView* treeView = GetTreeView();
 
                 {
-                    m_nextCycleAction = new QAction(treeView);
+                m_nextCycleAction = new QAction(treeView);
 
-                    m_nextCycleAction->setShortcut(QKeySequence(Qt::Key_F8));
-                    treeView->addAction(m_nextCycleAction);
+                m_nextCycleAction->setShortcut(QKeySequence(Qt::Key_F8));
+                treeView->addAction(m_nextCycleAction);
 
-                    QObject::connect(m_nextCycleAction, &QAction::triggered, this, &NodePaletteDockWidget::CycleToNextNode);
+                QObject::connect(m_nextCycleAction, &QAction::triggered, this, &NodePaletteDockWidget::CycleToNextNode);
                 }
 
                 {
@@ -367,24 +382,30 @@ namespace ScriptCanvasEditor
             GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
         }
 
+        NodePaletteDockWidget::~NodePaletteDockWidget()
+        {
+            GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
+            GraphCanvas::SceneNotificationBus::Handler::BusDisconnect();
+        }
+
         void NodePaletteDockWidget::OnNewCustomEvent()
         {
             AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Broadcast(&AzToolsFramework::AssetEditor::AssetEditorRequests::CreateNewAsset, azrtti_typeid<ScriptEvents::ScriptEventsAsset>());
         }
 
-        void ScriptCanvasRootPaletteTreeItem::AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage /*message*/)
+        void ScriptCanvasRootPaletteTreeItem::OnCatalogAssetChanged(const AZ::Data::AssetId& /*assetId*/)
         {
             TraverseTree();
         }
 
-        void ScriptCanvasRootPaletteTreeItem::AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage /*message*/)
+        void ScriptCanvasRootPaletteTreeItem::OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/)
         {
             TraverseTree();
         }
 
         void NodePaletteDockWidget::HandleTreeItemDoubleClicked(GraphCanvas::GraphCanvasTreeItem* treeItem)
         {
-            SetCycleTarget(NodeIdentifierFactory::ConstructNodeIdentifier(treeItem));
+            ParseCycleTargets(treeItem);
             CycleToNextNode();
         }
 
@@ -413,11 +434,13 @@ namespace ScriptCanvasEditor
 
         void NodePaletteDockWidget::OnTreeSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
         {
+            ClearCycleTarget();
+
             AZStd::unordered_set< ScriptCanvas::VariableId > variableSet;
 
             GraphCanvas::NodePaletteWidget* paletteWidget = GetNodePaletteWidget();
 
-            QModelIndexList indexList = GetTreeView()->selectionModel()->selectedRows();           
+            QModelIndexList indexList = GetTreeView()->selectionModel()->selectedRows();
 
             if (indexList.size() == 1)
             {
@@ -428,29 +451,38 @@ namespace ScriptCanvasEditor
                     QModelIndex sourceIndex = filterModel->mapToSource(index);
 
                     GraphCanvas::NodePaletteTreeItem* nodePaletteItem = static_cast<GraphCanvas::NodePaletteTreeItem*>(sourceIndex.internalPointer());
-                    SetCycleTarget(NodeIdentifierFactory::ConstructNodeIdentifier(nodePaletteItem));
+
+                    ParseCycleTargets(nodePaletteItem);
                 }
-            }
-            else
-            {
-                SetCycleTarget(ScriptCanvas::NodeTypeIdentifier());
             }
         }
 
-        void NodePaletteDockWidget::SetCycleTarget(ScriptCanvas::NodeTypeIdentifier cyclingIdentifier)
+        void NodePaletteDockWidget::AddCycleTarget(ScriptCanvas::NodeTypeIdentifier cyclingIdentifier)
         {
-            if (m_cyclingIdentifier != cyclingIdentifier)
+            if (cyclingIdentifier == ScriptCanvas::NodeTypeIdentifier(0))
             {
-                m_cyclingIdentifier = cyclingIdentifier;
-                m_cyclingHelper.Clear();
+                return;
+            }
 
-                if (m_nextCycleAction)
-                {
-                    bool isValid = m_cyclingIdentifier != ScriptCanvas::NodeTypeIdentifier(0);
+            m_cyclingIdentifiers.insert(cyclingIdentifier);
+            m_cyclingHelper.Clear();
 
-                    m_nextCycleAction->setEnabled(isValid);
-                    m_previousCycleAction->setEnabled(isValid);
-                }
+            if (m_nextCycleAction)
+            {
+                m_nextCycleAction->setEnabled(true);
+                m_previousCycleAction->setEnabled(true);
+            }
+        }
+
+        void NodePaletteDockWidget::ClearCycleTarget()
+        {
+            m_cyclingIdentifiers.clear();
+            m_cyclingHelper.Clear();
+
+            if (m_nextCycleAction)
+            {
+                m_nextCycleAction->setEnabled(false);
+                m_previousCycleAction->setEnabled(false);
             }
         }
 
@@ -470,25 +502,32 @@ namespace ScriptCanvasEditor
 
         void NodePaletteDockWidget::ConfigureHelper()
         {
-            if (!m_cyclingHelper.IsConfigured() && m_cyclingIdentifier != ScriptCanvas::NodeTypeIdentifier(0))
+            if (!m_cyclingHelper.IsConfigured() && !m_cyclingIdentifiers.empty())
             {
-                AZ::EntityId scriptCanvasGraphId;
-                GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetActiveScriptCanvasGraphId);
+                ScriptCanvas::ScriptCanvasId scriptCanvasId;
+                GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetActiveScriptCanvasId);
 
                 AZ::EntityId graphCanvasGraphId;
                 GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &GeneralRequests::GetActiveGraphCanvasGraphId);
 
                 m_cyclingHelper.SetActiveGraph(graphCanvasGraphId);
 
-                AZStd::vector<NodeIdPair> nodePairs;
-                EditorGraphRequestBus::EventResult(nodePairs, scriptCanvasGraphId, &EditorGraphRequests::GetNodesOfType, m_cyclingIdentifier);                
-
                 AZStd::vector<GraphCanvas::NodeId> cyclingNodes;
-                cyclingNodes.reserve(nodePairs.size());
+                AZStd::vector<NodeIdPair> completeNodePairs;
 
-                for (const auto& nodeIdPair : nodePairs)
+                for (ScriptCanvas::NodeTypeIdentifier nodeTypeIdentifier : m_cyclingIdentifiers)
                 {
-                    cyclingNodes.emplace_back(nodeIdPair.m_graphCanvasId);
+                    AZStd::vector<NodeIdPair> nodePairs;
+                    EditorGraphRequestBus::EventResult(nodePairs, scriptCanvasId, &EditorGraphRequests::GetNodesOfType, nodeTypeIdentifier);
+
+                    cyclingNodes.reserve(cyclingNodes.size() + nodePairs.size());
+                    completeNodePairs.reserve(completeNodePairs.size() + nodePairs.size());
+
+                    for (const auto& nodeIdPair : nodePairs)
+                    {
+                        cyclingNodes.emplace_back(nodeIdPair.m_graphCanvasId);
+                        completeNodePairs.emplace_back(nodeIdPair);
+                    }
                 }
 
                 m_cyclingHelper.SetNodes(cyclingNodes);
@@ -499,7 +538,17 @@ namespace ScriptCanvasEditor
                     GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::ClearSelection);
                 }
 
-                EditorGraphRequestBus::Event(scriptCanvasGraphId, &EditorGraphRequests::HighlightNodes, nodePairs);
+                EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::HighlightNodes, completeNodePairs);
+            }
+        }
+
+        void NodePaletteDockWidget::ParseCycleTargets(GraphCanvas::GraphCanvasTreeItem* treeItem)
+        {
+            AZStd::vector< ScriptCanvas::NodeTypeIdentifier > nodeTypeIdentifiers = NodeIdentifierFactory::ConstructNodeIdentifiers(treeItem);
+
+            for (auto nodeTypeIdentifier : nodeTypeIdentifiers)
+            {
+                AddCycleTarget(nodeTypeIdentifier);
             }
         }
     }

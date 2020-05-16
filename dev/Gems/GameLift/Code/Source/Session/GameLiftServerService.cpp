@@ -10,14 +10,15 @@
 *
 */
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/Memory/Memory.h>
 
+#include <GameLift/Session/GameLiftServerSDKWrapper.h>
 #include <GameLift/Session/GameLiftServerService.h>
 #include <GameLift/Session/GameLiftServerSession.h>
 
-#include <aws/gamelift/server/GameLiftServerAPI.h>
 
 namespace GridMate
 {
@@ -27,6 +28,12 @@ namespace GridMate
         , m_serverStatus(GameLift_NotInited)
         , m_serverInitOutcome(nullptr)
     {
+        m_gameLiftServerSDKWrapper = AZStd::make_shared<GridMate::GameLiftServerSDKWrapper>();
+    }
+
+    GameLiftServerService::~GameLiftServerService()
+    {
+        m_gameLiftServerSDKWrapper.reset();
     }
 
     void GameLiftServerService::OnServiceRegistered(IGridMate* gridMate)
@@ -55,8 +62,8 @@ namespace GridMate
 
         if (m_serverStatus == GameLift_Ready || m_serverStatus == GameLift_Terminated)
         {
-            Aws::GameLift::Server::ProcessEnding();
-            Aws::GameLift::Server::Destroy();
+            GetGameLiftServerSDKWrapper().lock()->ProcessEnding();
+            GetGameLiftServerSDKWrapper().lock()->Destroy();
             m_serverStatus = GameLift_NotInited;
         }
 
@@ -69,7 +76,7 @@ namespace GridMate
     {
         if (m_serverStatus == GameLift_NotInited)
         {
-            Aws::GameLift::Server::InitSDKOutcome initOutcome = Aws::GameLift::Server::InitSDK();
+            Aws::GameLift::Server::InitSDKOutcome initOutcome = GetGameLiftServerSDKWrapper().lock()->InitSDK();
             if (initOutcome.IsSuccess())
             {
                 AZ_TracePrintf("GameLift", "InitSDK succeeded.\n");
@@ -91,7 +98,14 @@ namespace GridMate
                         // This callback will be called on GameLift thread
                         EBUS_QUEUE_EVENT(Internal::GameLiftServerSystemEventsBus, OnGameLiftGameSessionStarted, gameSession);
                     },
-
+                    /*
+                    * onUpdateGameSession
+                    * Invoked when the game session is updated after backfill
+                    */
+                    [this](const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) {
+                        AZ_TracePrintf("GameLift", "On Update Game Session...\n");
+                        EBUS_QUEUE_EVENT(Internal::GameLiftServerSystemEventsBus, OnGameLiftGameSessionUpdated, updateGameSession);
+                    },
                     /*
                     * onProcessTerminate
                     * Invoked when GameLift wants to force kill the server
@@ -121,7 +135,8 @@ namespace GridMate
                     */
                     Aws::GameLift::Server::LogParameters(logPaths)
                 );
-                m_serverInitOutcome = new Aws::GameLift::GenericOutcomeCallable(Aws::GameLift::Server::ProcessReadyAsync(processParams));
+                m_serverInitOutcome = new Aws::GameLift::GenericOutcomeCallable(
+                    GetGameLiftServerSDKWrapper().lock()->ProcessReadyAsync(processParams));
             }
             else
             {
@@ -142,6 +157,13 @@ namespace GridMate
     {
         AZ_TracePrintf("GameLift", "Dispatching OnGameLiftGameSessionStarted...\n");
         EBUS_EVENT_ID(m_gridMate, GameLiftServerServiceEventsBus, OnGameLiftGameSessionStarted, this, gameSession);
+    }
+
+    void GameLiftServerService::OnGameLiftGameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession)
+    {
+        AZ_TracePrintf("GameLift", "Dispatching OnGameLiftGameSessionUpdated...\n");
+        UpdateGameSession(updateGameSession);
+        EBUS_EVENT_ID(m_gridMate, GameLiftServerServiceEventsBus, OnGameLiftGameSessionUpdated, this, updateGameSession);
     }
 
     void GameLiftServerService::OnGameLiftServerWillTerminate()
@@ -220,6 +242,83 @@ namespace GridMate
         }
         AZ_TracePrintf("GameLift", "GameLiftSessionService::HostSession. Completed.\n");
         return session;
+    }
+
+    void GameLiftServerService::ShutdownSession(const GridSession* gridSession)
+    {
+        GameLiftServerSession* session = FindGameLiftServerSession(gridSession->GetId());
+        if (session)
+        {
+            // Shutdown call removes the game session from server service.
+            session->Shutdown();
+            delete session;
+        }
+        else
+        {
+            AZ_TracePrintf("GameLift", "GameSession Failed to Shutdown. No GameLiftServerSession found for :%s", gridSession->GetId().c_str());
+        }
+    }
+
+    bool GameLiftServerService::StartMatchmakingBackfill(const GridSession* gridSession, AZStd::string& matchmakingTicketId, bool checkForAutoBackfill)
+    {
+        GameLiftServerSession* session = FindGameLiftServerSession(gridSession->GetId());
+        if (session)
+        {
+            return session->StartMatchmakingBackfill(matchmakingTicketId, checkForAutoBackfill);
+        }
+        else
+        {
+            AZ_TracePrintf("GameLift", "GameSession Failed to start backfill. No GameLiftServerSession found for :%s", gridSession->GetId().c_str());
+            return false;
+        }
+    }
+
+    bool GameLiftServerService::StopMatchmakingBackfill(const GridSession* gridSession, const AZStd::string& matchmakingTicketId)
+    {
+        GameLiftServerSession* session = FindGameLiftServerSession(gridSession->GetId());
+        if (session)
+        {
+            return session->StopMatchmakingBackfill(matchmakingTicketId);
+        }
+        else
+        {
+            AZ_TracePrintf("GameLift", "GameSession Failed to stop backfill. No GameLiftServerSession found for :%s", gridSession->GetId().c_str());
+            return false;
+        }
+    }
+
+    bool GameLiftServerService::UpdateGameSession(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession)
+    {
+        AZStd::string gameSessionId = updateGameSession.GetGameSession().GetGameSessionId().c_str();
+        GameLiftServerSession* session = FindGameLiftServerSession(gameSessionId);
+        if (session)
+        {            
+            return session->GameSessionUpdated(updateGameSession);
+        }
+        else
+        {
+            AZ_TracePrintf("GameLift", "GameSession Failed to update. No GameLiftServerSession found for :%s", gameSessionId.c_str());
+            return false;
+        }
+    }
+
+    AZStd::weak_ptr<GameLiftServerSDKWrapper> GameLiftServerService::GetGameLiftServerSDKWrapper()
+    {
+        return m_gameLiftServerSDKWrapper;
+    }
+
+    GameLiftServerSession* GameLiftServerService::FindGameLiftServerSession(const AZStd::string& id)
+    {
+        GridSession* gridSession = nullptr;
+        for (GridSession* session : m_sessions)
+        {
+            if (id.compare(session->GetId()) == 0)
+            {
+                gridSession = session;
+                break;
+            }
+        }
+        return static_cast<GameLiftServerSession*>(gridSession);
     }
 } // namespace GridMate
 

@@ -65,7 +65,6 @@ struct IFireCommandDesc;
 struct IVisArea;
 struct IAISignalExtraData;
 
-class CAIActionManager;
 class ICentralInterestManager;
 class CPerceptionManager;
 class CAIHideObject;
@@ -333,22 +332,12 @@ public:
     virtual BehaviorTree::IGraftManager* GetIGraftManager() const;
     virtual ITargetTrackManager* GetTargetTrackManager() const;
     virtual struct IMovementSystem* GetMovementSystem() const;
-    virtual AIActionSequence::ISequenceManager* GetSequenceManager() const;
     virtual IClusterDetector* GetClusterDetector() const;
 
     virtual ISmartObjectManager* GetSmartObjectManager();
     virtual IAIObjectManager* GetAIObjectManager();
     //Get Subsystems///////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //AI Actions///////////////////////////////////////////////////////////////////////////////////////////////////
-    virtual IAIActionManager* GetAIActionManager();
-    //AI Actions///////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -453,8 +442,6 @@ public:
     virtual void UpdateBeacon(unsigned short nGroupID, const Vec3& vPos, IAIObject* pOwner = 0);
 
     virtual IFireCommandHandler* CreateFirecommandHandler(const char* name, IAIActor* pShooter);
-
-    virtual bool ParseTables(int firstTable, bool parseMovementAbility, IFunctionHandler* pH, AIObjectParams& aiParams, bool& updateAlways);
 
     void AddCombatClass(int combatClass, float* pScalesVector, int size, const char* szCustomSignal);
     float ProcessBalancedDamage(IEntity* pShooterEntity, IEntity* pTargetEntity, float damage, const char* damageType);
@@ -783,7 +770,6 @@ public:
     CPipeManager m_PipeManager;
     CGraph* m_pGraph;
     CNavigation* m_pNavigation;
-    CAIActionManager* m_pAIActionManager;
     CSmartObjectManager* m_pSmartObjectManager;
     bool m_bUpdateSmartObjects;
     bool m_IsEnabled;//TODO eventually find how to axe this!
@@ -855,8 +841,7 @@ public:
 
     ////////////////////////////////////////////////////////////////////
     //scripting data structures
-    CScriptBind_AI* m_pScriptAI;
-
+    
     std::vector<const IPhysicalEntity*> m_walkabilityPhysicalEntities;
     IGeometry* m_walkabilityGeometryBox;
 

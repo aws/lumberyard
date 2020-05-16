@@ -54,8 +54,8 @@ namespace GraphCanvas
 
         painter->setPen(pen);        
         
-        QLineF horizontalLine(drawRect.center() - QPoint(radius, 0), drawRect.center() + QPointF(radius, 0));
-        QLineF verticalLine(drawRect.center() - QPoint(0, radius), drawRect.center() + QPointF(0, radius));
+        QLineF horizontalLine(drawRect.center() - QPointF(radius, 0), drawRect.center() + QPointF(radius, 0));
+        QLineF verticalLine(drawRect.center() - QPointF(0, radius), drawRect.center() + QPointF(0, radius));
         
         painter->drawLine(horizontalLine);
         painter->drawLine(verticalLine);

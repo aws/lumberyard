@@ -45,7 +45,7 @@ namespace AZ
             {
             }
 
-            ~AssetDatabaseAsyncJob()
+            ~AssetDatabaseAsyncJob() override
             {
             }
         };
@@ -78,11 +78,11 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData.Get()->IsReady())
+                        if (assetData->IsReady())
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData.Get()->IsError())
+                        else if (assetData->IsError())
                         {
                             handler->OnAssetError(assetData);
                         }
@@ -124,24 +124,31 @@ namespace AZ
                 {
                     AZ_ASSET_ATTACH_TO_SCOPE(this);
 
-                    m_owner->RegisterAssetLoading(m_asset);
-
-                    const bool loadSucceeded = LoadData();
-
-                    // Queue the result for dispatch to main thread.
-                    m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
-
-                    // Notify any dependent jobs.
-                    if (loadSucceeded)
+                    if (m_owner->GetCancelAllActiveJobs())
                     {
-                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
+                        AssetJobBus::Event(m_asset.GetId(), &AssetJobBus::Events::OnAssetError, m_asset);
                     }
                     else
                     {
-                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
-                    }
+                        m_owner->RegisterAssetLoading(m_asset);
 
-                    m_owner->UnregisterAssetLoading(m_asset);
+                        const bool loadSucceeded = LoadData();
+
+                        // Queue the result for dispatch to main thread.
+                        m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
+
+                        // Notify any dependent jobs.
+                        if (loadSucceeded)
+                        {
+                            EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
+                        }
+                        else
+                        {
+                            EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
+                        }
+
+                        m_owner->UnregisterAssetLoading(m_asset);
+                    }
                 }
 
                 delete this;
@@ -152,6 +159,16 @@ namespace AZ
                 AZ_ASSET_NAMED_SCOPE(m_asset.GetHint().c_str());
 
                 AssetStreamInfo loadInfo = m_owner->GetLoadStreamInfoForAsset(m_asset.GetId(), m_asset.GetType());
+                if (!loadInfo.IsValid())
+                {
+                    // opportunity for handler to do default substitution:
+                    AZ::Data::AssetId fallbackId = m_assetHandler->AssetMissingInCatalog(m_asset);
+                    if (fallbackId.IsValid())
+                    {
+                        loadInfo = m_owner->GetLoadStreamInfoForAsset(fallbackId, m_asset.GetType());
+                    }
+                }
+                
                 if (loadInfo.IsValid())
                 {
                     if (loadInfo.m_isCustomStreamType)
@@ -241,7 +258,7 @@ namespace AZ
                 m_waitEvent.acquire();
             }
 
-            void Finish()
+            void Finish() override
             {
                 m_waitEvent.release();
             }
@@ -269,12 +286,12 @@ namespace AZ
             }
 
         protected:
-            void Wait()
+            void Wait() override
             {
                 m_blockingAssetTypeManager->BlockOnAsset(m_assetData);
             }
 
-            void Finish()
+            void Finish() override
             {
                 m_blockingAssetTypeManager->BlockingAssetFinished(m_assetData);
             }
@@ -368,6 +385,7 @@ namespace AZ
         //=========================================================================
         AssetDatabaseJob::~AssetDatabaseJob()
         {
+            m_asset.Release();
             m_owner->RemoveJob(this);
         }
 
@@ -465,6 +483,8 @@ namespace AZ
         //=========================================================================
         AssetManager::~AssetManager()
         {
+            PrepareShutDown();
+
             delete m_jobContext;
             delete m_jobManager;
 
@@ -473,10 +493,6 @@ namespace AZ
             // Acquire the asset lock to make sure nobody else is trying to do anything fancy with assets
             AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
 
-            while (!m_activeJobs.empty())
-            {
-                delete &*m_activeJobs.begin();
-            }
             while (!m_handlers.empty())
             {
                 AssetHandlerMap::iterator it = m_handlers.begin();
@@ -514,6 +530,28 @@ namespace AZ
 #else
             return m_assetInfoUpgradingEnabled;
 #endif
+        }
+
+        bool AssetManager::GetCancelAllActiveJobs() const
+        {
+            return m_cancelAllActiveJobs;
+        }
+
+        void AssetManager::PrepareShutDown()
+        {
+            m_cancelAllActiveJobs = true;
+
+            // We want to ensure that no active load jobs are in flight and
+            // therefore we need to wait till all jobs have completed. Please note that jobs get deleted automatically once they complete. 
+
+            while(m_activeJobs.size())
+            {
+                DispatchEvents();
+                AZStd::this_thread::yield();
+            };
+
+            // Ensure that there are no queued events on the AssetBus
+            DispatchEvents();
         }
 
         //=========================================================================
@@ -899,20 +937,26 @@ namespace AZ
 
             // We have to separate the code which was removing the asset from the m_asset map while being locked, but then actually destroy the asset
             // while the lock is not held since destroying the asset while holding the lock can cause a deadlock.
-            if(destroyAsset)
+            if (destroyAsset)
             {
                 // find the asset type handler
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
-                AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!", assetType.ToString<AZ::OSString>().c_str(), assetId.ToString<AZ::OSString>().c_str());
-                AssetHandler* handler = handlerIt->second;
-                if (asset)
+                if (handlerIt != m_handlers.end())
                 {
-                    handler->DestroyAsset(asset);
-                    if (wasInAssetsHash)
+                    AssetHandler* handler = handlerIt->second;
+                    if (asset)
                     {
-                        --handler->m_nActiveAssets;
-                        EBUS_QUEUE_EVENT_ID(assetId, AssetBus, OnAssetUnloaded, assetId, assetType);
+                        handler->DestroyAsset(asset);
+                        if (wasInAssetsHash)
+                        {
+                            --handler->m_nActiveAssets;
+                            EBUS_QUEUE_EVENT_ID(assetId, AssetBus, OnAssetUnloaded, assetId, assetType);
+                        }
                     }
+                }
+                else
+                {
+                    AZ_Assert(false, "No handler was registered for this asset [type:0x%x id:%s]!", assetType.ToString<AZ::OSString>().c_str(), assetId.ToString<AZ::OSString>().c_str());
                 }
             }
         }
@@ -939,7 +983,7 @@ namespace AZ
         //=========================================================================
         // ReloadAsset
         //=========================================================================
-        void AssetManager::ReloadAsset(const AssetId& assetId)
+        void AssetManager::ReloadAsset(const AssetId& assetId, bool isAutoReload)
         {
             AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
             auto assetIter = m_assets.find(assetId);
@@ -958,33 +1002,46 @@ namespace AZ
                 return;
             }
 
-            AssetData* currentAssetData = assetIter->second;
             AssetData* newAssetData = nullptr;
             AssetHandler* handler = nullptr;
 
-            if (!currentAssetData->IsRegisterReadonlyAndShareable())
+            bool preventAutoReload = isAutoReload && assetIter->second && !assetIter->second->HandleAutoReload();
+
+            // when Asset<T>'s constructor is called (the one that takes an AssetData), it updates the AssetID
+            // of the Asset<T> to be the real latest canonical assetId of the asset, so we cache that here instead of have it happen
+            // implicitly and repeatedly for anything we call.
+            Asset<AssetData> currentAsset(assetIter->second);
+
+            if (!assetIter->second->IsRegisterReadonlyAndShareable() && !preventAutoReload)
             {
                 // Reloading an "instance asset" is basically a no-op.
                 // We'll simply notify users to reload the asset.
-                EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetReloaded, this, Asset<AssetData>(currentAssetData));
+                AssetBus::QueueFunction(&AssetManager::NotifyAssetReloaded, this, currentAsset);
                 return;
             }
             else
             {
-                EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetPreReload, this, Asset<AssetData>(currentAssetData));
+                AssetBus::QueueFunction(&AssetManager::NotifyAssetPreReload, this, currentAsset);
+            }
+
+            // Current AssetData has requested not to be auto reloaded
+            if (preventAutoReload)
+            {
+                return;
             }
 
             // Resolve the asset handler and allocate new data for the reload.
             {
-                AssetHandlerMap::iterator handlerIt = m_handlers.find(currentAssetData->GetType());
-                AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
-                    currentAssetData->GetType().ToString<AZ::OSString>().c_str(), currentAssetData->GetId().ToString<AZ::OSString>().c_str());
+                AssetHandlerMap::iterator handlerIt = m_handlers.find(currentAsset.GetType());
+                AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
+                    currentAsset.GetType().ToString<AZ::OSString>().c_str(), currentAsset.GetId().ToString<AZ::OSString>().c_str());
                 handler = handlerIt->second;
 
-                newAssetData = handler->CreateAsset(currentAssetData->GetId(), currentAssetData->GetType());
+                newAssetData = handler->CreateAsset(currentAsset.GetId(), currentAsset.GetType());
                 if (newAssetData)
                 {
-                    newAssetData->m_assetId = currentAssetData->GetId();
+                    newAssetData->m_assetId = currentAsset.GetId();
+                    ++handler->m_nActiveAssets;
                 }
             }
 
@@ -994,11 +1051,14 @@ namespace AZ
                 // isn't immediately destroyed. Since reloads are not a shipping feature, we'll
                 // hold this reference indefinitely, but we'll only hold the most recent one for
                 // a given asset Id.
-                m_reloads[assetId] = newAssetData;
+
+                Asset<AssetData> newAsset(newAssetData);
+
+                m_reloads[newAsset.GetId()] = newAsset;
 
                 // Kick off the reload job.
                 newAssetData->m_status = static_cast<int>(AssetData::AssetStatus::Loading);
-                ReloadAssetJob* reloadJob = aznew ReloadAssetJob(m_jobContext, this, newAssetData, handler);
+                ReloadAssetJob* reloadJob = aznew ReloadAssetJob(m_jobContext, this, newAsset, handler);
                 reloadJob->Start();
             }
         }
@@ -1009,12 +1069,12 @@ namespace AZ
         void AssetManager::ReloadAssetFromData(const Asset<AssetData>& asset)
         {
             AZ_Assert(asset.Get(), "Asset data for reload is missing.");
-            AZ_Assert(m_assets.find(asset.GetId()) != m_assets.end(),"Unable to reload asset %s because its not in the AssetManager's asset list.", asset.ToString<AZStd::string>().c_str());
-            AZ_Assert(m_assets.find(asset.GetId()) == m_assets.end() || asset.Get()->RTTI_GetType() == m_assets.find(asset.GetId())->second->RTTI_GetType(),
+            AZ_Assert(m_assets.find(asset.GetId()) != m_assets.end(), "Unable to reload asset %s because its not in the AssetManager's asset list.", asset.ToString<AZStd::string>().c_str());
+            AZ_Assert(m_assets.find(asset.GetId()) == m_assets.end() || asset->RTTI_GetType() == m_assets.find(asset.GetId())->second->RTTI_GetType(),
                 "New and old data types are mismatched!");
 
             auto found = m_assets.find(asset.GetId());
-            if ((found == m_assets.end()) || (asset.Get()->RTTI_GetType() != found->second->RTTI_GetType()))
+            if ((found == m_assets.end()) || (asset->RTTI_GetType() != found->second->RTTI_GetType()))
             {
                 return; // this will just lead to crashes down the line and the above asserts cover this.
             }
@@ -1029,7 +1089,7 @@ namespace AZ
                 // Resolve the asset handler and account for the new asset instance.
                 {
                     AssetHandlerMap::iterator handlerIt = m_handlers.find(newData->GetType());
-                    AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
+                    AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
                         newData->GetType().ToString<AZ::OSString>().c_str(), newData->GetId().ToString<AZ::OSString>().c_str());
                 }
 
@@ -1059,9 +1119,9 @@ namespace AZ
 
             const AssetId& assetId = asset.GetId();
 
-            asset.Get()->m_status = static_cast<int>(AssetData::AssetStatus::Ready);
+            asset->m_status = static_cast<int>(AssetData::AssetStatus::Ready);
 
-            if (asset.Get()->IsRegisterReadonlyAndShareable())
+            if (asset->IsRegisterReadonlyAndShareable())
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
                 auto found = m_assets.find(assetId);

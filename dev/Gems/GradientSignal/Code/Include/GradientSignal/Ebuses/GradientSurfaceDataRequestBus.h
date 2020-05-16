@@ -36,6 +36,9 @@ namespace GradientSignal
         virtual AZ::Crc32 GetTag(int tagIndex) const = 0;
         virtual void RemoveTag(int tagIndex) = 0;
         virtual void AddTag(AZStd::string tag) = 0;
+
+        virtual AZ::EntityId GetShapeConstraintEntityId() const = 0;
+        virtual void SetShapeConstraintEntityId(AZ::EntityId entityId) = 0;
     };
 
     using GradientSurfaceDataRequestBus = AZ::EBus<GradientSurfaceDataRequests>;

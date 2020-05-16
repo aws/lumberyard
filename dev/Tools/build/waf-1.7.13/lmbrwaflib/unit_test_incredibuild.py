@@ -9,11 +9,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import utils
-import incredibuild
-import unit_test
-import pytest
+# System Imports
 import os
+import pytest
+
+# lmbrwaflib imports
+from lmbrwaflib import utils
+from lmbrwaflib import incredibuild
+from lmbrwaflib import unit_test
 
 
 @pytest.fixture
@@ -89,3 +92,21 @@ def test_GenerateIbProfile_NoOverwrite_Success(fake_waf_context):
         utils.calculate_file_hash = original_calculate_file_hash
         
     assert not os.path.isfile(result_profile_xml_target)
+
+
+def test_clean_args():
+    test_data = [
+        # format is (given , expected result)
+        ('', ''), # empty stays empty
+        ('d:\\ly engine\\tools\\python\\python.cmd', '"d:\\ly engine\\tools\\python\\python.cmd"'),
+        ('d:\\ly engine\\tools\\build\waf.py', '"d:\\ly engine\\tools\\build\waf.py"'),
+        ('--bootstrap-tool-param=--3rdpartypath="d:/ly engine/3rdParty" --none', '"--bootstrap-tool-param=--3rdpartypath=""d:/ly engine/3rdParty"" --none"'),
+        ('--something=c:\\windows\\temp', '--something=c:\\windows\\temp'),  # no spaces, no need to escape
+        ('"--something=c:\\win do ws\\temp"', '"--something=c:\\win do ws\\temp"'), # unchanged, already escaped
+        ('"c:\\python27\spaces in name" "d:\other drive with spaces"', '"c:\\python27\spaces in name" "d:\other drive with spaces"') # already escaped, no need to change
+    ]
+    
+    for input, expected_output in test_data:
+        actual_output = incredibuild.clean_arg_for_subprocess_call(input)
+        assert expected_output == actual_output
+    

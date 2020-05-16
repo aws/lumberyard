@@ -236,8 +236,8 @@
  <Variable Name="Ocean fog density" Value="0.49999997">
   <Spline Keys="0:0.5:36,0.25:0.5:36,0.5:0.5:65572,0.75:0.5:36,1:0.5:36,"/>
  </Variable>
- <Variable Name="Skybox multiplier" Value="0.99999994">
-  <Spline Keys="0:1:36,0.25:1:36,0.5:1:65572,0.75:1:36,1:1:36,"/>
+ <Variable Name="Static skybox multiplier" Value="1">
+  <Spline Keys="0:1:0,1:1:0,"/>
  </Variable>
  <Variable Name="Film curve shoulder scale" Value="2.003849">
   <Spline Keys="0:3:36,0.229167:3:36,0.5:2:36,0.770833:3:36,1:3:36,"/>

@@ -1,0 +1,19 @@
+<Material MtlFlags="557312" DccMaterialHash="4216438312" vertModifType="0">
+ <SubMaterials>
+  <Material Name="chicken_body_mat" MtlFlags="524416" DccMaterialHash="651888260" Shader="Illum" GenMask="800080000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.49693301,0.49693301,0.49693301,1" Specular="0,0,0,0.0078740167" Opacity="1" Shininess="2.0078743" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/cloth/chicken/actor/chicken_diff.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="chicken_eye_mat" MtlFlags="524416" DccMaterialHash="1451475167" Shader="Illum" GenMask="800080000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.40000001,0.40000001,0.40000001,1" Specular="0.036889456,0.036889456,0.036889456,1" Opacity="1" Shininess="227.95" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/cloth/chicken/actor/chicken_diff.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="mohawkMat" MtlFlags="524418" DccMaterialHash="2749176521" Shader="Illum" GenMask="802000000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_default" Diffuse="0.17144112,0.00030352699,0.00030352699,1" Specular="0,0,0,0.078431375" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

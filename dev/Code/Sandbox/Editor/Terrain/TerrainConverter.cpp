@@ -13,13 +13,13 @@
 #include <StdAfx.h>
 #include "TerrainConverter.h"
 #include "ITerrain.h"
-#include "Cry3DEngine/Terrain/Texture/MacroTextureImporter.h"
 #include <AzCore/Math/MathUtils.h>
 #include "RGBLayer.h"
 #include "MacroTextureExporter.h"
 #include <qmessagebox.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include "GameEngine.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 namespace TerrainConverter
 {
@@ -27,7 +27,7 @@ namespace TerrainConverter
 bool ConvertTerrain(const Config& config)
 {
     // Check the terrain importer's results to see if an upgrade is needed
-    MacroTextureConfiguration macroTextureConfig;
+    LegacyTerrain::MacroTextureConfiguration macroTextureConfig;
 
     AZStd::string quadtreeFilePath;
     AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelFolder().toUtf8().data(), config.macroTextureQuadtreeFilename.c_str(), quadtreeFilePath);
@@ -41,8 +41,15 @@ bool ConvertTerrain(const Config& config)
         }
     }
 
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+    if (!legacyTerrain)
+    {
+        //If the legacy terrain gem is not enabled then no conversion will take place.
+        return false;
+    }
+
     // The file exists, so try to read it.
-    bool success = GetIEditor()->Get3DEngine()->ReadMacroTextureFile(quadtreeFilePath.c_str(), macroTextureConfig);
+    bool success = legacyTerrain->ReadMacroTextureFile(quadtreeFilePath.c_str(), macroTextureConfig);
     if (!success)
     {
         // failed to read file.
@@ -70,7 +77,7 @@ bool ConvertTerrain(const Config& config)
 
 }
 
-bool FixTerrainMultiplier(const Config& config, MacroTextureConfiguration& macroTextureConfig)
+bool FixTerrainMultiplier(const Config& config, LegacyTerrain::MacroTextureConfiguration& macroTextureConfig)
 {
     // Transform the multiplier into linear space.
     AZ::Color color = AZ::Color(macroTextureConfig.colorMultiplier_deprecated, 0.0f, 0.0f, 1.0f);

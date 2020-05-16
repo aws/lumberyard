@@ -26,8 +26,8 @@ namespace EMStudio
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
-        LineEditValidatable(QWidget* parent, const QRegExp regExp = s_defaultRegExp);
-        ~LineEditValidatable() = default;
+        explicit LineEditValidatable(QWidget* parent, const QRegExp& regExp = s_defaultRegExp);
+        ~LineEditValidatable() override = default;
 
         void SetPreviousText(const QString& previousText);
         QString GetPreviousText() const;

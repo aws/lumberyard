@@ -49,7 +49,9 @@ protected:
     QMainWindow* m_MainWindow;
 
     typedef QMap<QString, QAction*> ActionMap;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     ActionMap m_Actions;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITORUI_QT_TOOLBAR_H

@@ -16,7 +16,7 @@
 
 namespace Multiplayer
 {
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
     /**
     * GameLiftListener
     * pImpl implementation to listen for GameLift specific events. Will start hosting session once GameLift is ready.
@@ -33,6 +33,7 @@ namespace Multiplayer
 
     private:
         void OnGameLiftGameSessionStarted(GridMate::GameLiftServerService* service, const Aws::GameLift::Server::Model::GameSession& gameSession) override;
+        void OnGameLiftGameSessionUpdated(GridMate::GameLiftServerService* service, const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) override;
         void OnGameLiftServerWillTerminate(GridMate::GameLiftServerService* service) override;
     };
 #endif

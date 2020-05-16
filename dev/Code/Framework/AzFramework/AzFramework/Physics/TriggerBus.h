@@ -12,10 +12,11 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
-#include <AzFramework/Physics/WorldEventhandler.h>
 
 namespace Physics
 {
+    struct TriggerEvent;
+
     /// Services provided by the PhysX Trigger Area Component.
     class TriggerNotifications
         : public AZ::ComponentBus

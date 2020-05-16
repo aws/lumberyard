@@ -280,7 +280,6 @@ protected:
     void OnReportColumnRClick(const QPoint& point);
     void OnContextMenu(const QPoint& point);
     void OnReportSelChanged();
-    void OnReportHyperlink(const QModelIndex& index);
 
     void OnTreeSelChanged();
 

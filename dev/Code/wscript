@@ -27,14 +27,6 @@ SUBFOLDERS = [
 ]
 
 def build(bld):
-
-    # Setting 'enable_legacy_terrain' to False will have two consequences:
-    #   1- Editor Tools to edit/create Legacy Terrain won't be available at all (and completely compiled out).
-    #   2- The Legacy Terrain Runtime won't be available at all (and completely compiled out).
-    # This is useful for customers who don't need Terrain in their games or choose
-    # to write their own terrain runtime.
-    setattr(bld, 'enable_legacy_terrain', True)
-
     # do not add game projects here.  They will be added automatically based on what
     # game projects you have enabled in your user settings, from the list defined in projects.json
     bld.recurse(SUBFOLDERS, mandatory=False)

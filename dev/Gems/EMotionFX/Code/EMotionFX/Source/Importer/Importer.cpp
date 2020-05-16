@@ -15,6 +15,7 @@
 
 #include <MCore/Source/File.h>
 #include <MCore/Source/DiskFile.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/MemoryFile.h>
 
 #include "Importer.h"
@@ -293,7 +294,6 @@ namespace EMotionFX
             MCore::LogError("Unsupported endian type used! (endian type = %d)", header.mEndianType);
             return false;
         }
-        ;
 
         // yes, it is a valid node map file!
         return true;
@@ -301,22 +301,9 @@ namespace EMotionFX
 
 
     // try to load an actor from disk
-    Actor* Importer::LoadActor(AZStd::string filename, ActorSettings* settings)
+    AZStd::unique_ptr<Actor> Importer::LoadActor(AZStd::string filename, ActorSettings* settings)
     {
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
-
-        // check if we want to load the actor even if an actor with the given filename is already inside the actor manager
-        if (settings == nullptr || (settings && settings->mForceLoading == false))
-        {
-            // search the actor inside the actor manager and return it if it already got loaded
-            Actor* actor = GetActorManager().FindActorByFileName(filename.c_str());
-            if (actor)
-            {
-                actor->IncreaseReferenceCount();
-                MCore::LogInfo("  + Actor '%s' already loaded, returning already loaded actor from the ActorManager.", filename.c_str());
-                return actor;
-            }
-        }
 
         if (GetLogging())
         {
@@ -347,7 +334,7 @@ namespace EMotionFX
         f.Close();
 
         // create the actor reading from memory
-        Actor* result = LoadActor(fileBuffer, fileSize, settings, filename.c_str());
+        AZStd::unique_ptr<Actor> result = LoadActor(fileBuffer, fileSize, settings, filename.c_str());
 
         // delete the file buffer again
         MCore::Free(fileBuffer);
@@ -374,14 +361,14 @@ namespace EMotionFX
 
 
     // load an actor from memory
-    Actor* Importer::LoadActor(uint8* memoryStart, size_t lengthInBytes, ActorSettings* settings, const char* filename)
+    AZStd::unique_ptr<Actor> Importer::LoadActor(uint8* memoryStart, size_t lengthInBytes, ActorSettings* settings, const char* filename)
     {
         // create the memory file
         MCore::MemoryFile memFile;
         memFile.Open(memoryStart, lengthInBytes);
 
         // try to load the file
-        Actor* result = LoadActor(&memFile, settings, filename);
+        AZStd::unique_ptr<Actor> result = LoadActor(&memFile, settings, filename);
         if (result == nullptr)
         {
             if (GetLogging())
@@ -399,7 +386,7 @@ namespace EMotionFX
 
 
     // try to load a actor file
-    Actor* Importer::LoadActor(MCore::File* f, ActorSettings* settings, const char* filename)
+    AZStd::unique_ptr<Actor> Importer::LoadActor(MCore::File* f, ActorSettings* settings, const char* filename)
     {
         MCORE_ASSERT(f);
         MCORE_ASSERT(f->GetIsOpen());
@@ -426,11 +413,16 @@ namespace EMotionFX
             actorSettings = *settings;
         }
 
+        if (actorSettings.mOptimizeForServer)
+        {
+            actorSettings.OptimizeForServer();
+        }
+
         // fix any possible conflicting settings
         ValidateActorSettings(&actorSettings);
 
         // create the actor
-        Actor* actor = Actor::Create("Unnamed actor");
+        AZStd::unique_ptr<Actor> actor = AZStd::make_unique<Actor>("Unnamed actor");
         actor->SetThreadIndex(actorSettings.mThreadIndex);
 
         // set the scale mode
@@ -441,7 +433,7 @@ namespace EMotionFX
         params.mSharedData      = &sharedData;
         params.mEndianType      = endianType;
         params.mActorSettings   = &actorSettings;
-        params.mActor           = actor;
+        params.mActor           = actor.get();
 
         // process all chunks
         while (ProcessChunk(f, params))
@@ -453,6 +445,12 @@ namespace EMotionFX
             actor->SetFileName(filename);
         }
 
+        // Generate an optimized version of skeleton for server.
+        if (actorSettings.mOptimizeForServer && actor->GetOptimizeSkeleton())
+        {
+            actor->GenerateOptimizedSkeleton();
+        }
+        
         // post create init
         actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
 
@@ -643,7 +641,7 @@ namespace EMotionFX
     //-------------------------------------------------------------------------------------------------
 
     // try to load a motion set from disk
-    MotionSet* Importer::LoadMotionSet(AZStd::string filename, MotionSetSettings* settings)
+    MotionSet* Importer::LoadMotionSet(AZStd::string filename, MotionSetSettings* settings, const AZ::ObjectStream::FilterDescriptor& loadFilter)
     {
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
@@ -658,7 +656,7 @@ namespace EMotionFX
                 return nullptr;
             }
 
-            EMotionFX::MotionSet* motionSet = EMotionFX::MotionSet::LoadFromFile(filename, context);
+            EMotionFX::MotionSet* motionSet = EMotionFX::MotionSet::LoadFromFile(filename, context, loadFilter);
             if (motionSet)
             {
                 motionSet->SetFilename(filename.c_str());
@@ -979,15 +977,6 @@ namespace EMotionFX
         ResetSharedData(sharedData);
         sharedData.Clear();
 
-        // try to automatically load the source actor if desired
-        if (nodeMapSettings.mAutoLoadSourceActor)
-        {
-            if (nodeMap->LoadSourceActor() == false)
-            {
-                MCore::LogWarning("Importer::LoadNodeMap() - Failed to load the source actor of the node map");
-            }
-        }
-
         // return the created actor
         return nodeMap;
     }
@@ -1123,6 +1112,7 @@ namespace EMotionFX
         RegisterChunkProcessor(aznew ChunkProcessorActorGenericMaterial());
         RegisterChunkProcessor(aznew ChunkProcessorActorInfo());
         RegisterChunkProcessor(aznew ChunkProcessorActorInfo2());
+        RegisterChunkProcessor(aznew ChunkProcessorActorInfo3());
         RegisterChunkProcessor(aznew ChunkProcessorActorMeshLOD());
         RegisterChunkProcessor(aznew ChunkProcessorActorProgMorphTarget());
         RegisterChunkProcessor(aznew ChunkProcessorActorNodeGroups());
@@ -1227,7 +1217,8 @@ namespace EMotionFX
                     (actorSettings->mLoadLimits                 == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_LIMIT) ||
                     (actorSettings->mLoadMorphTargets           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_STDPROGMORPHTARGET) ||
                     (actorSettings->mLoadMorphTargets           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_STDPMORPHTARGETS) ||
-                    (actorSettings->mLoadGeometryLODs           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_MESHLODLEVELS))
+                    (actorSettings->mLoadGeometryLODs           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_MESHLODLEVELS) ||
+                    (actorSettings->mLoadSimulatedObjects       == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_SIMULATEDOBJECTSETUP))
                 {
                     mustSkip = true;
                 }
@@ -1340,6 +1331,8 @@ namespace EMotionFX
             return "128-bit Colors";
         case Mesh::ATTRIB_ORGVTXNUMBERS:
             return "Original Vertex Numbers";
+        case Mesh::ATTRIB_CLOTH_INVMASSES:
+            return "Cloth Inverse Masses";
         default:
             return "<Unknown>";
         }
@@ -1357,7 +1350,7 @@ namespace EMotionFX
         case Mesh::ATTRIB_NORMALS:
         case Mesh::ATTRIB_POSITIONS:
         {
-            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
+            AZ::Vector3* data = (AZ::Vector3*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             ChunkProcessor::ConvertVector3(data, sourceEndianType, numAttribs);
             return true;
@@ -1383,7 +1376,7 @@ namespace EMotionFX
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                AZ::PackedVector3f tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::Vector3 tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&tangent, sourceEndianType);      // convert the endian of the Vector3 part
                 data[i].SetX(tangent.GetX());
                 data[i].SetY(tangent.GetY());
@@ -1408,9 +1401,10 @@ namespace EMotionFX
         break;
 
 
-        // colors and original vertex numbers (uint32)
+        // colors, original vertex numbers and cloth inverse masses (uint32)
         case Mesh::ATTRIB_ORGVTXNUMBERS:
         case Mesh::ATTRIB_COLORS32:
+        case Mesh::ATTRIB_CLOTH_INVMASSES:
         {
             uint32* data = (uint32*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
@@ -1423,11 +1417,11 @@ namespace EMotionFX
         // bitangents (Vector3)
         case Mesh::ATTRIB_BITANGENTS:
         {
-            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
+            AZ::Vector3* data = (AZ::Vector3*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                AZ::PackedVector3f bitangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::Vector3 bitangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&bitangent, sourceEndianType);      // convert the endian of the Vector3 part
                 data[i] = bitangent;
             }
@@ -1536,7 +1530,7 @@ namespace EMotionFX
 
 
     // load anim graph by filename
-    AnimGraph* Importer::LoadAnimGraph(AZStd::string filename, AnimGraphSettings* settings)
+    AnimGraph* Importer::LoadAnimGraph(AZStd::string filename, AnimGraphSettings* settings, const AZ::ObjectStream::FilterDescriptor& loadFilter)
     {
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
@@ -1551,7 +1545,7 @@ namespace EMotionFX
                 return nullptr;
             }
 
-            EMotionFX::AnimGraph* animGraph = EMotionFX::AnimGraph::LoadFromFile(filename, context);
+            EMotionFX::AnimGraph* animGraph = EMotionFX::AnimGraph::LoadFromFile(filename, context, loadFilter);
             if (animGraph)
             {
                 animGraph->SetFileName(filename.c_str());

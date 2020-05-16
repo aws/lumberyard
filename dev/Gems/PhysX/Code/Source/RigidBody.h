@@ -34,6 +34,7 @@ namespace PhysX
 
         RigidBody() = default;
         RigidBody(const Physics::RigidBodyConfiguration& configuration);
+        ~RigidBody();
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -63,6 +64,7 @@ namespace PhysX
         void SetKinematic(bool isKinematic) override;
         void SetKinematicTarget(const AZ::Transform& targetPosition) override;
 
+        bool IsGravityEnabled() const override;
         void SetGravityEnabled(bool enabled) override;
         void SetSimulationEnabled(bool enabled) override;
         void SetCCDEnabled(bool enabled) override;

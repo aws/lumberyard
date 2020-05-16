@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/AnimGraphVector2Condition.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/Parameter/Vector2Parameter.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
 #include <MCore/Source/Compare.h>
 
 namespace EMotionFX
@@ -329,9 +330,60 @@ namespace EMotionFX
         m_testValue = testValue;
     }
 
+    AZ::Outcome<size_t> AnimGraphVector2Condition::GetParameterIndex() const
+    {
+        return m_parameterIndex;
+    }
+
     void AnimGraphVector2Condition::SetParameterName(const AZStd::string& parameterName)
     {
         m_parameterName = parameterName;
+    }
+
+    void AnimGraphVector2Condition::ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
+    {
+        if (m_parameterName == oldParameterName)
+        {
+            SetParameterName(newParameterName);
+        }
+    }
+
+    void AnimGraphVector2Condition::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
+    {
+        AZ_UNUSED(beforeChange);
+        AZ_UNUSED(afterChange);
+        m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+    }
+
+    void AnimGraphVector2Condition::ParameterRemoved(const AZStd::string& oldParameterName)
+    {
+        if (oldParameterName == m_parameterName)
+        {
+            m_parameterName.clear();
+            m_parameterIndex = AZ::Failure();
+        }
+        else
+        {
+            m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+        }
+    }
+
+    void AnimGraphVector2Condition::BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved)
+    {
+        // Only handle in case the parameter condition is linked to the to be removed parameter.
+        if (!m_parameterName.empty() && m_parameterName == parameterNameToBeRemoved)
+        {
+            AZ::Outcome<size_t> conditionIndex = m_transition->FindConditionIndex(this);
+            if (conditionIndex.IsSuccess())
+            {
+                CommandSystem::CommandAdjustTransitionCondition* command = aznew CommandSystem::CommandAdjustTransitionCondition(
+                    m_transition->GetAnimGraph()->GetID(),
+                    m_transition->GetId(),
+                    conditionIndex.GetValue(),
+                    /*attributesString=*/"-parameterName \"\""); // Clear the linked parameter as it got removed.
+                commandGroup.AddCommand(command);
+            }
+        }
     }
 
     void AnimGraphVector2Condition::Reflect(AZ::ReflectContext* context)

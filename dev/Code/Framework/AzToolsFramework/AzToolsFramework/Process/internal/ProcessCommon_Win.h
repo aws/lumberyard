@@ -14,8 +14,6 @@
 
 #include <AzCore/PlatformIncl.h>
 
-#ifdef AZ_PLATFORM_WINDOWS
-
 namespace AzToolsFramework
 {
     class CommunicatorHandleImpl
@@ -44,10 +42,14 @@ namespace AzToolsFramework
 
         void Init(bool stdCommunication);
 
+        DWORD WaitForJobOrProcess(AZ::u32 waitTimeInMilliseconds) const;
+
         PROCESS_INFORMATION processInformation;
         BOOL inheritHandles;
         STARTUPINFOW startupInfo;
+
+        HANDLE jobHandle;
+        JOBOBJECT_ASSOCIATE_COMPLETION_PORT jobCompletionPort;
     };
 } // namespace AzToolsFramework
 
-#endif // AZ_PLATFORM_WINDOWS

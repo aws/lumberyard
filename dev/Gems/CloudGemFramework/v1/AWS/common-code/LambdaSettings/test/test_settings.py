@@ -10,12 +10,13 @@
 #
 # $Revision: #4 $
 
-import mock
+from unittest import mock
 import os
 import sys
 import unittest
 
 from cgf_utils.data_utils import Data
+
 
 class UnitTest_CloudGemFramework_LambdaSettings(unittest.TestCase):
 
@@ -49,7 +50,7 @@ class UnitTest_CloudGemFramework_LambdaSettings(unittest.TestCase):
     def test_load_settings_loads_settings_file(self, mock_json_load, mock_isfile):
         import cgf_lambda_settings
         mock_open = mock.mock_open()
-        with mock.patch('__builtin__.open', mock_open, create = True):
+        with mock.patch('builtins.open', mock_open, create = True):
             expected_path = os.path.abspath(os.path.join(__file__, '..', '..', 'cgf_lambda_settings', 'settings.json'))
             result = cgf_lambda_settings._LambdaSettingsModule__load_settings()
             self.assertEquals(result.DATA, mock_json_load.return_value)

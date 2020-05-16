@@ -23,3 +23,7 @@ Example--Widget #icon {
 Example--Widget[drawSimple="true"] #icon {
     qproperty-pixmap: url(:/Gallery/img/simple.png);
 }
+
+Example--Widget[drawSimple="false"][tearEnabled="true"] #icon {
+    qproperty-pixmap: url(:/Gallery/img/intermediate.png);
+}

@@ -11,11 +11,12 @@
 # $Revision: #1 $
 
 import unittest
-import mock
+from unittest import mock
 from resource_manager_common import constant
 
 from resource_types import Custom_ResourceGroupConfiguration
 from cgf_utils import custom_resource_response
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_ResourceGroupConfiguration(unittest.TestCase):
 

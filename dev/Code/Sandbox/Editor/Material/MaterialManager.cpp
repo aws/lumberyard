@@ -25,7 +25,6 @@
 #include "ICryAnimation.h"
 #include "ISourceControl.h"
 
-#include "Util/BoostPythonHelpers.h"
 #include "ShaderEnum.h"
 
 #include "Terrain/Layer.h"
@@ -223,47 +222,6 @@ void CMaterialHighlighter::GetHighlightColor(ColorF* color, float* intensity, in
     }
 }
 
-boost::python::list PyGetMaterials(QString materialName = "", bool selectedOnly = false)
-{
-    boost::python::list result;
-
-    GetIEditor()->OpenDataBaseLibrary(EDB_TYPE_MATERIAL, NULL);
-    CMaterialManager* pMaterialMgr = GetIEditor()->GetMaterialManager();
-
-    if (!materialName.isEmpty())
-    {
-        result.append(PyScript::CreatePyGameMaterial((CMaterial*)pMaterialMgr->FindItemByName(materialName)));
-    }
-    else if (selectedOnly)
-    {
-        if (materialName.isEmpty() && pMaterialMgr->GetSelectedItem() != NULL)
-        {
-            result.append(PyScript::CreatePyGameMaterial((CMaterial*)pMaterialMgr->GetSelectedItem()));
-        }
-    }
-    else
-    {
-        // Acquire all of the materials via iterating across the objects.
-        CBaseObjectsArray objects;
-        GetIEditor()->GetObjectManager()->GetObjects(objects);
-        for (int i = 0; i < objects.size(); i++)
-        {
-            result.append(PyScript::CreatePyGameMaterial(objects[i]->GetMaterial()));
-        }
-    }
-    return result;
-}
-
-#pragma warning(disable: 4068)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-
-BOOST_PYTHON_FUNCTION_OVERLOADS(pyGetMaterialsOverload, PyGetMaterials, 0, 2);
-REGISTER_PYTHON_OVERLOAD_COMMAND(PyGetMaterials, general, get_materials, pyGetMaterialsOverload,
-    "Get all, subgroup, or selected materials in the material editor.",
-    "general.get_materials(str materialName=\'\', selectedOnly=False, levelOnly=False)");
-
-#pragma clang diagnostic pop
 
 //////////////////////////////////////////////////////////////////////////
 // CMaterialManager implementation.
@@ -580,7 +538,7 @@ void CMaterialManager::ReloadDirtyMaterials()
 
     if (mtlCount > 0)
     {
-        std::vector<_smart_ptr<IMaterial>> allMaterials;
+        AZStd::vector<_smart_ptr<IMaterial>> allMaterials;
 
         allMaterials.reserve(mtlCount);
 
@@ -1165,7 +1123,7 @@ void CMaterialManager::Command_ConvertToMulti()
     }
     else
     {
-        Warning(pMaterial ? "material.convert_to_multi called on invalid material setup" : "material.convert_to_multi called while no material selected");
+        Warning(pMaterial ? "azlmbr.legacy.material.convert_to_multi called on invalid material setup" : "azlmbr.legacy.material.convert_to_multi called while no material selected");
     }
 }
 
@@ -1177,7 +1135,7 @@ void CMaterialManager::Command_Duplicate()
     if (!pSrcMtl)
     {
         CErrorRecord err;
-        err.error = "material.duplicate called while no materials selected";
+        err.error = "azlmbr.legacy.material.duplicate called while no materials selected";
         GetIEditor()->GetErrorReport()->ReportError(err);
         return;
     }
@@ -1800,7 +1758,7 @@ void CMaterialManager::GatherResources(_smart_ptr<IMaterial> pMaterial, CUsedRes
 
             for (auto& iter : res.m_TexturesResourcesMap )
             {
-                SEfResTexture*  	pTexture = &(iter.second);
+                SEfResTexture* pTexture = &(iter.second);
                 if (!pTexture->m_Name.empty())
                 {
                     resources.Add(pTexture->m_Name.c_str());

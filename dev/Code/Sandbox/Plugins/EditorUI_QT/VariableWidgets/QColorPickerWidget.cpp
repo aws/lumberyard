@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QColorPickerWidget.h"
 
 
@@ -288,6 +288,11 @@ void QColorPickerWidget::OnHueEditFinished()
     // This signal will eliminate the HSL changes sent back from the 
     // ColorDescriptor
     emit SignalHueChanged(m_newColor);
+
+    if (m_colorChangedCallback)
+    {
+        OnColorChanged(m_newColor);
+    }
 }
 
 void QColorPickerWidget::OnHexHueEditFinished()

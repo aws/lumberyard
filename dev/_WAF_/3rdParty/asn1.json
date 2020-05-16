@@ -6,7 +6,7 @@
     "lib_required": "True",
     "platform": {
         "ios": {
-            "includes": ["Source"],
+            "system_includes": ["Source"],
             "libpath_debug": ["Lib/ios/debug"],
             "libpath_release": ["Lib/ios/release"],
             "lib": ["libasn1.a"]

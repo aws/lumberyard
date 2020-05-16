@@ -18,7 +18,6 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 
 #include "VideoPlaybackSystemComponent.h"
-#include "VideoPlaybackAsset.h"
 
 namespace AZ
 {
@@ -29,8 +28,6 @@ namespace AZ
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                AzFramework::SimpleAssetReference<VideoPlaybackAsset>::Register(*serializeContext);
-
                 serializeContext->Class<VideoPlaybackSystemComponent, AZ::Component>()
                     ->Version(0);
 
@@ -73,11 +70,6 @@ namespace AZ
 
         void VideoPlaybackSystemComponent::Activate()
         {
-            EBUS_EVENT(AZ::Data::AssetCatalogRequestBus, EnableCatalogForAsset, azrtti_typeid<VideoPlaybackAsset>());
-            EBUS_EVENT(AZ::Data::AssetCatalogRequestBus, AddExtension, "mp4");
-            EBUS_EVENT(AZ::Data::AssetCatalogRequestBus, AddExtension, "mkv");
-            EBUS_EVENT(AZ::Data::AssetCatalogRequestBus, AddExtension, "webm");
-            EBUS_EVENT(AZ::Data::AssetCatalogRequestBus, AddExtension, "mov");
         }
 
         void VideoPlaybackSystemComponent::Deactivate()

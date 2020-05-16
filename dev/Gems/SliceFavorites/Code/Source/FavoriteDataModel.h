@@ -161,6 +161,9 @@ namespace SliceFavorites
 
         QModelIndex GetModelIndexForParent(const FavoriteData* child) const;
         QModelIndex GetModelIndexForFavorite(const FavoriteData* favorite) const;
+
+        bool IsDescendentOf(QModelIndex index, QModelIndex potentialAncestor);
+
         FavoriteData* GetFavoriteDataFromModelIndex(const QModelIndex& modelIndex) const;
 
         void CountFoldersAndFavoritesFromIndices(const QModelIndexList& indices, int& numFolders, int& numFavorites);
@@ -179,7 +182,8 @@ namespace SliceFavorites
         void DataModelChanged();
         void ExpandIndex(const QModelIndex& index, bool expanded);
         void DisplayWarning(const QString& title, const QString& message);
-
+    public Q_SLOTS:
+        void ProcessRemovedAssets();
     private:
 
         //////////////////////////////////////////////////////////////////////////
@@ -250,5 +254,7 @@ namespace SliceFavorites
         bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
 
         bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
+
+        AZStd::vector<AZ::Data::AssetId> m_removedAssets;
     };
 }

@@ -16,5 +16,10 @@ namespace LumberyardLauncher
 {
     // Increase the core and stack limits
     bool IncreaseResourceLimits();
+
+    // Get the absolute path for any given input path if possible. If an absolute path cannot be
+    // resolved, then return an empty string.
+    const char* GetAbsolutePath(char* absolutePathBuffer, size_t absolutePathBufferSize, const char* inputPath);
+
 }
 

@@ -82,11 +82,13 @@ namespace PhysXCharacters
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_positionIterations, "Position Iteration Count",
-                        "Lower iteration counts increase performance but may cause more unrealistic behavior")
+                        "A higher iteration count generally improves fidelity at the cost of performance, but note that very high "
+                        "values may lead to severe instability if ragdoll colliders interfere with satisfying joint constraints")
                     ->Attribute(AZ::Edit::Attributes::Min, 1)
                     ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_velocityIterations, "Velocity Iteration Count",
-                        "Lower iteration counts increase performance but may cause more unrealistic behavior")
+                        "A higher iteration count generally improves fidelity at the cost of performance, but note that very high "
+                        "values may lead to severe instability if ragdoll colliders interfere with satisfying joint constraints")
                     ->Attribute(AZ::Edit::Attributes::Min, 1)
                     ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_enableJointProjection,
@@ -166,6 +168,15 @@ namespace PhysXCharacters
         }
 
         const size_t numNodes = ragdollConfiguration.m_nodes.size();
+
+        if (numNodes == 0)
+        {
+            AZ_Error("PhysX Ragdoll Component", false,
+                "Ragdoll configuration has 0 nodes, ragdoll will not be created for entity \"%s\".",
+                GetEntity()->GetName().c_str());
+            return;
+        }
+
         ParentIndices parentIndices;
         parentIndices.resize(numNodes);
         for (size_t nodeIndex = 0; nodeIndex < numNodes; nodeIndex++)

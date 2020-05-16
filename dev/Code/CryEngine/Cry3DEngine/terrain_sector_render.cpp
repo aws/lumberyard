@@ -18,8 +18,7 @@
 
 #include "terrain.h"
 #include "terrain_sector.h"
-#include "ObjMan.h"
-#include "CryThread.h"
+#include <CryThread.h>
 
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 
@@ -203,7 +202,7 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
 
         pNode->m_MeshData = meshData;
 
-        PodArray<CTerrainNode*>& lstNeighbourSectors = leafData.m_Neighbors;
+        PodArray<ITerrainNode*>& lstNeighbourSectors = leafData.m_Neighbors;
         PodArray<uint8>& lstNeighbourLods = leafData.m_NeighborLods;
         lstNeighbourSectors.reserve(64U);
         lstNeighbourLods.PreAllocate(64U, 64U);
@@ -325,11 +324,11 @@ void CTerrainUpdateDispatcher::RemoveJob(CTerrainNode* pNode)
     }
 }
 
-PodArray<vtx_idx> CTerrainNode::s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
+PodArray<vtx_idx> CTerrainNode::s_SurfaceIndices[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount][4];
 
 void CTerrainNode::ResetStaticData()
 {
-    for (int s = 0; s < SurfaceTile::MaxSurfaceCount; s++)
+    for (int s = 0; s < LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount; s++)
     {
         for (int p = 0; p < 4; p++)
         {
@@ -341,7 +340,7 @@ void CTerrainNode::ResetStaticData()
 void CTerrainNode::GetStaticMemoryUsage(ICrySizer* sizer)
 {
     SIZER_COMPONENT_NAME(sizer, "StaticIndices");
-    for (int i = 0; i < SurfaceTile::MaxSurfaceCount; ++i)
+    for (int i = 0; i < LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount; ++i)
     {
         for (int j = 0; j < 4; ++j)
         {
@@ -360,8 +359,9 @@ void CTerrainNode::SetupTexGenParams(SSurfaceType* pSurfaceType, float* pOutPara
     }
     else
     {
-        pSurfaceType->fMaxMatDistanceZ = float(GetFloatCVar(e_TerrainDetailMaterialsViewDistZ)  * Get3DEngine()->m_fTerrainDetailMaterialsViewDistRatio);
-        pSurfaceType->fMaxMatDistanceXY = float(GetFloatCVar(e_TerrainDetailMaterialsViewDistXY) * Get3DEngine()->m_fTerrainDetailMaterialsViewDistRatio);
+        const float terrainDetailMaterialsViewDistRatio = Get3DEngine()->GetTerrainDetailMaterialsViewDistRatio();
+        pSurfaceType->fMaxMatDistanceZ = GetCVars()->e_TerrainDetailMaterialsViewDistZ * terrainDetailMaterialsViewDistRatio;
+        pSurfaceType->fMaxMatDistanceXY = GetCVars()->e_TerrainDetailMaterialsViewDistXY * terrainDetailMaterialsViewDistRatio;
     }
 
     // setup projection direction
@@ -423,7 +423,7 @@ void CTerrainNode::DrawArray(const SRenderingPassInfo& passInfo)
     Vec3 vOrigin(m_nOriginX, m_nOriginY, 0);
     pTerrainRenderObject->m_II.m_Matrix.SetTranslation(vOrigin);
 
-    pRenderMesh->AddRenderElements(GetTerrain()->m_pTerrainEf, pTerrainRenderObject, passInfo, EFSLIST_GENERAL, 1);
+    pRenderMesh->AddRenderElements(CTerrain::GetTerrain()->m_pTerrainEf, pTerrainRenderObject, passInfo, EFSLIST_GENERAL, 1);
 
     if (passInfo.RenderTerrainDetailMaterial() && !passInfo.IsShadowPass())
     {
@@ -456,8 +456,9 @@ void CTerrainNode::DrawArray(const SRenderingPassInfo& passInfo)
                 {
                     if (_smart_ptr<IMaterial> pMat = pSurf->GetMaterialOfProjection(szProj[p]))
                     {
-                        pSurf->fMaxMatDistanceZ = float(GetFloatCVar(e_TerrainDetailMaterialsViewDistZ) * Get3DEngine()->m_fTerrainDetailMaterialsViewDistRatio);
-                        pSurf->fMaxMatDistanceXY = float(GetFloatCVar(e_TerrainDetailMaterialsViewDistXY) * Get3DEngine()->m_fTerrainDetailMaterialsViewDistRatio);
+                        const float terrainDetailMaterialsViewDistRatio = Get3DEngine()->GetTerrainDetailMaterialsViewDistRatio();
+                        pSurf->fMaxMatDistanceZ = GetCVars()->e_TerrainDetailMaterialsViewDistZ * terrainDetailMaterialsViewDistRatio;
+                        pSurf->fMaxMatDistanceXY = GetCVars()->e_TerrainDetailMaterialsViewDistXY * terrainDetailMaterialsViewDistRatio;
 
                         if (m_DistanceToCamera[passInfo.GetRecursiveLevel()] < pSurf->GetMaxMaterialDistanceOfProjection(szProj[p]))
                         {
@@ -526,7 +527,7 @@ void CTerrainNode::ReleaseHeightMapGeometry(bool bRecursive, const AABB* pBox)
         // pointer) while we're in the process of deleting it here.  (See sGetTerrainBase in D3DHWShader.cpp)
         // So, we'll clear out the reference to the leaf data prior to deleting the leaf data.  We need to clear it
         // out here, because the path to the render element is through the render mesh, which we're also about to delete.
-        if (pRenderMesh->GetChunks()[0].pRE)
+        if (!pRenderMesh->GetChunks().empty() && pRenderMesh->GetChunks()[0].pRE)
         {
             pRenderMesh->GetChunks()[0].pRE->m_CustomData = nullptr;
         }
@@ -534,7 +535,7 @@ void CTerrainNode::ReleaseHeightMapGeometry(bool bRecursive, const AABB* pBox)
 
         if (GetCVars()->e_TerrainLog == 1)
         {
-            PrintMessage("RenderMesh unloaded %d", GetSecIndex());
+            AZ_Printf("LegacyTerrain", "RenderMesh unloaded %d", GetSecIndex());
         }
     }
 
@@ -585,7 +586,7 @@ void CTerrainNode::BuildVertices(int nStep)
     const int nOriginY = m_nOriginY;
     const int nTerrainSize = CTerrain::GetTerrainSize();
     const int iLookupRadius = 2 * CTerrain::GetHeightMapUnitSize();
-    CTerrain*      pTerrain = GetTerrain();
+    CTerrain*      pTerrain = CTerrain::GetTerrain();
 
     for (int x = nOriginX; x <= nOriginX + nSectorSize; x += nStep)
     {
@@ -657,7 +658,7 @@ void CTerrainNode::BuildVertices(int nStep)
 
 namespace Util
 {
-    void AddNeighbourNode(PodArray<CTerrainNode*>* plstNeighbourSectors, CTerrainNode* pNode)
+    void AddNeighbourNode(PodArray<ITerrainNode*>* plstNeighbourSectors, CTerrainNode* pNode)
     {
         // todo: cache this list, it is always the same
         if (pNode && plstNeighbourSectors->Find(pNode) < 0)
@@ -667,12 +668,12 @@ namespace Util
     }
 }
 
-void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, PodArray<CTerrainNode*>* plstNeighbourSectors, InPlaceIndexBuffer& indices, const SRenderingPassInfo& passInfo)
+void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, PodArray<ITerrainNode*>* plstNeighbourSectors, InPlaceIndexBuffer& indices, const SRenderingPassInfo& passInfo)
 {
     int nAliasingX = 1, nAliasingY = 1;
     int nShiftX = 0, nShiftY = 0;
 
-    CTerrain* pTerrain = GetTerrain();
+    CTerrain* pTerrain = CTerrain::GetTerrain();
     int nHeightMapUnitSize = CTerrain::GetHeightMapUnitSize();
 
     IF(_x && _x < nSectorSize && plstNeighbourSectors, true)
@@ -745,7 +746,7 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
 }
 
 
-void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<CTerrainNode*>* pNeighbourSectors, const SRenderingPassInfo& passInfo)
+void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<ITerrainNode*>* pNeighbourSectors, const SRenderingPassInfo& passInfo)
 {
     FUNCTION_PROFILER_3DENGINE;
 
@@ -760,7 +761,7 @@ void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<CTerrainNo
 
     indices.Clear();
 
-    CTerrain* pTerrain = GetTerrain();
+    CTerrain* pTerrain = CTerrain::GetTerrain();
 
     int nHalfStep = nStep / 2;
 
@@ -903,10 +904,10 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
 
     if (GetCVars()->e_TerrainLog == 1)
     {
-        PrintMessage("RenderMesh created %d", GetSecIndex());
+        AZ_Printf("LegacyTerrain", "RenderMesh created %d", GetSecIndex());
     }
 
-    pRenderMesh->SetChunk(GetTerrain()->m_pTerrainEf, 0, pRenderMesh->GetVerticesCount(), 0, m_MeshData->m_Indices.Count(), 1.0f, eVF_P2S_N4B_C4B_T1F, 0);
+    pRenderMesh->SetChunk(CTerrain::GetTerrain()->m_pTerrainEf, 0, pRenderMesh->GetVerticesCount(), 0, m_MeshData->m_Indices.Count(), 1.0f, eVF_P2S_N4B_C4B_T1F, 0);
 
     // update detail layers indices
     if (passInfo.RenderTerrainDetailMaterial())
@@ -962,7 +963,7 @@ void CTerrainNode::BuildIndices_Wrapper(const SRenderingPassInfo& passInfo)
     }
 
     STerrainNodeLeafData* pLeafData = GetLeafData();
-    PodArray<CTerrainNode*>& neighbors = pLeafData->m_Neighbors;
+    PodArray<ITerrainNode*>& neighbors = pLeafData->m_Neighbors;
     PodArray<uint8>& neighborLods = pLeafData->m_NeighborLods;
     neighbors.Clear();
     BuildIndices(meshData->m_Indices, &neighbors, passInfo);
@@ -1037,17 +1038,17 @@ static int GetVecProjectId(const Vec3& vNorm)
     return nOpenId;
 }
 
-void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4], BuildMeshData* meshData)
+void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceAxisIndexCount[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount][4], BuildMeshData* meshData)
 {
     FUNCTION_PROFILER_3DENGINE;
 
     // Used to quickly iterate unique surfaces.
-    static uint8 SurfaceCounts[SurfaceTile::MaxSurfaceCount] = { 0 };
+    static uint8 SurfaceCounts[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount] = { 0 };
 
-    bool bSurfaceIs3D[SurfaceTile::MaxSurfaceCount];
+    bool bSurfaceIs3D[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount];
 
-    CTerrain& terrain = *GetTerrain();
-    for (int surfaceId = 0; surfaceId < SurfaceTile::MaxSurfaceCount; surfaceId++)
+    CTerrain& terrain = *CTerrain::GetTerrain();
+    for (int surfaceId = 0; surfaceId < LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount; surfaceId++)
     {
         for (int axis = 0; axis < 4; axis++)
         {
@@ -1071,6 +1072,10 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
     byte* normals = positions + offsetof(SVF_P2S_N4B_C4B_T1F, normal);
 
     int vertexCount = mesh->GetVerticesCount();
+    if (vertexCount == 0)
+    {
+        return;
+    }
 
     for (int j = 0; j < sourceIndexCount; j += 3)
     {
@@ -1240,8 +1245,7 @@ void CTerrainNode::UpdateSurfaceRenderMeshes(
     pMatRM->UnLockForThreadAccess();
 }
 
-STerrainNodeLeafData::~STerrainNodeLeafData()
+EERType CTerrainNode::GetRenderNodeType()
 {
-    m_pRenderMesh = NULL;
+    return eERType_NotRenderNode;
 }
-

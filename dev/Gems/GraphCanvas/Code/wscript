@@ -20,10 +20,10 @@ def build(bld):
 
         target              = 'GraphCanvasWidgets',
 
-        platforms           = ['darwin', 'win'],
+        platforms           = ['darwin', 'win', 'linux'],
         exclude_monolithic  = True,
         client_only         = True,
-        file_list       = ['GraphCanvas_staticlib.waf_files'],
+        file_list           = ['GraphCanvas_staticlib.waf_files'],
 
         includes            = ['StaticLib'],
         defines             = [enableDetailProfiling],

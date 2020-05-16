@@ -14,13 +14,15 @@ import content_manifest
 import staging
 import types
 import signing
+from six import iteritems  # Python 2.7/3.7 Compatibility
 import resource_manager.cli
 import cloudfront
+
 
 def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = subparsers.add_parser("dynamic-content", help="Commands to manage the CloudGemDynamicContent gem")
     subparser.register('action', 'parsers', resource_manager.cli.AliasedSubParsersAction)
-    dynamic_content_subparsers = subparser.add_subparsers(dest = 'subparser_name', metavar='COMMAND')
+    dynamic_content_subparsers = subparser.add_subparsers(dest='subparser_name', metavar='COMMAND')
 
     subparser = dynamic_content_subparsers.add_parser('show-manifest', help='List all entries in the content manifest')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
@@ -33,17 +35,17 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = dynamic_content_subparsers.add_parser('create-new-manifest', help='Create a new manifest')
     subparser.add_argument('--manifest-name', required=True, help='Name of the new manifest')
     subparser.add_argument('--manifest-path', required=False, help='Path to the new manifest to add')
-    subparser.add_argument('--target-platforms', required=False, nargs='+', help='Target platforms for this new manifest (Default is all suppported platforms)')
+    subparser.add_argument('--target-platforms', required=False, nargs='+', help='Target platforms for this new manifest (Default is all supported platforms)')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_new_manifest)
 
     subparser = dynamic_content_subparsers.add_parser('update-target-platforms', help='Update the target platform of a manifest')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
-    subparser.add_argument('--target-platforms', required=False, nargs='+', help='Updated target platforms for this new manifest (Default is all suppported platforms)')
+    subparser.add_argument('--target-platforms', required=False, nargs='+', help='Updated target platforms for this new manifest (Default is all supported platforms)')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.update_target_platforms)
 
-    subparser = dynamic_content_subparsers.add_parser('add-manifest-file', aliases=['add-file'],help='Add a file to the content manifest for the project')
+    subparser = dynamic_content_subparsers.add_parser('add-manifest-file', aliases=['add-file'], help='Add a file to the content manifest for the project')
     subparser.add_argument('--file-name', required=True, help='The name of the file including local folder e.g. staticdata/csv/gameproperties.csv where local folder becomes staticdata/csv/')
     subparser.add_argument('--cache-root', required=False, help='Local cache folder reference e.g.  @assets@')
     subparser.add_argument('--bucket-prefix', required=False, help='Bucket prefix to store in S3')
@@ -193,12 +195,12 @@ def add_cli_view_commands(hook, view_context, **kwargs):
             output_dir = manifest.get('outputDir', '')
             pak_file = manifest.get('pakFile', '')
             platform_type = manifest.get('platformType', '')
-            self._output_message('\nFile Key: {}\nHash: {}\nCache Root: {}\nLocal Folder: {}\nBucket Prefix: {}\noutputDir: {}\npakFile: {}\nplatformType: {}'.format(key_name, hash, cache_root, local_folder,bucket_prefix, output_dir, pak_file, platform_type))
+            self._output_message('\nFile Key: {}\nHash: {}\nCache Root: {}\nLocal Folder: {}\nBucket Prefix: {}\noutputDir: {}\npakFile: {}\nplatformType: {}'.format(key_name, hash, cache_root, local_folder, bucket_prefix, output_dir, pak_file, platform_type))
 
     view_context.show_manifest_file = types.MethodType(show_manifest_file, view_context)
 
     def show_bucket_diff(self, bucketDiffData):
-        for key, value in bucketDiffData.iteritems():
+        for key, value in iteritems(bucketDiffData):
             self._output_message(key)
             for file in value:
                 self._output_message('\t' + file)
@@ -247,23 +249,23 @@ def add_cli_view_commands(hook, view_context, **kwargs):
 def add_gui_commands(hook, handlers, **kwargs):
 
     handlers.update({
-            'list-manifests' : content_manifest.gui_list_manifests,
-            'show-manifest' : content_manifest.gui_list,
-            'new-manifest' : content_manifest.gui_new_manifest,
-            'delete-manifest' : content_manifest.gui_delete_manifest,
-            'add-files-to-manifest' : content_manifest.gui_add_files_to_manifest,
-            'delete-files-from-manifest' : content_manifest.gui_delete_files_from_manifest,
-            'add-pak-to-manifest' : content_manifest.gui_add_pak_to_manifest,
-            'delete-pak-from-manifest' : content_manifest.gui_delete_pak_from_manifest,
-            'add-files-to-pak' : content_manifest.gui_add_files_to_pak,
-            'delete-files-from-pak' : content_manifest.gui_delete_files_from_pak,
-            'pak-and-upload' : content_manifest.gui_pak_and_upload,
-            'get-bucket-status' : content_manifest.gui_get_bucket_status,
-            'get-local-file-status' : content_manifest.gui_get_local_file_status,
-            'generate-keys' : content_manifest.gui_generate_keys,
-            'change-target-platforms' : content_manifest.gui_change_target_platforms,
-            'get-full-platform-cache-game-path' :content_manifest.gui_get_full_platform_cache_game_path,
-            'check-existing-keys':content_manifest.gui_check_existing_keys
+            'list-manifests': content_manifest.gui_list_manifests,
+            'show-manifest': content_manifest.gui_list,
+            'new-manifest': content_manifest.gui_new_manifest,
+            'delete-manifest': content_manifest.gui_delete_manifest,
+            'add-files-to-manifest': content_manifest.gui_add_files_to_manifest,
+            'delete-files-from-manifest': content_manifest.gui_delete_files_from_manifest,
+            'add-pak-to-manifest': content_manifest.gui_add_pak_to_manifest,
+            'delete-pak-from-manifest': content_manifest.gui_delete_pak_from_manifest,
+            'add-files-to-pak': content_manifest.gui_add_files_to_pak,
+            'delete-files-from-pak': content_manifest.gui_delete_files_from_pak,
+            'pak-and-upload': content_manifest.gui_pak_and_upload,
+            'get-bucket-status': content_manifest.gui_get_bucket_status,
+            'get-local-file-status': content_manifest.gui_get_local_file_status,
+            'generate-keys': content_manifest.gui_generate_keys,
+            'change-target-platforms': content_manifest.gui_change_target_platforms,
+            'get-full-platform-cache-game-path': content_manifest.gui_get_full_platform_cache_game_path,
+            'check-existing-keys': content_manifest.gui_check_existing_keys
         })
 
 def add_gui_view_commands(hook, view_context, **kwargs):
@@ -323,7 +325,7 @@ def add_gui_view_commands(hook, view_context, **kwargs):
     view_context.update_percent_complete = types.MethodType(update_percent_complete, view_context)
 
     def found_updated_item(self, keyName):
-        self._output('found-update-item', {'message':'Found updated item {}'.format(keyName), 'keyName': keyName})
+        self._output('found-update-item', {'message': 'Found updated item {}'.format(keyName), 'keyName': keyName})
 
     view_context.found_updated_item = types.MethodType(found_updated_item, view_context)
 

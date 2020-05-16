@@ -103,6 +103,7 @@ namespace GraphCanvas
 
         class LinearSlotGroupWidget
             : public QGraphicsWidget
+            , public SlotUINotificationBus::MultiHandler
         {
         public:
             AZ_CLASS_ALLOCATOR(LinearSlotGroupWidget, AZ::SystemAllocator, 0);
@@ -117,9 +118,13 @@ namespace GraphCanvas
             bool IsEmpty() const;
             void UpdateStyle(const Styling::StyleHelper& styleHelper);
 
+            // SlotUINotificationBus
+            void OnSlotLayoutPriorityChanged(int layoutPriority) override;
+            ////
+
         private:
 
-            int LayoutSlot(AZStd::vector<SlotLayoutInfo>& slotList, const SlotLayoutInfo& slotInfo);
+            int LayoutSlot(QGraphicsLinearLayout* layout, AZStd::vector<SlotLayoutInfo>& slotList, const SlotLayoutInfo& slotInfo);
 
             QGraphicsLayoutItem* GetLayoutItem(const AZ::EntityId& slotId) const;
 
@@ -127,9 +132,11 @@ namespace GraphCanvas
 
             QGraphicsLinearLayout* m_inputs;
             AZStd::vector< SlotLayoutInfo > m_inputSlots;
+            AZStd::unordered_set< SlotId >  m_inputSlotSet;
 
             QGraphicsLinearLayout* m_outputs;
             AZStd::vector< SlotLayoutInfo > m_outputSlots;
+            AZStd::unordered_set< SlotId >  m_outputSlotSet;
         };
 
     public:

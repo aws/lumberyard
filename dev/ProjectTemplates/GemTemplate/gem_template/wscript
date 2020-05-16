@@ -1,0 +1,57 @@
+# {BEGIN_LICENSE}
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+# {END_LICENSE}
+
+def build(bld):
+    bld.DefineGem(
+        # General
+        includes                = ['Include'],
+        disable_pch             = True,
+        file_list               = ['${NameLower}.waf_files'],
+
+        # Platform Roots
+        platform_roots          = [bld.PlatformRoot('Platform', export_includes=False)],
+
+        # Testing
+        test_all_file_list      = ['${NameLower}_tests.waf_files'],
+
+        # Add custom build options here
+
+        # To add an editor module to your Gem:
+        #
+        #   1. declare editor module settings here in a field called 'editor'.
+        #
+        # Editor = dict(
+        #    file_list           = ['${NameLower}_editor.waf_files'],
+        #    test_all_file_list  = ['${NameLower}_editor_tests.waf_files'],
+        #
+        #    and any additional options to override for the editor module, for example, 
+        #    defines             = ["EDITOR_MODULE"],
+        # )
+        #
+        #   2. Add the Editor Module to the Gem's modules list in the gem.json file for this Gem.
+        #
+        # "Modules": [
+        #        {
+        #            "Type": "GameModule"
+        #        },
+        #        {
+        #            "Name": "Editor",
+        #            "Type": "EditorModule",
+        #            "Extends": "GameModule"
+        #        }
+        #    ]
+        #
+        #   3. Create the corresponding Editor waf_files file lists for the Editor Module in ${Name}/Code folder
+        #      To match the example from step 1, create ${NameLower}_editor.waf_files and ${NameLower}_editor_tests.waf_files
+    )

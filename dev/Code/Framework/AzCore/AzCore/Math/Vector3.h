@@ -325,6 +325,37 @@ namespace AZ
         ///wraps the angle in each component into the [-pi,pi] range
         const Vector3 GetAngleMod() const;
 
+        ///Calculates the closest angle(radians) towards the given vector with in the [0, pi] range
+        ///Note: It's unsafe if any of the vectors are (0, 0, 0)
+        AZ_MATH_FORCE_INLINE VectorFloat Angle(const Vector3& v) const
+        {
+            VectorFloat cos = Dot(v) / ((GetLengthSq() * v.GetLengthSq()).GetSqrt());
+            // secure against any float precision error, cosine must be between [-1, 1]
+            cos = cos.GetClamp(-VectorFloat::CreateOne(), VectorFloat::CreateOne());
+            VectorFloat res = acosf(cos);
+            AZ_Assert(res.IsFinite() && (res >= 0.f) && (res <= Constants::Pi), "Calculated an invalid angle");
+            return res;
+        }
+
+        ///Calculates the closest angle(degrees) towards the given vector with in the [0, 180] range
+        ///Note: It's unsafe if any of the vectors are (0, 0, 0)
+        AZ_MATH_FORCE_INLINE VectorFloat AngleDeg(const Vector3& v) const
+        {
+            return RadToDeg(Angle(v));
+        }
+
+        ///Calculates the closest angle(radians) towards the given vector with in the [0, pi] range
+        AZ_MATH_FORCE_INLINE VectorFloat AngleSafe(const Vector3& v) const
+        {
+            return (!IsZero() && !v.IsZero()) ? Angle(v) : VectorFloat::CreateZero();
+        }
+        
+        ///Calculates the closest angle(degrees) towards the given vector with in the [0, 180] range
+        AZ_MATH_FORCE_INLINE VectorFloat AngleSafeDeg(const Vector3& v) const
+        {
+            return (!IsZero() && !v.IsZero()) ? AngleDeg(v) : VectorFloat::CreateZero();
+        }
+
         //===============================================================
         // Miscellaneous
         //===============================================================

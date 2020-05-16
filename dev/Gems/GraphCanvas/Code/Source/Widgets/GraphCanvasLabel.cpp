@@ -40,6 +40,7 @@ namespace GraphCanvas
         , m_maximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
         , m_minimumSize(0,0)
         , m_wrapMode(WrapMode::MaximumWidth)
+        , m_hasBorderOverride(false)
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         setGraphicsItem(this);
@@ -58,6 +59,24 @@ namespace GraphCanvas
         m_styleHelper.RemoveAttributeOverride(Styling::Attribute::Color);
 
         update();
+    }
+
+    void GraphCanvasLabel::SetBorderColorOverride(const QBrush& brush)
+    {
+        m_hasBorderOverride = true;
+        m_borderColorOverride = brush;
+
+        update();
+    }
+
+    const QBrush& GraphCanvasLabel::GetBorderColorOverride() const
+    {
+        return m_borderColorOverride;
+    }
+
+    void GraphCanvasLabel::ClearBorderColorOverride()
+    {
+        m_hasBorderOverride = false;
     }
 
     void GraphCanvasLabel::SetLabel(const AZStd::string& label, const AZStd::string& translationContext, const AZStd::string& translationKey)
@@ -152,6 +171,111 @@ namespace GraphCanvas
         return m_styleHelper;
     }
 
+    void GraphCanvasLabel::UpdateDisplayText()
+    {
+        qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
+        QFontMetrics metrics(m_styleHelper.GetFont());
+
+        QRectF innerBounds = boundingRect();
+        innerBounds = innerBounds.adjusted(padding, padding, -padding, -padding);
+
+        if (m_elide)
+        {
+            QStringList newlines = m_labelText.split('\n');
+
+            m_displayText.clear();
+
+            bool needsNewline = false;
+
+            for (const QString& currentLine : newlines)
+            {
+                if (needsNewline)
+                {
+                    m_displayText.append('\n');
+                }
+
+                m_displayText = m_displayText.append(metrics.elidedText(currentLine, Qt::TextElideMode::ElideRight, aznumeric_cast<int>(innerBounds.width())));
+                needsNewline = true;
+            }
+        }
+        else
+        {
+            m_displayText = m_labelText;
+        }
+    }
+
+    void GraphCanvasLabel::UpdateDesiredBounds()
+    {
+        prepareGeometryChange();
+        qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
+
+        QFontMetricsF metrics = QFontMetricsF(m_styleHelper.GetFont());
+
+        int flags = m_defaultAlignment;
+        if (m_wrap)
+        {
+            flags = flags | Qt::TextWordWrap;
+        }
+
+        flags = flags & ~Qt::TextSingleLine;
+
+        m_maximumSize = m_styleHelper.GetMaximumSize();
+
+        QRectF fontRectangle;
+        
+        if (m_wrapMode == WrapMode::ResizeToContent)
+        {
+            fontRectangle = metrics.boundingRect(m_labelText);
+        }
+        else
+        {
+            QSizeF sizeClamp = maximumSize();
+
+            if (m_wrapMode == WrapMode::BoundingWidth)
+            {
+                sizeClamp.setWidth(boundingRect().size().width());
+            }
+
+            QRectF maxInnerBounds(rect().topLeft(), sizeClamp);
+            maxInnerBounds = maxInnerBounds.adjusted(padding, padding, -padding, -padding);
+            
+            fontRectangle = metrics.boundingRect(maxInnerBounds, flags, m_labelText);
+        }
+
+        // Horizontal Padding:
+        // 1 padding for the left side
+        // 1 padding for the right side
+        //
+        // Vertical Padding:
+        // 1 padding for the top
+        // 1 padding for the bottom.
+        m_desiredBounds = fontRectangle.adjusted(0.0f, 0.0f, padding * 2.0f, padding * 2.0f);
+        
+        // Seem so be an off by 1 error here. So adding one in each direction to my desired size to stop text from being clipped.
+        m_desiredBounds.adjust(-1.0, -1.0, 1.0, 1.0);        
+
+        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());        
+
+        if (m_wrapMode == WrapMode::ResizeToContent)
+        {
+            // Because the minimum is usually what drives this. We want to ensure the minimum is the bigger
+            // of the value style or the desired bounds.            
+            if (m_minimumSize.width() < m_desiredBounds.width())
+            {
+                m_minimumSize.setWidth(m_desiredBounds.width() + 5);
+            }
+
+            // Maximum Size should act normally and just be the bigger of either its own value or the desired bounds.
+            if (m_maximumSize.width() < m_desiredBounds.width())
+            {
+                m_maximumSize.setWidth(m_desiredBounds.width() + 5);
+            }
+        }
+
+        updateGeometry();
+        setCacheMode(QGraphicsItem::CacheMode::DeviceCoordinateCache);
+    }
+
     bool GraphCanvasLabel::event(QEvent* qEvent)
     {
         if (qEvent->type() == QEvent::GraphicsSceneResize)
@@ -179,10 +303,19 @@ namespace GraphCanvas
             {
                 painter->fillRect(m_displayedSize, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
 
-                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth))
+                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth) || m_hasBorderOverride)
                 {
                     QPen restorePen = painter->pen();
-                    painter->setPen(m_styleHelper.GetBorder());
+
+                    QPen borderPen = m_styleHelper.GetBorder();
+
+                    if (m_hasBorderOverride)
+                    {
+                        borderPen.setBrush(m_borderColorOverride);
+                    }
+
+                    painter->setPen(borderPen);
+
                     painter->drawRect(m_displayedSize);
                     painter->setPen(restorePen);
                 }
@@ -193,10 +326,18 @@ namespace GraphCanvas
                 path.addRoundedRect(m_displayedSize, borderRadius, borderRadius);
                 painter->fillPath(path, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
 
-                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth))
+                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth) || m_hasBorderOverride)
                 {
                     QPen restorePen = painter->pen();
-                    painter->setPen(m_styleHelper.GetBorder());
+
+                    QPen borderPen = m_styleHelper.GetBorder();
+
+                    if (m_hasBorderOverride)
+                    {
+                        borderPen.setBrush(m_borderColorOverride);
+                    }
+
+                    painter->setPen(borderPen);
                     painter->drawPath(path);
                     painter->setPen(restorePen);
                 }
@@ -206,7 +347,7 @@ namespace GraphCanvas
         // Text.
         if (!m_labelText.isEmpty())
         {
-            qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
+            qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 4.0f);
 
             QRectF innerBounds = m_displayedSize;
             innerBounds = innerBounds.adjusted(padding, padding, -padding, -padding);
@@ -252,83 +393,5 @@ namespace GraphCanvas
         }
 
         return QGraphicsWidget::sizeHint(which, constraint);
-    }
-
-    void GraphCanvasLabel::UpdateDisplayText()
-    {
-        qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
-        QFontMetrics metrics(m_styleHelper.GetFont());
-
-        QRectF innerBounds = boundingRect();
-        innerBounds = innerBounds.adjusted(padding, padding, -padding, -padding);
-
-        if (m_elide)
-        {
-            QStringList newlines = m_labelText.split('\n');
-
-            m_displayText.clear();
-
-            bool needsNewline = false;
-
-            for (const QString& currentLine : newlines)
-            {
-                if (needsNewline)
-                {
-                    m_displayText.append('\n');
-                }
-
-                m_displayText = m_displayText.append(metrics.elidedText(currentLine, Qt::TextElideMode::ElideRight, innerBounds.width()));
-                needsNewline = true;
-            }
-        }
-        else
-        {
-            m_displayText = m_labelText;
-        }
-    }
-
-    void GraphCanvasLabel::UpdateDesiredBounds()
-    {
-        prepareGeometryChange();
-        qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
-
-        QFontMetricsF metrics = QFontMetricsF(m_styleHelper.GetFont());
-
-        int flags = m_defaultAlignment;
-        if (m_wrap)
-        {
-            flags = flags | Qt::TextWordWrap;
-        }
-
-        flags = flags & ~Qt::TextSingleLine;
-
-        m_maximumSize = m_styleHelper.GetMaximumSize();
-
-        QSizeF sizeClamp = maximumSize();
-
-        if (m_wrapMode == WrapMode::BoundingWidth)
-        {
-            sizeClamp.setWidth(boundingRect().size().width());
-        }
-
-        QRectF maxInnerBounds(rect().topLeft(), sizeClamp);
-        maxInnerBounds = maxInnerBounds.adjusted(padding, padding, -padding, -padding);
-
-        // Horizontal Padding:
-        // 1 padding for the left side
-        // 1 padding for the right side
-        //
-        // Vertical Padding:
-        // 1 padding for the top
-        // 1 padding for the bottom.
-        m_desiredBounds = metrics.boundingRect(maxInnerBounds, flags, m_labelText).adjusted(0.0f, 0.0f, padding * 2.0f, padding * 2.0f);
-        
-        // Seem so be an off by 1 error here. So adding one in each direction to my desired size to stop text from being clipped.
-        m_desiredBounds.adjust(-1.0, -1.0, 1.0, 1.0);
-
-        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());
-
-        updateGeometry();
-        setCacheMode(QGraphicsItem::CacheMode::DeviceCoordinateCache);
     }
 }

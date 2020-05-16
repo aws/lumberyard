@@ -14,7 +14,7 @@
 
 #include <AzDXGIFormat.h>            // DX10+ formats. DXGI_FORMAT
 
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/string/string.h>
@@ -102,6 +102,7 @@ namespace ImageProcessing
     {
         eSampleType_Uint8,
         eSampleType_Uint16,
+        eSampleType_Uint32,
         eSampleType_Half,
         eSampleType_Float,
         eSampleType_Compressed,

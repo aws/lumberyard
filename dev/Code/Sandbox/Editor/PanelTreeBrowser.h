@@ -83,12 +83,14 @@ protected:
 };
 
 /////////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 // CPanelTreeBrowser dialog
 class SANDBOX_API CPanelTreeBrowser
     : public QWidget
     , public IEditorNotifyListener
     , public IEntityClassRegistryListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 
     // Construction

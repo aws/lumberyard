@@ -81,6 +81,9 @@ public: // member functions
     //! Destroy this element
     virtual void DestroyElement() = 0;
 
+    //! Queue up element for destruction at end of frame
+    virtual void DestroyElementOnFrameEnd() = 0;
+
     //! Re-parent this element to move it in the hierarchy
     //! \param newParent New parent element. If null then the canvas is the parent
     //! \param nextElement  Element to insert this element before. If null element is put at end of child list

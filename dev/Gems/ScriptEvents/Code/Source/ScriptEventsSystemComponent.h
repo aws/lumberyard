@@ -22,15 +22,16 @@
 #include <ScriptEvents/ScriptEventsBus.h>
 #include <ScriptEvents/ScriptEventsAsset.h>
 #include <ScriptEvents/ScriptEventDefinition.h>
+#include <ScriptEvents/ScriptEventSystem.h>
 
 namespace ScriptEvents
 {
-    class SystemComponent
+   class ScriptEventsSystemComponent
         : public AZ::Component
-        , protected ScriptEvents::ScriptEventBus::Handler
     {
     public:
-        AZ_COMPONENT(SystemComponent, "{8BAD5292-56C3-4657-99F2-515A2BDE23C1}");
+
+        AZ_COMPONENT(ScriptEventsSystemComponent, "{43068F27-B171-4DF4-B583-57CEF3F2AC6C}");
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -39,51 +40,7 @@ namespace ScriptEvents
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
-        virtual void RegisterAssetHandler()
-        {
-            m_runtimeAssetHandler = AZStd::make_unique<ScriptEventAssetHandler>(ScriptEvents::ScriptEventsAsset::GetDisplayName(), ScriptEvents::ScriptEventsAsset::GetGroup(), ScriptEvents::ScriptEventsAsset::GetFileFilter(), AZ::AzTypeInfo<ScriptEvents::SystemComponent>::Uuid());
-
-            AZ::Data::AssetType assetType(azrtti_typeid<ScriptEvents::ScriptEventsAsset>());
-            if (AZ::Data::AssetManager::Instance().GetHandler(assetType))
-            {
-                return; // Asset Type already handled
-            }
-
-            AZ::Data::AssetManager::Instance().RegisterHandler(m_runtimeAssetHandler.get(), assetType);
-
-            // Use AssetCatalog service to register ScriptCanvas asset type and extension
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddAssetType, assetType);
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
-            AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptEvents::ScriptEventsAsset::GetFileFilter());
-
-        }
-
-        virtual void UnregisterAssetHandler()
-        {
-            for (auto& asset : m_scriptEvents)
-            {
-                asset.second.reset();
-            }
-
-            m_scriptEvents.clear();
-
-            if (m_runtimeAssetHandler)
-            {
-                AZ::Data::AssetManager::Instance().UnregisterHandler(m_runtimeAssetHandler.get());
-                m_runtimeAssetHandler.reset();
-            }
-        }
-
     protected:
-
-        ////////////////////////////////////////////////////////////////////////
-        // ScriptEvents::ScriptEventBus::Handler
-        AZStd::intrusive_ptr<Internal::ScriptEvent> RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) override;
-        void RegisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition) override;
-        void UnregisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition) override;
-        AZStd::intrusive_ptr<Internal::ScriptEvent> GetScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) override;
-        const FundamentalTypes* GetFundamentalTypes() override { return &m_fundamentalTypes; }
-        ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
@@ -92,13 +49,23 @@ namespace ScriptEvents
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-        AZStd::unique_ptr<AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>> m_runtimeAssetHandler;
-
         // Script Event Assets
         AZStd::unordered_map<ScriptEventKey, AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>> m_scriptEvents;
 
-        FundamentalTypes m_fundamentalTypes;
     };
+
+
+    class ScriptEventsSystemComponentRuntimeImpl
+        : public ScriptEventsSystemComponentImpl
+    {
+    public:
+
+        void RegisterAssetHandler() override;
+        void UnregisterAssetHandler() override;
+
+        AZStd::unique_ptr<ScriptEventAssetRuntimeHandler> m_assetHandler;
+    };
+
 }
 
 

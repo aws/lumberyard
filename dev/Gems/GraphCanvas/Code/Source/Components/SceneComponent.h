@@ -137,8 +137,7 @@ namespace GraphCanvas
     class GestureSceneHelper
         : public SceneHelper
         , public GeometryNotificationBus::Handler
-        , public SceneNotificationBus::Handler
-        , public AssetEditorSettingsNotificationBus::Handler
+        , public SceneNotificationBus::Handler        
         , public AZ::SystemTickBus::Handler
     {
     public:
@@ -157,9 +156,7 @@ namespace GraphCanvas
         void OnPositionChanged(const AZ::EntityId& itemId, const AZ::Vector2& position) override;
         ////
 
-        // AssetEditorNotificationBus
-        void OnSettingsChanged() override;
-        ////
+        void OnSettingsChanged();
 
         // SystemTickBus
         void OnSystemTick() override;
@@ -214,6 +211,7 @@ namespace GraphCanvas
         , public SceneBookmarkActionBus::Handler
         , public StyleManagerNotificationBus::Handler
         , public AZ::SystemTickBus::Handler
+        , public AssetEditorSettingsNotificationBus::Handler
     {
     private:
         friend class GraphCanvasGraphicsScene;
@@ -480,6 +478,10 @@ namespace GraphCanvas
 
         void RemoveUnusedNodes() override;
         void RemoveUnusedElements() override;
+        
+        void StartNudging(const AZStd::unordered_set<AZ::EntityId>& fixedNodes) override;
+        void FinalizeNudging() override;
+        void CancelNudging() override;
 
         void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) override;
 
@@ -511,6 +513,10 @@ namespace GraphCanvas
 
         // StyleManagerNotificationBus
         void OnStylesLoaded() override;
+        ////
+
+        // AssetEditorSettingsNotificationBus
+        void OnSettingsChanged() override;
         ////
 
     protected:
@@ -616,6 +622,7 @@ namespace GraphCanvas
 
         bool m_enableNodeChainDragConnectionSpliceTracking;
 
+        bool m_enableNudging;
         NodeNudgingController m_nudgingController;
         
         AZ::EntityId m_spliceTarget;

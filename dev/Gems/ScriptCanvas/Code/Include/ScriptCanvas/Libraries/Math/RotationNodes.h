@@ -282,13 +282,20 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ToImaginary, "Math/Quaternion", "{86754CA3-ADBA-4D5C-AAB6-C4AA6B079CFD}", "returns the imaginary portion of Source, that is (x, y, z)", "Source");
 
-        AZ_INLINE QuaternionType CreateFromEulerAngles(NumberType yaw, NumberType roll, NumberType pitch)
+        AZ_INLINE QuaternionType CreateFromEulerAngles(NumberType pitch, NumberType roll, NumberType yaw)
         {
-            AZ::Vector3 eulerDegress = AZ::Vector3(static_cast<float>(yaw), static_cast<float>(roll), static_cast<float>(pitch));
+            AZ::Vector3 eulerDegress = AZ::Vector3(static_cast<float>(pitch), static_cast<float>(roll), static_cast<float>(yaw));
             return AZ::ConvertEulerDegreesToQuaternion(eulerDegress);
         }
 
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(CreateFromEulerAngles, "Math/Quaternion", "{33974124-2882-499D-9FBE-A37EB687B30C}", "Returns a new Quaternion initialized with the specified Angles", "Yaw", "Pitch", "Roll");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(CreateFromEulerAngles, "Math/Quaternion", "{33974124-2882-499D-9FBE-A37EB687B30C}", "Returns a new Quaternion initialized with the specified Angles", "Pitch", "Roll", "Yaw");
+
+        AZ_INLINE Vector3Type RotateVector3(QuaternionType source, Vector3Type vector3)
+        {
+            return source * vector3;
+        }
+
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(RotateVector3, "Math/Quaternion", "{DDF7C05C-7148-4860-93A3-D507C5896B6C}", "Returns a new Vector3 that is the source vector3 rotated by the given Quaternion", "Quaternion", "Vector");
 
         using Registrar = RegistrarGeneric
             < AddNode
@@ -353,6 +360,7 @@ namespace ScriptCanvas
 #endif
 
             , CreateFromEulerAnglesNode
+            , RotateVector3Node
             > ;
 
     } // namespace QuaternionNodes

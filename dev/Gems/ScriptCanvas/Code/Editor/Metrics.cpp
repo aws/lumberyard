@@ -58,6 +58,7 @@ namespace ScriptCanvasEditor
                 {
                     ec->Class<SystemComponent>("ScriptCanvasMetrics", "Optionally send Lumberyard usage data to Amazon so that we can create a better user experience.")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ;
                 }
@@ -106,9 +107,9 @@ namespace ScriptCanvasEditor
             Metrics::SendMetric(operation, "", assetId.ToString<AZStd::string>().c_str());
         }
 
-        void SystemComponent::SendNodeMetric(const char* operation, const AZ::Uuid& nodeTypeId, AZ::EntityId graphId)
+        void SystemComponent::SendNodeMetric(const char* operation, const AZ::Uuid& nodeTypeId, ScriptCanvas::ScriptCanvasId scriptCanvasId)
         {
-            Metrics::SendMetric(operation, nodeTypeId.ToString<AZStd::string>().c_str(), graphId.ToString().c_str());
+            Metrics::SendMetric(operation, nodeTypeId.ToString<AZStd::string>().c_str(), scriptCanvasId.ToString().c_str());
         }
 
         void SystemComponent::SendGraphMetric(const char* operation, const AZ::Data::AssetId& assetId)

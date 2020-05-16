@@ -15,6 +15,8 @@
 #include "ShadowCache.h"
 #include "LightEntity.h"
 #include "VisAreas.h"
+#include <Terrain/ITerrainNode.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 const float ShadowCache::AO_FRUSTUM_SLOPE_BIAS = 0.5f;
 
@@ -186,12 +188,10 @@ void ShadowCache::InitCachedFrustum(ShadowMapFrustum*& pFr, ShadowMapFrustum::Sh
     m_pObjManager->MakeStaticShadowCastersList(((CLightEntity*)m_pLightEntity->m_light.m_pOwner)->m_pNotCaster, pFr,
         bExcludeDynamicDistanceShadows ? ERF_DYNAMIC_DISTANCESHADOWS : 0, maxNodesPerFrame, passInfo);
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (GetTerrain())
+    if (LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())
     {
         AddTerrainCastersToFrustum(pFr, passInfo);
     }
-#endif
 
     pFr->pShadowCacheData->mProcessedCasters.insert(pFr->m_castersList.begin(), pFr->m_castersList.end());
     pFr->pShadowCacheData->mProcessedCasters.insert(pFr->m_jobExecutedCastersList.begin(), pFr->m_jobExecutedCastersList.end());
@@ -332,17 +332,16 @@ Matrix44 ShadowCache::GetViewMatrix(const SRenderingPassInfo& passInfo)
 
 void ShadowCache::AddTerrainCastersToFrustum(ShadowMapFrustum* pFr, const SRenderingPassInfo& passInfo)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     FUNCTION_PROFILER_3DENGINE;
 
     if ((GetCVars()->e_GsmCastFromTerrain || pFr->m_eFrustumType == ShadowMapFrustum::e_HeightMapAO) && !pFr->bIsMGPUCopy)
     {
-        PodArray<CTerrainNode*> lstTerrainNodes;
-        GetTerrain()->IntersectWithBox(pFr->aabbCasters, &lstTerrainNodes);
+        PodArray<ITerrainNode*> lstTerrainNodes;
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::IntersectWithBox, pFr->aabbCasters, &lstTerrainNodes);
 
         for (int s = 0; s < lstTerrainNodes.Count(); s++)
         {
-            CTerrainNode* pNode = lstTerrainNodes[s];
+            ITerrainNode* pNode = lstTerrainNodes[s];
 
             int nLod = pNode->GetAreaLOD(passInfo);
             if (nLod == MML_NOT_SET)
@@ -370,7 +369,6 @@ void ShadowCache::AddTerrainCastersToFrustum(ShadowMapFrustum* pFr, const SRende
             pFr->RequestUpdate();
         }
     }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 ILINE uint64 ShadowCache::HashValue(uint64 value)
@@ -381,8 +379,7 @@ ILINE uint64 ShadowCache::HashValue(uint64 value)
     return hash;
 }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-ILINE uint64 ShadowCache::HashTerrainNode(const CTerrainNode* pNode, int lod)
+ILINE uint64 ShadowCache::HashTerrainNode(const ITerrainNode* pNode, int lod)
 {
     uint64 hashPointer = (uint64)HashValue(alias_cast<UINT_PTR>(pNode));
     uint64 hashLod = HashValue(lod);
@@ -393,4 +390,3 @@ ILINE uint64 ShadowCache::HashTerrainNode(const CTerrainNode* pNode, int lod)
     b ^= (b >> 47);
     return b * kHashMul;
 }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME

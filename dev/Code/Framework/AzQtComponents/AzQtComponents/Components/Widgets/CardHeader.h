@@ -70,7 +70,7 @@ namespace AzQtComponents
         /// Set whether the header has a context menu widget - determines whether or not the contextMenuRequested signal fires on right-mouse-button click / when the context menu button is pressed.
         void setHasContextMenu(bool showContextMenu);
 
-        void setHelpURL(QString url);
+        void setHelpURL(const QString& url);
         void clearHelpURL();
         QString helpURL() const;
 

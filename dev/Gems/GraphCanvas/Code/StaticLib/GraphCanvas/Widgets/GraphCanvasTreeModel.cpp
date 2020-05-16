@@ -246,9 +246,13 @@ namespace GraphCanvas
         {
             GraphCanvasTreeItem* childItem = parentItem->m_childItems[row + i];
             childItem->RemoveParent(parentItem);
+        }
 
-            if (parentItem->m_deleteRemoveChildren)
+        if (parentItem->m_deleteRemoveChildren)
+        {
+            for (int i = 0; i < count; ++i)
             {
+                GraphCanvasTreeItem* childItem = parentItem->m_childItems[row + i];
                 delete childItem;
             }
         }

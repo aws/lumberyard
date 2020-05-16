@@ -30,7 +30,7 @@ namespace AZStd
     {
         typedef T               argument_type;
         typedef AZStd::size_t   result_type;
-        inline result_type operator()(const argument_type& value) const { return static_cast<result_type>(value); }
+        constexpr result_type operator()(const argument_type& value) const { return static_cast<result_type>(value); }
         static bool OnlyUnspecializedTypesShouldHaveThis() { return true; }
     };
 
@@ -40,20 +40,20 @@ namespace AZStd
     template<class T, bool isConstructible = AZStd::is_constructible<T>::value && !AZStd::is_abstract<T>::value>
     struct IsNumber
     {
-        static const bool value = false;
+        static constexpr bool value = false;
     };
 
     template <typename T>
     struct IsNumber<T, true>
     {
-        static const bool value = std::numeric_limits<T>::is_specialized;
+        static constexpr bool value = std::numeric_limits<T>::is_specialized;
     };
 
     template <typename T>
     struct HasSpecializedHasher
     {
-        static const bool value = !HasDefaultHash<AZStd::hash<T>>::value || IsNumber<T>::value;
-        using type = typename AZStd::Utils::if_c<value, AZStd::true_type, AZStd::false_type>::type;
+        static constexpr bool value = !HasDefaultHash<AZStd::hash<T>>::value || IsNumber<T>::value;
+        using type = AZStd::bool_constant<value>;
     };
 
     template< class T >
@@ -61,7 +61,7 @@ namespace AZStd
     {
         typedef const T*        argument_type;
         typedef AZStd::size_t   result_type;
-        inline result_type operator()(argument_type value) const
+        constexpr result_type operator()(argument_type value) const
         {
             // Implementation by Alberto Barbati and Dave Harris.
             AZStd::size_t x = static_cast<AZStd::size_t>(reinterpret_cast<AZStd::ptrdiff_t>(value));
@@ -74,7 +74,7 @@ namespace AZStd
     {
         typedef T* argument_type;
         typedef AZStd::size_t   result_type;
-        inline result_type operator()(argument_type value) const
+        constexpr result_type operator()(argument_type value) const
         {
             // Implementation by Alberto Barbati and Dave Harris.
             AZStd::size_t x = static_cast<AZStd::size_t>(reinterpret_cast<AZStd::ptrdiff_t>(value));
@@ -83,21 +83,21 @@ namespace AZStd
     };
 
     template <class T>
-    AZ_FORCE_INLINE void hash_combine(AZStd::size_t& seed, T const& v)
+    constexpr void hash_combine(AZStd::size_t& seed, T const& v)
     {
         hash<T> hasher;
         seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 
     template <class T1, class T2, class... RestTypes>
-    void hash_combine(AZStd::size_t& seed, const T1& firstElement, const T2& secondElement, const RestTypes&... restElements)
+    constexpr void hash_combine(AZStd::size_t& seed, const T1& firstElement, const T2& secondElement, const RestTypes&... restElements)
     {
         hash_combine(seed, firstElement);
         hash_combine(seed, secondElement, restElements...);
     }
 
     template <class It>
-    AZ_FORCE_INLINE AZStd::size_t hash_range(It first, It last)
+    constexpr AZStd::size_t hash_range(It first, It last)
     {
         AZStd::size_t seed = 0;
         for (; first != last; ++first)
@@ -108,7 +108,7 @@ namespace AZStd
     }
 
     template <class It>
-    AZ_FORCE_INLINE void hash_range(AZStd::size_t& seed, It first, It last)
+    constexpr void hash_range(AZStd::size_t& seed, It first, It last)
     {
         for (; first != last; ++first)
         {
@@ -121,7 +121,7 @@ namespace AZStd
     {
         //typedef const T[N]        argument_type;
         typedef AZStd::size_t   result_type;
-        inline result_type operator()(const T(&value)[N]) const { return hash_range(value, value + N); }
+        constexpr result_type operator()(const T(&value)[N]) const { return hash_range(value, value + N); }
     };
 
     template< class T, unsigned N >
@@ -190,7 +190,7 @@ namespace AZStd
     {
         typedef AZStd::pair<A, B>    argument_type;
         typedef AZStd::size_t       result_type;
-        inline result_type operator()(const argument_type& value) const
+        constexpr result_type operator()(const argument_type& value) const
         {
             result_type seed = 0;
             hash_combine(seed, value.first);

@@ -1,23 +1,31 @@
 from __future__ import print_function, division, absolute_import
 
 import platform
-import struct
 import sys
 import os
 import re
 import warnings
 import multiprocessing
 
+# YAML needed to use file based Numba config
+try:
+    import yaml
+    _HAVE_YAML = True
+except ImportError:
+    _HAVE_YAML = False
+
+
 import llvmlite.binding as ll
 
-from .errors import NumbaWarning, PerformanceWarning
-
-
 IS_WIN32 = sys.platform.startswith('win32')
+IS_OSX = sys.platform.startswith('darwin')
 MACHINE_BITS = tuple.__itemsize__ * 8
 IS_32BITS = MACHINE_BITS == 32
 # Python version in (major, minor) tuple
 PYVERSION = sys.version_info[:2]
+
+# this is the name of the user supplied configuration file
+_config_fname = '.numba_config.yaml'
 
 
 def _parse_cc(text):
@@ -44,7 +52,7 @@ def _os_supports_avx():
     kernel (e.g. CentOS 5) on a recent CPU.
     """
     if (not sys.platform.startswith('linux')
-        or platform.machine() not in ('i386', 'i586', 'i686', 'x86_64')):
+            or platform.machine() not in ('i386', 'i586', 'i686', 'x86_64')):
         return True
     # Executing the CPUID instruction may report AVX available even though
     # the kernel doesn't support it, so parse /proc/cpuinfo instead.
@@ -73,6 +81,23 @@ class _EnvReloader(object):
 
     def update(self, force=False):
         new_environ = {}
+
+        # first check if there's a .numba_config.yaml and use values from that
+        if os.path.exists(_config_fname) and os.path.isfile(_config_fname):
+            if not _HAVE_YAML:
+                msg = ("A Numba config file is found but YAML parsing "
+                       "capabilities appear to be missing. "
+                       "To use this feature please install `pyyaml`. e.g. "
+                       "`conda install pyyaml`.")
+                warnings.warn(msg)
+            else:
+                with open(_config_fname, 'rt') as f:
+                    y_conf = yaml.safe_load(f)
+                if y_conf is not None:
+                    for k, v in y_conf.items():
+                        new_environ['NUMBA_' + k.upper()] = v
+
+        # clobber file based config with any locally defined env vars
         for name, value in os.environ.items():
             if name.startswith('NUMBA_'):
                 new_environ[name] = value
@@ -100,21 +125,55 @@ class _EnvReloader(object):
         def optional_str(x):
             return str(x) if x is not None else None
 
-        # Print warnings to screen about function compilation
-        #   0 = Numba warnings suppressed (default)
-        #   1 = All Numba warnings shown
-        WARNINGS = _readenv("NUMBA_WARNINGS", int, 0)
-        if WARNINGS == 0:
-            warnings.simplefilter('ignore', NumbaWarning)
+        # developer mode produces full tracebacks, disables help instructions
+        DEVELOPER_MODE = _readenv("NUMBA_DEVELOPER_MODE", int, 0)
+
+        # disable performance warnings, will switch of the generation of
+        # warnings of the class NumbaPerformanceWarning
+        DISABLE_PERFORMANCE_WARNINGS = _readenv(
+            "NUMBA_DISABLE_PERFORMANCE_WARNINGS", int, 0)
+
+        # Flag to enable full exception reporting
+        FULL_TRACEBACKS = _readenv(
+            "NUMBA_FULL_TRACEBACKS", int, DEVELOPER_MODE)
+
+        # Show help text when an error occurs
+        SHOW_HELP = _readenv("NUMBA_SHOW_HELP", int, 0)
+
+        # The color scheme to use for error messages, default is no color
+        # just bold fonts in use.
+        COLOR_SCHEME = _readenv("NUMBA_COLOR_SCHEME", str, "no_color")
+
+        # Whether to globally enable bounds checking. The default None means
+        # to use the value of the flag to @njit. 0 or 1 overrides the flag
+        # globally.
+        BOUNDSCHECK = _readenv("NUMBA_BOUNDSCHECK", int, None)
 
         # Debug flag to control compiler debug print
         DEBUG = _readenv("NUMBA_DEBUG", int, 0)
 
+        # DEBUG print IR after pass names
+        DEBUG_PRINT_AFTER = _readenv("NUMBA_DEBUG_PRINT_AFTER", str, "none")
+
+        # DEBUG print IR before pass names
+        DEBUG_PRINT_BEFORE = _readenv("NUMBA_DEBUG_PRINT_BEFORE", str, "none")
+
+        # DEBUG print IR before and after pass names
+        DEBUG_PRINT_WRAP = _readenv("NUMBA_DEBUG_PRINT_WRAP", str, "none")
+
+        # Highlighting in intermediate dumps
+        HIGHLIGHT_DUMPS = _readenv("NUMBA_HIGHLIGHT_DUMPS", int, 0)
+
         # JIT Debug flag to trigger IR instruction print
         DEBUG_JIT = _readenv("NUMBA_DEBUG_JIT", int, 0)
 
-        # Enable debugging of front-end operation (up to and including IR generation)
+        # Enable debugging of front-end operation
+        # (up to and including IR generation)
         DEBUG_FRONTEND = _readenv("NUMBA_DEBUG_FRONTEND", int, 0)
+
+        # How many recently deserialized functions to retain regardless
+        # of external references
+        FUNCTION_CACHE_SIZE = _readenv("NUMBA_FUNCTION_CACHE_SIZE", int, 128)
 
         # Enable logging of cache operation
         DEBUG_CACHE = _readenv("NUMBA_DEBUG_CACHE", int, DEBUG)
@@ -152,6 +211,16 @@ class _EnvReloader(object):
         # print debug info of analysis and optimization on array operations
         DEBUG_ARRAY_OPT = _readenv("NUMBA_DEBUG_ARRAY_OPT", int, 0)
 
+        # insert debug stmts to print information at runtime
+        DEBUG_ARRAY_OPT_RUNTIME = _readenv(
+            "NUMBA_DEBUG_ARRAY_OPT_RUNTIME", int, 0)
+
+        # print stats about parallel for-loops
+        DEBUG_ARRAY_OPT_STATS = _readenv("NUMBA_DEBUG_ARRAY_OPT_STATS", int, 0)
+
+        # prints user friendly information about parallel
+        PARALLEL_DIAGNOSTICS = _readenv("NUMBA_PARALLEL_DIAGNOSTICS", int, 0)
+
         # print debug info of inline closure pass
         DEBUG_INLINE_CLOSURE = _readenv("NUMBA_DEBUG_INLINE_CLOSURE", int, 0)
 
@@ -187,32 +256,37 @@ class _EnvReloader(object):
 
         HTML = _readenv("NUMBA_DUMP_HTML", fmt_html_path, None)
 
-        # Allow interpreter fallback so that Numba @jit decorator will never fail
-        # Use for migrating from old numba (<0.12) which supported closure, and other
-        # yet-to-be-supported features.
+        # Allow interpreter fallback so that Numba @jit decorator will never
+        # fail. Use for migrating from old numba (<0.12) which supported
+        # closure, and other yet-to-be-supported features.
         COMPATIBILITY_MODE = _readenv("NUMBA_COMPATIBILITY_MODE", int, 0)
 
         # x86-64 specific
         # Enable AVX on supported platforms where it won't degrade performance.
         def avx_default():
             if not _os_supports_avx():
-                warnings.warn("your operating system doesn't support "
-                              "AVX, this may degrade performance on "
-                              "some numerical code", PerformanceWarning)
                 return False
             else:
                 # There are various performance issues with AVX and LLVM
                 # on some CPUs (list at
                 # http://llvm.org/bugs/buglist.cgi?quicksearch=avx).
-                # For now we'd rather disable it, since it can pessimize the code.
+                # For now we'd rather disable it, since it can pessimize code
                 cpu_name = ll.get_host_cpu_name()
                 return cpu_name not in ('corei7-avx', 'core-avx-i',
                                         'sandybridge', 'ivybridge')
 
         ENABLE_AVX = _readenv("NUMBA_ENABLE_AVX", int, avx_default)
 
+        # if set and SVML is available, it will be disabled
+        # By default, it's disabled on 32-bit platforms.
+        DISABLE_INTEL_SVML = _readenv(
+            "NUMBA_DISABLE_INTEL_SVML", int, IS_32BITS)
+
         # Disable jit for debugging
         DISABLE_JIT = _readenv("NUMBA_DISABLE_JIT", int, 0)
+
+        # choose parallel backend to use
+        THREADING_LAYER = _readenv("NUMBA_THREADING_LAYER", str, 'default')
 
         # CUDA Configs
 
@@ -220,7 +294,8 @@ class _EnvReloader(object):
         FORCE_CUDA_CC = _readenv("NUMBA_FORCE_CUDA_CC", _parse_cc, None)
 
         # Disable CUDA support
-        DISABLE_CUDA = _readenv("NUMBA_DISABLE_CUDA", int, int(MACHINE_BITS==32))
+        DISABLE_CUDA = _readenv("NUMBA_DISABLE_CUDA",
+                                int, int(MACHINE_BITS == 32))
 
         # Enable CUDA simulator
         ENABLE_CUDASIM = _readenv("NUMBA_ENABLE_CUDASIM", int, 0)
@@ -252,11 +327,23 @@ class _EnvReloader(object):
         NUMBA_NUM_THREADS = _readenv("NUMBA_NUM_THREADS", int,
                                      NUMBA_DEFAULT_NUM_THREADS)
 
+        # Profiling support
+
+        # Indicates if a profiler detected. Only VTune can be detected for now
+        RUNNING_UNDER_PROFILER = 'VS_PROFILER' in os.environ
+
+        # Enables jit events in LLVM to support profiling of dynamic code
+        ENABLE_PROFILING = _readenv(
+            "NUMBA_ENABLE_PROFILING", int, int(RUNNING_UNDER_PROFILER))
+
         # Debug Info
 
         # The default value for the `debug` flag
-        DEBUGINFO_DEFAULT = _readenv("NUMBA_DEBUGINFO", int, 0)
+        DEBUGINFO_DEFAULT = _readenv("NUMBA_DEBUGINFO", int, ENABLE_PROFILING)
         CUDA_DEBUGINFO_DEFAULT = _readenv("NUMBA_CUDA_DEBUGINFO", int, 0)
+
+        # gdb binary location
+        GDB_BINARY = _readenv("NUMBA_GDB_BINARY", str, '/usr/bin/gdb')
 
         # Inject the configuration values into the module globals
         for name, value in locals().copy().items():

@@ -1,9 +1,18 @@
 {
-    "none":
-    {
-        "Tests":
-        [
-            "Tests/GameLiftTest.cpp"
-        ]
+    "none": {
+        "Tests": [
+            "Tests/Session/GameLiftTest.cpp",
+            "Tests/Session/GameLiftSessionRequestTest.cpp",
+            "Tests/Session/GameLiftGameSessionPlacementRequestTest.cpp",
+            "Tests/Session/GameLiftSearchTest.cpp",
+            "Tests/Session/GameLiftMatchmakingTest.cpp",
+            "Tests/Session/GameLiftClientServiceTest.cpp",
+            "Tests/Session/GameLiftClientSessionTest.cpp",
+            "Tests/Session/GameLiftServerSessionTest.cpp",
+            "Tests/Session/GameLiftMocks.h",
+            "Tests/Session/GameLiftClientMocks.h",
+            "Tests/Session/GameLiftServerMocks.h"
+        ]       
+
     }
 }

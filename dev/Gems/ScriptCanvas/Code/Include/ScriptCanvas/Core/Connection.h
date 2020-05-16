@@ -21,6 +21,8 @@
 
 namespace ScriptCanvas
 {
+    class Slot;
+
     class Connection
         : public AZ::Component
         , protected ConnectionRequestBus::Handler
@@ -45,6 +47,7 @@ namespace ScriptCanvas
         void Deactivate() override;
 
         static AZ::Outcome<void, AZStd::string> ValidateEndpoints(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint);
+        static AZ::Outcome<void, AZStd::string> ValidateConnection(const Slot& sourceSlot, const Slot& targetSlot);
 
         bool ContainsEndpoint(const Endpoint& endpoint);
 

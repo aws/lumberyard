@@ -257,10 +257,6 @@ void UiFlipbookAnimationComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetReverseDelay", &UiFlipbookAnimationBus::Events::SetReverseDelay)
             ->Event("GetIsAutoPlay", &UiFlipbookAnimationBus::Events::GetIsAutoPlay)
             ->Event("SetIsAutoPlay", &UiFlipbookAnimationBus::Events::SetIsAutoPlay)
-
-            // Deprecated
-            ->Event("GetFrameDelay", &UiFlipbookAnimationBus::Events::GetFrameDelay)
-            ->Event("SetFrameDelay", &UiFlipbookAnimationBus::Events::SetFrameDelay)
         ;
 
         behaviorContext->EBus<UiFlipbookAnimationNotificationsBus>("UiFlipbookAnimationNotificationsBus")
@@ -653,26 +649,6 @@ void UiFlipbookAnimationComponent::SetLoopType(UiFlipbookAnimationInterface::Loo
     {
         m_currentLoopDirection = 1;
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiFlipbookAnimationComponent::GetFrameDelay()
-{
-    AZ_Warning("LyShine", 
-        GetFramerateUnit() == FramerateUnits::SecondsPerFrame,
-        "Using deprecated 'frame delay' flipbook animation property when framerate units aren't seconds.");
-
-    return m_framerate;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiFlipbookAnimationComponent::SetFrameDelay(float frameDelay)
-{
-    AZ_Warning("LyShine",
-        GetFramerateUnit() == FramerateUnits::SecondsPerFrame,
-        "Using deprecated 'frame delay' flipbook animation property when framerate units aren't seconds.");
-
-    m_framerate = frameDelay;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

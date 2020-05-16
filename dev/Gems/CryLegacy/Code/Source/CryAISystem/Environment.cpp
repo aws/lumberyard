@@ -49,7 +49,6 @@ SAIEnvironment::SAIEnvironment()
     , pTargetTrackManager(NULL)
     , pStatsManager(NULL)
     , pPipeManager(NULL)
-    , pAIActionManager(NULL)
     , pSmartObjectManager(NULL)
     , pPerceptionManager(NULL)
     , pCommunicationManager(NULL)
@@ -65,7 +64,6 @@ SAIEnvironment::SAIEnvironment()
     , pRayCaster(NULL)
     , pIntersectionTester(NULL)
     , pMovementSystem(NULL)
-    , pSequenceManager(NULL)
 {
     SetDebugRenderer(0);
     SetNetworkDebugRenderer(0);

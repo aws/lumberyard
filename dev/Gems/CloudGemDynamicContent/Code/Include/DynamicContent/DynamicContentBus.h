@@ -29,9 +29,9 @@ namespace CloudCanvas
             virtual bool RequestFileStatus(const char* fileName, const char* outputFile) { return false; }
             //! Request status for a list of bundles including hash, size, presigned url
             //! RequestVec is a list of strings corresponding to bucket keys
-            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestVec) { return false; }
+            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestVec, bool autoDownload = false) { return false; }
             //! Update status for a single file including hash, size, presigned url
-            virtual bool UpdateFileStatus(const char* fileName) { return false; }
+            virtual bool UpdateFileStatus(const char* fileName, bool autoDownload = false) { return false; }
             //! Request the download of a file for which the Presigned URL is already known (Was retrieved through RequestFileStatusList)
             //! fileName is a bucket key matching that used in RequestFileStatusList
             //! forceDownload indicates whether we want to re-download the file if it's not updated

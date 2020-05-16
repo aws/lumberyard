@@ -22,9 +22,8 @@
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzCore/Component/TickBus.h>
-#include <ITexture.h>
-#include "VideoPlaybackAsset.h"
-#include <Include/VideoPlayback/VideoPlaybackBus.h>
+#include <VideoPlaybackFramework/VideoPlaybackBus.h>
+#include <VideoPlaybackFramework/VideoPlaybackAsset.h>
 #include "Decoder.h"
 #include <VideoPlayback_Traits_Platform.h>
 
@@ -36,7 +35,7 @@ namespace AZ
     {
         class VideoPlaybackGameComponent
             : public AZ::Component
-            , public VideoPlaybackRequestBus::Handler
+            , public VideoPlaybackFramework::VideoPlaybackRequestBus::Handler
             , public TickBus::Handler
         {
         public:
@@ -53,13 +52,21 @@ namespace AZ
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
-            // VideoPlaybackRequestBus
-            void Play() override;
-            void Pause() override;
-            void Stop() override;
-            void EnableLooping(bool enable) override;
-            bool IsPlaying() override;
-            void SetPlaybackSpeed(float speedFactor) override;
+            // VideoPlaybackFramework::VideoPlaybackRequestBus
+            void Play() final;
+            void Pause() final;
+            void Stop() final;
+            bool IsPlaying() final;
+            AZ::u32 GetQueueAheadCount() final;
+            void SetQueueAheadCount(AZ::u32 queueAheadCount) final;
+            bool GetIsLooping() final;
+            void SetIsLooping(bool isLooping) final;
+            bool GetIsAutoPlay() final;
+            void SetIsAutoPlay(bool isAutoPlay) final;
+            float GetPlaybackSpeed() final;
+            void SetPlaybackSpeed(float speedFactor) final;
+            AZStd::string GetVideoPathname() final;
+            void SetVideoPathname(AZStd::string videoPath) final;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -74,7 +81,7 @@ namespace AZ
 
         private:
             AZ::EntityId m_entityId;
-            AzFramework::SimpleAssetReference<VideoPlaybackAsset> m_videoAsset;
+            AzFramework::SimpleAssetReference<VideoPlaybackFramework::VideoPlaybackAsset> m_videoAsset;
             AZStd::string m_userTextureName;
             uint32 m_queueAheadCount = 1;
             Decoder m_videoDecoder;

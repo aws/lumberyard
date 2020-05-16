@@ -433,14 +433,13 @@ namespace EMotionFX
         // In randomized index mode, all motions should at least appear once over 10 loops.
         bool motion1Displayed = false;
         bool motion2Displayed = false;
-        for (AZ::u32 i = 0; i < 10; i++)
+        for (AZ::u32 i = 0; i < 20; i++)
         {
+            // Run the test loop multiple times to make sure all the motion index is picked.
             uniqueData->mReload = true;
             m_motionNode->Reinit();
             GetEMotionFX().Update(2.0f);
 
-            // Using default seed 1234 of lcg random.
-            // The motion index should be 1,1,1,0 before breaking out the for loop.
             const uint32 motionIndex = uniqueData->mActiveMotionIndex;
             if (motionIndex == 0)
             {
@@ -462,7 +461,8 @@ namespace EMotionFX
         EXPECT_TRUE(motion1Displayed && motion2Displayed) << "Motion 1 and motion 2 should both have been displayed.";
 
         m_motionNode->SetIndexMode(AnimGraphMotionNode::INDEXMODE_RANDOMIZE_NOREPEAT);
-        GetEMotionFX().Update(1.0f / 60.0f);
+        uniqueData->Reset();
+        m_motionNode->Reinit();
         uint32 currentMotionIndex = uniqueData->mActiveMotionIndex;
 
         // In randomized no repeat index mode, motions should change in each loop.
@@ -476,15 +476,14 @@ namespace EMotionFX
         }
 
         m_motionNode->SetIndexMode(AnimGraphMotionNode::INDEXMODE_SEQUENTIAL);
-        GetEMotionFX().Update(1.0f / 60.0f);
 
         // In sequential index mode, motions should increase its index each time and wrap around. Basically iterating over the list of motions.
         for (AZ::u32 i = 0; i < 10; i++)
         {
             uniqueData->mReload = true;
             m_motionNode->Reinit();
+            EXPECT_NE(currentMotionIndex, uniqueData->mActiveMotionIndex) << "Updated motion index should match the expected motion index.";
             currentMotionIndex = uniqueData->mActiveMotionIndex;
-            EXPECT_EQ(currentMotionIndex, 1-(i % 2)) << "Updated motion index should match the expected motion index.";
         }
     };
 } // end namespace EMotionFX

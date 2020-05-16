@@ -53,8 +53,8 @@ namespace ScriptCanvasEditor
 
         const AZStd::string GetNameOverride() const override
         {
-            const ScriptCanvas::Datum* object = nullptr;
-            ScriptCanvas::EditorNodeRequestBus::EventResult(object, GetNodeId(), &ScriptCanvas::EditorNodeRequests::GetInput, GetSlotId());
+            const ScriptCanvas::Datum* object = GetSlotObject();
+
             if (object && object->IS_A(ScriptCanvas::Data::Type::EntityID()))
             {
                 const AZ::EntityId* entityId = object->GetAs<AZ::EntityId>();
@@ -93,11 +93,12 @@ namespace ScriptCanvasEditor
 
         void SetEntityId(const AZ::EntityId& entityId) override
         {
-            ScriptCanvas::Datum* object = GetSlotObject();
+            ScriptCanvas::ModifiableDatumView datumView;
+            ModifySlotObject(datumView);
 
-            if (object)
+            if (datumView.IsValid())
             {
-                object->Set(entityId);
+                datumView.SetAs(entityId);
 
                 PostUndoPoint();
                 PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);

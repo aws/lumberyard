@@ -192,13 +192,13 @@ namespace CloudGemFramework
         AzFramework::StringFunc::Path::Normalize(normalizedFileName);
         if (!fileIO->Open(normalizedFileName.c_str(), AZ::IO::OpenMode::ModeRead, mappingsFile))
         {
-            AZ_TracePrintf("Failed to open mappings file '%s'", normalizedFileName.c_str());
+            AZ_TracePrintf("CloudCanvas", "Failed to open mappings file '%s'", normalizedFileName.c_str());
             return false;
         }
 
         AZ::u64 fileSize{ 0 };
         fileIO->Size(mappingsFile, fileSize);
-        if(!fileSize)
+        if (!fileSize)
         {
             AZ_Warning("CloudCanvas", false, "AWS Logical Mappings file '%s' is empty", normalizedFileName.c_str());
             fileIO->Close(mappingsFile);
@@ -233,7 +233,7 @@ namespace CloudGemFramework
     static const char* baseMappingsPattern = ".awsLogicalMappings.json";
 
     static const char* resourceMapOverride = "cc_override_resource_map";
-    
+
     const char* deploymentOverrideFile = "@user@/CloudCanvas/launcher.override.json";
     const char* deploymentOverrideName = "Deployment";
 
@@ -242,7 +242,7 @@ namespace CloudGemFramework
 
         if (!mappingsJsonData.WasParseSuccessful())
         {
-            AZ_Warning("CloudCanvas",false, "Could not parse logical mappings json");
+            AZ_Warning("CloudCanvas", false, "Could not parse logical mappings json");
             return false;
         }
 
@@ -380,7 +380,7 @@ namespace CloudGemFramework
         }
     }
 
-    void CloudCanvasMappingsComponent::SetOverrideDeployment(AZStd::string_view newDeployment) 
+    void CloudCanvasMappingsComponent::SetOverrideDeployment(AZStd::string_view newDeployment)
     {
         auto result = AzFramework::FileFunc::ReadJsonFile(deploymentOverrideFile, AZ::IO::FileIOBase::GetDirectInstance());
 
@@ -422,7 +422,7 @@ namespace CloudGemFramework
             if (overrideDeployment != result.GetValue().MemberEnd())
             {
                 AZStd::string overrideName = overrideDeployment->value.GetString();
-                if (AZ::IO::FileIOBase::GetInstance()->Exists( AZStd::string::format("%s%s.%s.awslogicalmappings.json", baseMappingsFolder, overrideName.c_str(), role).c_str() ))
+                if (AZ::IO::FileIOBase::GetInstance()->Exists(AZStd::string::format("%s%s.%s.awslogicalmappings.json", baseMappingsFolder, overrideName.c_str(), role).c_str()))
                 {
                     return overrideName;
                 }
@@ -450,11 +450,11 @@ namespace CloudGemFramework
         AZ::IO::HandleType launcherDeploymentFile;
         if (!fileIO->Open(path.c_str(), AZ::IO::OpenMode::ModeRead, launcherDeploymentFile))
         {
-            AZ_Warning("CloudCanvas", false, "Failed to open launcher deployment file '%s'", path.c_str());          
+            AZ_Warning("CloudCanvas", false, "Failed to open launcher deployment file '%s'", path.c_str());
             return "";
         }
 
-        AZ::u64 fileSize{0};
+        AZ::u64 fileSize{ 0 };
         fileIO->Size(launcherDeploymentFile, fileSize);
         if (!fileSize)
         {
@@ -483,7 +483,7 @@ namespace CloudGemFramework
         AZStd::string fileFilter{ dep + role + baseMappingsPattern };
 
         AZStd::string resultStr;
-        AZ::IO::FileIOBase::GetInstance()->FindFiles(baseMappingsFolder, fileFilter.c_str(), [&resultStr] (const char* foundPath) -> bool
+        AZ::IO::FileIOBase::GetInstance()->FindFiles(baseMappingsFolder, fileFilter.c_str(), [&resultStr](const char* foundPath) -> bool
         {
             if (!AZ::IO::FileIOBase::GetInstance()->IsDirectory(foundPath))
             {
@@ -510,18 +510,18 @@ namespace CloudGemFramework
 
         AZStd::string fileFilter = AZStd::string::format("%s%s", role, baseMappingsPattern);
 
-        AZ_TracePrintf("CloudCanvas","Loading Game Mappings (IsDedicated=>%s) from path '%s' filter %s", pEnv->IsDedicated() ? "True" : "False", baseMappingsFolder, fileFilter.c_str());
+        AZ_TracePrintf("CloudCanvas", "Loading Game Mappings (IsDedicated=>%s) from path '%s' filter %s", pEnv->IsDedicated() ? "True" : "False", baseMappingsFolder, fileFilter.c_str());
 
         AZStd::vector<AZStd::string> mappingFiles;
         fileIO->FindFiles(baseMappingsFolder, fileFilter.c_str(),
             [&mappingFiles](const char* filePath) -> bool
         {
             mappingFiles.push_back(filePath);
-            return true; 
+            return true;
         });
         if (mappingFiles.empty())
         {
-            AZ_Warning("Cloud Canvas", false, "No Cloud Canvas mapping file found");
+            AZ_Warning("CloudCanvas", false, "No Cloud Canvas mapping file found");
             return{};
         }
 
@@ -535,11 +535,11 @@ namespace CloudGemFramework
             AZStd::string dep = GetCurrentDeploymentFromConfig();
             if (dep.empty())
             {
-                AZStd::string dir = AZStd::string(baseMappingsFolder);                
-                
-                AZ_Warning("Cloud Canvas", false, "Multiple Cloud Canvas mapping files found, and no launcher deployment set. Attempting to load the last modified mappings file from the '%s' directory.", dir.c_str());                
+                AZStd::string dir = AZStd::string(baseMappingsFolder);
 
-                if (!fileIO->IsDirectory(dir.c_str())) 
+                AZ_Warning("CloudCanvas", false, "Multiple Cloud Canvas mapping files found, and no launcher deployment set. Attempting to load the last modified mappings file from the '%s' directory.", dir.c_str());
+
+                if (!fileIO->IsDirectory(dir.c_str()))
                 {
                     AZ_Warning("CloudCanvas", false, "The mappings directory '%s' is not a directory", dir.c_str());
                     return {};
@@ -549,13 +549,13 @@ namespace CloudGemFramework
                 fileIO->FindFiles(dir.c_str(), "*.player.awslogicalmappings.json", [&](const char* iterPath) -> bool
                 {
                     uint64_t modTime = fileIO->ModificationTime(iterPath);
-                    AZ_TracePrintf("Found mapping file '%s'.  %llu", iterPath, modTime);
+                    AZ_TracePrintf("CloudCanvas", "Found mapping file '%s'.  %llu", iterPath, modTime);
 
                     if (modTime > greatestModTime)
                     {
                         mappingFile = AZStd::string(iterPath);
                         greatestModTime = modTime;
-                        AZ_TracePrintf("The mapping file '%s' modified at timestamp %i is now set to be used.", iterPath, modTime);
+                        AZ_TracePrintf("CloudCanvas", "The mapping file '%s' modified at timestamp %i is now set to be used.", iterPath, modTime);
                     }
 
                     return true; // continue the find files
@@ -584,13 +584,14 @@ namespace CloudGemFramework
 
                 AzFramework::StringFunc::Path::Split(expected.c_str(), nullptr, nullptr, &foundFile, &foundExt);
 
-                AZ_TracePrintf("found file %s%s", foundFile.c_str(), foundExt.c_str());
+                AZStd::string fileName = AZStd::string::format("%s%s", foundFile.c_str(), foundExt.c_str());
+                AZ_TracePrintf("CloudCanvas", "found file '%s'", fileName.c_str());
                 if (foundFile == expectedFile && foundExt == expectedExt)
                 {
-                    return baseMappingsFolder + foundFile + foundExt;
+                    return baseMappingsFolder + fileName;
                 }
             }
-            AZ_Warning("Cloud Canvas", false, "Multiple Cloud Canvas mapping files found. Please use the %s commands line parameter to select a mapping file.", resourceMapOverride);
+            AZ_Warning("CloudCanvas", false, "Multiple Cloud Canvas mapping files found. Please use the %s commands line parameter to select a mapping file.", resourceMapOverride);
             return{};
         }
         return{};

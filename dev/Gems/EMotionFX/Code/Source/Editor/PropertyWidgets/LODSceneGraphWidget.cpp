@@ -21,6 +21,7 @@
 #include <SceneAPI/SceneCore/DataTypes/IGraphObject.h>
 
 #include <Editor/PropertyWidgets/LODSceneGraphWidget.h>
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
 #include <SceneAPIExt/Utilities/LODSelector.h>
 
 namespace EMotionFX
@@ -29,7 +30,7 @@ namespace EMotionFX
     {
         namespace UI
         {
-            AZ_CLASS_ALLOCATOR_IMPL(LODSceneGraphWidget, AZ::SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(LODSceneGraphWidget, EMotionFX::PropertyWidgetAllocator, 0)
 
             LODSceneGraphWidget::LODSceneGraphWidget(const SceneContainers::Scene& scene, const SceneDataTypes::ISceneNodeSelectionList& targetList,
                 QWidget* parent)

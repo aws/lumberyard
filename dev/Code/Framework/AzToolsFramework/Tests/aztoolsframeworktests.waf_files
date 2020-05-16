@@ -21,14 +21,27 @@
             "PropertyTreeEditorTests.cpp",
             "PythonBindingTests.cpp",
             "Slice.cpp",
-            "UndoStack.cpp"
+            "SliceUpgradeTestsData.h",
+            "SliceUpgradeTests.cpp",
+            "SpinBoxTests.cpp",
+            "ThumbnailerTests.cpp",
+            "UndoStack.cpp",
+            "PerforceComponentTests.cpp"
         ],
         "Entity": [
             "Entity/EditorEntityContextComponentTests.cpp",
             "Entity/EditorEntitySearchComponentTests.cpp"
         ],
+        "SliceStability": [
+            "SliceStabilityTests/SliceStabilityTestFramework.h",
+            "SliceStabilityTests/SliceStabilityTestFramework.cpp",
+            "SliceStabilityTests/SliceStabilityCreateTests.cpp",
+            "SliceStabilityTests/SliceStabilityPushTests.cpp",
+            "SliceStabilityTests/SliceStabilityReParentTests.cpp"
+        ],
         "ToolsComponents": [
-            "ToolsComponents/EditorLayerComponentTests.cpp"
+            "ToolsComponents/EditorLayerComponentTests.cpp",
+            "ToolsComponents/EditorTransformComponentTests.cpp"
         ],
         "UI": [
             "UI/EntityPropertyEditorTests.cpp"

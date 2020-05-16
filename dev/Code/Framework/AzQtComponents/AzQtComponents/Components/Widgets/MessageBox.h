@@ -14,7 +14,6 @@
 #include <AzQtComponents/Components/StyledDialog.h>
 #include <QMessageBox>
 
-class QCheckBox;
 
 namespace AzQtComponents
 {

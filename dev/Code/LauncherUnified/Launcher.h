@@ -19,6 +19,30 @@ struct IOutputPrintSink;
 
 namespace LumberyardLauncher
 {
+    struct CryAllocatorsRAII
+    {
+        CryAllocatorsRAII()
+        {
+            AZ_Assert(!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+            AZ_Assert(!AZ::AllocatorInstance<CryStringAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
+
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+            AZ::AllocatorInstance<CryStringAllocator>::Create();
+        }
+
+        ~CryAllocatorsRAII()
+        {
+            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+        }
+    };
+
+
+#define COMMAND_LINE_ARG_COUNT_LIMIT (AZ_COMMAND_LINE_LEN+1) / 2        // Assume that the limit to how many arguments we can maintain is the max buffer size divided by 2
+                                                                        // to account for an argument and a spec in between each argument (with the worse case scenario being
+                                                                    
+
+
     struct PlatformMainInfo
     {
         typedef bool (*ResourceLimitUpdater)();
@@ -30,13 +54,17 @@ namespace LumberyardLauncher
         //! quoted version of the command line from the arg c/v.  The
         //! internal buffer is fixed to \ref AZ_COMMAND_LINE_LEN meaning
         //! this call can fail if the command line exceeds that length
-        bool CopyCommandLine(const char* commandLine);
         bool CopyCommandLine(int argc, char** argv);
         bool AddArgument(const char* arg);
 
-
         char m_commandLine[AZ_COMMAND_LINE_LEN] = { 0 };
         size_t m_commandLineLen = 0;
+
+        //! Keep static sized arrays to manage and provide the main arguments (argc, argv)
+        char    m_commandLineArgBuffer[AZ_COMMAND_LINE_LEN] = { 0 };
+        size_t  m_nextCommandLineArgInsertPoint = 0;
+        int     m_argC = 0;
+        char*   m_argV[COMMAND_LINE_ARG_COUNT_LIMIT] = { nullptr };
 
         ResourceLimitUpdater m_updateResourceLimits = nullptr; //!< callback for updating system resources, if necessary
         OnPostApplicationStart m_onPostAppStart = nullptr;  //!< callback notifying the platform specific entry point that AzGameFramework::GameApplication::Start has been called

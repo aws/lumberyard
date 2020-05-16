@@ -49,6 +49,13 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelAxis3D::SimulateRawInput3D(float rawValueX, float rawValueY, float rawValueZ)
+    {
+        const AZ::Vector3 rawValues(rawValueX, rawValueY, rawValueZ);
+        ProcessRawInputEvent(rawValues);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputChannelAxis3D::ProcessRawInputEvent(const AZ::Vector3& rawValues)
     {
         const AZ::Vector3 oldValues = m_axisData3D.m_values;

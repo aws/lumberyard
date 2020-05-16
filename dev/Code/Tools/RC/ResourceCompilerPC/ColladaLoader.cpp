@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+
 #include "IXml.h"
 #include "../../CryXML/IXMLSerializer.h"
 #include "../../CryXML/XML/xml.h"
@@ -359,7 +360,7 @@ float read_float(const char*& buf, char** endptr)
 
     if (val_frac)
     {
-        __int64 divisor = 1;
+        int64 divisor = 1;
         assert(frac_digits <= 18);
         for (int i = 0; i < frac_digits; i++)
         {

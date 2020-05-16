@@ -29,7 +29,6 @@
 #include "SmartObjectStateDialog.h"
 #include "SmartObjectPatternDialog.h"
 #include "SmartObjectHelperDialog.h"
-#include "SmartObjectActionDialog.h"
 #include "SmartObjectEventDialog.h"
 #include "SmartObjectTemplateDialog.h"
 #include "ShadersDialog.h"
@@ -38,13 +37,11 @@
 #include "Particles/ParticleItem.h"
 #include "Particles/ParticleDialog.h"
 #include "SelectLightAnimationDialog.h"
-#include "SelectGameTokenDialog.h"
 #include "SelectSequenceDialog.h"
 #include "SelectMissionObjectiveDialog.h"
 #include "GenericSelectItemDialog.h"
 #include "EquipPackDialog.h"
 #include "SelectEAXPresetDlg.h"
-#include "CustomActions/CustomActionDialog.h"
 #include "DataBaseDialog.h"
 #include "QtViewPaneManager.h"
 #include <ILocalizationManager.h>
@@ -154,14 +151,6 @@ void SOStatePatternPropertyEditor::onEditClicked()
     soPatternDlg.SetPattern(sPattern);
     if (soPatternDlg.exec() == QDialog::Accepted)
         SetValue(soPatternDlg.GetPattern());
-}
-
-void SOActionPropertyEditor::onEditClicked()
-{
-    CSmartObjectActionDialog soDlg(this);
-    soDlg.SetSOAction(GetValue());
-    if (soDlg.exec() == QDialog::Accepted)
-        SetValue(soDlg.GetSOAction());
 }
 
 void SOHelperPropertyEditor::onEditClicked()
@@ -277,23 +266,6 @@ void ReverbPresetPropertyEditor::onEditClicked()
         SetValue(PresetDlg.GetCurrPreset());
     }
 }
-
-void CustomActionPropertyEditor::onEditClicked()
-{
-    CCustomActionDialog customActionDlg(this);
-    customActionDlg.SetCustomAction(GetValue());
-    if (customActionDlg.exec() == QDialog::Accepted)
-        SetValue(customActionDlg.GetCustomAction());
-}
-
-void GameTokenPropertyEditor::onEditClicked()
-{
-    CSelectGameTokenDialog gtDlg(this);
-    gtDlg.PreSelectGameToken(GetValue());
-    if (gtDlg.exec() == QDialog::Accepted)
-        SetValue(gtDlg.GetSelectedGameToken());
-}
-
 
 void MissionObjPropertyEditor::onEditClicked()
 {

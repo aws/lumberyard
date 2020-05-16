@@ -8,30 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# Certain MSVC9.0 runtime environments may be incompatible with the one we intend to use
-# to invoke python, here we search for any paths that contain msvcr90.dll and remove them
-# to ensure they cannot be brought into our environment - failure to do this may result
-# in runtime library mismatches and/or CRT violations.
-# This has to be done before anything else
+
 import os
 import sys
 import traceback, errno
-
-try:
-    # Prevent non-sxs version of msvcr90.dll from being loaded by path environment variable.
-    if 'path' in os.environ:
-        system_paths_to_check = os.environ['path'].split(os.pathsep)
-        patched_system_paths = []
-        for system_path_to_check in system_paths_to_check:
-            if os.path.isdir(system_path_to_check):
-                if "msvcr90.dll" not in map(str.lower, os.listdir(system_path_to_check)):
-                    patched_system_paths.append(system_path_to_check)
-        os.environ['path'] = os.pathsep.join(patched_system_paths)
-except Exception, e:
-    print 'error - {}'.format(e)
-    raise
-
-# ----------------------------------------------
 
 from az_code_gen.base import *
 from azcg_extension import *
@@ -39,14 +19,13 @@ import jinja_extensions
 import jinja2.exceptions
 import jinja2.utils
 
-
 # ---------------------------------------------------
 # Prepare the Jinja2 template engine.
 def load_jinja2_environment(script_paths):
     try:
         from jinja2 import Environment, FileSystemLoader, StrictUndefined, DebugUndefined
-    except Exception, e:
-        print 'base.py error loading jinja2 environment: {}'.format(e)
+    except Exception as e:
+        print('base.py error loading jinja2 environment: {}'.format(e))
         raise
 
     # wrap the FileSystemLoader so we can seed it with script paths and record what it requests
@@ -131,7 +110,7 @@ def generate_output_writer(output_path, output_files):
         else:
             output_file_desc = output_files[output_file_path]
 
-        os.write(output_file_desc, output_data)
+        os.write(output_file_desc, str.encode(output_data))
 
         RegisterOutputFile(output_file_path, should_add_to_build)
     return output_writer
@@ -169,13 +148,13 @@ def run_scripts(scripts, data_object, input_path, output_path, input_file):
                     break
 
         # Close open file handles
-        for output_file_path, output_file_desc in output_files.iteritems():
+        for output_file_path, output_file_desc in output_files.items():
             os.close(output_file_desc)
 
         OutputPrint("Done - {}".format("Successful" if was_successful else "Failed"))
         return was_successful
     except BaseException as ex:
-        tb_list = traceback.extract_tb(sys.exc_traceback)
+        tb_list = traceback.extract_tb(sys.exc_info()[2])
         for filename, lineno, name, line in tb_list:
             OutputError('{}({}): error {}: in {}: {}'.format(filename, lineno, exception_name(ex),
                                                              name, line))

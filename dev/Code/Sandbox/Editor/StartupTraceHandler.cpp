@@ -29,15 +29,29 @@ namespace SandboxEditor
         DisconnectFromMessageBus();
     }
 
-    bool StartupTraceHandler::OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message)
+    bool StartupTraceHandler::OnPreAssert(const char* fileName, int line, const char* func, const char* message)
     {
         // Asserts are more fatal than errors, and need to be displayed right away.
         // After the assert occurs, nothing else may be functional enough to collect and display messages.
 
         // Only use Cry message boxes if we aren't using native dialog boxes
 #ifndef USE_AZ_ASSERT
-        OnMessage(message, nullptr, MessageDisplayBehavior::AlwaysShow);
+        if (message == nullptr || message[0] == 0)
+        {
+            AZStd::string emptyText = AZStd::string::format("Assertion failed in %s %s:%i", func, fileName, line);
+            OnMessage(emptyText.c_str(), nullptr, MessageDisplayBehavior::AlwaysShow);
+        }
+        else
+        {
+            OnMessage(message, nullptr, MessageDisplayBehavior::AlwaysShow);
+        }
+#else
+        AZ_UNUSED(fileName);
+        AZ_UNUSED(line);
+        AZ_UNUSED(func);
+        AZ_UNUSED(message);
 #endif // !USE_AZ_ASSERT
+
         // Return false so other listeners can handle this. The StartupTraceHandler won't report messages
         // will probably crash before that occurs, because this is an assert.
         return false;
@@ -119,25 +133,27 @@ namespace SandboxEditor
                 cachedErrors.splice(cachedErrors.end(), m_errors);
             }
         }
-
-        AZ::SystemTickBus::QueueFunction([cachedWarnings, cachedErrors]() 
+        if (m_showWindow)
         {
-            // Parent to the main window, so that the error dialog doesn't
-            // show up as a separate window when alt-tabbing.
-            QWidget* mainWindow = nullptr;
-            AzToolsFramework::EditorRequests::Bus::BroadcastResult(
-                mainWindow,
-                &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
+            AZ::SystemTickBus::QueueFunction([cachedWarnings, cachedErrors]() 
+            {
+                // Parent to the main window, so that the error dialog doesn't
+                // show up as a separate window when alt-tabbing.
+                QWidget* mainWindow = nullptr;
+                AzToolsFramework::EditorRequests::Bus::BroadcastResult(
+                    mainWindow,
+                    &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
 
-            ErrorDialog errorDialog(mainWindow);
-            errorDialog.AddMessages(
-                SandboxEditor::ErrorDialog::MessageType::Warning,
-                cachedWarnings);
-            errorDialog.AddMessages(
-                SandboxEditor::ErrorDialog::MessageType::Error,
-                cachedErrors);
-            errorDialog.exec();
-        });
+                ErrorDialog errorDialog(mainWindow);
+                errorDialog.AddMessages(
+                    SandboxEditor::ErrorDialog::MessageType::Warning,
+                    cachedWarnings);
+                errorDialog.AddMessages(
+                    SandboxEditor::ErrorDialog::MessageType::Error,
+                    cachedErrors);
+                errorDialog.exec();
+            });
+        }
     }
 
     void StartupTraceHandler::ShowMessageBox(const QString& message)

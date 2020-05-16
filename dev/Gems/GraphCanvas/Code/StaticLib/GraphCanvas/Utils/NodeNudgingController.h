@@ -49,6 +49,7 @@ namespace GraphCanvas
         
         // GeometryNotificationBus
         void OnPositionChanged(const AZ::EntityId& targetEntity, const AZ::Vector2& position) override;
+        void OnBoundsChanged() override;
         ////
     
     private:

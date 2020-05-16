@@ -17,9 +17,6 @@
 #include <tuple>
 #include <sstream>
 
-// Uncomment this line to log all queries
-//#define ENABLE_QUERY_LOGGING
-
 namespace AzToolsFramework
 {
     namespace SQLite
@@ -136,12 +133,9 @@ namespace AzToolsFramework
 
                 bool result = BindInternal<0>(statement, args...);
 
-#ifdef ENABLE_QUERY_LOGGING
                 AZStd::string debugParams;
-                ArgsToString(debugParams, args...);
-
+                ArgsToString<0>(debugParams, args...);
                 Internal::LogQuery(m_statement, debugParams);
-#endif
 
                 return result;
             }

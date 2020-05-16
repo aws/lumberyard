@@ -60,7 +60,7 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     {
         pSystem = static_cast<CSystem*>(gEnv->pSystem);
     }
-    if (pSystem && !pSystem->m_bQuit)
+    if (pSystem && !pSystem->IsQuitting())
     {
         LRESULT result;
         bool bAny = false;
@@ -173,7 +173,6 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "ThreadProfiler.h"
 #include "IDiskProfiler.h"
 #include "SystemEventDispatcher.h"
-#include "IHardwareMouse.h"
 #include "ServerThrottle.h"
 #include "ILocalMemoryUsage.h"
 #include "ResourceManager.h"
@@ -486,7 +485,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_pCpu = NULL;
     m_sys_game_folder = NULL;
 
-    m_bQuit = false;
     m_bInitializedSuccessfully = false;
     m_bShaderCacheGenMode = false;
     m_bRelaunch = false;
@@ -496,6 +494,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_bPreviewMode = false;
     m_bIgnoreUpdates = false;
     m_bNoCrashDialog = false;
+    m_bNoErrorReportWindow = false;
 
 #ifndef _RELEASE
     m_checkpointLoadCount = 0;
@@ -578,12 +577,15 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #endif
 
     m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
+
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 CSystem::~CSystem()
 {
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
     ShutDown();
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
@@ -813,7 +815,6 @@ void CSystem::ShutDown()
 
     SAFE_DELETE(m_env.pResourceCompilerHelper);
 
-    SAFE_RELEASE(m_env.pHardwareMouse);
     SAFE_RELEASE(m_env.pMovieSystem);
     SAFE_DELETE(m_env.pServiceNetwork);
     SAFE_RELEASE(m_env.pAISystem);
@@ -978,7 +979,7 @@ void CSystem::Quit()
 {
     CryLogAlways("CSystem::Quit invoked from thread %" PRI_THREADID " (main is %" PRI_THREADID ")", GetCurrentThreadId(), gEnv->mMainThreadId);
     
-    m_bQuit = true;
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
 
     // If this was set from anywhere but the main thread, bail and let the main thread handle shutdown
     if (GetCurrentThreadId() != gEnv->mMainThreadId)
@@ -999,6 +1000,8 @@ void CSystem::Quit()
     {
         GetIRenderer()->RestoreGamma();
     }
+
+    SAFE_RELEASE(m_env.pNetwork);
 
     /*
     * TODO: This call to _exit, _Exit, TerminateProcess etc. needs to
@@ -1040,7 +1043,9 @@ void CSystem::Quit()
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::IsQuitting() const
 {
-    return m_bQuit;
+    bool wasExitMainLoopRequested = false;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(wasExitMainLoopRequested, &AzFramework::ApplicationRequests::WasExitMainLoopRequested);
+    return wasExitMainLoopRequested;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1322,6 +1327,21 @@ void CSystem::KillPhysicsThread()
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// AzFramework::Terrain::TerrainDataNotificationBus START
+void CSystem::OnTerrainDataCreateBegin()
+{
+    KillPhysicsThread();
+}
+
+void CSystem::OnTerrainDataDestroyBegin()
+{
+    OnTerrainDataCreateBegin();
+}
+
+// AzFramework::Terrain::TerrainDataNotificationBus END
+///////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////////////////////////////////////////////////
 void CSystem::TelemetryStreamFileChanged(ICVar* pCVar)
 {
@@ -1414,6 +1434,11 @@ void CSystem::SleepIfInactive()
 {
     // ProcessSleep()
     if (m_bDedicatedServer || m_bEditor || gEnv->bMultiplayer)
+    {
+        return;
+    }
+
+    if (gEnv->pRenderer->GetRenderType() == ERenderType::eRT_Other)
     {
         return;
     }
@@ -1586,7 +1611,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         m_env.pLog->Update();
     }
 
-#if !defined(RELEASE) || defined(RELEASE_LOGGING)
+#ifdef USE_REMOTE_CONSOLE
     GetIRemoteConsole()->Update();
 #endif
 
@@ -1878,6 +1903,12 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         m_env.pConsole->Update();
     }
 
+    if (IsQuitting())
+    {
+        Quit();
+        return false;
+    }
+
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
 
     //////////////////////////////////////////////////////////////////////
@@ -2155,7 +2186,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         UpdateMovieSystem(updateFlags, fMovieFrameTime, true);
     }
 
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2328,13 +2359,13 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         }
     }
 
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 
 bool CSystem::UpdateLoadtime()
 {
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 void CSystem::DoWorkDuringOcclusionChecks()
@@ -2493,8 +2524,6 @@ inline const char* ValidatorModuleToString(EValidatorModule module)
         return "Network";
     case VALIDATOR_MODULE_PHYSICS:
         return "Physics";
-    case VALIDATOR_MODULE_FLOWGRAPH:
-        return "FlowGraph";
     case VALIDATOR_MODULE_ONLINE:
         return "Online";
     case VALIDATOR_MODULE_FEATURETESTS:
@@ -3284,7 +3313,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
             cause the render thread to deadlock and the main
             thread to spin in SRenderThread::WaitFlushFinishedCond.
         */
-        m_bQuit = true;
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
         return false;
     case WM_MOVE:
         GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_MOVE, x, y);

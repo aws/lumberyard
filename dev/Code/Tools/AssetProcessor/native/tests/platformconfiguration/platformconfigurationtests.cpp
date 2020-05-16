@@ -501,8 +501,12 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
     ASSERT_EQ(config.GetPlatformByIdentifier("server"), nullptr); // this should be off due to overrides
 
     // there is a rule which only output on server, so that rule should be omitted
-    ASSERT_EQ(recogs.size(), 5); // so theres 5 instead of 6.
     ASSERT_FALSE(recogs.contains("skipallbutone")); // this is the rule that had only a server.
+
+    // this exists in config_regular.ini but is removed by config_overrides.ini
+    ASSERT_FALSE(recogs.contains("mov"));
+
+    ASSERT_EQ(recogs.size(), 4); // so there's 4 instead of 6 because of the above omissions
 
     ASSERT_TRUE(recogs.contains("i_caf"));
     ASSERT_EQ(recogs["i_caf"].m_patternMatcher.GetBuilderPattern().m_pattern, "*.i_caf");

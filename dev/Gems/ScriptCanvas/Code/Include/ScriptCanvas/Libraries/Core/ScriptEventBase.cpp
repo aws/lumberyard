@@ -56,6 +56,12 @@ namespace ScriptCanvas
                 {
                 }
 
+                ScriptEventBase::~ScriptEventBase()
+                {
+                    ScriptCanvas::ScriptEventNodeRequestBus::Handler::BusDisconnect();
+                    AZ::Data::AssetBus::Handler::BusDisconnect();
+                }
+
                 void ScriptEventBase::OnInit()
                 {
                     ScriptCanvas::ScriptEventNodeRequestBus::Handler::BusConnect(GetEntityId());
@@ -72,12 +78,12 @@ namespace ScriptCanvas
                     {
                         m_scriptEventAssetId = assetId;
 
-                        GraphRequestBus::Event(GetGraphId(), &GraphRequests::AddDependentAsset, GetEntityId(), azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), assetId);
+                        GraphRequestBus::Event(GetOwningScriptCanvasId(), &GraphRequests::AddDependentAsset, GetEntityId(), azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), assetId);
 
                         AZ::Data::AssetBus::Handler::BusConnect(assetId);
                     }
 
-                    AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, false, nullptr, true);
+                    m_asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, false, nullptr, false);
                 }
 
                 void ScriptEventBase::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -107,26 +113,11 @@ namespace ScriptCanvas
                     m_definition = definition;
                  }
 
-                void ScriptEventBase::OnActivate()
-                {
-                    AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId, true, nullptr, true);
-                }
-
                 void ScriptEventBase::OnDeactivate()
                 {
                     ScriptCanvas::ScriptEventNodeRequestBus::Handler::BusDisconnect();
-
-                    if (AZ::Data::AssetBus::Handler::BusIsConnectedId(m_scriptEventAssetId))
-                    {
-                        AZ::Data::AssetBus::Handler::BusDisconnect(m_scriptEventAssetId);
-                    }
+                    AZ::Data::AssetBus::Handler::BusDisconnect();
                 }
-
-                AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> ScriptEventBase::GetAsset() const
-                {
-                    return AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId);
-                }
-
             } // namespace Internal
         } // namespace Core
     } // namespace Nodes

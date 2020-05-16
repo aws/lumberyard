@@ -252,10 +252,10 @@ namespace
     QColor InterpolateColor(const QColor& a, const QColor& b, float k)
     {
         float mk = 1.0f - k;
-        return QColor(a.red() * mk  + b.red() * k,
-            a.green() * mk + b.green() * k,
-            a.blue() * mk + b.blue() * k,
-            a.alpha() * mk + b.alpha() * k);
+        return QColor(aznumeric_cast<int>(a.red() * mk  + b.red() * k),
+            aznumeric_cast<int>(a.green() * mk + b.green() * k),
+            aznumeric_cast<int>(a.blue() * mk + b.blue() * k),
+            aznumeric_cast<int>(a.alpha() * mk + b.alpha() * k));
     }
 
     void ClampViewOrigin(STimelineViewState* viewState, const STimelineLayout& layout)
@@ -484,7 +484,7 @@ namespace
                         continue;
                     }
 
-                    float distance = track.elements[j].rect.left() - track.elements[i].rect.left();
+                    float distance = aznumeric_cast<float>(track.elements[j].rect.left() - track.elements[i].rect.left());
                     float delta = clamp_tpl(1.0f - fabsf(distance) / keyWidth, 0.0f, 1.0f);
 
                     if (delta == 0.0f)
@@ -933,7 +933,7 @@ namespace
 
                     if (rect.width() != 0)
                     {
-                        ratio = rect.height() != 0 ? rect.width() / float(rect.height()) : 1.0f;
+                        ratio = rect.height() != 0 ? aznumeric_cast<float>(rect.width() / float(rect.height())) : 1.0f;
                     }
 
                     const bool bSelected = element.IsSelected();
@@ -965,7 +965,7 @@ namespace
                             painter.drawRoundedRect(rect, rx, ry, Qt::RelativeSize);
 
                             QRect textRect = track.rect;
-                            textRect.moveLeft(rect.right() + TRACK_DESCRIPTION_INDENT);
+                            textRect.moveLeft(aznumeric_cast<int>(rect.right() + TRACK_DESCRIPTION_INDENT));
                             textRect.setTop(textRect.top() + 1);
 
                             if ((iter + 1) != sortedElements.end())

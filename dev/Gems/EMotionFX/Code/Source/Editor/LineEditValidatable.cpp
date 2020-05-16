@@ -19,7 +19,7 @@ namespace EMStudio
 
     const QRegExp LineEditValidatable::s_defaultRegExp = QRegExp("(^[^{}\"%<>:\\\\/|?*]*$)");
 
-    LineEditValidatable::LineEditValidatable(QWidget* parent, const QRegExp regExp)
+    LineEditValidatable::LineEditValidatable(QWidget* parent, const QRegExp& regExp)
         : QLineEdit(parent)
         , m_validationExp(regExp)
         , m_lineValidator(m_validationExp, 0)

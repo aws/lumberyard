@@ -120,7 +120,7 @@ namespace ScriptCanvasEditor
         GraphValidationModel();
         ~GraphValidationModel() override;
         
-        void RunValidation(const AZ::EntityId& scriptCanvasGraphId);
+        void RunValidation(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
 
         // QAbstractItemModel
         QModelIndex index(int row, int column, const QModelIndex& parent) const override;
@@ -237,8 +237,8 @@ namespace ScriptCanvasEditor
         GraphValidationModel* m_model;
         GraphValidationSortFilterProxyModel* m_proxyModel;
     
-        AZ::EntityId         m_scriptCanvasGraphId;
-        GraphCanvas::GraphId m_graphCanvasGraphId;
+        ScriptCanvas::ScriptCanvasId    m_scriptCanvasId;
+        GraphCanvas::GraphId            m_graphCanvasGraphId;
 
         UnusedNodeValidationEffect m_unusedNodeValidationEffect;
         AZStd::unordered_map< int, ValidationEffect* > m_validationEffects;

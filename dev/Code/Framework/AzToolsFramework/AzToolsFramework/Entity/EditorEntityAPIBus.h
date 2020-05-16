@@ -13,6 +13,7 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Entity.h>
+#include <AzToolsFramework/Entity/EditorEntityStartStatus.h>
 
 namespace AzToolsFramework
 {
@@ -27,6 +28,11 @@ namespace AzToolsFramework
         using BusIdType = AZ::EntityId;
 
         virtual void SetName(AZStd::string name) = 0;
+        virtual void SetParent(AZ::EntityId parentId) = 0;
+        virtual void SetLockState(bool isLocked) = 0;
+        virtual void SetVisibilityState(bool isVisible) = 0;
+        virtual void SetStartStatus(EditorEntityStartStatus status) = 0;
     };
+
     using EditorEntityAPIBus = AZ::EBus<EditorEntityAPIRequests>;
 }

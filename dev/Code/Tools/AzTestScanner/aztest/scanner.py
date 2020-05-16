@@ -22,7 +22,7 @@ from aztest.filters import FileApprover, get_default_blacklist, get_default_whit
 from aztest.log import setup_logging
 from aztest.report import HTMLReporter, XMLGenerator
 from aztest.errors import RunnerReturnCodes
-from bootstrap import BootstrapConfig
+from aztest.bootstrap import BootstrapConfig
 from colorama import Fore
 from colorama import Style
 
@@ -280,7 +280,7 @@ def scan(args, extra):
     with open(json_path, 'w') as f:
         json.dump(scan_results_json, f)
 
-    print "----------------AUTOTEST SUMMARY -----------------"
+    print("----------------AUTOTEST SUMMARY -----------------")
     print("Log: {}".format(log_path))
     print("JSON results: {}".format(json_path))
 
@@ -315,14 +315,14 @@ def scan(args, extra):
     for file_name in executable_name_list:
         _print_summary_for_file_name(test_summary_results, file_name, output_dir)
 
-    print "\nTotal tests run: {0}".format(str(test_summary_results[TESTS_RUN_KEY]))
-    print "Total tests passed: {0}".format(str(test_summary_results[TESTS_PASSED_KEY]))
-    print "Total tests failed: {0}".format(str(test_summary_results[TESTS_FAILED_KEY]))
-    print "Total tests errored: {0}".format(str(test_summary_results[TESTS_ERRORED_KEY]))
-    print "Total tests skipped: {0}".format(str(test_summary_results[TESTS_SKIPPED_KEY]))
-    print "Total test time taken: {0}\n".format(str(test_summary_results[TOTAL_TIME_TAKEN_KEY]))
+    print("\nTotal tests run: {0}".format(str(test_summary_results[TESTS_RUN_KEY])))
+    print("Total tests passed: {0}".format(str(test_summary_results[TESTS_PASSED_KEY])))
+    print("Total tests failed: {0}".format(str(test_summary_results[TESTS_FAILED_KEY])))
+    print("Total tests errored: {0}".format(str(test_summary_results[TESTS_ERRORED_KEY])))
+    print("Total tests skipped: {0}".format(str(test_summary_results[TESTS_SKIPPED_KEY])))
+    print("Total test time taken: {0}\n".format(str(test_summary_results[TOTAL_TIME_TAKEN_KEY])))
 
-    print "----------------AUTOTEST SUMMARY -----------------"
+    print("----------------AUTOTEST SUMMARY -----------------")
 
     return 1 if module_failures > 0 else 0
 

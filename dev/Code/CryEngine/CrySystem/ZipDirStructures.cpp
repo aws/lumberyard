@@ -319,7 +319,7 @@ void ZipDir::CZipFile::LoadToMemory(IMemoryBlock* pData)
             int64 offset = 0;
 
             AZ::u64 fileSize = 0;
-            if (!AZ::IO::FileIOBase::GetDirectInstance()->Size(realFileHandle, fileSize))
+            if (!m_fileIOBase->Size(realFileHandle, fileSize))
             {
                 goto error;
             }
@@ -330,11 +330,11 @@ void ZipDir::CZipFile::LoadToMemory(IMemoryBlock* pData)
 
             m_nSize = nFileSize;
 
-            if (!AZ::IO::FileIOBase::GetDirectInstance()->Seek(realFileHandle, 0, AZ::IO::SeekType::SeekFromStart))
+            if (!m_fileIOBase->Seek(realFileHandle, 0, AZ::IO::SeekType::SeekFromStart))
             {
                 goto error;
             }
-            if (!AZ::IO::FileIOBase::GetDirectInstance()->Read(realFileHandle, m_pInMemoryData->GetData(), nFileSize, true))
+            if (!m_fileIOBase->Read(realFileHandle, m_pInMemoryData->GetData(), nFileSize, true))
             {
                 goto error;
             }
@@ -362,7 +362,7 @@ void ZipDir::CZipFile::Close(bool bUnloadFromMem)
 {
     if (m_fileHandle != AZ::IO::InvalidHandle)
     {
-        AZ::IO::FileIOBase::GetDirectInstance()->Close(m_fileHandle);
+        m_fileIOBase->Close(m_fileHandle);
         m_fileHandle = AZ::IO::InvalidHandle;
     }
 

@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Core": [
+            "Core/QtEditorApplication_linux.cpp",
+            "EditorLoadDependencies_Default.cpp"
+        ]
+    }
+}

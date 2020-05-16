@@ -11,23 +11,23 @@
 */
 
 // include the required headers
-#include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Matrix4x4.h>
-#include "Algorithms.h"
-#include "Vector.h"
-#include "Matrix4.h"
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector2.h>
+#include <MCore/Source/Algorithms.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace MCore
 {
     // project a 3D point in world space to 2D screen coordinates
-    AZ::Vector3 Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight)
+    AZ::Vector3 Project(const AZ::Vector3& point, const AZ::Matrix4x4& viewProjMatrix, uint32 screenWidth, uint32 screenHeight)
     {
         // 1. expand homogenous coordinate
         AZ::Vector4 expandedPoint(point.GetX(), point.GetY(), point.GetZ(), 1.0f);
 
         // 2. multiply by the view and the projection matrix (note that this is a four component matrix multiplication, so no affine one!)
-        expandedPoint *= viewProjMatrix;
+        expandedPoint = viewProjMatrix * expandedPoint;
 
         // 3. perform perspective division for the x and y coordinates only
         expandedPoint.SetX(expandedPoint.GetX() / expandedPoint.GetW());
@@ -46,7 +46,7 @@ namespace MCore
 
     // unproject into eye space, remember this means the resulting vector will be in camera space already
     // drawing lines that take world space coordinates with those returned coordinates will apply a camera tranform twice
-    AZ::Vector3 UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth)
+    AZ::Vector3 UnprojectToEyeSpace(float screenX, float screenY, const AZ::Matrix4x4& invProjMat, float windowWidth, float windowHeight, float depth)
     {
         // convert to normalized device coordinates in range of -1 to +1
         const float x = 2.0f * (screenX / windowWidth) - 1.0f;
@@ -54,7 +54,7 @@ namespace MCore
 
         // convert into clip space
         AZ::Vector4 vec(x, y, 1, 0.0f);
-        vec *= invProjMat;
+        vec = invProjMat * vec;
 
         // return the result at the given desired depth
         return AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth;
@@ -62,7 +62,7 @@ namespace MCore
 
 
     // unproject screen coordinates to a 3D point in world space
-    AZ::Vector3 Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat)
+    AZ::Vector3 Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const AZ::Matrix4x4& invProjMat, const AZ::Matrix4x4& invViewMat)
     {
         // convert to normalized device coordinates in range of -1 to +1
         const float x = 2.0f * (screenX / screenWidth) - 1.0f;
@@ -70,14 +70,14 @@ namespace MCore
 
         // convert into clip space
         AZ::Vector4 vec(x, y, 1.0f, 0.0f);
-        vec *= invProjMat;
+        vec = invProjMat * vec;
 
         // return the result at the given desired depth and transform from eyespace into world space
-        return (AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth) * invViewMat;
+        return invViewMat * (AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth);
     }
 
 
-    AZ::Vector3 UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix)
+    AZ::Vector3 UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const AZ::Matrix4x4& projectionMatrix, const AZ::Matrix4x4& viewMatrix)
     {
         // 1. normalize the screen coordinates so that it will be in range [-1.0, 1.0]
         const float normalizedX = 2.0f * (screenX / (float)screenWidth) - 1.0f;
@@ -87,31 +87,10 @@ namespace MCore
         AZ::Vector4 expandedPoint(normalizedX, -normalizedY, depth, 1.0f);
 
         // 3. multiply by the inverse of the projection matrix
-        //projectionMatrix.Log();
-
-        AZ::Matrix4x4 m44;
-
-        AZ::Vector4 rows[4];
-        for (int i = 0; i < 4; ++i)
-        {
-            rows[i] = projectionMatrix.GetRow4D(i);
-        }
-
-        m44 = AZ::Matrix4x4::CreateFromRows(rows[0], rows[1], rows[2], rows[3]);
-        m44.InvertFull();
-
-        expandedPoint *= m44;
+        expandedPoint = MCore::InvertProjectionMatrix(projectionMatrix) * expandedPoint;
 
         // 4. multiply by the inverse of the modelview matrix
-        for (int i = 0; i < 4; ++i)
-        {
-            rows[i] = viewMatrix.GetRow4D(i);
-        }
-
-        m44 = AZ::Matrix4x4::CreateFromRows(rows[0], rows[1], rows[2], rows[3]);
-        m44.InvertFull();
-
-        expandedPoint *= m44;
+        expandedPoint = MCore::InvertProjectionMatrix(viewMatrix) * expandedPoint;
 
         // 5. perform perspective division
         expandedPoint /= expandedPoint.GetW();

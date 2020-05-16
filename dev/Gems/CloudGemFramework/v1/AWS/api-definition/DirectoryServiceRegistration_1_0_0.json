@@ -3,7 +3,7 @@
     "info": {
         "version": "1.0.0",
         "title": "Service Directory Interface Definition",
-        "description": "API for accessing Service Direcory ."
+        "description": "API for accessing Service Directory ."
    },
     "schemes": [
         "https"
@@ -27,7 +27,7 @@
                 }
             ],
             "put": {
-                "description": "Sets the interfaces implemented by a servcice.",
+                "description": "Sets the interfaces implemented by a service.",
                 "parameters": [
                     {
                         "name": "interface_collection",

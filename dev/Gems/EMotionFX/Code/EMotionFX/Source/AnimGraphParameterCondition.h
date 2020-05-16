@@ -70,6 +70,17 @@ namespace EMotionFX
         };
 
         AnimGraphParameterCondition() = default;
+        explicit AnimGraphParameterCondition(
+            AZStd::string parameterName,
+            float testValue = 0.0f,
+            EFunction function = FUNCTION_GREATER,
+            float rangeValue = 0.0f
+        );
+        AnimGraphParameterCondition(
+            AZStd::string parameterName,
+            AZStd::string testString,
+            EStringFunction = STRINGFUNCTION_EQUAL_CASESENSITIVE
+        );
         AnimGraphParameterCondition(AnimGraph* animGraph);
 
         void Reinit() override;
@@ -114,10 +125,11 @@ namespace EMotionFX
         AnimGraph* GetParameterAnimGraph() const override;
         void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
         void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
-        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterAdded(const AZStd::string& newParameterName) override;
         void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
         void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
         void ParameterRemoved(const AZStd::string& oldParameterName) override;
+        void BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved) override;
 
         static void Reflect(AZ::ReflectContext* context);
 

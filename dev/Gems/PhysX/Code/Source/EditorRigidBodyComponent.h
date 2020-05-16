@@ -16,9 +16,11 @@
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/World.h>
 
 #include <AzCore/Component/TransformBus.h>
-#include <PhysX/EditorRigidBodyRequestBus.h>
+#include <PhysX/ColliderComponentBus.h>
+#include <PhysX/ConfigurationBus.h>
 
 namespace PhysX
 {
@@ -39,8 +41,6 @@ namespace PhysX
 
         // Debug properties.
         bool m_centerOfMassDebugDraw = false;
-
-        void OnConfigurationChanged();
     };
 
     /// Class for in-editor PhysX Rigid Body Component.
@@ -49,7 +49,9 @@ namespace PhysX
         : public AzToolsFramework::Components::EditorComponentBase
         , protected AzFramework::EntityDebugDisplayEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
-        , private EditorRigidBodyRequestBus::Handler
+        , private PhysX::ColliderComponentEventBus::Handler
+        , private PhysX::ConfigurationNotificationBus::Handler
+        , private Physics::WorldNotificationBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorRigidBodyComponent, "{F2478E6B-001A-4006-9D7E-DCB5A6B041DD}", AzToolsFramework::Components::EditorComponentBase);
@@ -82,13 +84,15 @@ namespace PhysX
         }
 
         // AZ::Component
-        void Init() override;
         void Activate() override;
         void Deactivate() override;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
+        const Physics::RigidBody* GetRigidBody() const;
+
+    private:
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntityViewport(
             const AzFramework::ViewportInfo& viewportInfo,
@@ -97,13 +101,24 @@ namespace PhysX
         // TransformBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-    private:
+        // ColliderComponentEventBus
+        void OnColliderChanged() override;
+
+        // PhysX::ConfigurationNotificationBus
+        void OnPhysXConfigurationRefreshed(const PhysXConfiguration& newConfiguration) override;
+
+        // Physics::WorldNotificationBus
+        void OnPrePhysicsUpdate(float fixedDeltaTime) override;
+
+        void UpdateEditorWorldRigidBody();
+        void UpdateDebugDrawSettings(const PhysXConfiguration& configuration);
+
+        void SetShouldBeUpdated();
+
         EditorRigidBodyConfiguration m_config;
         AZStd::unique_ptr<Physics::RigidBody> m_editorBody;
-
-        // EditorRigidBodyRequestBus
-        void RefreshEditorRigidBody() override;
-
-        void CreateEditorWorldRigidBody();
+        AZ::Color m_centerOfMassDebugColor = AZ::Colors::White;
+        float m_centerOfMassDebugSize = 0.1f;
+        bool m_shouldBeUpdated = false;
     };
 } // namespace PhysX

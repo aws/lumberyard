@@ -12,6 +12,8 @@
 #pragma once
 
 #include <IRenderer.h>
+#include <I3DEngine.h> // needed for SRenderingPassInfo definition
+#include <IVideoRenderer.h>
 #include <IImage.h>
 #include <gmock/gmock.h>
 
@@ -52,17 +54,17 @@ public:
         const AZStd::string& ());
     MOCK_METHOD3(GetVideoMemoryUsageStats,
         void(size_t&, size_t&, bool));
-    MOCK_METHOD0(GetNumGeomInstances,
+    MOCK_CONST_METHOD0(GetNumGeomInstances,
         int());
-    MOCK_METHOD0(GetNumGeomInstanceDrawCalls,
+    MOCK_CONST_METHOD0(GetNumGeomInstanceDrawCalls,
         int());
-    MOCK_METHOD0(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD0(GetCurrentNumberOfDrawCalls,
         int());
-    MOCK_METHOD2(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD2(GetCurrentNumberOfDrawCalls,
         void(int& nGeneral, int& nShadowGen));
-    MOCK_METHOD1(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD1(GetCurrentNumberOfDrawCalls,
         int(const uint32 EFSListMask));
-    MOCK_METHOD1(GetCurrentDrawCallRTTimes,
+    MOCK_CONST_METHOD1(GetCurrentDrawCallRTTimes,
         float(const uint32 EFSListMask));
     MOCK_METHOD1(SetDebugRenderNode,
         void(IRenderNode * pRenderNode));
@@ -150,8 +152,8 @@ public:
         void(void));
     MOCK_METHOD3(ChangeDisplay,
         bool(unsigned int width, unsigned int height, unsigned int cbpp));
-    MOCK_METHOD5(ChangeViewport,
-        void(unsigned int, unsigned int, unsigned int, unsigned int, bool));
+    MOCK_METHOD7(ChangeViewport,
+        void(unsigned int, unsigned int, unsigned int, unsigned int, bool, float, float));
     MOCK_CONST_METHOD6(SaveTga,
         bool(unsigned char* sourcedata, int sourceformat, int w, int h, const char* filename, bool flip));
     MOCK_METHOD1(SetTexture,
@@ -402,9 +404,9 @@ public:
         void(const bool bSort));
     MOCK_METHOD0(ForceGC,
         void());
-    MOCK_METHOD0(GetPolyCount,
+    MOCK_CONST_METHOD0(GetPolyCount,
         int());
-    MOCK_METHOD2(GetPolyCount,
+    MOCK_CONST_METHOD2(GetPolyCount,
         void(int& nPolygons, int& nShadowVolPolys));
     MOCK_METHOD1(SetClearColor,
         void(const Vec3& vColor));
@@ -597,9 +599,9 @@ public:
         void(bool bEnabled));
     MOCK_METHOD1(AllowGPUTimers2,
         void(bool bAllow));
-    MOCK_METHOD2(GetRPPStats,
+    MOCK_CONST_METHOD2(GetRPPStats,
         const RPProfilerStats * (ERenderPipelineProfilerStats, bool));
-    MOCK_METHOD1(GetRPPStatsArray,
+    MOCK_CONST_METHOD1(GetRPPStatsArray,
         const RPProfilerStats * (bool));
     MOCK_METHOD4(GetPolygonCountByType,
         int(uint32, EVertexCostTypes, uint32, bool));
@@ -650,6 +652,10 @@ public:
 #if !defined(_RELEASE)
     MOCK_METHOD1(GetDrawCallsInfoPerMesh,
         RNDrawcallsMapMesh & (bool));
+    MOCK_METHOD1(GetDrawCallsInfoPerMeshPreviousFrame,
+        RNDrawcallsMapMesh & (bool));
+    MOCK_METHOD1(GetDrawCallsInfoPerNodePreviousFrame,
+        RNDrawcallsMapNode & (bool));
     MOCK_METHOD1(GetDrawCallsPerNode,
         int(IRenderNode * pRenderNode));
     MOCK_METHOD1(ForceRemoveNodeFromDrawCallsMap,
@@ -676,7 +682,7 @@ public:
     MOCK_METHOD2(ForceUpdateShaderItem,
         void(SShaderItem * pShaderItem, _smart_ptr<IMaterial> pMaterial));
     MOCK_METHOD2(RefreshShaderResourceConstants,
-        void(SShaderItem * pShaderItem, _smart_ptr<IMaterial> pMaterial));
+        void(SShaderItem * pShaderItem, IMaterial * pMaterial));
     MOCK_METHOD0(IsStereoModeChangePending,
         bool());
     MOCK_METHOD0(SyncComputeVerticesJobs,
@@ -860,6 +866,14 @@ public:
         void(const char*));
     MOCK_METHOD1(AddProfilerLabel,
         void(const char*));
+
+    MOCK_METHOD1(InitializeVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer));
+    MOCK_METHOD1(CleanupVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer));
+    MOCK_METHOD2(DrawVideoRenderer,
+        void(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments));
+
     MOCK_METHOD5(EF_QueryImpl,
         void(ERenderQueryTypes eQuery, void* pInOut0, uint32 nInOutSize0, void* pInOut1, uint32 nInOutSize1));
 };

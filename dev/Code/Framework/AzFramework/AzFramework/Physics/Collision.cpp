@@ -119,6 +119,18 @@ namespace Physics
         }
     }
 
+    void CollisionConfiguration::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<Physics::CollisionConfiguration>()
+                ->Version(1)
+                ->Field("Layers", &Physics::CollisionConfiguration::m_collisionLayers)
+                ->Field("Groups", &Physics::CollisionConfiguration::m_collisionGroups)
+                ;
+        }
+    }
+
     CollisionLayer::CollisionLayer(AZ::u8 index) 
         : m_index(index) 
     {
@@ -162,7 +174,7 @@ namespace Physics
         m_mask = group.GetMask();
     }
 
-    void CollisionGroup::SetLayer(const CollisionLayer& layer, bool set)
+    void CollisionGroup::SetLayer(CollisionLayer layer, bool set)
     {
         if (set)
         {
@@ -174,7 +186,7 @@ namespace Physics
         }
     }
 
-    bool CollisionGroup::IsSet(const CollisionLayer& layer) const
+    bool CollisionGroup::IsSet(CollisionLayer layer) const
     {
         return (m_mask & layer.GetMask()) != 0;
     }
@@ -184,19 +196,33 @@ namespace Physics
         return m_mask;
     }
 
-    Physics::CollisionLayer CollisionLayers::GetLayer(const AZStd::string& layerName)
+    Physics::CollisionLayer CollisionLayers::GetLayer(const AZStd::string& layerName) const
     {
+        Physics::CollisionLayer layer = Physics::CollisionLayer::Default;
+        TryGetLayer(layerName, layer);
+        return layer;
+    }
+
+    bool CollisionLayers::TryGetLayer(const AZStd::string& layerName, Physics::CollisionLayer& layer) const
+    {
+        if (layerName.empty())
+        {
+            return false;
+        }
+
         for (AZ::u8 i = 0; i < m_names.size(); ++i)
         {
             if (m_names[i] == layerName)
             {
-                return Physics::CollisionLayer(i);
+                layer = Physics::CollisionLayer(i);
+                return true;
             }
         }
-        return Physics::CollisionLayer::Default;
+        AZ_Warning("CollisionLayers", false, "Could not find collision layer:%s. Does it exist in the physx configuration window?", layerName.c_str());
+        return false;
     }
 
-    AZStd::string CollisionLayers::GetName(const Physics::CollisionLayer& layer) const
+    const AZStd::string& CollisionLayers::GetName(Physics::CollisionLayer layer) const
     {
         return m_names[layer.GetIndex()];
     }
@@ -221,7 +247,7 @@ namespace Physics
         m_names[layerIndex] = layerName;
     }
 
-    CollisionGroups::Id CollisionGroups::CreateGroup(const AZStd::string& name, const CollisionGroup& group, Id id, bool readOnly)
+    CollisionGroups::Id CollisionGroups::CreateGroup(const AZStd::string& name, CollisionGroup group, Id id, bool readOnly)
     {
         Preset preset;
         preset.m_id = id;
@@ -260,6 +286,13 @@ namespace Physics
 
     CollisionGroup CollisionGroups::FindGroupByName(const AZStd::string& groupName) const
     {
+        CollisionGroup group = CollisionGroup::All;
+        TryFindGroupByName(groupName, group);
+        return group;
+    }
+
+    bool CollisionGroups::TryFindGroupByName(const AZStd::string& groupName, CollisionGroup& group) const
+    {
         auto found = AZStd::find_if(m_groups.begin(), m_groups.end(), [groupName](const Preset& preset)
         {
             return preset.m_name == groupName;
@@ -267,9 +300,12 @@ namespace Physics
 
         if (found != m_groups.end())
         {
-            return found->m_group;
+            group = found->m_group;
+            return true;
         }
-        return CollisionGroup::All;
+
+        AZ_Warning("CollisionGroups", false, "Could not find collision group:%s. Does it exist in the physx configuration window?", groupName.c_str());
+        return false;
     }
 
     CollisionGroups::Id CollisionGroups::FindGroupIdByName(const AZStd::string& groupName) const
@@ -331,7 +367,7 @@ namespace Physics
         return m_groups;
     }
 
-    CollisionGroup operator|(const CollisionLayer& layer1, const CollisionLayer& layer2)
+    CollisionGroup operator|(CollisionLayer layer1, CollisionLayer layer2)
     {
         CollisionGroup group = CollisionGroup::None;
         group.SetLayer(layer1, true);
@@ -339,7 +375,7 @@ namespace Physics
         return group;
     }
 
-    CollisionGroup operator|(const CollisionGroup& otherGroup, const CollisionLayer& layer)
+    CollisionGroup operator|(CollisionGroup otherGroup, CollisionLayer layer)
     {
         CollisionGroup group = otherGroup;
         group.SetLayer(layer, true);

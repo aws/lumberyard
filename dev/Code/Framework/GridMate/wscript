@@ -39,6 +39,7 @@ def build(bld):
         win_features    = ['crcfix'],
 
         darwin_enable_rtti = True,
+        linux_enable_rtti = True,
         
         # Tests
         create_test_driver  = True,
@@ -72,5 +73,6 @@ def build(bld):
                            '/W4', # warning level
                           ],
 
-        darwin_enable_rtti = True
+        darwin_enable_rtti = True,
+        linux_enable_rtti = True
     )

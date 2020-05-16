@@ -30,7 +30,8 @@
 #include <AzCore/Android/APKFileHandler.h>
 #include <AzCore/Android/Utils.h>
 
-using namespace AZ::IO;
+namespace AZ::IO
+{
 
 namespace UnixLikePlatformUtil
 {
@@ -286,3 +287,5 @@ namespace Platform
         }
     }
 }
+
+} // namespace AZ::IO

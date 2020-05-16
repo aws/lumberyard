@@ -74,7 +74,7 @@ public:
         {
             if (elements[idx]->WasValueEditedByUser())
             {
-                actualValue[idx] = elements[idx]->GetValue();
+                actualValue[idx] = aznumeric_cast<typename TypeBeingHandled::value_type>(elements[idx]->GetValue());
             }
         }
         instance = actualValue;

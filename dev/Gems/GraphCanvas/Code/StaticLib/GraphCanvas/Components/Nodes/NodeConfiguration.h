@@ -54,7 +54,7 @@ namespace GraphCanvas
         {}
 
         void SetTooltip(const AZStd::string& tooltip) { m_tooltip = tooltip; }
-        const AZStd::string& GetTooltip() const { return m_tooltip; }
+        const AZStd::string GetTooltip() const { return m_tooltip; }
 
         void SetShowInOutliner(bool show) { m_showInOutliner = show; }
         bool GetShowInOutliner() const { return m_showInOutliner; }

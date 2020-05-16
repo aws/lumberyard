@@ -52,20 +52,26 @@ struct ITerrain
         AUTO_STRUCT_INFO
     };
 
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainElevationAndSurfaceWeights.
     virtual void SetTerrainElevation(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const SurfaceWeight* surfaceWeightSet) = 0;
 
-    virtual float GetZ(int x, int y) const = 0;
-    virtual float GetBilinearZ(float x1, float y1) const = 0;
-
-    virtual SurfaceWeight GetSurfaceWeight(int x, int y) const = 0;
-
-    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) = 0;
-    virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) = 0;
-
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::GetTerrainMaterials.
     virtual void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) = 0;
 
-    virtual bool IsHole(int x, int y) const = 0;
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use CVegetation::GetTerrainAlignmentMatrix
+    virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) const = 0;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::IsMeshQuadFlipped
     virtual bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const = 0;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetMaxSurfaceWeightFromFloats
+    virtual SurfaceWeight GetSurfaceWeight(int x, int y) const = 0;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetNormalFromFloats
+    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) const = 0;
+
+    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetIsHoleFromFloats
+    virtual bool IsHole(int x, int y) const = 0;
 
 };
 

@@ -62,6 +62,7 @@ namespace GraphCanvas
             const bool deleteObject = false;
             m_parent->RemoveChild(this, deleteObject);
             ClearModel();
+            AZ_Assert(m_parent == nullptr, "Parent should be null after detaching item");
         }
     }
     
@@ -77,6 +78,8 @@ namespace GraphCanvas
             m_deleteRemoveChildren = true;
             m_abstractItemModel->removeRows(0, GetChildCount(), m_abstractItemModel->CreateIndex(this));
             m_deleteRemoveChildren = false;
+
+            AZ_Assert(m_childItems.empty(), "Clear Children failed to clear all children.");
         }
         else
         {
@@ -207,6 +210,7 @@ namespace GraphCanvas
 
     void GraphCanvasTreeItem::RemoveChild(GraphCanvasTreeItem* item, bool deleteObject)
     {
+        bool previousValue = m_deleteRemoveChildren;
         m_deleteRemoveChildren = deleteObject;
 
         if (item->m_parent == this)
@@ -232,14 +236,13 @@ namespace GraphCanvas
                             delete treeItem;
                         }
                     }
-
                     
                     break;
                 }
             }
         }
 
-        m_deleteRemoveChildren = false;
+        m_deleteRemoveChildren = previousValue;
     }
 
     void GraphCanvasTreeItem::SignalLayoutAboutToBeChanged()

@@ -22,8 +22,12 @@
 #include "Layer.h"
 #include "TerrainTexGen.h"
 #include "Util/AutoLogTime.h"
-#include "ITerrain.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 #include "Terrain/TerrainConverter.h"
+#include "GameExporter.h"
+#include "GameEngine.h"
+
+#include "VegetationMap.h"
 
 namespace {
     const char* kHeightmapFile = "Heightmap.dat";
@@ -53,11 +57,13 @@ namespace {
 //////////////////////////////////////////////////////////////////////////
 CTerrainManager::CTerrainManager()
 {
+    LegacyTerrain::LegacyTerrainEditorDataRequestBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CTerrainManager::~CTerrainManager()
 {
+    LegacyTerrain::LegacyTerrainEditorDataRequestBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -167,9 +173,9 @@ void CTerrainManager::ReloadSurfaceTypes(bool bUpdateEngineTerrain, bool bUpdate
         GetSurfaceTypePtr(i)->Serialize(ar);
     }
 
-    gEnv->p3DEngine->LoadTerrainSurfacesFromXML(node, bUpdateEngineTerrain);
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML, node);
 
-    if (bUpdateHeightmap && gEnv->p3DEngine->GetITerrain() && bUpdateEngineTerrain)
+    if (bUpdateHeightmap && bUpdateEngineTerrain)
     {
         m_heightmap.UpdateEngineTerrain(false, false);
     }
@@ -388,7 +394,7 @@ uint32 CTerrainManager::GetDetailIdLayerFromLayerId(const uint32 dwLayerId)
     }
 
     // recreate referenced layer
-    if (!GetIEditor()->GetSystem()->GetI3DEngine()->GetITerrain())       // only if terrain loaded successfully
+    if (!LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())       // only if terrain loaded successfully
     {
         QString no;
 
@@ -435,7 +441,7 @@ void CTerrainManager::CreateDefaultLayer()
 
     // Create default surface type.
     CSurfaceType* sfType = new CSurfaceType;
-    sfType->SetName("Materials/material_terrain_default");
+    sfType->SetName(layer->GetLayerName());
     uint32 dwDetailLayerId = AddSurfaceType(sfType);
     sfType->SetMaterial("Materials/material_terrain_default");
     sfType->AssignUnusedSurfaceTypeID();
@@ -473,6 +479,8 @@ void CTerrainManager::SerializeTerrain(TDocMultiArchive& arrXmlAr)
         if (!m_heightmap.IsAllocated())
         {
             gEnv->pSystem->ShowMessage("Heightmap data wasn't properly loaded. The file is missing or corrupted. Using this level is not recommended. Update level data from your backup.", "Error", MB_OK | MB_ICONERROR);
+            ResetHeightMap();
+            SetUseTerrain(false);
         }
         else
         {
@@ -527,6 +535,8 @@ void CTerrainManager::SerializeTerrain(CXmlArchive& xmlAr)
         if (!m_heightmap.IsAllocated())
         {
             gEnv->pSystem->ShowMessage("Heightmap data wasn't properly loaded. The file is missing or corrupted. Using this level is not recommended. Update level data from your backup.", "Error", MB_OK | MB_ICONERROR);
+            ResetHeightMap();
+            SetUseTerrain(false);
         }
         else
         {
@@ -698,41 +708,13 @@ bool CTerrainManager::LoadTexture()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SetModified(int x1, int y1, int x2, int y2)
 {
-    if (!gEnv->p3DEngine->GetITerrain())
+    if (!LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())
     {
         return;
     }
 
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
-
-    AABB bounds;
-    bounds.Reset();
-    if (x1 == 0 && y1 == 0 && x2 == 0 && y2 == 0)
-    {
-        bounds.Reset();
-    }
-    else
-    {
-        // Here we are making sure that we will update the whole sectors where the heightmap was changed.
-        int nTerrainSectorSize(gEnv->p3DEngine->GetTerrainSectorSize());
-        assert(nTerrainSectorSize > 0);
-
-        x1 *= m_heightmap.GetUnitSize();
-        y1 *= m_heightmap.GetUnitSize();
-
-        x2 *= m_heightmap.GetUnitSize();
-        y2 *= m_heightmap.GetUnitSize();
-
-        x1 /= nTerrainSectorSize;
-        y1 /= nTerrainSectorSize;
-        x2 /= nTerrainSectorSize;
-        y2 /= nTerrainSectorSize;
-
-        // Y and X switched by historical reasons.
-        bounds.Add(Vec3((y1 - 1) * nTerrainSectorSize, (x1 - 1) * nTerrainSectorSize, -32000.0f));
-        bounds.Add(Vec3((y2 + 1) * nTerrainSectorSize, (x2 + 1) * nTerrainSectorSize, +32000.0f));
-    }
 }
 
 QString CTerrainManager::GenerateUniqueLayerName(const QString& name) const
@@ -765,3 +747,74 @@ QString CTerrainManager::GenerateUniqueLayerName(const QString& name) const
         ++lastNumber;
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+// LegacyTerrain::LegacyTerrainEditorDataRequestBus
+//////////////////////////////////////////////////////////////////////////
+bool CTerrainManager::CreateTerrainSystemFromEditorData()
+{
+    bool isInstantiated = false;
+    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
+    if (isInstantiated)
+    {
+        AZ_Warning("LegacyTerrain", false, "The legacy terrain system was already instantiated");
+        return false;
+    }
+
+    STerrainInfo terrainInfo;
+    m_heightmap.GetTerrainInfo(terrainInfo);
+
+    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::CreateUninitializedTerrainSystem, terrainInfo);
+    AZ_Error("LegacyTerrain", isInstantiated, "Failed to initialize the legacy terrain system");
+    if (!isInstantiated)
+    {
+        return false;
+    }
+
+    if (!m_heightmap.GetUseTerrain())
+    {
+        //Before initializing the terrain with heightmap data, the terrain macrotexture must exist.
+        QString levelPath = Path::AddSlash(GetIEditor()->GetGameEngine()->GetLevelPath());
+        QString macroTextureFilename = QStringLiteral("%1%2").arg(levelPath, QStringLiteral(COMPILED_TERRAIN_TEXTURE_FILE_NAME));
+        if (!CFileUtil::FileExists(macroTextureFilename))
+        {
+            CGameExporter gameExporter;
+            if (!gameExporter.ExportTerrainMacroTexture())
+            {
+                return false;
+            }
+        }
+
+        m_heightmap.SetUseTerrain(true);
+    }
+
+    // pass heightmap data to the 3dengine
+    m_heightmap.UpdateEngineTerrain(false);
+    // Pass color texture data to the engine
+    RefreshEngineMacroTexture();
+
+    return true;
+}
+
+void CTerrainManager::RefreshEngineMacroTexture()
+{
+    // Any time the engine reloads the macro texture file, make sure to overwrite it with any modified Editor data.
+    m_heightmap.UpdateModSectors(true);
+}
+
+void CTerrainManager::DestroyTerrainSystem()
+{
+    bool isInstantiated = false;
+    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
+    if (!isInstantiated)
+    {
+        return;
+    }
+    LegacyTerrain::LegacyTerrainInstanceRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainInstanceRequests::DestroyTerrainSystem);
+
+    if (m_heightmap.GetUseTerrain())
+    {
+        m_heightmap.SetUseTerrain(false);
+    }
+}
+//////////////////////////////////////////////////////////////////////////

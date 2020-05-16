@@ -83,11 +83,9 @@ namespace GraphicsReflectContext
 
     void GraphicsReflectContextSystemComponent::Activate()
     {
-        GraphicsReflectContextRequestBus::Handler::BusConnect();
     }
 
     void GraphicsReflectContextSystemComponent::Deactivate()
     {
-        GraphicsReflectContextRequestBus::Handler::BusDisconnect();
     }
 }

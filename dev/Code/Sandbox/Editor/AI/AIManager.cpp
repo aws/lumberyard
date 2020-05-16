@@ -22,7 +22,6 @@
 
 #include "IAgent.h"
 #include "IAISystem.h"
-#include <IAIAction.h>
 
 #include <IScriptSystem.h>
 #include <IEntitySystem.h>
@@ -31,9 +30,6 @@
 
 #include "CoverSurfaceManager.h"
 
-#include "../HyperGraph/FlowGraph.h"
-#include "../HyperGraph/FlowGraphManager.h"
-#include "../HyperGraph/HyperGraphDialog.h"
 #include "StartupLogoDialog.h"
 #include "Objects/EntityObject.h"
 
@@ -175,8 +171,6 @@ CAIManager::~CAIManager()
 {
     GetIEditor()->UnregisterNotifyListener(this);
 
-    FreeActionGraphs();
-
     delete m_behaviorLibrary;
     m_behaviorLibrary = 0;
     delete m_goalLibrary;
@@ -211,129 +205,10 @@ void CAIManager::Init(ISystem* system)
     //load smart object templates
     ReloadTemplates();
 
-    CStartupLogoDialog::SetText("Loading Action Flowgraphs...");
-    LoadActionGraphs();
-
     REGISTER_COMMAND("so_reload", ReloadSmartObjects, VF_NULL, "");
     REGISTER_COMMAND("ed_randomize_variations", ed_randomize_variations, VF_NULL, "");
 
     LoadNavigationEditorSettings();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CAIManager::ReloadActionGraphs()
-{
-    if (!m_aiSystem)
-    {
-        return;
-    }
-    //  FreeActionGraphs();
-    GetAISystem()->GetAIActionManager()->ReloadActions();
-    LoadActionGraphs();
-}
-
-void CAIManager::LoadActionGraphs()
-{
-    if (!m_aiSystem)
-    {
-        return;
-    }
-
-    int i = 0;
-    IAIAction* pAction;
-    while (pAction = m_aiSystem->GetAIActionManager()->GetAIAction(i++))
-    {
-        CFlowGraph* m_pFlowGraph = GetIEditor()->GetFlowGraphManager()->FindGraphForAction(pAction);
-        if (m_pFlowGraph)
-        {
-            // [3/24/2011 evgeny] Reconnect Sandbox CFlowGraph to CryAction CFlowGraph
-            m_pFlowGraph->SetIFlowGraph(pAction->GetFlowGraph());
-        }
-        else
-        {
-            m_pFlowGraph = GetIEditor()->GetFlowGraphManager()->CreateGraphForAction(pAction);
-            m_pFlowGraph->AddRef();
-            QString filename(AI_ACTIONS_PATH);
-            filename += '/';
-            filename += pAction->GetName();
-            filename += ".xml";
-            m_pFlowGraph->SetName("");
-            m_pFlowGraph->Load(filename.toUtf8().data());
-        }
-    }
-}
-
-void CAIManager::SaveAndReloadActionGraphs()
-{
-    if (!m_aiSystem)
-    {
-        return;
-    }
-
-    QString actionName;
-    CHyperGraphDialog* pHGDlg = CHyperGraphDialog::instance();
-    if (pHGDlg)
-    {
-        CHyperGraph* pGraph = pHGDlg->GetGraph();
-        if (pGraph)
-        {
-            IAIAction* pAction = pGraph->GetAIAction();
-            if (pAction)
-            {
-                actionName = pAction->GetName();
-                pHGDlg->SetGraph(NULL, true);       // KDAB_PORT view only
-            }
-        }
-    }
-
-    SaveActionGraphs();
-    ReloadActionGraphs();
-
-    if (!actionName.isEmpty())
-    {
-        IAIAction* pAction = GetAISystem()->GetAIActionManager()->GetAIAction(actionName.toUtf8().data());
-        if (pAction)
-        {
-            CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
-            CFlowGraph* pFlowGraph = pManager->FindGraphForAction(pAction);
-            assert(pFlowGraph);
-            if (pFlowGraph)
-            {
-                pManager->OpenView(pFlowGraph);
-            }
-        }
-    }
-}
-
-void CAIManager::SaveActionGraphs()
-{
-    if (!m_aiSystem)
-    {
-        return;
-    }
-
-    QWaitCursor waitCursor;
-
-    int i = 0;
-    IAIAction* pAction;
-    while (pAction = m_aiSystem->GetAIActionManager()->GetAIAction(i++))
-    {
-        CFlowGraph* m_pFlowGraph = GetIEditor()->GetFlowGraphManager()->FindGraphForAction(pAction);
-        if (m_pFlowGraph->IsModified())
-        {
-            m_pFlowGraph->Save((m_pFlowGraph->GetName() + QStringLiteral(".xml")).toUtf8().data());
-            pAction->Invalidate();
-        }
-    }
-}
-
-void CAIManager::FreeActionGraphs()
-{
-    CFlowGraphManager* pFGMgr = GetIEditor()->GetFlowGraphManager();
-    if (pFGMgr)
-    {
-        pFGMgr->FreeGraphsForActions();
-    }
 }
 
 IAISystem*  CAIManager::GetAISystem()
@@ -428,33 +303,6 @@ void CAIManager::GetSmartObjectStates(QStringList& values) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAIManager::GetSmartObjectActions(QStringList& values) const
-{
-    if (!m_aiSystem)
-    {
-        return;
-    }
-
-    IAIActionManager* pAIActionManager = m_aiSystem->GetAIActionManager();
-    assert(pAIActionManager);
-    if (!pAIActionManager)
-    {
-        return;
-    }
-
-    values.clear();
-
-    for (int i = 0; IAIAction* pAIAction = pAIActionManager->GetAIAction(i); ++i)
-    {
-        const char* szActionName = pAIAction->GetName();
-        if (szActionName)
-        {
-            values.push_back(szActionName);
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CAIManager::AddSmartObjectState(const char* sState)
 {
     if (!m_aiSystem)
@@ -462,52 +310,6 @@ void CAIManager::AddSmartObjectState(const char* sState)
         return;
     }
     m_aiSystem->GetSmartObjectManager()->RegisterSmartObjectState(sState);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CAIManager::NewAction(QString& filename, QWidget* container)
-{
-    AZStd::string xmlDataPath = Path::GetEditingGameDataFolder() + "/" + AI_ACTIONS_PATH;
-    CFileUtil::CreateDirectory(xmlDataPath.c_str());
-
-    QString newFileName;
-    if (!CFileUtil::SelectSaveFile(GRAPH_FILE_FILTER, "xml", xmlDataPath.c_str(), newFileName))
-    {
-        return false;
-    }
-    filename = newFileName.toLower();
-
-    // check if file exists.
-    FILE* file = nullptr;
-    azfopen(&file, filename.toUtf8().data(), "rb");
-    if (file)
-    {
-        fclose(file);
-        QMessageBox::critical(container, QString(), QObject::tr("Can't create AI Action because another AI Action with this name already exists!\n\nCreation canceled..."));
-        return false;
-    }
-
-    // Make a new graph.
-    CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
-    CHyperGraph* pGraph = pManager->CreateGraph();
-
-    CHyperNode* pStartNode = (CHyperNode*) pGraph->CreateNode("AI:ActionStart");
-    pStartNode->SetPos(QPointF(80, 10));
-    CHyperNode* pEndNode = (CHyperNode*) pGraph->CreateNode("AI:ActionEnd");
-    pEndNode->SetPos(QPointF(400, 10));
-    CHyperNode* pPosNode = (CHyperNode*) pGraph->CreateNode("Entity:EntityPos");
-    pPosNode->SetPos(QPointF(20, 70));
-
-    pGraph->UnselectAll();
-    pGraph->ConnectPorts(pStartNode, &pStartNode->GetOutputs()->at(1), pPosNode, &pPosNode->GetInputs()->at(0), false);
-
-    bool r = pGraph->Save(filename.toUtf8().data());
-
-    delete pGraph;
-
-    ReloadActionGraphs();
-
-    return r;
 }
 
 //////////////////////////////////////////////////////////////////////////

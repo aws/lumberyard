@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AZCore/Component/Component.h>
+#include <AzCore/Component/Component.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <GradientSignal/Ebuses/GradientRequestBus.h>

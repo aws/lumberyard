@@ -14,6 +14,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
+#include <AzFramework/Asset/AssetRegistry.h>
 
 namespace CryPak
 {
@@ -28,7 +29,7 @@ namespace CryPak
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        virtual void BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle) {}
+        virtual void BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle, AZStd::shared_ptr<AzFramework::AssetRegistry> bundleCatalog) {}
         virtual void BundleClosed(const char* bundleName) {}
 
         // Sent when a file is accessed through CryPak

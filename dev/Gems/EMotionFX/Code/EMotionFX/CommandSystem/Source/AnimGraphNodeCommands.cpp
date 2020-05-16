@@ -30,6 +30,7 @@
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 
 namespace CommandSystem
@@ -221,6 +222,9 @@ namespace CommandSystem
             AZ_Assert(node->GetNumConnections() == 0, "Unexpected serialized connections");
             AZ_Assert(node->GetNumChildNodes() == 0, "Unexpected serialized child nodes");
             AZ_Assert(azrtti_typeid(node) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>() || static_cast<EMotionFX::AnimGraphStateMachine*>(node)->GetNumTransitions() == 0, "Unexpected serialized transitions");
+
+            // After deserialization the trigger actions also need to be initialized.
+            node->InitTriggerActions();
         }
 
         // Force set the node id. Undo of the remove node command calls a create node command which has to force set the node id when reconstructing it.
@@ -716,7 +720,7 @@ namespace CommandSystem
         mPosX = emfxNode->GetVisualPosX();
         mPosY = emfxNode->GetVisualPosY();
         mCollapsed = emfxNode->GetIsCollapsed();
-        mOldContents = MCore::ReflectionSerializer::SerializeMembersExcept(emfxNode, { "childNodes", "connections", "actionSetup", "transitions" }).GetValue();
+        mOldContents = MCore::ReflectionSerializer::SerializeMembersExcept(emfxNode, { "childNodes", "connections", "transitions" }).GetValue();
         mNodeId = emfxNode->GetId();
 
         // remember the node group for the node for undo
@@ -934,6 +938,13 @@ namespace CommandSystem
         if (stateMachineNode == nullptr || azrtti_typeid(stateMachineNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
         {
             outResult = AZStd::string::format("Cannot set entry node '%s'. Parent node is not a state machine or not valid at all.", entryNodeName.c_str());
+            return false;
+        }
+
+        // Check if the node can be set as the entry node
+        if (!entryNode->GetCanBeEntryNode())
+        {
+            outResult = AZStd::string::format("Cannot set entry node '%s'. This type of node cannot be set as an entry node.", entryNodeName.c_str());
             return false;
         }
 
@@ -1336,7 +1347,7 @@ namespace CommandSystem
 
         // Don't put that into the format as the attribute string can become pretty big strings.
         commandString += " -contents {";
-        commandString += MCore::ReflectionSerializer::SerializeMembersExcept(node, { "childNodes", "connections", "actionSetup", "transitions" }).GetValue();
+        commandString += MCore::ReflectionSerializer::SerializeMembersExcept(node, { "childNodes", "connections", "transitions" }).GetValue();
         commandString += "}";
 
         commandGroup->AddCommandString(commandString);

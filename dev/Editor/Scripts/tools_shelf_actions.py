@@ -8,8 +8,9 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+import __future__
 import time, re, os, sys, itertools, ast 
-import general
+import azlmbr.legacy.general as general
 
 global ctrlFile
 ctrlFile = 'setState.txt'
@@ -90,7 +91,7 @@ def toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile):
 			stateList = open(ctrlFile, 'r')
 			getList = [x for x in stateList] 
 			getList.insert(1, str("%s,{'%s': %s}\n" % (mode, cVars , offValue)))
-			print str("{'%s': %s}\n" % (cVars , offValue))
+			print (str("{'%s': %s}\n" % (cVars , offValue)))
 			stateList = open(ctrlFile, 'w')
 			stateList.write(''.join(getList))	
 			general.set_cvar(cVars, offValue)
@@ -110,7 +111,7 @@ def toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile):
 						getDict[cVars] = onValue
 						joinStr = [mode,",",str(getDict), '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = newLine
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -119,7 +120,7 @@ def toggleCvarsV(mode, cVars, onValue, offValue, ctrlFile):
 						getDict[cVars] = offValue
 						joinStr = [mode,",",str(getDict), '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = newLine
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -172,7 +173,7 @@ def toggleConsolV(mode, onValue, offValue):
 			stateList = open(ctrlFile, 'r')
 			getList = [x for x in stateList] 
 			getList.insert(1, str("%s,'%s'\n" % (mode, offValue)))
-			print str("{'%s': %s}\n" % (cVars , offValue))
+			print (str("{'%s': %s}\n" % (cVars , offValue)))
 			stateList = open(ctrlFile, 'w')
 			stateList.write(''.join(getList))	
 			general.run_console(onValue)
@@ -195,7 +196,7 @@ def toggleConsolV(mode, onValue, offValue):
 						getDict = onValue
 						joinStr = [mode,",","'",getDict,"'", '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = str(newLine)							
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -204,7 +205,7 @@ def toggleConsolV(mode, onValue, offValue):
 						getDict = offValue
 						joinStr = [mode,",","'",getDict,"'", '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = str(newLine)					
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -244,7 +245,6 @@ def cycleCvarsV(mode, cVars, cycleList, ctrlFile):
 			stateList = open(ctrlFile, 'r')
 			getList = [x for x in stateList] 
 			getList.insert(1, str("%s,{'%s': %s}\n" % (mode, cVars , cycleList[1])))
-			#print '%s' % cycleList[1]
 			stateList = open(ctrlFile, 'w')
 			stateList.write(''.join(getList))	
 			general.set_cvar(cVars, cycleList[1])
@@ -274,7 +274,7 @@ def cycleCvarsV(mode, cVars, cycleList, ctrlFile):
 								joinStr = [mode,",",str(getDict), '\n']
 								newLine = ''.join(joinStr)
 								getList[d[0]] = newLine
-								print getDict
+								print (getDict)
 								stateList = open(ctrlFile, 'w')
 								stateList.write(''.join(str(''.join(getList))))
 								general.set_cvar(cVars, cycleList[0])
@@ -283,7 +283,7 @@ def cycleCvarsV(mode, cVars, cycleList, ctrlFile):
 								joinStr = [mode,",",str(getDict), '\n']
 								newLine = ''.join(joinStr)
 								getList[d[0]] = newLine
-								print getDict
+								print (getDict)
 								stateList = open(ctrlFile, 'w')
 								stateList.write(''.join(str(''.join(getList))))
 								general.set_cvar(cVars, cycleList[x[0]+1])
@@ -374,7 +374,6 @@ def cycleConsolV(mode, cycleList, ctrlFile):
 			stateList = open(ctrlFile, 'r')
 			getList = [x for x in stateList] 
 			getList.insert(1, str("%s,'%s'\n" % (mode, cycleList[0])))
-			#print '%s' % cycleList[0]
 			stateList = open(ctrlFile, 'w')
 			stateList.write(''.join(getList))	
 			general.run_console(cycleList[0])
@@ -403,7 +402,7 @@ def cycleConsolV(mode, cycleList, ctrlFile):
 								joinStr = [mode,",","'",getDict,"'", '\n']
 								newLine = ''.join(joinStr)
 								getList[d[0]] = newLine
-								print getDict
+								print (getDict)
 								stateList = open(ctrlFile, 'w')
 								stateList.write(''.join(str(''.join(getList))))
 								general.run_console(getDict)
@@ -412,7 +411,7 @@ def cycleConsolV(mode, cycleList, ctrlFile):
 								joinStr = [mode,",","'",getDict,"'", '\n']
 								newLine = ''.join(joinStr)
 								getList[d[0]] = newLine
-								print getDict
+								print (getDict)
 								stateList = open(ctrlFile, 'w')
 								stateList.write(''.join(str(''.join(getList))))
 								general.run_console(getDict)
@@ -466,7 +465,7 @@ def toggleHideByT(mode, type, onValue, offValue, ctrlFile):
 			stateList = open(ctrlFile, 'r')
 			getList = [x for x in stateList] 
 			getList.insert(1, str("%s,{'%s': %s}\n" % (mode, type , offValue)))
-			print str("{'%s': %s}\n" % (type , offValue))
+			print (str("{'%s': %s}\n" % (type , offValue)))
 			stateList = open(ctrlFile, 'w')
 			stateList.write(''.join(getList))	
 			hideByType(type)
@@ -486,7 +485,7 @@ def toggleHideByT(mode, type, onValue, offValue, ctrlFile):
 						getDict[type] = onValue
 						joinStr = [mode,",",str(getDict), '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = newLine
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -495,7 +494,7 @@ def toggleHideByT(mode, type, onValue, offValue, ctrlFile):
 						getDict[type] = offValue
 						joinStr = [mode,",",str(getDict), '\n']
 						newLine = ''.join(joinStr)
-						print getDict
+						print (getDict)
 						getList[d[0]] = newLine
 						stateList = open(ctrlFile, 'w')
 						stateList.write(''.join(str(''.join(getList))))
@@ -503,14 +502,10 @@ def toggleHideByT(mode, type, onValue, offValue, ctrlFile):
 
 def hideByType(type):	
 	typeList = general.get_all_objects(str(type), "")
-	#print typeList
-	#general.select_objects(typeList)
 	for x in typeList:
 		general.hide_object(x)
 			
 def unHideByType(type):				
 	typeList = general.get_all_objects(str(type), "")
-	#print typeList
-	#general.select_objects(typeList)
 	for x in typeList:
 		general.unhide_object(x)

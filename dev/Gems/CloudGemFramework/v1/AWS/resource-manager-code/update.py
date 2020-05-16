@@ -16,10 +16,7 @@ import resource_manager.util
 import re
 import random
 import string
-import sys
-import cStringIO
 import json
-import base64
 
 from cgf_utils.version_utils import Version
 from cgf_utils import custom_resource_utils
@@ -35,6 +32,7 @@ BOOTSTRAP_VARIABLE_NAME = "var bootstrap ="
 BOOTSTRAP_REGEX_PATTERN = '<script>\s*var bootstrap\s*=\s*([\s\S}]*?)<\/script>'
 DOMAIN_REGEX_PATTERN = "var domain = ''"
 SERVICE_API_PREFIX_PATTERN = '[\d\D]*?::'
+
 
 def before_resource_group_updated(hook, resource_group_uploader, **kwargs):
     swagger_path = os.path.join(resource_group_uploader.resource_group.directory_path, 'swagger.json')
@@ -76,7 +74,7 @@ def upload_project_content(context, content_path, customer_cognito_id=None, expi
 def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS):
     project_resources = context.config.project_resources
 
-    if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
+    if constant.PROJECT_CGP_RESOURCE_NAME not in project_resources:
         raise HandledError(
             'You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
 
@@ -137,7 +135,7 @@ def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CG
         else:
             raise HandledError("Could not write to the key '{}' in the S3 bucket '{}'.".format(constant.PROJECT_CGP_ROOT_FILE,bucket_id), e)
 
-    if result == None or result['ResponseMetadata']['HTTPStatusCode'] == 200:
+    if result is None or result['ResponseMetadata']['HTTPStatusCode'] == 200:
         context.view._output_message("The Cloud Gem Portal bootstrap information has been written successfully.")
     else:
         raise HandledError("The index.html cloud not be set in the S3 bucket '{}'.  This Cloud Gem Portal site will not load.".format(bucket_id))

@@ -14,7 +14,7 @@
 #include <qdockwidget.h>
 
 #include <AzCore/Component/EntityId.h>
-#include <AzCore/EBus/Ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 

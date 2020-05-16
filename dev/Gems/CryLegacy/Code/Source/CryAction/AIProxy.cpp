@@ -20,7 +20,6 @@
 #include "CryLegacy_precompiled.h"
 #include "AIProxy.h"
 #include "AI/AIProxyManager.h"
-#include <IAIAction.h>
 #include "IAISystem.h"
 #include "AIHandler.h"
 #include "IItemSystem.h"
@@ -1595,52 +1594,6 @@ bool CAIProxy::IsAnimationBlockingMovement() const
 EActorTargetPhase CAIProxy::GetActorTargetPhase() const
 {
     return (m_pAIHandler ? m_pAIHandler->GetActorTargetPhase() : eATP_None);
-}
-
-//
-//----------------------------------------------------------------------------------------------------------
-void CAIProxy::PlayAnimationAction(const IAIAction* pAction, int goalPipeId)
-{
-    CRY_ASSERT(pAction->GetAnimationName() != NULL && pAction->GetAnimationName()[0] != 0);
-
-    if (m_animActionGoalPipeId != 0)
-    {
-        gEnv->pAISystem->GetAIActionManager()->AbortAIAction(m_pGameObject->GetEntity(), m_animActionGoalPipeId);
-    }
-    m_animActionGoalPipeId = goalPipeId;
-
-    IActor* pActor = GetActor();
-    if (pActor != NULL)
-    {
-        if (pAction->IsExactPositioning())
-        {
-            pActor->PlayExactPositioningAnimation(pAction->GetAnimationName(), pAction->IsSignaledAnimation(), pAction->GetAnimationPos(),
-                pAction->GetAnimationDir(), pAction->GetStartWidth(), pAction->GetStartArcAngle(), DEG2RAD(pAction->GetDirectionTolerance()));
-        }
-        else
-        {
-            pActor->PlayAnimation(pAction->GetAnimationName(), pAction->IsSignaledAnimation());
-        }
-    }
-}
-
-//
-//----------------------------------------------------------------------------------------------------------
-void CAIProxy::AnimationActionDone(bool succeeded)
-{
-    if (m_animActionGoalPipeId)
-    {
-        int tmp = m_animActionGoalPipeId;
-        m_animActionGoalPipeId = 0;
-        if (succeeded)
-        {
-            gEnv->pAISystem->GetAIActionManager()->FinishAIAction(m_pGameObject->GetEntity(), tmp);
-        }
-        else
-        {
-            gEnv->pAISystem->GetAIActionManager()->AbortAIAction(m_pGameObject->GetEntity(), tmp);
-        }
-    }
 }
 
 bool CAIProxy::IsPlayingSmartObjectAction() const

@@ -32,7 +32,7 @@ namespace ScriptCanvasEditor
         ~CreateClassMethodMimeEvent() = default;        
 
     protected:
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         AZStd::string m_className;
@@ -79,7 +79,7 @@ namespace ScriptCanvasEditor
         ~CreateCustomNodeMimeEvent() = default;
 
     protected:
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         AZ::Uuid m_typeId;

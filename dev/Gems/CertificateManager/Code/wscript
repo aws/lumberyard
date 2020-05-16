@@ -14,9 +14,8 @@ def build(bld):
 
     bld.DefineGem(
         # Settings
-		use                         = ['GridMate'],
+        use                         = ['GridMate'],
         includes                    = [bld.Path('Code/CryEngine/CryCommon'),
-                                       bld.Path('Code/CryEngine/CryAction'),
                                        bld.Path('Code/CryEngine/CryNetwork')
                                       ],
         pch                         = '',

@@ -24,67 +24,67 @@
 
 """Self-testing for PyCrypto hash modules"""
 
-__revision__ = "$Id$"
-
+import re
 import sys
 import unittest
 import binascii
-from Crypto.Util.py3compat import *
+import Crypto.Hash
+from binascii import hexlify, unhexlify
+from Crypto.Util.py3compat import b, tobytes
+from Crypto.Util.strxor import strxor_c
 
-# For compatibility with Python 2.1 and Python 2.2
-if sys.hexversion < 0x02030000:
-    # Python 2.1 doesn't have a dict() function
-    # Python 2.2 dict() function raises TypeError if you do dict(MD5='blah')
-    def dict(**kwargs):
-        return kwargs.copy()
-else:
-    dict = dict
+def t2b(hex_string):
+    shorter = re.sub(br'\s+', b'', tobytes(hex_string))
+    return unhexlify(shorter)
 
 
 class HashDigestSizeSelfTest(unittest.TestCase):
-    
-    def __init__(self, hashmod, description, expected):
+
+    def __init__(self, hashmod, description, expected, extra_params):
         unittest.TestCase.__init__(self)
         self.hashmod = hashmod
         self.expected = expected
         self.description = description
-        
+        self.extra_params = extra_params
+
     def shortDescription(self):
         return self.description
 
     def runTest(self):
-        self.failUnless(hasattr(self.hashmod, "digest_size"))
-        self.assertEquals(self.hashmod.digest_size, self.expected)
-        h = self.hashmod.new()
+        if "truncate" not in self.extra_params:
+            self.failUnless(hasattr(self.hashmod, "digest_size"))
+            self.assertEquals(self.hashmod.digest_size, self.expected)
+        h = self.hashmod.new(**self.extra_params)
         self.failUnless(hasattr(h, "digest_size"))
         self.assertEquals(h.digest_size, self.expected)
 
 
 class HashSelfTest(unittest.TestCase):
 
-    def __init__(self, hashmod, description, expected, input):
+    def __init__(self, hashmod, description, expected, input, extra_params):
         unittest.TestCase.__init__(self)
         self.hashmod = hashmod
-        self.expected = expected
+        self.expected = expected.lower()
         self.input = input
         self.description = description
+        self.extra_params = extra_params
 
     def shortDescription(self):
         return self.description
 
     def runTest(self):
-        h = self.hashmod.new()
+        h = self.hashmod.new(**self.extra_params)
         h.update(self.input)
 
         out1 = binascii.b2a_hex(h.digest())
         out2 = h.hexdigest()
 
-        h = self.hashmod.new(self.input)
+        h = self.hashmod.new(self.input, **self.extra_params)
 
         out3 = h.hexdigest()
         out4 = binascii.b2a_hex(h.digest())
 
-        # PY3K: hexdigest() should return str(), and digest() bytes 
+        # PY3K: hexdigest() should return str(), and digest() bytes
         self.assertEqual(self.expected, out1)   # h = .new(); h.update(data); h.digest()
         if sys.version_info[0] == 2:
             self.assertEqual(self.expected, out2)   # h = .new(); h.update(data); h.hexdigest()
@@ -94,104 +94,198 @@ class HashSelfTest(unittest.TestCase):
             self.assertEqual(self.expected.decode(), out3)   # h = .new(data); h.hexdigest()
         self.assertEqual(self.expected, out4)   # h = .new(data); h.digest()
 
-        # Verify that new() object method produces a fresh hash object
-        h2 = h.new()
-        h2.update(self.input)
-        out5 = binascii.b2a_hex(h2.digest())
-        self.assertEqual(self.expected, out5)
+        # Verify that the .new() method produces a fresh hash object, except
+        # for MD5 and SHA1, which are hashlib objects.  (But test any .new()
+        # method that does exist.)
+        if self.hashmod.__name__ not in ('Crypto.Hash.MD5', 'Crypto.Hash.SHA1') or hasattr(h, 'new'):
+            h2 = h.new()
+            h2.update(self.input)
+            out5 = binascii.b2a_hex(h2.digest())
+            self.assertEqual(self.expected, out5)
+
 
 class HashTestOID(unittest.TestCase):
-    def __init__(self, hashmod, oid):
+    def __init__(self, hashmod, oid, extra_params):
         unittest.TestCase.__init__(self)
         self.hashmod = hashmod
         self.oid = oid
+        self.extra_params = extra_params
 
     def runTest(self):
-        h = self.hashmod.new()
-        if self.oid==None:
-            try:
-                raised = 0
-                a = h.oid
-            except AttributeError:
-                raised = 1
-            self.assertEqual(raised,1)
-        else:
-            self.assertEqual(h.oid, self.oid)
+        h = self.hashmod.new(**self.extra_params)
+        self.assertEqual(h.oid, self.oid)
+
+
+class ByteArrayTest(unittest.TestCase):
+
+    def __init__(self, module, extra_params):
+        unittest.TestCase.__init__(self)
+        self.module = module
+        self.extra_params = extra_params
+
+    def runTest(self):
+        data = b("\x00\x01\x02")
+
+        # Data can be a bytearray (during initialization)
+        ba = bytearray(data)
+
+        h1 = self.module.new(data, **self.extra_params)
+        h2 = self.module.new(ba, **self.extra_params)
+        ba[:1] = b'\xFF'
+        self.assertEqual(h1.digest(), h2.digest())
+
+        # Data can be a bytearray (during operation)
+        ba = bytearray(data)
+
+        h1 = self.module.new(**self.extra_params)
+        h2 = self.module.new(**self.extra_params)
+
+        h1.update(data)
+        h2.update(ba)
+
+        ba[:1] = b'\xFF'
+        self.assertEqual(h1.digest(), h2.digest())
+
+
+class MemoryViewTest(unittest.TestCase):
+
+    def __init__(self, module, extra_params):
+        unittest.TestCase.__init__(self)
+        self.module = module
+        self.extra_params = extra_params
+
+    def runTest(self):
+
+        data = b"\x00\x01\x02"
+
+        def get_mv_ro(data):
+            return memoryview(data)
+
+        def get_mv_rw(data):
+            return memoryview(bytearray(data))
+
+        for get_mv in get_mv_ro, get_mv_rw:
+
+            # Data can be a memoryview (during initialization)
+            mv = get_mv(data)
+
+            h1 = self.module.new(data, **self.extra_params)
+            h2 = self.module.new(mv, **self.extra_params)
+            if not mv.readonly:
+                mv[:1] = b'\xFF'
+            self.assertEqual(h1.digest(), h2.digest())
+
+            # Data can be a memoryview (during operation)
+            mv = get_mv(data)
+
+            h1 = self.module.new(**self.extra_params)
+            h2 = self.module.new(**self.extra_params)
+            h1.update(data)
+            h2.update(mv)
+            if not mv.readonly:
+                mv[:1] = b'\xFF'
+            self.assertEqual(h1.digest(), h2.digest())
+
 
 class MACSelfTest(unittest.TestCase):
 
-    def __init__(self, hashmod, description, expected_dict, input, key, hashmods):
+    def __init__(self, module, description, result, data, key, params):
         unittest.TestCase.__init__(self)
-        self.hashmod = hashmod
-        self.expected_dict = expected_dict
-        self.input = input
-        self.key = key
-        self.hashmods = hashmods
+        self.module = module
+        self.result = t2b(result)
+        self.data = t2b(data)
+        self.key = t2b(key)
+        self.params = params
         self.description = description
 
     def shortDescription(self):
         return self.description
 
     def runTest(self):
-        for hashname in self.expected_dict.keys():
-            hashmod = self.hashmods[hashname]
-            key = binascii.a2b_hex(b(self.key))
-            data = binascii.a2b_hex(b(self.input))
 
-            # Strip whitespace from the expected string (which should be in lowercase-hex)
-            expected = b("".join(self.expected_dict[hashname].split()))
+        result_hex = hexlify(self.result)
 
-            h = self.hashmod.new(key, digestmod=hashmod)
-            h.update(data)
-            out1 = binascii.b2a_hex(h.digest())
-            out2 = h.hexdigest()
+        # Verify result
+        h = self.module.new(self.key, **self.params)
+        h.update(self.data)
+        self.assertEqual(self.result, h.digest())
+        self.assertEqual(hexlify(self.result).decode('ascii'), h.hexdigest())
 
-            h = self.hashmod.new(key, data, hashmod)
+        # Verify that correct MAC does not raise any exception
+        h.verify(self.result)
+        h.hexverify(result_hex)
 
-            out3 = h.hexdigest()
-            out4 = binascii.b2a_hex(h.digest())
+        # Verify that incorrect MAC does raise ValueError exception
+        wrong_mac = strxor_c(self.result, 255)
+        self.assertRaises(ValueError, h.verify, wrong_mac)
+        self.assertRaises(ValueError, h.hexverify, "4556")
 
-            # Test .copy()
+        # Verify again, with data passed to new()
+        h = self.module.new(self.key, self.data, **self.params)
+        self.assertEqual(self.result, h.digest())
+        self.assertEqual(hexlify(self.result).decode('ascii'), h.hexdigest())
+
+        # Test .copy()
+        try:
+            h = self.module.new(self.key, self.data, **self.params)
             h2 = h.copy()
-            h.update(b("blah blah blah"))  # Corrupt the original hash object
-            out5 = binascii.b2a_hex(h2.digest())    # The copied hash object should return the correct result
+            h3 = h.copy()
 
-            # PY3K: hexdigest() should return str(), and digest() bytes 
-            self.assertEqual(expected, out1)
-            if sys.version_info[0] == 2:
-                self.assertEqual(expected, out2)
-                self.assertEqual(expected, out3)
-            else:
-                self.assertEqual(expected.decode(), out2)
-                self.assertEqual(expected.decode(), out3)                
-            self.assertEqual(expected, out4)
-            self.assertEqual(expected, out5)
+            # Verify that changing the copy does not change the original
+            h2.update(b"bla")
+            self.assertEqual(h3.digest(), self.result)
 
-def make_hash_tests(module, module_name, test_data, digest_size, oid=None):
+            # Verify that both can reach the same state
+            h.update(b"bla")
+            self.assertEqual(h.digest(), h2.digest())
+        except NotImplementedError:
+            pass
+
+        # PY3K: Check that hexdigest() returns str and digest() returns bytes
+        self.assertTrue(isinstance(h.digest(), type(b"")))
+        self.assertTrue(isinstance(h.hexdigest(), type("")))
+
+        # PY3K: Check that .hexverify() accepts bytes or str
+        h.hexverify(h.hexdigest())
+        h.hexverify(h.hexdigest().encode('ascii'))
+
+
+def make_hash_tests(module, module_name, test_data, digest_size, oid=None,
+                    extra_params={}):
     tests = []
     for i in range(len(test_data)):
         row = test_data[i]
-        (expected, input) = map(b,row[0:2])
+        (expected, input) = map(tobytes,row[0:2])
         if len(row) < 3:
             description = repr(input)
         else:
-            description = row[2].encode('latin-1')
+            description = row[2]
         name = "%s #%d: %s" % (module_name, i+1, description)
-        tests.append(HashSelfTest(module, name, expected, input))
-    if oid is not None:
-        oid = b(oid)
+        tests.append(HashSelfTest(module, name, expected, input, extra_params))
+
     name = "%s #%d: digest_size" % (module_name, i+1)
-    tests.append(HashDigestSizeSelfTest(module, name, digest_size))
-    tests.append(HashTestOID(module, oid))
+    tests.append(HashDigestSizeSelfTest(module, name, digest_size, extra_params))
+
+    if oid is not None:
+        tests.append(HashTestOID(module, oid, extra_params))
+
+    tests.append(ByteArrayTest(module, extra_params))
+
+    if not (sys.version_info[0] == 2 and sys.version_info[1] < 7):
+        tests.append(MemoryViewTest(module, extra_params))
+
     return tests
 
-def make_mac_tests(module, module_name, test_data, hashmods):
+
+def make_mac_tests(module, module_name, test_data):
     tests = []
-    for i in range(len(test_data)):
-        row = test_data[i]
-        (key, data, results, description) = row
+    for i, row in enumerate(test_data):
+        if len(row) == 4:
+            (key, data, results, description, params) = list(row) + [ {} ]
+        else:
+            (key, data, results, description, params) = row
         name = "%s #%d: %s" % (module_name, i+1, description)
-        tests.append(MACSelfTest(module, name, results, data, key, hashmods))
+        tests.append(MACSelfTest(module, name, results, data, key, params))
     return tests
 
 # vim:set ts=4 sw=4 sts=4 expandtab:

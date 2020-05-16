@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "PathHelpers.h"
 #include "StringHelpers.h"
 #include "Util.h"
@@ -19,6 +19,7 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/PlatformIncl.h>
 
 
@@ -502,7 +503,11 @@ string PathHelpers::GetAbsoluteAsciiPath(const char* pPath)
 {
     char fullPath[AZ_MAX_PATH_LEN];
     AZ::IO::LocalFileIO localFileIO;
-    localFileIO.ConvertToAbsolutePath(pPath, fullPath, AZ_MAX_PATH_LEN);
+
+    AZStd::string normalizedPath(pPath);
+    AzFramework::StringFunc::Path::Normalize(normalizedPath);
+
+    localFileIO.ConvertToAbsolutePath(normalizedPath.c_str(), fullPath, AZ_MAX_PATH_LEN);
     fullPath[sizeof(fullPath) - 1] = '\0';
 
     AZStd::wstring wstr;
@@ -514,6 +519,8 @@ string PathHelpers::GetAbsoluteAsciiPath(const wchar_t* pPath)
 {   
     AZStd::string str;
     AZStd::to_string(str, pPath);
+
+    AzFramework::StringFunc::Path::Normalize(str);
     
     char fullPath[AZ_MAX_PATH_LEN];
     AZ::IO::LocalFileIO localFileIO;

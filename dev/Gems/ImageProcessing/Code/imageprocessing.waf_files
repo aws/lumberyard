@@ -13,7 +13,9 @@
     "auto": {
         "Include": [
             "Include/ImageProcessing/ImageProcessingBus.h",
-            "Include/ImageProcessing/ImageProcessingEditorBus.h"
+            "Include/ImageProcessing/ImageProcessingEditorBus.h",
+            "Include/ImageProcessing/PixelFormats.h",
+            "Include/ImageProcessing/ImageObject.h"
         ],
         "Resources": [
             "../Assets/Editor/Resources.qrc",
@@ -43,11 +45,9 @@
             "Source/BuilderSettings/BuilderSettingManager.cpp",
             "Source/BuilderSettings/BuilderSettingManager.h",
             "Source/BuilderSettings/ImageProcessingDefines.h",
-            "Source/BuilderSettings/PlatformSettings.h",
-            "Source/BuilderSettings/PixelFormats.h"
+            "Source/BuilderSettings/PlatformSettings.h"
         ],
         "Source/Processing": [
-            "Source/Processing/ImageObject.h",
             "Source/Processing/ImageObjectImpl.h",
             "Source/Processing/ImageObjectImpl.cpp",
             "Source/Processing/PixelFormatInfo.h",
@@ -66,7 +66,8 @@
             "Source/ImageLoader/ImageLoaders.h",
             "Source/ImageLoader/ImageLoaders.cpp",
             "Source/ImageLoader/QtImageLoader.cpp",
-            "Source/ImageLoader/TIFFLoader.cpp"
+            "Source/ImageLoader/TIFFLoader.cpp",
+            "Source/ImageLoader/BTImageLoader.cpp"
         ],
         "Source/Editor": [
             "Source/Editor/EditorCommon.h",

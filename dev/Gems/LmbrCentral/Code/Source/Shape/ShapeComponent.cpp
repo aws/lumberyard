@@ -35,6 +35,8 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<ShapeComponentRequestsBus>("ShapeComponentRequestsBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "shape")
                 ->Event("GetShapeType", &ShapeComponentRequestsBus::Events::GetShapeType)
                 ->Event("IsPointInside", &ShapeComponentRequestsBus::Events::IsPointInside)
                 ->Event("DistanceFromPoint", &ShapeComponentRequestsBus::Events::DistanceFromPoint)

@@ -16,7 +16,6 @@ def build(bld):
         # Add custom build options here
         includes = [
             bld.Path('Code/CryEngine/CryCommon'),
-            bld.Path('Code/CryEngine/CryAction'),
             bld.ThirdPartyPath('civetweb', 'include')
         ],
         disable_pch = True,

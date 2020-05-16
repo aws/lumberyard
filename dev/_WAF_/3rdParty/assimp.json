@@ -1,8 +1,8 @@
 {
     "name": "assimp",
-    "source": "@ROOT@/Code/GFXPrefabLab/3rdParty/assimp",
+    "source": "@ROOT@/Code/RHISampleFramework/3rdParty/assimp",
     "description": "Open Asset Import Library",
-    "includes": ["include"],
+    "system_includes": ["include"],
     "defines": [],
     "lib_required": "True",
     "shared_required": "True",
@@ -13,6 +13,10 @@
             "shared": ["assimp.dll"],
             "importlibpath": ["lib"],
             "import": ["assimp.lib"]
+        },
+        "darwin_x64": {
+            "sharedlibpath": ["bin"],
+            "shared": ["libassimp.3.3.1.dylib"]
         }
     }
 }

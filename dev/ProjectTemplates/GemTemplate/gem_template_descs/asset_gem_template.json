@@ -1,0 +1,22 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/gem_template",
+    "copyFiles": [
+        {
+            "inFile": "preview.png",
+            "outfile": "preview.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "asset_gem.json",
+            "outfile": "gem.json",
+            "isTemplated": true,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": [
+        {
+            "outDir": "Assets"
+        }
+    ]
+}

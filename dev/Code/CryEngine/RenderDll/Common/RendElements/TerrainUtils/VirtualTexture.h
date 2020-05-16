@@ -121,6 +121,9 @@ namespace Terrain
         // Request all height tiles necessary for the specified world area
         void RequestTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel);
 
+        // Invalidate all height tiles for the specified world area
+        void ClearTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel);
+
         ///////////////////////////////
         // Update pump
 
@@ -145,12 +148,16 @@ namespace Terrain
         // .x = World Minimum X
         // .y = World Minimum Y
         // .z = World Maximum X
-        // .w = World Maximum Y
+        // .w = World Maximum Y 
         AZ::Vector4 CalculateWorldBoundsForVirtualTile(int vTileX, int vTileY, int mipLevel, bool includePadding);
 
         AZ::Vector4 CalculateWorldBoundsForVirtualTile(const VirtualTile& virtualTileAddr, bool includePadding);
 
     protected:
+
+        // Perform an action (via callback) on every tile contained within a world region
+        typedef AZStd::function<void(int tileX, int tileY, int mipLevel)> ProcessTileCallback;
+        void ProcessTiles(float worldX, float worldY, float worldXWidth, float worldYWidth, int mipLevel, ProcessTileCallback tileProcess);
 
         // Bind a texture to a specific stage and slot
         // We are utilizing slots outside the legacy renderers texture slot support (slots 16+), so we end up using

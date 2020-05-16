@@ -19,6 +19,8 @@
 #include "Core/BrushHelper.h"
 #include "Core/PolygonDecomposer.h"
 
+#include <AzCore/Casting/numeric_cast.h>
+
 using namespace CD;
 
 void PrimitiveShape::CreateBox(const BrushVec3& mins, const BrushVec3& maxs, std::vector<PolygonPtr>* pOutPolygonList) const
@@ -82,9 +84,9 @@ void PrimitiveShape::CreateBox(const BrushVec3& mins, const BrushVec3& maxs, std
 
 void PrimitiveShape::CreateSphere(const BrushVec3& mins, const BrushVec3& maxs, int numSides, std::vector<PolygonPtr>* pOutPolygonList) const
 {
-    BrushFloat radius = (Vec2(maxs.x, mins.y) - Vec2(mins.x, mins.y)).GetLength() * (BrushFloat)0.5;
+    BrushFloat radius = (BrushVec2(maxs.x, mins.y) - BrushVec2(mins.x, mins.y)).GetLength() * (BrushFloat)0.5;
     BrushVec3 vOffset = (maxs + mins) * (BrushFloat)0.5 + BrushVec3(0, 0, radius);
-    CreateSphere(vOffset, radius, numSides, pOutPolygonList);
+    CreateSphere(vOffset, aznumeric_cast<float>(radius), numSides, pOutPolygonList);
 }
 
 void PrimitiveShape::CreateSphere(const BrushVec3& vCenter, float radius, int numSides, std::vector<PolygonPtr>* pOutPolygonList) const
@@ -187,7 +189,7 @@ void PrimitiveShape::CreateCylinder(const BrushVec3& mins, const BrushVec3& maxs
     bottomFace.resize(numSides);
     for (int i = 0; i < numSides; ++i)
     {
-        BrushFloat theta = 2 * PI * (BrushFloat)i / (BrushFloat)numSides;
+        float theta = aznumeric_cast<float>(2 * PI * (BrushFloat)i / (BrushFloat)numSides);
         costheta = cosf(theta);
         sintheta = sinf(theta);
         BrushFloat x = radius * costheta;
@@ -408,7 +410,7 @@ void PrimitiveShape::CreateCircle(const BrushVec3& mins, const BrushVec3& maxs, 
     outVertexList.resize(numSides);
     for (int i = 0; i < numSides; ++i)
     {
-        BrushFloat theta = 2 * PI * (BrushFloat)i / (BrushFloat)numSides;
+        float theta = aznumeric_cast<float>(2 * PI * (BrushFloat)i / (BrushFloat)numSides);
 
         costheta = cosf(theta);
         sintheta = sinf(theta);

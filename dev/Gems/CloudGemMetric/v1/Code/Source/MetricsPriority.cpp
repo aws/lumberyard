@@ -13,7 +13,7 @@
 #include "StdAfx.h"
 
 #include "CloudGemMetric/MetricsPriority.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 #include <AzCore/std/sort.h>
 
 namespace CloudGemMetric
@@ -48,7 +48,7 @@ namespace CloudGemMetric
     }
 
     void MetricsPriority::FilterByPriority(AZStd::vector<MetricsAggregator>& metrics, int maxSizeInBytes, AZStd::vector<MetricsAggregator>& out) const
-    {   
+    {
         if (metrics.size() == 0)
         {
             return;
@@ -57,7 +57,7 @@ namespace CloudGemMetric
         AZStd::vector<AZStd::pair<const MetricsAggregator*, int>> sortedMetrics;
 
         for (int i = 0; i < metrics.size(); i++)
-        {            
+        {
             auto it = m_eventNameToPriorityMap.find(metrics[i].GetEventName());
             if (it != m_eventNameToPriorityMap.end())
             {
@@ -116,7 +116,7 @@ namespace CloudGemMetric
             {
                 return false;
             }
-                
+
             eventNameToPriorityMap[eventPrecedenceObjVal["event"].GetString()] = eventPrecedenceObjVal["precedence"].GetInt();
         }
 
@@ -126,7 +126,7 @@ namespace CloudGemMetric
     }
 
     void MetricsPriority::InitFromBackend(const AZStd::vector<CloudGemMetric::ServiceAPI::Priority>& priorities)
-    {        
+    {
         m_eventNameToPriorityMap.clear();
         for (const auto& p : priorities)
         {

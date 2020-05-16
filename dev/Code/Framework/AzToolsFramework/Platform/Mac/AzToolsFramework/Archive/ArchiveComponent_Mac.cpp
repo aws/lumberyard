@@ -29,6 +29,7 @@ namespace AzToolsFramework
         const char ExtractArchiveCmd[] = R"(-o "%s" -d "%s")";
         
         const char AddFileCmd[] = R"("%s" "%s" -X)";
+        const char AddFilesCmd[] = R"("%s" -X %s)";
 
         const char ExtractFileCmd[] = R"(%s "%s" %s)";
         const char ExtractFileDestination[] = R"(%s "%s" "%s" -d "%s")";
@@ -133,25 +134,51 @@ namespace AzToolsFramework
             return AZStd::string::format(ExtractArchiveCmd, archivePath.c_str(), pathCreationResult.GetValue().c_str());
         }
 
-        AZStd::string GetAddFilesToArchiveCommand(const AZStd::string& /*archivePath*/, const AZStd::string& /*listFilePath*/)
+        AZStd::string GetAddFilesToArchiveCommand(const AZStd::string& archivePath, const AZStd::string& listFilePath)
         {
-            // Adding files into a archive using a list file is not currently supported
-            return "";
-        }
-
-        bool IsAddFilesToArchiveCommandSupported()
-        {
-            // Adding files into a archive using a list file is not currently supported
-            return false;
-        }
-        
-        AZStd::string GetAddFileToArchiveCommand(const AZStd::string& archivePath, const AZStd::string& file)
-        {
-            if (!MakeCreateArchivePath(archivePath).IsSuccess())
+            auto pathCreationResult = MakeCreateArchivePath(archivePath);
+            if (!pathCreationResult)
             {
-                AZ_Error(ErrorChannel, false, "Unable to make path for ( %s ).\n", archivePath.c_str());
+                AZ_Error(ErrorChannel, false, pathCreationResult.GetError().c_str());
                 return "";
             }
+            AZStd::string fileListStr;
+
+            {
+                AZ::IO::FileIOStream fileStream(listFilePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeText);
+                if (fileStream.IsOpen())
+                {
+                    AZ::IO::SizeType length = fileStream.GetLength();
+                    AZStd::vector<char> charBuffer;
+                    charBuffer.resize_no_construct(length + 1);
+
+                    fileStream.Read(length, charBuffer.data());
+                    charBuffer.back() = 0;
+
+                    fileListStr.append("\"");
+                    fileListStr.insert(1, charBuffer.data());
+                    AzFramework::StringFunc::Replace(fileListStr, "\n", "\" \"");
+                    fileListStr.append("\"");
+                }
+                else
+                {
+                    AZ_Error(ErrorChannel, false, "Unable to read list file ( %s ) \n", listFilePath.c_str());
+                    return "";
+                }
+            }
+
+            return AZStd::string::format(AddFilesCmd, archivePath.c_str(), fileListStr.c_str());
+        }
+
+        AZStd::string GetAddFileToArchiveCommand(const AZStd::string& archivePath, const AZStd::string& file)
+        {
+            auto pathCreationResult = MakeCreateArchivePath(archivePath);
+            if (!pathCreationResult)
+            {
+                AZ_Error(ErrorChannel, false, pathCreationResult.GetError().c_str());
+                return "";
+            }
+
             return AZStd::string::format(AddFileCmd, archivePath.c_str(), file.c_str());
         }
 

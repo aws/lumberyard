@@ -12,6 +12,8 @@
 
 #include <PhysX_precompiled.h>
 
+#include <platform_impl.h> // must be included once per DLL so things from CryCommon will function
+
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -84,7 +86,7 @@ namespace PhysX
     private:
         void LoadModules()
         {
-            #if defined(PHYSX_EDITOR)
+#if defined(PHYSX_EDITOR) && !defined(SCENE_CORE_STATIC)
             {
                 AZStd::unique_ptr<AZ::DynamicModuleHandle> sceneCoreModule = AZ::DynamicModuleHandle::Create("SceneCore");
                 bool ok = sceneCoreModule->Load(true/*isInitializeFunctionRequired*/);
@@ -92,7 +94,7 @@ namespace PhysX
 
                 m_modules.push_back(AZStd::move(sceneCoreModule));
             }
-            #endif // defined(PHYSX_EDITOR)
+#endif // defined(PHYSX_EDITOR)
 
             // Load PhysX SDK dynamic libraries when running on a non-monolithic build.
             // The PhysX Gem module was linked with the PhysX SDK dynamic libraries, but

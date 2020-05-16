@@ -13,18 +13,19 @@
 
 #include "AnimGraphFixture.h"
 #include <EMotionFX/Source/AnimGraph.h>
-#include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/BlendTreeBlendNNode.h>
 #include <EMotionFX/Source/BlendTreeBoolLogicNode.h>
-#include <EMotionFX/Source/EMotionFXManager.h>
-#include <EMotionFX/Source/SkeletalMotion.h>
-#include <EMotionFX/Source/MotionSet.h>
-#include <EMotionFX/Source/MotionInstance.h>
-#include <EMotionFX/Source/Motion.h>
-#include <EMotionFX/Source/Parameter/BoolParameter.h>
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/Parameter/BoolParameter.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
+#include <EMotionFX/Source/SkeletalMotion.h>
 #include <MCore/Source/Array.h>
 
 namespace EMotionFX
@@ -45,14 +46,14 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             m_blendNNode = aznew BlendTreeBlendNNode();
-            m_blendTree->AddChildNode(m_blendNNode);
             BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+
+            m_blendTree->AddChildNode(m_blendNNode);
             m_blendTree->AddChildNode(finalNode);
             finalNode->AddConnection(m_blendNNode, BlendTreeBlendNNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
 
@@ -64,12 +65,17 @@ namespace EMotionFX
                 m_blendNNode->AddConnection(motionNode, AnimGraphMotionNode::PORTID_OUTPUT_POSE, i);
                 m_motionNodes->push_back(motionNode);
             }
+
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
         void SetUp() override
         {
             m_motionNodes = new AZStd::vector<AnimGraphMotionNode*>();
             AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+
             for (size_t i = 0; i < m_motionNodes->size(); ++i)
             {
                 // The motion set keeps track of motions by their name. Each motion
@@ -82,6 +88,14 @@ namespace EMotionFX
 
                 (*m_motionNodes)[i]->AddMotionId(motionId.c_str());
             }
+        }
+
+        void AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name)
+        {
+            Parameter* parameter = ParameterFactory::Create(typeId);
+            parameter->SetName(name);
+            m_blendTreeAnimGraph->AddParameter(parameter);
+            m_animGraphInstance->AddMissingParameterValues();
         }
 
         bool CalculateExpectedResult(BlendTreeBoolLogicNode::EFunction functionEnum, bool x, bool y, bool& error)
@@ -121,6 +135,7 @@ namespace EMotionFX
             return result;
         }
 
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         AZStd::vector<AnimGraphMotionNode*>* m_motionNodes = nullptr;
         BlendTreeBlendNNode* m_blendNNode = nullptr;
         BlendTree* m_blendTree = nullptr;
@@ -131,17 +146,18 @@ namespace EMotionFX
         bool success = true;
         const AZStd::string nameBoolX("parameter_bool_x_test");
         const AZStd::string nameBoolY("parameter_bool_y_test");
+
         AddValueParameter(azrtti_typeid<BoolParameter>(), nameBoolX);
         AddValueParameter(azrtti_typeid<BoolParameter>(), nameBoolY);
 
         BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
         m_blendTree->AddChildNode(parameterNode);
-        parameterNode->InitAfterLoading(m_animGraph);
+        parameterNode->InitAfterLoading(m_blendTreeAnimGraph.get());
         parameterNode->OnUpdateUniqueData(m_animGraphInstance);
 
         BlendTreeBoolLogicNode* boolLogicNode = aznew BlendTreeBoolLogicNode();
         m_blendTree->AddChildNode(boolLogicNode);
-        boolLogicNode->InitAfterLoading(m_animGraph);
+        boolLogicNode->InitAfterLoading(m_blendTreeAnimGraph.get());
         boolLogicNode->OnUpdateUniqueData(m_animGraphInstance);
 
         const AZ::Outcome<size_t> boolXParamIndexOutcome = m_animGraphInstance->FindParameterIndex(nameBoolX);
@@ -176,7 +192,7 @@ namespace EMotionFX
             boolLogicNode->AddConnection(parameterNode, static_cast<uint16>(boolYOutputPortIndex), BlendTreeBoolLogicNode::INPUTPORT_Y);
 
             m_blendNNode->AddConnection(boolLogicNode, BlendTreeBoolLogicNode::OUTPUTPORT_BOOL, BlendTreeBlendNNode::INPUTPORT_WEIGHT);
-            m_animGraph->RecursiveReinit();
+            m_blendTreeAnimGraph->RecursiveReinit();
 
             MCore::AttributeBool* testBoolXParameter = static_cast<MCore::AttributeBool*>(m_animGraphInstance->FindParameter(nameBoolX));
             testBoolXParameter->SetValue(false);

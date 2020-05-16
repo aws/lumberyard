@@ -1,0 +1,90 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/game_project_gem_template",
+    "copyFiles": [
+        {
+            "inFile": "Platform/Mac/platform_mac.waf_files",
+            "outfile": "Code/Platform/Mac/platform_mac.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Info.plist",
+            "outfile": "Resources/MacLauncher/Info.plist",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/Contents.json",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/Contents.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/Contents.json",
+            "outfile": "Resources/MacLauncher/Images.xcassets/Contents.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_128_2x.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_128_2x.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_128.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_128.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_16.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_16.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_16_2x.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_16_2x.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_256_2x.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_256_2x.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_256.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_256.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_32.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_32.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_32_2x.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_32_2x.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_512.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_512.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "Platform/Mac/Images.xcassets/AppIcon.appiconset/icon_512_2x.png",
+            "outfile": "Resources/MacLauncher/Images.xcassets/AppIcon.appiconset/icon_512_2x.png",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

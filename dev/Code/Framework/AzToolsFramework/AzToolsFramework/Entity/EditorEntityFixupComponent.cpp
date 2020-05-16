@@ -10,7 +10,7 @@
 *
 */
 #include "StdAfx.h"
-#include <AzCore/Rtti/RTTI.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>

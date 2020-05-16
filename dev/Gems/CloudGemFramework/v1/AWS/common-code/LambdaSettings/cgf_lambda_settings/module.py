@@ -12,11 +12,13 @@
 
 import json
 import os
+from six import iteritems
 
 from cgf_utils.data_utils import Data
 
 SERVICE_DIRECTORY_PREFIX = "cloudcanvas_service_"
-SERVICE_DIRECTORY_FORMAT = SERVICE_DIRECTORY_PREFIX + "{}" # keep in sync with InterfaceDependencyManager
+SERVICE_DIRECTORY_FORMAT = SERVICE_DIRECTORY_PREFIX + "{}"  # keep in sync with InterfaceDependencyManager
+
 
 class LambdaSettingsModule(object):
 
@@ -27,13 +29,13 @@ class LambdaSettingsModule(object):
 
         settings_file_path = os.path.join(os.path.dirname(__file__), 'settings.json')
         if not os.path.isfile(settings_file_path):
-            print 'There is no settings file at {}.'.format(settings_file_path)
+            print('There is no settings file at {}.'.format(settings_file_path))
             return Data({}, read_only=True)
 
         with open(settings_file_path, 'r') as file:
             content = json.load(file)
 
-        return Data(content, read_only = True)
+        return Data(content, read_only=True)
 
     @property
     def settings(self):
@@ -41,9 +43,9 @@ class LambdaSettingsModule(object):
             self.__settings = self.__load_settings()
         return self.__settings
 
-    def get_setting(self, setting_name, check_id = True):
+    def get_setting(self, setting_name, check_id=True):
         if setting_name in os.environ:
-            print "Using the override for setting {} found in the lambda environment variables".format(setting_name)
+            print("Using the override for setting {} found in the lambda environment variables".format(setting_name))
             if not check_id:
                 return os.environ[setting_name]
             settingVal = os.environ[setting_name]
@@ -63,12 +65,12 @@ class LambdaSettingsModule(object):
 
     def list_service_urls(self):
         out = []
-        for key, val in os.environ.iteritems():
+        for key, val in iteritems(os.environ):
             if key.startswith(SERVICE_DIRECTORY_PREFIX):
                 out.append({key[len(SERVICE_DIRECTORY_PREFIX):]: val})
 
         # This is the old way of doing this. Project level interfaces could still live here
-        for interface, interface_data in self.settings.DATA.get("Services", {}).iteritems():
+        for interface, interface_data in iteritems(self.settings.DATA.get("Services", {})):
             if interface_data['InterfaceUrl']:
                 out.append({interface: interface_data['InterfaceUrl']})
 

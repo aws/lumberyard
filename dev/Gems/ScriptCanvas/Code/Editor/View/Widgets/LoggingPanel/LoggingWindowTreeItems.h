@@ -267,7 +267,10 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(NodeAnnotationTreeItem, AZ::SystemAllocator, 0);
         AZ_RTTI(NodeAnnotationTreeItem, "{4A052945-F8D1-4A96-8D52-D8C20504E30F}", DebugLogTreeItem);
 
-        NodeAnnotationTreeItem(ScriptCanvas::AnnotateNodeSignal::AnnotationLevel annotationLevel, AZStd::string_view annotation);
+        NodeAnnotationTreeItem();
+        NodeAnnotationTreeItem(ScriptCanvas::AnnotateNodeSignal::AnnotationLevel annotationLevel, const AZStd::string& annotation);
+
+        ~NodeAnnotationTreeItem() override = default;
 
         QVariant Data(const QModelIndex& index, int role) const override final;
 

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "NullVR_Traits_Platform.h",
+            "NullVR_Traits_Android.h"
+        ]
+    }
+}

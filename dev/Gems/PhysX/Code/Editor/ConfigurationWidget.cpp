@@ -46,25 +46,25 @@ namespace PhysX
                 this, [this](const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
                              const PhysX::EditorConfiguration& editorConfiguration)
             {
-                m_configuration.m_materialLibrary = materialLibrary;
-                m_configuration.m_worldConfiguration = worldConfiguration;
-                m_configuration.m_editorConfiguration = editorConfiguration;
-                emit onConfigurationChanged(m_configuration);
+                m_materialLibrary = materialLibrary;
+                m_worldConfiguration = worldConfiguration;
+                m_physxConfiguration.m_editorConfiguration = editorConfiguration;
+                emit onConfigurationChanged(m_physxConfiguration, m_collisionConfiguration, m_worldConfiguration, m_materialLibrary);
             });
 
             connect(m_collisionFiltering, &CollisionFilteringWidget::onConfigurationChanged,
                 this, [this](const Physics::CollisionLayers& layers, const Physics::CollisionGroups& groups)
             {
-                m_configuration.m_collisionLayers = layers;
-                m_configuration.m_collisionGroups = groups;
-                emit onConfigurationChanged(m_configuration);
+                m_collisionConfiguration.m_collisionLayers = layers;
+                m_collisionConfiguration.m_collisionGroups = groups;
+                emit onConfigurationChanged(m_physxConfiguration, m_collisionConfiguration, m_worldConfiguration, m_materialLibrary);
             });
 
             connect(m_pvd, &PvdWidget::onValueChanged,
                 this, [this](const PhysX::Settings& settings)
             {
-                m_configuration.m_settings = settings;
-                emit onConfigurationChanged(m_configuration);
+                m_physxConfiguration.m_settings = settings;
+                emit onConfigurationChanged(m_physxConfiguration, m_collisionConfiguration, m_worldConfiguration, m_materialLibrary);
             });
 
             ConfigurationWindowRequestBus::Handler::BusConnect();
@@ -75,18 +75,19 @@ namespace PhysX
             ConfigurationWindowRequestBus::Handler::BusDisconnect();
         }
 
-        void ConfigurationWidget::SetConfiguration(const PhysX::Configuration& configuration)
+        void ConfigurationWidget::SetConfiguration(
+            const PhysX::PhysXConfiguration& physxConfiguration,
+            const Physics::CollisionConfiguration& collisionConfiguration,
+            const Physics::WorldConfiguration& worldConfiguration,
+            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary)
         {
-            m_configuration = configuration;
-            m_settings->SetValue(m_configuration.m_materialLibrary, m_configuration.m_worldConfiguration,
-                m_configuration.m_editorConfiguration);
-            m_collisionFiltering->SetConfiguration(configuration.m_collisionLayers, configuration.m_collisionGroups);
-            m_pvd->SetValue(m_configuration.m_settings);
-        }
-
-        const PhysX::Configuration& ConfigurationWidget::GetConfiguration() const
-        {
-            return m_configuration;
+            m_physxConfiguration = physxConfiguration;
+            m_collisionConfiguration = collisionConfiguration;
+            m_worldConfiguration = worldConfiguration;
+            m_materialLibrary = materialLibrary;
+            m_settings->SetValue(m_materialLibrary, m_worldConfiguration, m_physxConfiguration.m_editorConfiguration);
+            m_collisionFiltering->SetConfiguration(m_collisionConfiguration.m_collisionLayers, m_collisionConfiguration.m_collisionGroups);
+            m_pvd->SetValue(m_physxConfiguration.m_settings);
         }
 
         void ConfigurationWidget::ShowCollisionLayersTab()

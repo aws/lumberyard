@@ -1621,12 +1621,12 @@ namespace UnitTest
 
             //////////////////////////////////////////////////////////////////////////
             // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
+            void    OnAction(float x, float y) override
             {
                 AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) called\n", x, y); ++actionCalls;
             }
 
-            virtual float   OnSum(float x, float y)
+            float   OnSum(float x, float y) override
             {
                 float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) on called\n", sum, x, y); ++sumCalls; return sum;
             }
@@ -1820,24 +1820,24 @@ namespace UnitTest
             }
         }
 
-        virtual ~ConnectDisconnectHandler()
+        ~ConnectDisconnectHandler() override
         {
             s_handlers.erase(AZStd::find(s_handlers.begin(), s_handlers.end(), this));
         }
 
-        virtual void OnConnectChild()
+        void OnConnectChild() override
         {
             if (m_child)
             {
                 m_child->BusConnect();
             }
         }
-        virtual void OnDisconnectMe()
+        void OnDisconnectMe() override
         {
             BusDisconnect();
         }
 
-        virtual void OnDisconnectAll()
+        void OnDisconnectAll() override
         {
             for (size_t i = 0; i < s_handlers.size(); ++i)
             {
@@ -1897,24 +1897,24 @@ namespace UnitTest
             }
         }
 
-        virtual ~ConnectDisconnectIdOrderedHandler()
+        ~ConnectDisconnectIdOrderedHandler() override
         {
             s_handlers.erase(AZStd::find(s_handlers.begin(), s_handlers.end(), this));
         }
 
-        virtual void OnConnectChild()
+        void OnConnectChild() override
         {
             if (m_child)
             {
                 m_child->BusConnect(m_busId);
             }
         }
-        virtual void OnDisconnectMe()
+        void OnDisconnectMe() override
         {
             BusDisconnect();
         }
 
-        virtual void OnDisconnectAll(int busId)
+        void OnDisconnectAll(int busId) override
         {
             for (size_t i = 0; i < s_handlers.size(); ++i)
             {
@@ -2598,7 +2598,7 @@ namespace UnitTest
             BusConnect();
         }
 
-        ~LocklessImpl()
+        ~LocklessImpl() override
         {
             BusDisconnect();
         }
@@ -2611,7 +2611,7 @@ namespace UnitTest
         {
             delete this;
         }
-        void Calculate(int x, int y, int z)
+        void Calculate(int x, int y, int z) override
         {
             m_val = x + (y * z);
             if (m_maxSleep)
@@ -2733,7 +2733,7 @@ namespace UnitTest
                 LocklessConnectorBus::Handler::BusConnect(m_id);
             }
 
-            ~DoubleEbusImpl()
+            ~DoubleEbusImpl() override
             {
                 MyEventGroupBus::Handler::BusDisconnect();
                 LocklessConnectorBus::Handler::BusDisconnect();
@@ -2748,12 +2748,12 @@ namespace UnitTest
                 }
             }
             
-            virtual void DoConnect() override
+            void DoConnect() override
             {
                 MyEventGroupBus::Handler::BusConnect(m_id);
             }
 
-            virtual void DoDisconnect() override
+            void DoDisconnect() override
             {
                 MyEventGroupBus::Handler::BusDisconnect();
             }
@@ -2834,7 +2834,7 @@ namespace UnitTest
                 
             }
 
-            ~MyEventGroupImpl()
+            ~MyEventGroupImpl() override
             {
                 MyEventGroupBus::Handler::BusDisconnect();
             }
@@ -2911,12 +2911,12 @@ namespace UnitTest
             BusConnect();
         }
 
-        ~LocklessNullMutexImpl()
+        ~LocklessNullMutexImpl() override
         {
             BusDisconnect();
         }
 
-        void AtomicIncrement()
+        void AtomicIncrement() override
         {
             ++m_val;
         }
@@ -3050,7 +3050,7 @@ namespace UnitTest
                 m_result.m_value2 = value2;
             }
 
-            ~MyListener()
+            ~MyListener() override
             {
             }
 
@@ -3436,6 +3436,7 @@ namespace UnitTest
         virtual ~IdBusWithConnectionPolicy() = default;
 
         virtual void MessageWhichOccursDuringConnect() = 0;
+        virtual void MessageWhichOccursDuringDisconnect() = 0;
 
         template<class Bus>
         struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
@@ -3443,6 +3444,10 @@ namespace UnitTest
             static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, const typename Bus::BusIdType&)
             {
                 handler->MessageWhichOccursDuringConnect();
+            }
+            static void Disconnect(typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::BusPtr& ptr)
+            {
+                handler->MessageWhichOccursDuringDisconnect();
             }
         };
     };
@@ -3458,6 +3463,11 @@ namespace UnitTest
             EXPECT_NE(nullptr, busIdRef);
             BusDisconnect(*busIdRef);
         }
+        void MessageWhichOccursDuringDisconnect() override
+        {
+            auto busIdRef = IdBusWithConnectionPolicyBus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busIdRef);
+        }
     };
 
     static constexpr int64_t multiHandlerTestBusId = 42;
@@ -3467,6 +3477,79 @@ namespace UnitTest
         MultiHandlerWhichDisconnectsDuringDelivery multiHandlerTest;
         multiHandlerTest.BusConnect(multiHandlerTestBusId);
         EXPECT_EQ(0U, IdBusWithConnectionPolicyBus::GetTotalNumOfEventHandlers());
+    }
+
+    class BusWithConnectionAndDisconnectPolicy
+        : public AZ::EBusTraits
+    {
+    public:
+
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = int32_t;
+
+        virtual ~BusWithConnectionAndDisconnectPolicy() = default;
+
+        virtual void MessageWhichOccursDuringConnect(int32_t id) = 0;
+        virtual void MessageWhichOccursDuringDisconnect(int32_t id) = 0;
+
+        template<class Bus>
+        struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr& ptr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id)
+            {
+                EXPECT_EQ(handler.GetBusId(), id);
+                EXPECT_EQ(handler.m_holder, ptr);
+                handler->MessageWhichOccursDuringConnect(handler.GetBusId());
+            }
+            static void Disconnect(typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::BusPtr& ptr)
+            {
+                EXPECT_EQ(handler.m_holder, ptr);
+                handler->MessageWhichOccursDuringDisconnect(handler.GetBusId());
+            }
+        };
+    };
+
+    using BusWithConnectionAndDisconnectPolicyBus = AZ::EBus<BusWithConnectionAndDisconnectPolicy>;
+
+    struct HandlerTrackingConnectionDisconnectionIds
+        : public BusWithConnectionAndDisconnectPolicyBus::Handler
+    {
+        void MessageWhichOccursDuringConnect(int32_t id) override
+        {
+            m_lastConnectId = id;
+        }
+
+        void MessageWhichOccursDuringDisconnect(int32_t id) override
+        {
+            m_lastDisconnectId = id;
+        }
+
+        int32_t m_lastConnectId = 0;
+        int32_t m_lastDisconnectId = 0;
+    };
+
+    TEST_F(EBus, ConnectionPolicy_ConnectDisconnect_CorrectIds)
+    {
+        HandlerTrackingConnectionDisconnectionIds idsHandler;
+
+        EXPECT_EQ(idsHandler.m_lastConnectId, 0);
+        EXPECT_EQ(idsHandler.m_lastDisconnectId, 0);
+
+        idsHandler.BusConnect(123);
+        EXPECT_TRUE(idsHandler.BusIsConnectedId(123));
+        EXPECT_EQ(idsHandler.m_lastConnectId, 123);
+
+        idsHandler.BusDisconnect(123);
+        EXPECT_FALSE(idsHandler.BusIsConnectedId(123));
+        EXPECT_EQ(idsHandler.m_lastDisconnectId, 123);
+
+        idsHandler.BusConnect(234);
+        EXPECT_TRUE(idsHandler.BusIsConnectedId(234));
+        EXPECT_EQ(idsHandler.m_lastConnectId, 234);
+
+        idsHandler.BusDisconnect();
+        EXPECT_FALSE(idsHandler.BusIsConnectedId(234));
+        EXPECT_EQ(idsHandler.m_lastDisconnectId, 234);
     }
 
     struct LastHandlerDisconnectInterface
@@ -3509,6 +3592,46 @@ namespace UnitTest
         EBUS_EVENT_ID_REVERSE(0, LastHandlerDisconnectBus, OnEvent);
         EXPECT_FALSE(lastHandler.BusIsConnected());
         EXPECT_EQ(1, lastHandler.m_numOnEvents);
+    }
+
+    struct DisconnectAssertInterface
+        : public AZ::EBusTraits
+    {
+        using MutexType = AZStd::recursive_mutex;
+
+        virtual ~DisconnectAssertInterface() = default;
+        virtual void OnEvent() {};
+    };
+
+    using DisconnectAssertBus = AZ::EBus<DisconnectAssertInterface>;
+
+    struct DisconnectAssertHandler
+        : public DisconnectAssertBus::Handler
+    {
+        
+    };
+
+    TEST_F(EBus, HandlerDestroyedWithoutDisconnect_Asserts)
+    {
+        // EBus handlers with a non-NullMutex assert on disconnect if they have not been explicitly disconnected before the internal EBus::Handler destructor is invoked.
+        // The reason for the assert is because the BusDisconnect call will lock the EBus context mutex to safely disconnect the handler, but if the handler is still
+        // connected to the EBus, another thread could access it after the vtable for the derived class has been reset.
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        {
+            DisconnectAssertHandler handler;
+            handler.BusConnect();
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+    }
+
+    TEST_F(EBus, HandlerDestroyedAfterDisconnect_DoesNotAssert)
+    {
+        {
+            DisconnectAssertHandler handler;
+            handler.BusConnect();
+            handler.BusDisconnect();
+        }
     }
 
 }

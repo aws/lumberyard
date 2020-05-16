@@ -53,7 +53,7 @@ uint32 TexturePool::Allocate(const byte* data, EEndian endian)
 
     if (!m_FreeTextures.Count())
     {
-        Cry3DEngineBase::Error("TexturePool::GetTexture: Pool full, can't allocate new texture.");
+        AZ_Error("LegacyTerrain", false, "TexturePool::GetTexture: Pool full, can't allocate new texture.");
         return 0;
     }
 

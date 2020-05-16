@@ -84,6 +84,11 @@ namespace AZ
                 m_diffuseColor = color;
             }
 
+            void MaterialData::SetUniqueId(uint64_t uid)
+            {
+                m_uniqueId = uid;
+            }
+
             const AZ::Vector3& MaterialData:: GetDiffuseColor() const
             {
                 return m_diffuseColor;
@@ -129,18 +134,24 @@ namespace AZ
                 return m_shininess;
             }
 
+            uint64_t MaterialData::GetUniqueId() const
+            {
+                return m_uniqueId;
+            }
+
             void MaterialData::Reflect(ReflectContext* context)
             {
                 SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
 
-                serializeContext->Class<MaterialData>()->Version(1)
+                serializeContext->Class<MaterialData>()->Version(2)
                     ->Field("textureMap", &MaterialData::m_textureMap)
                     ->Field("diffuseColor", &MaterialData::m_diffuseColor)
                     ->Field("specularColor", &MaterialData::m_specularColor)
                     ->Field("emissiveColor", &MaterialData::m_emissiveColor)
                     ->Field("opacity", &MaterialData::m_opacity)
                     ->Field("shininess", &MaterialData::m_shininess)
-                    ->Field("noDraw", &MaterialData::m_isNoDraw);
+                    ->Field("noDraw", &MaterialData::m_isNoDraw)
+                    ->Field("uniqueId", &MaterialData::m_uniqueId);
 
                 EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)

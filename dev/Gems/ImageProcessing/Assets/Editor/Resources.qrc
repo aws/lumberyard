@@ -6,6 +6,6 @@
     <file>info.png</file>
     <file>Backward.png</file>
     <file>Forward.png</file>
-    <file>Reset.png</file>
+    <file>reset.png</file>
   </qresource>
 </RCC>

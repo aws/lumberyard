@@ -28,20 +28,19 @@
 
 #include <AzFramework/Asset/GenericAssetHandler.h>
 
-#include <ScriptEvents/ScriptEventsAsset.h>
 #include <ScriptEvents/ScriptEventsAssetRef.h>
 #include <ScriptEvents/ScriptEventDefinition.h>
 #include <ScriptEvents/ScriptEventFundamentalTypes.h>
 
 namespace ScriptEvents
 {
-    void SystemComponent::Reflect(AZ::ReflectContext* context)
+    void ScriptEventsSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         using namespace ScriptEvents;
 
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<SystemComponent, AZ::Component>()
+            serialize->Class<ScriptEventsSystemComponent, AZ::Component>()
                 ->Version(1)
                 // ScriptEvents avoids a use dependency on the AssetBuilderSDK. Therefore the Crc is used directly to register this component with the Gem builder
                 ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
@@ -55,115 +54,83 @@ namespace ScriptEvents
 
         ScriptEvents::ScriptEventsAsset::Reflect(context);
         ScriptEvents::ScriptEventsAssetRef::Reflect(context);
+        ScriptEvents::ScriptEventsAssetPtr::Reflect(context);
     }
 
-    void SystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    void ScriptEventsSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("ScriptEventsService", 0x6897c23b));
     }
 
-    void SystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    void ScriptEventsSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
         incompatible.push_back(AZ_CRC("ScriptEventsService", 0x6897c23b));
     }
 
-    void SystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    void ScriptEventsSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        AZ_UNUSED(required);
+        required.push_back(AZ_CRC("AssetDatabaseService", 0x3abf5601));
     }
 
-    void SystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    void ScriptEventsSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
         AZ_UNUSED(dependent);
     }
 
-    void SystemComponent::Init()
+    void ScriptEventsSystemComponent::Init()
     {
     }
 
-    void SystemComponent::Activate()
+    void ScriptEventsSystemComponent::Activate()
     {
-        ScriptEvents::ScriptEventBus::Handler::BusConnect();
-
-        if (AZ::Data::AssetManager::IsReady())
+        ScriptEventsSystemComponentImpl* moduleConfiguration = nullptr;
+        ScriptEventModuleConfigurationRequestBus::BroadcastResult(moduleConfiguration, &ScriptEventModuleConfigurationRequests::GetSystemComponentImpl);
+        if (moduleConfiguration)
         {
-            RegisterAssetHandler();
+            moduleConfiguration->RegisterAssetHandler();
         }
     }
 
-    void SystemComponent::Deactivate()
+    void ScriptEventsSystemComponent::Deactivate()
     {
-        ScriptEvents::ScriptEventBus::Handler::BusDisconnect();
-
-        UnregisterAssetHandler();
-    }
-
-    AZStd::intrusive_ptr<Internal::ScriptEvent> SystemComponent::RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version)
-    {
-        AZ_Assert(assetId.IsValid(), "Unable to register Script Event with invalid asset Id");
-        ScriptEventKey key(assetId, 0);
-
-        if (m_scriptEvents.find(key) == m_scriptEvents.end())
+        for (auto& asset : m_scriptEvents)
         {
-            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId));
+            asset.second.reset();
         }
 
-        return m_scriptEvents[key];
+        m_scriptEvents.clear();
+
+        ScriptEventsSystemComponentImpl* moduleConfiguration = nullptr;
+        ScriptEventModuleConfigurationRequestBus::BroadcastResult(moduleConfiguration, &ScriptEventModuleConfigurationRequests::GetSystemComponentImpl);
+        if (moduleConfiguration)
+        {
+            moduleConfiguration->UnregisterAssetHandler();
+        }
+
     }
 
-    void SystemComponent::RegisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition)
+    void ScriptEventsSystemComponentRuntimeImpl::RegisterAssetHandler()
     {
-        AZ::BehaviorContext* behaviorContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
-        
-        const AZStd::string& busName = definition.GetName();
-
-        const auto& ebusIterator = behaviorContext->m_ebuses.find(busName);
-        if (ebusIterator != behaviorContext->m_ebuses.end())
+        AZ::Data::AssetType assetType(azrtti_typeid<ScriptEvents::ScriptEventsAsset>());
+        if (AZ::Data::AssetManager::Instance().GetHandler(assetType))
         {
-            AZ_Warning("Script Events", false, "A Script Event by the name of %s already exists, this definition will be ignored. Do not call Register for Script Events referenced by asset.", busName.c_str());
-            return;
+            return; // Asset Type already handled
         }
 
-        const AZ::Uuid& assetId = AZ::Uuid::CreateName(busName.c_str());
-        ScriptEventKey key(assetId, 0);
-        if (m_scriptEvents.find(key) == m_scriptEvents.end())
-        {
-            AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset<ScriptEvents::ScriptEventsAsset>(assetId);
-            
-            // Install the definition that's coming from Lua
-            ScriptEvents::ScriptEventsAsset* scriptAsset = assetData.Get();
-            scriptAsset->m_definition = definition;
+        m_assetHandler = AZStd::make_unique<ScriptEventAssetRuntimeHandler>(ScriptEvents::ScriptEventsAsset::GetDisplayName(), ScriptEvents::ScriptEventsAsset::GetGroup(), ScriptEvents::ScriptEventsAsset::GetFileFilter(), AZ::AzTypeInfo<ScriptEvents::ScriptEventsSystemComponent>::Uuid());
 
-            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId));
-            m_scriptEvents[key]->CompleteRegistration(assetData);
+        AZ::Data::AssetManager::Instance().RegisterHandler(m_assetHandler.get(), assetType);
 
-        }
+        // Use AssetCatalog service to register ScriptCanvas asset type and extension
+        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddAssetType, assetType);
+        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
+        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptEvents::ScriptEventsAsset::GetFileFilter());
     }
 
-    void SystemComponent::UnregisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition)
+    void ScriptEventsSystemComponentRuntimeImpl::UnregisterAssetHandler()
     {
-        const AZStd::string& busName = definition.GetName();
-        const AZ::Uuid& assetId = AZ::Uuid::CreateName(busName.c_str());
-
-        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().FindAsset<ScriptEvents::ScriptEventsAsset>(assetId);
-        if (assetData)
-        {
-            assetData.Release();
-        }
+        AZ::Data::AssetManager::Instance().UnregisterHandler(m_assetHandler.get());
+        m_assetHandler.reset();
     }
 
-    AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent> SystemComponent::GetScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version)
-    {
-        ScriptEventKey key(assetId, 0);
-
-        if (m_scriptEvents.find(key) != m_scriptEvents.end())
-        {
-            return m_scriptEvents[key];
-        }
-
-        AZ_Warning("Script Events", false, "Script event with asset Id %s was not found (version %d)", assetId.ToString<AZStd::string>().c_str(), version);
- 
-        return nullptr;
-    }
 }

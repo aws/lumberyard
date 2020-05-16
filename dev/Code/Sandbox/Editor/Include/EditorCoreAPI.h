@@ -21,7 +21,7 @@
 #else
     #define EDITOR_CORE_API AZ_DLL_IMPORT
 #endif
-#elif defined(AZ_PLATFORM_MAC)
+#elif defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
 #if defined(EDITOR_CORE)
     #define EDITOR_CORE_API __attribute__ ((visibility ("default")))
 #else

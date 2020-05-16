@@ -840,7 +840,7 @@ SDirEntryOpen* CResFile::mfGetOpenEntry(SDirEntry* de)
     }
     return NULL;
 }
-SDirEntryOpen* CResFile::mfOpenEntry(SDirEntry* de)
+SDirEntryOpen* CResFile::mfOpenEntry(SDirEntry* de, bool readingIntoEntryData)
 {
     SDirEntryOpen* pOE = NULL;
     ResDirOpenIt it = std::lower_bound(m_DirOpen.begin(), m_DirOpen.end(), de->Name, ResDirOpenSortByName());
@@ -857,7 +857,7 @@ SDirEntryOpen* CResFile::mfOpenEntry(SDirEntry* de)
     }
     pOE = &(*it);
     pOE->curOffset = 0;
-    assert(pOE->pData);
+    assert(pOE->pData || !readingIntoEntryData);
     //SAFE_DELETE_ARRAY(pOE->pData);
 
     return pOE;
@@ -1458,7 +1458,7 @@ void CResFile::mfFileRead2(SDirEntry* de, int size, void* buf)
         mfSetError("FileRead - Wrong data");
         return;
     }
-    SDirEntryOpen* pOE = mfOpenEntry(de);
+    SDirEntryOpen* pOE = mfOpenEntry(de, false);
 
     if (pOE->pData)
     {
@@ -1537,7 +1537,7 @@ int CResFile::mfFileSeek(SDirEntry* de, int ofs, int type)
 
     AUTO_LOCK(g_cResLock); // Not thread safe without this
 
-    SDirEntryOpen* pOE = mfOpenEntry(de);
+    SDirEntryOpen* pOE = mfOpenEntry(de, false);
 
     switch (type)
     {
@@ -1828,7 +1828,6 @@ int CResFile::mfFlush(bool bOptimise)
         SDirEntry* de = &m_Dir[i];
         if (de->offset < 0)
         {
-            assert(bOptimise);
             assert(de->flags & RF_NOTSAVED);
             bool bFound = false;
             for (j = 0; j < m_Dir.size(); j++)

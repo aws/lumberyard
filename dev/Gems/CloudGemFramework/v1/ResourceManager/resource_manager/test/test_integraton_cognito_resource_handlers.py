@@ -10,28 +10,24 @@
 #
 # $Revision$
 
-import os
-import json
-import unittest
-
-import boto3
+import six
+import warnings
 
 from cgf_utils import custom_resource_utils
 
 import resource_manager_common.constant
 
-import lmbr_aws_test_support
-import test_constant
+from . import lmbr_aws_test_support
 from resource_manager.test import base_stack_test
 
-class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(base_stack_test.BaseStackTestCase):
 
+class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(base_stack_test.BaseStackTestCase):
     USER_POOL_1_NAME = 'TestUserPool1'
     USER_POOL_2_NAME = 'TestUserPool2'
     USER_POOL_2 = 'access.' + USER_POOL_2_NAME
     USER_POOL_3_NAME = 'TestUserPool3'
     USER_POOL_4_NAME = 'TestUserPool4'
-    
+
     @property
     def USER_POOL_1(self):
         return self.TEST_RESOURCE_GROUP_NAME + '.' + self.USER_POOL_1_NAME
@@ -44,16 +40,20 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
     def USER_POOL_4(self):
         return self.TEST_RESOURCE_GROUP_NAME + '.' + self.USER_POOL_4_NAME
 
-    def setUp(self):        
+    def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.set_deployment_name(lmbr_aws_test_support.unique_name())
         self.set_resource_group_name(lmbr_aws_test_support.unique_name())
         self.prepare_test_environment(type(self).__name__)
         self.register_for_shared_resources()
-        
+
     def test_cognito_resource_handlers_end_to_end(self):
         self.run_all_tests()
 
-    def __100_create_project_stack(self):        
+    def __100_create_project_stack(self):
         self.base_create_project_stack()
 
     def __110_add_resource_groups(self):
@@ -76,31 +76,31 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         self.put_user_pool_in_resource_group_template(
             self.TEST_RESOURCE_GROUP_NAME,
             self.USER_POOL_1_NAME,
-            identities = {'PlayerAccessIdentityPool': 'Client1'},
-            client_apps = ['Client1'])
+            identities={'PlayerAccessIdentityPool': 'Client1'},
+            client_apps=['Client1'])
 
         # Tests creating user pool after identity pool.
         self.put_user_pool_in_deployment_access_template(
             self.USER_POOL_2_NAME,
-            identities = {'TestIdentityPool1': 'Client1'},
-            client_apps = ['Client1'])
+            identities={'TestIdentityPool1': 'Client1'},
+            client_apps=['Client1'])
 
         # This pool is for testing that it stays linked when updated.
-        # The non-existant pool name is ignored.
+        # The non-existent pool name is ignored.
         self.put_user_pool_in_resource_group_template(
             self.TEST_RESOURCE_GROUP_NAME,
             self.USER_POOL_3_NAME,
-            identities = {'PlayerAccessIdentityPool': 'Client1', 'NonExistantPoolName': 'Client1'},
-            client_apps = ['Client1'])
+            identities={'PlayerAccessIdentityPool': 'Client1', 'NonExistentPoolName': 'Client1'},
+            client_apps=['Client1'])
 
         self.put_user_pool_in_resource_group_template(
             self.TEST_RESOURCE_GROUP_NAME,
             self.USER_POOL_4_NAME,
-            identities = {'PlayerAccessIdentityPool': 'Client1'},
-            client_apps = ['Client1'])
+            identities={'PlayerAccessIdentityPool': 'Client1'},
+            client_apps=['Client1'])
 
     def __130_create_deployment_stack(self):
-         self.lmbr_aws(
+        self.lmbr_aws(
             'deployment', 'create',
             '--deployment', self.TEST_DEPLOYMENT_NAME,
             '--confirm-aws-usage',
@@ -119,17 +119,17 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         self.put_user_pool_in_resource_group_template(
             self.TEST_RESOURCE_GROUP_NAME,
             self.USER_POOL_1_NAME,
-            identities = {'PlayerAccessIdentityPool': 'Client2'},
-            client_apps = ['Client2'])
+            identities={'PlayerAccessIdentityPool': 'Client2'},
+            client_apps=['Client2'])
 
-        # Test that a non-existant pool name is ignored on a user pool during an update.
+        # Test that a non-existent pool name is ignored on a user pool during an update.
         # Remove PlayerAccessIdentityPool to test unlinking during a user pool update.
         # Add PlayerLoginIdentityPool to test linking during a user pool update.
         self.put_user_pool_in_resource_group_template(
             self.TEST_RESOURCE_GROUP_NAME,
             self.USER_POOL_4_NAME,
-            identities = {'PlayerLoginIdentityPool': 'Client2', 'NonExistentPoolName': 'Client1'},
-            client_apps = ['Client1', 'Client2'])
+            identities={'PlayerLoginIdentityPool': 'Client2', 'NonExistentPoolName': 'Client1'},
+            client_apps=['Client1', 'Client2'])
 
     def __210_update_deployment_stack(self):
         self.lmbr_aws(
@@ -151,7 +151,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         self.unregister_for_shared_resources()
         self.lmbr_aws(
             'deployment', 'delete',
-            '--deployment', self.TEST_DEPLOYMENT_NAME, 
+            '--deployment', self.TEST_DEPLOYMENT_NAME,
             '--confirm-resource-deletion'
         )
 
@@ -164,12 +164,12 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
             resources[pool_name] = {
                 "Type": "Custom::CognitoIdentityPool",
                 "Properties": {
-                    "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                    "ServiceToken": {"Ref": "ProjectResourceHandler"},
                     "AllowUnauthenticatedIdentities": "true",
                     "UseAuthSettingsObject": "false",
-                    "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
-                    "ConfigurationKey": { "Ref": "ConfigurationKey" },
-                    "IdentityPoolName": "PlayerAccess", # This name is recognized by Tools/lmbr_aws/test/cleanup.py
+                    "ConfigurationBucket": {"Ref": "ConfigurationBucket"},
+                    "ConfigurationKey": {"Ref": "ConfigurationKey"},
+                    "IdentityPoolName": "PlayerAccess",  # This name is recognized by Tools/lmbr_aws/test/cleanup.py
                     "Roles": {
                     }
                 }
@@ -183,7 +183,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         with self.edit_project_aws_json(resource_manager_common.constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME) as template:
             self.put_user_pool_in_template(template, pool_name, identities, client_apps)
 
-    def put_user_pool_in_template(self, template, pool_name, identities, client_apps):
+    @staticmethod
+    def put_user_pool_in_template(template, pool_name, identities, client_apps):
         resources = template['Resources']
 
         resources[pool_name] = {
@@ -192,7 +193,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
                 "ConfigurationKey": {
                     "Ref": "ConfigurationKey"
                 },
-                "PoolName": "PlayerAccess", # This name is recognized by Tools/lmbr_aws/test/cleanup.py
+                "PoolName": "PlayerAccess",  # This name is recognized by Tools/lmbr_aws/test/cleanup.py
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }
@@ -203,7 +204,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         if identities:
             resources[pool_name]['Metadata'] = {
                 'CloudCanvas': {
-                    'Identities': [{'IdentityPoolLogicalName': k, 'ClientApp': v} for k,v in identities.iteritems()]
+                    'Identities': [{'IdentityPoolLogicalName': k, 'ClientApp': v} for k, v in six.iteritems(identities)]
                 }
             }
 
@@ -222,7 +223,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
 
         expected_providers = {}
         debug_messages = ['Identity pool {} has physical id {}'.format(identity_pool_logical_id, identity_pool_id)]
-        for user_pool_logical_id, client_names in expected_user_pools.iteritems():
+        for user_pool_logical_id, client_names in six.iteritems(expected_user_pools):
             user_pool_id = custom_resource_utils.get_embedded_physical_id(self.get_physical_id(user_pool_logical_id))
             debug_messages.append('User pool {} has physical id {}'.format(user_pool_logical_id, user_pool_id))
             client_apps = self.aws_cognito_idp.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60).get('UserPoolClients', [])
@@ -233,11 +234,11 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
             for client_name in client_names:
                 self.assertIn(client_name, client_id_by_name, 'User pool {} should have a client named {}'.format(user_pool_logical_id, client_name))
                 providers.add(client_id_by_name[client_name])
-            expected_providers[unicode(self.get_provider_name(user_pool_id))] = providers
+            expected_providers[six.text_type(self.get_provider_name(user_pool_id))] = providers
 
         if expected_providers != actual_providers:
-            print "\n".join(debug_messages)
-        
+            print("{}".format('\n'.join(debug_messages)))
+
         self.assertEqual(expected_providers, actual_providers)
 
     def get_physical_id(self, logical_id):
@@ -259,7 +260,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
                 return client_app['ClientId']
         self.fail('Client {} not found in user pool {}'.format(client_name, user_pool_id))
 
-    def get_provider_name(self, user_pool_id):
+    @staticmethod
+    def get_provider_name(user_pool_id):
         # User pool IDs are of the form: us-east-1_123456789
         # Provider names are of the form: cognito-idp.us-east-1.amazonaws.com/us-east-1_123456789
         beginning = "cognito-idp."
@@ -267,6 +269,6 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         region_size = user_pool_id.find("_")  # Get the region from the first part of the Pool ID
         region = ""
         if region_size >= 0:
-            region = user_pool_id[0 : region_size]
-    
+            region = user_pool_id[0: region_size]
+
         return beginning + region + middle + user_pool_id

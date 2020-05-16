@@ -24,6 +24,7 @@
 #include "MotionInstancePool.h"
 #include "AnimGraphManager.h"
 #include <MCore/Source/MCoreSystem.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/MemoryTracker.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/IO/FileIO.h>
@@ -32,7 +33,6 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/DebugDraw.h>
-
 
 namespace EMotionFX
 {
@@ -130,6 +130,10 @@ namespace EMotionFX
         mUnitType               = MCore::Distance::UNITTYPE_METERS;
         mGlobalSimulationSpeed  = 1.0f;
         m_isInEditorMode        = false;
+        m_isInServerMode        = false;
+
+        // EMotionFX will do optimization in server mode when this is enabled.
+        m_enableServerOptimization = true;
 
         if (MCore::GetMCore().GetIsTrackingMemory())
         {
@@ -145,16 +149,36 @@ namespace EMotionFX
         // from the motion nodes when destructing the motions itself
         //mRigManager->Destroy();
         mMotionManager->Destroy();
-        mAnimGraphManager->Destroy();
-        mImporter->Destroy();
-        mActorManager->Destroy();
-        mMotionInstancePool->Destroy();
-        mEventManager->Destroy();
-        mSoftSkinManager->Destroy();
-        mWaveletCache->Destroy();
-        mRecorder->Destroy();
-        delete mDebugDraw;
+        mMotionManager = nullptr;
 
+        mAnimGraphManager->Destroy();
+        mAnimGraphManager = nullptr;
+
+        mImporter->Destroy();
+        mImporter = nullptr;
+
+        mActorManager->Destroy();
+        mActorManager = nullptr;
+
+        mMotionInstancePool->Destroy();
+        mMotionInstancePool = nullptr;
+
+        mSoftSkinManager->Destroy();
+        mSoftSkinManager = nullptr;
+
+        mWaveletCache->Destroy();
+        mWaveletCache = nullptr;
+
+        mRecorder->Destroy();
+        mRecorder = nullptr;
+
+        delete mDebugDraw;
+        mDebugDraw = nullptr;
+        
+
+        mEventManager->Destroy();
+        mEventManager = nullptr;
+        
         // delete the thread datas
         for (uint32 i = 0; i < mThreadDatas.GetLength(); ++i)
         {

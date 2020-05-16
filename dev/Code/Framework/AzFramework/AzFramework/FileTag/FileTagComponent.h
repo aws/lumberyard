@@ -52,19 +52,19 @@ namespace AzFramework
             static void Reflect(AZ::ReflectContext* context);
 
         private:
-            AZStd::unique_ptr<FileTagQueryManager> m_fileTagBlackListQueryManager;
-            AZStd::unique_ptr<FileTagQueryManager> m_fileTagWhiteListQueryManager;
+            AZStd::unique_ptr<FileTagQueryManager> m_excludeFileQueryManager;
+            AZStd::unique_ptr<FileTagQueryManager> m_includeFileQueryManager;
         };
 
-        //! This component can be used to query whether we need to blacklist files based on file tags.
-        //! This component loads the default blacklist filetags file automatically. 
-        class BlackListFileComponent
+        //! This component can be used to query whether we need to exclude files based on file tags.
+        //! This component loads the default excluded filetags file automatically. 
+        class ExcludeFileComponent
             : public AZ::Component
             , public AzFramework::AssetCatalogEventBus::Handler
         {
         public:
-            AZ_COMPONENT(BlackListFileComponent, "{40CF5F1D-BE1F-46AA-9D35-11FC173DCDBC}");
-            explicit BlackListFileComponent() = default;
+            AZ_COMPONENT(ExcludeFileComponent, "{40CF5F1D-BE1F-46AA-9D35-11FC173DCDBC}");
+            explicit ExcludeFileComponent() = default;
             void Activate() override;
             void Deactivate() override;
 
@@ -73,7 +73,7 @@ namespace AzFramework
             static void Reflect(AZ::ReflectContext* context);
 
         protected:
-            AZStd::unique_ptr<FileTagQueryManager> m_fileTagBlackListQueryManager;
+            AZStd::unique_ptr<FileTagQueryManager> m_excludeFileQueryManager;
         };
     }
 }

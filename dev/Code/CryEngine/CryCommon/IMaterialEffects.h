@@ -22,11 +22,10 @@
     #define MATERIAL_EFFECTS_DEBUG
 #endif
 
-
-#include <IFlowSystem.h> // <> required for Interfuscator
-
 struct IEntityClass;
+struct IRenderNode;
 struct ISurfaceType;
+typedef unsigned int EntityId;
 
 //////////////////////////////////////////////////////////////////////////
 enum EMFXPlayFlags
@@ -35,9 +34,9 @@ enum EMFXPlayFlags
     eMFXPF_Audio         = BIT(1),
     eMFXPF_Decal         = BIT(2),
     eMFXPF_Particles     = BIT(3),
-    eMFXPF_Flowgraph     = BIT(4),
+    eMFXPF_Deprecated0   = BIT(4), // formerly eMFXPF_Flowgraph
     eMFXPF_ForceFeedback = BIT(5),
-    eMFXPF_All           = (eMFXPF_Audio | eMFXPF_Decal | eMFXPF_Particles | eMFXPF_Flowgraph | eMFXPF_ForceFeedback),
+    eMFXPF_All           = (eMFXPF_Audio | eMFXPF_Decal | eMFXPF_Particles | eMFXPF_Deprecated0 | eMFXPF_ForceFeedback),
 };
 
 #define MFX_INVALID_ANGLE (gf_PI2 + 1)
@@ -348,34 +347,6 @@ private:
     }
 };
 
-class IMFXFlowGraphParams
-{
-public:
-    IMFXFlowGraphParams()
-    {
-        name = NULL;
-    }
-    const char* name;
-};
-
-class SMFXFlowGraphListNode
-{
-public:
-    static SMFXFlowGraphListNode* Create();
-    void Destroy();
-    static void FreePool();
-
-    IMFXFlowGraphParams m_flowGraphParams;
-    SMFXFlowGraphListNode* pNext;
-
-private:
-    SMFXFlowGraphListNode()
-    {
-        pNext = NULL;
-    }
-    ~SMFXFlowGraphListNode() {}
-};
-
 class IMFXDecalParams
 {
 public:
@@ -460,7 +431,6 @@ public:
     SMFXParticleListNode* m_particleList;
     SMFXAudioListNode* m_audioList;
     SMFXDecalListNode* m_decalList;
-    SMFXFlowGraphListNode* m_flowGraphList;
     SMFXForceFeedbackListNode* m_forceFeedbackList;
 
     void AddRef() { ++m_refs; }
@@ -486,7 +456,6 @@ private:
         m_particleList = 0;
         m_audioList = 0;
         m_decalList = 0;
-        m_flowGraphList = 0;
         m_forceFeedbackList = 0;
     }
     virtual ~SMFXResourceList()
@@ -508,12 +477,6 @@ private:
             SMFXDecalListNode* next = m_decalList->pNext;
             m_decalList->Destroy();
             m_decalList = next;
-        }
-        while (m_flowGraphList != 0)
-        {
-            SMFXFlowGraphListNode* next = m_flowGraphList->pNext;
-            m_flowGraphList->Destroy();
-            m_flowGraphList = next;
         }
         while (m_forceFeedbackList != 0)
         {
@@ -547,7 +510,6 @@ struct IMaterialEffects
     virtual SMFXResourceListPtr GetResources(TMFXEffectId effectId) const = 0;
     virtual void PreLoadAssets() = 0;
     virtual bool ExecuteEffect(TMFXEffectId effectId, SMFXRunTimeEffectParams& runtimeParams) = 0;
-    virtual void StopEffect(TMFXEffectId effectId) = 0;
     virtual int GetDefaultSurfaceIndex() = 0;
     virtual int GetDefaultCanopyIndex() = 0;
 
@@ -556,11 +518,6 @@ struct IMaterialEffects
     virtual void SetCustomParameter(TMFXEffectId effectId, const char* customParameter, const SMFXCustomParamValue& customParameterValue) = 0;
 
     virtual void CompleteInit() = 0;
-
-    virtual void ReloadMatFXFlowGraphs(bool editorReload = false) = 0;
-    virtual int GetMatFXFlowGraphCount() const = 0;
-    virtual IFlowGraphPtr GetMatFXFlowGraph(int index, string* pFileName = NULL) const = 0;
-    virtual IFlowGraphPtr LoadNewMatFXFlowGraph(const string& filename) = 0;
     // </interfuscator:shuffle>
 };
 

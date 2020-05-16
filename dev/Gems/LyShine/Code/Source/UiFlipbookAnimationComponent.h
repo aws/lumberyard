@@ -99,8 +99,6 @@ public: // functions
     void SetReverseDelay(float reverseDelay) override { m_reverseDelay = AZ::GetMax<float>(0.0f, reverseDelay); }
     bool GetIsAutoPlay() override { return m_isAutoPlay; }
     void SetIsAutoPlay(bool isAutoPlay) override { m_isAutoPlay = isAutoPlay; }
-    AZ_DEPRECATED(float GetFrameDelay() override, "Deprecated. Use UiFlipbookAnimationInterface::GetFramerate instead.");
-    AZ_DEPRECATED(void SetFrameDelay(float frameDelay) override, "Deprecated. Use UiFlipbookAnimationInterface::SetFramerate instead.");
 
     //////////////////////////////////////////////////////////////////////////
     // UiSpriteSourceNotificationBus::Handler

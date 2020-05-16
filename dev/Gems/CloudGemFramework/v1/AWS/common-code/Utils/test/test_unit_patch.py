@@ -8,10 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
 import unittest
 
 from cgf_utils import patch
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuilder(unittest.TestCase):
 
@@ -34,7 +34,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuild
 
         # Verify
 
-        self.assertEquals(result, [])
+        self.assertEqual(result, [])
 
 
     def test_diff_with_changes(self):
@@ -69,14 +69,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuild
             }
         ]
 
-        result_dict = { e['path'] : e for e in result }
-        expected_dict = { e['path']: e for e in expected }
+        result_dict = {e['path']: e for e in result}
+        expected_dict = {e['path']: e for e in expected}
 
-        print 'EXPECTED', expected_dict
-        print 'ACTUAL  ', result_dict 
+        print('EXPECTED: {}'.format(expected_dict))
+        print('ACTUAL  : {} '.format(result_dict))
 
-        self.assertEquals(expected_dict, result_dict)
-
+        self.assertEqual(expected_dict, result_dict)
 
     def test_diff_nested_with_no_changes(self):
 
@@ -93,7 +92,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuild
 
         # Verify
 
-        self.assertEquals(result, [])
+        self.assertEqual(result, [])
 
 
     def test_diff_nested_with_changes(self):
@@ -205,10 +204,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuild
         result_dict = { e['path'] : e for e in result }
         expected_dict = { e['path']: e for e in expected }
 
-        print 'EXPECTED', expected_dict
-        print 'ACTUAL  ', result_dict 
+        print('EXPECTED: {}'.format(expected_dict))
+        print('ACTUAL  : {}'.format(result_dict))
 
-        self.assertEquals(expected_dict, result_dict)
+        self.assertEqual(expected_dict, result_dict)
         
 
 

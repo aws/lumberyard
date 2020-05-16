@@ -11,6 +11,8 @@
 */
 #include "InitSceneAPIFixture.h"
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
 
@@ -29,46 +31,24 @@
 
 #include <GFxFramework/MaterialIO/Material.h>
 
-namespace AZ
+#include <Tests/Matchers.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+
+namespace AZ::GFxFramework
 {
-    namespace GFxFramework
+    class MockMaterialGroup
+        : public MaterialGroup
     {
-        class MockMaterialGroup
-            : public MaterialGroup
-        {
-        public:
-            // ActorBuilder::GetMaterialInfoForActorGroup tries to read a source file first, and if that fails 
-            //  (likely because it doesn't exist), tries to read one product file, followed by another. If they all fail,
-            //  none of those files exist, so the function fails. The material read function called by 
-            //  GetMaterialInfoForActorGroup is mocked to return true after a set number of false returns to mimic the
-            //  behavior we would see if each given file is on disk.
-            bool ReadMtlFile(const char* fileName) override
-            {
-                static AZ::u8 failCount = 0;
-                if (failCount < NumberReadFailsBeforeSuccess)
-                {
-                    ++failCount;
-                    return false;
-                }
-                else
-                {
-                    failCount = 0;
-                    return true;
-                }
-            }
-
-            size_t GetMaterialCount() override
-            {
-                return MaterialCount;
-            }
-            static size_t MaterialCount;
-            static AZ::u8 NumberReadFailsBeforeSuccess;
-        };
-
-        size_t MockMaterialGroup::MaterialCount = 0;
-        AZ::u8 MockMaterialGroup::NumberReadFailsBeforeSuccess = 0;
-    }
-}
+    public:
+        // ActorBuilder::GetMaterialInfoForActorGroup tries to read a source file first, and if that fails
+        //  (likely because it doesn't exist), tries to read one product file, followed by another. If they all fail,
+        //  none of those files exist, so the function fails. The material read function called by
+        //  GetMaterialInfoForActorGroup is mocked to return true after a set number of false returns to mimic the
+        //  behavior we would see if each given file is on disk.
+        MOCK_METHOD1(ReadMtlFile, bool(const char* filename));
+        MOCK_METHOD0(GetMaterialCount, size_t());
+    };
+} // namespace AZ
 
 namespace EMotionFX
 {
@@ -79,11 +59,26 @@ namespace EMotionFX
         {
         public:
             AZ_COMPONENT(MockActorBuilder, "{0C2537B5-6628-4076-BB09-CA1E57E59252}", EMotionFX::Pipeline::ActorBuilder)
-        
+
+            int m_numberReadFailsBeforeSuccess = 0;
+            int m_materialCount = 0;
+
         protected:
-            void InstantiateMaterialGroup()
+            void InstantiateMaterialGroup() override
             {
-                m_materialGroup = AZStd::make_shared<AZ::GFxFramework::MockMaterialGroup>();
+                auto materialGroup = AZStd::make_shared<AZ::GFxFramework::MockMaterialGroup>();
+                EXPECT_CALL(*materialGroup, GetMaterialCount())
+                    .WillRepeatedly(testing::Return(m_materialCount));
+                EXPECT_CALL(*materialGroup, ReadMtlFile(::testing::_))
+                    .WillRepeatedly(testing::Return(true));
+                if (m_numberReadFailsBeforeSuccess)
+                {
+                    EXPECT_CALL(*materialGroup, ReadMtlFile(::testing::_))
+                        .Times(m_numberReadFailsBeforeSuccess)
+                        .WillRepeatedly(testing::Return(false))
+                        .RetiresOnSaturation();
+                }
+                m_materialGroup = AZStd::move(materialGroup);
             }
         };
 
@@ -101,10 +96,11 @@ namespace EMotionFX
                 return true;
             }
         };
-    }
+    } // namespace Pipeline
     // This fixture is responsible for creating the scene description used by
     // the actor builder pipeline tests
     using ActorBuilderPipelineFixtureBase = InitSceneAPIFixture<
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
         AzToolsFramework::Components::PropertyManagerComponent,
@@ -120,14 +116,14 @@ namespace EMotionFX
         {
             ActorBuilderPipelineFixtureBase::SetUp();
 
-            m_actor = EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::Actor::Create("TestActor"));
+            m_actor = EMotionFX::ActorFactory::CreateAndInit<Actor>("testActor");
 
             // Set up the scene graph
             m_scene = new AZ::SceneAPI::Containers::MockScene("MockScene");
             m_scene->SetOriginalSceneOrientation(AZ::SceneAPI::Containers::Scene::SceneOrientation::ZUp);
             AZStd::string testSourceFile;
             AzFramework::StringFunc::Path::Join(GetWorkingDirectory(), "TestFile.fbx", testSourceFile);
-            AzFramework::StringFunc::AssetDatabasePath::Normalize(testSourceFile);
+            AzFramework::StringFunc::Path::Normalize(testSourceFile);
             m_scene->SetSource(testSourceFile, AZ::Uuid::CreateRandom());
 
             AZ::SceneAPI::Containers::SceneGraph& graph = m_scene->GetGraph();
@@ -147,8 +143,7 @@ namespace EMotionFX
             {
                 meshData->AddPosition(vertex);
             }
-            meshData->AddNormal(AZ::Vector3(0,
-                0, 1));
+            meshData->AddNormal(AZ::Vector3(0, 0, 1));
             meshData->AddNormal(AZ::Vector3(0, 0, 1));
             meshData->AddNormal(AZ::Vector3(0, 0, 1));
             meshData->SetVertexIndexToControlPointIndexMap(0, 0);
@@ -171,7 +166,6 @@ namespace EMotionFX
 
         void TearDown() override
         {
-            m_actor.reset();
             delete m_scene;
             m_scene = nullptr;
 
@@ -189,42 +183,28 @@ namespace EMotionFX
             actorGroup.GetBaseNodeSelectionList().AddSelectedNode("testMesh");
 
             // do something here to make sure there are material rules in the actor?
-            if (expectedMaterialReferences.size() > 0)
+            if (!expectedMaterialReferences.empty())
             {
                 AZStd::shared_ptr<EMotionFX::Pipeline::MockMaterialRule> materialRule = AZStd::make_shared<EMotionFX::Pipeline::MockMaterialRule>();
                 actorGroup.GetRuleContainer().AddRule(materialRule);
-            }            
+            }
 
             AZStd::vector<AZStd::string> materialReferences;
 
             const AZ::SceneAPI::Events::ProcessingResult result = Process(actorGroup, materialReferences);
             ASSERT_EQ(result, AZ::SceneAPI::Events::ProcessingResult::Success) << "Failed to build actor";
 
-            ASSERT_EQ(materialReferences.size(), expectedMaterialReferences.size());
-
-            if (expectedMaterialReferences.size() > 0)
+            for (auto& materialReference : materialReferences)
             {
-                for (const AZStd::string& expectedMaterialPath : expectedMaterialReferences)
-                {
-                    ASSERT_TRUE(AZStd::find(materialReferences.begin(), materialReferences.end(), expectedMaterialPath) != materialReferences.end());
-                }
+                AzFramework::StringFunc::Path::Normalize(materialReference);
             }
+            EXPECT_THAT(
+                materialReferences,
+                ::testing::Pointwise(StrEq(), expectedMaterialReferences)
+            );
         }
 
-        void TestSuccessCase(const char* expectedMaterialReference)
-        {
-            AZStd::vector<AZStd::string> expectedMaterialReferences;
-            expectedMaterialReferences.push_back(expectedMaterialReference);
-            TestSuccessCase(expectedMaterialReferences);
-        }
-
-        void TestSuccessCaseNoDependencies()
-        {
-            AZStd::vector<AZStd::string> expectedMaterialReferences;
-            TestSuccessCase(expectedMaterialReferences);
-        }
-
-        EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor> m_actor;
+        AZStd::unique_ptr<Actor> m_actor;
         AZ::SceneAPI::Containers::Scene* m_scene = nullptr;
     };
 
@@ -232,55 +212,53 @@ namespace EMotionFX
     {
         // Set up the actor group, which controls which parts of the scene graph
         // are used to generate the actor
-        TestSuccessCaseNoDependencies();
+        TestSuccessCase({});
     }
 
     TEST_F(ActorBuilderPipelineFixture, ActorBuilder_MaterialReferences_OneSourceReference_ExpectAbsolutePath)
     {
         AZStd::string expectedMaterialReference;
-        AzFramework::StringFunc::AssetDatabasePath::Join(GetWorkingDirectory(), "TestFile.mtl", expectedMaterialReference);
-        
-        AZ::GFxFramework::MockMaterialGroup::NumberReadFailsBeforeSuccess = 0;
-        AZ::GFxFramework::MockMaterialGroup::MaterialCount = 1;
-        TestSuccessCase(expectedMaterialReference.c_str());
+        AzFramework::StringFunc::Path::Join(GetWorkingDirectory(), "TestFile.mtl", expectedMaterialReference);
+
+        Pipeline::MockActorBuilder* actorBuilderComponent = GetSystemEntity()->FindComponent<Pipeline::MockActorBuilder>();
+        actorBuilderComponent->m_numberReadFailsBeforeSuccess = 0;
+        actorBuilderComponent->m_materialCount = 1;
+        TestSuccessCase({expectedMaterialReference});
     }
 
-    // The following two tests are commented out due to needing emfx tests to create an AzFramework::Application instead
-    //  instead of a AZ::ComponentApplication. These tests passed when the switch was made, but other tests in other
-    //  test fixtures began to fail with allocator cleanup issues. These tests should be uncommented when those allocator 
-    //  issues are fixed.
+    TEST_F(ActorBuilderPipelineFixture, ActorBuilder_MaterialReferences_OneProductReference_ExpectRelativeMaterialPath)
+    {
+        AZStd::string normalizedWorkingDir = GetWorkingDirectory();
+        AzFramework::StringFunc::Path::Normalize(normalizedWorkingDir);
 
-    // TEST_F(ActorBuilderPipelineFixture, ActorBuilder_MaterialReferences_OneProductReference_ExpectRelativeMaterialPath)
-    // {
-    //     AZStd::string normalizedWorkingDir = GetWorkingDirectory();
-    //     AzFramework::StringFunc::Path::Normalize(normalizedWorkingDir);
-    // 
-    //     AZStd::string workingDirLastComponent;
-    //     AzFramework::StringFunc::Path::GetComponent(normalizedWorkingDir.c_str(), workingDirLastComponent, 1, true);
-    // 
-    //     AZStd::string expectedMaterialReference;
-    //     AzFramework::StringFunc::AssetDatabasePath::Join(workingDirLastComponent.c_str(), "testActor.mtl", expectedMaterialReference);
-    //     AZStd::to_lower(expectedMaterialReference.begin(), expectedMaterialReference.end());
-    //     
-    //     AZ::GFxFramework::MockMaterialGroup::NumberReadFailsBeforeSuccess = 1;
-    //     AZ::GFxFramework::MockMaterialGroup::MaterialCount = 1;
-    //     TestSuccessCase(expectedMaterialReference.c_str());
-    // }
-    
-    // TEST_F(ActorBuilderPipelineFixture, ActorBuilder_MaterialReferences_OneProductReference_ExpectRelativeDccPath)
-    // {
-    //     AZStd::string normalizedWorkingDir = GetWorkingDirectory();
-    //     AzFramework::StringFunc::Path::Normalize(normalizedWorkingDir);
-    // 
-    //     AZStd::string workingDirLastComponent;
-    //     AzFramework::StringFunc::Path::GetComponent(normalizedWorkingDir.c_str(), workingDirLastComponent, 1, true);
-    // 
-    //     AZStd::string expectedMaterialReference;
-    //     AzFramework::StringFunc::AssetDatabasePath::Join(workingDirLastComponent.c_str(), "testActor.dccmtl", expectedMaterialReference);
-    //     AZStd::to_lower(expectedMaterialReference.begin(), expectedMaterialReference.end());
-    // 
-    //     AZ::GFxFramework::MockMaterialGroup::NumberReadFailsBeforeSuccess = 2;
-    //     AZ::GFxFramework::MockMaterialGroup::MaterialCount = 1;
-    //     TestSuccessCase(expectedMaterialReference.c_str());
-    // }
-}
+        AZStd::string workingDirLastComponent;
+        AzFramework::StringFunc::Path::GetComponent(normalizedWorkingDir.c_str(), workingDirLastComponent, 1, true);
+
+        AZStd::string expectedMaterialReference;
+        AzFramework::StringFunc::Path::Join(workingDirLastComponent.c_str(), "testActor.mtl", expectedMaterialReference);
+        AZStd::to_lower(expectedMaterialReference.begin(), expectedMaterialReference.end());
+
+        Pipeline::MockActorBuilder* actorBuilderComponent = GetSystemEntity()->FindComponent<Pipeline::MockActorBuilder>();
+        actorBuilderComponent->m_numberReadFailsBeforeSuccess = 1;
+        actorBuilderComponent->m_materialCount = 1;
+        TestSuccessCase({expectedMaterialReference});
+    }
+
+    TEST_F(ActorBuilderPipelineFixture, ActorBuilder_MaterialReferences_OneProductReference_ExpectRelativeDccPath)
+    {
+        AZStd::string normalizedWorkingDir = GetWorkingDirectory();
+        AzFramework::StringFunc::Path::Normalize(normalizedWorkingDir);
+
+        AZStd::string workingDirLastComponent;
+        AzFramework::StringFunc::Path::GetComponent(normalizedWorkingDir.c_str(), workingDirLastComponent, 1, true);
+
+        AZStd::string expectedMaterialReference;
+        AzFramework::StringFunc::Path::Join(workingDirLastComponent.c_str(), "testActor.dccmtl", expectedMaterialReference);
+        AZStd::to_lower(expectedMaterialReference.begin(), expectedMaterialReference.end());
+
+        Pipeline::MockActorBuilder* actorBuilderComponent = GetSystemEntity()->FindComponent<Pipeline::MockActorBuilder>();
+        actorBuilderComponent->m_numberReadFailsBeforeSuccess = 2;
+        actorBuilderComponent->m_materialCount = 1;
+        TestSuccessCase({expectedMaterialReference});
+    }
+} // namespace EMotionFX

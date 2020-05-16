@@ -8,19 +8,24 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import re
-import os
+
+# System Imports
+import datetime
+import fnmatch
+import hashlib
 import json
+import os
+import re
 import shutil
 import stat
-import hashlib
-import fnmatch
-import datetime
 import subprocess
 
-from waflib import TaskGen, Utils, Logs
-from waflib.Configure import conf
-from gems import Gem, GemManager
+# waflib imports
+from waflib import Logs, TaskGen, Utils
+
+# lmbrwaflib imports
+
+
 
 def fast_copyfile(src, dst, buffer_size=1024*1024):
     """
@@ -136,7 +141,7 @@ def calculate_file_hash(file_path):
     with open(file_path) as file_to_hash:
         file_content = file_to_hash.read()
     digest = hashlib.md5()
-    digest.update(file_content)
+    digest.update(file_content.encode('utf-8'))
     hash_result = digest.hexdigest()
     return hash_result
 
@@ -148,7 +153,7 @@ def calculate_string_hash(string_to_hash):
     :return:    The md5 hash result (hex string)
     """
     digest = hashlib.md5()
-    digest.update(string_to_hash)
+    digest.update(string_to_hash.encode('utf-8'))
     hash_result = digest.hexdigest()
     return hash_result
 
@@ -229,7 +234,7 @@ def copy_folder(src_folders, dst_folder, ignore_paths, status_format):
             continue
         target_folder = os.path.abspath(os.path.normpath(os.path.join(dst_folder, src_folder_normalized)))
         if status_format:
-            print(status_format.format(src_folder_normalized))
+            print((status_format.format(src_folder_normalized)))
         _copy_folder(source_folder, target_folder, ignore_paths)
 
 
@@ -257,7 +262,7 @@ def copy_files_to_folder(required_src_files, optional_src_files, dst_folder, sta
         dest_file_abs_path = os.path.join(os.path.abspath(dst_folder), os.path.basename(src_file))
         if copy_file_if_needed(source_file_abs_path, dest_file_abs_path):
             if status_format:
-                print(status_format.format(src_file))
+                print((status_format.format(src_file)))
 
 
 # Special token used as a temp replacement to handle escapement of the '#' for non-standard '#'s during json parsing
@@ -271,32 +276,6 @@ def parse_json_file(json_file_path, allow_non_standard_comments=False):
     :param allow_non_standard_comments: Allow non-standard comment ('#') tags in the file
     :return: Dictionary representation of the json file
     """
-
-    def _decode_list(list_data):
-        rv = []
-        for item in list_data:
-            if isinstance(item, unicode):
-                item = item.encode('utf-8')
-            elif isinstance(item, list):
-                item = _decode_list(item)
-            elif isinstance(item, dict):
-                item = _decode_dict(item)
-            rv.append(item)
-        return rv
-
-    def _decode_dict(dict_data):
-        rv = {}
-        for key, value in dict_data.iteritems():
-            if isinstance(key, unicode):
-                key = key.encode('utf-8')
-            if isinstance(value, unicode):
-                value = value.encode('utf-8')
-            elif isinstance(value, list):
-                value = _decode_list(value)
-            elif isinstance(value, dict):
-                value = _decode_dict(value)
-            rv[key] = value
-        return rv
 
     try:
         if allow_non_standard_comments:
@@ -321,10 +300,10 @@ def parse_json_file(json_file_path, allow_non_standard_comments=False):
             with open(json_file_path) as json_file:
                 json_file_content = json_file.read()
 
-        json_file_data = json.loads(json_file_content, object_hook=_decode_dict)
+        json_file_data = json.loads(json_file_content)
         return json_file_data
     except Exception as e:
-        raise ValueError('Error reading {}: {}'.format(json_file_path, e.message))
+        raise ValueError('Error reading {}: {}'.format(json_file_path, e))
 
 
 def write_json_file(json_file_data, json_file_path):
@@ -339,7 +318,7 @@ def write_json_file(json_file_data, json_file_path):
             json_file_content = json.dumps(json_file_data,sort_keys=True,separators=(',',': '),indent=4)
             json_file.write(json_file_content)
     except Exception as e:
-        raise ValueError('Error writing {}: {}'.format(json_file_path, e.message))
+        raise ValueError('Error writing {}: {}'.format(json_file_path, e))
 
 
 def get_dependencies_recursively_for_task_gen(ctx, task_generator):
@@ -441,6 +420,8 @@ def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
     :param valid_gem_types: The valid gem module types to include as dependencies
     :type gem_types: list of Gem.Module.Type
     """
+    
+    from lmbrwaflib.gems import GemManager
 
     modules_in_spec = ctx.loaded_specs_dict[modules_spec]['modules']
 
@@ -501,7 +482,7 @@ def write_auto_gen_header(file):
     if name in ('wscript', 'CMakeLists') or ext in ('.py', '.properties'):
         comment_str = '#'
 
-    full_line = comment_str * (64 / len(comment_str))
+    full_line = comment_str * int(64 / len(comment_str))
 
     file.write('{}\n'.format(full_line))
     file.write('{} This file was automatically created by WAF\n'.format(comment_str))
@@ -515,7 +496,8 @@ ROLE_TO_DESCRIPTION_MAP = {
     "compilesandbox":"Compile Lumberyard Editor and tools",
     "runeditor":"Run the Lumberyard Editor and tools",
     "rungame":"Run your game project",
-    "vc141":"Visual Studio 2017"
+    "vc141":"Visual Studio 2017",
+    "vc142":"Visual Studio 2019"
 }
 
 
@@ -591,9 +573,9 @@ def read_compile_settings_file(settings_file, configuration):
     def _merge_config(left_config, right_config):
         if right_config:
             merged_config = {}
-            for left_key, left_values in left_config.items():
+            for left_key, left_values in list(left_config.items()):
                 merged_config[left_key] = left_values[:]
-            for right_key, right_values in right_config.items():
+            for right_key, right_values in list(right_config.items()):
                 if right_key in merged_config:
                     merged_config[right_key] += [merge_item for merge_item in right_values if merge_item not in merged_config[right_key]]
                 else:
@@ -614,7 +596,7 @@ def read_compile_settings_file(settings_file, configuration):
 
         section_settings = settings.get(section_name)
         result = {}
-        for key in section_settings.keys():
+        for key in list(section_settings.keys()):
             result[key] = _read_config_item(section_settings, key)
         merged_result = _merge_config(result, default_dict)
         return merged_result

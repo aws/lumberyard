@@ -28,7 +28,8 @@
 #include <dirent.h>
 
 
-using namespace AZ::IO;
+namespace AZ::IO
+{
 
 namespace UnixLikePlatformUtil
 {
@@ -254,3 +255,4 @@ namespace Platform
     }
 }
 
+} // namespace AZ::IO

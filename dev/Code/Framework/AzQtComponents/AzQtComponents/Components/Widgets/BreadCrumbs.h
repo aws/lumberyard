@@ -43,7 +43,7 @@ namespace AzQtComponents
     {
         Back,
         Forward,
-        Up,
+        Browse,
 
         Count
     };
@@ -72,7 +72,7 @@ namespace AzQtComponents
             float optimalPathWidth; // this is the portion of the total width that should be considered for display the path
         };
 
-        BreadCrumbs(QWidget* parent = nullptr);
+        explicit BreadCrumbs(QWidget* parent = nullptr);
         ~BreadCrumbs();
 
         bool isBackAvailable() const;
@@ -82,6 +82,8 @@ namespace AzQtComponents
         QString currentPath() const;
 
         QToolButton* createButton(NavigationButton type);
+
+        QWidget* createSeparator();
 
         /*!
          * Loads the button config data from a settings object.
@@ -109,11 +111,7 @@ namespace AzQtComponents
          */
         bool forward();
 
-        /*!
-         * Moves one segment up the current path. Pushes the new path onto the back stack and clears the forward stack.
-         */
-        bool up();
-
+ 
     Q_SIGNALS:
 
         /*!
@@ -130,11 +128,6 @@ namespace AzQtComponents
          * Indicates that a change to the forward stack has occurred. Can be used to update forward buttons.
          */
         void forwardAvailabilityChanged(bool enabled);
-
-        /*!
-         * Indicates that a change to the current path has occurred which affects whether or not the path is a root path. Can be used to update up buttons.
-         */
-        void upAvailabilityChanged(bool enabled);
 
     protected:
         void resizeEvent(QResizeEvent* event) override;

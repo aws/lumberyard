@@ -263,6 +263,14 @@ CTrackViewAnimNode::CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* anim
 //////////////////////////////////////////////////////////////////////////
 CTrackViewAnimNode::~CTrackViewAnimNode()
 {
+    if (m_trackGizmo.get())
+    {
+        GetIEditor()->GetObjectManager()->GetGizmoManager()->RemoveGizmo(m_trackGizmo);
+        m_trackGizmo = nullptr;
+    }
+
+    UnRegisterEditorObjectListeners();
+
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
 
     if (IsBoundToAzEntity())
@@ -304,8 +312,7 @@ void CTrackViewAnimNode::BindToEditorObjects()
 
         if (pEntity)
         {
-            pEntity->SetTransformDelegate(this);
-            pEntity->RegisterListener(this);
+            RegisterEditorObjectListeners(pEntity);
             SetNodeEntity(pEntity);
         }
 
@@ -333,14 +340,7 @@ void CTrackViewAnimNode::UnBindFromEditorObjects()
 {
     CTrackViewSequenceNotificationContext context(GetSequence());
 
-    IObjectManager* pObjectManager = GetIEditor()->GetObjectManager();
-    CEntityObject* pEntity = (CEntityObject*)pObjectManager->FindAnimNodeOwner(this);
-
-    if (pEntity)
-    {
-        pEntity->SetTransformDelegate(nullptr);
-        pEntity->UnregisterListener(this);
-    }
+    UnRegisterEditorObjectListeners();
 
     if (m_animNode)
     {
@@ -2626,6 +2626,8 @@ bool CTrackViewAnimNode::IsScaleDelegated() const
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::OnDone()
 {
+    UnRegisterEditorObjectListeners();
+
     SetNodeEntity(nullptr);
     UpdateTrackGizmo();
 }
@@ -2704,5 +2706,25 @@ void CTrackViewAnimNode::OnParentTransformWillChange(AZ::Transform oldTransform,
     if (sequence != nullptr)
     {
         sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_NodeOwnerChanged);
+    }
+}
+
+void CTrackViewAnimNode::RegisterEditorObjectListeners(CEntityObject* entity)
+{
+    if (!m_editorObjectListenerRegistered)
+    {
+        entity->SetTransformDelegate(this);
+        entity->RegisterListener(this);
+        m_editorObjectListenerRegistered = entity;
+    }
+}
+
+void CTrackViewAnimNode::UnRegisterEditorObjectListeners()
+{
+    if (m_editorObjectListenerRegistered)
+    {
+        m_editorObjectListenerRegistered->SetTransformDelegate(nullptr);
+        m_editorObjectListenerRegistered->UnregisterListener(this);
+        m_editorObjectListenerRegistered = nullptr;
     }
 }

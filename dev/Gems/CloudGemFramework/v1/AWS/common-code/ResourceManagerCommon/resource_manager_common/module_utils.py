@@ -11,11 +11,11 @@
 # $Revision: #1 $
 
 import imp
-import sys
+
 
 def load_module(name, path, log_import=True):
     if log_import:
-        print 'Loading module {} from {}.'.format(name, path)
+        print('Loading module {} from {}.'.format(name, path))
 
     result = None
     imp.acquire_lock()

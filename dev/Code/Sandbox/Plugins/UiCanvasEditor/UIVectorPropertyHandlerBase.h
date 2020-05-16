@@ -71,10 +71,10 @@ public:
         AzToolsFramework::VectorElement** elements = GUI->getElements();
         TypeBeingHandled values;
 
-        values.m_left = elements[0]->GetValue();
-        values.m_top = elements[1]->GetValue();
-        values.m_right = elements[2]->GetValue();
-        values.m_bottom = elements[3]->GetValue();
+        values.m_left = aznumeric_cast<decltype(values.m_left)>(elements[0]->GetValue());
+        values.m_top = aznumeric_cast<decltype(values.m_top)>(elements[1]->GetValue());
+        values.m_right = aznumeric_cast<decltype(values.m_right)>(elements[2]->GetValue());
+        values.m_bottom = aznumeric_cast<decltype(values.m_bottom)>(elements[3]->GetValue());
 
         return values;
     }

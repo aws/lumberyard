@@ -16,7 +16,7 @@
         
         levels_pak_excludes="*\leveldata\*;levels\*.pak"
                 
-        game_data_pak_types="*.uicanvas;*.bin;*.pssl;*.grd;*.grp;*.cal;*.lut;*.sprite;prototypes\*.*;aws\*.*;difficulty\*.*;libs\*.*;materials\*.*;prefabs\*.*"
+        game_data_pak_types="*.uicanvas;*.bin;*.grd;*.grp;*.cal;*.lut;*.sprite;prototypes\*.*;aws\*.*;difficulty\*.*;libs\*.*;materials\*.*;prefabs\*.*"
         game_data_pak_excludes="*filelist.*"
         
         engine_pak_types="fonts\*.*;engineassets\*.*;config\*.*"

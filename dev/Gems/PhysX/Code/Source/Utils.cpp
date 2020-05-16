@@ -13,7 +13,10 @@
 #include <PhysX_precompiled.h>
 
 #include <AzCore/EBus/Results.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
 
 #include <PhysX/ColliderShapeBus.h>
@@ -24,9 +27,11 @@
 #include <Source/Collision.h>
 #include <Source/Pipeline/MeshAssetHandler.h>
 #include <Source/Shape.h>
+#include <Source/StaticRigidBodyComponent.h>
 #include <Source/TerrainComponent.h>
 #include <Source/RigidBodyStatic.h>
 #include <Source/Utils.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysX
 {
@@ -110,22 +115,6 @@ namespace PhysX
                 pxGeometry.storeAny(physx::PxCapsuleGeometry(radius, halfHeight));
                 break;
             }
-            case Physics::ShapeType::PhysicsAsset:
-            {
-                const Physics::PhysicsAssetShapeConfiguration& assetShapeConfig = static_cast<const Physics::PhysicsAssetShapeConfiguration&>(shapeConfiguration);
-                AZ::Vector3 scale = assetShapeConfig.m_assetScale * assetShapeConfig.m_scale;
-
-                Pipeline::MeshAsset* physXMeshAsset = assetShapeConfig.m_asset.GetAs<Pipeline::MeshAsset>();
-                if (!physXMeshAsset)
-                {
-                    AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
-                    return false;
-                }
-
-                physx::PxBase* meshData = physXMeshAsset->GetMeshData();
-
-                return MeshDataToPxGeometry(meshData, pxGeometry, scale);
-            }
             case Physics::ShapeType::Native:
             {
                 const Physics::NativeShapeConfiguration& nativeShapeConfig = static_cast<const Physics::NativeShapeConfiguration&>(shapeConfiguration);
@@ -166,6 +155,13 @@ namespace PhysX
 
                 return MeshDataToPxGeometry(nativeMeshObject, pxGeometry, cookedMeshShapeConfig.m_scale);
             }
+            case Physics::ShapeType::PhysicsAsset:
+            {
+                AZ_Assert(false,
+                    "CreatePxGeometryFromConfig: Cannot pass PhysicsAsset configuration since it is a collection of shapes. "
+                    "Please iterate over m_colliderShapes in the asset and call this function for each of them.");
+                return false;
+            }
             default:
                 AZ_Warning("PhysX Rigid Body", false, "Shape not supported in PhysX. Shape Type: %d", shapeType);
                 return false;
@@ -195,6 +191,7 @@ namespace PhysX
             if (Utils::CreatePxGeometryFromConfig(shapeConfiguration, pxGeomHolder))
             {
                 auto materialsCount = static_cast<physx::PxU16>(materials.size());
+
                 physx::PxShape* shape = PxGetPhysics().createShape(pxGeomHolder.any(), materials.begin(), materialsCount, colliderConfiguration.m_isExclusive);
 
                 if (shape)
@@ -271,11 +268,26 @@ namespace PhysX
             }
         }
 
-        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetCookedData& cookedMesh)
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& physxData,
+            Physics::CookedMeshShapeConfiguration::MeshType meshType)
+        {
+            Pipeline::MeshAssetData assetData;
+
+            AZStd::shared_ptr<Pipeline::AssetColliderConfiguration> colliderConfig;
+            AZStd::shared_ptr<Physics::CookedMeshShapeConfiguration> shapeConfig = AZStd::make_shared<Physics::CookedMeshShapeConfiguration>();
+
+            shapeConfig->SetCookedMeshData(physxData.data(), physxData.size(), meshType);
+
+            assetData.m_colliderShapes.emplace_back(colliderConfig, shapeConfig);
+
+            return Utils::WriteCookedMeshToFile(filePath, assetData);
+        }
+
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetData& assetData)
         {
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
-            return AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_BINARY, &cookedMesh, serializeContext);
+            return AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_BINARY, &assetData, serializeContext);
         }
 
         bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream)
@@ -445,8 +457,6 @@ namespace PhysX
         AZStd::unique_ptr<Physics::RigidBodyStatic> CreateTerrain(
             const PhysX::TerrainConfiguration& configuration, const AZ::EntityId& entityId, const AZStd::string_view& name)
         {
-            using namespace physx;
-
             if (!configuration.m_heightFieldAsset.IsReady())
             {
                 AZ_Warning("PhysXUtils::CreateTerrain", false, "Heightfield asset not ready");
@@ -477,14 +487,13 @@ namespace PhysX
                 return nullptr;
             }
 
-            PxShape* pxShape = PxGetPhysics().createShape(heightfieldGeom, materialList.begin(), static_cast<physx::PxU16>(materialList.size()), true);
-            pxShape->setLocalPose(PxTransform(PxVec3(PxZero), PxQuat(PxHalfPi, PxVec3(0.0f, 0.0f, 1.0f)) * PxQuat(PxHalfPi, PxVec3(1.0f, 0.0f, 0.0f))));
+            physx::PxShape* pxShape = PxGetPhysics().createShape(heightfieldGeom, materialList.begin(), static_cast<physx::PxU16>(materialList.size()), true);
+            physx::PxQuat rotateZ(physx::PxHalfPi, physx::PxVec3(0.0f, 0.0f, 1.0f));
+            physx::PxQuat rotateX(physx::PxHalfPi, physx::PxVec3(1.0f, 0.0f, 0.0f));
+            pxShape->setLocalPose(physx::PxTransform(rotateZ * rotateX));
 
             AZStd::shared_ptr<PhysX::Shape> heightFieldShape = AZStd::make_shared<PhysX::Shape>(pxShape);
             pxShape->release();
-
-            PhysX::Configuration globalConfiguration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(globalConfiguration, &ConfigurationRequests::GetConfiguration);
 
             Physics::CollisionLayer terrainCollisionLayer = configuration.m_collisionLayer;
             Physics::CollisionGroup terrainCollisionGroup = Physics::CollisionGroup::All;
@@ -536,27 +545,27 @@ namespace PhysX
             AZ_Warning(category, false, messageOutput.c_str());
         }
 
-        AZ::Transform GetColliderLocalTransform(const AZ::Vector3& colliderRelativePosition
-            , const AZ::Quaternion& colliderRelativeRotation)
+        AZ::Transform GetColliderLocalTransform(const AZ::Vector3& colliderRelativePosition,
+            const AZ::Quaternion& colliderRelativeRotation)
         {
             return AZ::Transform::CreateFromQuaternionAndTranslation(colliderRelativeRotation, colliderRelativePosition);
         }
 
-        AZ::Transform GetColliderWorldTransform(const AZ::Transform& worldTransform
-            , const AZ::Vector3& colliderRelativePosition
-            , const AZ::Quaternion& colliderRelativeRotation)
+        AZ::Transform GetColliderWorldTransform(const AZ::Transform& worldTransform,
+            const AZ::Vector3& colliderRelativePosition,
+            const AZ::Quaternion& colliderRelativeRotation)
         {
             return worldTransform * GetColliderLocalTransform(colliderRelativePosition, colliderRelativeRotation);
         }
 
-        void ColliderPointsLocalToWorld(AZStd::vector<AZ::Vector3>& pointsInOut
-            , const AZ::Transform& worldTransform
-            , const AZ::Vector3& colliderRelativePosition
-            , const AZ::Quaternion& colliderRelativeRotation)
+        void ColliderPointsLocalToWorld(AZStd::vector<AZ::Vector3>& pointsInOut,
+            const AZ::Transform& worldTransform,
+            const AZ::Vector3& colliderRelativePosition,
+            const AZ::Quaternion& colliderRelativeRotation)
         {
-            AZ::Transform transform = GetColliderWorldTransform(worldTransform
-                , colliderRelativePosition
-                , colliderRelativeRotation);
+            AZ::Transform transform = GetColliderWorldTransform(worldTransform,
+                colliderRelativePosition,
+                colliderRelativeRotation);
 
             for (AZ::Vector3& point : pointsInOut)
             {
@@ -564,42 +573,300 @@ namespace PhysX
             }
         }
 
-        AZ::Aabb GetColliderAabb(const AZ::Transform& worldTransform
-            , const ::Physics::ShapeConfiguration& shapeConfiguration
-            , const ::Physics::ColliderConfiguration& colliderConfiguration)
+        AZ::Aabb GetPxGeometryAabb(const physx::PxGeometryHolder& geometryHolder,
+            const AZ::Transform& worldTransform,
+            const ::Physics::ColliderConfiguration& colliderConfiguration
+            )
         {
-            AZ::Aabb aabb;
+            const float boundsInflationFactor = 1.0f;
+            const physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any(),
+                    physx::PxTransform(
+                        PxMathConvert(PhysX::Utils::GetColliderWorldTransform(worldTransform,
+                        colliderConfiguration.m_position,
+                        colliderConfiguration.m_rotation))),
+                    boundsInflationFactor);
+            return PxMathConvert(bounds);
+        }
+
+        AZ::Aabb GetColliderAabb(const AZ::Transform& worldTransform,
+            const ::Physics::ShapeConfiguration& shapeConfiguration,
+            const ::Physics::ColliderConfiguration& colliderConfiguration)
+        {
+            const AZ::Aabb worldPosAabb = AZ::Aabb::CreateFromPoint(worldTransform.GetPosition());
             physx::PxGeometryHolder geometryHolder;
-            if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder))
+            bool isAssetShape = shapeConfiguration.GetShapeType() == Physics::ShapeType::PhysicsAsset;
+
+            if (!isAssetShape)
             {
-                physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any()
-                    , physx::PxTransform(PxMathConvert(PhysX::Utils::GetColliderWorldTransform(worldTransform
-                        , colliderConfiguration.m_position
-                        , colliderConfiguration.m_rotation))));
-                aabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3(PxMathConvert(bounds.minimum))
-                    , AZ::Vector3(PxMathConvert(bounds.maximum)));
+                if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder))
+                {
+                    return GetPxGeometryAabb(geometryHolder, worldTransform, colliderConfiguration);
+                }
+                return worldPosAabb;
             }
             else
             {
-                // AABB of collider is at the least, just a point at the position of the collider.
-                aabb = AZ::Aabb::CreateFromPoint(worldTransform.GetPosition());
+                const Physics::PhysicsAssetShapeConfiguration& physicsAssetConfig =
+                    static_cast<const Physics::PhysicsAssetShapeConfiguration&>(shapeConfiguration);
+
+                if (!physicsAssetConfig.m_asset.IsReady())
+                {
+                    return worldPosAabb;
+                }
+
+                Physics::ShapeConfigurationList colliderShapes;
+                GetColliderShapeConfigsFromAsset(physicsAssetConfig,
+                    colliderConfiguration,
+                    colliderShapes);
+
+                if (colliderShapes.empty())
+                {
+                    return worldPosAabb;
+                }
+
+                AZ::Aabb aabb = AZ::Aabb::CreateNull();
+                for (const auto& colliderShape : colliderShapes)
+                {
+                    if (colliderShape.second &&
+                        CreatePxGeometryFromConfig(*colliderShape.second, geometryHolder))
+                    {
+                        aabb.AddAabb(
+                            GetPxGeometryAabb(geometryHolder, worldTransform, colliderConfiguration)
+                        );
+                    }
+                    else
+                    {
+                        return worldPosAabb;
+                    }
+                }
+                return aabb;
             }
-            return aabb;
         }
 
         bool TriggerColliderExists(AZ::EntityId entityId)
         {
             AZ::EBusLogicalResult<bool, AZStd::logical_or<bool>> response(false);
-            PhysX::ColliderShapeRequestBus::EventResult(response
-                , entityId
-                , &PhysX::ColliderShapeRequestBus::Events::IsTrigger);
+            PhysX::ColliderShapeRequestBus::EventResult(response,
+                entityId,
+                &PhysX::ColliderShapeRequestBus::Events::IsTrigger);
             return response.value;
         }
 
-    }
+        void GetColliderShapeConfigsFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            Physics::ShapeConfigurationList& resultingColliderShapes)
+        {
+            if (!assetConfiguration.m_asset.IsReady())
+            {
+                AZ_Error("PhysX", false, "GetColliderShapesFromAsset: Asset %s is not ready."
+                    "Please make sure the calling code connects to the AssetBus and "
+                    "creates the collider shapes only when OnAssetReady or OnAssetReload is invoked.",
+                    assetConfiguration.m_asset.GetHint().c_str());
+                return;
+            }
+
+            const Pipeline::MeshAsset* asset = assetConfiguration.m_asset.GetAs<Pipeline::MeshAsset>();
+
+            if (!asset)
+            {
+                AZ_Error("PhysX", false, "GetColliderShapesFromAsset: Mesh Asset %s is null."
+                    "Please check the file is in the correct format. Try to delete it and get AssetProcessor re-create it. "
+                    "The data is loaded in Pipeline::MeshAssetHandler::LoadAssetData()",
+                    assetConfiguration.m_asset.GetHint().c_str());
+                return;
+            }
+
+            const Pipeline::MeshAssetData& assetData = asset->m_assetData;
+            const Pipeline::MeshAssetData::ShapeConfigurationList& shapeConfigList = assetData.m_colliderShapes;
+            
+            resultingColliderShapes.reserve(resultingColliderShapes.size() + shapeConfigList.size());
+
+            for (size_t shapeIndex = 0; shapeIndex < shapeConfigList.size(); shapeIndex++)
+            {
+                const Pipeline::MeshAssetData::ShapeConfigurationPair& shapeConfigPair = shapeConfigList[shapeIndex];
+
+                AZStd::shared_ptr<Physics::ColliderConfiguration> thisColliderConfiguration = 
+                    AZStd::make_shared<Physics::ColliderConfiguration>(masterColliderConfiguration);
+
+                AZ::u16 shapeMaterialIndex = assetData.m_materialIndexPerShape[shapeIndex];
+
+                // Triangle meshes have material indices cooked in the data.
+                if(shapeMaterialIndex != Pipeline::MeshAssetData::TriangleMeshMaterialIndex)
+                {
+                    // Clear the materials that came in from the component collider configuration
+                    thisColliderConfiguration->m_materialSelection.SetMaterialSlots({});
+                
+                    // Set the material that is relevant for this specific shape
+                    Physics::MaterialId assignedMaterialForShape =
+                        masterColliderConfiguration.m_materialSelection.GetMaterialId(shapeMaterialIndex);
+                    thisColliderConfiguration->m_materialSelection.SetMaterialId(assignedMaterialForShape);
+                }
+
+                // Here we use the collider configuration data saved in the asset to update the one coming from the component
+                if (const Pipeline::AssetColliderConfiguration* optionalColliderData = shapeConfigPair.first.get())
+                {
+                    optionalColliderData->UpdateColliderConfiguration(*thisColliderConfiguration);
+                }
+
+                // Update the scale with the data from the asset configuration
+                AZStd::shared_ptr<Physics::ShapeConfiguration> thisShapeConfiguration = shapeConfigPair.second;
+                thisShapeConfiguration->m_scale = assetConfiguration.m_scale * assetConfiguration.m_assetScale;
+
+                resultingColliderShapes.emplace_back(thisColliderConfiguration, thisShapeConfiguration);
+            }
+        }
+
+        void GetShapesFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& resultingShapes)
+        {
+            Physics::ShapeConfigurationList resultingColliderShapeConfigs;
+            GetColliderShapeConfigsFromAsset(assetConfiguration, masterColliderConfiguration, resultingColliderShapeConfigs);
+
+            resultingShapes.reserve(resultingShapes.size() + resultingColliderShapeConfigs.size());
+
+            for (const Physics::ShapeConfigurationPair& shapeConfigPair : resultingColliderShapeConfigs)
+            {
+                // Scale the collider offset
+                shapeConfigPair.first->m_position *= shapeConfigPair.second->m_scale;
+
+                AZStd::shared_ptr<Physics::Shape> shape;
+                Physics::SystemRequestBus::BroadcastResult(shape, &Physics::SystemRequests::CreateShape, 
+                    *shapeConfigPair.first, *shapeConfigPair.second);
+
+                if (shape)
+                {
+                    resultingShapes.emplace_back(shape);
+                }
+            }
+        }
+
+        AZ::Vector3 GetNonUniformScale(AZ::EntityId entityId)
+        {
+            AZ::Vector3 worldScale = AZ::Vector3::CreateOne();
+            AZ::TransformBus::EventResult(worldScale, entityId, &AZ::TransformBus::Events::GetWorldScale);
+            return worldScale;
+        }
+
+        AZ::Vector3 GetUniformScale(AZ::EntityId entityId)
+        {
+            const float uniformScale = GetNonUniformScale(entityId).GetMaxElement();
+            return AZ::Vector3(uniformScale);
+        }
+
+        namespace Geometry
+        {
+            PointList GenerateBoxPoints(const AZ::Vector3& min, const AZ::Vector3& max)
+            {
+                PointList pointList;
+
+                auto size = max - min;
+
+                const auto minSamples = 2.f;
+                const auto maxSamples = 8.f;
+                const auto desiredSampleDelta = 2.f;
+
+                // How many sample in each axis
+                int numSamples[] =
+                {
+                    static_cast<int>((size.GetX() / desiredSampleDelta).GetClamp(minSamples, maxSamples)),
+                    static_cast<int>((size.GetY() / desiredSampleDelta).GetClamp(minSamples, maxSamples)),
+                    static_cast<int>((size.GetZ() / desiredSampleDelta).GetClamp(minSamples, maxSamples))
+                };
+
+                float sampleDelta[] =
+                {
+                    size.GetX() / static_cast<float>(numSamples[0] - 1),
+                    size.GetY() / static_cast<float>(numSamples[1] - 1),
+                    size.GetZ() / static_cast<float>(numSamples[2] - 1),
+                };
+
+                for (auto i = 0; i < numSamples[0]; ++i)
+                {
+                    for (auto j = 0; j < numSamples[1]; ++j)
+                    {
+                        for (auto k = 0; k < numSamples[2]; ++k)
+                        {
+                            pointList.emplace_back(
+                                min.GetX() + i * sampleDelta[0],
+                                min.GetY() + j * sampleDelta[1],
+                                min.GetZ() + k * sampleDelta[2]
+                            );
+                        }
+                    }
+                }
+
+                return pointList;
+            }
+
+            PointList GenerateSpherePoints(float radius)
+            {
+                PointList points;
+
+                int nSamples = static_cast<int>(radius * 5);
+                nSamples = AZ::GetClamp(nSamples, 5, 512);
+
+                // Draw arrows using Fibonacci sphere
+                float offset = 2.f / nSamples;
+                float increment = AZ::Constants::Pi * (3.f - sqrt(5.f));
+                for (int i = 0; i < nSamples; ++i)
+                {
+                    float phi = ((i + 1) % nSamples) * increment;
+                    float y = ((i * offset) - 1) + (offset / 2.f);
+                    float r = sqrt(1 - pow(y, 2));
+                    float x = cos(phi) * r;
+                    float z = sin(phi) * r;
+                    points.emplace_back(x * radius, y * radius, z * radius);
+                }
+                return points;
+            }
+
+            PointList GenerateCylinderPoints(float height, float radius)
+            {
+                PointList points;
+                AZ::Vector3 base(0.f, 0.f, -height * 0.5f);
+                AZ::Vector3 radiusVector(radius, 0.f, 0.f);
+
+                const auto sides = AZ::GetClamp(radius, 3.f, 8.f);
+                const auto segments = AZ::GetClamp(height * 0.5f, 2.f, 8.f);
+                const auto angleDelta = AZ::Quaternion::CreateRotationZ(AZ::Constants::TwoPi / sides);
+                const auto segmentDelta = height / (segments - 1);
+                for (auto segment = 0; segment < segments; ++segment)
+                {
+                    for (auto side = 0; side < sides; ++side)
+                    {
+                        auto point = base + radiusVector;
+                        points.emplace_back(point);
+                        radiusVector = angleDelta * radiusVector;
+                    }
+                    base += AZ::Vector3(0, 0, segmentDelta);
+                }
+                return points;
+            }
+        } // namespace Geometry
+    } // namespace Utils
 
     namespace ReflectionUtils
     {
+        // Forwards invokation of CalculateNetForce in a force region to script canvas.
+        class ForceRegionBusBehaviorHandler
+            : public ForceRegionNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+        public:
+            AZ_EBUS_BEHAVIOR_BINDER(ForceRegionBusBehaviorHandler, "{EB6C0F7A-0BDA-4052-84C0-33C05E3FF739}", AZ::SystemAllocator
+                , OnCalculateNetForce
+            );
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            /// Callback invoked when net force exerted on object is computed by a force region.
+            void OnCalculateNetForce(AZ::EntityId forceRegionEntityId
+                , AZ::EntityId targetEntityId
+                , const AZ::Vector3& netForceDirection
+                , float netForceMagnitude) override;
+        };
+
         void ReflectPhysXOnlyApi(AZ::ReflectContext* context)
         {
             ForceRegionBusBehaviorHandler::Reflect(context);
@@ -610,6 +877,8 @@ namespace PhysX
             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
             {
                 behaviorContext->EBus<PhysX::ForceRegionNotificationBus>("ForceRegionNotificationBus")
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                     ->Handler<ForceRegionBusBehaviorHandler>()
                     ;
             }
@@ -626,8 +895,8 @@ namespace PhysX
                 , netForceDirection
                 , netForceMagnitude);
         }
-    }
-    
+    } // namespace ReflectionUtils
+
     namespace PxActorFactories
     {
         physx::PxRigidDynamic* CreatePxRigidBody(const Physics::RigidBodyConfiguration& configuration)
@@ -673,6 +942,7 @@ namespace PhysX
             physx::PxScene* scene = actor->getScene();
             if (scene)
             {
+                PHYSX_SCENE_WRITE_LOCK(scene);
                 scene->removeActor(*actor);
             }
 
@@ -683,5 +953,54 @@ namespace PhysX
 
             actor->release();
         }
-    }
-}
+    } // namespace PxActorFactories
+
+    namespace StaticRigidBodyUtils
+    {
+        bool EntityHasComponentsUsingService(const AZ::Entity& entity, AZ::Crc32 service)
+        {
+            const AZ::Entity::ComponentArrayType& components = entity.GetComponents();
+
+            return AZStd::any_of(components.begin(), components.end(),
+                [service](const AZ::Component* component) -> bool
+            {
+                AZ::ComponentDescriptor* componentDescriptor = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(
+                    componentDescriptor, azrtti_typeid(component), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                AZ::ComponentDescriptor::DependencyArrayType services;
+                componentDescriptor->GetDependentServices(services, nullptr);
+
+                return AZStd::find(services.begin(), services.end(), service) != services.end();
+            }
+            );
+        }
+
+        bool CanCreateRuntimeComponent(const AZ::Entity& editorEntity)
+        {
+            // Allow to create runtime StaticRigidBodyComponent if there are no components
+            // using 'PhysXColliderService' attached to entity.
+            const AZ::Crc32 physxColliderServiceId = AZ_CRC("PhysXColliderService", 0x4ff43f7c);
+
+            return !EntityHasComponentsUsingService(editorEntity, physxColliderServiceId);
+        }
+
+        bool TryCreateRuntimeComponent(const AZ::Entity& editorEntity, AZ::Entity& gameEntity)
+        {
+            // Only allow single StaticRigidBodyComponent per entity
+            const auto* staticRigidBody = gameEntity.FindComponent<StaticRigidBodyComponent>();
+            if (staticRigidBody)
+            {
+                return false;
+            }
+
+            if (CanCreateRuntimeComponent(editorEntity))
+            {
+                gameEntity.CreateComponent<StaticRigidBodyComponent>();
+                return true;
+            }
+
+            return false;
+        }
+    } // namespace StaticRigidBodyUtils
+} // namespace PhysX

@@ -138,6 +138,9 @@ namespace GradientSignal
     template <typename TComponent, typename TConfiguration>
     AZ::u32 EditorGradientComponentBase<TComponent, TConfiguration>::ConfigurationChanged()
     {
+        // Cancel any pending preview refreshes before locking, to help ensure the preview itself isn't holding the lock
+        CancelPreviewRendering();
+
          // block anyone from accessing the buses while the editor deactivates and re-activates the contained component.
         auto& surfaceDataSystemRequestBusContext = SurfaceData::SurfaceDataSystemRequestBus::GetOrCreateContext(false);
         auto& gradientRequestBusContextContext = GradientRequestBus::GetOrCreateContext(false);
@@ -257,6 +260,12 @@ namespace GradientSignal
     void EditorGradientComponentBase<TComponent, TConfiguration>::UpdatePreviewSettings() const
     {
         GradientSignal::GradientPreviewRequestBus::Broadcast(&GradientSignal::GradientPreviewRequestBus::Events::Refresh);
+    }
+
+    template <typename TComponent, typename TConfiguration>
+    void EditorGradientComponentBase<TComponent, TConfiguration>::CancelPreviewRendering() const
+    {
+        GradientSignal::GradientPreviewRequestBus::Broadcast(&GradientSignal::GradientPreviewRequestBus::Events::CancelRefresh);
     }
 
     template <typename TComponent, typename TConfiguration>

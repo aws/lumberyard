@@ -2,7 +2,7 @@
     "name": "lz4",
     "source": "@3P:lz4@",
     "description": "LZ4 Compression Library",
-    "includes": [
+    "system_includes": [
         "lib"
     ],
     "defines": [],

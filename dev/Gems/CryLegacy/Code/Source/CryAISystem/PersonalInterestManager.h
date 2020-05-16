@@ -21,7 +21,6 @@
 #pragma once
 
 #include "IInterestSystem.h"
-#include "IAIAction.h"
 
 
 class CCentralInterestManager;
@@ -85,7 +84,6 @@ struct SActorInterestSettings
 
 
 class CPersonalInterestManager
-    : public IAIAction::IAIActionListener
 {
 public:
     CPersonalInterestManager(CAIActor* pAIActor = NULL);
@@ -133,9 +131,6 @@ public:
     Vec3 GetInterestingPos() const;
 
     ELookStyle GetLookingStyle() const;
-
-    /// Implement Action Listener Interface
-    virtual void OnActionEvent(IAIAction::EActionEvent event);
 
 protected:
 

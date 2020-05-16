@@ -16,6 +16,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <RoadsAndRivers/RoadsAndRiversBus.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <SurfaceData/Utility/SurfaceDataUtility.h>
@@ -103,21 +104,8 @@ namespace RoadsAndRivers
         AddItemIfNotFound(m_configuration.m_providerTags, Constants::s_waterTagCrc);
         AddItemIfNotFound(m_configuration.m_modifierTags, Constants::s_underWaterTagCrc);
 
-        SurfaceData::SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = m_surfaceShapeBounds;
-        registryEntry.m_tags = m_configuration.m_providerTags;
-
         m_providerHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
-        SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
-        SurfaceData::SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
-
-        registryEntry.m_bounds = m_volumeShapeBounds;
-        registryEntry.m_tags = m_configuration.m_modifierTags;
-
         m_modifierHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
-        SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_modifierHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, registryEntry);
-        SurfaceData::SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::SplineComponentNotificationBus::Handler::BusConnect(GetEntityId());
@@ -125,7 +113,14 @@ namespace RoadsAndRivers
         RoadsAndRiversGeometryNotificationBus::Handler::BusConnect(GetEntityId());
         CrySystemEventBus::Handler::BusConnect();
 
+        // Update the cached shape data and bounds, then register the surface data provider / modifier
         UpdateShapeData();
+
+        // These need to connect after the call to UpdateShapeData() so that the handles are valid
+        AZ_Assert((m_providerHandle != SurfaceData::InvalidSurfaceDataRegistryHandle) && (m_modifierHandle != SurfaceData::InvalidSurfaceDataRegistryHandle), "Invalid surface data handles");
+        SurfaceData::SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+        SurfaceData::SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
+
         m_refresh = false;
     }
 
@@ -184,8 +179,19 @@ namespace RoadsAndRivers
             AZ::Vector3 resultNormal = AZ::Vector3::CreateAxisZ();
             if (SurfaceData::GetQuadListRayIntersection(m_shapeVertices, rayOrigin, rayDirection, m_surfaceShapeBounds.GetDepth(), resultPosition, resultNormal))
             {
-                const float terrainHeight = engine->GetTerrainElevation(resultPosition.GetX(), resultPosition.GetY());
-                if (!engine->GetShowTerrainSurface() || !engine->GetTerrainAabb().Contains(resultPosition) || resultPosition.GetZ() >= terrainHeight)
+                bool isTerrainActive = false;
+                float terrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                bool pointInTerrain = false;
+                auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+                {
+                    isTerrainActive = true;
+                    terrainHeight = terrain->GetHeightFromFloats(resultPosition.GetX(), resultPosition.GetY());
+                    pointInTerrain = SurfaceData::AabbContains2D(terrain->GetTerrainAabb(), resultPosition);
+                    // Only one handler should exist.
+                    return false;
+                };
+                AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
+                if (!isTerrainActive || !pointInTerrain || resultPosition.GetZ() >= terrainHeight)
                 {
                     SurfaceData::SurfacePoint point;
                     point.m_entityId = GetEntityId();
@@ -208,6 +214,49 @@ namespace RoadsAndRivers
         if (engine && m_volumeShapeBoundsIsValid && !m_configuration.m_modifierTags.empty())
         {
             const AZ::EntityId entityId = GetEntityId();
+            bool terrainIsActive = false;
+            auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+            {
+                terrainIsActive = true;
+                for (auto& point : surfacePointList)
+                {
+                    const AZ::VectorFloat maxHeight = m_volumeShapeBounds.GetMax().GetZ();
+
+                    //input point must be below highest river point to even test
+                    if (point.m_entityId != entityId && point.m_position.GetZ() <= maxHeight)
+                    {
+                        const AZ::Vector3 rayOrigin(point.m_position.GetX(), point.m_position.GetY(), maxHeight);
+                        if (m_volumeShapeBounds.Contains(rayOrigin))
+                        {
+                            const AZ::Vector3 rayDirection = -AZ::Vector3::CreateAxisZ();
+                            AZ::Vector3 resultPosition = rayOrigin;
+                            AZ::Vector3 resultNormal = AZ::Vector3::CreateAxisZ();
+                            if (SurfaceData::GetQuadListRayIntersection(m_shapeVertices, rayOrigin, rayDirection, m_volumeShapeBounds.GetDepth(), resultPosition, resultNormal))
+                            {
+                                //input point must be within river depth at intersection point
+                                if ((point.m_position.GetZ() <= resultPosition.GetZ()) && (point.m_position.GetZ() >= (resultPosition.GetZ() - m_riverDepth)))
+                                {
+                                    //intersection point must be above terrain
+                                    const float terrainHeight = terrain->GetHeightFromFloats(point.m_position.GetX(), point.m_position.GetY());
+                                    if (!terrain->GetTerrainAabb().Contains(point.m_position) || point.m_position.GetZ() >= terrainHeight)
+                                    {
+                                        AddMaxValueForMasks(point.m_masks, m_configuration.m_modifierTags, 1.0f);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Only one handler should exist.
+                return false;
+            };
+            AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
+            if (terrainIsActive)
+            {
+                return;
+            }
+
             for (auto& point : surfacePointList)
             {
                 const AZ::VectorFloat maxHeight = m_volumeShapeBounds.GetMax().GetZ();
@@ -226,12 +275,7 @@ namespace RoadsAndRivers
                             //input point must be within river depth at intersection point
                             if ((point.m_position.GetZ() <= resultPosition.GetZ()) && (point.m_position.GetZ() >= (resultPosition.GetZ() - m_riverDepth)))
                             {
-                                //intersection point must be above terrain
-                                const float terrainHeight = engine->GetTerrainElevation(point.m_position.GetX(), point.m_position.GetY());
-                                if (!engine->GetShowTerrainSurface() || !engine->GetTerrainAabb().Contains(point.m_position) || point.m_position.GetZ() >= terrainHeight)
-                                {
-                                    AddMaxValueForMasks(point.m_masks, m_configuration.m_modifierTags, 1.0f);
-                                }
+                                AddMaxValueForMasks(point.m_masks, m_configuration.m_modifierTags, 1.0f);
                             }
                         }
                     }
@@ -302,9 +346,6 @@ namespace RoadsAndRivers
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        AZ::Aabb dirtySurfaceVolume = AZ::Aabb::CreateNull();
-        AZ::Aabb dirtyModifierVolume = AZ::Aabb::CreateNull();
-
         {
             AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
 
@@ -320,17 +361,6 @@ namespace RoadsAndRivers
 
             AZ::Plane surfacePlane;
             RoadsAndRivers::RiverRequestBus::EventResult(surfacePlane, GetEntityId(), &RoadsAndRivers::RiverRequestBus::Events::GetWaterSurfacePlane);
-
-            // To make sure we update our surface data even if our surface shrinks or grows, keep track of a bounding box
-            // that contains the old surface volume.  At the end, we'll add in our new surface volume.
-            if (m_surfaceShapeBoundsIsValid)
-            {
-                dirtySurfaceVolume.AddAabb(m_surfaceShapeBounds);
-            }
-            if (m_volumeShapeBoundsIsValid)
-            {
-                dirtyModifierVolume.AddAabb(m_volumeShapeBounds);
-            }
 
             m_surfaceShapeBounds = AZ::Aabb::CreateNull();
             m_volumeShapeBounds = AZ::Aabb::CreateNull();
@@ -367,26 +397,36 @@ namespace RoadsAndRivers
             }
             m_surfaceShapeBoundsIsValid = m_surfaceShapeBounds.IsValid();
             m_volumeShapeBoundsIsValid = m_volumeShapeBounds.IsValid();
-
-            // Add our new surface volume to our dirty volume, so that we have a bounding box that encompasses everything that's been added / changed / removed
-            if (m_surfaceShapeBoundsIsValid)
-            {
-                dirtySurfaceVolume.AddAabb(m_surfaceShapeBounds);
-            }
-            if (m_volumeShapeBoundsIsValid)
-            {
-                dirtyModifierVolume.AddAabb(m_volumeShapeBounds);
-            }
         }
 
         SurfaceData::SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
         registryEntry.m_bounds = m_surfaceShapeBounds;
         registryEntry.m_tags = m_configuration.m_providerTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, dirtySurfaceVolume);
+        if (m_providerHandle == SurfaceData::InvalidSurfaceDataRegistryHandle)
+        {
+            // First time this is called, register the provider and save off the provider handle
+            AZ_Assert(m_surfaceShapeBoundsIsValid, "River Surface Geometry isn't correctly initialized.");
+            SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
+        }
+        else
+        {
+            // On subsequent calls, just update the provider information with the saved provider handle
+            AZ_Assert(m_volumeShapeBoundsIsValid, "River Volume Geometry isn't correctly initialized.");
+            SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry);
+        }
 
         registryEntry.m_bounds = m_volumeShapeBounds;
         registryEntry.m_tags = m_configuration.m_modifierTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry, dirtyModifierVolume);
+        if (m_modifierHandle == SurfaceData::InvalidSurfaceDataRegistryHandle)
+        {
+            // First time this is called, register the modifier and save off the modifier handle
+            SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_modifierHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, registryEntry);
+        }
+        else
+        {
+            // On subsequent calls, just update the modifier information with the saved modifier handle
+            SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry);
+        }
     }
 }

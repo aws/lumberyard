@@ -1,4 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
 
+from __future__ import print_function
 from s3 import S3
 from keyparts import KeyParts
 import metric_constant as c
@@ -29,7 +40,7 @@ class Crawler(object):
 
     def crawl(self, prefix, lambda_pool, func, depth=10):        
         #combine only files for the past X.  Older files should already be fully aggregated        
-        print "Locating paths to crawl on bucket '{}' with prefix '{}'".format(self.__bucket, prefix)
+        print("Locating paths to crawl on bucket '{}' with prefix '{}'".format(self.__bucket, prefix))
         crawled_paths = {}
         idx = 0
         count = 0        
@@ -46,8 +57,8 @@ class Crawler(object):
                         idx += 1                        
                         if idx >= len(lambda_pool):
                             idx = 0
-        
-        print "Path scouting complete on bucket '{}'".format(self.__bucket)
+
+        print("Path scouting complete on bucket '{}'".format(self.__bucket))
         return count  
 
 

@@ -57,23 +57,7 @@ namespace MaterialPythonFuncsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("merge_selection") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("delete_current") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("get_submaterial") != behaviorContext->m_methods.end());
-
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_bool") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_color") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_float") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_int") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_string") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_vector3") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("get_property_as_vector4") != behaviorContext->m_methods.end());
-        //EXPECT_TRUE(behaviorContext->m_methods.find("get_property") != behaviorContext->m_methods.end());
-            
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_bool") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_color") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_float") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_int") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_string") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_vector3") != behaviorContext->m_methods.end());
-        EXPECT_TRUE(behaviorContext->m_methods.find("set_property_from_vector4") != behaviorContext->m_methods.end());
-        //EXPECT_TRUE(behaviorContext->m_methods.find("set_property") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_property") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("set_property") != behaviorContext->m_methods.end());
     }
 }

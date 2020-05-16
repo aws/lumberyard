@@ -15,9 +15,11 @@
 #include <qgraphicslayoutitem.h>
 #include <qgraphicsscene.h>
 #include <qsizepolicy.h>
+#include <QGraphicsSceneDragDropEvent>
 
 #include <Components/Slots/Data/DataSlotLayoutComponent.h>
 
+#include <Components/Slots/Data/DataSlotComponent.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
@@ -25,14 +27,178 @@
 #include <Components/Slots/Data/DataSlotConnectionPin.h>
 #include <Widgets/GraphCanvasLabel.h>
 
+
 namespace GraphCanvas
 {
+    class DataSlotGraphicsEventFilter
+        : public QGraphicsItem
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(DataSlotGraphicsEventFilter, AZ::SystemAllocator, 0);
+        DataSlotGraphicsEventFilter(DataSlotLayout* dataSlotLayout)
+            : QGraphicsItem(nullptr)
+            , m_owner(dataSlotLayout)
+        {
+
+        }
+
+        bool sceneEventFilter(QGraphicsItem* watched, QEvent* event)
+        {
+            switch (event->type())
+            {
+            case QEvent::GraphicsSceneDragEnter:
+                m_owner->OnDragEnterEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
+                break;
+            case QEvent::GraphicsSceneDragLeave:
+                m_owner->OnDragLeaveEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
+                break;
+            case QEvent::GraphicsSceneDrop:
+                m_owner->OnDropEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
+                break;
+            default:
+                break;
+            }
+
+            return event->isAccepted();
+        }
+
+        // QGraphicsItem overrides
+        QRectF boundingRect() const override
+        {
+            return QRectF();
+        }
+
+        void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) override
+        {
+        }
+
+    private:
+        DataSlotLayout* m_owner;
+    };
+
+    ////////////////////////////////////////////////
+    // DataTypeConversionDataSlotDragDropInterface
+    ////////////////////////////////////////////////    
+
+    DataSlotLayout::DataTypeConversionDataSlotDragDropInterface::DataTypeConversionDataSlotDragDropInterface(const SlotId& slotId)
+        : m_slotId(slotId)
+    {
+    }
+
+    AZ::Outcome<DragDropState> DataSlotLayout::DataTypeConversionDataSlotDragDropInterface::OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        NodeId nodeId;
+        SlotRequestBus::EventResult(nodeId, m_slotId, &SlotRequests::GetNode);
+
+        GraphId graphId;
+        SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
+
+        const QMimeData* mimeData = dragDropEvent->mimeData();        
+
+        if (mimeData)
+        {
+            DataSlotRequests* dataSlotRequests = DataSlotRequestBus::FindFirstHandler(m_slotId);
+
+            if (dataSlotRequests)
+            {
+                if (mimeData->hasFormat(GraphCanvas::k_ReferenceMimeType))
+                {
+                    bool canHandleEvent = false;
+
+                    if (dataSlotRequests->GetDataSlotType() == DataSlotType::Reference || dataSlotRequests->CanConvertToReference())
+                    {
+                        GraphModelRequestBus::EventResult(canHandleEvent, graphId, &GraphModelRequests::CanHandleReferenceMimeEvent, Endpoint(nodeId, m_slotId), mimeData);                        
+                    }
+
+                    return AZ::Success(canHandleEvent ? DragDropState::Valid : DragDropState::Invalid);
+                }
+                else if (mimeData->hasFormat(GraphCanvas::k_ValueMimeType))
+                {
+                    bool canHandleEvent = false;
+
+                    if (dataSlotRequests->GetDataSlotType() == DataSlotType::Value || dataSlotRequests->CanConvertToValue())
+                    {
+                        GraphModelRequestBus::EventResult(canHandleEvent, graphId, &GraphModelRequests::CanHandleValueMimeEvent, Endpoint(nodeId, m_slotId), mimeData);
+                    }
+
+                    return AZ::Success(canHandleEvent ? DragDropState::Valid : DragDropState::Invalid);
+                }
+            }
+        }
+
+        return AZ::Failure();
+    }
+
+    void DataSlotLayout::DataTypeConversionDataSlotDragDropInterface::OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        AZ_UNUSED(dragDropEvent);
+    }
+
+    void DataSlotLayout::DataTypeConversionDataSlotDragDropInterface::OnDropEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        const QMimeData* mimeData = dragDropEvent->mimeData();
+
+        if (mimeData)
+        {
+            DataSlotRequests* dataSlotRequests = DataSlotRequestBus::FindFirstHandler(m_slotId);
+
+            if (dataSlotRequests)
+            {
+                NodeId nodeId;
+                SlotRequestBus::EventResult(nodeId, m_slotId, &SlotRequests::GetNode);
+
+                GraphId graphId;
+                SceneMemberRequestBus::EventResult(graphId, nodeId, &SceneMemberRequests::GetScene);
+
+                bool postUndo = false;
+
+                if (mimeData->hasFormat(GraphCanvas::k_ReferenceMimeType))
+                {
+                    ScopedGraphUndoBlocker undoBlocker(graphId);
+
+                    if (dataSlotRequests->GetDataSlotType() != DataSlotType::Reference)
+                    {
+                        if (!dataSlotRequests->ConvertToReference())
+                        {
+                            return;
+                        }
+                    }
+
+                    GraphModelRequestBus::EventResult(postUndo, graphId, &GraphModelRequests::HandleReferenceMimeEvent, Endpoint(nodeId, m_slotId), mimeData);
+                }
+                else if (mimeData->hasFormat(GraphCanvas::k_ValueMimeType))
+                {
+                    ScopedGraphUndoBlocker undoBlocker(graphId);
+
+                    if (dataSlotRequests->GetDataSlotType() != DataSlotType::Reference)
+                    {
+                        if (!dataSlotRequests->ConvertToReference())
+                        {
+                            return;
+                        }
+                    }
+
+                    GraphModelRequestBus::EventResult(postUndo, graphId, &GraphModelRequests::HandleValueMimeEvent, Endpoint(nodeId, m_slotId), mimeData);
+                }
+
+                if (postUndo)
+                {
+                    GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+                }
+            }
+        }
+    }
+
     ///////////////////
     // DataSlotLayout
     ///////////////////
-	
+    
     DataSlotLayout::DataSlotLayout(DataSlotLayoutComponent& owner)
-        : m_connectionType(ConnectionType::CT_Invalid)
+        : m_activeHandler(nullptr)
+        , m_eventFilter(nullptr)
+        , m_valueReferenceInterface(nullptr)
+        , m_dragDropState(DragDropState::Idle)
+        , m_connectionType(ConnectionType::CT_Invalid)
         , m_owner(owner)
         , m_nodePropertyDisplay(nullptr)
     {
@@ -53,6 +219,7 @@ namespace GraphCanvas
 
     DataSlotLayout::~DataSlotLayout()
     {
+        delete m_valueReferenceInterface;
     }
 
     void DataSlotLayout::Activate()
@@ -74,21 +241,32 @@ namespace GraphCanvas
         DataSlotLayoutRequestBus::Handler::BusDisconnect();
         DataSlotNotificationBus::Handler::BusDisconnect();
         NodeDataSlotRequestBus::Handler::BusDisconnect();
+
+        AZ::SystemTickBus::Handler::BusDisconnect();
+    }
+
+    void DataSlotLayout::OnSystemTick()
+    {
+        UpdateFilterState();
+
+        AZ::SystemTickBus::Handler::BusDisconnect();
     }
 
     void DataSlotLayout::OnSceneSet(const AZ::EntityId&)
     {
-        SlotRequestBus::EventResult(m_connectionType, m_owner.GetEntityId(), &SlotRequests::GetConnectionType);
+        SlotRequests* slotRequests = SlotRequestBus::FindFirstHandler(m_owner.GetEntityId());
 
-        TranslationKeyedString slotName;
-        SlotRequestBus::EventResult(slotName, m_owner.GetEntityId(), &SlotRequests::GetTranslationKeyedName);
+        if (slotRequests)
+        {
+            m_connectionType = slotRequests->GetConnectionType();            
 
-        m_slotText->SetLabel(slotName);
+            TranslationKeyedString slotName = slotRequests->GetTranslationKeyedName();
 
-        TranslationKeyedString toolTip;
-        SlotRequestBus::EventResult(toolTip, m_owner.GetEntityId(), &SlotRequests::GetTranslationKeyedTooltip);
+            m_slotText->SetLabel(slotName);
 
-        OnTooltipChanged(toolTip);
+            TranslationKeyedString toolTip = slotRequests->GetTranslationKeyedTooltip();            
+            OnTooltipChanged(toolTip);
+        }
         
         TryAndSetupSlot();
     }
@@ -103,6 +281,9 @@ namespace GraphCanvas
         NodeDataSlotRequestBus::Handler::BusDisconnect();
         NodeDataSlotRequestBus::Handler::BusConnect(nodeId);
         TryAndSetupSlot();
+
+        // Queue our update filter requests until the next tick since the scene might not be set immediately
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 
     void DataSlotLayout::OnNameChanged(const TranslationKeyedString& name)
@@ -190,7 +371,19 @@ namespace GraphCanvas
 
     void DataSlotLayout::OnDisplayTypeChanged(const AZ::Uuid& dataType, const AZStd::vector<AZ::Uuid>& typeIds)
     {
-        RecreatePropertyDisplay();
+        DataSlotType slotType = DataSlotType::Unknown;
+        DataSlotRequestBus::EventResult(slotType, m_owner.GetEntityId(), &DataSlotRequests::GetDataSlotType);
+
+        // Only update with value changes since ideally Reference properties
+        // never change their display.
+        //
+        // If this changes, a fix will need to be made for a crash since it will wind up deleting the node property display
+        // while that node property display is sending out the signal
+        if (slotType == DataSlotType::Value)
+        {
+            RecreatePropertyDisplay();
+        }
+
         UpdateDisplay();
     }
 
@@ -198,8 +391,150 @@ namespace GraphCanvas
     {
         if (m_nodePropertyDisplay != nullptr)
         {
+            auto propertyDisplay = m_nodePropertyDisplay->GetNodePropertyDisplay();
+
+            if (propertyDisplay)
+            {
+                RemoveDataSlotDragDropInterface(propertyDisplay);
+            }
+
             m_nodePropertyDisplay->ClearDisplay();
             TryAndSetupSlot();
+        }
+    }
+
+    void DataSlotLayout::OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        if (m_activeHandler != nullptr)
+        {
+            AZ_Error("GraphCanvas", false, "Failed got multiple drag enter events without drop or leave");
+            m_activeHandler = nullptr;
+        }
+
+        for (auto dragDropInterface : m_dragDropInterfaces)
+        {
+            auto outcome = dragDropInterface->OnDragEnterEvent(dragDropEvent);
+
+            if (outcome)
+            {
+                m_activeHandler = dragDropInterface;
+                SetDragDropState(outcome.GetValue());
+                break;
+            }
+        }
+
+        if (m_activeHandler)
+        {
+            dragDropEvent->accept();            
+            dragDropEvent->acceptProposedAction();
+        }
+    }
+
+    void DataSlotLayout::OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        if (m_activeHandler)
+        {
+            m_activeHandler->OnDragLeaveEvent(dragDropEvent);            
+        }
+
+        m_activeHandler = nullptr;
+        SetDragDropState(DragDropState::Idle);
+
+        dragDropEvent->accept();
+    }
+
+    void DataSlotLayout::OnDropEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
+    {
+        if (m_activeHandler && m_dragDropState == DragDropState::Valid)
+        {
+            m_activeHandler->OnDropEvent(dragDropEvent);            
+        }
+
+        m_activeHandler = nullptr;
+        SetDragDropState(DragDropState::Idle);
+
+        dragDropEvent->accept();
+    }
+
+    void DataSlotLayout::UpdateFilterState()
+    {
+        QGraphicsItem* ownerItem = m_owner.AsGraphicsItem();
+        QGraphicsScene* scene = ownerItem->scene();
+
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        if (!m_dragDropInterfaces.empty() && m_eventFilter == nullptr)
+        {
+            m_eventFilter = aznew DataSlotGraphicsEventFilter(this);
+            scene->addItem(m_eventFilter);
+            m_owner.AsGraphicsItem()->installSceneEventFilter(m_eventFilter);
+            m_owner.AsGraphicsItem()->setAcceptDrops(true);
+        }
+        else if (m_dragDropInterfaces.empty() && m_eventFilter)
+        {
+            m_owner.AsGraphicsItem()->removeSceneEventFilter(m_eventFilter);
+            scene->removeItem(m_eventFilter);
+            delete m_eventFilter;
+            m_owner.AsGraphicsItem()->setAcceptDrops(false);
+        }
+    }
+
+    void DataSlotLayout::RegisterDataSlotDragDropInterface(DataSlotDragDropInterface* dragDropInterface)
+    {
+        bool needsUpdate = m_dragDropInterfaces.empty() || m_eventFilter == nullptr;
+
+        m_dragDropInterfaces.insert(dragDropInterface);
+
+        if (needsUpdate)
+        {
+            UpdateFilterState();
+        }
+    }
+
+    void DataSlotLayout::RemoveDataSlotDragDropInterface(DataSlotDragDropInterface* dragDropInterface)
+    {
+        m_dragDropInterfaces.erase(dragDropInterface);
+
+        if (m_dragDropInterfaces.empty())
+        {
+            UpdateFilterState();
+        }
+    }
+
+    void DataSlotLayout::SetDragDropState(DragDropState dragDropState)
+    {
+        if (m_dragDropState != dragDropState)
+        {
+            m_dragDropState = dragDropState;
+
+            switch (m_dragDropState)
+            {
+            case DragDropState::Idle:
+                m_owner.AsGraphicsItem()->setOpacity(1.0f);
+                m_slotText->GetStyleHelper().RemoveSelector(Styling::States::ValidDrop);
+                m_slotText->GetStyleHelper().RemoveSelector(Styling::States::InvalidDrop);
+                break;
+            case DragDropState::Invalid:
+                m_owner.AsGraphicsItem()->setOpacity(0.5f);
+                m_slotText->GetStyleHelper().AddSelector(Styling::States::InvalidDrop);
+                break;
+            case DragDropState::Valid:
+                m_owner.AsGraphicsItem()->setOpacity(1.0f);
+                m_slotText->GetStyleHelper().AddSelector(Styling::States::ValidDrop);
+                break;
+            default:
+            {
+                AZ_Warning("GraphCanvas", false, "Unknown DragDropState state given.");
+                return;
+            }
+            }
+
+            DataSlotNotificationBus::Event(m_owner.GetEntityId(), &DataSlotNotifications::OnDragDropStateStateChanged, m_dragDropState);
+
+            m_slotText->update();
         }
     }
 
@@ -216,13 +551,39 @@ namespace GraphCanvas
         {
             CreateDataDisplay();
         }
+
+        if (m_valueReferenceInterface == nullptr)
+        {
+            QGraphicsItem* graphicsItem = m_owner.AsGraphicsItem();
+
+            DataSlotRequests* dataSlotRequests = DataSlotRequestBus::FindFirstHandler(m_owner.GetEntityId());
+
+            if (dataSlotRequests && graphicsItem)
+            {
+                bool canConvertToReference = dataSlotRequests->CanConvertToReference();
+                bool canConvertToValue = dataSlotRequests->CanConvertToValue();
+
+                if (canConvertToReference || canConvertToValue)
+                {
+                    m_valueReferenceInterface = aznew DataTypeConversionDataSlotDragDropInterface(m_owner.GetEntityId());
+                    RegisterDataSlotDragDropInterface(m_valueReferenceInterface);
+                }
+            }
+        }
     }
 
     void DataSlotLayout::CreateDataDisplay()
     {
         NodePropertyDisplay* nodePropertyDisplay = nullptr;
 
-        if (m_connectionType == CT_Input)
+        bool isInput = m_connectionType == CT_Input;
+
+        DataSlotType slotType = DataSlotType::Unknown;
+        DataSlotRequestBus::EventResult(slotType, m_owner.GetEntityId(), &DataSlotRequests::GetDataSlotType);
+
+        bool isReference = slotType == DataSlotType::Reference;
+
+        if (isInput || isReference)
         {
             DataSlotType dataSlotType = DataSlotType::Unknown;
             DataSlotRequestBus::EventResult(dataSlotType, m_owner.GetEntityId(), &DataSlotRequests::GetDataSlotType);
@@ -236,21 +597,19 @@ namespace GraphCanvas
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, m_owner.GetEntityId(), &SceneMemberRequests::GetScene);
 
-            if (dataSlotType == DataSlotType::Value)
-            {
-                GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreateDataSlotPropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
-            }
-            else if (dataSlotType == DataSlotType::Reference)
-            {
-                GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreateDataSlotVariablePropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
-            }
+            GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreateDataSlotPropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
 
             if (nodePropertyDisplay)
             {
                 nodePropertyDisplay->SetNodeId(nodeId);
-                nodePropertyDisplay->SetId(m_owner.GetEntityId());
+                nodePropertyDisplay->SetSlotId(m_owner.GetEntityId());
 
                 m_nodePropertyDisplay->SetNodePropertyDisplay(nodePropertyDisplay);
+
+                if (nodePropertyDisplay->EnableDropHandling())
+                {
+                    RegisterDataSlotDragDropInterface(nodePropertyDisplay);
+                }
             }
         }
 
@@ -282,7 +641,7 @@ namespace GraphCanvas
                 setAlignment(m_slotText, Qt::AlignLeft);
 
                 addItem(m_nodePropertyDisplay);
-                setAlignment(m_slotText, Qt::AlignLeft);
+                setAlignment(m_nodePropertyDisplay, Qt::AlignLeft);
 
                 addItem(m_spacer);
                 setAlignment(m_spacer, Qt::AlignLeft);
@@ -290,6 +649,12 @@ namespace GraphCanvas
             case ConnectionType::CT_Output:
                 addItem(m_spacer);
                 setAlignment(m_spacer, Qt::AlignRight);
+
+                if (m_nodePropertyDisplay)
+                {
+                    addItem(m_nodePropertyDisplay);
+                    setAlignment(m_nodePropertyDisplay, Qt::AlignRight);
+                }
 
                 addItem(m_slotText);
                 setAlignment(m_slotText, Qt::AlignRight);
@@ -361,5 +726,5 @@ namespace GraphCanvas
     {
         SlotLayoutComponent::Deactivate();
         m_layout->Deactivate();
-    }
+    }    
 }

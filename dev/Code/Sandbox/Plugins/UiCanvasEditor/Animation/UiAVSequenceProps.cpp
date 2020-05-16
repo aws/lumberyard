@@ -91,8 +91,8 @@ void CUiAVSequenceProps::MoveScaleKeys()
     // Move/Rescale the sequence to a new time range.
     Range timeRangeOld = m_pSequence->GetTimeRange();
     Range timeRangeNew;
-    timeRangeNew.start = ui->START_TIME->value();
-    timeRangeNew.end = ui->END_TIME->value();
+    timeRangeNew.start = aznumeric_cast<float>(ui->START_TIME->value());
+    timeRangeNew.end = aznumeric_cast<float>(ui->END_TIME->value());
 
     if (!(timeRangeNew == timeRangeOld))
     {
@@ -123,14 +123,14 @@ void CUiAVSequenceProps::OnOK()
     }
 
     Range timeRange;
-    timeRange.start = ui->START_TIME->value();
-    timeRange.end = ui->END_TIME->value();
+    timeRange.start = aznumeric_cast<float>(ui->START_TIME->value());
+    timeRange.end = aznumeric_cast<float>(ui->END_TIME->value());
 
     if (m_timeUnit == 0)
     {
         float invFPS = 1.0f / m_FPS;
-        timeRange.start = ui->START_TIME->value() * invFPS;
-        timeRange.end = ui->END_TIME->value() * invFPS;
+        timeRange.start = aznumeric_cast<float>(ui->START_TIME->value() * invFPS);
+        timeRange.end = aznumeric_cast<float>(ui->END_TIME->value() * invFPS);
     }
 
     m_pSequence->SetTimeRange(timeRange);

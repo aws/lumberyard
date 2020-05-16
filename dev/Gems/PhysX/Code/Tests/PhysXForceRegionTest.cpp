@@ -11,13 +11,12 @@
 */
 #include <PhysX_precompiled.h>
 
-#ifdef AZ_TESTS_ENABLED
-
 #include <AzTest/AzTest.h>
 
 #include <BoxColliderComponent.h>
 #include <ForceRegionComponent.h>
 #include <RigidBodyComponent.h>
+#include <StaticRigidBodyComponent.h>
 
 #include <PhysX/ForceRegionComponentBus.h>
 
@@ -54,8 +53,7 @@ namespace PhysX
     {
         void SetUp() override
         {
-            Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-                &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
+            m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
             m_defaultWorld->SetEventHandler(this);
 
             Physics::DefaultWorldBus::Handler::BusConnect();
@@ -133,6 +131,20 @@ namespace PhysX
         return entity;
     }
 
+    namespace DefaultForceRegionParams
+    {
+        const AZ::Vector3 ForceDirection(0.0f, 0.0f, 1.0f);
+        const AZ::Vector3 RotationY(.0f, 90.0f, .0f);
+        const float ForceMagnitude = 100.0f;
+        const float DampingRatio = 0.0f;
+        const float Frequency = 1.0f;
+        const float TargetSpeed = 1.0f;
+        const float LookAhead = 0.0f;
+        const float DragCoefficient = 1.0f;
+        const float VolumeDensity = 5.0f;
+        const float Damping = 10.0f;
+    }
+
     template<typename ColliderType>
     AZStd::unique_ptr<AZ::Entity> AddForceRegion(const AZ::Vector3& position, ForceType forceType)
     {
@@ -149,6 +161,9 @@ namespace PhysX
         auto colliderComponent = forceRegionEntity->CreateComponent<ColliderType>();
         colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfiguration, shapeConfiguration) });
 
+        // We need StaticRigidBodyComponent to get shapes from collider component added to PhysX world
+        forceRegionEntity->CreateComponent<StaticRigidBodyComponent>();
+
         forceRegionEntity->CreateComponent<ForceRegionComponent>();
 
         if (forceType == SplineFollowForce)
@@ -159,48 +174,37 @@ namespace PhysX
         forceRegionEntity->Init();
         forceRegionEntity->Activate();
 
-        const AZ::Vector3 forceDirection(0.0f, 0.0f, 1.0f);
-        const AZ::Vector3 rotationY(.0f, 90.0f, .0f);
-        const float forceMagnitude = 100.0f;
-        const float dampingRatio = 0.0f;
-        const float frequency = 1.0f;
-        const float targetSpeed = 1.0f;
-        const float lookAhead = 0.0f;
-        const float dragCoefficient = 1.0f;
-        const float volumeDensity = 5.0f;
-        const float damping = 10.0f;
-
         if (forceType == WorldSpaceForce)
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForceWorldSpace
-                , forceDirection
-                , forceMagnitude);
+                , DefaultForceRegionParams::ForceDirection
+                , DefaultForceRegionParams::ForceMagnitude);
         }
         else if (forceType == LocalSpaceForce)
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForceLocalSpace
-                , forceDirection
-                , forceMagnitude);
+                , DefaultForceRegionParams::ForceDirection
+                , DefaultForceRegionParams::ForceMagnitude);
             AZ::TransformBus::Event(forceRegionEntity->GetId()
                 , &AZ::TransformBus::Events::SetLocalRotation
-                , rotationY);
+                , DefaultForceRegionParams::RotationY);
         }
         else if (forceType == PointForce)
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForcePoint
-                , forceMagnitude);
+                , DefaultForceRegionParams::ForceMagnitude);
         }
         else if (forceType == SplineFollowForce)
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForceSplineFollow
-                , dampingRatio
-                , frequency
-                , targetSpeed
-                , lookAhead
+                , DefaultForceRegionParams::DampingRatio
+                , DefaultForceRegionParams::Frequency
+                , DefaultForceRegionParams::TargetSpeed
+                , DefaultForceRegionParams::LookAhead
             );
 
             const AZStd::vector<AZ::Vector3> vertices =
@@ -217,14 +221,14 @@ namespace PhysX
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForceSimpleDrag
-                , dragCoefficient
-                , volumeDensity);
+                , DefaultForceRegionParams::DragCoefficient
+                , DefaultForceRegionParams::VolumeDensity);
         }
         else if (forceType == LinearDampingForce)
         {
             PhysX::ForceRegionRequestBus::Event(forceRegionEntity->GetId()
                 , &PhysX::ForceRegionRequests::AddForceLinearDamping
-                , damping);
+                , DefaultForceRegionParams::Damping);
         }
 
         return forceRegionEntity;
@@ -254,6 +258,36 @@ namespace PhysX
             , &Physics::RigidBodyRequestBus::Events::GetLinearVelocity);
 
         return velocity;
+    }
+
+    template<typename ColliderType>
+    void TestAppliesSameMagnitude(ForceType forceType)
+    {
+        struct ForceRegionMagnitudeChecker
+            : public ForceRegionNotificationBus::Handler
+        {
+            ForceRegionMagnitudeChecker()  { ForceRegionNotificationBus::Handler::BusConnect(); }
+            ~ForceRegionMagnitudeChecker() { ForceRegionNotificationBus::Handler::BusDisconnect(); }
+
+            void OnCalculateNetForce(AZ::EntityId, AZ::EntityId, const AZ::Vector3&, float netForceMagnitude)
+            {
+                // This callback can potentially be called in every frame, so just only catch the first failure to avoid spamming
+                if (!m_failed)
+                {
+                    const float forceRegionMaxError = 0.05f; // Force region uses fast approximation for length calculations, hence the error
+                    const bool result = AZ::IsClose(netForceMagnitude, DefaultForceRegionParams::ForceMagnitude, forceRegionMaxError);
+                    if (!result)
+                    {
+                        m_failed = true;
+                    }
+                    EXPECT_TRUE(result);
+                }
+            }
+
+            bool m_failed = false;
+        };
+        ForceRegionMagnitudeChecker magnitudeChecker;
+        TestForceVolume<ColliderType>(forceType);
     }
 
     TEST_F(PhysXForceRegionTest, ForceRegion_WorldSpaceForce_EntityVelocityZPositive)
@@ -309,5 +343,20 @@ namespace PhysX
         EXPECT_TRUE(entityVelocity.GetX().IsClose(0.0f)); // Damping should not change original direction.
         EXPECT_TRUE(entityVelocity.GetY().IsClose(0.0f)); // Damping should not change original direction.
     }
+
+    TEST_F(PhysXForceRegionTest, ForceRegion_PointForce_AppliesSameMagnitude)
+    {
+        TestAppliesSameMagnitude<BoxColliderComponent>(PointForce);
+    }
+
+    TEST_F(PhysXForceRegionTest, ForceRegion_WorldSpaceForce_AppliesSameMagnitude)
+    {
+        TestAppliesSameMagnitude<BoxColliderComponent>(WorldSpaceForce);
+    }
+
+    TEST_F(PhysXForceRegionTest, ForceRegion_LocalSpaceForce_AppliesSameMagnitude)
+    {
+        TestAppliesSameMagnitude<BoxColliderComponent>(LocalSpaceForce);
+    }
 }
-#endif // AZ_TESTS_ENABLED
+

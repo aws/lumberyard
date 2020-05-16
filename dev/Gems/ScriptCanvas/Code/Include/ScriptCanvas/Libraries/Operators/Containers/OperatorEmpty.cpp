@@ -60,7 +60,7 @@ namespace ScriptCanvas
                 {
                     SlotId sourceSlotId = OperatorEmptyProperty::GetSourceSlotId(this);
 
-                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    const Datum* containerDatum = FindDatum(sourceSlotId);
 
                     if (Datum::IsValidDatum(containerDatum))
                     {

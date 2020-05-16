@@ -14,6 +14,7 @@
 #ifndef __CrySimpleHTTP__
 #define __CrySimpleHTTP__
 
+#include <AzCore/std/parallel/atomic.h>
 #include <Core/Common.h>
 #include <string>
 
@@ -23,7 +24,7 @@ class CCrySimpleSock;
 
 class CCrySimpleHTTP
 {
-    static volatile AtomicCountType             ms_ExceptionCount;
+    static AZStd::atomic_long             ms_ExceptionCount;
     CCrySimpleSock*                     m_pServerSocket;
     void                                            Init();
 public:

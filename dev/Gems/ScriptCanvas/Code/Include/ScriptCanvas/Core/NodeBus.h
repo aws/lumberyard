@@ -27,6 +27,8 @@ namespace ScriptCanvas
     class Datum;
     class Slot;
 
+    class ModifiableDatumView;
+
     class NodeRequests : public AZ::EBusTraits
     {
     public:
@@ -58,7 +60,18 @@ namespace ScriptCanvas
         //! Retrieves all slot ids for slots with the specific name
         virtual AZStd::vector<SlotId> GetSlotIds(AZStd::string_view slotName) const = 0;
 
-        virtual const AZ::EntityId& GetGraphId() const = 0;
+        virtual const ScriptCanvasId& GetOwningScriptCanvasId() const = 0;
+
+        //! Get the Datum for the specified slot.
+        virtual const Datum* FindDatum(const SlotId& slotId) const = 0;
+        
+        const Datum* GetInput(const SlotId& slotId) const
+        {
+            AZ_Warning("ScriptCanvas", false, "Using Deprecated GetInput method call. Please switch to FindDatum call instead, this method will be removed in a future update.");
+            return FindDatum(slotId);
+        }        
+
+        virtual void FindModifiableDatumView(const SlotId& slotId, ModifiableDatumView& datumView) = 0;
 
         //! Determines whether the slot on this node with the specified slot id can accept values of the specified type
         virtual bool SlotAcceptsType(const SlotId&, const Data::Type&) const = 0;
@@ -73,11 +86,9 @@ namespace ScriptCanvas
         // Reset the variable id value to the original variable id that was associated with the slot
         // when the slot was created by a call to AddInputDatumSlot().
         // The reset variable Id is not associated Variable Manager and is owned by this node
-        virtual void ResetSlotVariableId(const SlotId& slotId) = 0;
+        virtual void ClearSlotVariableId(const SlotId& slotId) = 0;
 
-        // Updates the slotIndex parameter with offset in the SlotList if the slotId is found within the node
-        // returns true if the slot id was found in the SlotList otherwise the slotIndex parameter is not changed
-        virtual AZ::Outcome<AZ::s64, AZStd::string> FindSlotIndex(const SlotId& slotId) const = 0;
+        virtual int FindSlotIndex(const SlotId& slotId) const = 0;
 
         virtual bool IsOnPureDataThread(const SlotId& slotId) const = 0;
 
@@ -88,6 +99,8 @@ namespace ScriptCanvas
 
         virtual void SetNodeEnabled(bool enabled) = 0;
         virtual bool IsNodeEnabled() const = 0;
+
+        virtual bool RemoveVariableReferences(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) = 0;
     };
 
     using NodeRequestBus = AZ::EBus<NodeRequests>;
@@ -96,7 +109,8 @@ namespace ScriptCanvas
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvasId;
+
         virtual void LogMessage(const AZStd::string& log) {}
     };
     using LogNotificationBus = AZ::EBus<LogNotifications>;
@@ -124,18 +138,4 @@ namespace ScriptCanvas
     };
 
     using NodeNotificationsBus = AZ::EBus<NodeNotifications>;
-
-    class EditorNodeRequests : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = ID;
-
-        //! Get the object from the specified slot.
-        virtual const Datum* GetInput(const SlotId& slotId) const = 0;
-        virtual Datum* ModInput(const SlotId& slotId) = 0;
-        virtual AZ::EntityId GetGraphEntityId() const = 0;
-    };
-
-    using EditorNodeRequestBus = AZ::EBus<EditorNodeRequests>;    
 }

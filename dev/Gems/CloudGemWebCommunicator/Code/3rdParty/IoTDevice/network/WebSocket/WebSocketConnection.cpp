@@ -742,3 +742,7 @@ namespace awsiotsdk {
 		}
 	}
 }
+
+// Prevent bleeding of 'X_AMZ_EXPIRES' macro in uber file modes which will affect the enum CloudGemFramework::HttpRequestJob::HeaderField::X_AMZ_EXPIRES
+
+#undef X_AMZ_EXPIRES

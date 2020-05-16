@@ -15,6 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include "TextureAtlas/TextureAtlas.h"
 #include "TextureAtlas/TextureAtlasBus.h"
@@ -23,6 +24,26 @@
 
 namespace TextureAtlasNamespace
 {
+    struct equal_to_case_insensitive
+    {
+        AZ_TYPE_INFO(equal_to_case_insensitive, "{92DE03B1-B84F-4DEB-905D-CBE41DD6939D}");
+        bool operator()(const AZStd::string& left, const AZStd::string& right) const
+        {
+            return AzFramework::StringFunc::Equal(left.data(), right.data());
+        }
+    };
+
+    struct hash_case_insensitive : public AZStd::hash<AZStd::string>
+    {
+        AZ_TYPE_INFO(hash_case_insensitive, "{FE0F4349-D80D-4286-8874-733966A32B29}");
+        inline result_type operator()(const AZStd::string& value) const
+        {
+            AZStd::string lowerStr = value;
+            AZStd::to_lower(lowerStr.begin(), lowerStr.end());
+            return hash::operator()(lowerStr);
+        }
+    };
+
     class TextureAtlasImpl: public TextureAtlas
     {
     public:
@@ -33,6 +54,7 @@ namespace TextureAtlasNamespace
         TextureAtlasImpl(AtlasCoordinateSets handles);
         ~TextureAtlasImpl();
 
+        static bool TextureAtlasVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootElement);
         static void Reflect(AZ::ReflectContext* context);
         
         //! Retrieve a coordinate set from the Atlas by its handle
@@ -57,11 +79,10 @@ namespace TextureAtlasNamespace
         void SetHeight(int value) { m_height = value; }
 
     private:
-        AZStd::unordered_map<AZStd::string, AtlasCoordinates> m_data;
+        AZStd::unordered_map<AZStd::string, AtlasCoordinates, hash_case_insensitive, equal_to_case_insensitive> m_data;
         ITexture* m_image;
         int m_width;
         int m_height;
-
     };
 
 } // namespace TextureAtlasNamespace

@@ -11,14 +11,32 @@
 #
 ########################################################################################
 
+
 def build(bld):
-    bld.CryEngineModule(
+    
+    from waflib import Utils
+    host_platform = Utils.unversioned_sys_platform()
+    
+    if host_platform == 'linux':
+        # For linux platforms, build this module as a static library
+        build_func           = 'CryEngineStaticLibrary'
+        build_defines        = ['FBX_SCENE_BUILDER_STATIC', '_HAS_EXCEPTIONS=0']
+        build_export_defines = ['FBX_SCENE_BUILDER_STATIC']
+        build_features       = []
+    else:
+        # For all other platforms, build this module as a shared library
+        build_func           = 'CryEngineModule'
+        build_defines        = ['FBX_SCENE_BUILDER_EXPORTS', '_HAS_EXCEPTIONS=0']
+        build_export_defines = []
+        build_features       = ['link_running_program']
+
+    getattr(bld, build_func)(
         # Settings
         target                  = 'FbxSceneBuilder',
         vs_filter               = 'Tools/SceneAPI',
         file_list               = 'fbxscenebuilder.waf_files',
 
-        platforms               = ['win', 'darwin'],
+        platforms               = ['win', 'darwin', 'linux'],
         exclude_monolithic      = True,
         client_only             = True,
         disable_pch             = True,
@@ -31,14 +49,16 @@ def build(bld):
                                    'AzToolsFramework',
                                    'GFxFramework',
                                    'FbxSDKWrapper'],
-        defines                 = ['FBX_SCENE_BUILDER_EXPORTS',
-                                   '_HAS_EXCEPTIONS=0'],
+        defines                 = build_defines,
+        build_export_defines    = build_export_defines,
         output_sub_folder_copy  = ['rc'],
-        features				= ['link_running_program'],
+        features                = build_features,
         win_x64_clang_cxxflags  = ['-Wno-null-dereference'],
+        linux_cxxflags          = ['-Wno-null-dereference'],
 
-        #platform specific
+        # platform specific
         darwin_file_list        = 'fbxscenebuilder_darwin.waf_files',
+        linux_file_list         = 'fbxscenebuilder_linux.waf_files',
 
         # Testing
         test_all_file_list = 'fbxscenebuilder_testing.waf_files',

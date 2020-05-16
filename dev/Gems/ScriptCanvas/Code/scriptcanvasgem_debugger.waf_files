@@ -36,6 +36,7 @@
         "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation": [
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationEvents.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/InvalidExpressionEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScopedDataConnectionEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/UnknownEndpointEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScriptEventVersionMismatch.h"

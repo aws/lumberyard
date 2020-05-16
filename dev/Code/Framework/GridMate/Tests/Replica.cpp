@@ -1416,6 +1416,11 @@ public:
     void            SetClient(bool isClient)                { m_client = isClient; }
     void            AcceptConn(bool accept)                 { m_acceptConn = accept; }
 
+    ~MPSession()
+    {
+        CarrierEventBus::Handler::BusDisconnect();
+    }
+
     void Update()
     {
         char buf[1500];

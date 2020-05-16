@@ -21,17 +21,17 @@ namespace ScriptCanvasEditor
     // EditorGraphVariableItemModel
     /////////////////////////////////
 
-    void EditorGraphVariableItemModel::Activate(const AZ::EntityId& busId)
+    void EditorGraphVariableItemModel::Activate(const ScriptCanvas::ScriptCanvasId& busId)
     {
         m_busId = busId;
 
-        ScriptCanvas::GraphVariableManagerNotificationBus::Handler::BusConnect(busId);
+        ScriptCanvas::GraphVariableManagerNotificationBus::Handler::BusConnect(m_busId);
 
         removeRows(0, static_cast<int>(m_variableIds.size()));
         m_variableIds.clear();
 
         const ScriptCanvas::GraphVariableMapping* variableMapping = nullptr;
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableMapping, busId, &ScriptCanvas::GraphVariableManagerRequests::GetVariables);
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableMapping, m_busId, &ScriptCanvas::GraphVariableManagerRequests::GetVariables);
 
         beginInsertRows(QModelIndex(), 0, static_cast<int>(variableMapping->size()));
 
@@ -144,17 +144,17 @@ namespace ScriptCanvasEditor
         }
     }
 
-    EditorGraphVariableManagerComponent::EditorGraphVariableManagerComponent(AZ::EntityId uniqueId)
-        : GraphVariableManagerComponent(uniqueId)
+    EditorGraphVariableManagerComponent::EditorGraphVariableManagerComponent(ScriptCanvas::ScriptCanvasId graphScopeId)
+        : GraphVariableManagerComponent(graphScopeId)
     {
     }
 
-    void EditorGraphVariableManagerComponent::Activate()
+    void EditorGraphVariableManagerComponent::ConfigureScriptCanvasId(const ScriptCanvas::ScriptCanvasId& executionId)
     {
-        ScriptCanvas::GraphVariableManagerComponent::Activate();
+        ScriptCanvas::GraphVariableManagerComponent::ConfigureScriptCanvasId(executionId);
 
-        m_variableModel.Activate(GetEntityId());
-        EditorSceneVariableManagerRequestBus::Handler::BusConnect(GetEntityId());
+        m_variableModel.Activate(GetScriptCanvasId());
+        EditorSceneVariableManagerRequestBus::Handler::BusConnect(GetScriptCanvasId());
     }
 
     QAbstractItemModel* EditorGraphVariableManagerComponent::GetVariableItemModel()

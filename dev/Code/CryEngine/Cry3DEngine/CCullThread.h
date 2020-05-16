@@ -115,7 +115,7 @@ namespace NAsyncCull
 
         void PrepareCullbufferAsync(const CCamera& rCamera);
         void CullStart(const SRenderingPassInfo& passInfo);
-        void CullEnd();
+        void CullEnd(bool waitForOcclusionJobCompletion = false);
 
         bool IsActive() const { return m_Active; }
         void SetActive(bool bActive) { m_Active = bActive; }

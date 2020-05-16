@@ -17,7 +17,9 @@
 #include <AzCore/IO/SystemFile.h> //AZ_MAX_PATH_LEN
 #include <AzCore/Outcome/Outcome.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
+#include <AzToolsFramework/Asset/AssetBundler.h>
 #include <AzToolsFramework/Asset/AssetUtils.h>
+
 
 namespace AssetBundler
 {
@@ -66,6 +68,7 @@ namespace AssetBundler
     extern const char* AddDefaultSeedListFilesFlag;
     extern const char* DryRunFlag;
     extern const char* GenerateDebugFileFlag;
+    extern const char* SkipArg;
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +78,9 @@ namespace AssetBundler
     extern const char* ComparisonTypeArg;
     extern const char* ComparisonFilePatternArg;
     extern const char* ComparisonFilePatternTypeArg;
+    extern const char* AddComparisonStepArg;
+    extern const char* RemoveComparisonStepArg;
+    extern const char* MoveComparisonStepArg;
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,6 +90,7 @@ namespace AssetBundler
     extern const char* CompareSecondFileArg;
     extern const char* CompareOutputFileArg;
     extern const char* ComparePrintArg;
+    extern const char* IntersectionCountArg;
     ////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -145,11 +152,86 @@ namespace AssetBundler
     // Retrurns the engine root
     const char* GetEngineRoot();
 
+    /** 
+    * Determines the name of the currently enabled game project
+    * @return Current Project name on success, error message on failure
+    */
+    AZ::Outcome<AZStd::string, AZStd::string> GetCurrentProjectName();
+
+
+    /**
+    * Constructs an absolute path to the project folder found at: dev/ProjectName
+    * @param engineRoot The absolute path of the dev/ folder
+    * @param projectName A project present in the dev/ folder
+    * @return Absolute path of the Project Folder on success, error message on failure
+    */
+    AZ::Outcome<AZStd::string, AZStd::string> GetProjectFolderPath(const AZStd::string& engineRoot, const AZStd::string& projectName);
+
+    /**
+    * Constructs an absolute path to the project-specific cache folder found at: dev/Cache/ProjectName
+    * @param engineRoot The absolute path of the dev/ folder
+    * @param projectName A project present in the dev/ folder
+    * @return Absolute path of the project-specific cache folder on success, error message on failure
+    */
+    AZ::Outcome<AZStd::string, AZStd::string> GetProjectCacheFolderPath(const AZStd::string& engineRoot, const AZStd::string& projectName);
+
+    /**
+    * Calculates the list of enabled platforms for the input project by reading the folder names inside the project-specific cache folder.
+    * If the Asset Processor has not been run yet, or has not been run since the enabled platform list inside AssetProcessorPlatformConfig.ini 
+    *   was changed, the output of this function will be incorrect.
+    *
+    * @param projectCacheFolder The directory of a project-specific cache folder: dev/Cache/ProjectName
+    * @param platformNames [out] The list of platforms enabled in the project
+    * @return void on success, error message on failure
+    */
+    AZ::Outcome<void, AZStd::string> GetPlatformNamesFromCacheFolder(const AZStd::string& projectCacheFolder, AZStd::vector<AZStd::string>& platformNames);
+
+    /**
+    * Computes the absolute path to the Asset Catalog file for a specified project and platform.
+    * With platform set as "pc" and project as "ProjectName", the path will resemble: C:/dev/Cache/ProjectName/pc/projectname/assetcatalog.xml
+    *
+    * @param pathToCacheFolder The absolute path to the Cache folder. ex: C:/dev/Cache
+    * @param platformIdentifier The platform identifier of the desired Asset Catalog. Valid inputs can be found by reading the folder names 
+    *                             found inside dev/Cache/ProjectName
+    * @param projectName The name of the project you want to search
+    * @return Absolute Path to the Asset Catalog file on success, error message on failure
+    */
+    AZ::Outcome<AZStd::string, AZStd::string> GetAssetCatalogFilePath(const char* pathToCacheFolder, const char* platformIdentifier, const char* projectName);
+
+    /**
+    * Computes the absolute path to the platform-specific Cache folder where product assets are stored. 
+    * With platform set as "pc" and project as "ProjectName", the path will resemble: C:/dev/Cache/ProjectName/pc/projectname/
+    * 
+    * @param projectSpecificCacheFolderAbsolutePath The absolute path to the Cache folder. Example: C:/dev/Cache/ProjectName
+    * @param platform the platform of the desired cache location
+    * @param projectName The name of the current project
+    * @return Absolute path to the platform-specific Cache folder where product assets are stored 
+    */
+    AZStd::string GetPlatformSpecificCacheFolderPath(const AZStd::string& projectSpecificCacheFolderAbsolutePath, const AZStd::string& platform, const AZStd::string& projectName);
+
+    AZStd::string GenerateKeyFromAbsolutePath(const AZStd::string& absoluteFilePath);
+
+    void ConvertToRelativePath(const AZStd::string& parentFolderPath, AZStd::string& absoluteFilePath);
+
+    AZ::Outcome<void, AZStd::string> MakePath(const AZStd::string& path);
+
     //! Add the specified platform identifier to the filename
     void AddPlatformIdentifier(AZStd::string& filePath, const AZStd::string& platformIdentifier);
 
-    //! Returns a list of absolute file path of all the default seedFiles for the current game project.
+    //! Returns a list of absolute file paths of all the default Seed List files for the current game project.
     AZStd::vector<AZStd::string> GetDefaultSeedListFiles(const char* root, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
+
+    //! Returns the absolute path of {ProjectName}_Dependencies.xml
+    AZStd::string GetProjectDependenciesFile(const char* root);
+
+    //! Returns the absolute path of the project dependencies file in the default project template
+    AZStd::string GetProjectDependenciesFileTemplate(const char* root);
+
+    //! Returns a list of absolute file paths of all the default Seed List files found inside enabled Gems.
+    AZStd::vector<AZStd::string> GetGemSeedListFiles(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
+
+    //! Returns the map from gem seed list file path to gem name
+    AZStd::unordered_map<AZStd::string, AZStd::string> GetGemSeedListFilePathToGemNameMap(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
 
     //! Given an absolute gem seed file path determines whether the file is valid for the current game project.
     //! This method is for validating gem seed list files only.
@@ -206,4 +288,5 @@ namespace AssetBundler
     };
 
     AZ::Outcome<AzToolsFramework::AssetFileInfoListComparison::ComparisonType, AZStd::string> ParseComparisonType(const AZStd::string& comparisonType);
+    AZ::Outcome<AzToolsFramework::AssetFileInfoListComparison::FilePatternType, AZStd::string> ParseFilePatternType(const AZStd::string& filePatternType);
 }

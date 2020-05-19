@@ -1421,7 +1421,7 @@ void CD3D9Renderer::ConfigShadowTexgen(int Num, ShadowMapFrustum* pFr, int nFrus
             else
             if (pFr->pDepthTex != NULL)
             {
-                nID = pFr->pDepthTex->GetID();
+                nID = static_cast<CTexture*>(pFr->pDepthTex.get())->GetID();
             }
 
             m_RP.m_ShadowCustomTexBind[Num * 2 + 0] = nID;

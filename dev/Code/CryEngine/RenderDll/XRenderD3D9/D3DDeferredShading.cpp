@@ -4577,7 +4577,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light)
             }
             else
             {
-                SD3DPostEffectsUtils::SetTexture(firstFrustum.pDepthTex, 3, FILTER_POINT, 0);
+                SD3DPostEffectsUtils::SetTexture(static_cast<CTexture*>(firstFrustum.pDepthTex.get()), 3, FILTER_POINT, 0);
             }
 
             SD3DPostEffectsUtils::SetTexture(CTextureManager::Instance()->GetDefaultTexture("ShadowJitterMap"), 7, FILTER_POINT, 0);

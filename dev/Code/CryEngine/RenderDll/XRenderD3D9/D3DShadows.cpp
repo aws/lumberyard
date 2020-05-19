@@ -989,11 +989,11 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
             depthTarget.nHeight = lof->nTextureHeight;
             depthTarget.nFrameAccess = -1;
             depthTarget.bBusy = false;
-            depthTarget.pTex = lof->pDepthTex;
-            depthTarget.pTarget = lof->pDepthTex->GetDevTexture()->Get2DTexture();
+            depthTarget.pTex = static_cast<CTexture*>(lof->pDepthTex.get());
+            depthTarget.pTarget = depthTarget.pTex->GetDevTexture()->Get2DTexture();
             depthTarget.pSurf = lof->bOmniDirectionalShadow && !(lof->bUnwrapedOmniDirectional)
-                ? static_cast<D3DDepthSurface*>(lof->pDepthTex->GetDeviceDepthStencilSurf(sideIndex, 1))
-                : static_cast<D3DDepthSurface*>(lof->pDepthTex->GetDeviceDepthStencilSurf());
+                ? static_cast<D3DDepthSurface*>(depthTarget.pTex->GetDeviceDepthStencilSurf(sideIndex, 1))
+                : static_cast<D3DDepthSurface*>(depthTarget.pTex->GetDeviceDepthStencilSurf());
 
             CCamera tmpCamera;
             if (!lof->bOmniDirectionalShadow)

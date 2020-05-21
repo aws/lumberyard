@@ -110,9 +110,9 @@ namespace CloudCanvas
             {
                 Call(FN_FileStatusChanged, fileName, fileStatus);
             }
-            void FileStatusFailed(const AZStd::string& outputFile) override
+            void FileStatusFailed(const AZStd::string& outputFile, const AZStd::string& keyName) override
             {
-                Call(FN_FileStatusFailed, outputFile);
+                Call(FN_FileStatusFailed, outputFile, keyName);
             }
         };
 
@@ -253,7 +253,7 @@ namespace CloudCanvas
             }
             SetPakReady(requestPtr);
 
-            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadSucceeded, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName());
+            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadSucceeded, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName(), true);
         }
 
         void DynamicContentTransferManager::SetPakReady(DynamicFileInfoPtr requestPtr)
@@ -272,7 +272,7 @@ namespace CloudCanvas
             {
                 requestPtr->SetStatus(DynamicContentFileInfo::FileStatus::DOWNLOAD_FAILED);
             }
-            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadFailed, requestPtr->GetFullLocalFileName());
+            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadFailed, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName());
         }
 
         AZStd::string DynamicContentTransferManager::GetRequestString(const AZStd::string& bucketName, const AZStd::string& keyName) 
@@ -296,7 +296,7 @@ namespace CloudCanvas
         {
             AZ_TracePrintf("CloudCanvas", "Deleting downloaded content.");
 
-            AZStd::string removeFile{ basePakFolder };
+            AZStd::string removeFile{ GetBasePakFolder() };
             removeFile += fileName;
             // Attempt to unmount everything and release any file locks
             RemovePak(removeFile.c_str());
@@ -584,6 +584,7 @@ namespace CloudCanvas
 
                 return thisEntry == myPlatform;
             }
+
             return true;
         }
 
@@ -643,7 +644,7 @@ namespace CloudCanvas
         // This goes to lua, we convert to int
         int DynamicContentTransferManager::GetPakStatus(const char* fileName) 
         {
-            AZStd::string pakName{ basePakFolder };
+            AZStd::string pakName{ GetBasePakFolder() };
             pakName += fileName;
             DynamicFileInfoPtr fileInfo = GetFileInfo(pakName.c_str());
             if (!fileInfo)
@@ -656,7 +657,7 @@ namespace CloudCanvas
 
         AZStd::string DynamicContentTransferManager::GetPakStatusString(const char* fileName)
         {
-            AZStd::string pakName{ basePakFolder };
+            AZStd::string pakName{ GetBasePakFolder() };
             pakName += fileName;
             DynamicFileInfoPtr fileInfo = GetFileInfo(pakName.c_str());
 
@@ -839,8 +840,8 @@ namespace CloudCanvas
                 AZStd::string localStr(filePtr->GetFullLocalFileName());
                 AZStd::string fileKey(filePtr->GetKeyName());
 
-                const bool cDirectFileAcces = true; // We want to use the AZ::Io DirectInstance system to work properly on clients running in release
-                filePtr->SetLocalHash(FileTransferSupport::CalculateMD5(localStr.c_str(), cDirectFileAcces));
+                const bool cDirectFileAccess = true; // We want to use the AZ::Io DirectInstance system to work properly on clients running in release
+                filePtr->SetLocalHash(FileTransferSupport::CalculateMD5(localStr.c_str(), cDirectFileAccess));
 
                 if (!filePtr->GetLocalHash().size() || filePtr->GetManifestHash() != filePtr->GetLocalHash())
                 {
@@ -957,6 +958,7 @@ namespace CloudCanvas
                     {
                         AZ_TracePrintf("CloudCanvas", "Warning - Dynamic Content downloaded but Pak priority is currently set to FileFirst.  Use the console command sys_PakPriority=1 if you wish to switch to prefer paks.");
                     }
+
                     const auto& pakFileToMount = m_pakFilesToMount.front();
                     const AZStd::string downloadedPath{ pakFileToMount->GetFullLocalFileName() };
                     const bool pakMounted = cryPak->OpenPack("@assets@", downloadedPath.c_str(), ICryPak::FLAGS_NO_LOWCASE);
@@ -1017,7 +1019,8 @@ namespace CloudCanvas
                 // Top level manifests and user requested paks can be removed from the pending list - they have no dependencies
                 RemovePendingPak(requestPtr);
             }
-            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::FileStatusFailed, requestPtr->GetKeyName());
+
+            DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::FileStatusFailed, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName());
         }
 
         bool DynamicContentTransferManager::RequestFileStatus(FileTransferSupport::FileRequestMap& requestMap, bool manifestRequest)
@@ -1053,7 +1056,11 @@ namespace CloudCanvas
 
                     requestPtr->SetResultData(thisResult);
                     AZStd::string localFile = requestPtr->GetFullLocalFileName();
-                    CloudCanvas::PresignedURLRequestBus::Broadcast(&CloudCanvas::IPresignedURLRequest::RequestDownloadSignedURL, fileURL, localFile, AZ::EntityId());
+                    CloudCanvas::PresignedURLRequestBus::Broadcast(&CloudCanvas::IPresignedURLRequest::RequestDownloadSignedURL, fileURL, localFile, AZ::EntityId(),
+                        [fileName](uint32_t receivedAmount, uint32_t totalSize)
+                        {
+                            CloudCanvas::DynamicContent::DynamicContentUpdateBus::Broadcast(&CloudCanvas::DynamicContent::DynamicContentUpdate::OnDataReceived, fileName, receivedAmount, totalSize);
+                        });
                 }
             },
             [this](PostClientContentRequestJob* job)
@@ -1393,11 +1400,15 @@ namespace CloudCanvas
 
             if (!isUpdated && !forceDownload)
             {
-                DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadSucceeded, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName());
+                DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::DownloadSucceeded, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName(), false);
                 return true;
             }
 
-            CloudCanvas::PresignedURLRequestBus::Broadcast(&CloudCanvas::IPresignedURLRequest::RequestDownloadSignedURL, requestPtr->GetRequestURL(), localFile, AZ::EntityId());
+            CloudCanvas::PresignedURLRequestBus::Broadcast(&CloudCanvas::IPresignedURLRequest::RequestDownloadSignedURL, requestPtr->GetRequestURL(), localFile, AZ::EntityId(),
+                [fileName](uint32_t receivedAmount, uint32_t totalSize)
+                {
+                    CloudCanvas::DynamicContent::DynamicContentUpdateBus::Broadcast(&CloudCanvas::DynamicContent::DynamicContentUpdate::OnDataReceived, fileName, receivedAmount, totalSize);
+                });
             return true;
         }
 

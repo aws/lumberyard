@@ -44,12 +44,6 @@
             "_comment": "LyShine"
         },
         {
-            "Path": "Gems/UiBasics",
-            "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
-            "Version": "0.1.0",
-            "_comment": "UiBasics"
-        },
-        {
             "Path": "Gems/Maestro",
             "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
             "Version": "0.1.0",
@@ -60,6 +54,12 @@
             "Uuid": "7c2578f634df4345aca98d671e39b8ab",
             "Version": "0.1.0",
             "_comment": "SceneProcessing"
+        },
+        {
+            "Path": "Gems/LegacyTerrain",
+            "Uuid": "c87f9fc3e7054f3482311da444e84456",
+            "Version": "0.1.0",
+            "_comment": "LegacyTerrain"
         },
         {
             "Path" : "${ProjectName}/Gem",

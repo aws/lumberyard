@@ -31,7 +31,8 @@ class _ArgManager(object):
         # Unbox argument
         native = self.api.to_native_value(ty, obj)
 
-        # If an error occurred, go to the cleanup block for the previous argument.
+        # If an error occurred, go to the cleanup block for
+        # the previous argument
         with cgutils.if_unlikely(self.builder, native.is_error):
             self.builder.branch(self.nextblk)
 
@@ -53,7 +54,8 @@ class _ArgManager(object):
         self.cleanups.append(cleanup_arg)
 
         # Write the on-error cleanup block for this argument
-        cleanupblk = self.builder.append_basic_block("arg%d.err" % self.arg_count)
+        cleanupblk = self.builder.append_basic_block(
+            "arg%d.err" % self.arg_count)
         with self.builder.goto_block(cleanupblk):
             cleanup_arg()
             # Go to next cleanup block
@@ -139,8 +141,8 @@ class PyCallWrapper(object):
         with builder.goto_block(endblk):
             builder.ret(api.get_null_object())
 
-        # Extract the Environment object from the Closure
-        envptr, env_manager = self.get_env(api, builder, closure)
+        # Get the Environment object
+        env_manager = self.get_env(api, builder)
 
         cleanup_manager = _ArgManager(self.context, builder, api,
                                       env_manager, endblk, nargs)
@@ -160,7 +162,7 @@ class PyCallWrapper(object):
 
         status, retval = self.context.call_conv.call_function(
             builder, self.func, self.fndesc.restype, self.fndesc.argtypes,
-            innerargs, env=envptr)
+            innerargs)
         # Do clean up
         self.debug_print(builder, "# callwrapper: emit_cleanup")
         cleanup_manager.emit_cleanup()
@@ -180,12 +182,19 @@ class PyCallWrapper(object):
         self.context.call_conv.raise_error(builder, api, status)
         builder.ret(api.get_null_object())
 
-    def get_env(self, api, builder, closure):
-        envptr = self.context.get_env_from_closure(builder, closure)
+    def get_env(self, api, builder):
+        """Get the Environment object which is declared as a global
+        in the module of the wrapped function.
+        """
+        envname = self.context.get_env_name(self.fndesc)
+        gvptr = self.context.declare_env_global(builder.module, envname)
+        envptr = builder.load(gvptr)
+
         env_body = self.context.get_env_body(builder, envptr)
+
         api.emit_environment_sentry(envptr, return_pyobject=True)
         env_manager = api.get_env_manager(self.env, env_body, envptr)
-        return envptr, env_manager
+        return env_manager
 
     def _simplified_return_type(self):
         """

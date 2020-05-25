@@ -13,7 +13,6 @@
 #include "ChatPlay_precompiled.h"
 #include <platform_impl.h>
 #include <IGem.h>
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include "ChatPlaySystemComponent.h"
 
@@ -69,9 +68,6 @@ namespace ChatPlay
 
             switch (systemEvent)
             {
-            case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-                RegisterExternalFlowNodes();
-                break;
             case ESYSTEM_EVENT_FULL_SHUTDOWN:
             case ESYSTEM_EVENT_FAST_SHUTDOWN:
                 ChatPlayCVars::GetInstance()->UnregisterCVars();

@@ -191,28 +191,6 @@ namespace UnitTest
         {
             AZ_TEST_ASSERT(elements[i - 1] > elements[i]);
         }
-
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        array<int, 3> assertHeap = {
-            {1, 2, 3}
-        };
-        // we should call make heap before we can sort, push or pop
-        AZ_TEST_START_TRACE_SUPPRESSION;
-        sort_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
-        assertHeap[0] = 1;
-        assertHeap[1] = 2;
-        assertHeap[2] = 3;
-        AZ_TEST_START_TRACE_SUPPRESSION;
-        push_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
-        assertHeap[0] = 1;
-        assertHeap[1] = 2;
-        assertHeap[2] = 3;
-        AZ_TEST_START_TRACE_SUPPRESSION;
-        pop_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
-#endif
     }
 
     TEST_F(Algorithms, InsertionSort)
@@ -920,5 +898,303 @@ namespace UnitTest
 
         EXPECT_TRUE(AZStd::equal(container1.begin(), container1.end(), container1.begin(), compare));
         EXPECT_FALSE(AZStd::equal(container1.begin(), container1.end(), container2.begin(), compare));
+    }
+
+    TEST_F(Algorithms, MinMax_Compile_WhenUsedInConstexpr)
+    {
+        static_assert(AZStd::GetMin(7, 10) == 7);
+        static_assert(AZStd::min(11, 6) == 6);
+        static_assert(AZStd::GetMax(5, 12) == 12);
+        static_assert(AZStd::max(13, 4) == 13);
+        static_assert(AZStd::max(13, 4) == 13);
+        constexpr AZStd::pair<int, int> resultPair1 = AZStd::minmax(7, 8, [](int lhs, int rhs) { return lhs < rhs; });
+        static_assert(resultPair1.first == 7);
+        static_assert(resultPair1.second == 8);
+        constexpr AZStd::pair<int, int> resultPair2 = AZStd::minmax(14, 5);
+        static_assert(resultPair2.first == 5);
+        static_assert(resultPair2.second == 14);
+
+        static constexpr AZStd::array<int, 6> testList = { { 7, 43, 42, 0, -9, 500 } };
+        constexpr AZStd::pair<const int*, const int*> testPair1 = AZStd::minmax_element(testList.begin(), testList.end(), [](int lhs, int rhs) { return rhs < lhs; });
+        static_assert(*testPair1.first == 500);
+        static_assert(*testPair1.second == -9);
+        constexpr AZStd::pair<const int*, const int*> testPair2 = AZStd::minmax_element(testList.begin(), testList.end());
+        static_assert(*testPair2.first == -9);
+        static_assert(*testPair2.second == 500);
+        constexpr AZStd::pair<int, int> testPair3 = AZStd::minmax({ 7, 43, 42, 0, -9, 500 }, [](int lhs, int rhs) { return rhs < lhs; });
+        static_assert(testPair3.first == 500);
+        static_assert(testPair3.second == -9);
+        constexpr AZStd::pair<int, int> testPair4 = AZStd::minmax({ 7, 43, 42, 0, -9, 500 });
+        static_assert(testPair4.first == -9);
+        static_assert(testPair4.second == 500);
+
+        static_assert(AZStd::clamp(15, 0, 10) == 10);
+    }
+
+    TEST_F(Algorithms, ForEach_Compile_WhenUsedInConstexpr)
+    {
+        auto CreateArray = []() constexpr -> AZStd::array<int, 3>
+        {
+            AZStd::array<int, 3> localArray = { {1, 2, 3} };
+            auto resultFunc = AZStd::for_each(localArray.begin(), localArray.end(), [](int& element) { ++element; });
+            return localArray;
+        };
+        constexpr AZStd::array<int, 3> testArray = CreateArray();
+        static_assert(testArray[0] == 2);
+        static_assert(testArray[1] == 3);
+        static_assert(testArray[2] == 4);
+    }
+
+
+    TEST_F(Algorithms, CountIf_Compile_WhenUsedInConstexpr)
+    {
+        constexpr AZStd::array<int, 3> testList = { { 1, 2, 3 } };
+
+        constexpr ptrdiff_t testResult = AZStd::count_if(testList.begin(), testList.end(), [](int element) { return element < 3; });
+        static_assert(testResult == 2);
+    }
+
+    TEST_F(Algorithms, FindFunctions_Compile_WhenUsedInConstexpr)
+    {
+        static constexpr AZStd::array<int, 3> testList = { { 1, 2, 3 } };
+
+        constexpr const int* findIter1 = AZStd::find(testList.begin(), testList.end(), 2);
+        static_assert(*findIter1 == 2);
+
+        constexpr const int* findIter2 = AZStd::find_if(testList.begin(), testList.end(), [](int element) { return element == 3; });
+        static_assert(*findIter2 == 3);
+
+        constexpr const int* findIter3 = AZStd::find_if_not(testList.begin(), testList.end(), [](int element) { return element == 1; });
+        static_assert(*findIter3 == 2);
+
+        static constexpr AZStd::array<int, 6> testList2 = { { 7, 2, 3, 3, 4, 4 } };
+        constexpr const int* findIter4 = AZStd::adjacent_find(testList2.begin(), testList2.end());
+        static_assert(*findIter4 == 3);
+        constexpr const int* findIter5 = AZStd::adjacent_find(testList2.begin(), testList2.end(), [](int first, int next) { return first != 3 && first == next; });
+        static_assert(*findIter5 == 4);
+
+        static constexpr AZStd::array<int, 4> testList3 = { {10, 11, 12, 13 } };
+        static constexpr AZStd::array<int, 4> findList = { { 96, 17, -13, 11 } };
+        constexpr const int* findIter6 = AZStd::find_first_of(testList3.begin(), testList3.end(), findList.begin(), findList.end());
+        static_assert(*findIter6 == 11);
+
+        constexpr const int* findIter7 = AZStd::find_first_of(testList3.begin(), testList3.end(), findList.begin(), findList.end(),
+            [](int sourceElement, int findElement) {return sourceElement != findElement; });
+        static_assert(*findIter7 == 10);
+    }
+
+    TEST_F(Algorithms, AllOf_AnyOf_NoneOf_Compile_WhenUsedInConstexpr)
+    {
+        static constexpr AZStd::array<int, 3> testList = { { 1, 2, 3 } };
+        static_assert(!AZStd::all_of(testList.begin(), testList.end(), [](int element) { return element < 2; }));
+        static_assert(AZStd::any_of(testList.begin(), testList.end(), [](int element) { return element < 2; }));
+        static_assert(!AZStd::none_of(testList.begin(), testList.end(), [](int element) { return element < 2; }));
+    }
+
+    TEST_F(Algorithms, Transform_Compile_WhenUsedInConstexpr)
+    {
+        auto TransformInitList = []() constexpr
+        {
+            constexpr AZStd::array<int, 3> testList = { { 1, 2, 3 } };
+            AZStd::array<int, 3> localArray = {};
+            AZStd::transform(testList.begin(), testList.end(), localArray.begin(), [](int element) { return element + 3; });
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 3> resultArray = TransformInitList();
+        static_assert(resultArray[0] == 4);
+        static_assert(resultArray[1] == 5);
+        static_assert(resultArray[2] == 6);
+    }
+
+    TEST_F(Algorithms, Replace_Compile_WhenUsedInConstexpr)
+    {
+        auto ReplaceIf = []() constexpr
+        {
+            AZStd::array<int, 4> localArray = { { 6, 2, -423, 0 } };
+            AZStd::replace_if(localArray.begin(), localArray.end(), [](int element) { return element < 0; }, 7);
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 4> resultArray1 = ReplaceIf();
+        static_assert(resultArray1[0] == 6);
+        static_assert(resultArray1[1] == 2);
+        static_assert(resultArray1[2] == 7);
+        static_assert(resultArray1[3] == 0);
+
+        auto ReplaceCopyIf = []() constexpr
+        {
+            AZStd::array<int, 4> localArray = { { 6, 2, -423, 0 } };
+            AZStd::array<int, 4> outputArray = {};
+            AZStd::replace_copy_if(localArray.begin(), localArray.end(), outputArray.begin(), [](int element) { return element > 0; }, 10);
+            return outputArray;
+        };
+
+        constexpr AZStd::array<int, 4> resultArray2 = ReplaceCopyIf();
+        static_assert(resultArray2[0] == 10);
+        static_assert(resultArray2[1] == 10);
+        static_assert(resultArray2[2] == -423);
+        static_assert(resultArray2[3] == 0);
+    }
+
+    TEST_F(Algorithms, Remove_Compile_WhenUsedInConstexpr)
+    {
+        auto RemoveIf = []() constexpr
+        {
+            AZStd::array<int, 4> localArray = { { 6, 2, -423, 0 } };
+            AZStd::remove_if(localArray.begin(), localArray.end(), [](int element) { return element < 0; });
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 4> resultArray1 = RemoveIf();
+        static_assert(resultArray1[0] == 6);
+        static_assert(resultArray1[1] == 2);
+        static_assert(resultArray1[2] == 0);
+
+        auto RemoveCopyIf = []() constexpr
+        {
+            AZStd::array<int, 4> localArray = { { 6, 2, -423, 0 } };
+            AZStd::array<int, 4> outputArray = { };
+            AZStd::remove_copy_if(localArray.begin(), localArray.end(), outputArray.begin(), [](int element) { return element > 0; });
+            return outputArray;
+        };
+
+        constexpr AZStd::array<int, 4> resultArray2 = RemoveCopyIf();
+        static_assert(resultArray2[0] == -423);
+    }
+
+    TEST_F(Algorithms, Generate_Compile_WhenUsedInConstexpr)
+    {
+        auto GenerateTest = []() constexpr -> AZStd::array<int, 3>
+        {
+            AZStd::array<int, 3> localArray{};
+            auto GeneratorFunc = [counter = 7]() constexpr mutable
+            {
+                return counter++;
+            };
+            AZStd::generate(localArray.begin(), localArray.end(), GeneratorFunc);
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 3> resultArray1 = GenerateTest();
+        static_assert(resultArray1[0] == 7);
+        static_assert(resultArray1[1] == 8);
+        static_assert(resultArray1[2] == 9);
+
+        auto GenerateNTest = []() constexpr -> AZStd::array<int, 3>
+        {
+            AZStd::array<int, 3> localArray{};
+            auto GeneratorFunc = [counter = 7]() constexpr mutable
+            {
+                return counter++;
+            };
+            AZStd::generate_n(localArray.begin(), 2, GeneratorFunc);
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 3> resultArray2 = GenerateNTest();
+        static_assert(resultArray2[0] == 7);
+        static_assert(resultArray2[1] == 8);
+        static_assert(resultArray2[2] == 0);
+    }
+
+    TEST_F(Algorithms, HeapFunctions_Compile_WhenUsedInConstexpr)
+    {
+        auto MakeHeap = []() constexpr -> AZStd::array<int, 5>
+        {
+            AZStd::array<int, 5> localArray = { {3, 2, 17, 0, 72} };
+            AZStd::make_heap(localArray.begin(), localArray.end());
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 5> testArray1 = MakeHeap();
+        static_assert(testArray1[0] == 72);
+        static_assert(testArray1[1] == 3);
+        static_assert(testArray1[2] == 17);
+        static_assert(testArray1[3] == 0);
+        static_assert(testArray1[4] == 2);
+
+        auto PopHeap = [](AZStd::array<int, 5> sourceArray) constexpr -> AZStd::array<int, 5>
+        {
+            AZStd::pop_heap(sourceArray.begin(), sourceArray.end());
+            return sourceArray;
+        };
+
+        constexpr AZStd::array<int, 5> testArray2 = PopHeap(testArray1);
+        static_assert(testArray2[0] == 17);
+        static_assert(testArray2[1] == 3);
+        static_assert(testArray2[2] == 2);
+        static_assert(testArray2[3] == 0);
+
+        auto PushHeap = [](AZStd::array<int, 5> sourceArray) constexpr -> AZStd::array<int, 5>
+        {
+            sourceArray[4] = 5;
+            AZStd::push_heap(sourceArray.begin(), sourceArray.end());
+            return sourceArray;
+        };
+
+        constexpr AZStd::array<int, 5> testArray3 = PushHeap(testArray2);
+        static_assert(testArray3[0] == 17);
+        static_assert(testArray3[1] == 5);
+        static_assert(testArray3[2] == 2);
+        static_assert(testArray3[3] == 0);
+        static_assert(testArray3[4] == 3);
+
+        auto SortHeap = [](AZStd::array<int, 5> sourceArray) constexpr->AZStd::array<int, 5>
+        {
+            AZStd::sort_heap(sourceArray.begin(), sourceArray.end());
+            return sourceArray;
+        };
+
+        constexpr AZStd::array<int, 5> testArray4 = SortHeap(testArray3);
+        static_assert(testArray4[0] == 0);
+        static_assert(testArray4[1] == 2);
+        static_assert(testArray4[2] == 3);
+        static_assert(testArray4[3] == 5);
+        static_assert(testArray4[4] == 17);
+    }
+
+    TEST_F(Algorithms, UpperBound_LowerBound__Compile_WhenUsedInConstexpr)
+    {
+        constexpr AZStd::array<int, 6> testList = { { 1, 2, 3, 5, 6, 7 } };
+        auto LowerBound = [](int lhs, int paritionValue) constexpr -> bool
+        {
+            return lhs < paritionValue;
+        };
+        static_assert(*AZStd::lower_bound(testList.begin(), testList.end(), 4 ) == 5);
+        static_assert(*AZStd::lower_bound(testList.begin(), testList.end(), 3, LowerBound) == 3);
+
+        auto UpperBound = [](int partitionValue, int rhs) constexpr -> bool
+        {
+            return partitionValue <= rhs;
+        };
+
+        static_assert(*AZStd::upper_bound(testList.begin(), testList.end(), 4) == 5);
+        static_assert(*AZStd::upper_bound(testList.begin(), testList.end(), 4, UpperBound) == 5);
+    }
+
+    TEST_F(Algorithms, Unique_Compile_WhenUsedInConstexpr)
+    {
+        constexpr AZStd::array<int, 3> testList = { { 1, 2, 3 } };
+        auto TestUnique = []() constexpr
+        {
+            AZStd::array<int, 6> localArray{ { 1, 2, 2, 5, 5, 6} };
+            AZStd::unique(localArray.begin(), localArray.end());
+            return localArray;
+        };
+
+        constexpr AZStd::array<int, 6> resultArray = TestUnique();
+        static_assert(resultArray[0] == 1);
+        static_assert(resultArray[1] == 2);
+        static_assert(resultArray[2] == 5);
+        static_assert(resultArray[3] == 6);
+    }
+
+    TEST_F(Algorithms, LexicographicalCompare_Compile_WhenUsedInConstexpr)
+    {
+        constexpr const char* testString1{ "Test1" };
+        constexpr const char* testString2{ "Test2" };
+        static_assert(AZStd::lexicographical_compare(testString1, testString1 + 5, testString2, testString2 + 5));
+        static_assert(!AZStd::lexicographical_compare(testString1, testString1 + 5, testString2, testString2 + 5, [](char lhs, char rhs) { return rhs < lhs; }));
     }
 }

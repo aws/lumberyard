@@ -22,10 +22,13 @@
 #include "MergedMeshGeometry.h"
 
 #include <ITerrain.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <MathConversion.h>
 #include <StatObjBus.h>
 #include <PakLoadDataUtils.h>
 #include <Vegetation/StaticVegetationBus.h>
+#include <AzCore/Console/IConsole.h>
 
 
 #define SIGC_ALIGNTOTERRAIN       BIT(0) // Deprecated
@@ -56,28 +59,156 @@
 #define TERRAIN_NODE_CHUNK_VERSION 8
 
 
-bool C3DEngine::CreateOctree(float initialWorldSize)
+AZ_CVAR(float, bg_DefaultMaxOctreeWorldSize, 4096.0f, nullptr, AZ::ConsoleFunctorFlags::NeedsReload, "Default world size to use for the octree when terrain is not present.");
+
+bool C3DEngine::CreateOctree(float maxRootOctreeNodeSize)
 {
-    COctreeNode* newOctreeNode = COctreeNode::Create(DEFAULT_SID, AABB(Vec3(0), Vec3(initialWorldSize)), NULL);
+    float rootOctreeNodeSize = (maxRootOctreeNodeSize > 0.0f) ? maxRootOctreeNodeSize : bg_DefaultMaxOctreeWorldSize;
+    COctreeNode* newOctreeNode = COctreeNode::Create(DEFAULT_SID, AABB(Vec3(0), Vec3(rootOctreeNodeSize)), NULL);
     if (!newOctreeNode)
     {
-        Error("Failed to create octree with initial world size=%f", initialWorldSize);
+        Error("Failed to create octree with initial world size=%f", rootOctreeNodeSize);
         return false;
     }
     SetObjectTree(newOctreeNode);
-    GetObjManager()->GetListStaticTypes().PreAllocate(1, 1);
-    GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Reset();
+    Cry3DEngineBase::GetObjManager()->GetListStaticTypes().PreAllocate(1, 1);
+    Cry3DEngineBase::GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Reset();
     return true;
 }
 
 
 void C3DEngine::DestroyOctree()
 {
-    if (GetObjectTree())
+    COctreeNode* objectTree = GetObjectTree();
+    if (objectTree)
     {
-        delete GetObjectTree();
+        delete objectTree;
         SetObjectTree(nullptr);
     }
+}
+
+template <class T>
+int C3DEngine::SeekTerrainDataInOctree(T& handle, STerrainChunkHeader* pOctreeChunkHeader, int nDataSize, EEndian eEndian)
+{
+    { 
+        //Skip vegetation.
+        int nObjectsCount = 0;
+        if (!PakLoadDataUtils::LoadDataFromFile(&nObjectsCount, 1, handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+        if (!PakLoadDataUtils::LoadDataFromFile_Seek(nObjectsCount * sizeof(StatInstGroupChunk), handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+    }
+
+    {
+        //Skip brushes
+        int nObjectsCount = 0;
+        if (!PakLoadDataUtils::LoadDataFromFile(&nObjectsCount, 1, handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+        if (!PakLoadDataUtils::LoadDataFromFile_Seek(nObjectsCount * sizeof(SNameChunk), handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+    }
+
+    {
+        //Skip BrushMaterials
+        int nObjectsCount = 0;
+        if (!PakLoadDataUtils::LoadDataFromFile(&nObjectsCount, 1, handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+        if (!PakLoadDataUtils::LoadDataFromFile_Seek(nObjectsCount * sizeof(SNameChunk), handle, nDataSize, eEndian))
+        {
+            return 0;
+        }
+    }
+
+    //The fileHandle is now located at the first byte of the terrain data.
+    return nDataSize;
+}
+
+int C3DEngine::GetLegacyTerrainDataFromCompiledOctreeFile(AZ::IO::HandleType& fileHandle, STerrainInfo& terrainInfo,
+                                              bool& bSectorPalettes, EEndian& eEndian)
+{
+    // open file
+    fileHandle = GetPak()->FOpen(GetLevelFilePath(COMPILED_OCTREE_FILE_NAME), "rbx");
+    if (fileHandle == AZ::IO::InvalidHandle)
+    {
+        return false;
+    }
+
+    // read header
+    STerrainChunkHeader header;
+    if (!GetPak()->FRead(&header, 1, fileHandle, false))
+    {
+        GetPak()->FClose(fileHandle);
+        fileHandle = AZ::IO::InvalidHandle;
+        return false;
+    }
+
+    bSectorPalettes = (header.nFlags & SERIALIZATION_FLAG_SECTOR_PALETTES) != 0;
+    eEndian = (header.nFlags & SERIALIZATION_FLAG_BIG_ENDIAN) ? eBigEndian : eLittleEndian;
+
+    SwapEndian(header, eEndian);
+
+    int nBytesLeft = 0;
+    if (header.nChunkSize)
+    {
+        if (header.nVersion != OCTREE_CHUNK_VERSION)
+        {
+            AZ_Error("C3DEngine", false, "C3DEngine::SeekTerrainDataInOctree: version of file is %d, expected version is %d", header.nVersion, (int)OCTREE_CHUNK_VERSION);
+            return 0;
+        }
+
+        terrainInfo = header.TerrainInfo;
+        nBytesLeft = SeekTerrainDataInOctree(fileHandle, &header, header.nChunkSize - sizeof(STerrainChunkHeader), eEndian);
+    }
+
+    if (nBytesLeft < 1)
+    {
+        GetPak()->FClose(fileHandle);
+        fileHandle = AZ::IO::InvalidHandle;
+    }
+
+    return nBytesLeft;
+}
+
+int C3DEngine::GetLegacyTerrainDataFromOctreeBuffer(uint8*& octreeData, STerrainInfo& terrainInfo,
+    bool& bSectorPalettes, EEndian& eEndian)
+{
+    STerrainChunkHeader* pHeader = (STerrainChunkHeader*)octreeData;
+
+    bSectorPalettes = (pHeader->nFlags & SERIALIZATION_FLAG_SECTOR_PALETTES) != 0;
+    eEndian = (pHeader->nFlags & SERIALIZATION_FLAG_BIG_ENDIAN) ? eBigEndian : eLittleEndian;
+
+    SwapEndian(*pHeader, eEndian);
+
+    int nBytesLeft = 0;
+    if (pHeader->nChunkSize)
+    {
+        if (pHeader->nVersion != OCTREE_CHUNK_VERSION)
+        {
+            AZ_Error("C3DEngine", false, "C3DEngine::SeekTerrainDataInOctree: version of file is %d, expected version is %d", pHeader->nVersion, (int)OCTREE_CHUNK_VERSION);
+            return 0;
+        }
+
+        terrainInfo = pHeader->TerrainInfo;
+        octreeData += sizeof(STerrainChunkHeader);
+        nBytesLeft = SeekTerrainDataInOctree(octreeData, pHeader, pHeader->nChunkSize - sizeof(STerrainChunkHeader), eEndian);
+    }
+
+    if (nBytesLeft < 1)
+    {
+        octreeData = nullptr;
+    }
+
+    return nBytesLeft;
 }
 
 
@@ -159,7 +290,6 @@ bool C3DEngine::LoadOctreeInternal(XmlNodeRef pDoc, AZ::IO::HandleType fileHandl
     return bRes;
 }
 
-#ifndef LY_TERRAIN_LEGACY_RUNTIME
 template <class T>
 int C3DEngine::SkipTerrainData_T(T& f, int& nDataSize, const STerrainInfo& terrainInfo, bool bHotUpdate, bool bHMap, bool bSectorPalettes, EEndian eEndian, SHotUpdateInfo* pExportInfo)
 {
@@ -245,7 +375,6 @@ int C3DEngine::SkipTerrainData_T(T& f, int& nDataSize, const STerrainInfo& terra
     return numTerrainNodes;
 }
 
-
 void C3DEngine::GetEmptyTerrainCompiledData(byte*& pData, int& nDataSize, EEndian eEndian)
 {
     if (!pData)
@@ -266,23 +395,6 @@ void C3DEngine::GetEmptyTerrainCompiledData(byte*& pData, int& nDataSize, EEndia
     SwapEndian(*pChunk, eEndian);
     UPDATE_PTR_AND_SIZE(pData, nDataSize, sizeof(STerrainNodeChunk));
 }
-#endif //#ifndef LY_TERRAIN_LEGACY_RUNTIME
-
-
-void C3DEngine::CreateTerrainInternal(const STerrainInfo& TerrainInfo)
-{
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    SAFE_DELETE(m_pTerrain);
-    m_pTerrain = new CTerrain(TerrainInfo);
-    float terrainSize = (float)m_pTerrain->GetTerrainSize() - TERRAIN_AABB_PADDING;
-    if (terrainSize < TERRAIN_AABB_PADDING)
-    {
-        terrainSize = TERRAIN_AABB_PADDING;
-    }
-    m_terrainAabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3(TERRAIN_AABB_PADDING, TERRAIN_AABB_PADDING, -FLT_MAX), AZ::Vector3(terrainSize, terrainSize, FLT_MAX));
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-}
-
 
 template <class T>
 bool C3DEngine::LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STerrainChunkHeader* pOctreeChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo, bool loadTerrainMacroTexture)
@@ -390,7 +502,7 @@ bool C3DEngine::LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STer
             if (!m_bEditor || bHotUpdate)
             {
                 // preallocate real array
-                PodArray<StatInstGroup>& rTable = GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
+                PodArray<StatInstGroup>& rTable = Cry3DEngineBase::GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
                 rTable.resize(nObjectsCount);
                 StatInstGroupEventBus::Broadcast(&StatInstGroupEventBus::Events::ReserveStatInstGroupIdRange, StatInstGroupId(0), StatInstGroupId(nObjectsCount));
 
@@ -486,7 +598,7 @@ bool C3DEngine::LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STer
                 }
 
                 // assign real material to vegetation group
-                PodArray<StatInstGroup>& rStaticTypes = GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
+                PodArray<StatInstGroup>& rStaticTypes = Cry3DEngineBase::GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
                 for (uint32 i = 0; i < rStaticTypes.size(); i++)
                 {
                     if (lstStatInstGroupChunkFileChunks[i].nMaterialId >= 0)
@@ -513,19 +625,9 @@ bool C3DEngine::LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STer
         }
     }
 
-    // set nodes data
-    int nNodesLoaded = 1;
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    {
-        LOADING_TIME_PROFILE_SECTION_NAMED("Terrain");
-        CreateTerrainInternal(pOctreeChunkHeader->TerrainInfo);
-        AZ_Assert(m_pTerrain, "Failed to create terrain.");
-        nNodesLoaded = m_pTerrain->Load_T(pDoc, f, nDataSize, pOctreeChunkHeader->TerrainInfo, bHotUpdate, bHMap, bSectorPalettes, eEndian, pExportInfo, loadTerrainMacroTexture);
-    }
-#else
-    nNodesLoaded = SkipTerrainData_T(f, nDataSize, pOctreeChunkHeader->TerrainInfo, bHotUpdate, bHMap, bSectorPalettes, eEndian, pExportInfo);
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    //Always skip the terrain data. It is the responsibility of the LegacyTerrainSystemComponent to load this data
+    //when the component is activated.
+    int nNodesLoaded = SkipTerrainData_T(f, nDataSize, pOctreeChunkHeader->TerrainInfo, bHotUpdate, bHMap, bSectorPalettes, eEndian, pExportInfo);
 
     if (bObjs)
     {
@@ -680,9 +782,6 @@ bool C3DEngine::GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<st
     bool bHMap(!pExportInfo || pExportInfo->nHeigtmap);
     bool bObjs(!pExportInfo || pExportInfo->nObjTypeMask);
 
-    //PrintMessage("Exporting terrain data (%s, %.2f MB) ...",
-    //  (bHMap && bObjs) ? "Objects and heightmap" : (bHMap ? "Heightmap" : (bObjs ? "Objects" : "Nothing")), ((float)nDataSize)/1024.f/1024.f);
-
     // write header
     STerrainChunkHeader* pOctreeChunkHeader = (STerrainChunkHeader*)pData;
     pOctreeChunkHeader->nVersion = OCTREE_CHUNK_VERSION;
@@ -693,23 +792,34 @@ bool C3DEngine::GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<st
 
     pOctreeChunkHeader->nFlags2 = (Get3DEngine()->m_bAreaActivationInUse ? TCH_FLAG2_AREA_ACTIVATION_IN_USE : 0);
     pOctreeChunkHeader->nChunkSize = nDataSize;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        pOctreeChunkHeader->TerrainInfo.nHeightMapSize_InUnits = m_pTerrain->GetSectorSize() * CTerrain::GetSectorsTableSize() / m_pTerrain->GetHeightMapUnitSize();
-        pOctreeChunkHeader->TerrainInfo.nUnitSize_InMeters = m_pTerrain->GetHeightMapUnitSize();
-        pOctreeChunkHeader->TerrainInfo.nSectorSize_InMeters = m_pTerrain->GetSectorSize();
-        pOctreeChunkHeader->TerrainInfo.nSectorsTableSize_InSectors = CTerrain::GetSectorsTableSize();
-    }
-    else
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    {
 
-        pOctreeChunkHeader->TerrainInfo.nHeightMapSize_InUnits = 0;
-        pOctreeChunkHeader->TerrainInfo.nUnitSize_InMeters = 0;
-        pOctreeChunkHeader->TerrainInfo.nSectorSize_InMeters = 0;
-        pOctreeChunkHeader->TerrainInfo.nSectorsTableSize_InSectors = 0;
+    int heightMapSize_InUnits = 0;
+    int unitSize_InMeters = 0;
+    int sectorSize_InMeters = 0;
+    int sectorsTableSize_InSectors = 0;
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+    if (terrain && legacyTerrain)
+    {
+        const AZ::Vector2 gridResolution = terrain->GetTerrainGridResolution();
+        unitSize_InMeters = aznumeric_cast<int>(gridResolution.GetX());
+        if (unitSize_InMeters > 0)
+        {
+            sectorSize_InMeters = legacyTerrain->GetTerrainSectorSize();
+            sectorsTableSize_InSectors = legacyTerrain->GetTerrainSectorsTableSize();
+            heightMapSize_InUnits = sectorSize_InMeters * sectorsTableSize_InSectors / unitSize_InMeters;
+        }
+        else
+        {
+            AZ_Error("LegacyTerrain", false, "heightmapUnitSize=%d is invalid", unitSize_InMeters);
+            unitSize_InMeters = 0;
+        }
     }
+
+    pOctreeChunkHeader->TerrainInfo.nHeightMapSize_InUnits = heightMapSize_InUnits;
+    pOctreeChunkHeader->TerrainInfo.nUnitSize_InMeters = unitSize_InMeters;
+    pOctreeChunkHeader->TerrainInfo.nSectorSize_InMeters = sectorSize_InMeters;
+    pOctreeChunkHeader->TerrainInfo.nSectorsTableSize_InSectors = sectorsTableSize_InSectors;
 
     pOctreeChunkHeader->TerrainInfo.fHeightmapZRatio = 0;
     float fOceanWaterLevel = m_pOcean ? m_pOcean->GetWaterLevel() : WATER_LEVEL_UNKNOWN;
@@ -728,16 +838,15 @@ bool C3DEngine::GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<st
     }
 
     int nNodesLoaded = 1;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // get nodes data
-    if (m_pTerrain)
+    if (legacyTerrain)
     {
-        nNodesLoaded = bHMap ? m_pTerrain->GetNodesData(pData, nDataSize, eEndian, pExportInfo) : 1;
+        nNodesLoaded = bHMap ? legacyTerrain->GetNodesData(pData, nDataSize, eEndian, pExportInfo) : 1;
     }
-#else
-    GetEmptyTerrainCompiledData(pData, nDataSize, eEndian);
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-
+    else
+    {
+        GetEmptyTerrainCompiledData(pData, nDataSize, eEndian);
+    }
 
     if (bObjs)
     {
@@ -945,8 +1054,13 @@ void C3DEngine::GetVegetationMaterials(std::vector<_smart_ptr<IMaterial> >*& pMa
         return;
     }
 
+    if (Cry3DEngineBase::GetObjManager()->GetListStaticTypes().size() < 1)
+    {
+        return;
+    }
+
     { // get vegetation objects materials
-        PodArray<StatInstGroup>& rTable = GetObjManager()->GetListStaticTypes()[0];
+        PodArray<StatInstGroup>& rTable = Cry3DEngineBase::GetObjManager()->GetListStaticTypes()[0];
         int nObjectsCount = rTable.size();
 
         // init struct values and load cgf's
@@ -1026,14 +1140,15 @@ int C3DEngine::GetOctreeCompiledDataSize(SHotUpdateInfo* pExportInfo)
 
     if (bHMap)
     {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (m_pTerrain)
+        auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+        if (legacyTerrain)
         {
-            m_pTerrain->GetNodesData(pData, nDataSize, GetPlatformEndian(), pExportInfo);
+            legacyTerrain->GetNodesData(pData, nDataSize, GetPlatformEndian(), pExportInfo);
         }
-#else
-        GetEmptyTerrainCompiledData(pData, nDataSize, GetPlatformEndian());
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
+        else
+        {
+            GetEmptyTerrainCompiledData(pData, nDataSize, GetPlatformEndian());
+        }
     }
 
     // get header size
@@ -1056,6 +1171,15 @@ bool C3DEngine::SetOctreeCompiledData(byte* pData, int nDataSize, std::vector<st
     STerrainChunkHeader* pOctreeChunkHeader = (STerrainChunkHeader*)pData;
     SwapEndian(*pOctreeChunkHeader, eLittleEndian);
 
+    //Create the Octree.
+    DestroyOctree();
+    const float terrainSize = aznumeric_caster(pOctreeChunkHeader->TerrainInfo.TerrainSize());
+    if (!CreateOctree(terrainSize))
+    {
+        AZ_Error("C3DEngine", false, "Failed to create octree with initial size=%.1f", terrainSize);
+        return false;
+    }
+
     pData += sizeof(STerrainChunkHeader);
     nDataSize -= sizeof(STerrainChunkHeader);
     return LoadOctreeInternal_T(XmlNodeRef(static_cast<IXmlNode*>(nullptr)), pData, nDataSize, pOctreeChunkHeader, ppStatObjTable, ppMatTable, bHotUpdate, pExportInfo, loadTerrainMacroTexture);
@@ -1074,32 +1198,22 @@ IRenderNode* C3DEngine::AddVegetationInstance(int nStaticGroupID, const Vec3& vP
         return 0;
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        if (vPos.x <= 0 || vPos.y <= 0 || vPos.x >= CTerrain::GetTerrainSize() || vPos.y >= CTerrain::GetTerrainSize())
-        {
-            return 0;
-        }
-    }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
-
     IRenderNode* renderNode = NULL;
 
-    AZ_Assert(DEFAULT_SID >= 0 && DEFAULT_SID < GetObjManager()->GetListStaticTypes().Count(), "DEFAULT_SID is out of range.");
+    AZ_Assert(DEFAULT_SID >= 0 && DEFAULT_SID < GetObjManager()->GetListStaticTypesCount(), "DEFAULT_SID is out of range.");
 
-    if (nStaticGroupID < 0 || nStaticGroupID >= GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Count())
+    if (nStaticGroupID < 0 || nStaticGroupID >= GetObjManager()->GetListStaticTypesGroupCount(DEFAULT_SID))
     {
         return 0;
     }
 
-    AZ::Aabb aabb;
-    StatInstGroup& group = GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nStaticGroupID];
+    StatInstGroup& group = Cry3DEngineBase::GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nStaticGroupID];
     if (!group.GetStatObj())
     {
         Warning("I3DEngine::AddStaticObject: Attempt to add object of undefined type");
         return 0;
     }
+    AZ::Aabb aabb;
     if (!group.bAutoMerged)
     {
         CVegetation* pEnt = (CVegetation*)Get3DEngine()->CreateRenderNode(eERType_Vegetation);
@@ -1133,11 +1247,10 @@ IRenderNode* C3DEngine::AddVegetationInstance(int nStaticGroupID, const Vec3& vP
         if (group.GetAlignToTerrainAmount() != 0.f)
         {
             Matrix33 m33;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-            GetTerrain()->GetTerrainAlignmentMatrix(vPos, group.GetAlignToTerrainAmount(), m33);
-#else
             m33 = Matrix33::CreateIdentity();
-#endif
+
+            CVegetation::GetTerrainAlignmentMatrix(vPos, group.GetAlignToTerrainAmount(), m33);
+
             sample.q = Quat(m33) * Quat(mr);
         }
         else

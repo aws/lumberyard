@@ -16,11 +16,14 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/typetraits/integral_constant.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Color.h>
 
 // include MCore related files
+#include <MCore/Source/MemoryObject.h>
 #include <MCore/Source/AABB.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Array.h>
@@ -50,6 +53,9 @@ namespace EMotionFX
     class Mesh;
     class MeshDeformerStack;
 
+    class Actor;
+    using ActorUniquePtr = MCore::MemoryObjectUniquePtr<Actor>;
+
 
     /**
      * The actor is the representation of a completely animatable object, like a human character or an animal.
@@ -58,12 +64,11 @@ namespace EMotionFX
      * still share the same data from the Actor class. The Actor contains information about the hierarchy/structure of the characters.
      */
     class EMFX_API Actor
-        : public BaseObject
     {
-        AZ_CLASS_ALLOCATOR_DECL
-
     public:
-        AZ_RTTI(Actor, "{15F0DAD5-6077-45E8-A628-1DB8FAFFE1BE}", BaseObject)
+        AZ_CLASS_ALLOCATOR_DECL
+        AZ_RTTI(Actor, "{15F0DAD5-6077-45E8-A628-1DB8FAFFE1BE}")
+
         /**
          * An actor dependency, which can be used during multithread scheduling.
          */
@@ -99,10 +104,11 @@ namespace EMotionFX
         //------------------------------------------------
 
         /**
-         * Create an actor.
-         * @param name The name of the actor.
-         */
-        static Actor* Create(const char* name);
+        * @param name The name of the actor.
+        */
+        explicit Actor(const char* name);
+
+        virtual ~Actor();
 
         /**
          * Get the unique identification number for the actor.
@@ -123,6 +129,11 @@ namespace EMotionFX
         void AddNode(Node* node);
 
         /**
+         * Add a node to this actor.
+         */
+        Node* AddNode(uint32 nodeIndex, const char* name, uint32 parentIndex = MCORE_INVALIDINDEX32);
+
+        /**
          * Remove a given node.
          * @param nr The node to remove.
          * @param delMem If true the allocated memory of the node will be deleted.
@@ -138,7 +149,7 @@ namespace EMotionFX
          * Clones this actor.
          * @return A pointer to the duplicated clone.
          */
-        Actor* Clone();
+        AZStd::unique_ptr<Actor> Clone() const;
 
         /**
          * Scale all transform and mesh positional data.
@@ -355,7 +366,7 @@ namespace EMotionFX
          * @param[in] copySkeletalLODFlags Copy over the skeletal LOD flags in case of true, skip them in case of false.
          * @param[in] delLODActorFromMem When set to true, the method will automatically delete the given copyActor from memory.
          */
-        void CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags, bool delLODActorFromMem = true);
+        void CopyLODLevel(Actor* copyActor, uint32 copyLODLevel, uint32 replaceLODLevel, bool copySkeletalLODFlags);
 
         /**
          * Insert LOD level at the given position.
@@ -558,6 +569,7 @@ namespace EMotionFX
          * @result A pointer to the dependency.
          */
         MCORE_INLINE Dependency* GetDependency(uint32 nr)                       { return &mDependencies[nr]; }
+        MCORE_INLINE const Dependency* GetDependency(uint32 nr) const           { return &mDependencies[nr]; }
 
         /**
          * Recursively add dependencies that this actor has on other actors.
@@ -565,7 +577,7 @@ namespace EMotionFX
          * So after executing this, the current actor contains all dependencies of all the actors it is dependent on.
          * @param actor The actor to create the dependencies for.
          */
-        void RecursiveAddDependencies(Actor* actor);
+        void RecursiveAddDependencies(const Actor* actor);
 
         /**
          * Get the morph setup at a given geometry LOD level.
@@ -805,7 +817,7 @@ namespace EMotionFX
 
         void ReleaseTransformData();
         void ResizeTransformData();
-        void CopyTransformsFrom(Actor* other);
+        void CopyTransformsFrom(const Actor* other);
 
         const MCore::AABB& GetStaticAABB() const;
         void SetStaticAABB(const MCore::AABB& box);
@@ -962,17 +974,5 @@ namespace EMotionFX
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                            mIsOwnedByRuntime;          /**< Set if the actor is used/owned by the engine runtime. */
 #endif // EMFX_DEVELOPMENT_BUILD
-
-        /**
-        * The constructor.
-        * @param name The name of the actor.
-        */
-        Actor(const char* name);
-
-        /**
-         * The destructor.
-         * Automatically unregisters itself from the ActorManager class.
-         */
-        ~Actor();
     };
 } // namespace EMotionFX

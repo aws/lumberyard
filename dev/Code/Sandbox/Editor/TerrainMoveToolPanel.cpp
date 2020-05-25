@@ -75,26 +75,24 @@ CTerrainMoveToolPanel::CTerrainMoveToolPanel(CTerrainMoveTool* tool, QWidget* pP
     connect(m_dymZ, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainMoveToolPanel::OnUpdateNumbers);
     connect(m_selectSource, &QPushButton::clicked, this, &CTerrainMoveToolPanel::OnSelectSource);
     connect(m_selectTarget, &QPushButton::clicked, this, &CTerrainMoveToolPanel::OnSelectTarget);
-    connect(ui->COPY, &QPushButton::clicked, this, &CTerrainMoveToolPanel::OnCopyButton);
-    connect(ui->MOVE, &QPushButton::clicked, this, &CTerrainMoveToolPanel::OnMoveButton);
+    connect(ui->APPLY, &QPushButton::clicked, this, &CTerrainMoveToolPanel::OnApplyButton);
     connect(ui->SYNC_HEIGHT, &QCheckBox::toggled, this, &CTerrainMoveToolPanel::OnSyncHeight);
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// CTerrainMoveToolPanel message handlers
-void CTerrainMoveToolPanel::OnCopyButton()
-{
-    bool bOnlyVegetation = ui->ONLY_VEGETATION->isChecked();
-    bool bOnlyTerrain = ui->ONLY_TERRAIN->isChecked();
-    m_tool->Move(true, bOnlyVegetation, bOnlyTerrain);
-}
-
 //////////////////////////////////////////////////////////////////////////
-void CTerrainMoveToolPanel::OnMoveButton()
+void CTerrainMoveToolPanel::OnApplyButton()
 {
-    bool bOnlyVegetation = ui->ONLY_VEGETATION->isChecked();
-    bool bOnlyTerrain = ui->ONLY_TERRAIN->isChecked();
-    m_tool->Move(false, bOnlyVegetation, bOnlyTerrain);
+    // Call Move() only if we have at least one action selected
+    if (ui->V_MOVE->isChecked() || ui->V_COPY->isChecked() || ui->T_COPY->isChecked())
+    {
+        bool copyVegetation = !ui->V_MOVE->isChecked();
+        bool onlyVegetation = ui->T_IGNORE->isChecked();
+        bool onlyTerrain = ui->V_IGNORE->isChecked();
+        
+        // Only vegetation can be moved, but both vegetation and terrain
+        // can be copied to different portions of the terrain.
+        m_tool->Move(copyVegetation, onlyVegetation, onlyTerrain);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -124,13 +122,11 @@ void CTerrainMoveToolPanel::UpdateButtons()
 {
     if (m_tool->m_source.isCreated && m_tool->m_target.isCreated)
     {
-        ui->COPY->setEnabled(true);
-        ui->MOVE->setEnabled(true);
+        ui->APPLY->setEnabled(true);
     }
     else
     {
-        ui->COPY->setEnabled(false);
-        ui->MOVE->setEnabled(false);
+        ui->APPLY->setEnabled(false);
     }
 }
 

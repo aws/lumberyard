@@ -13,12 +13,14 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/AssetCatalog/PlatformAddressedAssetCatalogManager.h>
 #include <AzFramework/Asset/AssetRegistry.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <Tests/AZTestShared/Utils/Utils.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzTest/AzTest.h>
 #include <QTemporaryDir>
 #include <QDir>
 
@@ -53,7 +55,7 @@ namespace UnitTest
            
             AZ::IO::FileIOBase::GetInstance()->SetAlias("@assets@", cacheFolder.c_str());
 
-            for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatforms; ++platformNum)
+            for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatformIds; ++platformNum)
             {
                 AZStd::string platformName{ AzFramework::PlatformHelper::GetPlatformName(static_cast<AzFramework::PlatformId>(platformNum)) };
                 if (!platformName.length())
@@ -97,7 +99,7 @@ namespace UnitTest
         void TearDown() override
         {
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-            for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatforms; ++platformNum)
+            for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatformIds; ++platformNum)
             {
                 AZStd::string platformName{ AzFramework::PlatformHelper::GetPlatformName(static_cast<AzFramework::PlatformId>(platformNum)) };
                 if (!platformName.length())
@@ -136,15 +138,15 @@ namespace UnitTest
         AzToolsFramework::ToolsApplication* m_application;
         AZ::IO::FileIOBase* m_priorFileIO = nullptr;
         AZ::IO::FileIOBase* m_localFileIO = nullptr;
-        AZ::IO::FileIOStream m_fileStreams[AzFramework::PlatformId::NumPlatforms][s_totalAssets];
+        AZ::IO::FileIOStream m_fileStreams[AzFramework::PlatformId::NumPlatformIds][s_totalAssets];
 
-        AZ::Data::AssetId m_assets[AzFramework::PlatformId::NumPlatforms][s_totalAssets];
-        AZStd::string m_assetsPath[AzFramework::PlatformId::NumPlatforms][s_totalAssets];
+        AZ::Data::AssetId m_assets[AzFramework::PlatformId::NumPlatformIds][s_totalAssets];
+        AZStd::string m_assetsPath[AzFramework::PlatformId::NumPlatformIds][s_totalAssets];
     };
 
     TEST_F(PlatformAddressedAssetCatalogManagerTest, PlatformAddressedAssetCatalogManager_AllCatalogsLoaded_Success)
     {
-        for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatforms; ++platformNum)
+        for (int platformNum = AzFramework::PlatformId::PC; platformNum < AzFramework::PlatformId::NumPlatformIds; ++platformNum)
         {
             AZStd::string platformName{ AzFramework::PlatformHelper::GetPlatformName(static_cast<AzFramework::PlatformId>(platformNum)) };
             if (!platformName.length())
@@ -174,5 +176,87 @@ namespace UnitTest
         }
         EXPECT_EQ(AzToolsFramework::PlatformAddressedAssetCatalog::CatalogExists(AzFramework::PlatformId::ES3), false);
     }
-}
 
+    class PlatformAddressedAssetCatalogMessageTest : public AzToolsFramework::PlatformAddressedAssetCatalog
+    {
+    public:
+        PlatformAddressedAssetCatalogMessageTest(AzFramework::PlatformId platformId) :  AzToolsFramework::PlatformAddressedAssetCatalog(platformId)
+        {
+
+        }
+        MOCK_METHOD1(AssetChanged, void(AzFramework::AssetSystem::AssetNotificationMessage message));
+        MOCK_METHOD1(AssetRemoved, void(AzFramework::AssetSystem::AssetNotificationMessage message));
+    };
+
+    class PlatformAddressedAssetCatalogManagerMessageTest : public AzToolsFramework::PlatformAddressedAssetCatalogManager
+    {
+    public:
+        PlatformAddressedAssetCatalogManagerMessageTest(AzFramework::PlatformId platformId) :
+            AzToolsFramework::PlatformAddressedAssetCatalogManager(AzFramework::PlatformId::Invalid)
+        {
+            TakeSingleCatalog(AZStd::make_unique<PlatformAddressedAssetCatalogMessageTest>(platformId));
+        }
+    };
+
+    class MessageTest
+        : public AllocatorsFixture
+    {
+    public:
+        AZStd::string GetTempFolder()
+        {
+            QTemporaryDir dir;
+            QDir tempPath(dir.path());
+            return tempPath.absolutePath().toUtf8().data();
+        }
+
+        void SetUp() override
+        {
+            AZ::IO::FileIOBase::SetInstance(nullptr); // The API requires the old instance to be destroyed first
+            AZ::IO::FileIOBase::SetInstance(new AZ::IO::LocalFileIO());
+
+            AZStd::string cacheFolder;
+            AzFramework::StringFunc::Path::Join(GetTempFolder().c_str(), "testplatform", cacheFolder);
+            AzFramework::StringFunc::Path::Join(cacheFolder.c_str(), "testproject", cacheFolder);
+
+            AZ::IO::FileIOBase::GetInstance()->SetAlias("@assets@", cacheFolder.c_str());
+
+            m_platformAddressedAssetCatalogManager = AZStd::make_unique<AzToolsFramework::PlatformAddressedAssetCatalogManager>(AzFramework::PlatformId::Invalid);
+        }
+        void TearDown() override
+        {
+            m_platformAddressedAssetCatalogManager.reset();
+        }
+        AZStd::unique_ptr<AzToolsFramework::PlatformAddressedAssetCatalogManager> m_platformAddressedAssetCatalogManager;
+    };
+
+    TEST_F(MessageTest, PlatformAddressedAssetCatalogManagerMessageTest_MessagesForwarded_CountsMatch)
+    {
+        AzFramework::AssetSystem::AssetNotificationMessage testMessage;
+        AzFramework::AssetSystem::NetworkAssetUpdateInterface* notificationInterface = AZ::Interface<AzFramework::AssetSystem::NetworkAssetUpdateInterface>::Get();
+        EXPECT_NE(notificationInterface, nullptr);
+
+        auto* mockCatalog = new ::testing::NiceMock<PlatformAddressedAssetCatalogMessageTest>(AzFramework::PlatformId::ES3);
+        AZStd::unique_ptr< ::testing::NiceMock<PlatformAddressedAssetCatalogMessageTest>> catalogHolder;
+        catalogHolder.reset(mockCatalog);
+
+        m_platformAddressedAssetCatalogManager->TakeSingleCatalog(AZStd::move(catalogHolder));
+        EXPECT_CALL(*mockCatalog, AssetChanged(testing::_)).Times(0);
+        notificationInterface->AssetChanged(testMessage);
+
+        testMessage.m_platform = "es3";
+        EXPECT_CALL(*mockCatalog, AssetChanged(testing::_)).Times(1);
+        notificationInterface->AssetChanged(testMessage);
+
+        testMessage.m_platform = "pc";
+        EXPECT_CALL(*mockCatalog, AssetChanged(testing::_)).Times(0);
+        notificationInterface->AssetChanged(testMessage);
+
+        EXPECT_CALL(*mockCatalog, AssetRemoved(testing::_)).Times(0);
+        notificationInterface->AssetRemoved(testMessage);
+
+        testMessage.m_platform = "es3";
+        EXPECT_CALL(*mockCatalog, AssetRemoved(testing::_)).Times(1);
+        notificationInterface->AssetRemoved(testMessage);
+    }
+
+}

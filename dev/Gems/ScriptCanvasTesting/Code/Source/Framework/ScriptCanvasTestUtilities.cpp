@@ -50,7 +50,7 @@ namespace ScriptCanvasTests
 
     void VerifyReporter(const ScriptCanvasEditor::Reporter& reporter)
     {
-        if (!reporter.GetGraphId().IsValid())
+        if (!reporter.GetScriptCanvasId().IsValid())
         {
             ADD_FAILURE() << "Graph is not valid";
         }
@@ -287,7 +287,7 @@ namespace ScriptCanvasTests
         return node;
     }
 
-    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, AZStd::string_view className, AZStd::string_view methodName)
+    AZ::EntityId CreateClassFunctionNode(const ScriptCanvasId& scriptCanvasId, AZStd::string_view className, AZStd::string_view methodName)
     {
         using namespace ScriptCanvas;
 
@@ -296,7 +296,7 @@ namespace ScriptCanvasTests
         AZ::Entity* splitEntity{ aznew AZ::Entity };
         splitEntity->Init();
         AZ::EntityId methodNodeID{ splitEntity->GetId() };
-        SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, methodNodeID, graphUniqueId, Nodes::Core::Method::RTTI_Type());
+        SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, methodNodeID, scriptCanvasId, Nodes::Core::Method::RTTI_Type());
         Nodes::Core::Method* methodNode(nullptr);
         SystemRequestBus::BroadcastResult(methodNode, &SystemRequests::GetNode<Nodes::Core::Method>, methodNodeID);
         EXPECT_TRUE(methodNode != nullptr);
@@ -304,7 +304,7 @@ namespace ScriptCanvasTests
         return methodNodeID;
     }
 
-    ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout)
+    ScriptCanvas::Node* CreateDataNodeByType(const ScriptCanvasId& scriptCanvasId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout)
     {
         using namespace ScriptCanvas;
 
@@ -313,80 +313,82 @@ namespace ScriptCanvasTests
         switch (type.GetType())
         {
         case Data::eType::AABB:
-            node = CreateTestNode<Nodes::Math::AABB>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::AABB>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::BehaviorContextObject:
         {
-            auto objectNode = CreateTestNode<Nodes::Core::BehaviorContextObjectNode>(graphUniqueId, nodeIDout);
+            auto objectNode = CreateTestNode<Nodes::Core::BehaviorContextObjectNode>(scriptCanvasId, nodeIDout);
             objectNode->InitializeObject(type);
             node = objectNode;
         }
         break;
 
         case Data::eType::Boolean:
-            node = CreateTestNode<Nodes::Logic::Boolean>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Logic::Boolean>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Color:
-            node = CreateTestNode<Nodes::Math::Color>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Color>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::CRC:
-            node = CreateTestNode<Nodes::Math::CRC>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::CRC>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::EntityID:
-            node = CreateTestNode<Nodes::Entity::EntityRef>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Entity::EntityRef>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Matrix3x3:
-            node = CreateTestNode<Nodes::Math::Matrix3x3>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Matrix3x3>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Matrix4x4:
-            node = CreateTestNode<Nodes::Math::Matrix4x4>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Matrix4x4>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Number:
-            node = CreateTestNode<Nodes::Math::Number>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Number>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::OBB:
-            node = CreateTestNode<Nodes::Math::OBB>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::OBB>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Plane:
-            node = CreateTestNode<Nodes::Math::Plane>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Plane>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Quaternion:
-            node = CreateTestNode<Nodes::Math::Quaternion>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Quaternion>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::String:
-            node = CreateTestNode<Nodes::Core::String>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Core::String>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Transform:
-            node = CreateTestNode<Nodes::Math::Transform>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Transform>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Vector2:
-            node = CreateTestNode<Nodes::Math::Vector2>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Vector2>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Vector3:
-            node = CreateTestNode<Nodes::Math::Vector3>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Vector3>(scriptCanvasId, nodeIDout);
             break;
 
         case Data::eType::Vector4:
-            node = CreateTestNode<Nodes::Math::Vector4>(graphUniqueId, nodeIDout);
+            node = CreateTestNode<Nodes::Math::Vector4>(scriptCanvasId, nodeIDout);
             break;
 
         default:
             AZ_Error("ScriptCanvas", false, "unsupported data type");
         }
+
+        node->SetExecutionType(ExecutionType::Runtime);
 
         return node;
     }
@@ -472,7 +474,8 @@ namespace ScriptCanvasTests
 
         AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
         serializeContext->CloneObjectInplace(runtimeAsset.Get()->GetData().m_graphData, graph->GetGraphDataConst());
-        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> graphToAssetEntityIdMap{ { graph->GetUniqueId(), ScriptCanvas::UniqueId } };
+
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> graphToAssetEntityIdMap{ { graph->GetScriptCanvasId(), ScriptCanvas::UniqueId } };
         AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&runtimeAsset.Get()->GetData().m_graphData, graphToAssetEntityIdMap, serializeContext);
 
         return runtimeAsset;

@@ -3,26 +3,34 @@
     {
         "Include/Session":
         [
-            "Include/GameLift/Session/GameLiftClientService.h",
-            "Include/GameLift/Session/GameLiftClientServiceBus.h",
-            "Include/GameLift/Session/GameLiftClientServiceEventsBus.h",
-            "Include/GameLift/Session/GameLiftClientSession.h",
-            "Include/GameLift/Session/GameLiftSearch.h",
-            "Include/GameLift/Session/GameLiftServerService.h",
-            "Include/GameLift/Session/GameLiftServerServiceBus.h",
-            "Include/GameLift/Session/GameLiftServerServiceEventsBus.h",
-            "Include/GameLift/Session/GameLiftServerSession.h",
-            "Include/GameLift/Session/GameLiftSessionDefs.h",
-            "Include/GameLift/Session/GameLiftSessionRequest.h"
+          "Include/GameLift/Session/GameLiftClientService.h",
+          "Include/GameLift/Session/GameLiftClientServiceBus.h",
+          "Include/GameLift/Session/GameLiftClientServiceEventsBus.h",
+          "Include/GameLift/Session/GameLiftClientSession.h",
+          "Include/GameLift/Session/GameLiftSearch.h",
+          "Include/GameLift/Session/GameLiftServerService.h",
+          "Include/GameLift/Session/GameLiftServerServiceBus.h",
+          "Include/GameLift/Session/GameLiftServerServiceEventsBus.h",
+          "Include/GameLift/Session/GameLiftServerSession.h",
+          "Include/GameLift/Session/GameLiftSessionDefs.h",
+          "Include/GameLift/Session/GameLiftSessionRequest.h",
+          "Include/GameLift/Session/GameLiftGameSessionPlacementRequest.h",
+          "Include/GameLift/Session/GameLiftRequestInterface.h",
+          "Include/GameLift/Session/GameLiftMatchmaking.h",
+          "Include/GameLift/Session/GameLiftServerSDKWrapper.h"
         ],
         "Source/Session":
         [
-            "Source/Session/GameLiftClientService.cpp",
-            "Source/Session/GameLiftClientSession.cpp",
-            "Source/Session/GameLiftSearch.cpp",
-            "Source/Session/GameLiftServerService.cpp",
-            "Source/Session/GameLiftServerSession.cpp",
-            "Source/Session/GameLiftSessionRequest.cpp"
+          "Source/Session/GameLiftClientService.cpp",
+          "Source/Session/GameLiftClientSession.cpp",
+          "Source/Session/GameLiftSearch.cpp",
+          "Source/Session/GameLiftServerService.cpp",
+          "Source/Session/GameLiftServerSession.cpp",
+          "Source/Session/GameLiftSessionRequest.cpp",
+          "Source/Session/GameLiftGameSessionPlacementRequest.cpp",
+          "Source/Session/GameLiftMatchmaking.cpp",
+          "Source/Session/GameLiftServerSDKWrapper.cpp"
+
         ]
     }
 }

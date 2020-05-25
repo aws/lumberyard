@@ -144,7 +144,8 @@ namespace SaveData
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void SaveDataSystemComponent::Implementation::SaveDataBufferToFileSystem(const SaveDataBufferParams& saveDataBufferParams,
                                                                              const AZStd::string& absoluteFilePath,
-                                                                             bool waitForCompletion)
+                                                                             bool waitForCompletion,
+                                                                             bool useTemporaryFile)
     {
         // Perform parameter error checking but handle gracefully
         AZ_Assert(saveDataBufferParams.dataBuffer, "Invalid param: dataBuffer");
@@ -181,17 +182,20 @@ namespace SaveData
                                                                             dataBufferName = saveDataBufferParams.dataBufferName,
                                                                             onSavedCallback = saveDataBufferParams.callback,
                                                                             localUserId = saveDataBufferParams.localUserId,
-                                                                            absoluteFilePath]()
+                                                                            absoluteFilePath,
+                                                                            useTemporaryFile]()
         {
             SaveDataNotifications::Result result = SaveDataNotifications::Result::ErrorUnspecified;
 
-            // Append '.tmp' so we don't overwrite existing save data until we're sure of success.
+            // If useTemporaryFile == true we save first to a '.tmp' file so we
+            // do not overwrite existing save data until we are sure of success.
             const AZStd::string tempSaveDataFilePath = absoluteFilePath + TempSaveDataFileExtension;
+            const AZStd::string finalSaveDataFilePath = absoluteFilePath + SaveDataFileExtension;
 
             // Open the temp save data file for writing, creating it (and
             // any intermediate directories) if it doesn't already exist.
             AZ::IO::SystemFile systemFile;
-            const bool openFileResult = systemFile.Open(tempSaveDataFilePath.c_str(),
+            const bool openFileResult = systemFile.Open(useTemporaryFile ? tempSaveDataFilePath.c_str() : finalSaveDataFilePath.c_str(),
                                                         AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY |
                                                         AZ::IO::SystemFile::SF_OPEN_CREATE |
                                                         AZ::IO::SystemFile::SF_OPEN_CREATE_PATH);
@@ -211,20 +215,23 @@ namespace SaveData
                 {
                     result = SaveDataNotifications::Result::ErrorIOFailure;
                 }
-                else
+                else if (useTemporaryFile)
                 {
                     // Rename the temp save data file we successfully wrote to.
-                    const AZStd::string finalSaveDataFilePath = absoluteFilePath + SaveDataFileExtension;
                     const bool renameFileResult = AZ::IO::SystemFile::Rename(tempSaveDataFilePath.c_str(),
                                                                              finalSaveDataFilePath.c_str(),
                                                                              true);
                     result = renameFileResult ? SaveDataNotifications::Result::Success :
                                                 SaveDataNotifications::Result::ErrorIOFailure;
+
+                    // Delete the temp save data file.
+                    AZ::IO::SystemFile::Delete(tempSaveDataFilePath.c_str());
+                }
+                else
+                {
+                    result = SaveDataNotifications::Result::Success;
                 }
             }
-
-            // Delete the temp save data file.
-            AZ::IO::SystemFile::Delete(tempSaveDataFilePath.c_str());
 
             // Invoke the callback and broadcast the OnDataBufferSaved notification from the main thread.
             OnSaveDataBufferComplete(dataBufferName, localUserId, onSavedCallback, result);

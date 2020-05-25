@@ -11,6 +11,7 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+
 SOURCE="${BASH_SOURCE[0]}"
 # While $SOURCE is a symlink, resolve it
 while [ -h "$SOURCE" ]; do
@@ -27,15 +28,18 @@ then
     PYTHON=$DIR/3.7.5/mac/bin/python
 else
     export LD_LIBRARY_PATH=$DIR/3.7.5/linux_x64/lib/lib-dynload/openssl/lib
-    PYTHON=$DIR/3.7.5/linux_x64/bin/python
+    PYTHON=$DIR/3.7.5/linux_x64/bin/python3.7
 fi
 
 if [ -e "$PYTHON" ]
 then
+    PATH_SCRIPT=$DIR/3.7.5/extend_pythonpath.py
+    export PYTHONPATH="$($PYTHON $PATH_SCRIPT)"
     "$PYTHON" "$@"
+    exit $?
 else
     echo "Could not find python.3.7.5 in $PYTHON"
     exit 1
 fi
 
-exit 0
+exit 1

@@ -13,7 +13,6 @@
 #include "Rain.h"
 
 #include "IActorSystem.h"
-#include "FlowSystem/Nodes/FlowBaseNode.h"
 
 #include "RainComponentBus.h"
 
@@ -246,102 +245,4 @@ namespace LYGame
 
         return true;
     }
-
-
-    //////////////////////////////////////////////////////////////////////////
-    class CFlowNode_RainProperties
-        : public CFlowBaseNode < eNCT_Instanced >
-    {
-    public:
-        CFlowNode_RainProperties(SActivationInfo* pActInfo)
-        {
-        }
-
-        enum EInputs
-        {
-            eI_Trigger,
-            eI_Amount,
-            eI_PuddlesAmount,
-            eI_PuddlesRippleAmount,
-            eI_RainDropsAmount,
-        };
-
-        virtual void GetConfiguration(SFlowNodeConfig& config)
-        {
-            static const SInputPortConfig inputs[] = {
-                InputPortConfig_Void("Trigger", _HELP("Update the engine")),
-                InputPortConfig<float>("Amount", 1.0f, _HELP("Overall Amount")),
-                InputPortConfig<float>("PuddlesAmount", 1.5f, _HELP("PuddlesAmount")),
-                InputPortConfig<float>("PuddlesRippleAmount", 2.0f, _HELP("PuddlesRippleAmount")),
-                InputPortConfig<float>("RainDropsAmount", 0.5f, _HELP("RainDropsAmount")),
-                { 0 }
-            };
-            static const SOutputPortConfig outputs[] = {
-                { 0 }
-            };
-            config.nFlags |= EFLN_TARGET_ENTITY;
-            config.pInputPorts = inputs;
-            config.pOutputPorts = outputs;
-            config.sDescription = _HELP("Rain Entity Properties");
-            config.SetCategory(EFLN_APPROVED);
-        }
-
-        virtual void ProcessEvent(EFlowEvent event, SActivationInfo* pActInfo)
-        {
-            EFlowEvent eventType = event;
-
-            switch (event)
-            {
-            case eFE_Activate:
-            {
-                if (IsPortActive(pActInfo, eI_Trigger))
-                {
-                    pActInfo->pGraph->RequestFinalActivation(pActInfo->myID);
-                }
-                break;
-            }
-
-            case eFE_FinalActivate:
-            {
-                if (pActInfo->pEntity)
-                {
-                    EntityId targetEntity = pActInfo->pEntity->GetId();
-
-                    if (targetEntity != INVALID_ENTITYID)
-                    {
-                        IEntity* pEntity = gEnv->pEntitySystem->GetEntity(targetEntity);
-                        if (pEntity)
-                        {
-                            SmartScriptTable props;
-                            IScriptTable* pScriptTable = pEntity->GetScriptTable();
-                            if (pScriptTable && pScriptTable->GetValue("Properties", props))
-                            {
-                                props->SetValue("fAmount", GetPortFloat(pActInfo, eI_Amount));
-                                props->SetValue("fPuddlesAmount", GetPortFloat(pActInfo, eI_PuddlesAmount));
-                                props->SetValue("fPuddlesRippleAmount", GetPortFloat(pActInfo, eI_PuddlesRippleAmount));
-                                props->SetValue("fRainDropsAmount", GetPortFloat(pActInfo, eI_RainDropsAmount));
-                                SEntityEvent e;
-                                e.event = ENTITY_EVENT_RESET;
-                                pEntity->SendEvent(e);
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-            }
-        }
-
-        virtual void GetMemoryUsage(ICrySizer* s) const
-        {
-            s->Add(*this);
-        }
-
-        virtual IFlowNodePtr Clone(SActivationInfo* pActInfo)
-        {
-            return new CFlowNode_RainProperties(pActInfo);
-        }
-    };
-
-    REGISTER_FLOW_NODE("Environment:RainProperties", CFlowNode_RainProperties)
 } // LYGame

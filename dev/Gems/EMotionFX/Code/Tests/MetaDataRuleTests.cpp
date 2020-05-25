@@ -26,6 +26,7 @@
 namespace EMotionFX
 {
     using MetaDataRuleBaseClass = InitSceneAPIFixture<
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
         AzToolsFramework::Components::PropertyManagerComponent,

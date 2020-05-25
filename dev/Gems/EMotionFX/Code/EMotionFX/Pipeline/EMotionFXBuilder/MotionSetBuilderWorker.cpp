@@ -95,7 +95,8 @@ namespace EMotionFX
 
         bool MotionSetBuilderWorker::ParseProductDependencies(const AZStd::string& fullPath, const AZStd::string& sourceFile, AssetBuilderSDK::ProductPathDependencySet& pathDependencies)
         {
-            AZStd::unique_ptr<MotionSet> motionSet(GetImporter().LoadMotionSet(fullPath));
+            AZ::ObjectStream::FilterDescriptor loadFilter = AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+            AZStd::unique_ptr<MotionSet> motionSet(GetImporter().LoadMotionSet(fullPath, nullptr, loadFilter));
 
             if (!motionSet)
             {

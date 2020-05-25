@@ -24,6 +24,8 @@ namespace CloudCanvas
     public:
         virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
         virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
+
+        virtual AZStd::unordered_map<AZStd::string, AZStd::string> GetQueryParameters(const AZStd::string& signedURL) = 0;
     };
 
     class PresignedURLRequestBusTraits

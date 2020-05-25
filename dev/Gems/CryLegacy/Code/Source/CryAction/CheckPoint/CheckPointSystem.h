@@ -84,9 +84,6 @@ private:
     //checkpoint data
     void WriteMetaData(EntityId checkpointId, XmlNodeRef parentNode, SCheckpointData& outMetaData);
 
-    //save the game token system
-    void WriteGameTokens(XmlNodeRef parentNode);
-
     //write xml node to file
     void WriteXML(XmlNodeRef data, const char* fileName);
 
@@ -108,8 +105,6 @@ private:
     //read checkpoint from XML
     XmlNodeRef ReadXML(const char* fileName);
 
-    //load the game token system
-    void ReadGameTokens(XmlNodeRef parentNode);
 
     //resetting dynamic parts of the engine
     void ResetEngine();

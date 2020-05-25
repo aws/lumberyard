@@ -71,6 +71,7 @@ namespace AzToolsFramework
         QColorDialog* m_pColorDialog;
 
         QColor m_originalColor;
+        QColor m_lastSetColor;
 
         QLineEdit* m_colorEdit;
         QColor m_color;

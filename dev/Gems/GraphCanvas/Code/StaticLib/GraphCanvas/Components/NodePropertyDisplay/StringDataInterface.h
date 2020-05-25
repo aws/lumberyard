@@ -21,5 +21,7 @@ namespace GraphCanvas
     public:    
         virtual AZStd::string GetString() const = 0;
         virtual void SetString(const AZStd::string& value) = 0;
+
+        virtual bool ResizeToContents() const { return true; }
     };
 }

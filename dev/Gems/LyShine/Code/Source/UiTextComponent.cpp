@@ -1869,7 +1869,7 @@ void UiTextComponent::Render(LyShine::IRenderGraph* renderGraph)
         ITexture* whiteTexture = gEnv->pRenderer->GetWhiteTexture();
         bool isClampTextureMode = true;
 
-        uint32 packedColor = (255 << 24) | (m_textSelectionColor.GetR8() << 16) | (m_textSelectionColor.GetG8() << 8) | m_textSelectionColor.GetB8();
+        uint32 packedColor = (m_textSelectionColor.GetA8() << 24) | (m_textSelectionColor.GetR8() << 16) | (m_textSelectionColor.GetG8() << 8) | m_textSelectionColor.GetB8();
 
         for (UiTransformInterface::RectPoints& rect : rectPoints)
         {
@@ -3211,6 +3211,7 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetIsMarkupEnabled", &UiTextBus::Events::SetIsMarkupEnabled)
             ->Event("GetTextWidth", &UiTextBus::Events::GetTextWidth)
             ->Event("GetTextHeight", &UiTextBus::Events::GetTextHeight)
+            ->Event("GetTextSize", &UiTextBus::Events::GetTextSize)
             ->VirtualProperty("FontSize", "GetFontSize", "SetFontSize")
             ->VirtualProperty("Color", "GetColor", "SetColor")
             ->VirtualProperty("CharacterSpacing", "GetCharacterSpacing", "SetCharacterSpacing")

@@ -58,9 +58,29 @@ namespace AZ
             return "*.slice";
         }
 
+        static constexpr u32 GetAssetSubId()
+        {
+            return 1;
+        }
+
+        /**
+        * Invoked by the AssetManager to determine if this SliceAsset data object should be reloaded
+        * when a change to the asset on disk is detected.
+        * Checks the state of m_ignoreNextAutoReload to determine this and sets m_ignoreNextAutoReload to false at the end.
+        * During a Create Slice operation in Editor the reload is prevented as we have already built the asset in memory
+        * and a reload is not needed.
+        */
+        bool HandleAutoReload() override;
+
+        void SetIgnoreNextAutoReload(bool ignoreNextAutoReload)
+        {
+            m_ignoreNextAutoReload = ignoreNextAutoReload;
+        }
+
     protected:
         Entity* m_entity; ///< Root entity that should contain only the slice component
         SliceComponent* m_component; ///< Slice component for this asset
+        bool m_ignoreNextAutoReload;
     };
 
     /**
@@ -82,6 +102,11 @@ namespace AZ
         static const char* GetFileFilter()
         {
             return "*.dynamicslice";
+        }
+
+        static constexpr u32 GetAssetSubId()
+        {
+            return 2;
         }
     };
 

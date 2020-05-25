@@ -20,7 +20,6 @@
 #include "PipeUser.h"
 #include "Puppet.h"
 #include "Leader.h"
-#include "AIActions.h"
 #include "PathFollower.h"
 #include "SmartPathFollower.h"
 #include <ISerialize.h>
@@ -2324,11 +2323,6 @@ bool CPipeUser::SelectPipe(int mode, const char* name, CWeakRef<CAIObject> refAr
         return true;
     }
 
-    if (IEntity* pEntity = GetEntity())
-    {
-        gAIEnv.pAIActionManager->AbortAIAction(pEntity);
-    }
-
     refArgument.ValidateOrReset();
 
     m_lastExecutedGoalop = eGO_LAST;
@@ -3575,7 +3569,6 @@ void CPipeUser::Serialize(TSerialize ser)
     CAIActor::Serialize(ser);
 
     ser.Value("m_bLastNearForbiddenEdge", m_bLastNearForbiddenEdge);
-    ser.Value("m_bLastActionSucceed", m_bLastActionSucceed);
 
     // serialize members
     m_refRefPoint.Serialize(ser, "m_refRefPoint");
@@ -5123,11 +5116,6 @@ void CPipeUser::HandleSoundEvent(SAIEVENT* pAIEvent)
 void CPipeUser::CalculatePathObstacles()
 {
     m_pathAdjustmentObstacles.CalculateObstaclesAroundActor(this);
-}
-
-void CPipeUser::SetLastActionStatus(bool bSucceed)
-{
-    m_bLastActionSucceed = bSucceed;
 }
 
 ETriState CPipeUser::CanTargetPointBeReached(CTargetPointRequest& request)

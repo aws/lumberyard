@@ -941,6 +941,13 @@ namespace CommandSystem
             return false;
         }
 
+        // Check if the node can be set as the entry node
+        if (!entryNode->GetCanBeEntryNode())
+        {
+            outResult = AZStd::string::format("Cannot set entry node '%s'. This type of node cannot be set as an entry node.", entryNodeName.c_str());
+            return false;
+        }
+
         // get the parent state machine
         EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)stateMachineNode;
 

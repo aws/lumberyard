@@ -213,7 +213,7 @@ struct Vec3_tpl
         k = (F)1.0 / k;
         return Vec3_tpl<F>(x * k, y * k, z * k);
     }
-    ILINE friend Vec3_tpl<F> operator * (f32 f, const Vec3_tpl& vec)
+    ILINE friend Vec3_tpl<F> operator * (F f, const Vec3_tpl& vec)
     {
         return Vec3_tpl((F)(f * vec.x), (F)(f * vec.y), (F)(f * vec.z));
     }
@@ -881,7 +881,7 @@ ILINE Vec3_tpl<F1> operator % (const Vec3_tpl<F1>& v0, const Vec3_tpl<F2>& v1)
 template<class F1, class F2>
 ILINE Vec3_tpl<F1> operator + (const Vec3_tpl<F1>& v0, const Vec3_tpl<F2>& v1)
 {
-    return Vec3_tpl<F1>(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z);
+    return Vec3_tpl<F1>(static_cast<F1>(v0.x + v1.x), static_cast<F1>(v0.y + v1.y), static_cast<F1>(v0.z + v1.z));
 }
 //vector addition
 template<class F1, class F2>

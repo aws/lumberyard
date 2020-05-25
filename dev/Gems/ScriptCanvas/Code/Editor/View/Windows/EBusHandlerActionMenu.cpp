@@ -201,10 +201,10 @@ namespace ScriptCanvasEditor
             EBusHandlerNodeDescriptorRequestBus::EventResult(configuration, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventConfiguration, eventId);
             GraphCanvas::WrapperNodeRequestBus::Event(m_ebusNode, &GraphCanvas::WrapperNodeRequests::WrapNode, idPair.m_graphCanvasId, configuration);
 
-            AZ::EntityId scriptCanvasGraphId;
-            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+            ScriptCanvas::ScriptCanvasId scriptCanvasId;
+            GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasId);
         }
         else
         {

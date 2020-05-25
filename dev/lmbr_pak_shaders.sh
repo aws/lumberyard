@@ -34,27 +34,28 @@ if [ -z "$BIN_FOLDER" ]; then
     BIN_FOLDER="BinMac64"
 fi
 
+py="$ENGINE_DIR/Tools/Python/python3.sh"
 game="$1"
 shader_type="$2"
-platform="$3"
+asset_platform="$3"
 source_shader_list="$4"
 
-gen_args="$game $platform $shader_type $BIN_FOLDER -e $ENGINE_DIR"
+gen_args="$game $asset_platform $shader_type -b $BIN_FOLDER -e $ENGINE_DIR"
 if [ ! -z $source_shader_list ]; then
     gen_args=$gen_args -s $source_shader_list
 fi
 
-env python "$ENGINE_DIR/Tools/PakShaders/gen_shaders.py" $gen_args
+env $py "$ENGINE_DIR/Tools/PakShaders/gen_shaders.py" $gen_args
 
 if [ $? -ne 0 ]; then
     echo Failed to generate shaders.
     exit 1
 fi
 
-source="Cache/$game/$platform/user/cache/shaders/cache"
-output="Build/$platform/$game"
+source="Cache/$game/$asset_platform/user/cache/shaders/cache"
+output="Build/$asset_platform/$game"
 
-env python "$ENGINE_DIR/Tools/PakShaders/pak_shaders.py" $output -r $source -s $shader_type
+env $py "$ENGINE_DIR/Tools/PakShaders/pak_shaders.py" $output -r $source -s $shader_type
 
 if [ $? -ne 0 ]; then
     echo Failed to pack shaders.

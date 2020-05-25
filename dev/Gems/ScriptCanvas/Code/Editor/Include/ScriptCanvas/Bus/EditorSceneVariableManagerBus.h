@@ -18,8 +18,6 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Outcome/Outcome.h>
 
-#include <ScriptCanvas/Variable/VariableDatum.h>
-
 namespace ScriptCanvasEditor
 {
     class EditorSceneVariableManagerRequests
@@ -28,7 +26,7 @@ namespace ScriptCanvasEditor
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
         
         // The QCompleter needs this to be non-const for some reason. Shouldn't
         // matter since we should only have have a single instance operating on it at once.

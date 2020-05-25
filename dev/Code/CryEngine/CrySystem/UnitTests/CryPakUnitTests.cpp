@@ -21,6 +21,7 @@
 #include <CryPakFileIO.h>
 #include <AzCore/std/functional.h> // for function<> in the find files callback.
 #include <AzFramework/IO/LocalFileIO.h>
+#include <ILevelSystem.h>
 
 namespace CryPakUnitTests
 {
@@ -541,6 +542,52 @@ namespace CryPakUnitTests
 
         // ---- loose file FGetCachedFileDataTests (these leverage the CryPak RawDataCache) ---
         TestFGetCachedFileData(looseTestFilePath, dataLen, dataString);
+    }
+
+    TEST_F(Integ_CryPakUnitTests, TestCryPakArchiveContainingLevels)
+    {
+        string testPakPath = "@cache@/archivecontainerlevel.pak";
+
+        char resolvedArchivePath[AZ_MAX_PATH_LEN] = { 0 };
+        EXPECT_TRUE(gEnv->pFileIO->ResolvePath(testPakPath.c_str(), resolvedArchivePath, AZ_MAX_PATH_LEN));
+
+        ICryPak* pak = gEnv->pCryPak;
+
+        EXPECT_TRUE(pak != nullptr);
+
+        // delete test files in case they already exist
+        pak->ClosePack(testPakPath.c_str());
+        remove(testPakPath.c_str());
+
+        ILevelSystem* levelSystem = gEnv->pSystem->GetILevelSystem();
+        EXPECT_TRUE(levelSystem);
+
+        // ------------ Create an archive with a dummy level in it ------------
+        ICryArchive* pArchive = pak->OpenArchive(testPakPath.c_str(), nullptr, ICryArchive::FLAGS_CREATE_NEW);
+        EXPECT_TRUE(pArchive != nullptr);
+
+        const char levelInfoFile[] = "levelInfo.xml";
+        AZStd::string relativeLevelPakPath = AZStd::string::format("levels/dummy/%s", ILevelSystem::LevelPakName);
+        AZStd::string relativeLevelInfoPath = AZStd::string::format("levels/dummy/%s", levelInfoFile);
+
+        EXPECT_TRUE(pArchive->UpdateFile(relativeLevelPakPath.c_str(), const_cast<char*>("test"), 4, ICryArchive::METHOD_COMPRESS, ICryArchive::LEVEL_BEST) == 0);
+        EXPECT_TRUE(pArchive->UpdateFile(relativeLevelInfoPath.c_str(), const_cast<char*>("test"), 4, ICryArchive::METHOD_COMPRESS, ICryArchive::LEVEL_BEST) == 0);
+
+        delete pArchive;
+        EXPECT_TRUE(IsPackValid(testPakPath.c_str()));
+        CryFixedStringT<ICryPak::g_nMaxPath> fullLevelPakPath;
+        bool addLevel = true;
+        EXPECT_TRUE(pak->OpenPack("@assets@", resolvedArchivePath, ICryPak::FLAGS_LEVEL_PAK_INSIDE_PAK, nullptr, &fullLevelPakPath, addLevel));
+
+        ILevelInfo* levelInfo = nullptr;
+        // Since the archive was open, we should be able to find the level "dummy"
+        levelInfo = levelSystem->GetLevelInfo("dummy");
+        EXPECT_TRUE(levelInfo);
+        EXPECT_TRUE(pak->ClosePack(resolvedArchivePath));
+
+        // After closing the archive we should not be able to find the level "dummy"
+        levelInfo = levelSystem->GetLevelInfo("dummy");
+        EXPECT_FALSE(levelInfo);
     }
 
     // a bug was found that causes problems reading data from packs if they are immediately mounted after writing.

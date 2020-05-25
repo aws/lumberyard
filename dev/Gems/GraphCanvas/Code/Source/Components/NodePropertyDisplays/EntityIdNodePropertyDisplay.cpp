@@ -30,42 +30,13 @@
 namespace GraphCanvas
 {
     ////////////////////////////////
-    // EntityIdGraphicsEventFilter
-    ////////////////////////////////
-    EntityIdGraphicsEventFilter::EntityIdGraphicsEventFilter(EntityIdNodePropertyDisplay* propertyDisplay)
-        : QGraphicsItem(nullptr)
-        , m_owner(propertyDisplay)
-    {
-    }
-
-    bool EntityIdGraphicsEventFilter::sceneEventFilter(QGraphicsItem*, QEvent* event)
-    {
-        switch (event->type())
-        {
-        case QEvent::GraphicsSceneDragEnter:
-            m_owner->dragEnterEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        case QEvent::GraphicsSceneDragLeave:
-            m_owner->dragLeaveEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        case QEvent::GraphicsSceneDrop:
-            m_owner->dropEvent(static_cast<QGraphicsSceneDragDropEvent*>(event));
-            break;
-        default:
-            break;
-        }
-
-        return event->isAccepted();
-    }
-
-    ////////////////////////////////
     // EntityIdNodePropertyDisplay
     ////////////////////////////////
     EntityIdNodePropertyDisplay::EntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_dataInterface(dataInterface)
         , m_propertyEntityIdCtrl(nullptr)
         , m_proxyWidget(nullptr)
-        , m_dragState(DragState::Idle)
     {
         // This label is never displayed. Used to just get the name.
         m_entityIdLabel.setProperty("HasNoWindowDecorations", true);
@@ -109,8 +80,8 @@ namespace GraphCanvas
 
         if (m_propertyEntityIdCtrl)
         {
-            m_propertyEntityIdCtrl->setMinimumSize(minimumSize.width(), minimumSize.height());
-            m_propertyEntityIdCtrl->setMaximumSize(maximumSize.width(), maximumSize.height());
+            m_propertyEntityIdCtrl->setMinimumSize(aznumeric_cast<int>(minimumSize.width()), aznumeric_cast<int>(minimumSize.height()));
+            m_propertyEntityIdCtrl->setMaximumSize(aznumeric_cast<int>(maximumSize.width()), aznumeric_cast<int>(maximumSize.height()));
         }
     }
     
@@ -173,124 +144,11 @@ namespace GraphCanvas
         UpdateDisplay();
     }
 
-    void EntityIdNodePropertyDisplay::dragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
-    {
-        bool isConnected = false;
-        SlotRequestBus::EventResult(isConnected, GetId(), &SlotRequests::HasConnections);
-
-        m_dragState = DragState::Invalid;
-
-        if (!isConnected)
-        {
-            const QMimeData* dropMimeData = dragDropEvent->mimeData();
-            if (dropMimeData->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
-            {
-                QByteArray arrayData = dropMimeData->data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
-
-                AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
-                if (entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))
-                {
-                    // We can only support a drop containing a single entityId.
-                    if (entityIdListContainer.m_entityIds.size() == 1)
-                    {
-                        dragDropEvent->accept();
-                        dragDropEvent->acceptProposedAction();
-
-                        m_dragState = DragState::Valid;
-                    }
-                }
-            }
-        }
-
-        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
-        switch (m_dragState)
-        {
-        case DragState::Valid:
-        {
-            styleHelper.AddSelector(Styling::States::ValidDrop);
-            break;
-        }
-        case DragState::Invalid:
-        {
-            styleHelper.AddSelector(Styling::States::InvalidDrop);
-            break;
-        }
-        default:
-            break;
-        }
-
-        m_displayLabel->update();
-    }
-
-    void EntityIdNodePropertyDisplay::dragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent)
-    {        
-        dragDropEvent->accept();
-        ResetDragState();
-    }
-
-    void EntityIdNodePropertyDisplay::dropEvent(QGraphicsSceneDragDropEvent* dropEvent)
-    {
-        if (m_dragState == DragState::Valid)
-        {
-            const QMimeData* dropMimeData = dropEvent->mimeData();
-            if (dropMimeData->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
-            {
-                QByteArray arrayData = dropMimeData->data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
-
-                AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
-                if (entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))
-                {
-                    if (entityIdListContainer.m_entityIds.size() == 1)
-                    {
-                        dropEvent->accept();
-                        m_dataInterface->SetEntityId(entityIdListContainer.m_entityIds.front());
-                        UpdateDisplay();
-                    }
-                }
-            }
-        }
-
-        ResetDragState();
-    }
-
-    void EntityIdNodePropertyDisplay::OnIdSet()
-    {
-        QGraphicsItem* ownerItem = nullptr;
-        VisualRequestBus::EventResult(ownerItem, GetId(), &VisualRequests::AsGraphicsItem);
-
-        if (ownerItem)
-        {
-            ownerItem->setAcceptDrops(true);
-
-            QGraphicsScene* scene = ownerItem->scene();
-
-            if (scene)
-            {
-                EntityIdGraphicsEventFilter* filter = aznew EntityIdGraphicsEventFilter(this);
-                scene->addItem(filter);
-                ownerItem->installSceneEventFilter(filter);
-            }
-        }
-    }
-
-    void EntityIdNodePropertyDisplay::ResetDragState()
+    void EntityIdNodePropertyDisplay::OnDragDropStateStateChanged(const DragDropState& dragState)
     {
         Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
-        switch (m_dragState)
-        {
-        case DragState::Valid:
-            styleHelper.RemoveSelector(Styling::States::ValidDrop);
-            break;
-        case DragState::Invalid:
-            styleHelper.RemoveSelector(Styling::States::InvalidDrop);
-            break;
-        default:
-            break;
-        }
-
+        UpdateStyleForDragDrop(dragState, styleHelper);
         m_displayLabel->update();
-
-        m_dragState = DragState::Idle;
     }
     
     void EntityIdNodePropertyDisplay::EditStart()

@@ -125,8 +125,10 @@ namespace AZ
         /**
         * Override to conduct per-component or per-slice validation logic during slice asset processing.
         * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
+        * @param platformTags List of platforms supplied during slice asset processing.
         */
-        virtual ComponentValidationResult ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return AZ::Success(); }
+        virtual ComponentValidationResult ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/,
+            const AZStd::unordered_set<AZ::Crc32>& /*platformTags*/) const { return AZ::Success(); }
 
         /**
          * Set the component's configuration.
@@ -146,13 +148,6 @@ namespace AZ
          * For example, use a TransformConfig with a TransformComponent.
          */
         bool GetConfiguration(AZ::ComponentConfig& outConfig) const;
-
-        /**
-        * Override to conduct per-component or per-slice validation logic during slice asset processing.
-        * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
-        * @param platformTags list of platforms supplied during slice asset processing
-        */
-        virtual bool ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/, const AZStd::unordered_set<AZ::Crc32>& /*platformTags*/) const { return true; }
 
     protected:
         /**
@@ -517,7 +512,7 @@ namespace AZ
          */
         void Reflect(ReflectContext* reflection) const override
         {
-            AZ_STATIC_ASSERT(HasComponentReflect<ComponentClass>::value, "All components using ComponentDescriptorDefault (AZ_COMPONENT macro) should implement 'static void Reflect(ReflectContext* reflection)' function!");
+            static_assert(HasComponentReflect<ComponentClass>::value, "All components using ComponentDescriptorDefault (AZ_COMPONENT macro) should implement 'static void Reflect(ReflectContext* reflection)' function!");
             CallReflect(reflection, typename HasComponentReflect<ComponentClass>::type());
         }
 

@@ -1,13 +1,30 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+# System Imports
 import pytest
-from mock import MagicMock
+from unittest import mock
+
+
+# waflib imports
 from waflib.ConfigSet import ConfigSet
-import artifacts_cache
+
+# lmbrwaflib imports
+from lmbrwaflib import artifacts_cache
 
 
 @pytest.fixture()
 def mocked_bld_a():
-    bld = MagicMock()
-    tp = MagicMock(content={'3rdPartyRoot': r'D:\workspace_a\3rdParty'})
+    bld = mock.Mock()
+    tp = mock.Mock(content={'3rdPartyRoot': r'D:\workspace_a\3rdParty'})
     bld.configure_mock(engine_path=r'D:\workspace_a\dev', tp=tp)
     del bld.engine_path_replaced
     del bld.tp_root_replaced
@@ -17,8 +34,8 @@ def mocked_bld_a():
 
 @pytest.fixture()
 def mocked_bld_b():
-    bld = MagicMock()
-    tp = MagicMock(content={'3rdPartyRoot': r'D:\workspace_b\3rdParty'})
+    bld = mock.Mock()
+    tp = mock.Mock(content={'3rdPartyRoot': r'D:\workspace_b\3rdParty'})
     bld.configure_mock(engine_path=r'D:\workspace_b\dev', tp=tp)
     del bld.engine_path_replaced
     del bld.tp_root_replaced
@@ -145,3 +162,34 @@ def test_replace_engine_path_and_tp_root_in_string_success(mocked_bld_a, string_
     ])
 def test_hash_env_vars_success(mocked_bld_a, mocked_env_a, vars_list_a, mocked_bld_b, mocked_env_b, vars_list_b):
     assert artifacts_cache.hash_env_vars(mocked_bld_a, mocked_env_a, vars_list_a) == artifacts_cache.hash_env_vars(mocked_bld_b, mocked_env_b, vars_list_b)
+    
+
+
+def test_azcg_uid():
+    
+    class fake_self(object):
+        
+        def __init__(self):
+
+            self.bld = mock.Mock()
+            self.bld.configure_mock(**{'engine_path_replaced': 'yes',
+                                       'tp_root_replaced': 'yes'})
+
+            self.path = mock.Mock()
+            self.path.configure_mock(**{'abspath.return_value': 'fake_path'})
+
+            self.input_dir = mock.Mock()
+            self.input_dir.configure_mock(**{'abspath.return_value': 'fake_input_dir'})
+
+            self.output_dir = mock.Mock()
+            self.output_dir.configure_mock(**{'abspath.return_value': 'fake_output_dir'})
+
+            self.inputs = ['fake_input1', 'fake_input2']
+            self.defines = ['fake_define1', 'fake_define2']
+            self.argument_list = ['fake_arg1', 'fake_arg2']
+            self.azcg_deps = ['fake_deps1', 'fake_deps2']
+    
+    result = artifacts_cache.azcg_uid(fake_self())
+
+
+    pass

@@ -13,10 +13,14 @@
 #ifndef GRIDHUB_H
 #define GRIDHUB_H
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QWidget>
 #include <QSystemTrayIcon>
 
 #include <GridHub/ui_GridHub.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/string/string.h>
@@ -66,25 +70,23 @@ protected:
 private:
     //////////////////////////////////////////////////////////////////////////
     // TraceMessagesBus
-    bool	OnOutput(const char* window, const char* message) override;
+    bool    OnOutput(const char* window, const char* message) override;
     //////////////////////////////////////////////////////////////////////////
 
     void UpdateOutput();
     void UpdateMembers();
 
 
-    QSystemTrayIcon*	m_trayIcon;
-    QMenu*				m_trayIconMenu;
+    QSystemTrayIcon*    m_trayIcon;
+    QMenu*              m_trayIconMenu;
 
-    //QAction *			m_minimizeAction;
-    //QAction *			m_maximizeAction;
-    QAction *			m_restoreAction;
-    QAction *			m_quitAction;
-    AZ::ComponentApplication*	m_componentApp;
-    GridHubComponent*	m_hubComponent;
+    QAction *           m_restoreAction;
+    QAction *           m_quitAction;
+    AZ::ComponentApplication*    m_componentApp;
+    GridHubComponent*    m_hubComponent;
 
-    AZStd::string		m_output;
-    AZStd::mutex		m_outputMutex;
+    AZStd::string        m_output;
+    AZStd::mutex        m_outputMutex;
 
     Ui::GridHubClass ui;
 };
@@ -121,15 +123,15 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     // TraceMessagesBus
-    bool	OnOutput(const char* window, const char* message) override;
+    bool    OnOutput(const char* window, const char* message) override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     // Session Events
     /// Callback that is called when the Session service is ready to process sessions.
-    void OnSessionServiceReady() override															{}
+    void OnSessionServiceReady() override {}
     /// Callback that notifies the title when a game search query have completed.
-    void OnGridSearchComplete(GridMate::GridSearch* gridSearch)									{ (void)gridSearch; }
+    void OnGridSearchComplete(GridMate::GridSearch* gridSearch) { (void)gridSearch; }
     /// Callback that notifies the title when a new member joins the game session.
     void OnMemberJoined(GridMate::GridSession* session, GridMate::GridMember* member) override;
     /// Callback that notifies the title that a member is leaving the game session. member pointer is NOT valid after the callback returns.
@@ -137,68 +139,68 @@ public:
     // \todo a better way will be (after we solve migration) is to supply a reason to OnMemberLeaving... like the member was kicked.
     // this will require that we actually remove the replica at the same moment.
     /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-    void OnMemberKicked(GridMate::GridSession* session, GridMate::GridMember* member, AZ::u8 reason)			{ (void)session;(void)member;(void)reason; }
+    void OnMemberKicked(GridMate::GridSession* session, GridMate::GridMember* member, AZ::u8 reason) { (void)session;(void)member;(void)reason; }
     /// After this callback it is safe to access session features. If host session is fully operational if client wait for OnSessionJoined.
     void OnSessionCreated(GridMate::GridSession* session) override;
     /// Called on client machines to indicate that we join successfully.
-    void OnSessionJoined(GridMate::GridSession* session)										{ (void)session; }
+    void OnSessionJoined(GridMate::GridSession* session) { (void)session; }
     /// Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
     void OnSessionDelete(GridMate::GridSession* session) override;
     /// Called when a session error occurs.
-    void OnSessionError(GridMate::GridSession* session, const GridMate::string& errorMsg )		{ (void)session; (void)errorMsg; }
+    void OnSessionError(GridMate::GridSession* session, const GridMate::string& errorMsg ) { (void)session; (void)errorMsg; }
     /// Called when the actual game(match) starts
-    void OnSessionStart(GridMate::GridSession* session)											{ (void)session; }
+    void OnSessionStart(GridMate::GridSession* session) { (void)session; }
     /// Called when the actual game(match) ends
-    void OnSessionEnd(GridMate::GridSession* session)											{ (void)session; }
+    void OnSessionEnd(GridMate::GridSession* session) { (void)session; }
     /// Called when we start a host migration.
-    void OnMigrationStart(GridMate::GridSession* session)										{ (void)session; }
+    void OnMigrationStart(GridMate::GridSession* session) { (void)session; }
     /// Called so the user can select a member that should be the new Host. Value will be ignored if NULL, current host or the member has invalid connection id.
-    void OnMigrationElectHost(GridMate::GridSession* session,GridMate::GridMember*& newHost)	{ (void)session;(void)newHost; }
+    void OnMigrationElectHost(GridMate::GridSession* session,GridMate::GridMember*& newHost) { (void)session;(void)newHost; }
     /// Called when the host migration has completed.
-    void OnMigrationEnd(GridMate::GridSession* session,GridMate::GridMember* newHost)			{ (void)session;(void)newHost; }
+    void OnMigrationEnd(GridMate::GridSession* session,GridMate::GridMember* newHost) { (void)session;(void)newHost; }
     //////////////////////////////////////////////////////////////////////////
 
-    void SetUI(GridHub* ui)	{ m_ui = ui; }
+    void SetUI(GridHub* ui)    { m_ui = ui; }
 
     bool StartSession(bool isRestarting = false);
     void StopSession(bool isRestarting = false);
     void RestartSession();
-    bool IsInSession() const						{ return m_session != nullptr; }
-    GridMate::GridSession*	GetSession()			{ return m_session; }
-    void SetSessionPort(unsigned short port)		{ m_sessionPort = port; }
-    int  GetSessionPort() const						{ return m_sessionPort; }
-    void SetSessionSlots(unsigned char numSlots)	{ m_numberOfSlots = numSlots; }
-    int GetSessionSlots() const						{ return m_numberOfSlots; }
-    void SetHubName(const AZStd::string& hubName)	{ m_hubName = hubName; }
+    bool IsInSession() const                        { return m_session != nullptr; }
+    GridMate::GridSession*    GetSession()            { return m_session; }
+    void SetSessionPort(unsigned short port)        { m_sessionPort = port; }
+    int  GetSessionPort() const                        { return m_sessionPort; }
+    void SetSessionSlots(unsigned char numSlots)    { m_numberOfSlots = numSlots; }
+    int GetSessionSlots() const                        { return m_numberOfSlots; }
+    void SetHubName(const AZStd::string& hubName)    { m_hubName = hubName; }
     void EnableDisconnectDetection(bool en);
-    bool IsEnableDisconnectDetection() const		{ return m_isDisconnectDetection; }
+    bool IsEnableDisconnectDetection() const        { return m_isDisconnectDetection; }
     void SetDisconnectionTimeOut(int timeout)       { m_disconnectionTimeout = timeout; }
     int GetDisconnectionTimeout() const             { return m_disconnectionTimeout; }
-    void AddToStartupFolder(bool isAdd)				{ m_isAddToStartupFolder = isAdd; }
-    bool IsAddToStartupFolder() const				{ return m_isAddToStartupFolder; }
-    const AZStd::string& GetHubName() const			{ return m_hubName; }
+    void AddToStartupFolder(bool isAdd)                { m_isAddToStartupFolder = isAdd; }
+    bool IsAddToStartupFolder() const                { return m_isAddToStartupFolder; }
+    const AZStd::string& GetHubName() const            { return m_hubName; }
 
     void LogToFile(bool enable);
-    bool IsLogToFile() const						{ return m_isLogToFile; }
+    bool IsLogToFile() const                        { return m_isLogToFile; }
 
 
 
     static void Reflect(AZ::ReflectContext* reflection);
 private:
 
-    GridHub*				m_ui;
-    GridMate::IGridMate*	m_gridMate;
+    GridHub*                m_ui;
+    GridMate::IGridMate*    m_gridMate;
     GridMate::GridSession*  m_session;
 
-    unsigned short			m_sessionPort;
-    unsigned char			m_numberOfSlots;
-    AZStd::string			m_hubName;
-    bool					m_isDisconnectDetection;
+    unsigned short            m_sessionPort;
+    unsigned char            m_numberOfSlots;
+    AZStd::string            m_hubName;
+    bool                    m_isDisconnectDetection;
     int                     m_disconnectionTimeout;
-    bool					m_isAddToStartupFolder;
-    bool					m_isLogToFile;
+    bool                    m_isAddToStartupFolder;
+    bool                    m_isLogToFile;
 
-    AZ::IO::SystemFile		m_logFile;
+    AZ::IO::SystemFile        m_logFile;
 
     /**
      * Contain information about members and titles that we monitor for exit. Only enabled if
@@ -216,9 +218,9 @@ private:
         {
         }
 
-        GridMate::MemberIDCompact	m_memberId;			///< Pointer to member ID in the session.
+        GridMate::MemberIDCompact    m_memberId;            ///< Pointer to member ID in the session.
 #ifdef AZ_PLATFORM_WINDOWS
-        HANDLE						m_localProcess;		///< Local process ID used to monitor local applocations.
+        HANDLE                        m_localProcess;        ///< Local process ID used to monitor local applocations.
 #else
         pid_t                                           m_localProcess;
 #endif

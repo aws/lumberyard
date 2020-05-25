@@ -133,12 +133,13 @@ namespace GraphCanvas
     {
         AZ::EntityId conflictId;
         BookmarkManagerRequestBus::EventResult(conflictId, graphId, &BookmarkManagerRequests::FindBookmarkForShortcut, m_saveData.m_shortcut);
-        if (m_saveData.m_shortcut > 0 && conflictId.IsValid())
+        if (m_saveData.m_shortcut < 0 || conflictId.IsValid())
         {
             // If we have a conflict. We're going to copy the 'spirit' of the bookmark
             // Rather then the actual bookmark.
             //
             // This means we will re-randomize the color, assign a new shortcut, and a default name
+            // If we do not have a shortcut, we'll do this anyway since we can't be sure what state we are currently in.
             m_saveData.m_shortcut = k_findShortcut;
             m_saveData.m_color = ColorUtils::GetRandomColor();
 

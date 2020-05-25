@@ -53,10 +53,10 @@ namespace
 
         // number = 8000
         auto l = log10(number);   // 3.90
-        AZ::s64 i = l;            // 3
-        int f = pow(10, l - i);   // 10^0.9 = 8
+        AZ::s64 i = aznumeric_cast<AZ::s64>(l); // 3
+        int f = aznumeric_cast<int>(pow(10, l - i));   // 10^0.9 = 8
         f = f < 2 ? 2 : f < 5 ? 5 : 10; // f -> 10
-        return pow(10, i) * f;
+        return aznumeric_cast<T>(pow(10, i) * f);
     }
 
     template<typename T>
@@ -73,10 +73,10 @@ namespace
 
         // number = 8000
         auto l = log10(number);   // 3.90
-        AZ::s64 i = l;            // 3
-        int f = pow(10, l - i);   // 10^0.9 = 8
+        AZ::s64 i = aznumeric_cast<AZ::s64>(l); // 3
+        int f = aznumeric_cast<int>(pow(10, l - i));   // 10^0.9 = 8
         f = f > 5 ? 5 : f > 2 ? 2 : 1;  // f -> 5
-        return pow(10, i) * f;
+        return aznumeric_cast<T>(pow(10, i) * f);
     }
 }
 
@@ -174,7 +174,7 @@ struct IVariable
         DT_SOANIMHELPER,    // Smart Object Animation Helper
         DT_SOEVENT,         // Smart Object Event
         DT_SOTEMPLATE,  // Smart Object Template
-        DT_CUSTOMACTION,        // Custom Action
+        DT_DEPRECATED0, // Formerly Custom Action
         DT_EXTARRAY,    // Extendable Array
         DT_VEEDHELPER,  // Vehicle Helper
         DT_VEEDPART,    // Vehicle Part
@@ -396,6 +396,7 @@ struct IVariable
 // Smart pointer to this parameter.
 typedef _smart_ptr<IVariable> IVariablePtr;
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /**
  **************************************************************************************
  * CVariableBase implements IVariable interface and provide default implementation
@@ -407,6 +408,7 @@ typedef _smart_ptr<IVariable> IVariablePtr;
 class EDITOR_CORE_API CVariableBase
     : public IVariable
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     virtual ~CVariableBase() {}
 
@@ -649,10 +651,12 @@ protected:
     //! Optional userdata pointer
     QVariant m_userData;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //! Extended data (Extended data is never copied, it's always private to this variable).
     WiredList m_wiredVars;
     OnSetCallbackList m_onSetFuncs;
     OnSetEnumCallbackList m_onSetEnumFuncs;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     uint16 m_flags;
     //! Limited to 8 flags.
@@ -878,7 +882,9 @@ public:
 
 protected:
     typedef std::vector<IVariablePtr> Variables;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Variables m_vars;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //! Any string value displayed in properties.
     QString m_strValue;
 };
@@ -955,7 +961,7 @@ namespace var_type
 
         void operator()(const double& from, int& to) const { to = (int)from; }
         void operator()(const double& from, bool& to) const { to = from != 0; }
-        void operator()(const double& from, float& to) const { to = from; }
+        void operator()(const double& from, float& to) const { to = aznumeric_cast<float>(from); }
 
         void operator()(const Vec2& from, Vec2& to) const { to = from; }
         void operator()(const Vec3& from, Vec3& to) const { to = from; }
@@ -975,7 +981,7 @@ namespace var_type
 
         void operator()(const QString& from, int& value) const { value = from.toInt(); }
         void operator()(const QString& from, bool& value) const { value = from.toInt() != 0; }
-        void operator()(const QString& from, float& value) const { value = from.toDouble(); }
+        void operator()(const QString& from, float& value) const { value = from.toFloat(); }
         void operator()(const QString& from, Vec2& value) const
         {
             QStringList parts = from.split(QStringLiteral(","));
@@ -983,8 +989,8 @@ namespace var_type
             {
                 parts.push_back(QString());
             }
-            value.x = parts[0].toDouble();
-            value.y = parts[1].toDouble();
+            value.x = parts[0].toFloat();
+            value.y = parts[1].toFloat();
         };
         void operator()(const QString& from, Vec3& value) const
         {
@@ -993,9 +999,9 @@ namespace var_type
             {
                 parts.push_back(QString());
             }
-            value.x = parts[0].toDouble();
-            value.y = parts[1].toDouble();
-            value.z = parts[2].toDouble();
+            value.x = parts[0].toFloat();
+            value.y = parts[1].toFloat();
+            value.z = parts[2].toFloat();
         };
         void operator()(const QString& from, Vec4& value) const
         {
@@ -1004,10 +1010,10 @@ namespace var_type
             {
                 parts.push_back(QString());
             }
-            value.x = parts[0].toDouble();
-            value.y = parts[1].toDouble();
-            value.z = parts[2].toDouble();
-            value.w = parts[3].toDouble();
+            value.x = parts[0].toFloat();
+            value.y = parts[1].toFloat();
+            value.z = parts[2].toFloat();
+            value.w = parts[3].toFloat();
         };
         void operator()(const QString& from, Ang3& value) const
         {
@@ -1016,9 +1022,9 @@ namespace var_type
             {
                 parts.push_back(QString());
             }
-            value.x = parts[0].toDouble();
-            value.y = parts[1].toDouble();
-            value.z = parts[2].toDouble();
+            value.x = parts[0].toFloat();
+            value.y = parts[1].toFloat();
+            value.z = parts[2].toFloat();
         };
         void operator()(const QString& from, Quat& value) const
         {
@@ -1027,10 +1033,10 @@ namespace var_type
             {
                 parts.push_back(QString());
             }
-            value.w = parts[0].toDouble();
-            value.v.x = parts[1].toDouble();
-            value.v.y = parts[2].toDouble();
-            value.v.z = parts[3].toDouble();
+            value.w = parts[0].toFloat();
+            value.v.x = parts[1].toFloat();
+            value.v.y = parts[2].toFloat();
+            value.v.z = parts[3].toFloat();
         };
     };
 
@@ -1472,11 +1478,13 @@ typedef _smart_ptr<IVarEnumList> IVarEnumListPtr;
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING;
 //! Selection list shown in combo box, for enumerated variable.
 template <class T>
 class CVarEnumListBase
     : public IVarEnumList
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CVarEnumListBase(){}
 
@@ -1507,9 +1515,12 @@ protected:
 
 struct CUIEnumsDatabase_SEnum;
 
+//////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class EDITOR_CORE_API CVarGlobalEnumList
     : public CVarEnumListBase<QString>
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CVarGlobalEnumList(CUIEnumsDatabase_SEnum* pEnum);
     CVarGlobalEnumList(const QString& enumName);
@@ -1788,15 +1799,19 @@ struct CSmartVariableArray
     VarType* GetVar() const { return pVar; };
 
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     _smart_ptr<VarType> pVar;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 //////////////////////////////////////////////////////////////////////////
 
 
 //////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class EDITOR_CORE_API CVarBlock
     : public IVariableContainer
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     // Dtor.
     virtual ~CVarBlock() {}
@@ -1893,7 +1908,9 @@ protected:
     void GatherUsedResourcesInVar(IVariable* pVar, CUsedResources& resources);
 
     typedef std::vector<IVariablePtr> Variables;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Variables m_vars;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 typedef _smart_ptr<CVarBlock> CVarBlockPtr;
@@ -1926,7 +1943,9 @@ protected:
     void CopyVariableValues(CVarObject* sourceObject);
 
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     CVarBlockPtr m_vars;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 Q_DECLARE_METATYPE(IVariable *);

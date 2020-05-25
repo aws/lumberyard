@@ -223,12 +223,19 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     tempJobNames << "c:/somerandomfolder/mmmnnnoo/123.456";
     tempJobNames << "c:/somerandomfolder/mmmnnnoo/123.567";
 
+    // test - compile group by uuid is always an exact match.  Its the same code path
+    // as the others in terms of success/failure.
+    tempJobNames << "c:/somerandomfolder/pqr/123.456";
+
+    // test - compile group for an exact ID succeeds when that exact ID is called.
+
     QList<RCJob*> createdJobs;
 
-    AZ::Uuid uuidOfSource = AZ::Uuid("{D013122E-CF2C-4534-A87D-F82570FBC2CD}");
+    
 
     for (QString name : tempJobNames)
     {
+        AZ::Uuid uuidOfSource = AZ::Uuid::CreateName(name.toUtf8().constData());
         RCJob* job = new RCJob(rcJobListModel);
         AssetProcessor::JobDetails jobDetails;
         jobDetails.m_jobEntry.m_watchFolderPath = "c:/somerandomfolder/dev";
@@ -244,6 +251,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // double them up for "es3" to make sure that platform is respected
     for (QString name : tempJobNames)
     {
+        AZ::Uuid uuidOfSource = AZ::Uuid::CreateName(name.toUtf8().constData());
         RCJob* job0 = new RCJob(rcJobListModel);
         AssetProcessor::JobDetails jobDetails;
         jobDetails.m_jobEntry.m_databaseSourceName = jobDetails.m_jobEntry.m_pathRelativeToWatchFolder = name;
@@ -275,7 +283,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 
     // EXACT MATCH TEST (with prefixes and such)
     NetworkRequestID requestID(1, 1234);
-    m_rcController.OnRequestCompileGroup(requestID, "pc", "@assets@/blah/test.dds");
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "@assets@/blah/test.dds", AZ::Data::AssetId());
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     // this should have matched exactly one item, and when we finish that item, it should terminate:
@@ -292,6 +300,8 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[0]);
     createdJobs[0]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[0]);
+    m_rcController.OnJobComplete(createdJobs[0]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_FALSE(gotCreated);
@@ -303,7 +313,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // give it a name that for sure does not match:
     gotCreated = false;
     gotCompleted = false;
-    m_rcController.OnRequestCompileGroup(requestID, "pc", "bibbidybobbidy.boo");
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "bibbidybobbidy.boo", AZ::Data::AssetId());
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCreated);
@@ -315,7 +325,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // give it a name that for sure does not match due to platform
     gotCreated = false;
     gotCompleted = false;
-    m_rcController.OnRequestCompileGroup(requestID, "aaaaaa", "blah/test.cre");
+    m_rcController.OnRequestCompileGroup(requestID, "aaaaaa", "blah/test.cre", AZ::Data::AssetId());
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCreated);
@@ -326,9 +336,12 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // -------------------------------- test - Multiple match, ignoring extensions
     // Give it something that should match 3 and 4  but not 5 and not 6
 
+    // in this test, we create a group with two assets in it
+    // so that when the one finishes, it shouldn't complete the group, until the other also finishes
+    // because compile groups are only finished when all assets in them are complete (or any have failed)
     gotCreated = false;
     gotCompleted = false;
-    m_rcController.OnRequestCompileGroup(requestID, "pc", "abc/123.nnn");
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "abc/123.nnn", AZ::Data::AssetId());
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCreated);
@@ -342,8 +355,11 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[3]);
     createdJobs[3]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[3]);
+    m_rcController.OnJobComplete(createdJobs[3]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
+    // despite us finishing the one job, its still an open compile group with remaining work.
     UNIT_TEST_EXPECT_FALSE(gotCreated);
     UNIT_TEST_EXPECT_FALSE(gotCompleted);
 
@@ -353,6 +369,8 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[4]);
     createdJobs[4]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[4]);
+    m_rcController.OnJobComplete(createdJobs[4]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCompleted);
@@ -365,7 +383,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 
     gotCreated = false;
     gotCompleted = false;
-    m_rcController.OnRequestCompileGroup(requestID, "pc", "aaa/bbb/123_45.abc");
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "aaa/bbb/123_45.abc", AZ::Data::AssetId());
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCreated);
@@ -380,10 +398,13 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[7]);
     createdJobs[7]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[7]);
+    m_rcController.OnJobComplete(createdJobs[7]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
 
     rcJobListModel->markAsProcessing(createdJobs[8]);
     createdJobs[8]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[8]);
+    m_rcController.OnJobComplete(createdJobs[8]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_FALSE(gotCreated);
@@ -393,6 +414,8 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[9]);
     createdJobs[9]->SetState(RCJob::completed);
     m_rcController.FinishJob(createdJobs[9]);
+    m_rcController.OnJobComplete(createdJobs[9]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCompleted);
@@ -403,7 +426,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // ---------------- TEST :  Ensure that a group fails when any member of it fails.
     gotCreated = false;
     gotCompleted = false;
-    m_rcController.OnRequestCompileGroup(requestID, "pc", "mmmnnnoo/123.ZZZ"); // should match exactly 2 elements
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "mmmnnnoo/123.ZZZ", AZ::Data::AssetId()); // should match exactly 2 elements
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotCreated);
@@ -417,6 +440,8 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     rcJobListModel->markAsProcessing(createdJobs[12]);
     createdJobs[12]->SetState(RCJob::failed);
     m_rcController.FinishJob(createdJobs[12]);
+    m_rcController.OnJobComplete(createdJobs[12]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Failed);
+
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     // this should have failed it immediately.
@@ -425,6 +450,32 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     UNIT_TEST_EXPECT_FALSE(gotCreated);
     UNIT_TEST_EXPECT_TRUE(gotGroupID == requestID);
     UNIT_TEST_EXPECT_TRUE(gotStatus == AssetStatus_Failed);
+
+    /// --- TEST ------------- compile group but with UUID instead of file name.
+    gotCreated = false;
+    gotCompleted = false;
+    AZ::Data::AssetId sourceDataID(createdJobs[14]->GetJobEntry().m_sourceFileUUID);
+    m_rcController.OnRequestCompileGroup(requestID, "pc", "", sourceDataID); // should match exactly 1 element.
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+
+    UNIT_TEST_EXPECT_TRUE(gotCreated);
+    UNIT_TEST_EXPECT_FALSE(gotCompleted);
+    UNIT_TEST_EXPECT_TRUE(gotGroupID == requestID);
+    UNIT_TEST_EXPECT_TRUE(gotStatus == AssetStatus_Queued);
+
+    gotCreated = false;
+    gotCompleted = false;
+
+    rcJobListModel->markAsProcessing(createdJobs[14]);
+    createdJobs[14]->SetState(RCJob::completed);
+    m_rcController.FinishJob(createdJobs[14]);
+    m_rcController.OnJobComplete(createdJobs[14]->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
+
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+
+    UNIT_TEST_EXPECT_TRUE(gotCompleted);
+    UNIT_TEST_EXPECT_TRUE(gotGroupID == requestID);
+    UNIT_TEST_EXPECT_TRUE(gotStatus == AssetStatus_Compiled);
 
     /// --- TEST ------------- RC controller should not accept duplicate jobs.
 
@@ -476,6 +527,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     UNIT_TEST_EXPECT_TRUE(handleOfLock != -1);
 #endif
 
+    AZ::Uuid uuidOfSource = AZ::Uuid("{D013122E-CF2C-4534-A87D-F82570FBC2CD}");
     MockRCJob rcJob;
     ScanFolderInfo scanFolderInfo("samplepath", "sampledisplayname", "samplekey", "", false, false);
     AssetProcessor::JobDetails jobDetailsToInitWith;
@@ -644,7 +696,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 
     QObject::connect(&m_rcController, &RCController::ActiveJobsCountChanged, this, [this, &completedJob](unsigned int /*count*/)
     {
-        m_rcController.OnFinishedProcessingJob(completedJob);
+        m_rcController.OnAddedToCatalog(completedJob);
         completedJob = {};
     });
 
@@ -712,12 +764,12 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     {
         int prevJobCount = rcJobListModel->itemCount();
         MockRCJob rcJob;
-        AssetProcessor::JobDetails jobDetailsToInitWith;
-        jobDetailsToInitWith.m_jobEntry.m_pathRelativeToWatchFolder = jobDetailsToInitWith.m_jobEntry.m_databaseSourceName = "someFile0.txt";
-        jobDetailsToInitWith.m_jobEntry.m_platformInfo = { "pc",{ "tools", "editor" } };
-        jobDetailsToInitWith.m_jobEntry.m_jobKey = "Text files";
-        jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID = uuidOfSource;
-        rcJob.Init(jobDetailsToInitWith);
+        AssetProcessor::JobDetails jobDetailsToInitWithInsideScope;
+        jobDetailsToInitWithInsideScope.m_jobEntry.m_pathRelativeToWatchFolder = jobDetailsToInitWithInsideScope.m_jobEntry.m_databaseSourceName = "someFile0.txt";
+        jobDetailsToInitWithInsideScope.m_jobEntry.m_platformInfo = { "pc",{ "tools", "editor" } };
+        jobDetailsToInitWithInsideScope.m_jobEntry.m_jobKey = "Text files";
+        jobDetailsToInitWithInsideScope.m_jobEntry.m_sourceFileUUID = jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID;
+        rcJob.Init(jobDetailsToInitWithInsideScope);
         rcJobListModel->addNewJob(&rcJob);
         // verify that job was added
         UNIT_TEST_EXPECT_TRUE(rcJobListModel->itemCount() == prevJobCount + 1);

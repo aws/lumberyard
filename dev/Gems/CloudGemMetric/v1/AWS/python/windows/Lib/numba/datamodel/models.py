@@ -190,7 +190,15 @@ class BooleanModel(DataModel):
         return self.as_data(builder, value)
 
     def from_data(self, builder, value):
-        return builder.trunc(value, self.get_value_type())
+        ty = self.get_value_type()
+        resalloca = cgutils.alloca_once(builder, ty)
+        cond = builder.icmp_unsigned('==', value, value.type(0))
+        with builder.if_else(cond) as (then, otherwise):
+            with then:
+                builder.store(ty(0), resalloca)
+            with otherwise:
+                builder.store(ty(1), resalloca)
+        return builder.load(resalloca)
 
     def from_argument(self, builder, value):
         return self.from_data(builder, value)
@@ -281,27 +289,29 @@ class EnumModel(ProxyModel):
 @register_default(types.PyObject)
 @register_default(types.RawPointer)
 @register_default(types.NoneType)
-@register_default(types.Const)
+@register_default(types.StringLiteral)
 @register_default(types.EllipsisType)
 @register_default(types.Function)
 @register_default(types.Type)
 @register_default(types.Object)
 @register_default(types.Module)
 @register_default(types.Phantom)
+@register_default(types.ContextManager)
 @register_default(types.Dispatcher)
+@register_default(types.ObjModeDispatcher)
 @register_default(types.ExceptionClass)
 @register_default(types.Dummy)
 @register_default(types.ExceptionInstance)
 @register_default(types.ExternalFunction)
-@register_default(types.NumbaFunction)
 @register_default(types.Macro)
 @register_default(types.EnumClass)
 @register_default(types.IntEnumClass)
 @register_default(types.NumberClass)
+@register_default(types.TypeRef)
 @register_default(types.NamedTupleClass)
 @register_default(types.DType)
-@register_default(types.ArrayFlags)
 @register_default(types.RecursiveCall)
+@register_default(types.MakeFunctionLiteral)
 class OpaqueModel(PrimitiveModel):
     """
     Passed as opaque pointers
@@ -323,14 +333,11 @@ class MemInfoModel(OpaqueModel):
         return True
 
     def get_nrt_meminfo(self, builder, value):
-        for tp in self.inner_types():
-            if self._dmm.lookup(tp).has_nrt_meminfo():
-                raise NotImplementedError(
-                    "unsupported nested memory-managed object")
         return value
 
 
 @register_default(types.Integer)
+@register_default(types.IntegerLiteral)
 class IntegerModel(PrimitiveModel):
     def __init__(self, dmm, fe_type):
         be_type = ir.IntType(fe_type.bitwidth)
@@ -412,6 +419,7 @@ class ExternalFuncPointerModel(PrimitiveModel):
 
 @register_default(types.UniTuple)
 @register_default(types.NamedUniTuple)
+@register_default(types.StarArgUniTuple)
 class UniTupleModel(DataModel):
     def __init__(self, dmm, fe_type):
         super(UniTupleModel, self).__init__(dmm, fe_type)
@@ -713,10 +721,23 @@ class ComplexModel(StructModel):
 
 @register_default(types.Tuple)
 @register_default(types.NamedTuple)
+@register_default(types.StarArgTuple)
 class TupleModel(StructModel):
     def __init__(self, dmm, fe_type):
         members = [('f' + str(i), t) for i, t in enumerate(fe_type)]
         super(TupleModel, self).__init__(dmm, fe_type, members)
+
+
+@register_default(types.UnionType)
+class UnionModel(StructModel):
+    def __init__(self, dmm, fe_type):
+        members = [
+            ('tag', types.uintp),
+            # XXX: it should really be a MemInfoPointer(types.voidptr)
+            ('payload', types.Tuple.from_types(fe_type.types)),
+        ]
+        super(UnionModel, self).__init__(dmm, fe_type, members)
+
 
 
 @register_default(types.Pair)
@@ -849,14 +870,14 @@ class ArrayModel(StructModel):
         ]
         super(ArrayModel, self).__init__(dmm, fe_type, members)
 
-@register_default(types.SmartArrayType)
-class SmartArrayModel(StructModel):
+
+@register_default(types.ArrayFlags)
+class ArrayFlagsModel(StructModel):
     def __init__(self, dmm, fe_type):
         members = [
-            ('parent', types.pyobject),
-            ('data', fe_type.as_array)
+            ('parent', fe_type.array_type),
         ]
-        super(SmartArrayModel, self).__init__(dmm, fe_type, members)
+        super(ArrayFlagsModel, self).__init__(dmm, fe_type, members)
 
 
 @register_default(types.NestedArray)
@@ -957,6 +978,24 @@ class UnicodeCharSeq(DataModel):
 
     def get_data_type(self):
         return self._be_type
+
+    def as_data(self, builder, value):
+        return value
+
+    def from_data(self, builder, value):
+        return value
+
+    def as_return(self, builder, value):
+        return value
+
+    def from_return(self, builder, value):
+        return value
+
+    def as_argument(self, builder, value):
+        return value
+
+    def from_argument(self, builder, value):
+        return value
 
 
 @register_default(types.CharSeq)
@@ -1142,7 +1181,8 @@ class GeneratorModel(CompositeModel):
 class ArrayCTypesModel(StructModel):
     def __init__(self, dmm, fe_type):
         # ndim = fe_type.ndim
-        members = [('data', types.CPointer(fe_type.dtype))]
+        members = [('data', types.CPointer(fe_type.dtype)),
+                   ('meminfo', types.MemInfoPointer(fe_type.dtype))]
         super(ArrayCTypesModel, self).__init__(dmm, fe_type, members)
 
 

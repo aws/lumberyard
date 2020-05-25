@@ -149,6 +149,7 @@
     <None Include="CryFX\TiledShading.cfi" />
     <None Include="CryFX\Total_Illumination.cfx" />
     <None Include="CryFX\VegetationTess.cfi" />
+    <None Include="CryFX\Video.cfx" />
     <None Include="CryFX\VolumeLighting.cfi" />
     <None Include="CryFX\VolumetricFog.cfi" />
     <None Include="CryFX\CommonCausticsPass.cfi" />

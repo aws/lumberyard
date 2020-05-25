@@ -35,14 +35,12 @@
 #include "Material/MaterialManager.h"
 #include "Particles/ParticleManager.h"
 #include "Prefabs/PrefabManager.h"
-#include "GameTokens/GameTokenManager.h"
 #include "LensFlareEditor/LensFlareManager.h"
 #include "ErrorReportDialog.h"
 #include "Undo/Undo.h"
 #include "SurfaceTypeValidator.h"
 #include "ShaderCache.h"
 #include "Util/AutoLogTime.h"
-#include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayerManager.h"
 #include "ICryPak.h"
 #include "Objects/BrushObject.h"
@@ -114,6 +112,19 @@ static const char* kLevelPathForSliceEditing = "EngineAssets/LevelForSliceEditin
 static bool IsSliceFile(const QString& filePath)
 {
     return filePath.endsWith(AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str(), Qt::CaseInsensitive);
+}
+
+namespace Internal
+{
+    bool SaveLevel()
+    {
+        if (!GetIEditor()->GetDocument()->DoSave(GetIEditor()->GetDocument()->GetActivePathName(), TRUE))
+        {
+            return false;
+        }
+
+        return true;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -396,8 +407,6 @@ void CCryEditDoc::Save(TDocMultiArchive& arrXmlAr)
         GetIEditor()->GetMaterialManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);
         //! Serialize particles manager.
         GetIEditor()->GetParticleManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);
-        //! Serialize game tokens manager.
-        GetIEditor()->GetGameTokenManager()->Save();
         //! Serialize LensFlare manager.
         GetIEditor()->GetLensFlareManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);
 
@@ -532,14 +541,15 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 #else
         {
             CAutoLogTime logtime("Load Terrain");
-            bool terrainLoaded = GetIEditor()->Get3DEngine()->LoadCompiledTerrainForEditor();
+            bool terrainLoaded = GetIEditor()->Get3DEngine()->LoadCompiledOctreeForEditor();
             AZ_Assert(terrainLoaded, "Failed to load Terrain data file.");
 
             CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
             if (pVegetationMap)
             {
                 const bool keepExistingVegetation = false;
-                pVegetationMap->Allocate(GetIEditor()->Get3DEngine()->GetTerrainSize(), keepExistingVegetation);
+                const int noTerrainSize = 4096;
+                pVegetationMap->Allocate(noTerrainSize, keepExistingVegetation);
             }
         }
 #endif //#ifdef LY_TERRAIN_EDITOR
@@ -576,18 +586,6 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
         {
             CAutoLogTime logtime("Load Flares");
             GetIEditor()->GetLensFlareManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        // Load GameTokensManager.
-        //////////////////////////////////////////////////////////////////////////
-        {
-            CAutoLogTime logtime("Load GameTokens");
-
-            if (!GetIEditor()->GetGameTokenManager()->Load())
-            {
-                GetIEditor()->GetGameTokenManager()->Serialize((*arrXmlAr[DMAS_GENERAL]).root, (*arrXmlAr[DMAS_GENERAL]).bLoading);    // load old version
-            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1880,6 +1878,11 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
 
 void CCryEditDoc::Hold(const QString& holdName)
 {
+    Hold(holdName, holdName);
+}
+
+void CCryEditDoc::Hold(const QString& holdName, const QString& relativeHoldPath)
+{
     if (!IsDocumentReady() || GetEditMode() == CCryEditDoc::DocumentEditingMode::SliceEdit)
     {
         return;
@@ -1889,7 +1892,7 @@ void CCryEditDoc::Hold(const QString& holdName)
     char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
     AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(levelPath.toUtf8().data(), resolvedLevelPath, AZ_MAX_PATH_LEN);
 
-    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + holdName + "/";
+    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + relativeHoldPath + "/";
     QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     // never auto-backup while we're trying to hold.
@@ -1901,7 +1904,12 @@ void CCryEditDoc::Hold(const QString& holdName)
     GetIEditor()->GetGameEngine()->SetLevelPath(levelPath);
 }
 
-void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHoldFolder)
+void CCryEditDoc::Fetch(const QString& relativeHoldPath, bool bShowMessages, bool bDelHoldFolder)
+{
+    Fetch(relativeHoldPath, relativeHoldPath, bShowMessages, bDelHoldFolder ? FetchPolicy::DELETE_FOLDER : FetchPolicy::PRESERVE);
+}
+
+void CCryEditDoc::Fetch(const QString& holdName, const QString& relativeHoldPath, bool bShowMessages, FetchPolicy policy)
 {
     if (!IsDocumentReady() || GetEditMode() == CCryEditDoc::DocumentEditingMode::SliceEdit)
     {
@@ -1912,7 +1920,7 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
     char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
     AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(levelPath.toUtf8().data(), resolvedLevelPath, AZ_MAX_PATH_LEN);
 
-    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + holdName + "/";
+    QString holdPath = QString::fromUtf8(resolvedLevelPath) + "/" + relativeHoldPath + "/";
     QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     {
@@ -1944,7 +1952,7 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
         AZ_Error("CryEditDoc", false, "Fetch failed to load the Xml Archive");
         return;
     }
-    
+
     // Load the state
     LoadLevel(arrXmlAr, holdFilename);
 
@@ -1959,9 +1967,18 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
 
     GetIEditor()->FlushUndo();
 
-    if (bDelHoldFolder)
+    switch (policy)
     {
+    case FetchPolicy::DELETE_FOLDER:
         CFileUtil::Deltree(holdPath.toUtf8().data(), true);
+        break;
+
+    case FetchPolicy::DELETE_LY_FILE:
+        CFileUtil::DeleteFile(holdFilename);
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -2363,14 +2380,7 @@ BOOL CCryEditDoc::DoFileSave()
         return FALSE;
     }
 
-    if (GetIEditor()->GetCommandManager()->Execute("general.save_level") == "true")
-    {
-        return TRUE;
-    }
-    else
-    {
-        return FALSE;
-    }
+    return Internal::SaveLevel();
 }
 
 const char* CCryEditDoc::GetTemporaryLevelName() const
@@ -2400,12 +2410,8 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
 #ifdef LY_TERRAIN_EDITOR
     GetIEditor()->GetTerrainManager()->ResetHeightMap();
     GetIEditor()->GetTerrainManager()->SetUseTerrain(bUseTerrain);
-
-    // If possible set terrain to correct size here, this will help with initial camera placement in new levels
-    if (bUseTerrain)
-    {
-        GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
-    }
+    // Set terrain to correct size here, this will help with initial camera placement in new levels
+    GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
 #else
     CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
     if (pVegetationMap)
@@ -2478,7 +2484,13 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
 
 void CCryEditDoc::CreateDefaultLevelAssets(int resolution, int unitSize)
 {
+    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
+    {
+        return;
+    }
+
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_envProbeSliceAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, m_envProbeSliceRelativePath, azrtti_typeid<AZ::SliceAsset>(), false);
+
     if (m_envProbeSliceAssetId.IsValid())
     {
         AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(m_envProbeSliceAssetId, false);
@@ -2673,19 +2685,6 @@ void CCryEditDoc::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAsset
 }
 //////////////////////////////////////////////////////////////////////////
 
-namespace
-{
-    bool PySaveLevel()
-    {
-        if (!GetIEditor()->GetDocument()->DoSave(GetIEditor()->GetDocument()->GetActivePathName(), TRUE))
-        {
-            return false;
-        }
-
-        return true;
-    }
-}
-
 namespace AzToolsFramework
 {
     void CryEditDocFuncsHandler::Reflect(AZ::ReflectContext* context)
@@ -2699,13 +2698,9 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
                     ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
             };
-            addLegacyGeneral(behaviorContext->Method("save_level", PySaveLevel, nullptr, "Saves the current level."));
+            addLegacyGeneral(behaviorContext->Method("save_level", ::Internal::SaveLevel, nullptr, "Saves the current level."));
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySaveLevel, general, save_level,
-    "Saves the current level.",
-    "general.save_level()");
 
 #include <CryEditDoc.moc>

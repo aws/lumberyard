@@ -40,7 +40,8 @@ namespace EMotionFX
         {
             const AnimGraphStateMachineSyncParam param = GetParam();
             AnimGraphFixture::ConstructGraph();
-
+            m_motionNodeAnimGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+            m_rootStateMachine = m_motionNodeAnimGraph->GetRootStateMachine();
             /*
                 +---+       +---+
               =>| A |<----->| B |
@@ -48,14 +49,8 @@ namespace EMotionFX
             */
             AnimGraphStateMachine* rootStateMachine = m_animGraph->GetRootStateMachine();
 
-            m_stateA = aznew AnimGraphMotionNode();
-            m_stateA->SetName("A");
-            rootStateMachine->AddChildNode(m_stateA);
-            rootStateMachine->SetEntryState(m_stateA);
-
-            m_stateB = aznew AnimGraphMotionNode();
-            m_stateA->SetName("B");
-            rootStateMachine->AddChildNode(m_stateB);
+            m_stateA = m_motionNodeAnimGraph->GetMotionNodeA();
+            m_stateB = m_motionNodeAnimGraph->GetMotionNodeB();
 
             m_transition = AddTransitionWithTimeCondition(m_stateA,
                 m_stateB,
@@ -70,6 +65,8 @@ namespace EMotionFX
             {
                 m_transition->SetSyncMode(AnimGraphObject::SYNCMODE_DISABLED);
             }
+
+            m_motionNodeAnimGraph->InitAfterLoading();
         }
 
         void SetUpMotionNode(const char* motionId, float playSpeed, float duration, AnimGraphMotionNode* motionNode)
@@ -89,6 +86,8 @@ namespace EMotionFX
         {
             const AnimGraphStateMachineSyncParam param = GetParam();
             AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_motionNodeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
 
             SetUpMotionNode("testMotionA", param.playSpeedA, param.durationA, m_stateA);
             SetUpMotionNode("testMotionB", param.playSpeedB, param.durationB, m_stateB);
@@ -97,6 +96,7 @@ namespace EMotionFX
         }
 
     public:
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_motionNodeAnimGraph;
         AnimGraphMotionNode* m_stateA = nullptr;
         AnimGraphMotionNode* m_stateB = nullptr;
         AnimGraphStateTransition* m_transition = nullptr;

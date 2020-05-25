@@ -38,6 +38,7 @@ namespace AzToolsFramework
         class AssetBrowserTreeView
             : public QTreeViewWithStateSaving
             , public AssetBrowserViewRequestBus::Handler
+            , public AssetBrowserComponentNotificationBus::Handler
         {
             Q_OBJECT
         public:
@@ -46,9 +47,13 @@ namespace AzToolsFramework
 
             //////////////////////////////////////////////////////////////////////////
             // QTreeView
-            //////////////////////////////////////////////////////////////////////////
             void setModel(QAbstractItemModel* model) override;
+            //////////////////////////////////////////////////////////////////////////
 
+            //! Set unique asset browser name, used to persist tree expansion states
+            void SetName(const QString& name);
+
+            // LUMBERYARD_DEPRECATED
             void LoadState(const QString& name);
             void SaveState() const;
 
@@ -56,10 +61,14 @@ namespace AzToolsFramework
 
             //////////////////////////////////////////////////////////////////////////
             // AssetBrowserViewRequestBus
-            //////////////////////////////////////////////////////////////////////////
             void SelectProduct(AZ::Data::AssetId assetID) override;
             void SelectFileAtPath(const AZStd::string& assetPath) override;
             void ClearFilter() override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // AssetBrowserComponentNotificationBus
+            void OnAssetBrowserComponentReady() override;
             //////////////////////////////////////////////////////////////////////////
 
             void SetThumbnailContext(const char* context) const;
@@ -94,17 +103,19 @@ namespace AzToolsFramework
             QTimer* m_scTimer = nullptr;
             const int m_scUpdateInterval = 100;
 
+            QString m_name;
+
             bool SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID);
             bool SelectEntry(const QModelIndex& idxParent, const AZStd::vector<AZStd::string>& entryPathTokens, const uint32_t entryPathIndex = 0);
             void SendMetricsEvent(AssetBrowserActionType actionType, const QModelIndex& index);
 
-            // Grab one entry for the source thumbnail list and update it
+            //! Grab one entry from the source thumbnail list and update it
             void UpdateSCThumbnails();
 
         private Q_SLOTS:
-            void OnContextMenu(const QPoint& /*point*/);
+            void OnContextMenu(const QPoint& point);
 
-            // Get all visible source entries and place them in a queue to update their source control status
+            //! Get all visible source entries and place them in a queue to update their source control status
             void OnUpdateSCThumbnailsList();
         };
 

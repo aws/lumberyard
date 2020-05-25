@@ -76,13 +76,13 @@ namespace UnitTest
             BusConnect();
         }
 
-        ~MyDrilledObject()
+        ~MyDrilledObject() override
         {
             BusDisconnect();
         }
         //////////////////////////////////////////////////////////////////////////
         // MyDrillerCommandBus
-        virtual MyDrilledObject* RequestDrilledObject()
+        MyDrilledObject* RequestDrilledObject() override
         {
             return this;
         }
@@ -114,11 +114,11 @@ namespace UnitTest
     public:
         AZ_CLASS_ALLOCATOR(MyDriller, OSAllocator, 0);
 
-        virtual const char*  GroupName() const          { return "TestDrillers"; }
-        virtual const char*  GetName() const            { return "MyTestDriller"; }
-        virtual const char*  GetDescription() const     { return "MyTestDriller description...."; }
-        virtual int          GetNumParams() const       { return static_cast<int>(m_params.size()); }
-        virtual const Param* GetParam(int index) const  { return &m_params[index]; }
+        const char*  GroupName() const override          { return "TestDrillers"; }
+        const char*  GetName() const override            { return "MyTestDriller"; }
+        const char*  GetDescription() const override     { return "MyTestDriller description...."; }
+        int          GetNumParams() const override       { return static_cast<int>(m_params.size()); }
+        const Param* GetParam(int index) const override  { return &m_params[index]; }
 
         MyDriller()
             : m_isDetailedCapture(false)
@@ -132,7 +132,7 @@ namespace UnitTest
             m_params.push_back(isDetailed);
         }
 
-        virtual void Start(const Param* params = NULL, int numParams = 0)
+        void Start(const Param* params = NULL, int numParams = 0) override
         {
             m_isDetailedCapture = m_params[0].value != 0;
             if (params)
@@ -156,7 +156,7 @@ namespace UnitTest
 
             BusConnect();
         }
-        virtual void Stop()
+        void Stop() override
         {
             drilledObject = NULL;
             m_output->BeginTag(AZ_CRC("MyDriller", 0xc3b7dceb));
@@ -165,7 +165,7 @@ namespace UnitTest
             BusDisconnect();
         }
 
-        virtual void OnEventX(int data)
+        void OnEventX(int data) override
         {
             void* ptr = AZ_INVALID_POINTER;
             float f = 3.2f;
@@ -176,7 +176,7 @@ namespace UnitTest
             m_output->EndTag(AZ_CRC("MyDriller", 0xc3b7dceb));
         }
 
-        virtual void OnStringEvent()
+        void OnStringEvent() override
         {
             m_output->BeginTag(AZ_CRC("MyDriller", 0xc3b7dceb));
             m_output->BeginTag(AZ_CRC("StringEvent", 0xd1e005df));
@@ -241,12 +241,12 @@ namespace UnitTest
                 return NULL;
             }
 
-            virtual DrillerHandlerParser*   OnEnterTag(u32 tagName)
+            DrillerHandlerParser*   OnEnterTag(u32 tagName) override
             {
                 (void)tagName;
                 return NULL;
             }
-            virtual void                    OnData(const DrillerSAXParser::Data& dataNode)
+            void                    OnData(const DrillerSAXParser::Data& dataNode) override
             {
                 if (dataNode.m_name == AZ_CRC("OnStart", 0x8b372fca) || dataNode.m_name == AZ_CRC("OnStop", 0xf6701caa))
                 {
@@ -512,7 +512,7 @@ namespace UnitTest
                 return NULL;
             }
 
-            virtual DrillerHandlerParser*   OnEnterTag(u32 tagName)
+            DrillerHandlerParser*   OnEnterTag(u32 tagName) override
             {
                 if (tagName == AZ_CRC("StringEvent", 0xd1e005df))
                 {
@@ -520,7 +520,7 @@ namespace UnitTest
                 }
                 return NULL;
             }
-            virtual void                    OnData(const DrillerSAXParser::Data& dataNode)
+            void                    OnData(const DrillerSAXParser::Data& dataNode) override
             {
                 if (dataNode.m_name == AZ_CRC("OnStart", 0x8b372fca) || dataNode.m_name == AZ_CRC("OnStop", 0xf6701caa))
                 {

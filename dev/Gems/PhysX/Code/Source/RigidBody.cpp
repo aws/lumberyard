@@ -24,6 +24,7 @@
 #include <extensions/PxRigidBodyExt.h>
 #include <PxPhysicsAPI.h>
 #include <AzFramework/Physics/World.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysX
 {
@@ -43,6 +44,20 @@ namespace PhysX
         , m_startAsleep(configuration.m_startAsleep)
     {
         CreatePhysXActor(configuration);
+    }
+
+    RigidBody::~RigidBody()
+    {
+        //clean up the attached shapes
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            for (auto shape : m_shapes)
+            {
+                m_pxRigidActor->detachShape(*shape->GetPxShape());
+                shape->DetachedFromActor();
+            }
+        }
+        m_shapes.clear();
     }
 
     void RigidBody::CreatePhysXActor(const Physics::RigidBodyConfiguration& configuration)
@@ -106,8 +121,11 @@ namespace PhysX
             return;
         }
 
-        m_pxRigidActor->attachShape(*pxShape->GetPxShape());
-
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            m_pxRigidActor->attachShape(*pxShape->GetPxShape());
+        }
+        pxShape->AttachedToActor(m_pxRigidActor.get());
         m_shapes.push_back(pxShape);
     }
 
@@ -133,7 +151,11 @@ namespace PhysX
             return;
         }
 
-        m_pxRigidActor->detachShape(*pxShape->GetPxShape());
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            m_pxRigidActor->detachShape(*pxShape->GetPxShape());
+        }
+        pxShape->DetachedFromActor();
         m_shapes.erase(found);
     }
 
@@ -187,13 +209,19 @@ namespace PhysX
 
     AZ::Vector3 RigidBody::GetCenterOfMassLocal() const
     {
-        return PxMathConvert(m_pxRigidActor->getCMassLocalPose().p);
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getCMassLocalPose().p);
+        }
+        return AZ::Vector3::CreateZero();
     }
 
     AZ::Matrix3x3 RigidBody::GetInverseInertiaWorld() const
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
             AZ::Vector3 inverseInertiaDiagonal = PxMathConvert(m_pxRigidActor->getMassSpaceInvInertiaTensor());
             AZ::Matrix3x3 rotationToWorld = AZ::Matrix3x3::CreateFromQuaternion(PxMathConvert(m_pxRigidActor->getGlobalPose().q.getConjugate()));
             return Physics::Utils::InverseInertiaLocalToWorld(inverseInertiaDiagonal, rotationToWorld);
@@ -206,6 +234,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
             physx::PxVec3 inverseInertiaDiagonal = m_pxRigidActor->getMassSpaceInvInertiaTensor();
             return AZ::Matrix3x3::CreateDiagonal(PxMathConvert(inverseInertiaDiagonal));
         }
@@ -214,18 +243,29 @@ namespace PhysX
 
     float RigidBody::GetMass() const
     {
-        return m_pxRigidActor ? m_pxRigidActor->getMass() : 0.0f;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getMass();
+        }
+        return 0.0f;
     }
 
     float RigidBody::GetInverseMass() const
     {
-        return m_pxRigidActor ? m_pxRigidActor->getInvMass() : 0.0f;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getInvMass();
+        }
+        return 0.0f;
     }
 
     void RigidBody::SetMass(float mass)
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setMass(mass);
         }
     }
@@ -234,6 +274,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(comOffset)));
         }
     }
@@ -242,13 +283,20 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
-            physx::PxU32 shapeCount = m_pxRigidActor->getNbShapes();
+            physx::PxU32 shapeCount = 0;
+            {
+                PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+                shapeCount = m_pxRigidActor->getNbShapes();
+            }
             if (shapeCount > 0)
             {
                 AZStd::vector<physx::PxShape*> shapes;
                 shapes.resize(shapeCount);
 
-                m_pxRigidActor->getShapes(&shapes[0], shapeCount);
+                {
+                    PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+                    m_pxRigidActor->getShapes(&shapes[0], shapeCount);
+                }
 
                 shapes.erase(AZStd::remove_if(shapes.begin()
                     , shapes.end()
@@ -267,7 +315,10 @@ namespace PhysX
 
                 const auto properties = physx::PxRigidBodyExt::computeMassPropertiesFromShapes(&shapes[0], shapeCount);
                 const physx::PxTransform computedCenterOfMass(properties.centerOfMass);
-                m_pxRigidActor->setCMassLocalPose(computedCenterOfMass);
+                {
+                    PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+                    m_pxRigidActor->setCMassLocalPose(computedCenterOfMass);
+                }
             }
             else
             {
@@ -280,6 +331,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setMassSpaceInertiaTensor(PxMathConvert(inertia.RetrieveScale()));
         }
     }
@@ -288,6 +340,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             auto localPose = m_pxRigidActor->getCMassLocalPose().p;
             physx::PxRigidBodyExt::setMassAndUpdateInertia(*m_pxRigidActor, m_pxRigidActor->getMass(), &localPose);
         }
@@ -295,26 +348,38 @@ namespace PhysX
 
     AZ::Vector3 RigidBody::GetLinearVelocity() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getLinearVelocity()) : AZ::Vector3::CreateZero();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getLinearVelocity());
+        }
+        return AZ::Vector3::CreateZero();
     }
 
     void RigidBody::SetLinearVelocity(const AZ::Vector3& velocity)
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setLinearVelocity(PxMathConvert(velocity));
         }
     }
 
     AZ::Vector3 RigidBody::GetAngularVelocity() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getAngularVelocity()) : AZ::Vector3::CreateZero();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getAngularVelocity());
+        }
+        return AZ::Vector3::CreateZero();
     }
 
     void RigidBody::SetAngularVelocity(const AZ::Vector3& angularVelocity)
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setAngularVelocity(PxMathConvert(angularVelocity));
         }
     }
@@ -342,7 +407,7 @@ namespace PhysX
                 AZ_Warning("PhysX Rigid Body", false, "ApplyLinearImpulse is only valid if the rigid body is not kinematic. Name: %s", GetName().c_str());
                 return;
             }
-
+            PHYSX_SCENE_WRITE_LOCK(scene);
             m_pxRigidActor->addForce(PxMathConvert(impulse), physx::PxForceMode::eIMPULSE);
         }
     }
@@ -356,7 +421,7 @@ namespace PhysX
                 AZ_Warning("PhysX Rigid Body", false, "ApplyLinearImpulseAtWorldPoint is only valid if the rigid body is not kinematic. Name: %s", GetName().c_str());
                 return;
             }
-
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             physx::PxRigidBodyExt::addForceAtPos(*m_pxRigidActor, PxMathConvert(impulse), PxMathConvert(worldPoint), physx::PxForceMode::eIMPULSE);
         }
     }
@@ -378,6 +443,7 @@ namespace PhysX
                 return;
             }
 
+            PHYSX_SCENE_WRITE_LOCK(scene);
             m_pxRigidActor->addTorque(PxMathConvert(angularImpulse), physx::PxForceMode::eIMPULSE);
         }
     }
@@ -386,6 +452,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isKinematic);
         }
     }
@@ -396,6 +463,7 @@ namespace PhysX
 
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
             auto rigidBodyFlags = m_pxRigidActor->getRigidBodyFlags();
             result = rigidBodyFlags.isSet(physx::PxRigidBodyFlag::eKINEMATIC);
         }
@@ -407,6 +475,7 @@ namespace PhysX
     {
         if (IsKinematic())
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setKinematicTarget(PxMathConvert(targetTransform));
         }
         else
@@ -417,12 +486,20 @@ namespace PhysX
 
     bool RigidBody::IsGravityEnabled() const
     {
-        return m_pxRigidActor->getActorFlags().isSet(physx::PxActorFlag::eDISABLE_GRAVITY) == false;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getActorFlags().isSet(physx::PxActorFlag::eDISABLE_GRAVITY) == false;
+        }
+        return false;
     }
 
     void RigidBody::SetGravityEnabled(bool enabled)
     {
-        m_pxRigidActor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, enabled == false);
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            m_pxRigidActor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, enabled == false);
+        }
         if (enabled)
         {
             ForceAwake();
@@ -431,11 +508,13 @@ namespace PhysX
 
     void RigidBody::SetSimulationEnabled(bool enabled)
     {
+        PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
         m_pxRigidActor->setActorFlag(physx::PxActorFlag::eDISABLE_SIMULATION, enabled == false);
     }
 
     void RigidBody::SetCCDEnabled(bool enabled)
     {
+        PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
         m_pxRigidActor->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_CCD, enabled);
     }
 
@@ -447,30 +526,51 @@ namespace PhysX
 
     AZ::Transform RigidBody::GetTransform() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getGlobalPose()) : AZ::Transform::CreateZero();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getGlobalPose());
+        }
+        return AZ::Transform::CreateZero();
     }
 
     void RigidBody::SetTransform(const AZ::Transform& transform)
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setGlobalPose(PxMathConvert(transform));
         }
     }
 
     AZ::Vector3 RigidBody::GetPosition() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getGlobalPose().p) : AZ::Vector3::CreateZero();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getGlobalPose().p);
+        }
+        return AZ::Vector3::CreateZero();
     }
 
     AZ::Quaternion RigidBody::GetOrientation() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getGlobalPose().q) : AZ::Quaternion::CreateZero();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getGlobalPose().q);
+        }
+        return  AZ::Quaternion::CreateZero();
     }
 
     AZ::Aabb RigidBody::GetAabb() const
     {
-        return m_pxRigidActor ? PxMathConvert(m_pxRigidActor->getWorldBounds(1.0f)) : AZ::Aabb::CreateNull();
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return PxMathConvert(m_pxRigidActor->getWorldBounds(1.0f));
+        }
+        return  AZ::Aabb::CreateNull();
     }
 
     AZ::EntityId RigidBody::GetEntityId() const
@@ -497,7 +597,12 @@ namespace PhysX
     // Not in API but needed to support PhysicsComponentBus
     float RigidBody::GetLinearDamping() const
     {
-        return m_pxRigidActor ? m_pxRigidActor->getLinearDamping() : 0.0f;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getLinearDamping();
+        }
+        return 0.0f;
     }
 
     void RigidBody::SetLinearDamping(float damping)
@@ -507,13 +612,21 @@ namespace PhysX
             AZ_Warning("PhysX Rigid Body", false, "Negative linear damping value (%6.4e). Name: %s", damping, GetName().c_str());
             return;
         }
-
-        m_pxRigidActor->setLinearDamping(damping);
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            m_pxRigidActor->setLinearDamping(damping);
+        }
     }
 
     float RigidBody::GetAngularDamping() const
     {
-        return m_pxRigidActor ? m_pxRigidActor->getAngularDamping() : 0.0f;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getAngularDamping();
+        }
+        return 0.0f;
     }
 
     void RigidBody::SetAngularDamping(float damping)
@@ -526,34 +639,55 @@ namespace PhysX
 
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setAngularDamping(damping);
         }
     }
 
     bool RigidBody::IsAwake() const
     {
-        return m_pxRigidActor ? !m_pxRigidActor->isSleeping() : false;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return !m_pxRigidActor->isSleeping();
+        }
+        return false;
     }
 
     void RigidBody::ForceAsleep()
     {
-        if (m_pxRigidActor && m_pxRigidActor->getScene()) //<- Rigid body must be in a scene, otherwise putToSleep will crash
+        if (m_pxRigidActor) //<- Rigid body must be in a scene, otherwise putToSleep will crash
         {
-            m_pxRigidActor->putToSleep();
+            physx::PxScene* scene = m_pxRigidActor->getScene();
+            if (scene)
+            {
+                PHYSX_SCENE_WRITE_LOCK(scene);
+                m_pxRigidActor->putToSleep();
+            }
         }
     }
 
     void RigidBody::ForceAwake()
     {
-        if (m_pxRigidActor && m_pxRigidActor->getScene()) //<- Rigid body must be in a scene, otherwise wakeUp will crash
+        if (m_pxRigidActor) //<- Rigid body must be in a scene, otherwise wakeUp will crash
         {
-            m_pxRigidActor->wakeUp();
+            physx::PxScene* scene = m_pxRigidActor->getScene();
+            if (scene)
+            {
+                PHYSX_SCENE_WRITE_LOCK(scene);
+                m_pxRigidActor->wakeUp();
+            }
         }
     }
 
     float RigidBody::GetSleepThreshold() const
     {
-        return m_pxRigidActor ? m_pxRigidActor->getSleepThreshold() : 0.0f;
+        if (m_pxRigidActor)
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxRigidActor->getScene());
+            return m_pxRigidActor->getSleepThreshold();
+        }
+        return 0.0f;
     }
 
     void RigidBody::SetSleepThreshold(float threshold)
@@ -566,6 +700,7 @@ namespace PhysX
 
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setSleepThreshold(threshold);
         }
     }
@@ -586,11 +721,13 @@ namespace PhysX
             return;
         }
 
-        scene->addActor(*m_pxRigidActor);
-
-        if (m_startAsleep)
         {
-            m_pxRigidActor->putToSleep();
+            PHYSX_SCENE_WRITE_LOCK(scene);
+            scene->addActor(*m_pxRigidActor);
+            if (m_startAsleep)
+            {
+                m_pxRigidActor->putToSleep();
+            }
         }
     }
 
@@ -609,6 +746,7 @@ namespace PhysX
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(scene);
         scene->removeActor(*m_pxRigidActor);
     }
 
@@ -618,6 +756,7 @@ namespace PhysX
 
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setName(m_name.c_str());
         }
     }
@@ -631,6 +770,7 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(AZ::Vector3::CreateZero())));
         }
     }

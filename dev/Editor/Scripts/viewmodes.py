@@ -11,7 +11,7 @@
 import sys
 import itertools
 from tools_shelf_actions import *
-
+import azlmbr.legacy.general as general
 
 if len(sys.argv) > 1:
 	mode = sys.argv[1]
@@ -45,8 +45,6 @@ if len(sys.argv) > 1:
 		toggleCvarsValue('mode_%s' % mode, 'r_showlines', 2, 0)
 	elif mode == 'wireframe':
 		toggleCvarsValue('mode_%s' % mode, 'r_wireframe', 1, 0)
-	elif mode == 'Vnormals':	
-		toggleCvarsValue('mode_%s' % mode, 'r_shownormals', 1, 0)
 	elif mode == 'Tangents':
 		toggleCvarsValue('mode_%s' % mode, 'r_ShowTangents', 1, 0)	
 	elif mode == 'texelspermeter360':

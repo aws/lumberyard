@@ -187,8 +187,9 @@ def test_stat_filters():
     filters = [('num', 'in', [0, 1500])]
     assert l < len(pf.to_pandas(filters=filters)) < base_shape
 
-    filters = [('num', 'in', [-1, 2000])]
-    assert len(pf.to_pandas(filters=filters)) == base_shape
+    filters = [('num', 'in', [-1, 1999])]
+    l = len(pf.to_pandas(filters=filters))
+    assert 0 < l < base_shape
 
 
 def test_cat_filters():
@@ -306,3 +307,128 @@ def test_null_sizes(tempdir):
     pf = fastparquet.ParquetFile(tempdir)
     assert pf.dtypes['a'] == 'float16'
     assert pf.dtypes['b'] == 'float64'
+
+
+def test_multi_index(tempdir):
+    r = pd.date_range('2000', '2000-01-03')
+    df = pd.DataFrame({'a': r, 'b': [1, 3, 3], 'c': [1.0, np.nan, 3]})
+    df = df.set_index(['a', 'b'])
+    fastparquet.write(tempdir, df, has_nulls=True, file_scheme='hive')
+    dg = fastparquet.ParquetFile(tempdir).to_pandas()
+    assert dg.shape == (3, 1)
+    assert len(dg.index.levels) == 2
+    assert dg.index.levels[0].name == 'a'
+    assert dg.index.levels[0].dtype == '<M8[ns]'
+    assert dg.index.levels[1].name == 'b'
+    assert dg.index.levels[1].dtype == np.int64
+
+
+def test_multi_index_category(tempdir):
+    r = pd.date_range('2000', '2000-01-03')
+    df = pd.DataFrame({'a': r, 'b': ['X', 'X', 'L'], 'c': [1.0, np.nan, 3]})
+    df['b'] = df['b'].astype('category')
+    df = df.set_index(['a', 'b'])
+    fastparquet.write(tempdir, df, has_nulls=True, file_scheme='hive')
+    dg = fastparquet.ParquetFile(tempdir).to_pandas()
+    assert dg.shape == (3, 1)
+    assert len(dg.index.levels) == 2
+    assert dg.index.levels[0].name == 'a'
+    assert dg.index.levels[0].dtype == '<M8[ns]'
+    assert dg.index.levels[1].name == 'b'
+    assert dg.equals(df)
+
+def test_no_columns(tempdir):
+    # https://github.com/dask/fastparquet/issues/361
+    # Create a non-empty DataFrame, then select no columns. That way we get
+    # _some_ rows, _no_ columns.
+    #
+    # df = pd.DataFrame({"A": [1, 2]})[[]]
+    # fastparquet.write("test-data/no_columns.parquet", df)
+    pf = fastparquet.ParquetFile(os.path.join(TEST_DATA, "no_columns.parquet"))
+    assert pf.count == 2
+    assert pf.columns == []
+    result = pf.to_pandas()
+    expected = pd.DataFrame({"A": [1, 2]})[[]]
+    assert len(result) == 2
+    pd.testing.assert_frame_equal(result, expected)
+
+def test_map_multipage(tempdir):
+    pf = fastparquet.ParquetFile(os.path.join(TEST_DATA, "map-test.snappy.parquet"))
+    assert pf.count == 3551
+    df = pf.to_pandas()
+    first_row_keys = [u'FoxNews.com', u'News Network', u'mobile technology', u'broadcast', u'sustainability',
+                      u'collective intelligence', u'radio', u'business law', u'LLC', u'telecommunications',
+                      u'FOX News Network']
+    last_row_keys = [u'protests', u'gas mask', u'Pot & Painting Party', u'Denver', u'New Year', u'Anderson Cooper',
+                     u'gas mask bonk', u'digital media', u'marijuana leaf earrings', u'Screengrab', u'gas mask bongs',
+                     u'Randi Kaye', u'Lee Rogers', u'Andy Cohen', u'CNN', u'Times Square', u'Colorado', u'opera',
+                     u'slavery', u'Kathy Griffin', u'marijuana cigarette', u'executive producer']
+
+    assert len(df) == 3551
+    assert sorted(df["topics"].iloc[0].keys()) == sorted(first_row_keys)
+    assert sorted(df["topics"].iloc[-1].keys()) == sorted(last_row_keys)
+    assert df.isnull().sum().sum() == 0 # ensure every row got converted
+
+def test_map_last_row_split(tempdir):
+    pf = fastparquet.ParquetFile(os.path.join(TEST_DATA, "test-map-last-row-split.parquet"))
+    assert pf.count == 2428
+    df = pf.to_pandas()
+    # file has 3 pages - rows at index 1210 and 2427 are split in-between neighboring pages
+    first_split_row_keys = [u'White House', u'State Department', u'Tatverd\xe4chtige', u'financial economics',
+                            u'Hezbollah', u'Bashar Assad', u'break-down', u'paper', u'radio', u'musicals',
+                            u'Vladimir Putin', u'Hill two', u'The New York Times and Washington Post', u'tweet',
+                            u'guest bedroom', u'Susie Tompkins Buell', u'private law', u'Tammy Bruce',
+                            u'Obama Presidential Library', u'Fox News', u'President Trump', u'John Kerry',
+                            u'Vanity Fair', u'government', u'Josh Meyer', u'The Hill', u'Esprit Clothing',
+                            u'Rainer Wendt', u'Fitness', u'u.n.', u'David Brock', u'fleas', u'Trump', u'WORKOUT',
+                            u'Washington', u'Brandenburg Gate', u'Lisa Bloom', u'festgenommen', u'journalist',
+                            u'Kolleg', u'Middle East', u'financial markets', u'gym equipment', u'weight training',
+                            u'reference', u'Solche Taten', u'digital radio', u'Stephen l. Miller', u'Belleon Body',
+                            u'harassment', u'East', u'investment', u'creatures', u'Islamic Republic', u'New Year',
+                            u'New York City', u'Media Research center', u'Neue Osnabruecker Zeitung daily newspaper',
+                            u'Berlin', u'gegen diese Taten vorgehen', u'safety', u'Jarrett Blanc', u'Tehran',
+                            u'America', u'Black Lives Matter', u'pussy hats',
+                            u'wurden bislang leider vereinzelt sexuelle \xdcbergriffe gemeldet', u'Roger Cohen',
+                            u'u.s.', u'Donald Trump', u'Emily Shire', u'hardline', u'common law', u'animal workouts',
+                            u'Hamas', u'operas', u'New York Times', u'Amanda Hess', u'Adrian Carrasquillo',
+                            u'Lukas Mikelionis', u'Koi', u'TOUGHEST MUDDER', u'Middle Eastern', u'Erik Wemple',
+                            u'Associated Press', u'Iran', u'out-of-pocket expenses', u'Neue Osnabruecker Zeitung',
+                            u'lizards', u'Carlos Leon', u'Polizei Berlin Einsatz', u'Russia', u'Russian',
+                            u'Berlin Wall', u'Obama', u'The Times', u'The New York Post', u'Mark Halperin',
+                            u'learning programs', u'NBC', u'American', u'Jeff Bell',
+                            u'Heat Street and National Review Online', u'Dan Merica', u'Tel Aviv',
+                            u'Wielding Money', u'anxiety', u'Bell', u'Twitter', u'Hillary Clinton',
+                            u'physical exercise', u'Fellow Times', u'property', u'Paul Krugman', u'FoxNews.com',
+                            u'Times Square New Year', u'Mika Brzezinksi', u'Ayatollah Ali Khamenei', u'Nikki Haley',
+                            u'Obama Library', u'internet-based works', u'Quadriga', u'Washington Post',
+                            u'Angela Merkel', u'Manhattan', u'United Nations', u'information', u'Israel',
+                            u'Wir haben zivile', u'administration', u'United States', u'Maya Kosoff', u'Germany',
+                            u'donor', u'television terminology', u'Bloom', u'The Washington Post', u'Jack Shafer',
+                            u'Bei den Veranstaltungen', u'singles', u'uprising', u'reporting', u'AP',
+                            u'Fox News Opinion', u'celebrity lawyer', u'Dan Gainor', u'CNN', u'Syria',
+                            u'business law', u'inspiration', u'regime', u'Politico', u'Democratic Party',
+                            u'The New York Times', u'websites', u'socio-economics', u'Jerusalem']
+    second_split_row_keys = [u'Stockton University', u'Walter Montelione', u'law enforcement', u'shooting',
+                             u'international incidents', u'NYE', u'Linda Kologi', u'criminal law',
+                             u'Long Branch Police Department', u'Kaitlyn Schallhorn', u'Brittany Kologi', u'suspect',
+                             u'teenager', u'Monmouth County', u'television terminology', u'Fox News', u'Long Branch',
+                             u'Monmouth County prosecutor\u2019s Office', u'Galloway Township', u'Dave Farmer',
+                             u'Steven Kologi jr.', u'u.s.', u'incident', u'WCBS-TV', u'Christopher j. Gramiccioni',
+                             u"Diane D'Amico", u'New Jersey', u'shooter', u'maritime incidents',
+                             u'Monmouth County Prosecutor', u'Steven Kologi', u'Bryan Llenas', u'Mary Schultz',
+                             u'NJ.com', u'n.j.', u'Veronica Mass']
+    assert len(df) == 2428
+    assert sorted(df["topics"].iloc[1210].keys()) == sorted(first_split_row_keys)
+    assert sorted(df["topics"].iloc[2427].keys()) == sorted(second_split_row_keys)
+    assert df.isnull().sum().sum() == 0
+
+
+def test_truncated_decimal():
+    # protect against numpy truncation of fixed-length-bytes
+    pf = fastparquet.ParquetFile(os.path.join(TEST_DATA, "decimals.parquet"))
+    df = pf.to_pandas()
+    expected = pd.Series(
+        [93, 155, 102, 80, 85.5, 109, 105, 139, 91, 105],
+        name='weight measure:WEIGHT(KG, 0)')
+    out = df['weight measure:WEIGHT(KG, 0)']
+    assert np.allclose(expected, out)

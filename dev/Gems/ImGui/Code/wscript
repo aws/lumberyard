@@ -31,9 +31,6 @@ def build(bld):
         platforms = ['all'],
         configurations = ['all'],
         file_list = ['imgui_lib.waf_files'],
-        includes=['.',
-                  bld.ThirdPartyPath('boost'),
-                  bld.Path('Code/CryEngine/CryCommon')],
         use = ['AzCore'],
         defines = configBaseDefines,
         export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.70')],
@@ -58,11 +55,8 @@ def build(bld):
     #Common Editor and Game Includes
     COMMON_INCLUDES = [
         '.',
-         bld.ThirdPartyPath('boost'),
-         bld.Path('Code/CryEngine/CryCommon'),
-         bld.Path('Code/CryEngine/CryAction'),
-        bld.Path('Code/CryEngine/CryAction'),
-        bld.Path('Gems/LmbrCentral/Code/include')
+        bld.Path('Code/CryEngine/CryCommon'),
+         bld.Path('Gems/LmbrCentral/Code/include')
     ]
     COMMON_USE = ['imguilib', 'AzFramework', 'LmbrCentral']
 

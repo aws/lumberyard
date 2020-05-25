@@ -31,7 +31,8 @@ namespace LmbrCentral
         virtual ~SpawnerComponentRequests() {}
 
         //! Set the dynamic slice 
-        virtual void SetDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& dynamicSliceAsset) = 0;
+        virtual void SetDynamicSlice(const AZ::Data::Asset<AZ::DynamicSliceAsset>& dynamicSliceAsset) = 0;
+        virtual void SetDynamicSliceByAssetId(AZ::Data::AssetId& assetId) = 0;
 
         //! Sets the SpawnOnActivate parameter
         virtual void SetSpawnOnActivate(bool spawnOnActivate) = 0;

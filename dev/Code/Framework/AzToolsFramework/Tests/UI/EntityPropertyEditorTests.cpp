@@ -22,7 +22,6 @@
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzToolsFramework/ViewportSelection/EditorDefaultSelection.h>
-#include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 
 #include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
@@ -218,6 +217,82 @@ namespace UnitTest
             }
         }
         EXPECT_EQ(found, 7);
+    }
+
+    class LevelEntityPropertyEditorRequestTest
+        : public ToolsApplicationFixture
+        , public AzToolsFramework::EditorRequestBus::Handler
+    {
+        void SetUpEditorFixtureImpl() override
+        {
+            // Create an EntityPropertyEditor initialized to be a Level Inspector
+            m_levelEditor = new EntityPropertyEditor(nullptr, 0, true);
+            m_levelEntity = CreateDefaultEditorEntity("LevelEntity");
+
+            // Level Inspector expects to have one override entity ID, which would normally be the root slice entity.
+            AzToolsFramework::EntityIdList entities;
+            entities.push_back(m_levelEntity);
+            m_levelEditor->SetOverrideEntityIds(entities);
+
+            m_editorActions.Connect();
+
+            // Connect to the EditorRequestBus so that we can intercept calls checking whether or not a level is currently open.
+            AzToolsFramework::EditorRequestBus::Handler::BusConnect();
+
+            EditorInteractionSystemViewportSelectionRequestBus::Event(
+                GetEntityContextId(), &EditorInteractionSystemViewportSelection::SetDefaultHandler);
+        }
+
+        void TearDownEditorFixtureImpl() override
+        {
+            AzToolsFramework::EditorRequestBus::Handler::BusDisconnect();
+
+            m_editorActions.Disconnect();
+            delete m_levelEditor;
+        }
+
+        // Mock out this call so that we can control whether or not the Level Inspector thinks a level is open.
+        bool IsLevelDocumentOpen() override { return m_levelOpen; }
+
+        // These are required by implementing the EditorRequestBus
+        void BrowseForAssets(AssetBrowser::AssetSelectionModel& /*selection*/) override {}
+        int GetIconTextureIdFromEntityIconPath(const AZStd::string& entityIconPath) override { return 0; }
+        bool DisplayHelpersVisible() override { return false; }
+
+    public:
+        EntityPropertyEditor* m_levelEditor;
+        TestEditorActions m_editorActions;
+        AZ::EntityId m_levelEntity;
+        bool m_levelOpen = false;
+    };
+
+    TEST_F(LevelEntityPropertyEditorRequestTest, GetSelectedEntitiesForLevelInspectorWhenLevelIsNotLoaded)
+    {
+        m_levelOpen = false;
+
+        // Find the entities that are selected
+        EntityIdList selectedEntityIds;
+        AzToolsFramework::EntityPropertyEditorRequestBus::Broadcast(
+            &AzToolsFramework::EntityPropertyEditorRequestBus::Events::GetSelectedAndPinnedEntities, selectedEntityIds);
+
+        // Make sure the correct number of entities are returned
+        EXPECT_EQ(selectedEntityIds.size(), 0);
+    }
+
+    TEST_F(LevelEntityPropertyEditorRequestTest, GetSelectedEntitiesForLevelInspectorWhenLevelIsLoaded)
+    {
+        m_levelOpen = true;
+
+        // Find the entities that are selected
+        EntityIdList selectedEntityIds;
+
+        // Find the entities that are selected
+        AzToolsFramework::EntityPropertyEditorRequestBus::Broadcast(
+            &AzToolsFramework::EntityPropertyEditorRequestBus::Events::GetSelectedAndPinnedEntities, selectedEntityIds);
+
+        // Make sure the correct number of entities are returned
+        EXPECT_EQ(selectedEntityIds.size(), 1);
+        EXPECT_EQ(selectedEntityIds[0], m_levelEntity);
     }
 
 }

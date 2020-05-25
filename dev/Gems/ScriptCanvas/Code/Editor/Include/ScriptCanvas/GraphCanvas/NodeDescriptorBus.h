@@ -23,7 +23,7 @@
 #include <Editor/Include/ScriptCanvas/Bus/NodeIdPair.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Endpoint.h>
-
+#include <ScriptCanvas/Core/Datum.h>
 
 #include <ScriptCanvas/Variable/VariableCore.h>
 #include <ScriptEvents/ScriptEventsAsset.h>
@@ -115,6 +115,8 @@ namespace ScriptCanvasEditor
         virtual AZStd::string_view GetEventName() const = 0;
 
         virtual ScriptCanvas::EBusEventId GetEventId() const = 0;
+
+        virtual void SetHandlerAddress(const ScriptCanvas::Datum& idDatum) = 0;
     };
 
     using EBusHandlerEventNodeDescriptorRequestBus = AZ::EBus<EBusHandlerEventNodeDescriptorRequests>;
@@ -131,25 +133,12 @@ namespace ScriptCanvasEditor
 
     using VariableNodeDescriptorRequestBus = AZ::EBus<VariableNodeDescriptorRequests>;
 
-    // Bus used when trying to remove variables to help signal to the user how many
-    // Nodes will be erased by their action.
-    class VariableGraphMemberRefCountRequests : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = ScriptCanvas::VariableId;
-
-        virtual AZ::EntityId GetGraphMemberId() const = 0;
-    };
-
-    using VariableGraphMemberRefCountRequestBus = AZ::EBus<VariableGraphMemberRefCountRequests>;
-
     class SceneCounterRequests : public AZ::EBusTraits
     {
     public:
         //! The id here is the id of the scene.
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
 
         virtual AZ::u32 GetNewVariableCounter() = 0;
         virtual void ReleaseVariableCounter(AZ::u32 variableCounter) = 0;
@@ -184,7 +173,7 @@ namespace ScriptCanvasEditor
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = GraphCanvas::NodeId;
-
+        
         virtual void OnScriptEventReloaded(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>& asset) {};
     };
 

@@ -28,7 +28,8 @@
 #include <errno.h>
 #include <dirent.h>
 
-using namespace AZ::IO;
+namespace AZ::IO
+{
 
 namespace UnixLikePlatformUtil
 {
@@ -259,3 +260,5 @@ namespace Platform
         return false;
     }
 }
+
+} // namespace AZ::IO

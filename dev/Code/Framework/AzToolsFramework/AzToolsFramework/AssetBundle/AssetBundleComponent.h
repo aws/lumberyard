@@ -89,10 +89,10 @@ namespace AzToolsFramework
 
         //! Adds the manifest file to all the bundles
         //! The parent bundle manifest file is special since it will contain information of all dependent bundles names.
-        bool AddManifestFileToBundles(const AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>>& bundlePathDeltaCatalogPair, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& bundleFolder, const AzToolsFramework::AssetBundleSettings& assetBundleSettings);
+        bool AddManifestFileToBundles(const AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>>& bundlePathDeltaCatalogPair, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& bundleFolder, const AzToolsFramework::AssetBundleSettings& assetBundleSettings, const AZStd::vector<AZStd::string>& levelDirs);
 
         //! Adds the delta catalog and any remaining files to the bundle
         //! We only create the delta catalog once we are sure about what all the files that will go in it. 
-        bool AddCatalogAndFilesToBundle(const AZStd::vector<AZStd::string>& deltaCatalogEntries, const AZStd::vector<AZStd::string>& fileEntries, const AZStd::string& bundleFilePath, const AZStd::string& deltaCatalogFilePath, const char* assetAlias, const AzFramework::PlatformId& platformId);
+        bool AddCatalogAndFilesToBundle(const AZStd::vector<AZStd::string>& deltaCatalogEntries, const AZStd::vector<AZStd::string>& fileEntries, const AZStd::string& bundleFilePath, const char* assetAlias, const AzFramework::PlatformId& platformId);
     };
 }

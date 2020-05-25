@@ -85,20 +85,28 @@ namespace PhysX
         {
             switch (code)
             {
-            case physx::PxErrorCode::eDEBUG_INFO:
+            case physx::PxErrorCode::eDEBUG_INFO: [[fallthrough]];
             case physx::PxErrorCode::eNO_ERROR:
                 AZ_TracePrintf("PhysX", "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
                 break;
 
-            case physx::PxErrorCode::eDEBUG_WARNING:
+            case physx::PxErrorCode::eDEBUG_WARNING: [[fallthrough]];
             case physx::PxErrorCode::ePERF_WARNING:
                 AZ_Warning("PhysX", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
                 break;
 
+            case physx::PxErrorCode::eINVALID_OPERATION: [[fallthrough]];
+            case physx::PxErrorCode::eINTERNAL_ERROR: [[fallthrough]];
+            case physx::PxErrorCode::eOUT_OF_MEMORY: [[fallthrough]];
+            case physx::PxErrorCode::eABORT:
+                AZ_Assert(false, "PhysX - PxErrorCode %i: %s (line %i in %s)", code, message, line, file)
+                break;
+
+            case physx::PxErrorCode::eINVALID_PARAMETER: [[fallthrough]];
             default:
                 AZ_Error("PhysX", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
                 break;
-            }
+            }           
         }
     };
 
@@ -131,9 +139,11 @@ namespace PhysX
     /// constraints etc., and perform cooking (processing assets such as meshes and heightfields ready for use in PhysX).
     class SystemComponent
         : public AZ::Component
+        , public AZ::Interface<Physics::CollisionRequests>::Registrar
         , public AZ::Interface<Physics::System>::Registrar
         , public Physics::SystemRequestBus::Handler
         , public PhysX::SystemRequestsBus::Handler
+        , public AZ::Interface<ConfigurationRequests>::Registrar
         , public ConfigurationRequestBus::Handler
 #ifdef PHYSX_EDITOR
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
@@ -141,6 +151,7 @@ namespace PhysX
 #endif
         , private CrySystemEventBus::Handler
         , private Physics::CollisionRequestBus::Handler
+        , private AZ::Data::AssetBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{85F90819-4D9A-4A77-AB89-68035201F34B}");
@@ -172,10 +183,22 @@ namespace PhysX
             physx::PxPvd* m_pvd = nullptr;
         } m_physxSDKGlobals;
 
+        struct PhysicsConfiguration
+        {
+            AZ_CLASS_ALLOCATOR(PhysicsConfiguration, AZ::SystemAllocator, 0);
+            AZ_TYPE_INFO(PhysicsConfiguration, "{C8CFDC4C-93B9-4E81-BCB0-0F70F03FE7F6}");
+
+            Physics::WorldConfiguration m_defaultWorldConfiguration; ///< Configuration the system component is going to be using as default for new worlds, configurable through SystemBus API.
+            Physics::CollisionConfiguration m_collisionConfiguration; ///< Collision configuration exposed by the system component in the CollisionBus API.
+            AZ::Data::Asset<Physics::MaterialLibraryAsset> m_defaultMaterialLibrary = AZ::Data::AssetLoadBehavior::NoLoad; ///< Material Library exposed by the system component SystemBus API.
+        };
+        
         physx::PxPvdTransport* m_pvdTransport = nullptr;
         physx::PxCpuDispatcher* m_cpuDispatcher = nullptr;
 
         // SystemRequestsBus
+        const Physics::WorldConfiguration& GetDefaultWorldConfiguration() override;
+        const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() override;
         physx::PxScene* CreateScene(physx::PxSceneDesc& sceneDesc) override;
         physx::PxConvexMesh* CreateConvexMesh(const void* vertices, AZ::u32 vertexNum, AZ::u32 vertexStride) override; // should we use AZ::Vector3* or physx::PxVec3 here?
         physx::PxConvexMesh* CreateConvexMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
@@ -207,9 +230,14 @@ namespace PhysX
         void UpdateColliderProximityVisualization(bool enabled, const AZ::Vector3& cameraPosition, float radius) override;
 
         // PhysX::ConfigurationRequestBus
-        const Configuration& GetConfiguration() override;
+        // LUMBERYARD_DEPRECATED(LY-109358)
+        /// @deprecated Please use the alternative configuration getters instead.
         void SetConfiguration(const Configuration&) override;
-        const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() override;
+        // LUMBERYARD_DEPRECATED(LY-109358)
+        /// @deprecated Please use the alternative configuration setters instead.
+        const Configuration& GetConfiguration() override;
+        void SetPhysXConfiguration(const PhysXConfiguration&) override;
+        const PhysXConfiguration& GetPhysXConfiguration() override;
 
         // CrySystemEventBus
         void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
@@ -225,6 +253,8 @@ namespace PhysX
         Physics::CollisionGroup GetCollisionGroupById(const Physics::CollisionGroups::Id& groupId) override;
         void SetCollisionLayerName(int index, const AZStd::string& layerName) override;
         void CreateCollisionGroup(const AZStd::string& groupName, const Physics::CollisionGroup& group) override;
+        void SetCollisionConfiguration(const Physics::CollisionConfiguration& configuration) override;
+        Physics::CollisionConfiguration GetCollisionConfiguration() override;
 
         // AZ::Component interface implementation
         void Init() override;
@@ -239,6 +269,8 @@ namespace PhysX
 #endif
 
         // Physics::SystemRequestBus::Handler
+        void SetDefaultWorldConfiguration(const Physics::WorldConfiguration& worldConfiguration) override;
+        void SetDefaultMaterialLibrary(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& worldConfiguration) override;
         AZStd::shared_ptr<Physics::World> CreateWorld(AZ::Crc32 id) override;
         AZStd::shared_ptr<Physics::World> CreateWorldCustom(AZ::Crc32 id, const Physics::WorldConfiguration& settings) override;
         AZStd::unique_ptr<Physics::RigidBodyStatic> CreateStaticRigidBody(const Physics::WorldBodyConfiguration& configuration) override;
@@ -247,6 +279,9 @@ namespace PhysX
         AZStd::shared_ptr<Physics::Material> CreateMaterial(const Physics::MaterialConfiguration& materialConfiguration) override;
         AZStd::shared_ptr<Physics::Material> GetDefaultMaterial() override;
         AZStd::vector<AZStd::shared_ptr<Physics::Material>> CreateMaterialsFromLibrary(const Physics::MaterialSelection& materialSelection) override;
+
+        // AZ::Data::AssetBus::Handler
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
         AZStd::vector<AZ::TypeId> GetSupportedJointTypes() override;
         AZStd::shared_ptr<Physics::JointLimitConfiguration> CreateJointLimitConfiguration(AZ::TypeId jointType) override;
@@ -272,7 +307,7 @@ namespace PhysX
 
         void ReleaseNativeMeshObject(void* nativeMeshObject) override;
 
-        Configuration CreateDefaultConfiguration() const;
+        Physics::CollisionConfiguration CreateDefaultCollisionConfiguration() const;
         void LoadConfiguration();
         void SaveConfiguration();
         void CheckoutConfiguration();
@@ -296,6 +331,8 @@ namespace PhysX
         bool m_enabled; ///< If false, this component will not activate itself in the Activate() function.
         AZStd::string m_configurationPath;
         Configuration m_configuration;
+        PhysXConfiguration m_physxConfiguration;
+        PhysicsConfiguration m_physicsConfiguration;
         AZ::Vector3 m_cameraPositionCache = AZ::Vector3::CreateZero();
         PxAzProfilerCallback m_pxAzProfilerCallback;
     };

@@ -11,12 +11,12 @@
 # $Revision: #5 $
 
 # Make an instance of LambdaSettingModule look like the module so we can use a 
-# @propery to lazy load the settings.
+# @property to lazy load the settings.
 #
 # https://stackoverflow.com/questions/880530/can-modules-have-properties-the-same-way-that-objects-can
 
 import sys
 
-from module import LambdaSettingsModule
+from .module import LambdaSettingsModule
 
 sys.modules[__name__] = LambdaSettingsModule()

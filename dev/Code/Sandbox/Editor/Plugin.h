@@ -97,9 +97,11 @@ private:
     typedef std::map<QString, IClassDesc*> TNameMap;
     typedef std::map<GUID, IClassDesc*, guid_less_predicate> TGuidMap;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     TNameMap m_nameToClass;
     TGuidMap m_guidToClass;
     std::vector<IClassDesc*> m_classes;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 #if defined(DEBUG_CLASS_NAME_REGISTRATION)
     // This vector will mirror that of CClassFactory::m_classes.

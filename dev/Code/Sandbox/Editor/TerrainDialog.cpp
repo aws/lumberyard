@@ -224,13 +224,6 @@ void CTerrainDialog::CreateModifyTool()
 
     m_ui->viewport->SetEditTool(m_pTerrainTool, true);
     GetIEditor()->SetEditTool(m_pTerrainTool);
-
-    CTerrainBrush br;
-    m_pTerrainTool->GetCurBrushParams(br);
-    br.height = 100;
-    br.radiusInside = 10;
-    br.radius = 10;
-    m_pTerrainTool->SetCurBrushParams(br);
 }
 
 void CTerrainDialog::OnTerrainLoad()

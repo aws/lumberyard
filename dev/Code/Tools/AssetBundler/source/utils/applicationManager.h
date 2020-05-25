@@ -54,6 +54,7 @@ namespace AssetBundler
         FilePath m_assetListFile;
         AZStd::vector<FilePath> m_seedListFiles;
         AZStd::vector<AZStd::string> m_addSeedList;
+        AZStd::vector<AZStd::string> m_skipList;
 
         bool m_addDefaultSeedListFiles = false;
 
@@ -74,6 +75,8 @@ namespace AssetBundler
         AZStd::vector<AZStd::string> m_filePatternList;
         AZStd::vector<AzToolsFramework::AssetFileInfoListComparison::FilePatternType> m_filePatternTypeList;
         FilePath m_comparisonRulesFile;
+        unsigned int m_intersectionCount = 0;
+
         bool m_allowOverwrites = false;
     };
 
@@ -124,9 +127,10 @@ namespace AssetBundler
 
         AzFramework::PlatformFlags m_platformFlags = AzFramework::PlatformFlags::Platform_NONE;
 
-        FilePath m_assetCatalogFile;
         bool m_allowOverwrites = false;
     };
+
+    typedef AZStd::vector<BundlesParams> BundlesParamsList;
 
     struct BundleSeedParams
     {
@@ -179,14 +183,17 @@ namespace AssetBundler
         AZ::Outcome<ComparisonRulesParams, AZStd::string> ParseComparisonRulesCommandData(const AzFramework::CommandLine* parser);
         AZ::Outcome<ComparisonParams, AZStd::string> ParseCompareCommandData(const AzFramework::CommandLine* parser);
         AZ::Outcome<BundleSettingsParams, AZStd::string> ParseBundleSettingsCommandData(const AzFramework::CommandLine* parser);
-        AZ::Outcome<BundlesParams, AZStd::string> ParseBundlesCommandData(const AzFramework::CommandLine* parser);
+        AZ::Outcome<BundlesParamsList, AZStd::string> ParseBundlesCommandData(const AzFramework::CommandLine* parser);
         AZ::Outcome<BundleSeedParams, AZStd::string> ParseBundleSeedCommandData(const AzFramework::CommandLine* parser);
 
         AZ::Outcome<void, AZStd::string> ValidateInputArgs(const AzFramework::CommandLine* parser, const AZStd::vector<const char*>& validArgList);
         AZ::Outcome<AZStd::string, AZStd::string> GetFilePathArg(const AzFramework::CommandLine* parser, const char* argName, const char* subCommandName, bool isRequired = false);
+        template <typename T>
+        AZ::Outcome<AZStd::vector<T>, AZStd::string> GetArgsList(const AzFramework::CommandLine* parser, const char* argName, const char* subCommandName, bool isRequired = false);
         AZ::Outcome<AzFramework::PlatformFlags, AZStd::string> GetPlatformArg(const AzFramework::CommandLine* parser);
         AzFramework::PlatformFlags GetInputPlatformFlagsOrEnabledPlatformFlags(AzFramework::PlatformFlags inputPlatformFlags);
         AZStd::vector<AZStd::string> GetAddSeedArgList(const AzFramework::CommandLine* parser);
+        AZStd::vector<AZStd::string> GetSkipArgList(const AzFramework::CommandLine* parser);
         ////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -197,7 +204,7 @@ namespace AssetBundler
         bool RunComparisonRulesCommands(const AZ::Outcome<ComparisonRulesParams, AZStd::string>& paramsOutcome);
         bool RunCompareCommand(const AZ::Outcome<ComparisonParams, AZStd::string>& paramsOutcome);
         bool RunBundleSettingsCommands(const AZ::Outcome<BundleSettingsParams, AZStd::string>& paramsOutcome);
-        bool RunBundlesCommands(const AZ::Outcome<BundlesParams, AZStd::string>& paramsOutcome);
+        bool RunBundlesCommands(const AZ::Outcome<BundlesParamsList, AZStd::string>& paramsOutcome);
         bool RunBundleSeedCommands(const AZ::Outcome<BundleSeedParams, AZStd::string>& paramsOutcome);
         ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -208,9 +215,10 @@ namespace AssetBundler
         //! and platform flags specified before loading the file from disk.
         //! Does not do any validation on non gem seed files.
         AZ::Outcome<void, AZStd::string> LoadSeedListFile(const AZStd::string& seedListFileAbsolutePath, AzFramework::PlatformFlags platformFlags);
+        AZ::Outcome<void, AZStd::string> LoadProjectDependenciesFile(AzFramework::PlatformFlags platformFlags);
         void PrintSeedList(const AZStd::string& seedListFileAbsolutePath);
         bool RunPlatformSpecificAssetListCommands(const AssetListsParams& params, AzFramework::PlatformFlags platformFlags);
-        void PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles);
+        void PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList);
         AZStd::vector<FilePath> GetAllPlatformSpecificFilesOnDisk(const FilePath& platformIndependentFilePath, AzFramework::PlatformFlags platformFlags = AzFramework::PlatformFlags::Platform_NONE);
         AZ::Outcome<void, AZStd::string> ApplyBundleSettingsOverrides(
             AzToolsFramework::AssetBundleSettings& bundleSettings, 
@@ -219,7 +227,7 @@ namespace AssetBundler
             int bundleVersion, 
             int maxBundleSize);
         AZ::Outcome<void, AZStd::string> ParseComparisonTypesAndPatterns(const AzFramework::CommandLine* parser, ComparisonRulesParams& params);
-        AZ::Outcome<void, AZStd::string> ParseBundleSettingsAndOverrides(const AzFramework::CommandLine* parser, BundlesParams& params, const char* commandName);
+        AZ::Outcome<BundlesParamsList, AZStd::string> ParseBundleSettingsAndOverrides(const AzFramework::CommandLine* parser, const char* commandName);
         void ConvertRulesParamsToComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison);
         void PrintComparisonAssetList(const AzToolsFramework::AssetFileInfoList& infoList, const AZStd::string& resultName);
         //! Error message to display when neither of two optional arguments was found

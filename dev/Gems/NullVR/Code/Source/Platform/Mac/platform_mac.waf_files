@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "NullVR_Traits_Platform.h",
+            "NullVR_Traits_Mac.h"
+        ]
+    }
+}

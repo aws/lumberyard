@@ -17,8 +17,6 @@
 
 
 struct IGoalPipe;
-struct IFlowGraph;
-
 
 ///////////////////////////////////////////////////
 // IAIAction references an Action Flow Graph -
@@ -49,14 +47,8 @@ struct IAIAction
     // returns the unique name of this AI Action
     virtual const char* GetName() const = 0;
 
-    // traverses all nodes of the underlying flow graph and checks for any nodes that are incompatible when being run in the context of an IAIAction
-    virtual bool TraverseAndValidateAction(EntityId idOfUser) const = 0;
-
     // returns the goal pipe which executes this AI Action
     virtual IGoalPipe* GetGoalPipe() const = 0;
-
-    // returns the Flow Graph associated to this AI Action
-    virtual IFlowGraph* GetFlowGraph() const = 0;
 
     // returns the User entity associated to this AI Action
     virtual IEntity* GetUserEntity() const = 0;

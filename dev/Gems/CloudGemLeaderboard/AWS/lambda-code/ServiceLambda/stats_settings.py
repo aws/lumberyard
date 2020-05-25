@@ -12,8 +12,6 @@
 import CloudCanvas
 import boto3
 import json
-import copy
-import errors
 from decimal import *
 
 STATS_SETTINGS_TABLE = None

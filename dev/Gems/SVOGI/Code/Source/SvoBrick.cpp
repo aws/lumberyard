@@ -19,12 +19,11 @@
 #include <AzCore/Math/Plane.h>
 #include <AzCore/std/parallel/lock.h>
 
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 #include "SvoBrick.h"
 #include "I3DEngine.h"
 #include "IEntityRenderState.h"
-#include "ITerrain.h"
-
-
 
 #include "MathConversion.h"
 
@@ -163,10 +162,11 @@ namespace SVOGI
             }
             else
             { // terrain tex-gen
-                AZ::VectorFloat worldSize = static_cast<float>(gEnv->p3DEngine->GetTerrainSize());
+                AZ::Aabb terrainAabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3::CreateZero(), AZ::Vector3::CreateOne());
+                AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
                 colTex = GetBilinearAt(
-                    vHitPos.GetY() / worldSize,
-                    vHitPos.GetX() / worldSize,
+                    vHitPos.GetY() / terrainAabb.GetHeight(),
+                    vHitPos.GetX() / terrainAabb.GetWidth(),
                     m_textureColor, m_textureWidth, m_textureHeight);
 
                 colTex = colTex.GammaToLinear();
@@ -482,6 +482,23 @@ namespace SVOGI
             m_counts = aznew DataBrick<AZ::s32>();
         }
 
+        //Sure.  Legacy concept. 
+        bool bTerrainTrisDetected = false;
+        {
+            float voxelHeight = AZ_FLT_MAX;
+            const AZ::Vector3 vH = m_brickOrigin;
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(voxelHeight
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , vH.GetX(), vH.GetY(), AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP, nullptr);
+            if (voxelHeight != AZ_FLT_MAX)
+            {
+                if (vH.GetZ() <= (voxelHeight + 1.5f))
+                {
+                    bTerrainTrisDetected = true;
+                }
+            }
+        }
+
         //For each sample finalize data.
         for (AZ::u32 offset = 0; offset < brickDimension * brickDimension * brickDimension; ++offset)
         {
@@ -514,18 +531,6 @@ namespace SVOGI
                     outOpacity.r = static_cast<AZ::u8>(SATURATEB(float((outCount * AZ::VectorFloat(outOpacity.r) + opacities.GetZ()) * invDivisor * scale)));
                     outOpacity.g = static_cast<AZ::u8>(SATURATEB(float((outCount * AZ::VectorFloat(outOpacity.g) + opacities.GetY()) * invDivisor * scale)));
                     outOpacity.b = static_cast<AZ::u8>(SATURATEB(float((outCount * AZ::VectorFloat(outOpacity.b) + opacities.GetX()) * invDivisor * scale)));
-
-                    //Sure.  Legacy concept. 
-                    bool bTerrainTrisDetected = false;
-                    ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
-                    if (pTerrain)
-                    {
-                        AZ::Vector3 vH = m_brickOrigin;
-                        if (vH.GetZ() <= (pTerrain->GetZ(static_cast<int32_t>(vH.GetX()), static_cast<int32_t>(vH.GetY())) + 1.5f))
-                        {
-                            bTerrainTrisDetected = true;
-                        }
-                    }
 
                     outOpacity.a = bTerrainTrisDetected ? 0 : 1; // reserved for opacity of dynamic voxels or [0 = triangle is missing in RSM]
                     //The normals are not 'normalized' as the length is being used in the shaders
@@ -978,19 +983,10 @@ namespace SVOGI
         return z.IsLessEqualThan(max) && z.IsGreaterEqualThan(min);
     }
 
-    void Brick::ExtractTerrainTriangles()
+    void Brick::ExtractTerrainTrianglesLocked(AzFramework::Terrain::TerrainDataRequests* terrain)
     {
-        if (!gEnv->p3DEngine->GetShowTerrainSurface())
-        {
-            return;
-        }
-        ITerrain* pTerrain = gEnv->p3DEngine->GetITerrain();
-        if (!pTerrain)
-        {
-            return;
-        }
-
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
+
         SuperMesh superMesh;
         PodArray<SRayHitTriangle> arrTris;
         AZ::Aabb worldBrickAabb;
@@ -998,10 +994,12 @@ namespace SVOGI
         worldBrickAabb.SetMax(m_brickAabb.GetMax() + m_brickOrigin);
 
         // add terrain
-        AZ::s32 nWorldSize = gEnv->p3DEngine->GetTerrainSize();
-        AZ::s32 S = gEnv->p3DEngine->GetHeightMapUnitSize();
+        const AZ::Vector2 terrainGridResolution = terrain->GetTerrainGridResolution();
+        const float Sx = terrainGridResolution.GetX();
+        const float Sy = terrainGridResolution.GetY();
 
-        AZ::s32 nHalfStep = S / 2;
+        const float nHalfStepX = Sx / 2;
+        const float nHalfStepY = Sy / 2;
 
         SRayHitTriangle ht;
         memset(&ht, 0, sizeof(ht));
@@ -1010,24 +1008,27 @@ namespace SVOGI
         ht.nHitObjType = HIT_OBJ_TYPE_TERRAIN;
         Plane pl;
 
-        AZ::s32 I = 0, X = 0, Y = 0;
+        AZ::s32 I = 0;
+        float X = 0, Y = 0;
 
         superMesh.Clear();
 
-        for (AZ::s32 x = (AZ::s32)worldBrickAabb.GetMin().GetX(); x < (AZ::s32)worldBrickAabb.GetMax().GetX(); x += S)
+        for (float x = worldBrickAabb.GetMin().GetX(); x < worldBrickAabb.GetMax().GetX(); x += Sx)
         {
-            for (AZ::s32 y = (AZ::s32)worldBrickAabb.GetMin().GetY(); y < (AZ::s32)worldBrickAabb.GetMax().GetY(); y += S)
+            for (float y = worldBrickAabb.GetMin().GetY(); y < worldBrickAabb.GetMax().GetY(); y += Sy)
             {
-                if (!pTerrain->IsHole(x + nHalfStep, y + nHalfStep))
+                if (!terrain->GetIsHoleFromFloats(x + nHalfStepX, y + nHalfStepY))
                 {
+                    const AzFramework::Terrain::TerrainDataRequests::Sampler sampler = AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP;
+
                     // prevent surface interpolation over long edge
                     bool bFlipTris = false;
-                    AZ::s32 nType10 = pTerrain->GetSurfaceWeight(x + S, y).PrimaryId();
-                    AZ::s32 nType01 = pTerrain->GetSurfaceWeight(x, y + S).PrimaryId();
+                    AZ::s32 nType10 = terrain->GetMaxSurfaceWeightFromFloats(x + Sx, y).m_surfaceType;
+                    AZ::s32 nType01 = terrain->GetMaxSurfaceWeightFromFloats(x, y + Sy).m_surfaceType;
                     if (nType10 != nType01)
                     {
-                        AZ::s32 nType00 = pTerrain->GetSurfaceWeight(x, y).PrimaryId();
-                        AZ::s32 nType11 = pTerrain->GetSurfaceWeight(x + S, y + S).PrimaryId();
+                        AZ::s32 nType00 = terrain->GetMaxSurfaceWeightFromFloats(x, y).m_surfaceType;
+                        AZ::s32 nType11 = terrain->GetMaxSurfaceWeightFromFloats(x + Sx, y + Sy).m_surfaceType;
                         if ((nType10 == nType00 && nType10 == nType11) || (nType01 == nType00 && nType01 == nType11))
                         {
                             bFlipTris = true;
@@ -1037,14 +1038,14 @@ namespace SVOGI
                     if (bFlipTris)
                     {
                         I = 0;
-                        X = x + S, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + 0;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + S, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
                         X = x + 0, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
 
                         if (TerrainTriBoundsCheck(ht, worldBrickAabb))
@@ -1057,13 +1058,13 @@ namespace SVOGI
 
                         I = 0;
                         X = x + 0, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + S, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + 0, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + 0, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
 
                         if (TerrainTriBoundsCheck(ht, worldBrickAabb))
@@ -1078,13 +1079,13 @@ namespace SVOGI
                     {
                         I = 0;
                         X = x + 0, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + S, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + 0;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + 0, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + 0, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
 
                         if (TerrainTriBoundsCheck(ht, worldBrickAabb))
@@ -1096,14 +1097,14 @@ namespace SVOGI
                         }
 
                         I = 0;
-                        X = x + S, Y = y + 0;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + 0;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + S, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + Sx, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
-                        X = x + 0, Y = y + S;
-                        ht.v[I].Set((float)X, (float)Y, pTerrain->GetZ(X, Y));
+                        X = x + 0, Y = y + Sy;
+                        ht.v[I].Set(X, Y, terrain->GetHeightFromFloats(X, Y, sampler));
                         I++;
 
                         if (TerrainTriBoundsCheck(ht, worldBrickAabb))
@@ -1119,6 +1120,17 @@ namespace SVOGI
         }
 
         AddSuperMesh(superMesh, SVO_CPU_VOXELIZATION_OFFSET_TERRAIN);
+    }
+
+    void Brick::ExtractTerrainTriangles()
+    {
+        auto enumerationCallback = [this](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+        {
+            this->ExtractTerrainTrianglesLocked(terrain);
+            // Only one handler should exist.
+            return false;
+        };
+        AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
     }
 
     void Brick::ExtractVisAreaTriangles()

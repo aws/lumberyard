@@ -29,4 +29,5 @@
 #include "Sequencer.h"
 #include "TargetedSequencer.h"
 #include "WeightedRandomSequencer.h"
+#include "Cycle.h"
 

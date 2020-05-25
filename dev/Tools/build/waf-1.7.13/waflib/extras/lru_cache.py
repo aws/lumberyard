@@ -54,21 +54,21 @@ def sweep(self):
 		if os.path.isdir(j) and len(x) == 64: # dir names are md5 hexdigests
 			flist[x] = [os.stat(j).st_mtime, 0]
 
-	for (x, v) in flist.items():
+	for (x, v) in list(flist.items()):
 		cnt = DIRSIZE # each entry takes 4kB
 		d = os.path.join(CACHEDIR, x)
 		for k in os.listdir(d):
 			cnt += os.stat(os.path.join(d, k)).st_size
 		flist[x][1] = cnt
 
-	total = sum([x[1] for x in flist.values()])
+	total = sum([x[1] for x in list(flist.values())])
 	Logs.debug('lru: Cache size is %r' % total)
 
 	if total >= CACHESIZE:
 		Logs.debug('lru: Trimming the cache since %r > %r' % (total, CACHESIZE))
 
 		# make a list to sort the folders by timestamp
-		lst = [(p, v[0], v[1]) for (p, v) in flist.items()]
+		lst = [(p, v[0], v[1]) for (p, v) in list(flist.items())]
 		lst.sort(key=lambda x: x[1]) # sort by timestamp
 		lst.reverse()
 

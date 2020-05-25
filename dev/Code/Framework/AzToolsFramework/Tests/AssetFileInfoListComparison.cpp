@@ -110,7 +110,7 @@ namespace UnitTest
             assetSeedManager.AddSeedAsset(m_assets[0], AzFramework::PlatformFlags::Platform_PC);
             assetSeedManager.AddSeedAsset(m_assets[1], AzFramework::PlatformFlags::Platform_PC);
 
-            assetSeedManager.SaveAssetFileInfo(TempFiles[FileIndex::FirstAssetFileInfoList], AzFramework::PlatformFlags::Platform_PC);
+            assetSeedManager.SaveAssetFileInfo(TempFiles[FileIndex::FirstAssetFileInfoList], AzFramework::PlatformFlags::Platform_PC, {});
 
             // Modify contents of asset2
             int fileIndex = 2;
@@ -139,7 +139,7 @@ namespace UnitTest
             assetSeedManager.RemoveSeedAsset(m_assets[0], AzFramework::PlatformFlags::Platform_PC);
             assetSeedManager.AddSeedAsset(m_assets[5], AzFramework::PlatformFlags::Platform_PC);
 
-            assetSeedManager.SaveAssetFileInfo(TempFiles[FileIndex::SecondAssetFileInfoList], AzFramework::PlatformFlags::Platform_PC);
+            assetSeedManager.SaveAssetFileInfo(TempFiles[FileIndex::SecondAssetFileInfoList], AzFramework::PlatformFlags::Platform_PC, {});
         }
 
         void TearDown() override

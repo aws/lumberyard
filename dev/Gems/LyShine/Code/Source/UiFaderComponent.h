@@ -94,10 +94,6 @@ public:  // static member functions
 
     static void Reflect(AZ::ReflectContext* context);
 
-    //! Helper function for visual components to compute their fade value
-    //! Deprecated because this is very inefficient. Every visual element pays a price for the fader even if no fader is in use. 
-    AZ_DEPRECATED(static float ComputeElementFadeValue(AZ::Entity* element), "Function deprecated, use IRenderGraph::GetAlphaFade instead.");
-
 protected: // member functions
 
     // AZ::Component

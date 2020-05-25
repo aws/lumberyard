@@ -27,8 +27,6 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 
-struct IFlowSystem;
-struct IGameTokenSystem;
 struct IEffectSystem;
 struct IBreakableGlassSystem;
 struct IForceFeedbackSystem;
@@ -51,7 +49,6 @@ class CScriptBind_MaterialEffects;
 class CScriptBind_PrefabManager;
 
 
-class CFlowSystem;
 class CDevMode;
 class CTimeDemoRecorder;
 class CGameQueryListener;
@@ -84,7 +81,6 @@ class CRangeSignaling;
 class CVisualLog;
 class CAIProxy;
 class CommunicationVoiceLibrary;
-class CCustomActionManager;
 class CCustomEventManager;
 class CAIProxyManager;
 class CForceFeedBackSystem;
@@ -172,8 +168,6 @@ public:
     IGameplayRecorder* GetIGameplayRecorder() override;
     IGameRulesSystem* GetIGameRulesSystem() override;
     IGameObjectSystem* GetIGameObjectSystem() override;
-    IFlowSystem* GetIFlowSystem() override;
-    IGameTokenSystem* GetIGameTokenSystem() override;
     IEffectSystem* GetIEffectSystem() override;
     IMaterialEffects* GetIMaterialEffects() override;
     IPlayerProfileManager* GetIPlayerProfileManager() override;
@@ -182,7 +176,6 @@ public:
     ICooperativeAnimationManager* GetICooperativeAnimationManager() override;
     ICheckpointSystem* GetICheckpointSystem() override;
     IForceFeedbackSystem* GetIForceFeedbackSystem() const override;
-    ICustomActionManager* GetICustomActionManager() const override;
     ICustomEventManager* GetICustomEventManager() const override;
     IRealtimeRemoteUpdate* GetIRealTimeRemoteUpdate() override;
     IGamePhysicsSettings* GetIGamePhysicsSettings() override;
@@ -368,9 +361,6 @@ private:
 
     void InitCommands();
 
-    // TODO: remove
-    static void FlowTest(IConsoleCmdArgs*);
-
     // console commands provided by CryAction
     static void DumpMapsCmd(IConsoleCmdArgs* args);
     static void MapCmd(IConsoleCmdArgs* args);
@@ -453,7 +443,6 @@ private:
     CViewSystem* m_pViewSystem;
     CGameplayRecorder* m_pGameplayRecorder;
     CGameRulesSystem* m_pGameRulesSystem;
-    CFlowSystem* m_pFlowSystem;
     CGameObjectSystem* m_pGameObjectSystem;
     CUIDraw* m_pUIDraw;
     CScriptRMI* m_pScriptRMI;
@@ -464,7 +453,6 @@ private:
     CPlayerProfileManager* m_pPlayerProfileManager;
     CDialogSystem* m_pDialogSystem;
     CSubtitleManager* m_pSubtitleManager;
-    IGameTokenSystem* m_pGameTokenSystem;
     IEffectSystem* m_pEffectSystem;
     CGameSerialize* m_pGameSerialize;
     CallbackTimer* m_pCallbackTimer;
@@ -473,7 +461,6 @@ private:
     CForceFeedBackSystem* m_pForceFeedBackSystem;
     //  INetQueryListener *m_pLanQueryListener;
     ILanQueryListener* m_pLanQueryListener;
-    CCustomActionManager* m_pCustomActionManager;
     CCustomEventManager* m_pCustomEventManager;
     Graphics::CColorGradientManager* m_colorGradientManager = nullptr;
     Graphics::ScreenFaderManager* m_screenFaderManager = nullptr;
@@ -501,7 +488,6 @@ private:
     CRuntimeAreaManager* m_pRuntimeAreaManager;
 
     // script binds
-    CScriptBind_Action* m_pScriptA;
     CScriptBind_ItemSystem* m_pScriptIS;
     CScriptBind_ActorSystem* m_pScriptAS;
     CScriptBind_Network* m_pScriptNet;

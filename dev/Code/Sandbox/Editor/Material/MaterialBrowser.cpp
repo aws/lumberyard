@@ -132,7 +132,7 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
 
     // Call LoadState to initialize the AssetBrowserTreeView's QTreeViewStateSaver
     // This must be done BEFORE StartRecordUpdateJobs(). A race condition from the update jobs was causing a 5-10% crash/hang when opening the Material Editor.
-    m_ui->treeView->LoadState("MaterialBrowserTreeView");
+    m_ui->treeView->SetName("MaterialBrowserTreeView"); 
     
     // Override the AssetBrowserTreeView's custom context menu
     disconnect(m_ui->treeView, &QWidget::customContextMenuRequested, 0, 0);
@@ -442,7 +442,7 @@ void MaterialBrowserWidget::SelectItem(IDataBaseItem* pItem, IDataBaseItem* pPar
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::OnDuplicate()
 {
-    GetIEditor()->ExecuteCommand("material.duplicate");
+    GetIEditor()->GetMaterialManager()->Command_Merge();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -528,7 +528,7 @@ void MaterialBrowserWidget::OnPaste()
     {
         if (!m_pMatMan->GetCurrentMaterial())
         {
-            GetIEditor()->ExecuteCommand("material.create");
+            GetIEditor()->GetMaterialManager()->Command_Create();
         }
 
         _smart_ptr<CMaterial> pMtl = m_pMatMan->GetCurrentMaterial();
@@ -550,25 +550,25 @@ void MaterialBrowserWidget::OnPaste()
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::OnAddNewMaterial()
 {
-    GetIEditor()->ExecuteCommand("material.create");
+    GetIEditor()->GetMaterialManager()->Command_Create();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::OnAddNewMultiMaterial()
 {
-    GetIEditor()->ExecuteCommand("material.create_multi");
+    GetIEditor()->GetMaterialManager()->Command_CreateMulti();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::OnMergeMaterials()
 {
-    GetIEditor()->ExecuteCommand("material.merge");
+    GetIEditor()->GetMaterialManager()->Command_Merge();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::OnConvertToMulti()
 {
-    GetIEditor()->ExecuteCommand("material.convert_to_multi");
+    GetIEditor()->GetMaterialManager()->Command_ConvertToMulti();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -616,7 +616,7 @@ void MaterialBrowserWidget::DeleteItem(const CMaterialBrowserRecord& record)
         }
         else
         {
-            GetIEditor()->ExecuteCommand("material.delete");
+            GetIEditor()->GetMaterialManager()->Command_Delete();
         }
     }
 }
@@ -1459,11 +1459,17 @@ void MaterialBrowserWidget::OnContextMenuAction(int command, _smart_ptr<CMateria
         OnResetItem();
         break;
     case MENU_ASSIGNTOSELECTION:
-        GetIEditor()->ExecuteCommand("material.assign_to_selection");
+    {
+        CUndo undo("Assign Material To Selection");
+        GetIEditor()->GetMaterialManager()->Command_AssignToSelection();
         break;
+    }
     case MENU_SELECTASSIGNEDOBJECTS:
-        GetIEditor()->ExecuteCommand("material.select_assigned_objects");
+    {
+        CUndo undo("Select Objects With Current Material");
+        GetIEditor()->GetMaterialManager()->Command_SelectAssignedObjects();
         break;
+    }
     case MENU_NUM_SUBMTL:
         OnSetSubMtlCount(record);
         break;
@@ -1662,16 +1668,16 @@ void MaterialBrowserWidget::OnRefreshSelection()
 
 void MaterialBrowserWidget::OnMaterialAdded()
 {
-	if (m_delayedSelection)
-	{
-		SetSelectedItem(m_delayedSelection, nullptr, true);
+    if (m_delayedSelection)
+    {
+        SetSelectedItem(m_delayedSelection, nullptr, true);
 
-		// Force update the material dialog
-		if (m_pListener)
-		{
-			m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
-		}
-	}
+        // Force update the material dialog
+        if (m_pListener)
+        {
+            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
+        }
+    }
 }
 
 void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex& current)

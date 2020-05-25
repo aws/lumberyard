@@ -24,82 +24,124 @@
 # SOFTWARE.
 # ===================================================================
 
-__revision__ = "$Id$"
-
+from __future__ import print_function
 
 import binascii
-from Crypto.Util.py3compat import *
 
-binary={0:'0000', 1:'0001', 2:'0010', 3:'0011', 4:'0100', 5:'0101',
-        6:'0110', 7:'0111', 8:'1000', 9:'1001', 10:'1010', 11:'1011',
-        12:'1100', 13:'1101', 14:'1110', 15:'1111'}
+from Crypto.Util.py3compat import bord, bchr
+
+binary = {0: '0000', 1: '0001', 2: '0010', 3: '0011', 4: '0100', 5: '0101',
+          6: '0110', 7: '0111', 8: '1000', 9: '1001', 10: '1010', 11: '1011',
+          12: '1100', 13: '1101', 14: '1110', 15: '1111'}
+
 
 def _key2bin(s):
     "Convert a key into a string of binary digits"
-    kl=map(lambda x: bord(x), s)
-    kl=map(lambda x: binary[x>>4]+binary[x&15], kl)
+    kl = map(lambda x: bord(x), s)
+    kl = map(lambda x: binary[x >> 4] + binary[x & 15], kl)
     return ''.join(kl)
+
 
 def _extract(key, start, length):
     """Extract a bitstring(2.x)/bytestring(2.x) from a string of binary digits, and return its
     numeric value."""
-    k=key[start:start+length]
-    return reduce(lambda x,y: x*2+ord(y)-48, k, 0)
 
-def key_to_english (key):
-    """key_to_english(key:string(2.x)/bytes(3.x)) : string
-    Transform an arbitrary key into a string containing English words.
-    The key length must be a multiple of 8.
+    result = 0
+    for y in key[start:start+length]:
+        result = result * 2 + ord(y) - 48
+    return result
+
+
+def key_to_english(key):
+    """Transform an arbitrary key into a string containing English words.
+
+    Example::
+
+        >>> from Crypto.Util.RFC1751 import key_to_english
+        >>> key_to_english(b'66666666')
+        'RAM LOIS GOAD CREW CARE HIT'
+
+    Args:
+      key (byte string):
+        The key to convert. Its length must be a multiple of 8.
+    Return:
+      A string of English words.
     """
-    english=''
-    for index in range(0, len(key), 8): # Loop over 8-byte subkeys
-        subkey=key[index:index+8]
+
+    if len(key) % 8 != 0:
+        raise ValueError('The length of the key must be a multiple of 8.')
+
+    english = ''
+    for index in range(0, len(key), 8):  # Loop over 8-byte subkeys
+        subkey = key[index:index + 8]
         # Compute the parity of the key
-        skbin=_key2bin(subkey) ; p=0
-        for i in range(0, 64, 2): p=p+_extract(skbin, i, 2)
+        skbin = _key2bin(subkey)
+        p = 0
+        for i in range(0, 64, 2):
+            p = p + _extract(skbin, i, 2)
         # Append parity bits to the subkey
-        skbin=_key2bin(subkey+bchr((p<<6) & 255))
+        skbin = _key2bin(subkey + bchr((p << 6) & 255))
         for i in range(0, 64, 11):
-            english=english+wordlist[_extract(skbin, i, 11)]+' '
+            english = english + wordlist[_extract(skbin, i, 11)] + ' '
 
-    return english[:-1]                 # Remove the trailing space
+    return english.strip()
 
-def english_to_key (s):
-    """english_to_key(string):string(2.x)/bytes(2.x)
-    Transform a string into a corresponding key.
-    The string must contain words separated by whitespace; the number
-    of words must be a multiple of 6.
+
+def english_to_key(s):
+    """Transform a string into a corresponding key.
+
+    Example::
+
+        >>> from Crypto.Util.RFC1751 import english_to_key
+        >>> english_to_key('RAM LOIS GOAD CREW CARE HIT')
+        b'66666666'
+
+    Args:
+      s (string): the string with the words separated by whitespace;
+                  the number of words must be a multiple of 6.
+    Return:
+      A byte string.
     """
 
-    L=s.upper().split() ; key=b('')
+    L = s.upper().split()
+    key = b''
     for index in range(0, len(L), 6):
-        sublist=L[index:index+6] ; char=9*[0] ; bits=0
+        sublist = L[index:index + 6]
+        char = 9 * [0]
+        bits = 0
         for i in sublist:
             index = wordlist.index(i)
-            shift = (8-(bits+11)%8) %8
+            shift = (8 - (bits + 11) % 8) % 8
             y = index << shift
-            cl, cc, cr = (y>>16), (y>>8)&0xff, y & 0xff
-            if (shift>5):
-                char[bits>>3] = char[bits>>3] | cl
-                char[(bits>>3)+1] = char[(bits>>3)+1] | cc
-                char[(bits>>3)+2] = char[(bits>>3)+2] | cr
-            elif shift>-3:
-                char[bits>>3] = char[bits>>3] | cc
-                char[(bits>>3)+1] = char[(bits>>3)+1] | cr
-            else: char[bits>>3] = char[bits>>3] | cr
-            bits=bits+11
-        subkey=reduce(lambda x,y:x+bchr(y), char, b(''))
+            cl, cc, cr = (y >> 16), (y >> 8) & 0xff, y & 0xff
+            if (shift > 5):
+                char[bits >> 3] = char[bits >> 3] | cl
+                char[(bits >> 3) + 1] = char[(bits >> 3) + 1] | cc
+                char[(bits >> 3) + 2] = char[(bits >> 3) + 2] | cr
+            elif shift > -3:
+                char[bits >> 3] = char[bits >> 3] | cc
+                char[(bits >> 3) + 1] = char[(bits >> 3) + 1] | cr
+            else:
+                char[bits >> 3] = char[bits >> 3] | cr
+            bits = bits + 11
+
+        subkey = b''
+        for y in char:
+            subkey = subkey + bchr(y)
 
         # Check the parity of the resulting key
-        skbin=_key2bin(subkey)
-        p=0
-        for i in range(0, 64, 2): p=p+_extract(skbin, i, 2)
-        if (p&3) != _extract(skbin, 64, 2):
-            raise ValueError, "Parity error in resulting key"
-        key=key+subkey[0:8]
+        skbin = _key2bin(subkey)
+        p = 0
+        for i in range(0, 64, 2):
+            p = p + _extract(skbin, i, 2)
+        if (p & 3) != _extract(skbin, 64, 2):
+            raise ValueError("Parity error in resulting key")
+        key = key + subkey[0:8]
     return key
 
-wordlist=[ "A", "ABE", "ACE", "ACT", "AD", "ADA", "ADD",
+
+wordlist = [
+   "A", "ABE", "ACE", "ACT", "AD", "ADA", "ADD",
    "AGO", "AID", "AIM", "AIR", "ALL", "ALP", "AM", "AMY", "AN", "ANA",
    "AND", "ANN", "ANT", "ANY", "APE", "APS", "APT", "ARC", "ARE", "ARK",
    "ARM", "ART", "AS", "ASH", "ASK", "AT", "ATE", "AUG", "AUK", "AVE",
@@ -342,23 +384,3 @@ wordlist=[ "A", "ABE", "ACE", "ACT", "AD", "ADA", "ADD",
    "WORE", "WORK", "WORM", "WORN", "WOVE", "WRIT", "WYNN", "YALE",
    "YANG", "YANK", "YARD", "YARN", "YAWL", "YAWN", "YEAH", "YEAR",
    "YELL", "YOGA", "YOKE" ]
-
-if __name__=='__main__':
-    data = [('EB33F77EE73D4053', 'TIDE ITCH SLOW REIN RULE MOT'),
-            ('CCAC2AED591056BE4F90FD441C534766',
-             'RASH BUSH MILK LOOK BAD BRIM AVID GAFF BAIT ROT POD LOVE'),
-            ('EFF81F9BFBC65350920CDD7416DE8009',
-             'TROD MUTE TAIL WARM CHAR KONG HAAG CITY BORE O TEAL AWL')
-           ]
-
-    for key, words in data:
-        print 'Trying key', key
-        key=binascii.a2b_hex(key)
-        w2=key_to_english(key)
-        if w2!=words:
-            print 'key_to_english fails on key', repr(key), ', producing', str(w2)
-        k2=english_to_key(words)
-        if k2!=key:
-            print 'english_to_key fails on key', repr(key), ', producing', repr(k2)
-
-

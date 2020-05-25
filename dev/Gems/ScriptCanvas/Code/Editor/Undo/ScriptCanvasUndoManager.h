@@ -60,10 +60,10 @@ namespace ScriptCanvasEditor
         ~UndoManager();
 
         UndoCache* GetActiveSceneUndoCache() override;
-        UndoCache* GetSceneUndoCache(AZ::EntityId scriptCanvasGraphId);
+        UndoCache* GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId);
 
-        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(AZ::EntityId scriptCanvasGraphId);
-        void InsertUndoState(AZ::EntityId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
+        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId);
+        void InsertUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
 
         void BeginUndoBatch(AZStd::string_view label) override;
         void EndUndoBatch() override;
@@ -78,7 +78,7 @@ namespace ScriptCanvasEditor
         void Redo() override;
         void Reset() override;
 
-        UndoData CreateUndoData(AZ::EntityId scriptCanvasEntityId) override;
+        UndoData CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasEntityId) override;
 
         bool IsInUndoRedo() const { return m_isInUndo; }
 

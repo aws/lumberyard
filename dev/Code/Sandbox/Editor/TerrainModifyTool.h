@@ -31,6 +31,11 @@ enum BrushType
 
 struct CTerrainBrush
 {
+    AZ_CLASS_ALLOCATOR(CTerrainBrush, AZ::SystemAllocator, 0);
+    AZ_RTTI(CTerrainBrush, "{AFD7C51F-45B4-4F2B-AEC6-5F538E785172}");
+
+    virtual ~CTerrainBrush() = default;
+
     // Type of this brush.
     BrushType type;
     //! Outside Radius of brush.
@@ -109,7 +114,11 @@ public:
     void AdjustBrushValues();
     void SyncBrushRadiuses(bool bSync);
 
+    //! Paints at the current mouse location as it is raycasted into the terrain.
     void Paint();
+
+    //! Paints at the current world x,y location with the current brush.
+    void PaintAtWorldXY(float x, float y);
 
     void SetExternalUIPanel(class CTerrainModifyPanel* pPanel);
     void ClearCtrlPressedState() { m_isCtrlPressed = false; }
@@ -120,6 +129,9 @@ public:
     static void Command_Flatten();
     static void Command_Smooth();
     static void Command_RiseLower();
+    static void Command_PaintAtWorldXY(float worldX, float worldY);
+    static CTerrainBrush Command_GetTerrainBrushParams();
+    static void Command_SetTerrainBrushParams(const CTerrainBrush& brush);
     static int Debug_GetCurrentBrushType();
     //////////////////////////////////////////////////////////////////////////
 
@@ -139,6 +151,8 @@ private:
     bool m_bSmoothOverride;
     bool m_bQueryHeightMode;
     int m_nPaintingMode;
+
+    bool m_isSmoothing;
 
     static bool m_bSyncBrushRadiuses;
 

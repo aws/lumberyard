@@ -64,7 +64,7 @@ namespace AZStd
             , m_name("AZStd::thread")
         {}
 
-        void*           m_stack;        ///< Stack memory pointer (required for Wii)
+        void*           m_stack;        ///< Stack memory pointer
 
         /**
         *  Thread stack size.

@@ -67,7 +67,7 @@ namespace AZ
         void GarbageCollectStep(int numberOfSteps) override;
 
         bool Load(const Data::Asset<ScriptAsset>& asset, ScriptContextId id) override;
-        void ClearAssetReferences(Data::AssetId assetBaseId);
+        void ClearAssetReferences(Data::AssetId assetBaseId) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

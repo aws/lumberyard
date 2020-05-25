@@ -25,9 +25,7 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     kw = dict(
-        includes        = [bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction')
-                          ],
+        includes        = [bld.Path('Code/CryEngine/CryCommon')],
         platforms = ['all'],
 
         file_list = file_list,

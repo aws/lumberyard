@@ -1,7 +1,17 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 from dynamodb import DynamoDb
 from aws_lambda import Lambda
 from cgf_utils import custom_resource_response
-from StringIO import StringIO
 from athena import Athena, Query
 from datetime import date, timedelta
 from sqs import Sqs
@@ -16,6 +26,7 @@ import metric_schema
 import time
 import json
 import sys
+from six import iteritems
 
 def launch(event, lambdacontext):
     util.debug_print("Start Amoeba Launcher")    
@@ -82,7 +93,7 @@ def launch(event, lambdacontext):
         elapsed = util.elapsed(context)         
 
     #Invoke a amoeba generator for each S3 leaf node
-    for directory, settings in map.iteritems(): 
+    for directory, settings in iteritems(map):
         is_invoked = settings.get("invoked", False)
         #Amoeba's are not designed to have multiple amoebas working against one directory
         #If the Amoeba has already been invoked due to payload size then we requeue the remaining paths
@@ -93,7 +104,7 @@ def launch(event, lambdacontext):
         
     context[c.KEY_THREAD_POOL] = ThreadPool(context, 8) 
     #Delete SQS messages that have been processed
-    for key, value in sqs_delete_tokens.iteritems():        
+    for key, value in iteritems(sqs_delete_tokens):
         sqs.delete_message_batch(value, key)
 
     return custom_resource_response.success_response({"StatusCode": 200}, "*")

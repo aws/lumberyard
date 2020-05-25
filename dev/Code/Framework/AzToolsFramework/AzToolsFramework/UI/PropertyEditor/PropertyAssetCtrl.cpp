@@ -785,6 +785,7 @@ namespace AzToolsFramework
 
     PropertyAssetCtrl::~PropertyAssetCtrl()
     {
+        AssetSystemBus::Handler::BusDisconnect();
     }
 
     void PropertyAssetCtrl::OnEditButtonClicked()
@@ -1207,7 +1208,18 @@ namespace AzToolsFramework
 
             if (!iconPath.empty())
             {
-                GUI->SetEditButtonIcon(QIcon(iconPath.c_str()));
+                QString path(iconPath.c_str());
+
+                if (!QFile::exists(path))
+                {
+                    const char* engineRoot = nullptr;
+                    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+                    QDir engineDir = engineRoot ? QDir(engineRoot) : QDir::current();
+
+                    path = engineDir.absoluteFilePath(iconPath.c_str());
+                }
+
+                GUI->SetEditButtonIcon(QIcon(path));
             }
         }
         else if (attrib == AZ_CRC("EditDescription", 0x9b52634a))

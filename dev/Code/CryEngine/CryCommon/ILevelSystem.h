@@ -195,8 +195,13 @@ struct ILevelSystem
         TAG_UNKNOWN = 'ZZZZ'
     };
 
+    static constexpr char LevelsDirectoryName[] = "levels";
+    static constexpr char LevelPakName[] = "level.pak";
+
     virtual void Release() = 0;
     virtual void Rescan(const char* levelsFolder, const uint32 tag) = 0;
+    virtual void ScanFolder(const char* subfolder, bool modFolder, const uint32 tag) = 0;
+    virtual void PopulateLevels(string searchPattern, string& folder, ICryPak* pPak, bool& modFolder, const uint32& tag, bool fromFileSystemOnly)  = 0;
     virtual void LoadRotation() {}
     virtual int GetLevelCount() = 0;
     virtual DynArray<string>* GetLevelTypeList() = 0;

@@ -68,12 +68,10 @@ protected:
     void ReloadLevelFoldersRec(const QString& currentFolder);
 
     void ShowWarning(const QString& message = "");
-    void ToggleTerrainControlLayout();
 
     void showEvent(QShowEvent* event);
 
 protected slots:
-    void OnBnClickedUseTerrain();
     void OnCbnSelendokTerrainResolution();
     void OnCbnSelendokTerraniUnits();
     void OnCbnSelendokLevelFolders();
@@ -82,7 +80,6 @@ protected slots:
 public:
     QString         m_level;
     QString         m_levelFolders;
-    bool                m_useTerrain;
     int                 m_terrainResolution;
     int                 m_ilevelFolders;
     int                 m_terrainUnitsIndex;

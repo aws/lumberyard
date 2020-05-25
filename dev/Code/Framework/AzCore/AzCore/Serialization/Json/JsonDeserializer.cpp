@@ -10,9 +10,9 @@
 *
 */
 
-#include <AzCore/Serialization/Json/JsonDeserializer.h>
-
+#include <AzCore/Math/UuidSerializer.h>
 #include <AzCore/Serialization/Json/EnumSerializer.h>
+#include <AzCore/Serialization/Json/JsonDeserializer.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/Json/StackedString.h>
 #include <AzCore/std/string/conversions.h>
@@ -209,6 +209,13 @@ namespace AZ
                 "If this message is encountered then a specialized serializer for associative containers is missing.",
                 ResultCode(Tasks::ReadField, Outcomes::Unsupported), path);
         }
+        if (!container->IsFixedSize() && !container->IsFixedCapacity())
+        {
+            return settings.m_reporting("Serializer does not currently support reading dynamically sized containers. "
+                "If this message is encountered then a specialized serializer for dynamically sized containers is missing.",
+                ResultCode(Tasks::ReadField, Outcomes::Unsupported), path);
+        }
+
         size_t typesCounted = 0;
         auto typeCounter = [&typesCounted](const Uuid&, const SerializeContext::ClassElement*)
         {
@@ -370,7 +377,7 @@ namespace AZ
         {
             // There's data stored in the JSON document so try to determine the type, create an instance of it and 
             // return the new object to continue loading.
-            LoadTypeIdResult loadedTypeId = LoadTypeIdFromJsonObject(pointerData, rtti, path, settings);
+            LoadTypeIdResult loadedTypeId = LoadTypeIdFromJsonObject(pointerData, rtti, settings);
             if (loadedTypeId.m_determination == TypeIdDetermination::FailedToDetermine ||
                 loadedTypeId.m_determination == TypeIdDetermination::FailedDueToMultipleTypeIds)
             {
@@ -491,7 +498,7 @@ namespace AZ
     }
 
     JsonDeserializer::LoadTypeIdResult JsonDeserializer::LoadTypeIdFromJsonObject(const rapidjson::Value& node, const AZ::IRttiHelper& rtti,
-        StackedString& path, const JsonDeserializerSettings& settings)
+        const JsonDeserializerSettings& settings)
     {
         LoadTypeIdResult result;
 
@@ -514,7 +521,7 @@ namespace AZ
 
         if (typeField->value.IsString())
         {
-            return LoadTypeIdFromJsonString(typeField->value, &rtti, path, settings);
+            return LoadTypeIdFromJsonString(typeField->value, &rtti, settings);
         }
 
         result.m_determination = TypeIdDetermination::FailedToDetermine;
@@ -523,7 +530,7 @@ namespace AZ
     }
 
     JsonDeserializer::LoadTypeIdResult JsonDeserializer::LoadTypeIdFromJsonString(const rapidjson::Value& node, const AZ::IRttiHelper* baseClassRtti,
-        StackedString& path, const JsonDeserializerSettings& settings)
+        const JsonDeserializerSettings& settings)
     {
         using namespace JsonSerializationResult;
 
@@ -532,11 +539,13 @@ namespace AZ
         if (node.IsString())
         {
             // First check if the string contains a Uuid and if so, use that as the type id.
-            BaseJsonSerializer* uuidSerializer = settings.m_registrationContext->GetSerializerForType(azrtti_typeid<Uuid>());
+            JsonUuidSerializer* uuidSerializer =
+                azrtti_cast<JsonUuidSerializer*>(settings.m_registrationContext->GetSerializerForType(azrtti_typeid<Uuid>()));
             if (uuidSerializer)
             {
-                ResultCode serializerResult = uuidSerializer->Load(&result.m_typeId, azrtti_typeid<Uuid>(), node, path, settings);
-                if (serializerResult.GetOutcome() == Outcomes::Success)
+                JsonUuidSerializer::MessageResult serializerResult =
+                    uuidSerializer->UnreportedLoad(&result.m_typeId, azrtti_typeid<Uuid>(), node);
+                if (serializerResult.m_result.GetOutcome() == Outcomes::Success)
                 {
                     result.m_determination = TypeIdDetermination::ExplicitTypeId;
                     return result;

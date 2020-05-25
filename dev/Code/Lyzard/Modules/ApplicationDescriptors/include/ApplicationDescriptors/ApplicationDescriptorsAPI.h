@@ -9,18 +9,16 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
 
-#include <AzCore/std/string/string.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
-#include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentApplication.h>
-
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 #include <LyzardSDK/Base.h>
-
 #include <Projects/ProjectId.h>
 
 namespace AZ
@@ -36,6 +34,10 @@ namespace AZ
 
 namespace ApplicationDescriptors
 {
+    //! Return true to accept this type of component.
+    //! This is a copy of AzToolsFramework::ComponentFilter.
+    using ComponentFilter = AZStd::function<bool(const AZ::SerializeContext::ClassData&)>;
+
     /**
      * All current module Configurations
      * WARNING: This list is subject to change.
@@ -113,7 +115,7 @@ namespace ApplicationDescriptors
 
         /// If successful, return a ComponentFilter for adding components to this flavor's system entity.
         /// If failed, return error message.
-        virtual AZ::Outcome<AzToolsFramework::ComponentFilter, AZStd::string> GetEligibleSystemComponentsFilter() = 0;
+        virtual AZ::Outcome<ComponentFilter, AZStd::string> GetEligibleSystemComponentsFilter() = 0;
 
         /// Takes ownership of the system entity from the component application to the Flavor.
         virtual void TakeOwnershipOfSystemEntity() = 0;
@@ -185,7 +187,12 @@ namespace ApplicationDescriptors
         /// Split the system entity into the system entity and a list of ModuleEntities
         virtual AZStd::vector<AZStd::unique_ptr<AZ::ModuleEntity>> SplitSystemEntity(AZ::Entity& systemEntity) = 0;
 
+        /// Regenerate all the application descriptors
+        virtual Lyzard::StringOutcome UpdateAppDescriptors(Projects::ProjectId projectId) const = 0;
+
         //////////////////////////////////////////////////////////////////////////
     };
+
     using ApplicationDescriptorsRequestBus = AZ::EBus<ApplicationDescriptorsRequests>;
-}
+
+} // namespace ApplicationDescriptors

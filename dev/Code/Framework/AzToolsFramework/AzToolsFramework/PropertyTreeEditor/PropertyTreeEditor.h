@@ -39,15 +39,22 @@ namespace AzToolsFramework
 
         using PropertyAccessOutcome = AZ::Outcome<AZStd::any, AZStd::string>;
 
+        AZStd::string GetPropertyType(const AZStd::string_view propertyPath);
         PropertyAccessOutcome GetProperty(const AZStd::string_view propertyPath);
         PropertyAccessOutcome SetProperty(const AZStd::string_view propertyPath, const AZStd::any& value);
+        bool CompareProperty(const AZStd::string_view propertyPath, const AZStd::any& value);
 
     private:
-        bool HandleTypeConversion(AZ::TypeId fromType, AZ::TypeId toType, const void*& valuePtr);
+        //! Given a source (@fromType) and destination (@toType) rtti types it converts the
+        //! value pointed by @sourceValuePtr if the rtti types are different, otherwise returns @sourceValuePtr.
+        //! When @fromType != @toType then the converted value is placed in @convertedValue and the address to @convertedValue
+        //! is returned.
+        //! If the conversion is not supported it returns nullptr.
+        const void* HandleTypeConversion(AZ::TypeId fromType, AZ::TypeId toType, const void* sourceValuePtr, AZStd::any& convertedValue);
 
-        AZ::u32 m_convertUnsigned;
-        float m_convertFloat;
-
+        //! Always returns a pointer to @convertedValue if successful. Otherwise returns nullptr.
+        template <typename V>
+        const void* HandleTypeConversion(V fromValue, AZ::TypeId toType, AZStd::any& convertedValue);
 
         struct ChangeNotification
         {
@@ -69,7 +76,9 @@ namespace AzToolsFramework
             PropertyTreeEditorNode(AzToolsFramework::InstanceDataNode* nodePtr, AZStd::optional<AZStd::string> newName);
             PropertyTreeEditorNode(AzToolsFramework::InstanceDataNode* nodePtr, AZStd::optional<AZStd::string> newName, 
                 const AZStd::string& parentPath, const AZStd::vector<ChangeNotification>& notifiers);
+            PropertyTreeEditorNode(const AZ::TypeId& typeId, AzToolsFramework::InstanceDataNode* nodePtr, AZStd::optional<AZStd::string> newName);
 
+            AZ::TypeId m_typeId = AZ::TypeId::CreateNull();
             AzToolsFramework::InstanceDataNode* m_nodePtr = nullptr;
             AZStd::optional<AZStd::string> m_newName = {};
 

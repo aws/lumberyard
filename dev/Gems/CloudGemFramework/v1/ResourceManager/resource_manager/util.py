@@ -9,17 +9,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-
 import copy
 import os
 import json
 import re
-import boto3
 import time
-from cgf_utils import custom_resource_utils
+import six
 
-from errors import HandledError
 from botocore.exceptions import ClientError
+
+from cgf_utils import custom_resource_utils
+from .errors import HandledError
 from resource_manager_common import resource_type_info
 
 
@@ -36,7 +36,7 @@ class Args(object):
 
     def __init__(self, **kwargs):
         if kwargs:
-            for k, v in kwargs.iteritems():
+            for k, v in six.iteritems(kwargs):
                 self.__dict__[k] = v
 
     def __str__(self):
@@ -51,13 +51,13 @@ class Args(object):
 
 def replace_string_in_dict(dict, old, new):
     result = {}
-    for k, v in dict.iteritems():
+    for k, v in six.iteritems(dict):
         result[k.replace(old, new)] = replace_string_in_value(v, old, new)
     return result
 
 
 def replace_string_in_value(value, old, new):
-    if isinstance(value, basestring):
+    if isinstance(value, six.string_types):
         return value.replace(old, new)
     if isinstance(value, list):
         return replace_string_in_list(value, old, new)
@@ -78,7 +78,7 @@ def load_template(context, template_path):
     try:
         return open(template_path, 'r').read()
     except IOError as e:
-        raise HandledError('Could not read template from {0}.'.format(template_path))
+        raise HandledError('Could not read template from {0} due to {1}'.format(template_path, str(e)))
 
 
 def validate_stack_name_length(check_name):
@@ -143,10 +143,12 @@ def validate_writable_list(context, write_check_list):
 
 def get_cloud_canvas_metadata(definition, metadata_name):
     metadata = definition.get('Metadata', None)
-    if metadata is None: return None
+    if metadata is None:
+        return None
 
     cloud_canvas_metadata = metadata.get('CloudCanvas', None)
-    if cloud_canvas_metadata is None: return None
+    if cloud_canvas_metadata is None:
+        return None
 
     return cloud_canvas_metadata.get(metadata_name, None)
 
@@ -154,17 +156,20 @@ def get_cloud_canvas_metadata(definition, metadata_name):
 # Stack ARN format: arn:aws:cloudformation:{region}:{account}:stack/{name}/{guid}
 
 def get_stack_name_from_arn(arn):
-    if arn is None: return None
+    if arn is None:
+        return None
     return arn.split('/')[1]
 
 
 def get_region_from_arn(arn):
-    if arn is None: return None
+    if arn is None:
+        return None
     return arn.split(':')[3]
 
 
 def get_account_id_from_arn(arn):
-    if arn is None: return None
+    if arn is None:
+        return None
     return arn.split(':')[4]
 
 
@@ -181,7 +186,7 @@ def get_data_from_custom_physical_resource_id(physical_resource_id):
             try:
                 id_data = json.loads(embedded_physical_resource_id[i_data_marker + len(ID_DATA_MARKER):])
             except Exception as e:
-                raise HandledError('Could not parse JSON data from physical resource id {}. {}'.format(physical_resource_id, e.message))
+                raise HandledError('Could not parse JSON data from physical resource id {}. {}'.format(physical_resource_id, e))
     else:
         id_data = {}
     return id_data
@@ -213,7 +218,6 @@ def save_json(path, data):
         return True
     except Exception as e:
         raise HandledError('Could not save {}.'.format(path), e)
-        return False
 
 
 def load_json(path, default=None, optional=True):
@@ -240,7 +244,7 @@ def json_parse(str, default):
     """Reads JSON format data from a file on disk and returns it as dictionary."""
     try:
         if str:
-            json.load(str);
+            json.load(str)
         else:
             return default
     except Exception as e:

@@ -47,7 +47,7 @@ namespace EMStudio
         {
             TYPE_ID = 0x00000002
         };
-        StateConnection(const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection);
+        StateConnection(NodeGraph* parentGraph, const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection);
         ~StateConnection();
 
         void Render(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor) override;
@@ -63,7 +63,6 @@ namespace EMStudio
         EMotionFX::AnimGraphTransitionCondition* FindCondition(const QPoint& mousePos);
 
         bool GetIsWildcardTransition() const override       { return mIsWildcardConnection; }
-        void SetIsSelected(bool selected) override;
 
         static void RenderTransition(QPainter& painter, QBrush& brush, QPen& pen,
             QPoint start, QPoint end,

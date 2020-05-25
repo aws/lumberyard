@@ -85,6 +85,7 @@ public:
     void ResetToDefault(SLodInfo *curLod = nullptr);
 
 private:
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     _smart_ptr<IParticleEffect> m_pEffect;
 
     //! Parent of this particle (if this is a sub particle).
@@ -96,6 +97,7 @@ private:
     // asset resolving
     typedef std::map<IVariable::EDataType, uint32> TResolveReq;
     TResolveReq m_ResolveRequests;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITOR_PARTICLES_PARTICLEITEM_H

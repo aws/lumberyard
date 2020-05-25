@@ -18,10 +18,7 @@
 
 #include "SystemComponentFixture.h"
 
-namespace AZ
-{
-    class DynamicModuleHandle;
-}
+namespace AZ { class DynamicModuleHandle; }
 
 namespace EMotionFX
 {
@@ -32,7 +29,10 @@ namespace EMotionFX
         using DynamicModuleHandlePtr = AZStd::unique_ptr<AZ::DynamicModuleHandle>;
 
     protected:
-        void Activate() override
+        InitSceneAPIFixture() = default;
+        AZ_DEFAULT_COPY_MOVE(InitSceneAPIFixture);
+
+        void PreStart() override
         {
             const AZStd::vector<AZStd::string> moduleNames {"SceneCore", "SceneData"};
             for (const AZStd::string& moduleName : moduleNames)
@@ -48,20 +48,31 @@ namespace EMotionFX
                 m_modules.emplace_back(AZStd::move(module));
             }
 
-            ComponentFixture<Components...>::Activate();
+            ComponentFixture<Components...>::PreStart();
         }
 
-        void Deactivate() override
+        ~InitSceneAPIFixture() override
         {
             // Deactivate the system entity first, releasing references to SceneAPI
-            ComponentFixture<Components...>::Deactivate();
+            if (this->GetSystemEntity()->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                this->GetSystemEntity()->Deactivate();
+            }
+
+            // Remove SceneAPI components before the DLL is uninitialized
+            (([&]() {
+                auto component = this->GetSystemEntity()->template FindComponent<Components>();
+                if (component)
+                {
+                    this->GetSystemEntity()->RemoveComponent(component);
+                    delete component;
+                }
+            })(), ...);
 
             // Now tear down SceneAPI
             for (DynamicModuleHandlePtr& module : m_modules)
             {
                 auto uninit = module->template GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
-                ASSERT_TRUE(uninit) << "EMotionFX Editor unit tests failed to find the uninitialization function in the " << module->GetFilename().c_str() << " module.";
-
                 (*uninit)();
                 module.reset();
             }
@@ -72,4 +83,4 @@ namespace EMotionFX
         private:
             AZStd::vector<DynamicModuleHandlePtr> m_modules;
     };
-}
+} // namespace EMotionFX

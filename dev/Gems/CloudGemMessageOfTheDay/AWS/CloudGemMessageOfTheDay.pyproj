@@ -21,8 +21,6 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="api-definition\LoadTest_1_0_0.json" />
-    <Content Include="common-code\LoadTest\LoadTest__CloudGemMessageOfTheDay.pyc" />
     <Content Include="lambda-code\ServiceLambda\.ignore" />
     <Content Include="lambda-code\ServiceLambda\.import" />
     <Content Include="lambda-code\ServiceLambda\ServiceLambda.pyproj" />
@@ -32,16 +30,12 @@
   <ItemGroup>
     <Folder Include="api-definition\" />
     <Folder Include="common-code\" />
-    <Folder Include="common-code\LoadTest\" />
     <Folder Include="lambda-code\" />
     <Folder Include="lambda-code\ServiceLambda\" />
     <Folder Include="lambda-code\ServiceLambda\api\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="common-code\LoadTest\LoadTest__CloudGemMessageOfTheDay.py" />
     <Compile Include="lambda-code\ServiceLambda\api\admin_messages.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_setup.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_teardown.py" />
     <Compile Include="lambda-code\ServiceLambda\api\player_messages.py" />
     <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
     <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />

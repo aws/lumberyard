@@ -298,7 +298,7 @@ namespace LocalUser
     {
         for (AZ::u32 i = 0; i < LocalPlayerSlotMax; ++i)
         {
-            const AZ::u32 localUserId = m_localUserIdsByLocalPlayerSlot[i];
+            const AzFramework::LocalUserId& localUserId = m_localUserIdsByLocalPlayerSlot[i];
             if (localUserId != AzFramework::LocalUserIdNone)
             {
                 RemoveLocalUserIdFromLocalPlayerSlot(localUserId);

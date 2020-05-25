@@ -148,7 +148,7 @@ namespace AZ
                 baseClassRtti = baseClassData ? baseClassData->m_azRtti : nullptr;
             }
 
-            JsonDeserializer::LoadTypeIdResult typeIdResult = JsonDeserializer::LoadTypeIdFromJsonString(input, baseClassRtti, path, settings);
+            JsonDeserializer::LoadTypeIdResult typeIdResult = JsonDeserializer::LoadTypeIdFromJsonString(input, baseClassRtti, settings);
             switch (typeIdResult.m_determination)
             {
             case JsonDeserializer::TypeIdDetermination::ExplicitTypeId:

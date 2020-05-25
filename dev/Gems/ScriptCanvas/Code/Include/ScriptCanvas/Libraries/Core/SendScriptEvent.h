@@ -19,7 +19,6 @@
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/Core/Node.h>
-#include <ScriptEvents/ScriptEventsAsset.h>
 #include <ScriptEvents/ScriptEventsBus.h>
 
 #include <Include/ScriptCanvas/Libraries/Core/SendScriptEvent.generated.h>
@@ -48,13 +47,14 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{64A97CC3-2BEA-4B47-809B-6C7DA34FD00F}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Bus.png")
                     ScriptCanvas_Node::Version(4)
-                    ScriptCanvas_Node::EventHandler("SerializeContextEventHandlerDefault<SendScriptEvent>")
                     ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                 );
 
                 ScriptCanvas_SerializeProperty(Namespaces, m_namespaces);
                 ScriptCanvas_SerializeProperty(ScriptCanvas::EBusBusId, m_busId);
                 ScriptCanvas_SerializeProperty(ScriptCanvas::EBusEventId, m_eventId);
+
+                ~SendScriptEvent() override;
 
                 const AZStd::string& GetEventName() const { return m_eventName; }
 
@@ -66,15 +66,14 @@ namespace ScriptCanvas
 
                 SlotId GetBusSlotId() const;
 
-                void ConfigureNode(const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);
-
-                void OnWriteEnd();
+                void ConfigureNode(const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);                
 
                 void UpdateScriptEventAsset() override;
 
             protected:
 
                 void BuildNode(const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId, SlotIdMapping& populationMapping);
+                void InitializeResultSlotId();
 
                 void OnScriptEventReady(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>&) override;
                 bool CreateSender(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>);

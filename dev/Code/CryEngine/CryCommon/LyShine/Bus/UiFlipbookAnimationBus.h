@@ -142,12 +142,6 @@ public:
     //!
     //! This flag is ignored after the component has activated.
     virtual void SetIsAutoPlay(bool isAutoPlay) = 0;
-
-    //! Deprecated. Use GetFramerate instead.
-    virtual float GetFrameDelay() = 0;
-
-    //! Deprecated. Use SetFramerate instead.
-    virtual void SetFrameDelay(float frameDelay) = 0;
 };
 
 using UiFlipbookAnimationBus = AZ::EBus<UiFlipbookAnimationInterface>;

@@ -16,8 +16,27 @@ set ORIGINALDIRECTORY=%cd%
 set MYBATCHFILEDIRECTORY=%~dp0
 cd "%MYBATCHFILEDIRECTORY%"
 
+set "BINFOLDER_HINT_NAME=--binfolder-hint"
+set "BINFOLDER_HINT="
+:CmdLineArgumentsParseLoop
+if "%1"=="" goto CmdLineArgumentsParsingDone
+    if "%1"=="%BINFOLDER_HINT_NAME%" (
+        REM The next parameter is the hint directory
+        set BINFOLDER_HINT=%2%
+        shift
+        goto GotValidArgument
+    )
+    REM If we are here, the user gave us an unexpected argument. Let them know and quit.
+    echo "%1" is an invalid argument, optional arguments are "%BINFOLDER_HINT_NAME%"
+    echo %BINFOLDER_HINT_NAME%^=^<folder_name^>: A hint to indicate the folder name to use for finding the windows binaries i.e Bin64vc142
+    exit /b 1
+:GotValidArgument
+    shift
+goto CmdLineArgumentsParseLoop
+:CmdLineArgumentsParsingDone
+
 REM Attempt to determine the best BinFolder for rc.exe and AssetProcessorBatch.exe
-call "%MYBATCHFILEDIRECTORY%\DetermineRCandAP.bat" SILENT
+call "%MYBATCHFILEDIRECTORY%\DetermineRCandAP.bat" SILENT %BINFOLDER_HINT%
 
 REM If a bin folder was registered, validate the presence of the binfolder/rc/rc.exe
 IF ERRORLEVEL 1 (

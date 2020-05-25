@@ -558,13 +558,6 @@ void LevelEditorMenuHandler::PopulateEditMenu(ActionManager::MenuWrapper& editMe
     // Invert Selection
     editMenu.AddAction(ID_EDIT_INVERTSELECTION);
 
-    // Select Slice Root
-    if (!m_selectSliceRootMenu)
-    {
-        m_selectSliceRootMenu = editMenu.AddMenu(QObject::tr("Select root"));
-        m_selectSliceRootMenu->setEnabled(false);
-    }
-
     editMenu.AddSeparator();
 
     // New Viewport Interaction Model actions/shortcuts
@@ -1106,13 +1099,18 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     }
 
     // Layouts
-    m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
-    connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
-        {
-            UpdateViewLayoutsMenu(m_layoutsMenu);
-        });
 
-    UpdateViewLayoutsMenu(m_layoutsMenu);
+    // Disable Layouts menu if other is active
+    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
+    {
+        m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
+        connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
+            {
+                UpdateViewLayoutsMenu(m_layoutsMenu);
+            });
+
+        UpdateViewLayoutsMenu(m_layoutsMenu);
+    }
 
     // Viewport
     auto viewportViewsMenuWrapper = viewMenu.AddMenu(tr("Viewport"));
@@ -1141,7 +1139,10 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     viewportViewsMenuWrapper.AddAction(ID_VIEW_GRIDSETTINGS);
     viewportViewsMenuWrapper.AddSeparator();
 
-    viewportViewsMenuWrapper.AddAction(ID_VIEW_CONFIGURELAYOUT);
+    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
+    {
+        viewportViewsMenuWrapper.AddAction(ID_VIEW_CONFIGURELAYOUT);
+    }
     viewportViewsMenuWrapper.AddSeparator();
 
     viewportViewsMenuWrapper.AddAction(ID_DISPLAY_GOTOPOSITION);
@@ -1609,7 +1610,11 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
             {
                 auto cryEdit = CCryEditApp::instance();
                 RecentFileList* mruList = cryEdit->GetRecentFileList();
-                cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
+                // Check file is still available
+                if (mruList->GetSize() > i)
+                {
+                    cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
+                }
             });
         m_actionManager->RegisterUpdateCallback(ID_FILE_MRU_FILE1 + i, cryEdit, &CCryEditApp::OnUpdateFileOpen);
 
@@ -1704,26 +1709,6 @@ void LevelEditorMenuHandler::OnUpdateMacrosMenu()
     else
     {
         m_macrosMenu->setEnabled(true);
-    }
-}
-
-void LevelEditorMenuHandler::SetupSliceSelectMenu(AZ::EntityId id)
-{
-    if (id.IsValid())
-    {
-        if (SliceUtilities::PopulateSliceSelectSubMenu(id, m_selectSliceRootMenu))
-        {
-            m_selectSliceRootMenu->setEnabled(true);
-        }
-        else
-        {
-            m_selectSliceRootMenu->setEnabled(false);
-        }
-    }
-    else
-    {
-        m_selectSliceRootMenu->clear();
-        m_selectSliceRootMenu->setEnabled(false);
     }
 }
 

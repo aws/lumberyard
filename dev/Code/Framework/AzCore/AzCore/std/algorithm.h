@@ -30,22 +30,22 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Min, max, clamp
     template<class T>
-    T   GetMin(const T& left, const T& right) { return (left < right) ? left : right; }
+    constexpr T GetMin(const T& left, const T& right) { return (left < right) ? left : right; }
 
     template<class T>
-    T   min AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left < right) ? left : right; }
+    constexpr T min AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left < right) ? left : right; }
 
     template<class T>
-    T   GetMax(const T& left, const T& right) { return (left > right) ? left : right; }
+    constexpr T GetMax(const T& left, const T& right) { return (left > right) ? left : right; }
 
     template<class T>
-    T   max AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left > right) ? left : right; }
+    constexpr T max AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left > right) ? left : right; }
 
     template<class T, class Compare>
-    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right, Compare comp) { return comp(right, left) ? AZStd::make_pair(right, left) : AZStd::make_pair(left, right); }
+    constexpr pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right, Compare comp) { return comp(right, left) ? AZStd::make_pair(right, left) : AZStd::make_pair(left, right); }
 
     template<class T>
-    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return AZStd::minmax(left, right, AZStd::less<T>()); }
+    constexpr pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return AZStd::minmax(left, right, AZStd::less<T>()); }
 
     /*
     Finds the smallest and greatest element in the range of [first, last)
@@ -54,7 +54,7 @@ namespace AZStd
     If several elements are equivalent to the greatest element it returns the last such element
     */
     template<class ForwardIt, class Compare>
-    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last, Compare comp)
+    constexpr pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last, Compare comp)
     {
         pair<ForwardIt, ForwardIt> result(first, first);
         // Check for 0 elements in iterator range and return a pair of (first, first)
@@ -111,31 +111,31 @@ namespace AZStd
     }
 
     template<class ForwardIt>
-    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last)
+    constexpr pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last)
     {
         return AZStd::minmax_element(first, last, AZStd::less<typename iterator_traits<ForwardIt>::value_type>());
     }
 
     template<class T, class Compare>
-    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist, Compare comp)
+    constexpr pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist, Compare comp)
     {
         auto minMaxPair = AZStd::minmax_element(ilist.begin(), ilist.end(), comp);
         return AZStd::make_pair(*minMaxPair.first, *minMaxPair.second);
     }
 
     template<class T>
-    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist)
+    constexpr pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist)
     {
         return AZStd::minmax(ilist, AZStd::less<T>());
     }
     
     template<class T>
-    T   clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
+    constexpr T clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
     //////////////////////////////////////////////////////////////////////////
 
     // for_each.  Apply a function to every element of a range.
     template <class InputIter, class Function>
-    AZ_FORCE_INLINE Function for_each(InputIter first, InputIter last, Function f)
+    constexpr Function for_each(InputIter first, InputIter last, Function f)
     {
         for (; first != last; ++first)
         {
@@ -146,7 +146,7 @@ namespace AZStd
 
     // count_if
     template <class InputIter, class Predicate>
-    typename iterator_traits<InputIter>::difference_type
+    constexpr typename iterator_traits<InputIter>::difference_type
     count_if(InputIter first, InputIter last, Predicate pred)
     {
         //DEBUG_CHECK(check_range(first, last))
@@ -164,7 +164,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // Find
     template<class InputIterator, class ComparableToIteratorValue>
-    AZ_FORCE_INLINE InputIterator           find(InputIterator first, InputIterator last, const ComparableToIteratorValue& value)
+    constexpr InputIterator find(InputIterator first, InputIterator last, const ComparableToIteratorValue& value)
     {
         for (; first != last; ++first)
         {
@@ -176,30 +176,8 @@ namespace AZStd
         return first;
     }
 
-    AZ_FORCE_INLINE const char*            find(const char* first, const char* last, int value)
-    {
-        // find first char that matches _Val
-        //_DEBUG_RANGE(first, last);
-        first = (const char*)::memchr(first, value, last - first);
-        return (first == 0 ? last : first);
-    }
-
-    AZ_FORCE_INLINE const signed char*     find(const signed char* first, const signed char* last, int value)
-    {   // find first signed char that matches _Val
-        //_DEBUG_RANGE(first, _Last);
-        first = (const signed char*)::memchr(first, value, last - first);
-        return (first == 0 ? last : first);
-    }
-
-    AZ_FORCE_INLINE const unsigned char*   find(const unsigned char* first, const unsigned char* last, int value)
-    {   // find first unsigned char that matches _Val
-        //_DEBUG_RANGE(first, _Last);
-        first = (const unsigned char*)::memchr(first, value, last - first);
-        return (first == 0 ? last : first);
-    }
-
     template<class InputIterator, class Predicate>
-    AZ_FORCE_INLINE InputIterator           find_if(InputIterator first, InputIterator last, Predicate pred)
+    constexpr InputIterator find_if(InputIterator first, InputIterator last, Predicate pred)
     {
         for (; first != last; ++first)
         {
@@ -212,7 +190,7 @@ namespace AZStd
     }
 
     template<class InputIterator, class Predicate>
-    AZ_FORCE_INLINE InputIterator           find_if_not(InputIterator first, InputIterator last, Predicate pred)
+    constexpr InputIterator find_if_not(InputIterator first, InputIterator last, Predicate pred)
     {
         for (; first != last; ++first)
         {
@@ -226,7 +204,7 @@ namespace AZStd
 
     // adjacent_find.
     template <class ForwardIter, class BinaryPredicate>
-    ForwardIter adjacent_find(ForwardIter first, ForwardIter last, BinaryPredicate binary_pred)
+    constexpr ForwardIter adjacent_find(ForwardIter first, ForwardIter last, BinaryPredicate binary_pred)
     {
         //DEBUG_CHECK(check_range(first, last))
         if (first == last)
@@ -245,14 +223,14 @@ namespace AZStd
         return last;
     }
     template <class ForwardIter>
-    AZ_FORCE_INLINE ForwardIter adjacent_find(ForwardIter first, ForwardIter last)
+    constexpr  ForwardIter adjacent_find(ForwardIter first, ForwardIter last)
     {
         return AZStd::adjacent_find(first, last, AZStd::equal_to<typename iterator_traits<ForwardIter>::value_type>());
     }
 
     // find_first_of, with and without an explicitly supplied comparison function.
     template <class InputIter, class ForwardIter, class BinaryPredicate>
-    InputIter find_first_of(InputIter first1, InputIter last1, ForwardIter first2, ForwardIter last2, BinaryPredicate comp)
+    constexpr InputIter find_first_of(InputIter first1, InputIter last1, ForwardIter first2, ForwardIter last2, BinaryPredicate comp)
     {
         //DEBUG_CHECK(check_range(first1, last1))
         //DEBUG_CHECK(check_range(first2, last2))
@@ -270,7 +248,7 @@ namespace AZStd
     }
 
     template <class InputIter, class ForwardIter>
-    AZ_FORCE_INLINE InputIter find_first_of(InputIter first1, InputIter last1, ForwardIter first2, ForwardIter last2)
+    constexpr InputIter find_first_of(InputIter first1, InputIter last1, ForwardIter first2, ForwardIter last2)
     {
         //DEBUG_CHECK(check_range(first1, last1))
         //DEBUG_CHECK(check_range(first2, last2))
@@ -283,7 +261,7 @@ namespace AZStd
     //! True if operation returns true for all elements in the range.
     //! True if range is empty.
     template <class InputIter, class UnaryOperation>
-    AZ_FORCE_INLINE bool all_of(InputIter first, InputIter last, UnaryOperation operation)
+    constexpr bool all_of(InputIter first, InputIter last, UnaryOperation operation)
     {
         return AZStd::find_if_not(first, last, operation) == last;
     }
@@ -291,7 +269,7 @@ namespace AZStd
     //! True if operation returns true for any element in the range.
     //! False if the range is empty.
     template <class InputIter, class UnaryOperation>
-    AZ_FORCE_INLINE bool any_of(InputIter first, InputIter last, UnaryOperation operation)
+    constexpr bool any_of(InputIter first, InputIter last, UnaryOperation operation)
     {
         return AZStd::find_if(first, last, operation) != last;
     }
@@ -299,14 +277,14 @@ namespace AZStd
     //! True if operation returns true for no elements in the range.
     //! True if range is empty.
     template <class InputIter, class UnaryOperation>
-    AZ_FORCE_INLINE bool none_of(InputIter first, InputIter last, UnaryOperation operation)
+    constexpr bool none_of(InputIter first, InputIter last, UnaryOperation operation)
     {
         return AZStd::find_if(first, last, operation) == last;
     }
 
     // transform
     template <class InputIterator, class OutputIterator, class UnaryOperation>
-    AZ_FORCE_INLINE OutputIterator  transform(InputIterator first, InputIterator last, OutputIterator result, UnaryOperation operation)
+    constexpr OutputIterator  transform(InputIterator first, InputIterator last, OutputIterator result, UnaryOperation operation)
     {
         for (; first != last; ++first, ++result)
         {
@@ -315,7 +293,7 @@ namespace AZStd
         return result;
     }
     template <class InputIterator1, class InputIterator2, class OutputIterator, class BinaryOperation>
-    AZ_FORCE_INLINE OutputIterator transform(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, OutputIterator result, BinaryOperation operation)
+    constexpr OutputIterator transform(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, OutputIterator result, BinaryOperation operation)
     {
         for (; first1 != last1; ++first1, ++first2, ++result)
         {
@@ -325,7 +303,7 @@ namespace AZStd
     }
 
     template<class ForwardIter, class T >
-    void replace(ForwardIter first, ForwardIter last, const T& old_value, const T& new_value)
+    constexpr void replace(ForwardIter first, ForwardIter last, const T& old_value, const T& new_value)
     {
         for (; first != last; ++first)
         {
@@ -338,7 +316,7 @@ namespace AZStd
 
     // replace_if, replace_copy, replace_copy_if
     template <class ForwardIter, class Predicate, class T>
-    AZ_FORCE_INLINE void replace_if(ForwardIter first, ForwardIter last, Predicate pred, const T& new_value)
+    constexpr void replace_if(ForwardIter first, ForwardIter last, Predicate pred, const T& new_value)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first)
@@ -351,7 +329,7 @@ namespace AZStd
     }
 
     template <class InputIter, class OutputIter, class T>
-    AZ_FORCE_INLINE OutputIter replace_copy(InputIter first, InputIter last, OutputIter result, const T& old_value, const T& new_value)
+    constexpr OutputIter replace_copy(InputIter first, InputIter last, OutputIter result, const T& old_value, const T& new_value)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first, ++result)
@@ -362,7 +340,7 @@ namespace AZStd
     }
 
     template <class Iterator, class OutputIter, class Predicate, class T>
-    AZ_FORCE_INLINE OutputIter  replace_copy_if(Iterator first, Iterator last, OutputIter result, Predicate pred, const T& new_value)
+    constexpr OutputIter replace_copy_if(Iterator first, Iterator last, OutputIter result, Predicate pred, const T& new_value)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first, ++result)
@@ -374,7 +352,7 @@ namespace AZStd
 
     // generate and generate_n
     template <class ForwardIter, class Generator>
-    AZ_FORCE_INLINE void generate(ForwardIter first, ForwardIter last, Generator gen)
+    constexpr void generate(ForwardIter first, ForwardIter last, Generator gen)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first)
@@ -383,7 +361,7 @@ namespace AZStd
         }
     }
     template <class OutputIter, class Size, class Generator>
-    AZ_FORCE_INLINE void generate_n(OutputIter first, Size n, Generator gen)
+    constexpr void generate_n(OutputIter first, Size n, Generator gen)
     {
         for (; n > 0; --n, ++first)
         {
@@ -392,7 +370,7 @@ namespace AZStd
     }
     // remove, remove_if, remove_copy, remove_copy_if
     template <class InputIter, class OutputIter, class T>
-    AZ_FORCE_INLINE OutputIter remove_copy(InputIter first, InputIter last, OutputIter result, const T& val)
+    constexpr OutputIter remove_copy(InputIter first, InputIter last, OutputIter result, const T& val)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first)
@@ -406,7 +384,7 @@ namespace AZStd
         return result;
     }
     template <class InputIter, class OutputIter, class Predicate>
-    AZ_FORCE_INLINE OutputIter remove_copy_if(InputIter first, InputIter last, OutputIter result, Predicate pred)
+    constexpr OutputIter remove_copy_if(InputIter first, InputIter last, OutputIter result, Predicate pred)
     {
         //DEBUG_CHECK(check_range(first, last))
         for (; first != last; ++first)
@@ -421,7 +399,7 @@ namespace AZStd
     }
 
     template <class ForwardIter, class T>
-    ForwardIter remove(ForwardIter first, ForwardIter last, const T& val)
+    constexpr ForwardIter remove(ForwardIter first, ForwardIter last, const T& val)
     {
         //DEBUG_CHECK(check_range(first, last))
         first = AZStd::find(first, last, val);
@@ -437,7 +415,7 @@ namespace AZStd
     }
 
     template <class ForwardIter, class Predicate>
-    ForwardIter remove_if(ForwardIter first, ForwardIter last, Predicate pred)
+    constexpr ForwardIter remove_if(ForwardIter first, ForwardIter last, Predicate pred)
     {
         //DEBUG_CHECK(check_range(first, last))
         first = AZStd::find_if(first, last, pred);
@@ -477,7 +455,7 @@ namespace AZStd
     namespace Internal
     {
         template <class RandomAccessIterator, class Distance, class T>
-        AZ_INLINE void push_heap(RandomAccessIterator& first, Distance holeIndex, Distance topIndex, const T& value)
+        constexpr void push_heap(RandomAccessIterator first, Distance holeIndex, Distance topIndex, const T& value)
         {
             Distance parent = (holeIndex - 1) / 2;
             while (holeIndex > topIndex && *(first + parent) < value)
@@ -490,7 +468,7 @@ namespace AZStd
         }
 
         template <class RandomAccessIterator, class Distance, class T, class Compare>
-        AZ_INLINE void push_heap(RandomAccessIterator& first, Distance holeIndex, Distance topIndex, const T& value, Compare comp)
+        constexpr void push_heap(RandomAccessIterator first, Distance holeIndex, Distance topIndex, const T& value, Compare comp)
         {
             Distance parent = (holeIndex - 1) / 2;
             while (holeIndex > topIndex && comp(*(first + parent), value))
@@ -503,7 +481,7 @@ namespace AZStd
         }
 
         template <class RandomAccessIterator, class Distance, class T>
-        AZ_INLINE void adjust_heap(RandomAccessIterator& first, Distance holeIndex, Distance length, const T& value)
+        constexpr void adjust_heap(RandomAccessIterator first, Distance holeIndex, Distance length, const T& value)
         {
             Distance topIndex = holeIndex;
             Distance secondChild = 2 * holeIndex + 2;
@@ -526,7 +504,7 @@ namespace AZStd
         }
 
         template <class RandomAccessIterator, class Distance, class T, class Compare>
-        AZ_INLINE void adjust_heap(RandomAccessIterator& first, Distance holeIndex, Distance length, const T& value, Compare comp)
+        constexpr void adjust_heap(RandomAccessIterator first, Distance holeIndex, Distance length, const T& value, Compare comp)
         {
             Distance topIndex = holeIndex;
             Distance secondChild = 2 * holeIndex + 2;
@@ -547,43 +525,6 @@ namespace AZStd
             }
             AZStd::Internal::push_heap(first, holeIndex, topIndex, value, comp);
         }
-
-        template<class RandomAccessIterator>
-        AZ_INLINE void debug_ordered(RandomAccessIterator first, RandomAccessIterator last)
-        {
-            // test if range is a heap ordered by operator<
-            if (first != last)
-            {
-                for (RandomAccessIterator iter = first; ++first != last; ++iter)
-                {
-                    AZ_Assert(!(*iter < *first), "AZStd::debug_ordered - invalid order");
-                    if (++first == last)
-                    {
-                        break;
-                    }
-                    AZ_Assert(!(*iter < *first), "AZStd::debug_ordered - invalid order");
-                }
-            }
-        }
-
-        template<class RandomAccessIterator, class Compare>
-        AZ_INLINE void debug_ordered(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
-        {
-            (void)comp;
-            // test if range is a heap ordered by a predicate
-            if (first != last)
-            {
-                for (RandomAccessIterator iter = first; ++first != last; ++iter)
-                {
-                    AZ_Assert(!comp(*iter, *first), "AZStd::debug_ordered - invalid order");
-                    if (++first == last)
-                    {
-                        break;
-                    }
-                    AZ_Assert(!comp(*iter, *first), "AZStd::debug_ordered - invalid order");
-                }
-            }
-        }
     }
 
     /**
@@ -596,33 +537,22 @@ namespace AZStd
 
     /// Pushes values to the heap using AZStd::less predicate. \ref CStd
     template<class RandomAccessIterator>
-    AZ_FORCE_INLINE void push_heap(RandomAccessIterator first, RandomAccessIterator last)
+    constexpr void push_heap(RandomAccessIterator first, RandomAccessIterator last)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        RandomAccessIterator preLast = last - 1;
-        Internal::debug_ordered(first, preLast);
-#endif
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *(last - 1);
         AZStd::Internal::push_heap(first, typename AZStd::iterator_traits<RandomAccessIterator>::difference_type((last - first) - 1), typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(0), value);
     }
     /// Pushes values to the heap using provided binary predicate Compare. \ref CStd
     template<class RandomAccessIterator, class Compare>
-    AZ_FORCE_INLINE void push_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+    constexpr void push_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        RandomAccessIterator preLast = last - 1;
-        Internal::debug_ordered(first, preLast, comp);
-#endif
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *(last - 1);
         AZStd::Internal::push_heap(first, typename AZStd::iterator_traits<RandomAccessIterator>::difference_type((last - first) - 1), typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(0), value, comp);
     }
     /// Prepares heap for popping a value using AZStd::less predicate. \ref CStd
     template <class RandomAccessIterator>
-    AZ_FORCE_INLINE void pop_heap(RandomAccessIterator first, RandomAccessIterator last)
+    constexpr void pop_heap(RandomAccessIterator first, RandomAccessIterator last)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last);
-#endif
         RandomAccessIterator result = last - 1;
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *result;
         *result = *first;
@@ -630,35 +560,26 @@ namespace AZStd
     }
     /// Prepares heap for popping a value using Compare predicate. \ref CStd
     template <class RandomAccessIterator, class Compare>
-    AZ_FORCE_INLINE void pop_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+    constexpr void pop_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last, comp);
-#endif
         RandomAccessIterator result = last - 1;
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *result;
         *result = *first;
         AZStd::Internal::adjust_heap(first, typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(0), typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(result - first), value, comp);
     }
 
-    /// Same as AZStd::pop_heap using AZStd::less predicate, but allows you to provide iterator where to store the result.
+    /// [Extension] Same as AZStd::pop_heap using AZStd::less predicate, but allows you to provide iterator where to store the result.
     template <class RandomAccessIterator>
-    AZ_FORCE_INLINE void pop_heap(RandomAccessIterator& first, RandomAccessIterator& last, RandomAccessIterator& result)
+    constexpr void pop_heap(RandomAccessIterator first, RandomAccessIterator last, RandomAccessIterator result)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last);
-#endif
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *result;
         *result = *first;
         AZStd::Internal::adjust_heap(first, typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(0), typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(last - first), value);
     }
-    /// Same as AZStd::pop_heap using Compare predicate, but allows you to provide iterator where to store the result.
+    /// [Extension] Same as AZStd::pop_heap using Compare predicate, but allows you to provide iterator where to store the result.
     template <class RandomAccessIterator, class Compare>
-    AZ_FORCE_INLINE void pop_heap(RandomAccessIterator& first, RandomAccessIterator& last, RandomAccessIterator& result, Compare comp)
+    constexpr void pop_heap(RandomAccessIterator first, RandomAccessIterator last, RandomAccessIterator result, Compare comp)
     {
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last, comp);
-#endif
         typename AZStd::iterator_traits<RandomAccessIterator>::value_type value = *result;
         *result = *first;
         AZStd::Internal::adjust_heap(first, typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(0), typename AZStd::iterator_traits<RandomAccessIterator>::difference_type(last - first), value, comp);
@@ -666,7 +587,7 @@ namespace AZStd
 
     /// Make a heap from an array of values, using AZStd::less predicate. \ref CStd
     template <class RandomAccessIterator>
-    void make_heap(RandomAccessIterator first, RandomAccessIterator last)
+    constexpr void make_heap(RandomAccessIterator first, RandomAccessIterator last)
     {
         if (last - first < 2)
         {
@@ -689,7 +610,7 @@ namespace AZStd
 
     /// Make a heap from an array of values, using Compare predicate. \ref CStd
     template <class RandomAccessIterator, class Compare>
-    void make_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+    constexpr void make_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
     {
         if (last - first < 2)
         {
@@ -712,7 +633,7 @@ namespace AZStd
 
     /// Preforms a heap sort on a range of values, using AZStd::less predicate. \ref CStd
     template <class RandomAccessIterator>
-    AZ_FORCE_INLINE void sort_heap(RandomAccessIterator first, RandomAccessIterator last)
+    constexpr void sort_heap(RandomAccessIterator first, RandomAccessIterator last)
     {
         for (; last - first > 1; --last)
         {
@@ -721,7 +642,7 @@ namespace AZStd
     }
     /// Preforms a heap sort on a range of values, using Compare predicate. \ref CStd
     template <class RandomAccessIterator, class Compare>
-    AZ_FORCE_INLINE void    sort_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+    constexpr void sort_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
     {
         for (; last - first > 1; --last)
         {
@@ -735,14 +656,11 @@ namespace AZStd
     // Search
     // TEMPLATE FUNCTION lower_bound
     template<class ForwardIterator, class T>
-    ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T& value)
+    constexpr ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T& value)
     {
         // find first element not before value, using operator<
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last);
-#endif
-        typename iterator_traits<ForwardIterator>::difference_type count, count2;
-        count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type count2{};
 
         for (; 0 < count; )
         {
@@ -765,14 +683,11 @@ namespace AZStd
     }
 
     template<class ForwardIterator, class T, class Compare>
-    ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T& value, Compare comp)
+    constexpr ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T& value, Compare comp)
     {
         // find first element not before value, using compare predicate
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last, comp);
-#endif
-        typename iterator_traits<ForwardIterator>::difference_type count, count2;
-        count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type count2{};
 
         for (; 0 < count; )
         {
@@ -797,13 +712,11 @@ namespace AZStd
 
     // TEMPLATE FUNCTION upper_bound
     template<class ForwardIterator, class T>
-    ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last, const T& value)
+    constexpr ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last, const T& value)
     {
         // find first element that value is before, using operator<
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last);
-#endif
-        typename iterator_traits<ForwardIterator>::difference_type count, step;
+        typename iterator_traits<ForwardIterator>::difference_type count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type step{};
         count = AZStd::distance(first, last);
         for (; 0 < count; )
         {   // divide and conquer, find half that contains answer
@@ -824,14 +737,11 @@ namespace AZStd
         return first;
     }
     template<class ForwardIterator, class T, class Compare>
-    ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last, const T& value, Compare comp)
+    constexpr ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last, const T& value, Compare comp)
     {
         // find first element not before value, using compare predicate
-#ifdef AZSTD_DEBUG_HEAP_IMPLEMENTATION
-        Internal::debug_ordered(first, last, comp);
-#endif
-        typename iterator_traits<ForwardIterator>::difference_type count, step;
-        count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type count = AZStd::distance(first, last);
+        typename iterator_traits<ForwardIterator>::difference_type step{};
         for (; 0 < count; )
         {
             // divide and conquer, find half that contains answer
@@ -853,7 +763,7 @@ namespace AZStd
     }
 
     template <class ForwardIterator1, class ForwardIterator2>
-    ForwardIterator1 search(ForwardIterator1 first1, ForwardIterator1 last1, ForwardIterator2 first2, ForwardIterator2 last2)
+    constexpr ForwardIterator1 search(ForwardIterator1 first1, ForwardIterator1 last1, ForwardIterator2 first2, ForwardIterator2 last2)
     {
         if (first2 == last2)
         {
@@ -882,7 +792,7 @@ namespace AZStd
     }
 
     template <class ForwardIterator1, class ForwardIterator2, class Compare>
-    ForwardIterator1 search(ForwardIterator1 first1, ForwardIterator1 last1, ForwardIterator2 first2, ForwardIterator2 last2, Compare comp)
+    constexpr ForwardIterator1 search(ForwardIterator1 first1, ForwardIterator1 last1, ForwardIterator2 first2, ForwardIterator2 last2, Compare comp)
     {
         if (first2 == last2)
         {
@@ -911,13 +821,13 @@ namespace AZStd
     }
 
     template <class ForwardIterator>
-    bool is_sorted(ForwardIterator first, ForwardIterator last)
+    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last)
     {
         return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
     }
 
     template <class ForwardIterator, class Compare>
-    bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
+    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
     {
         if (first == last)
         {
@@ -936,13 +846,13 @@ namespace AZStd
     }
 
     template<class ForwardIterator>
-    ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last)
     {
         return unique(first, last, AZStd::equal_to<AZStd::remove_cvref_t<decltype(*first)>>());
     }
 
     template<class ForwardIterator, class BinaryPredicate>
-    ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
+    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
     {
         if (first == last)
         {
@@ -966,7 +876,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // set_difference
     template <class Compare, class InputIterator1, class InputIterator2, class OutputIterator>
-    OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
+    constexpr OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
     {
         while (first1 != last1)
         {
@@ -994,7 +904,7 @@ namespace AZStd
     }
 
     template <class InputIterator1, class InputIterator2, class OutputIterator>
-    inline OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
+    constexpr OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
     {
         return AZStd::set_difference(first1, last1, first2, last2, result,
             AZStd::less<AZStd::common_type_t<typename iterator_traits<InputIterator1>::value_type,
@@ -1003,7 +913,7 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
 
     template<class InputIterator1, class InputIterator2>
-    inline bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2)
+    constexpr bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2)
     {
         for (; first1 != last1 && first2 != last2; ++first1, ++first2)
         {
@@ -1019,16 +929,16 @@ namespace AZStd
         return first1 == last1 && first2 != last2;
     }
 
-    inline bool lexicographical_compare(const unsigned char* first1, const unsigned char* last1, const unsigned char* first2, const unsigned char* last2)
+    constexpr bool lexicographical_compare(const unsigned char* first1, const unsigned char* last1, const unsigned char* first2, const unsigned char* last2)
     {
         ptrdiff_t len1 = last1 - first1;
         ptrdiff_t len2 = last2 - first2;
-        int res = ::memcmp(first1, first2, len1 < len2 ? len1 : len2);
+        int res = __builtin_memcmp(first1, first2, len1 < len2 ? len1 : len2);
         return (res < 0 || (res == 0 && len1 < len2));
     }
 
     template<class InputIterator1, class InputIterator2, class Compare>
-    bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, Compare comp)
+    constexpr bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, Compare comp)
     {
         for (; first1 != last1 && first2 != last2; ++first1, ++first2)
         {
@@ -1053,14 +963,14 @@ namespace AZStd
     struct endian_swap_impl
     {
         // this function is implemented for each specialization.
-        static AZ_FORCE_INLINE void swap_data(T& data);
+        static constexpr void swap_data(T& data);
     };
 
     // specialization for 1 byte type (don't swap)
     template<typename T>
     struct endian_swap_impl<T, 1>
     {
-        static AZ_FORCE_INLINE void swap_data(T& data)  { (void)data; }
+        static constexpr void swap_data(T& data)  { (void)data; }
     };
 
     // specialization for 2 byte type

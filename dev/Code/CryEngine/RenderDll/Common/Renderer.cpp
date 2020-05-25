@@ -38,6 +38,7 @@
 
 
 #include <LoadScreenBus.h>
+#include <IVideoRenderer.h>
 
 #if AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
 #include <RTT/RTTContextManager.h>
@@ -523,6 +524,8 @@ int CRenderer::CV_r_shadersMETAL;
 #include "Xenia/Renderer_cpp_xenia.inl"
 #elif defined(AZ_PLATFORM_PROVO)
 #include "Provo/Renderer_cpp_provo.inl"
+#elif defined(AZ_PLATFORM_SALEM)
+#include "Salem/Renderer_cpp_salem.inl"
 #endif
 #endif
 
@@ -693,6 +696,7 @@ float CRenderer::CV_r_waterupdateFactor;
 float CRenderer::CV_r_waterupdateDistance;
 float CRenderer::CV_r_envcmupdateinterval;
 float CRenderer::CV_r_envtexupdateinterval;
+int CRenderer::CV_r_SlimGBuffer;
 AllocateConstIntCVar(CRenderer, CV_r_waterreflections);
 AllocateConstIntCVar(CRenderer, CV_r_waterreflections_quality);
 float CRenderer::CV_r_waterreflections_min_visible_pixels_update;
@@ -1753,7 +1757,7 @@ void CRenderer::InitRenderer()
         "  1: Visualize g-buffer and l-buffers\n"
         "  2: Debug deferred lighting fillrate (brighter colors means more expensive)\n");
 
-    DefineConstIntCVar3("r_DebugGBuffer", CV_r_DeferredShadingDebugGBuffer, 0, VF_NULL,
+    DefineConstIntCVar3("r_DebugGBuffer", CV_r_DeferredShadingDebugGBuffer, 0, VF_DEV_ONLY,
         "Debug view for gbuffer attributes\n"
         "  0 - Disabled\n"
         "  1 - Normals\n"
@@ -2889,6 +2893,8 @@ void CRenderer::InitRenderer()
 #include "Xenia/Renderer_cpp_xenia.inl"
 #elif defined(AZ_PLATFORM_PROVO)
 #include "Provo/Renderer_cpp_provo.inl"
+#elif defined(AZ_PLATFORM_SALEM)
+#include "Salem/Renderer_cpp_salem.inl"
 #endif
 #endif
     REGISTER_CVAR3("r_ShadersPlatform", CV_r_shadersPlatform, AZ::PLATFORM_MAX, VF_NULL, "");
@@ -3040,7 +3046,21 @@ void CRenderer::InitRenderer()
         "Sets the interval between environmental 2d texture updates.\n"
         "Usage: r_EnvTexUpdateInterval 0.001\n"
         "Default is 0.001.");
-
+    
+    // Slimming of GBuffers by encoding full RGB channels into more efficient YCbCr channels which require
+    // less storage for the CbCr channels (ie. 24(8+8+8) bits to 16(8+4+4) bits).
+    // This allows the packing of different component channels into the G-Buffers, saving the cost of 3 extra channels.
+    // 4 + 4 + 4 = 12 bytes of saving per pixel in the G-Buffer, assuming RGBA8 format
+    // Slimmed down GBuffer encoding scheme:
+    // Texture Channels:            R               G               B                   A   
+    //
+    // Normal Map Texture           Normal.x        Normal.y        Specular Y (YCrCb)  Smoothness (6bit) + Light (2bit)
+    // Diffuse Texture              Albedo.x        Albedo.y        Albedo.z            Specular CrCb (4+4 bit)
+    // Specular (One Channel Only)  Occlusion       N/A             N/A                 N/A
+    REGISTER_CVAR3("r_SlimGBuffer", CV_r_SlimGBuffer,0, VF_REQUIRE_APP_RESTART,
+        "Optimize the gbuffer render targets use.\n"
+        "Usage:r_SlimGBuffer 1\n");
+      
     DefineConstIntCVar3("r_WaterReflections", CV_r_waterreflections, 1, VF_DUMPTODISK,
         "Toggles water reflections.\n"
         "Usage: r_WaterReflections [0/1]\n"
@@ -4054,12 +4074,16 @@ void CRenderer::PostInit()
         gEnv->pRenderer->InitSystemResources(FRR_SYSTEM_RESOURCES);
     }
 #endif
+
+    AzFramework::ViewportRequestBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 void CRenderer::Release()
 {
+    AzFramework::ViewportRequestBus::Handler::BusDisconnect();
+
     m_assetListener.Disconnect();
 
 #if AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
@@ -8542,20 +8566,9 @@ void CRenderer::UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial>
     }
 }
 
-void CRenderer::RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
+void CRenderer::RefreshShaderResourceConstants(SShaderItem* pShaderItem, IMaterial* pMaterial)
 {
-    AZ_Assert(pMaterial->GetNumRefs() > 0, "ref is 0");
-    m_pRT->EnqueueRenderCommand([pShaderItem, pMaterial]()
-        {
-            CShader* shader = static_cast<CShader*>(pShaderItem->m_pShader);
-            if (shader)
-            {
-                if (pShaderItem->RefreshResourceConstants())
-                {
-                    pShaderItem->m_pShaderResources->UpdateConstants(shader);
-                }
-            }
-        });
+    m_pRT->RC_RefreshShaderResourceConstants(pShaderItem, pMaterial);
 }
 
 void CRenderer::ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial)
@@ -8588,6 +8601,17 @@ void CRenderer::RT_UpdateShaderItem(SShaderItem* pShaderItem, IMaterial* materia
         };
 
         EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
+    }
+}
+
+void CRenderer::RT_RefreshShaderResourceConstants(SShaderItem* shaderItem) const
+{
+    if (CShader* shader = static_cast<CShader*>(shaderItem->m_pShader))
+    {
+        if (shaderItem->RefreshResourceConstants())
+        {
+            shaderItem->m_pShaderResources->UpdateConstants(shader);
+        }
     }
 }
 
@@ -8751,6 +8775,69 @@ IDynTexture* CRenderer::CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 
 uint32 CRenderer::GetCurrentTextureAtlasSize()
 {
     return SDynTexture::s_CurTexAtlasSize;
+}
+
+void CRenderer::RT_InitializeVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer)
+{
+    AZ_Assert(pVideoRenderer != nullptr, "Expected video player to be passed in");
+
+    AZ::VideoRenderer::VideoTexturesDesc videoTexturesDesc;
+    if (pVideoRenderer && pVideoRenderer->GetVideoTexturesDesc(videoTexturesDesc))
+    {
+        AZ::VideoRenderer::VideoTextures videoTextures;
+
+        auto InitVideoTexture = [](const AZ::VideoRenderer::VideoTextureDesc& videoTextureDesc, uint32 flags) -> uint32
+        {
+            uint32 resultTextureId = 0;
+            if (videoTextureDesc.m_used)
+            {
+                CTexture* pCreatedPlaneTexture = CTexture::Create2DTexture(videoTextureDesc.m_name, videoTextureDesc.m_width, videoTextureDesc.m_height, 1, flags, nullptr, videoTextureDesc.m_format, videoTextureDesc.m_format);
+                if (pCreatedPlaneTexture != nullptr)
+                {
+                    resultTextureId = pCreatedPlaneTexture->GetTextureID();
+                }
+            }
+            return resultTextureId;
+        };
+
+        videoTextures.m_outputTextureId = InitVideoTexture(videoTexturesDesc.m_outputTextureDesc, FT_USAGE_RENDERTARGET);
+
+        for (uint32 videoIndex = 0; videoIndex < AZ::VideoRenderer::MaxInputTextureCount; videoIndex++)
+        {
+            videoTextures.m_inputTextureIds[videoIndex] = InitVideoTexture(videoTexturesDesc.m_inputTextureDescs[videoIndex], 0);
+        }
+
+        pVideoRenderer->NotifyTexturesCreated(videoTextures);
+    }
+}
+
+void CRenderer::RT_CleanupVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer)
+{
+    AZ_Assert(pVideoRenderer != nullptr, "Expected video player to be passed in");
+
+    AZ::VideoRenderer::VideoTextures videoTextures;
+    if (pVideoRenderer && pVideoRenderer->GetVideoTextures(videoTextures))
+    {
+        auto ReleaseVideoTexture = [](uint32 textureId)
+        {
+            if (textureId != 0)
+            {
+                if (CTexture* pTexture = CTexture::GetByID(textureId))
+                {
+                    pTexture->Release();
+                }
+            }
+        };
+
+        ReleaseVideoTexture(videoTextures.m_outputTextureId);
+
+        for (uint32 textureId : videoTextures.m_inputTextureIds)
+        {
+            ReleaseVideoTexture(textureId);
+        }
+
+        pVideoRenderer->NotifyTexturesDestroyed();
+    }
 }
 
 #ifndef _RELEASE

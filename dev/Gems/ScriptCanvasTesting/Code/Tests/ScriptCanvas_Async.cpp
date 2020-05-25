@@ -166,7 +166,7 @@ TEST_F(ScriptCanvasTestFixture, Asynchronous_Behaviors)
     graphEntity->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::Entity* startEntity{ aznew AZ::Entity };
     startEntity->Init();
@@ -297,7 +297,7 @@ TEST_F(ScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
     graphEntity->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startNodeId;
     Nodes::Core::Start* startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, startNodeId);

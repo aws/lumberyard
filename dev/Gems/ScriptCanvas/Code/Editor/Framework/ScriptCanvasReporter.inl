@@ -19,9 +19,9 @@ namespace ScriptCanvasEditor
     {
     }
         
-    inline Reporter::Reporter(const AZ::EntityId& graphID, const AZ::EntityId& entityID) : Reporter()
+    inline Reporter::Reporter(const ScriptCanvasId& scriptCanvasId, const AZ::EntityId& entityID) : Reporter()
     {
-        SetGraph(graphID, entityID);
+        SetGraph(scriptCanvasId, entityID);
     }
 
     inline Reporter::~Reporter()
@@ -59,9 +59,9 @@ namespace ScriptCanvasEditor
         return m_failures;
     }
 
-    inline const AZ::EntityId& Reporter::GetGraphId() const
+    inline const ScriptCanvasId& Reporter::GetScriptCanvasId() const
     {
-        return m_graphId;
+        return m_scriptCanvasId;
     }
 
     inline const AZStd::vector<Report>& Reporter::GetSuccess() const
@@ -127,7 +127,7 @@ namespace ScriptCanvasEditor
         }
         else
         {
-            Bus::Handler::BusDisconnect(m_graphId);
+            Bus::Handler::BusDisconnect(m_scriptCanvasId);
             AZ::EntityBus::Handler::BusDisconnect(m_entityId);
             m_graphIsErrorFree = !inErrorState;
             m_isReportFinished = true;
@@ -189,17 +189,17 @@ namespace ScriptCanvasEditor
         m_graphIsComplete = false;
         m_graphIsErrorFree = false;
         m_isReportFinished = false;
-        m_graphId = AZ::EntityId{};
+        m_scriptCanvasId = ScriptCanvasId{};
         m_entityId = AZ::EntityId{};
         m_failures.clear();
     }
 
-    inline void Reporter::SetGraph(const AZ::EntityId& graphID, const AZ::EntityId& entityID)
+    inline void Reporter::SetGraph(const ScriptCanvasId& scriptCanvasId, const AZ::EntityId& entityID)
     {
         Reset();
-        m_graphId = graphID;
+        m_scriptCanvasId = scriptCanvasId;
         m_entityId = entityID;
-        Bus::Handler::BusConnect(m_graphId);
+        Bus::Handler::BusConnect(m_scriptCanvasId);
         AZ::EntityBus::Handler::BusConnect(m_entityId);
     }
        

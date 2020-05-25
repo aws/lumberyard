@@ -9,34 +9,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-
-import os
-from resource_manager_common import constant
-
-import mappings
-
-from errors import HandledError
-from util import Args
-
-import boto3
 from botocore.exceptions import ClientError
 
-def list(context, args):
+from resource_manager_common import constant
+from cgf_utils.aws_sts import AWSSTSUtils
+from . import mappings
 
-    list = []
+from .errors import HandledError
+from .util import Args
+
+# Prefer regionalized STS endpoints over global one which is in us-east-1
+# Default to us-east-1
+DEFAULT_STS_REGION = "us-east-1"
+
+
+def list(context, args):
+    """
+    Describe the profiles in the .aws/credentials file. Called by lmbr_aws list-profiles
+
+    Calls STS behind the scenes to validate the credentials. By default uses the us-east-1 endpoint (same region as the global endpoint),
+    but this can be overridden via the args.region parameter
+    """
+    profile_list = []
 
     credentials = context.aws.load_credentials()
-
     for section_name in credentials.sections():
         if args.profile is None or section_name == args.profile:
 
             try:
-                # Not using context.aws.client because it always returns clients 
-                # configured using the --profile argument. In this case we want to
-                # use each profile's credentials.
-                sts = boto3.client('sts', 
-                        aws_access_key_id = credentials.get(section_name, constant.ACCESS_KEY_OPTION), 
-                        aws_secret_access_key = credentials.get(section_name, constant.SECRET_KEY_OPTION))
+                # Not using context.aws.client because it always returns clients configured using the --profile argument.
+                # In this case we want to use each profile's credentials.
+                region = DEFAULT_STS_REGION if args.region is None else args.region
+
+                sts = AWSSTSUtils(region).client_with_credentials(
+                                   aws_access_key_id=credentials.get(section_name, constant.ACCESS_KEY_OPTION),
+                                   aws_secret_access_key=credentials.get(section_name, constant.SECRET_KEY_OPTION))
                 res = sts.get_caller_identity()
             except ClientError as e:
                 if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'SignatureDoesNotMatch']:
@@ -44,9 +51,9 @@ def list(context, args):
                 res = {}
 
             arn = res.get('Arn', 'arn:aws:iam::554229317296:user/(unknown)')
-            user_name = arn[arn.rfind('/')+1:]
+            user_name = arn[arn.rfind('/') + 1:]
 
-            list.append(
+            profile_list.append(
                 {
                     'Name': section_name,
                     'AccessKey': credentials.get(section_name, constant.ACCESS_KEY_OPTION),
@@ -56,10 +63,10 @@ def list(context, args):
                     'Default': section_name == context.config.user_default_profile
                 })
 
-    context.view.profile_list(list, context.aws.get_credentials_file_path())
+    context.view.profile_list(profile_list, context.aws.get_credentials_file_path())
+
 
 def add(context, args):
-
     credentials = context.aws.load_credentials()
 
     if credentials.has_section(args.profile):
@@ -77,14 +84,13 @@ def add(context, args):
 
     context.view.added_profile(args.profile)
 
-    if(args.make_default):
+    if args.make_default:
         nested_args = Args()
         nested_args.set = args.profile
         default(context, nested_args)
 
 
 def update(context, args):
-
     credentials = context.aws.load_credentials()
 
     if args.old_name is None and args.new_name is None:
@@ -110,7 +116,6 @@ def update(context, args):
 
 
 def remove(context, args):
-
     credentials = context.aws.load_credentials()
 
     if not credentials.has_section(args.profile):
@@ -128,7 +133,6 @@ def remove(context, args):
 
 
 def rename(context, args):
-
     credentials = context.aws.load_credentials()
 
     __rename(credentials, args.old_name, args.new_name)
@@ -139,9 +143,9 @@ def rename(context, args):
         context.config.set_user_default_profile(args.new_name)
 
     context.view.renamed_profile(args.old_name, args.new_name)
-   
-def __rename(credentials, old_name, new_name):
 
+
+def __rename(credentials, old_name, new_name):
     if not credentials.has_section(old_name):
         raise HandledError('The AWS profile {} does not exist.'.format(old_name))
 
@@ -159,6 +163,7 @@ def __rename(credentials, old_name, new_name):
     credentials.set(new_name, constant.ACCESS_KEY_OPTION, access_key)
 
     credentials.remove_section(old_name)
+
 
 def default(context, args):
     old_default = context.config.user_default_profile

@@ -9,7 +9,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import datetime
-import mock
+try:
+    import mock
+except ImportError:
+    import unittest.mock as mock
 import unittest
 from aztest.common import clean_timestamp, get_output_dir, to_list
 from aztest.errors import InvalidUseError
@@ -85,56 +88,56 @@ class ToListTests(unittest.TestCase):
 
         gen_list = [x for x in to_list(test_string)]
 
-        self.assertEquals([test_string], gen_list)
+        self.assertEqual([test_string], gen_list)
 
     def test_ToList_ListSingleString_ReturnsString(self):
         test_list = ["test"]
 
         gen_list = [x for x in to_list(test_list)]
 
-        self.assertEquals(test_list, gen_list)
+        self.assertEqual(test_list, gen_list)
 
     def test_ToList_ListMultipleStrings_ReturnsStringsInOrder(self):
         test_list = ["test1", "test2", "test3"]
 
         gen_list = [x for x in to_list(test_list)]
 
-        self.assertEquals(test_list, gen_list)
+        self.assertEqual(test_list, gen_list)
 
     def test_ToList_SetSingleString_ReturnsString(self):
         test_set = {"test"}
 
         gen_list = [x for x in to_list(test_set)]
 
-        self.assertEquals(list(test_set), gen_list)
+        self.assertEqual(list(test_set), gen_list)
 
     def test_ToList_SetMultipleStrings_ReturnsStringsInOrder(self):
         test_set = {"test1", "test2", "test3"}
 
         gen_list = [x for x in to_list(test_set)]
 
-        self.assertEquals(list(test_set), gen_list)
+        self.assertEqual(list(test_set), gen_list)
 
     def test_ToList_TupleMultipleStrings_ReturnsStringsInOrder(self):
         test_tuple = ("test1", "test2", "test3")
 
         gen_list = [x for x in to_list(test_tuple)]
 
-        self.assertEquals(list(test_tuple), gen_list)
+        self.assertEqual(list(test_tuple), gen_list)
 
     def test_ToList_Integer_ReturnsIntegerInList(self):
         test_int = 123
 
         gen_list = [x for x in to_list(test_int)]
 
-        self.assertEquals([123], gen_list)
+        self.assertEqual([123], gen_list)
 
     def test_ToList_Dictionary_ReturnsObjectInList(self):
         test_dict = {'test_key': 'test_value'}
 
         gen_list = [x for x in to_list(test_dict)]
 
-        self.assertEquals([test_dict], gen_list)
+        self.assertEqual([test_dict], gen_list)
 
     def test_ToList_Object_ReturnsObjectInList(self):
         class TestObject(object):
@@ -144,7 +147,7 @@ class ToListTests(unittest.TestCase):
 
         gen_list = [x for x in to_list(test_obj)]
 
-        self.assertEquals([test_obj], gen_list)
+        self.assertEqual([test_obj], gen_list)
 
 
 class GetOutputDirTests(unittest.TestCase):

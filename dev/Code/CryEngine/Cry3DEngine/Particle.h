@@ -62,6 +62,10 @@ public:
     float GetRelativeAge(float fAgeAdjust = 0.f) const
     {
         float fRelativeAge = div_min(max(m_fAge + fAgeAdjust, 0.f), m_fStopAge, 1.f);
+
+        // [LY-112058] Clamp to 1.f in case (m_fAge > m_fStopAge) due to a long frame step
+        fRelativeAge = min(fRelativeAge, 1.f);
+
         assert(fRelativeAge >= 0.f && fRelativeAge <= 1.f);
         return fRelativeAge;
     }
@@ -253,10 +257,10 @@ private:
     // Track sliding state.
     struct SSlideInfo
     {
-        int                     physicalEntityId;       // Physical entity hit.
-        Vec3					vNormal;			// Normal of sliding surface.
-        float					fFriction;		// Sliding friction, proportional to normal force.
-        float					fSlidingTime;	// Cumulative amount of time sliding.
+        int                     physicalEntityId;   // Physical entity hit.
+        Vec3                    vNormal;            // Normal of sliding surface.
+        float                   fFriction;          // Sliding friction, proportional to normal force.
+        float                   fSlidingTime;       // Cumulative amount of time sliding.
 
         SSlideInfo()
         {
@@ -291,7 +295,7 @@ private:
         }
     };
 
-	// Track predicted collisions.
+    // Track predicted collisions.
     struct SHitInfo
     {
         Vec3                vPos;                   // Hit position.

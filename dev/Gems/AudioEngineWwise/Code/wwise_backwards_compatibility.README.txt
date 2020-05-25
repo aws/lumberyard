@@ -51,7 +51,7 @@ Steps to configure backwards compatibility to Wwise 2017:
                     "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
                 },
                 {
-                    "compilers" : ["vc141"],
+                    "compilers" : ["vc141", "vc142"],
                     "source" : "Wwise/2017.2.4.6590/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"
@@ -85,7 +85,7 @@ Steps to configure backwards compatibility to Wwise 2017:
                     "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
                 },
                 {
-                    "compilers" : ["vc141"],
+                    "compilers" : ["vc141", "vc142"],
                     "source" : "Wwise/LTX_2017.2.4.6590/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"

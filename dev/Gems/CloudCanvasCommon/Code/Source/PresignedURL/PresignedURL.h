@@ -27,6 +27,7 @@ namespace CloudCanvas
 
         virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
         virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
+        AZStd::unordered_map<AZStd::string, AZStd::string> GetQueryParameters(const AZStd::string& signedURL) override;
 
         AZ::Job* CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) const;
     };

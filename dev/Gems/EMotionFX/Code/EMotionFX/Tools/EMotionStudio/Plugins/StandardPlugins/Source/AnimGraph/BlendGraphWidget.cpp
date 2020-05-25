@@ -54,7 +54,7 @@ namespace EMStudio
     // constructor
     BlendGraphWidget::BlendGraphWidget(AnimGraphPlugin* plugin, QWidget* parent)
         : NodeGraphWidget(plugin, nullptr, parent)
-        , mContextMenuEventMousePos(0.0f, 0.0f)
+        , mContextMenuEventMousePos(0, 0)
         , mDoubleClickHappened(false)
     {
         mMoveGroup.SetGroupName("Move anim graph nodes");
@@ -62,9 +62,9 @@ namespace EMStudio
         setAutoFillBackground(false);
         setAttribute(Qt::WA_OpaquePaintEvent);
 
-        connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::rowsAboutToBeRemoved, this, &BlendGraphWidget::OnRowsAboutToBeRemoved);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::rowsInserted, this, &BlendGraphWidget::OnRowsInserted);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::dataChanged, this, &BlendGraphWidget::OnDataChanged);
+        connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::AboutToBeRemovedSignal, this, &BlendGraphWidget::OnRowsAboutToBeRemoved);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, this, &BlendGraphWidget::OnFocusChanged);
 
         connect(&plugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged, this, &BlendGraphWidget::OnSelectionModelChanged);
@@ -206,11 +206,11 @@ namespace EMStudio
                         motionIds.emplace_back(motionEntry->GetId());
                         tempMotionNode.SetMotionIds(motionIds);
 
-                        AZ::Outcome<AZStd::string> serializedMotionNode = MCore::ReflectionSerializer::Serialize(&tempMotionNode);
-                        if (serializedMotionNode.IsSuccess())
+                        AZ::Outcome<AZStd::string> serializedContent = MCore::ReflectionSerializer::SerializeMembersExcept(&tempMotionNode, {"childNodes", "connections", "transitions"});
+                        if (serializedContent.IsSuccess())
                         {
                             EMotionFX::AnimGraphNode* currentNode = targetModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedMotionNode.GetValue());
+                            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedContent.GetValue());
 
                             // Send LyMetrics event.
                             MetricsEventSender::SendCreateNodeEvent(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
@@ -782,15 +782,6 @@ namespace EMStudio
                     parent = parent.model()->parent(parent);
                 }
                 itemsByParent[parent].second.push_back(deselectedIndex);
-            }
-        }
-
-        for (const IndexListByIndex::value_type& selected : itemsByParent)
-        {
-            NodeGraphByModelIndex::const_iterator itNodeGraph = m_nodeGraphByModelIndex.find(selected.first);
-            if (itNodeGraph != m_nodeGraphByModelIndex.end())
-            {
-                itNodeGraph->second->OnSelectionModelChanged(selected.second.first, selected.second.second);
             }
         }
     }
@@ -1635,28 +1626,28 @@ namespace EMStudio
             {
                 if (shortcutManager->Check(event, "Align Left", "Anim Graph Window"))
                 {
-                    mPlugin->GetViewWidget()->AlignLeft();
+                    mPlugin->GetActionManager().AlignLeft();
                     event->accept();
                     return;
                 }
 
                 if (shortcutManager->Check(event, "Align Right", "Anim Graph Window"))
                 {
-                    mPlugin->GetViewWidget()->AlignRight();
+                    mPlugin->GetActionManager().AlignRight();
                     event->accept();
                     return;
                 }
 
                 if (shortcutManager->Check(event, "Align Top", "Anim Graph Window"))
                 {
-                    mPlugin->GetViewWidget()->AlignTop();
+                    mPlugin->GetActionManager().AlignTop();
                     event->accept();
                     return;
                 }
 
                 if (shortcutManager->Check(event, "Align Bottom", "Anim Graph Window"))
                 {
-                    mPlugin->GetViewWidget()->AlignBottom();
+                    mPlugin->GetActionManager().AlignBottom();
                     event->accept();
                     return;
                 }
@@ -1960,9 +1951,11 @@ namespace EMStudio
 
     void BlendGraphWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
-        if (newFocusParent != oldFocusParent)
+        AZ_UNUSED(oldFocusIndex);
+
+        if (newFocusParent.isValid())
         {
-            if (newFocusParent.isValid())
+            if (newFocusParent != oldFocusParent)
             {
                 // Parent changed, we need to dive into that parent
                 AZStd::pair<NodeGraphByModelIndex::iterator, bool> inserted = m_nodeGraphByModelIndex.emplace(newFocusParent, AZStd::make_unique<NodeGraph>(newFocusParent, this));
@@ -1971,20 +1964,19 @@ namespace EMStudio
                 {
                     nodeGraph.Reinit();
                 }
-
                 SetActiveGraph(&nodeGraph);
             }
-            else
+
+            if (newFocusIndex != newFocusParent)
             {
-                SetActiveGraph(nullptr);
+                // We are focusing on a node inside a blendtree/statemachine/referencenode
+                GraphNode* graphNode = mActiveGraph->FindGraphNode(newFocusIndex);
+                mActiveGraph->ZoomOnRect(graphNode->GetRect(), geometry().width(), geometry().height(), true);
             }
         }
-
-        if (newFocusIndex != newFocusParent)
+        else
         {
-            // We are focusing on a node inside a blendtree/statemachine/referencenode
-            GraphNode* graphNode = mActiveGraph->FindGraphNode(newFocusIndex);
-            mActiveGraph->ZoomOnRect(graphNode->GetRect(), geometry().width(), geometry().height(), true);
+            SetActiveGraph(nullptr);
         }
     }
 } // namespace EMStudio

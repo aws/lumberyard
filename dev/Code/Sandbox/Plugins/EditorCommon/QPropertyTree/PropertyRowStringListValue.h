@@ -243,7 +243,7 @@ public:
         // simple click. If timer is not fired following mouse release hides combo
         // box. That's why the user click is emulated here.
         QSize size = comboBox_->size();
-        QPoint localPoint = QPoint(size.width() * 0.5f, size.height() * 0.5f);
+        QPoint localPoint = QPoint(aznumeric_cast<int>(size.width() * 0.5f), aznumeric_cast<int>(size.height() * 0.5f));
         QMouseEvent ev(QMouseEvent::MouseButtonPress, localPoint, comboBox_->mapToGlobal(localPoint), Qt::LeftButton, Qt::LeftButton, Qt::KeyboardModifiers());
         QApplication::sendEvent(comboBox_, &ev);
     }

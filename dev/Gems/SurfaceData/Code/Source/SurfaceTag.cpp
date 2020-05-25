@@ -80,9 +80,13 @@ namespace SurfaceData
         {
             behaviorContext->Class<SurfaceTag>()
                 ->Constructor()
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "surface_data")
                 ->Method("SetTag", &SurfaceTag::SetTag)
+                ->Method("Equal", &SurfaceTag::operator==)
+                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
                 ;
         }
     }

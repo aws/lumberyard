@@ -1,12 +1,12 @@
 /*
-* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
 * a third party where indicated.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution (the "License"). All use of this software is governed by the License,  
+* distribution (the "License"). All use of this software is governed by the License,
 * or, if provided, by the license below or the license accompanying this file. Do not
 * remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 #pragma once
@@ -29,6 +29,53 @@ namespace EMotionFX
     class AnimGraphStateMachine;
     class AnimGraphStateTransition;
     class AnimGraphTransitionCondition;
+    class BlendTreeVector4ComposeNode;
+    class BlendTreeVector3ComposeNode;
+    class BlendTreeVector2ComposeNode;
+    class BlendTreeMorphTargetNode;
+    class BlendTreeFloatConstantNode;
+    class BlendTreeLookAtNode;
+    class BlendTreeTwoLinkIKNode;
+    class BlendTreeFloatMath1Node;
+    class AnimGraphStateTransition;
+    class AnimGraphStateMachine;
+    class BlendTreeRangeRemapperNode;
+    class BlendTreeSmoothingNode;
+    class BlendTreeVector3Math2Node;
+    class BlendTreeVector3Math1Node;
+    class BlendTreeFloatMath2Node;
+    class BlendTreeBlend2LegacyNode;
+    class AnimGraphVector2Condition;
+    class AnimGraphTimeCondition;
+    class AnimGraphTagCondition;
+    class AnimGraphStateCondition;
+    class AnimGraphPlayTimeCondition;
+    class AnimGraphParameterCondition;
+    class AnimGraphMotionCondition;
+    class BlendTreeBlendNNode;
+    class BlendTreeMaskLegacyNode;
+    class BlendTreeTransformNode;
+    class BlendTreeAccumTransformNode;
+    class AnimGraphMotionNode;
+    class BlendTreeVector4DecomposeNode;
+    class BlendTreeVector3DecomposeNode;
+    class BlendTreeVector2DecomposeNode;
+    class BlendTree;
+    class BlendTreePoseSwitchNode;
+    class BlendSpace2DNode;
+    class BlendSpace1DNode;
+    class BlendTreeParameterNode;
+    class AnimGraphExitNode;
+    class AnimGraphEntryNode;
+    class BlendTreeMirrorPoseNode;
+    class BlendTreeDirectionToWeightNode;
+    class AnimGraphBindPoseNode;
+    class BlendTreeFinalNode;
+    class AnimGraphNode;
+    class BlendTreeMotionFrameNode;
+    class BlendTreeFloatConditionNode;
+    class BlendTreeFloatSwitchNode;
+    class BlendTreeBoolLogicNode;
 
     const AZ::TypeId GetNewTypeIdByOldNodeTypeId(uint32 oldNodeTypeId);
 
@@ -166,4 +213,51 @@ namespace EMotionFX
         static bool Parse(MCore::File* stream, MCore::Endian::EEndianType endianType);
     };
 
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector4ComposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3ComposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector2ComposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMorphTargetNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatConstantNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeLookAtNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeTwoLinkIKNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatMath1Node>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphStateTransition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphStateMachine>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeRangeRemapperNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeSmoothingNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3Math2Node>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3Math1Node>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatMath2Node>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBlend2LegacyNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphVector2Condition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphTimeCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphTagCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphStateCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphPlayTimeCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphParameterCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionCondition>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBlendNNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMaskLegacyNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeTransformNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeAccumTransformNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector4DecomposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3DecomposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector2DecomposeNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTree>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreePoseSwitchNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace2DNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace1DNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeParameterNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphExitNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphEntryNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMirrorPoseNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeDirectionToWeightNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphBindPoseNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFinalNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMotionFrameNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatConditionNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatSwitchNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
+    template<> bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBoolLogicNode>(MCore::File* stream, uint32 numAttributes, MCore::Endian::EEndianType endianType, Importer::ImportParameters& importParams, AnimGraphObject& animGraphObject);
 } // Namespace EMotionFX

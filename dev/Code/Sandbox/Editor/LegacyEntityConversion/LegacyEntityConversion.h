@@ -21,6 +21,7 @@
 #include <Objects/EntityObject.h>
 #include <Util/Variable.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 namespace AZ
 {
@@ -31,7 +32,10 @@ namespace AZ
         * equivalent AZ::Component entities.  There may be more Handlers of this bus in other parts of the code
         * or in gems.
         */
-        class Converter : public LegacyConversionEventBus::Handler
+        class Converter
+            : private LegacyConversionEventBus::Handler
+            , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
+
         {
         public:
             AZ_CLASS_ALLOCATOR(Converter, AZ::SystemAllocator, 0);
@@ -41,6 +45,12 @@ namespace AZ
             bool BeforeConversionBegins() override;
             bool AfterConversionEnds() override;
             // END ----------------LegacyConversionEventBus::Handler ------------------------------
+
+            //! Fired before the EditorEntityContext exports the root level slice to the game stream
+            void OnSaveStreamForGameBegin(AZ::IO::GenericStream& gameStream, AZ::DataStream::StreamType streamType, AZStd::vector<AZStd::unique_ptr<AZ::Entity>>& levelEntities) override;
+
+        private:
+            void ConvertIngameDesignerObjects(AZStd::vector<AZStd::unique_ptr<AZ::Entity>>& levelEntities);
         };
     }
 }

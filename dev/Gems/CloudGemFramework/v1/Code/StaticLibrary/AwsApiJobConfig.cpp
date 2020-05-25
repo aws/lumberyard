@@ -23,6 +23,7 @@ AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 AZ_POP_DISABLE_WARNING
 
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 namespace CloudGemFramework
 {
@@ -55,6 +56,7 @@ namespace CloudGemFramework
     Aws::Client::ClientConfiguration AwsApiJobConfig::GetClientConfiguration() const
     {
         Aws::Client::ClientConfiguration target;
+        target.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
         Visit<AwsApiJobConfig>(
             [&target](const AwsApiJobConfig& config){
                 CheckAndSet(config.userAgent, target.userAgent);

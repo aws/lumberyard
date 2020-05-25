@@ -75,18 +75,15 @@ namespace EMotionFX
                   +----+ Start +----+
                        +-------+
             */
+            m_motionNodeAnimGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+            m_rootStateMachine = m_motionNodeAnimGraph->GetRootStateMachine();
+
             AnimGraphNode* stateStart = aznew AnimGraphMotionNode();
             m_rootStateMachine->AddChildNode(stateStart);
             m_rootStateMachine->SetEntryState(stateStart);
 
-            AnimGraphNode* stateA = aznew AnimGraphMotionNode();
-            stateA->SetName("A");
-            m_rootStateMachine->AddChildNode(stateA);
-
-            AnimGraphNode* stateB = aznew AnimGraphMotionNode();
-            stateB->SetName("B");
-            m_rootStateMachine->AddChildNode(stateB);
-
+            AnimGraphNode* stateA = m_motionNodeAnimGraph->GetMotionNodeA();
+            AnimGraphNode* stateB = m_motionNodeAnimGraph->GetMotionNodeB();
             AnimGraphNode* stateC = aznew AnimGraphMotionNode();
             stateC->SetName("C");
             m_rootStateMachine->AddChildNode(stateC);
@@ -109,11 +106,15 @@ namespace EMotionFX
                 param.transitionRightBlendTime,
                 param.transitionRightCountDownTime);
             transitionRight->SetCanInterruptOtherTransitions(true);
+
+            m_motionNodeAnimGraph->InitAfterLoading();
         }
 
         void SetUp() override
         {
             AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_motionNodeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
 
             m_eventHandler = aznew AnimGraphEventHandlerCounter();
             m_animGraphInstance->AddEventHandler(m_eventHandler);
@@ -127,6 +128,7 @@ namespace EMotionFX
             AnimGraphFixture::TearDown();
         }
 
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_motionNodeAnimGraph;
         AnimGraphEventHandlerCounter* m_eventHandler = nullptr;
     };
 
@@ -411,17 +413,15 @@ namespace EMotionFX
                   +----+ Start +----+
                        +-------+
             */
+            m_motionNodeAnimGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+            m_rootStateMachine = m_motionNodeAnimGraph->GetRootStateMachine();
+
             AnimGraphNode* stateStart = aznew AnimGraphMotionNode();
             m_rootStateMachine->AddChildNode(stateStart);
             m_rootStateMachine->SetEntryState(stateStart);
 
-            AnimGraphNode* stateA = aznew AnimGraphMotionNode();
-            stateA->SetName("A");
-            m_rootStateMachine->AddChildNode(stateA);
-
-            AnimGraphNode* stateB = aznew AnimGraphMotionNode();
-            stateB->SetName("B");
-            m_rootStateMachine->AddChildNode(stateB);
+            AnimGraphNode* stateA = m_motionNodeAnimGraph->GetMotionNodeA();
+            AnimGraphNode* stateB = m_motionNodeAnimGraph->GetMotionNodeB();
 
             // Start->A (can be interrupted)
             m_transitionLeft = AddTransitionWithTimeCondition(stateStart,
@@ -439,8 +439,18 @@ namespace EMotionFX
                     param.transitionRightBlendTime,
                     param.transitionRightCountDownTime);
             m_transitionRight->SetCanInterruptOtherTransitions(true);
+
+            m_motionNodeAnimGraph->InitAfterLoading();
         }
 
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_motionNodeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_motionNodeAnimGraph;
         AnimGraphStateTransition* m_transitionLeft = nullptr;
         AnimGraphStateTransition* m_transitionRight = nullptr;
     };

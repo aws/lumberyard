@@ -2,7 +2,7 @@
     "name": "sqlite",
     "source": "@3P:sqlite@",
     "description": "SQLite Library",
-    "includes": [
+    "system_includes": [
         "."
     ],
     "defines": [],

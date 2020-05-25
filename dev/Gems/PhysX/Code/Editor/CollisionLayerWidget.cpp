@@ -14,7 +14,8 @@
 
 #include <Editor/CollisionLayerWidget.h>
 #include <Editor/ConfigurationWindowBus.h>
-#include <PhysX/ConfigurationBus.h>
+#include <AzFramework/Physics/CollisionBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Physics/PropertyTypes.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LyViewPaneNames.h>
@@ -94,24 +95,21 @@ namespace PhysX
 
         Physics::CollisionLayer CollisionLayerWidget::GetLayerFromName(const AZStd::string& layerName)
         {
-            
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
             return configuration.m_collisionLayers.GetLayer(layerName);
         }
 
         AZStd::string CollisionLayerWidget::GetNameFromLayer(const Physics::CollisionLayer& layer)
         {
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
             return configuration.m_collisionLayers.GetName(layer);
         }
 
         AZStd::vector<AZStd::string> CollisionLayerWidget::GetLayerNames()
         {
             AZStd::vector<AZStd::string> layerNames;
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+            const Physics::CollisionConfiguration& configuration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
+
             for (AZ::u8 layer = 0; layer < Physics::CollisionLayers::s_maxCollisionLayers; ++layer)
             {
                 auto layerName = configuration.m_collisionLayers.GetName(layer);

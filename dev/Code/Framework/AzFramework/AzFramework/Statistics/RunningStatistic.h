@@ -81,6 +81,11 @@ namespace AzFramework
                 return m_average;
             }
 
+            double GetSum() const
+            {
+                return m_sum;
+            }
+
             /**
              * See declaration of enum class VarianceType above on why we choose the S type by default.
              */
@@ -96,6 +101,7 @@ namespace AzFramework
             double m_mostRecentSample;
             double m_minimum;
             double m_maximum;
+            double m_sum;
             double m_average;
             double m_varianceTracking; ///Not the variance, but used to keep track of variance calculation.
         };    

@@ -52,7 +52,7 @@ else:
 				self.stream.write(txt)
 				self.stream.flush()
 				
-				for key, value in external_log_handlers.iteritems():
+				for key, value in external_log_handlers.items():
 					value.write_msg(txt)
 					
 			finally:
@@ -211,7 +211,7 @@ class formatter(logging.Formatter):
 		"""Messages in warning, error or info mode are displayed in color by default"""
 		if rec.levelno >= logging.WARNING or rec.levelno == logging.INFO:
 			try:
-				msg = rec.msg.decode('utf-8')
+				msg = rec.msg.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 			except Exception:
 				msg = rec.msg
 			return '%s%s%s' % (rec.c1, msg, rec.c2)
@@ -329,7 +329,7 @@ def pprint(col, str, label='', sep='\n'):
 	"""
 	sys.stderr.write("%s%s%s %s%s" % (colors(col), str, colors.NORMAL, label, sep))
 	
-	for key, value in external_log_handlers.iteritems():
+	for key, value in external_log_handlers.items():
 		value.write_err("%s%s%s %s%s" % (colors(col), str, colors.NORMAL, label, sep))
 
 

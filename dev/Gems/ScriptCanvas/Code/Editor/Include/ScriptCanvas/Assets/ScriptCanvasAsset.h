@@ -67,6 +67,8 @@ namespace ScriptCanvasEditor
         AZ::Entity* GetScriptCanvasEntity() const;
         void SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity);
 
+        ScriptCanvas::Graph* GetScriptCanvasGraph() const;
+
         ScriptCanvasData& GetScriptCanvasData();
         const ScriptCanvasData& GetScriptCanvasData() const;
 

@@ -24,7 +24,6 @@
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 #include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
-#include <IHardwareMouse.h>
 #include <imgui/imgui_internal.h>
 #include <sstream>
 #include <string>

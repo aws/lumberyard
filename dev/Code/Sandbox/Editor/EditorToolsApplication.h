@@ -11,22 +11,22 @@
 */
 
 #pragma once
-#include <AzCore/Component/Component.h>
-#include <AzCore/Outcome/Outcome.h>
-#include <AzCore/EBus/EBus.h>
-
 #include <AzToolsFramework/Application/ToolsApplication.h>
 
 #include "Core/EditorMetricsPlainTextNameRegistration.h"
+#include "EditorToolsApplicationAPI.h"
 
 namespace EditorInternal
 {
     // Override the ToolsApplication so that we can special case when the config file is not
     // found and give the user of the Editor a specific message about it.
-    class EditorToolsApplication : public AzToolsFramework::ToolsApplication
+    class EditorToolsApplication
+        : public AzToolsFramework::ToolsApplication
+        , public EditorToolsApplicationRequests::Bus::Handler
     {
     public:
         EditorToolsApplication(int* argc, char*** argv);
+        ~EditorToolsApplication();
 
         bool OnFailedToFindConfiguration(const char* configFilePath) override;
 
@@ -46,7 +46,30 @@ namespace EditorInternal
         void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override;
         //////////////////////////////////////////////////////////////////////////
 
+        // From AzToolsFramework::ToolsApplication
+        void CreateReflectionManager() override;
+        void Reflect(AZ::ReflectContext* context) override;
+
+    protected:
+        // From EditorToolsApplicationRequests
+        bool OpenLevel(AZStd::string_view levelName) override;
+        bool OpenLevelNoPrompt(AZStd::string_view levelName) override;
+
+        int CreateLevel(AZStd::string_view levelName, int resolution, int unitSize, bool bUseTerrain) override;
+        int CreateLevelNoPrompt(AZStd::string_view levelName, int heightmapResolution, int heightmapUnitSize, int terrainExportTextureSize, bool useTerrain) override;
+
+        void Exit() override;
+        void ExitNoPrompt() override;
+
+        AZStd::string GetGameFolder() const override;
+        AZStd::string GetCurrentLevelName() const override;
+        AZStd::string GetCurrentLevelPath() const override;
+
     private:
+        static constexpr char DefaultFileExtension[] = ".ly";
+        static constexpr char OldFileExtension[] = ".cry";
+        static constexpr char DefaultLevelFolder[] = "Levels";
+
         bool m_StartupAborted = false;
         Editor::EditorMetricsPlainTextNameRegistrationBusListener m_metricsPlainTextRegistrar;
 

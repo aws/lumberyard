@@ -25,9 +25,9 @@
 #include "MainWindow.h"
 
 #include "I3DEngine.h"
-#include "ITerrain.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
-#include "Util/BoostPythonHelpers.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 
 float CTerrainHoleTool::m_brushRadius = 0.5;
 bool CTerrainHoleTool::m_bMakeHole = true;
@@ -115,6 +115,12 @@ void CTerrainHoleTool::Display(DisplayContext& dc)
         return;
     }
 
+    // If there's no active terrain, don't draw the hole tool
+    if (!LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())
+    {
+        return;
+    }
+
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     if (!pHeightmap)
     {
@@ -191,7 +197,8 @@ bool CTerrainHoleTool::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, ui
 //////////////////////////////////////////////////////////////////////////
 AZStd::pair<Vec2i, Vec2i> CTerrainHoleTool::Modify()
 {
-    if (!GetIEditor()->Get3DEngine()->GetITerrain())
+    const bool isLegacyTerrainActive = LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers();
+    if (!isLegacyTerrainActive)
     {
         return {};
     }
@@ -209,6 +216,12 @@ AZStd::pair<Vec2i, Vec2i> CTerrainHoleTool::Modify()
 
     if ((max.x - min.x) >= 0 && (max.y - min.y) >= 0)
     {
+        // If the Terrain Editor is open, make sure it refreshes the view.
+        AABB box;
+        box.min = m_pointerPos - Vec3(m_brushRadius, m_brushRadius, 0);
+        box.max = m_pointerPos + Vec3(m_brushRadius, m_brushRadius, 0);
+        GetIEditor()->UpdateViews(eUpdateHeightmap, &box);
+
         pHeightmap->MakeHole(min.x, min.y, max.x - min.x, max.y - min.y, m_bMakeHole);
         return AZStd::make_pair(min, max);
     }
@@ -300,7 +313,7 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    static boost::python::tuple PyPaintHole(float x, float y)
+    static AZStd::vector<AZ::s32> PyPaintHole(float x, float y)
     {
         if (CTerrainHoleTool* holeTool = GetTool())
         {
@@ -308,14 +321,28 @@ public:
             {
                 AZStd::pair<Vec2i, Vec2i> modifiedArea = holeTool->Modify();
 
+                // ensure that at least something was modified.
                 if (!modifiedArea.first.IsZero() || !modifiedArea.second.IsZero())
                 {
-                    return boost::python::make_tuple(modifiedArea.first.x, modifiedArea.first.y, modifiedArea.second.x, modifiedArea.second.y);
+                    return AZStd::vector<AZ::s32>{modifiedArea.first.y, modifiedArea.first.x, modifiedArea.second.y, modifiedArea.second.x};
+                }
+                else
+                {
+                    AZ_Warning("terrain", false, "Could not ensure the modified areas input(%f,%f) areaOne(%d,%d) areaTwo(%d,%d)",
+                        x, y, modifiedArea.first.y, modifiedArea.first.x, modifiedArea.second.y, modifiedArea.second.x);
                 }
             }
+            else
+            {
+                AZ_Warning("terrain", false, "PyPaintHole() failed since UpdatePointerPos() with %f and %f did not connect with terrain.", x, y);
+            }
+        }
+        else
+        {
+            AZ_Warning("terrain", false, "CTerrainHoleTool is missing.");
         }
 
-        return {};
+        return AZStd::vector<AZ::s32>();
     }
     
     //////////////////////////////////////////////////////////////////////////
@@ -333,7 +360,14 @@ public:
             return;
         }
 
-        heightmap->MakeHole(x1, y1, x2, y2, CTerrainHoleTool::m_bMakeHole);
+        if (x1 < 0 || x1 > x2 || x2 >= heightmap->GetHeight() ||
+            y1 < 0 || y1 > y2 || y2 >= heightmap->GetWidth())
+        {
+            return;
+        }
+
+        // x/y need to be swapped due to how the heightmap is exposed in editor
+        heightmap->MakeHole(y1, x1, y2, x2, CTerrainHoleTool::m_bMakeHole);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -351,7 +385,13 @@ public:
             return false;
         }
 
-        return heightmap->IsHoleAt(x, y);
+        if (x < 0 || x >= heightmap->GetHeight() || y < 0 || y >= heightmap->GetWidth())
+        {
+            return false;
+        }
+
+        // x/y need to be swapped due to how the heightmap is exposed in editor
+        return heightmap->IsHoleAt(y, x);
     }
 
 private:
@@ -404,22 +444,25 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PySetBrushRadius, terrain, set_brush_radius,
-    "Sets the brush radius of the hole tool.", "terrain.set_brush_radius(float radius)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyGetBrushRadius, terrain, get_brush_radius,
-    "Gets the brush radius of the hole tool.", "float terrain.get_brush_radius()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PySetMakeHole, terrain, set_make_hole,
-    "Sets making holes to enabled or disabled. Disabling will remove holes.", "void terrain.set_make_hole(bool make_hole)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyGetMakeHole, terrain, get_make_hole,
-    "Returns whether or not making holes is enabled.", "bool terrain.get_make_hole()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyPaintHole, terrain, paint_hole,
-    "Paints or removes holes from the terrain based on flags set. X and Y are viewport coordinates.",
-    "tuple terrain.paint_hole(float x, float y)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyPaintHoleDirect, terrain, paint_hole_direct,
-    "Paints or removes holes directly on the heightmap based on flags set.",
-    "void terrain.paint_hole_direct(int x1, int y1, int x2, int y2)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyIsHoleAt, terrain, is_hole_at,
-    "Returns whether or not a hole exists at point X, Y. X and Y are heightmap coordinates.",
-    "bool terrain.is_hole_at(int x, int y)");
+void AzToolsFramework::TerrainHoleToolPythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+{
+    if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+    {
+        auto addLegacyTerrain = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+        {
+            methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "legacy.terrain_hole_tool"); // this will put these methods into the 'azlmbr.legacy.terrain_hole_tool' module
+        };
+
+        addLegacyTerrain(behaviorContext->Method("set_brush_radius", ScriptingBindings::PySetBrushRadius, nullptr, "Sets the brush radius of the hole tool."));
+        addLegacyTerrain(behaviorContext->Method("get_brush_radius", ScriptingBindings::PyGetBrushRadius, nullptr, "Gets the brush radius of the hole tool."));
+        addLegacyTerrain(behaviorContext->Method("set_make_hole", ScriptingBindings::PySetMakeHole, nullptr, "Sets making holes to enabled or disabled. Disabling will remove holes."));
+        addLegacyTerrain(behaviorContext->Method("get_make_hole", ScriptingBindings::PyGetMakeHole, nullptr, "Returns whether or not making holes is enabled."));
+        addLegacyTerrain(behaviorContext->Method("paint_hole", ScriptingBindings::PyPaintHole, nullptr, "Paints or removes holes from the terrain based on flags set. X and Y are viewport coordinates."));
+        addLegacyTerrain(behaviorContext->Method("paint_hole_direct", ScriptingBindings::PyPaintHoleDirect, nullptr, "Paints or removes holes directly on the heightmap based on flags set."));
+        addLegacyTerrain(behaviorContext->Method("is_hole_at", ScriptingBindings::PyIsHoleAt, nullptr, "Returns whether or not a hole exists at point X, Y. X and Y are heightmap coordinates."));
+    }
+}
 
 #include <TerrainHoleTool.moc>

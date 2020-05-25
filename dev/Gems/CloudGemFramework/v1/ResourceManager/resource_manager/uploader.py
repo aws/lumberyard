@@ -9,26 +9,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision$
-
 from uuid import uuid4
-from botocore.exceptions import ClientError
-from boto3.s3.transfer import S3Transfer
-from errors import HandledError
 
 import os
-import imp
 import mimetypes
 import copy
-import time
+import six
 
-import common_code
+from boto3.s3.transfer import S3Transfer
+
+from .errors import HandledError
+from . import common_code
 from resource_manager_common import constant
-import file_util
+from . import file_util
+from . import lambda_code_packager
 
-import lambda_code_packager
 
+class Phase:
+    def __init__(self):
+        pass
 
-class Phase():
     PRE_UPDATE = 0
     POST_UPDATE = 1
 
@@ -114,6 +114,8 @@ class Uploader(object):
                 code_path = os.path.join(code_path, function_name)
             if os.path.isdir(code_path):
                 return code_path
+            else:
+                searched_paths.append(code_path)
 
         raise HandledError(
             'No code was found for the {} AWS Lambda Function. Expected to find one of these directories: {}.'.format(function_name, ', '.join(searched_paths)))
@@ -202,7 +204,7 @@ class Uploader(object):
             }
         }
         # Use a lambda code package validator
-        for prefix, validator in validator_prefix_mapping.iteritems():
+        for prefix, validator in six.iteritems(validator_prefix_mapping):
             if function_runtime.startswith(prefix):
                 code_packager = validator["class"](self.context, function_name)
                 code_packager.validate_package(validator["params"])
@@ -232,7 +234,7 @@ class Uploader(object):
 
         # Create a top level module for each multi-import module to help discovery of what was imported.
         # This should be the Lambda zip file equivalent of how MultiImportModuleLoader in hook.py loads multi-imports in a local workspace.
-        for import_package_name, imported_gem_names in multi_imports.iteritems():
+        for import_package_name, imported_gem_names in six.iteritems(multi_imports):
             sorted_gem_names = sorted(imported_gem_names)
             top_level_module_names = {gem_name: '{}__{}'.format(import_package_name, gem_name) for gem_name in sorted_gem_names}
 
@@ -620,7 +622,7 @@ class DeploymentUploader(Uploader):
 
         """
 
-        if self._resource_group_uploaders.has_key(resource_group_name):
+        if resource_group_name in self._resource_group_uploaders:
             return self._resource_group_uploaders[resource_group_name]
 
         rgu = ResourceGroupUploader(self, resource_group_name)

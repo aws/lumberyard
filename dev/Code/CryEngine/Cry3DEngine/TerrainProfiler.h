@@ -11,92 +11,51 @@
 */
 #pragma once
 
-//These are the register names that should be used in CTerrain when
-//calling AZ_PROFILE_TIMER
-//Declared before #if !defined(_RELEASE) to mitigate cluttering CTerrain
-//code with #if !defined(_RELEASE) when calling AZ_PROFILE_TIMER.
-#define TERRAIN_STATISTIC_CHECK_VISIBILITY     "CheckVisibility"
-#define TERRAIN_STATISTIC_UPDATE_NODES         "UpdateNodesIncrementally"
-#define TERRAIN_STATISTIC_DRAW_VISIBLE_SECTORS "DrawVisibleSectors"
-#define TERRAIN_STATISTIC_UPDATE_SECTOR_MESHES "UpdateSectorMeshes"
-#define TERRAIN_STATISTIC_LOAD_TIME_FROM_DISK  "LoadTimeFromDisk"
-
 #if !defined(_RELEASE)
 
 #include <AzCore/Debug/Timer.h>
-#include <AzCore/Component/Entity.h>
-#include <AzCore/Debug/FrameProfilerBus.h>
-#include <AzFramework/Statistics/TimeDataStatisticsManager.h>
+#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Debug/StatisticalProfilerProxy.h>
+#include "Terrain/LegacyTerrainBase.h"
 
-namespace AZ
+#define TERRAIN_SCOPE_PROFILE(profiler, scopeNameId) AZ_PROFILE_SCOPE(profiler, scopeNameId)
+
+namespace LegacyTerrain
 {
     namespace Debug
     {
+        static constexpr const char* StatisticCheckVisibility = "CheckVisibility";
+        static constexpr const char* StatisticUpdateNodes = "UpdateNodesIncrementally";
+        static constexpr const char* StatisticDrawVisibleSectors = "DrawVisibleSectors";
+        static constexpr const char* StatisticUpdateSectorMeshes = "UpdateSectorMeshes";
+        static constexpr const char* StatisicLoadTimeFromDisk = "LoadTimeFromDisk";
+        static constexpr const char* StatisticFxDrawTechnique = "FX_DrawTechnique";
+
         /**
-         * Singleton that helps collect performance statistics of the Terrain system.
+         * Helps collect performance statistics of the Terrain system.
          * Inherits from Cry3DEngineBase just to get hassle free access to the CVars.
          */
         class TerrainProfiler
-            : public Cry3DEngineBase
-            , public FrameProfilerBus::Handler
+            : public LegacyTerrainBase
+            , public AZ::TickBus::Handler
         {
         public:
-            ~TerrainProfiler();
+            TerrainProfiler();
+            virtual ~TerrainProfiler();
 
-            //FrameProfilerBus
-            void OnFrameProfilerData(const FrameProfiler::ThreadDataArray& data) override;
+            //////////////////////////////////////////////////////////////////////////
+            // Tick bus
+            void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+            int GetTickOrder() override;
+            //////////////////////////////////////////////////////////////////////////
 
-            //Used to calculate per-tile statistics.
             void SetVisibleTilesCount(int visibleTilesCount)
             {
                 m_visibleTilesCountStat->PushSample(AZStd::GetMax(0, visibleTilesCount));
             }
 
-            ///Used to calculate per-tile statistics.
-            void SetTotalTilesCount(int totalTilesCount)
-            {
-                m_totalTilesCount = AZStd::GetMax(0, totalTilesCount);
-            }
-
-            static TerrainProfiler& GetInstance()
-            {
-                if (!m_instance)
-                {
-                    m_instance = new AZ::Debug::TerrainProfiler();
-                }
-                AZ_Assert(m_instance != nullptr, "Failed to instantiate the TerrainProfiler");
-                return *m_instance;
-            }
-
-            static void DestroyInstance()
-            {
-                SAFE_DELETE(m_instance);
-            }
-
-            /**
-             * Ensure that we only enable the frame profiler when needed, and disable it when we don't.
-             */
-            static void RefreshFrameProfilerStatus()
-            {
-                if ((m_instance) && (m_instance->m_profilingEntity))
-                {
-                    m_instance->UpdateFrameProfilerStatus(m_instance->m_profilingEntity);
-                }
-            }
-
         private:
-            TerrainProfiler();
-
-            void UpdateFrameProfilerStatus(AZStd::unique_ptr<Entity>& profilingEntity);
-
-            void CalculateStatisticsPerTile();
-
             void CalculateMemoryStatistics();
-
-            /**
-             * Helper for LogStatistics().
-             */
-            void LogAndResetStatManager(AzFramework::Statistics::RunningStatisticsManager& statsManager);
 
             /**
              * Dumps all statistics in the Game Log only if
@@ -104,51 +63,33 @@ namespace AZ
              * Once the data is dumped, m_elapsedSecondsForLogging is set to Zero and
              * all collected statistics are Reset.
              */
-            void LogStatistics(float terrainPerformanceSecondsPerLog);
-
-            ///The one and only.
-            static TerrainProfiler* m_instance;
-
-            ///Dummy entity. Used as a means to activate the FrameProfilerComponent.
-            AZStd::unique_ptr<Entity> m_profilingEntity;
-
-            ///Statistics Manager for data generated via AZ_PROFILE_TIMER()
-            AzFramework::Statistics::TimeDataStatisticsManager m_timeStatisticsManager;
-            ///A Regular RunningStatisticsManager that is used to prorate performance statistics
-            ///Across the total number of Tiles in the terrain and the total count of
-            ///visible terrain tiles per frame.
-            AzFramework::Statistics::RunningStatisticsManager m_perTileStatisticsManager;
-            u32 m_totalTilesCount; ///Used to calculate performance across all tiles.
+            void LogStatistics(AzFramework::Debug::StatisticalProfilerProxy::StatisticalProfilerType& profiler,
+                float terrainPerformanceSecondsPerLog);
 
             ///This timer in conjunction with the CVar e_TerrainPerformanceSecondsPerLog,
             ///it is used to know when is time to dump all statistics in the Game Log.
-            Timer m_timerForLogging;
+            AZ::Debug::Timer m_timerForLogging;
             float m_elapsedSecondsForLogging;
 
+
             ///////////////////////////////////////////////////////////////////
-            // The following pointers are shortcuts into m_perTileStatsManager.
+            // The following pointers are shortcuts into m_statisticsManager.
             ///////////////////////////////////////////////////////////////////
 
-            ///Visible tiles usually change frame to frame.
+            //! Visible tiles usually change frame to frame (if the camera moves).
             AzFramework::Statistics::NamedRunningStatistic* m_visibleTilesCountStat;
 
-            ///Ad hoc running statistic based on the sum of the most recent samples
-            ///from all statistics collected in m_timeStatisticsManager divided by
-            ///the number of total tiles. 
-            AzFramework::Statistics::NamedRunningStatistic* m_performanceAcrossAllTilesStat;
-            
-            ///Ad hoc running statistic based on the sum of the most recent samples
-            ///from all statistics collected in m_timeStatisticsManager divided by
-            ///the number of visible tiles. 
-            AzFramework::Statistics::NamedRunningStatistic* m_performanceAcrossVisibleTilesStat;
-
-            ///Ad hoc running statistic that collects all the RAM consumed by CTerrain
-            ///and its member variables per frame.
+            //! Ad hoc running statistic that collects all the RAM consumed by CTerrain
+            //! and its member variables per frame.
             AzFramework::Statistics::NamedRunningStatistic* m_memoryUsageStat;
 
         }; //class TerrainProfiler
 
     }; //namespace Debug
-}; //namespace AZ
+}; //namespace LegacyTerrain
+
+#else //#if !defined(_RELEASE)
+
+#define TERRAIN_SCOPE_PROFILE(profiler, scopeNameId)
 
 #endif //#if !defined(_RELEASE)

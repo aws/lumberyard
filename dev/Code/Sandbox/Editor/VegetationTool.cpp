@@ -31,8 +31,7 @@
 #include "IPhysics.h"
 #include "MainWindow.h"
 
-#include "Util/BoostPythonHelpers.h"
-
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -68,8 +67,6 @@ namespace AzToolsFramework
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND(CVegetationTool::Command_Activate, terrain, activate_vegetation_tool, "Activates the vegetation tool.");
 
 float CVegetationTool::m_brushRadius = 1;
 
@@ -1118,6 +1115,8 @@ void CVegetationTool::MoveSelected(CViewport* view, const Vec3& offset, bool bFo
     AABB box;
     box.Reset();
     Vec3 newPos, oldPos;
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
     for (int i = 0; i < m_selectedThings.size(); i++)
     {
         oldPos = m_selectedThings[i].pInstance->pos;
@@ -1142,10 +1141,7 @@ void CVegetationTool::MoveSelected(CViewport* view, const Vec3& offset, bool bFo
         else if (pObject->IsAffectedByTerrain())
         {
             // Stick to terrain.
-            if (I3DEngine* engine = GetIEditor()->GetSystem()->GetI3DEngine())
-            {
-                newPos.z = engine->GetTerrainElevation(newPos.x, newPos.y);
-            }
+            newPos.z = terrain ? terrain->GetHeightFromFloats(newPos.x, newPos.y) : defaultTerrainHeight;   
         }
 
         if (!m_vegetationMap->MoveInstance(m_selectedThings[i].pInstance, newPos))

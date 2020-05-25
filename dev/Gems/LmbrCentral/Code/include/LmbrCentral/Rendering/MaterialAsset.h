@@ -33,28 +33,6 @@ namespace LmbrCentral
     };
 
     /*!
-     * Alternate material asset configuration.
-     * Can be used to stream materials in the background using the MaterialAssetHandler
-     */
-    class MaterialDataAsset 
-        : public AZ::Data::AssetData
-    {
-    public:
-        using MaterialPtr = _smart_ptr<IMaterial>;
-
-        AZ_RTTI(MaterialDataAsset, "{3336F02F-628C-4FA5-8405-45EA175A88BB}", AZ::Data::AssetData);
-        AZ_CLASS_ALLOCATOR(MaterialDataAsset, AZ::SystemAllocator, 0);
-
-        static const char* GetFileFilter()
-        {
-            return "*.mtl";
-        }
-
-        MaterialPtr m_Material = nullptr;
-
-    };
-
-    /*!
     * FBX Material asset type configuration.
     * Reflect as: AzFramework::SimpleAssetReference<FbxMaterialAsset>
     */

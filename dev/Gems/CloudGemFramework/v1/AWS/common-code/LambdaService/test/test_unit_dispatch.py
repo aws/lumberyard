@@ -8,25 +8,23 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
 import unittest
-import mock
+from unittest import mock
+import six
 
 import cgf_lambda_service
-import mock_handler
+from . import mock_handler
+
 
 class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
-
     def setUp(self):
         mock_handler.reset()
-
 
     def test_service_imports_stuff_from_cgf_lambda_service(self):
         import service
         self.assertIs(service.api, cgf_lambda_service.api)
         self.assertIs(service.dispatch, cgf_lambda_service.dispatch)
-
 
     def test_errors_imports_stuff_from_cgf_lambda_service(self):
         import errors
@@ -34,10 +32,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
         self.assertIs(cgf_lambda_service.ForbiddenRequestError, cgf_lambda_service.ForbiddenRequestError)
         self.assertIs(cgf_lambda_service.NotFoundError, cgf_lambda_service.NotFoundError)
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_normal_alone(self, mock_import_module):
-        
         event = {
             'module': 'test_module',
             'function': 'test_function_alone',
@@ -45,11 +41,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
-        
+
         mock_handler.response = 'expected response'
-        
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -59,10 +55,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_normal_first(self, mock_import_module):
-        
         event = {
             'module': 'test_module',
             'function': 'test_function_first',
@@ -71,11 +65,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
-        
+
         mock_handler.response = 'expected response'
-        
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -86,10 +80,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_normal_last(self, mock_import_module):
-        
         event = {
             'module': 'test_module',
             'function': 'test_function_last',
@@ -98,11 +90,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
-        
+
         mock_handler.response = 'expected response'
-        
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -113,10 +105,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_normal_middle(self, mock_import_module):
-        
         event = {
             'module': 'test_module',
             'function': 'test_function_middle',
@@ -126,11 +116,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_c': 'param_c_value'
             }
         }
-        
+
         context = self.__get_context()
-        
+
         mock_handler.response = 'expected response'
-        
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -142,9 +132,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
     def test_missing_event_module(self):
-
         event = {
             # missing: 'module': 'test_module',
             'function': 'test_function_without_decorator',
@@ -152,15 +140,13 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'No "module" property'):
             cgf_lambda_service.dispatch(event, context)
 
-
     def test_missing_event_function(self):
-
         event = {
             'module': 'test_module',
             # missing: 'function': 'test_function_without_decorator',
@@ -168,16 +154,14 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'No "function" property'):
             cgf_lambda_service.dispatch(event, context)
 
-
-    @mock.patch('importlib.import_module', side_effect = ImportError)
+    @mock.patch('importlib.import_module', side_effect=ImportError)
     def test_no_such_module(self, mock_import_module):
-
         event = {
             'module': 'does_not_exist',
             'function': 'test_function',
@@ -185,7 +169,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaises(ImportError):
@@ -193,10 +177,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.does_not_exist')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_no_such_function(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'does_not_exist',
@@ -204,7 +186,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'does not have an "does_not_exist" attribute'):
@@ -212,10 +194,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_not_a_function(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_not_a_function',
@@ -223,7 +203,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'attribute "test_not_a_function" is not a function'):
@@ -231,10 +211,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_decorator(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_without_decorator',
@@ -242,7 +220,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'not a service dispatch handler'):
@@ -250,22 +228,20 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameters_when_no_parameters_expected(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_without_parameters'
-            # mssing 'parameters': {
+            # missing 'parameters': {
             #    'param_a': 'param_a_value'
-            #}
+            # }
         }
-        
+
         context = self.__get_context()
 
         mock_handler.response = 'expected response'
-        
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -274,18 +250,16 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameters_when_parameters_expected(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_alone'
-            # mssing 'parameters': {
+            # missing 'parameters': {
             #    'param_a': 'param_a_value'
-            #}
+            # }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'Expected the following parameters: param_a'):
@@ -293,10 +267,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameter_alone(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_alone',
@@ -304,7 +276,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 # missing:   'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'Expected the following parameters: param_a'):
@@ -312,10 +284,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameter_first(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_first',
@@ -324,7 +294,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'Expected the following parameters: param_a'):
@@ -332,10 +302,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameter_last(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_last',
@@ -344,7 +312,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'Expected the following parameters: param_a'):
@@ -352,10 +320,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_missing_parameter_middle(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_middle',
@@ -365,7 +331,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_c': 'param_c_value',
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'Expected the following parameters: param_a'):
@@ -373,10 +339,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_extra_parameter(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_alone',
@@ -385,7 +349,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(cgf_lambda_service.ClientError, 'The following parameters are unexpected: param_b'):
@@ -393,10 +357,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_extra_parameter_with_kwargs(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_with_kwargs',
@@ -405,24 +367,22 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
 
-        mock_handler.response = 'expected response'
-        
+        mock_handler.response = {'message': 'expected response'}
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
-        self.assertEquals({ 'param_b': event['parameters']['param_b'] }, mock_handler.received_kwargs)
+        self.assertEquals({'param_b': event['parameters']['param_b']}, mock_handler.received_kwargs)
         self.assertIs(event, mock_handler.received_request.event)
         self.assertIs(context, mock_handler.received_request.context)
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_parameter_value_with_default_value(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_with_default_value',
@@ -430,11 +390,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
-        mock_handler.response = 'expected response'
-        
+        mock_handler.response = {'message': 'expected response'}
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -444,10 +404,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_no_parameter_value_with_default_value(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_with_default_value',
@@ -455,11 +413,11 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 # missing: 'param_a': 'param_a_value'
             }
         }
-        
+
         context = self.__get_context()
 
-        mock_handler.response = 'expected response'
-        
+        mock_handler.response = {'message': 'expected response'}
+
         response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
@@ -469,10 +427,8 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
 
         mock_import_module.assert_called_once_with('api.test_module')
 
-
-    @mock.patch('importlib.import_module', return_value = mock_handler)
+    @mock.patch('importlib.import_module', return_value=mock_handler)
     def test_first_parameter_name_conflict(self, mock_import_module):
-
         event = {
             'module': 'test_module',
             'function': 'test_function_with_first_parameter_name_conflict',
@@ -481,17 +437,16 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'param_b_value'
             }
         }
-        
+
         context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'The first parameter\'s name, param_a, matches an api parameter name.'):
             cgf_lambda_service.dispatch(event, context)
 
         mock_import_module.assert_called_once_with('api.test_module')
-   
-    @mock.patch('importlib.import_module', return_value = mock_handler)
-    def test_logging_filter(self, mock_import_module):
 
+    @mock.patch('importlib.import_module', return_value=mock_handler)
+    def test_logging_filter(self, mock_import_module):
         event = {
             'module': 'test_module',
             'function': 'test_function_with_parameter_logging_filter',
@@ -500,18 +455,13 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
                 'param_b': 'DO_NOT_LOG'
             }
         }
-        
+
         context = self.__get_context()
 
-        mock_handler.response = 'expected response'
-        
-        printed_lines = []
-        with mock.patch('__builtin__.print', lambda line: printed_lines.append(line)):
-            response = cgf_lambda_service.dispatch(event, context)
+        mock_handler.response = {'message': 'expected response'}
 
-        output = '\n'.join(printed_lines)
-        print(output)
-        print()
+        with mock.patch('sys.stdout', six.StringIO()) as mock_stdout:
+            response = cgf_lambda_service.dispatch(event, context)
 
         self.assertEquals(mock_handler.response, response)
         self.assertEquals(event['parameters']['param_a'], mock_handler.received_param_a)
@@ -519,6 +469,7 @@ class UnitTest_CloudGemFramework_LambdaService_dispatcher(unittest.TestCase):
         self.assertIs(event, mock_handler.received_request.event)
         self.assertIs(context, mock_handler.received_request.context)
 
+        output = mock_stdout.getvalue()
         self.assertTrue('THIS_SHOULD_BE_LOGGED' in output)
         self.assertFalse('DO_NOT_LOG' in output)
         self.assertTrue('REPLACEMENT_VALUE' in output)

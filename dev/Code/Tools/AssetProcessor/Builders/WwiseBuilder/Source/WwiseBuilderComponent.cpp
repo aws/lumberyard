@@ -53,7 +53,7 @@ namespace WwiseBuilder
                 return AZ::Failure(AZStd::string("Dependency field is not an array. Please regenerate the metadata for this soundbank."));
             }
 
-            for (AZ::u64 dependencyIndex = 0; dependencyIndex < dependenciesArray.Size(); ++dependencyIndex)
+            for (rapidjson::SizeType dependencyIndex = 0; dependencyIndex < dependenciesArray.Size(); ++dependencyIndex)
             {
                 fileNames.push_back(dependenciesArray[dependencyIndex].GetString());
             }

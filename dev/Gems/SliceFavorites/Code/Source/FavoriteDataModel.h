@@ -182,7 +182,8 @@ namespace SliceFavorites
         void DataModelChanged();
         void ExpandIndex(const QModelIndex& index, bool expanded);
         void DisplayWarning(const QString& title, const QString& message);
-
+    public Q_SLOTS:
+        void ProcessRemovedAssets();
     private:
 
         //////////////////////////////////////////////////////////////////////////
@@ -253,5 +254,7 @@ namespace SliceFavorites
         bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
 
         bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
+
+        AZStd::vector<AZ::Data::AssetId> m_removedAssets;
     };
 }

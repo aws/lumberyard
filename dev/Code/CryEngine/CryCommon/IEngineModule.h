@@ -19,6 +19,9 @@
 #pragma once
 
 #include <CryExtension/ICryUnknown.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/Console/Console.h>
+#include <AzCore/Console/ConsoleFunctor.h>
 
 struct SSystemInitParams;
 
@@ -38,6 +41,13 @@ struct IEngineModule
     // This is called to initialize the new module.
     virtual bool Initialize(SSystemGlobalEnvironment& env, const SSystemInitParams& initParams) = 0;
     // </interfuscator:shuffle>
+
+    // This is called to register any AZ console vars declared within this engine module
+    virtual void RegisterConsoleVars()
+    {
+        AZ::ConsoleFunctorBase*& deferredHead = AZ::ConsoleFunctorBase::GetDeferredHead();
+        AZ::Interface<AZ::IConsole>::Get()->LinkDeferredFunctors(deferredHead);
+    }
 };
 
 #endif // CRYINCLUDE_CRYCOMMON_IENGINEMODULE_H

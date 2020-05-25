@@ -117,18 +117,16 @@ namespace PhysX
 
     TEST_F(PhysXWorldTest, WorldNotificationBusOrdered)
     {
-        using namespace Physics;
-
         // GIVEN there is a world with multiple listeners
         const char* worldId = "World1";
-        WorldPtr world = AZ::Interface<System>::Get()->CreateWorld(AZ::Crc32(worldId));
+        WorldPtr world = AZ::Interface<Physics::System>::Get()->CreateWorld(AZ::Crc32(worldId));
 
         // Connect the busses in randomish order.
-        WorldEventListener listener1(worldId, WorldNotifications::Physics);
-        WorldEventListener listener5(worldId, WorldNotifications::Default);
-        WorldEventListener listener3(worldId, WorldNotifications::Components);
-        WorldEventListener listener4(worldId, WorldNotifications::Scripting);
-        WorldEventListener listener2(worldId, WorldNotifications::Animation);
+        WorldEventListener listener1(worldId, Physics::WorldNotifications::Physics);
+        WorldEventListener listener5(worldId, Physics::WorldNotifications::Default);
+        WorldEventListener listener3(worldId, Physics::WorldNotifications::Components);
+        WorldEventListener listener4(worldId, Physics::WorldNotifications::Scripting);
+        WorldEventListener listener2(worldId, Physics::WorldNotifications::Animation);
         
         AZStd::vector<int> updateEvents;
         listener1.m_onPostUpdate = [&](float){

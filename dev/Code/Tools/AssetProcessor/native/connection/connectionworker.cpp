@@ -245,6 +245,7 @@ bool ConnectionWorker::NegotiateDirect(bool initiate)
     AZStd::string azBranchToken;
     AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::CalculateBranchTokenForAppRoot, azBranchToken);
     QString branchToken(azBranchToken.c_str());
+    QString projectName = AssetUtilities::ComputeGameName();
     
     NegotiationMessage myInfo;
 
@@ -253,6 +254,7 @@ bool ConnectionWorker::NegotiateDirect(bool initiate)
     myInfo.m_identifier = "ASSETPROCESSOR";
     myInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProcessId, AZ::OSString(processId)));
     myInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_BranchIndentifier, AZ::OSString(azBranchToken.c_str())));
+    myInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProjectName, AZ::OSString(projectName.toUtf8().constData())));
     NegotiationMessage engineInfo;
 
     if (initiate)
@@ -330,8 +332,17 @@ bool ConnectionWorker::NegotiateDirect(bool initiate)
         return false;
     }
 
+    QString incomingProjectName(engineInfo.m_negotiationInfoMap[NegotiationInfo_ProjectName].c_str());
+    if(QString::compare(incomingProjectName, projectName, Qt::CaseInsensitive) != 0)
+    {
+        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "ConnectionWorker::NegotiateDirect: project name mismatch from %s - %p - %s vs %s\n", engineInfo.m_identifier.c_str(), this, incomingProjectName.toUtf8().constData(), projectName.toUtf8().constData());
+        AssetProcessor::MessageInfoBus::Broadcast(&AssetProcessor::MessageInfoBus::Events::NegotiationFailed);
+        QTimer::singleShot(0, this, SLOT(DisconnectSockets()));
+        return false;
+    }
+
     Q_EMIT Identifier(engineInfo.m_identifier.c_str());
-    Q_EMIT AssetPlatform(engineInfo.m_negotiationInfoMap[NegotiationInfo_Platform].c_str());
+    Q_EMIT AssetPlatformsString(engineInfo.m_negotiationInfoMap[NegotiationInfo_Platform].c_str());
 
 #if defined(DEBUG_NEGOTATION)
     AZ_TracePrintf(AssetProcessor::DebugChannel, "ConnectionWorker::NegotiateDirect: negotation complete %p", this);

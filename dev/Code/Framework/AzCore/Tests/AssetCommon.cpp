@@ -17,6 +17,29 @@ namespace UnitTest
     using namespace AZ;
     using namespace AZ::Data;
 
+    TEST_F(AllocatorsFixture, AssetId_PrintDecimalSubId_SubIdIsDecimal)
+    {
+        // Arbitrary GUID, sub ID picked that will be different in decimal and hexadecimal.
+        AssetId id("{A9F596D7-9913-4BA4-AD4E-7E477FB9B542}", 20);
+        AZStd::string asString = id.ToString<AZStd::string>(AZ::Data::AssetId::SubIdDisplayType::Decimal);
+
+        ASSERT_EQ(asString.size(), 41);
+        ASSERT_EQ(asString[39], '2');
+        ASSERT_EQ(asString[40], '0');
+    }
+
+    TEST_F(AllocatorsFixture, AssetId_PrintHexadecimalSubId_SubIdIsHex)
+    {
+        // Arbitrary GUID, sub ID picked that will be different in decimal and hexadecimal.
+        AssetId id("{A9F596D7-9913-4BA4-AD4E-7E477FB9B542}", 20);
+        AZStd::string asString = id.ToString<AZStd::string>(AZ::Data::AssetId::SubIdDisplayType::Hex);
+        ASSERT_EQ(asString.size(), 41);
+
+        ASSERT_EQ(asString[39], '1');
+        ASSERT_EQ(asString[40], '4');
+    }
+
+
     TEST_F(AllocatorsFixture, AssetPreserveHintTest_Const_Copy)
     {
         // test to make sure that when we copy asset<T>s around using copy operations

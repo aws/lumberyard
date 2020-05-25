@@ -1745,6 +1745,7 @@ public:
         UpdateTexStates();
     }
 
+    ILINE const bool IsTextureMissing() const { return m_bisTextureMissing; }
     virtual const bool IsTextureLoaded() const { return IsLoaded(); }
     virtual void PrecacheAsynchronously(float fMipFactor, int nFlags, int nUpdateId, int nCounter = 1);
     virtual byte* GetData32(int nSide = 0, int nLevel = 0, byte* pDst = NULL, ETEX_Format eDstFormat = eTF_R8G8B8A8);
@@ -1953,6 +1954,7 @@ public:
     const SPixFormat* GetPixelFormat() const { return m_pPixelFormat; }
     bool Invalidate(int nNewWidth, int nNewHeight, ETEX_Format eTF);
     const char* GetSourceName() const { return m_SrcName.c_str(); }
+    void SetSourceName( const char* srcName) { m_SrcName = srcName; }
     const int GetSize(bool bIncludePool) const;
     void PostCreate();
 
@@ -2207,7 +2209,7 @@ public:
     static CTexture* ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst);
     static CTexture* CreateTextureArray(const char* name, ETEX_Type eType, uint32 nWidth, uint32 nHeight, uint32 nArraySize, int nMips, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
     static CTexture* CreateTextureObject(const char* name, uint32 nWidth, uint32 nHeight, int nDepth, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
-    
+
     // Methods exposed to external libraries
     static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
     static void ApplyDepthTextureState(int unit, int nFilter, bool clamp);
@@ -2354,7 +2356,7 @@ public:
 
         if (i == nTexStatesSize)
         {
-            
+
             s_TexStates.push_back(TS);
             s_TexStates[i].PostCreate();
         }

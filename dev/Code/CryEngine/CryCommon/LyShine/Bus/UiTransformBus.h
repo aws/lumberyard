@@ -172,18 +172,6 @@ public: // member functions
     //! Set the pivot point for the element
     virtual void SetPivotY(float pivot) = 0;
 
-    //! Get whether the element and all its children will be scaled to allow for the difference
-    //! between the authored canvas size and the actual viewport size.
-    //! @deprecated GetScaleToDevice has been deprecated in favor of GetScaleToDeviceMode
-    AZ_DEPRECATED(,"GetScaleToDeviceMode is deprecated, use GetScaleToDeviceMode instead")
-        bool GetScaleToDevice() { return Deprecated_GetScaleToDevice(); }
-
-    //! Set whether the element and all its children will be scaled to allow for the difference
-    //! between the authored canvas size and the actual viewport size.
-    //! @deprecated SetScaleToDevice has been deprecated in favor of SetScaleToDeviceMode
-    AZ_DEPRECATED(, "SetScaleToDevice is deprecated, use SetScaleToDeviceMode instead")
-        void SetScaleToDevice(bool scaleToDevice) { Deprecated_SetScaleToDevice(scaleToDevice); }
-
     //! Get how the element and all its children will be scaled to allow for the difference
     //! between the authored canvas size and the actual viewport size.
     virtual ScaleToDeviceMode GetScaleToDeviceMode() = 0;
@@ -357,22 +345,6 @@ public: // static member data
 
     //! Only one component on a entity can implement the events
     static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-
-public: // helpers for deprecated events
-
-    //! Method that allows the behavior context to expose this deprecated event
-    bool Deprecated_GetScaleToDevice()
-    {
-        AZ_WarningOnce("UiTransformBus", false, "GetScaleToDevice is deprecated.  Please use GetScaleToDeviceMode.");
-        return GetScaleToDeviceMode() != ScaleToDeviceMode::None;
-    }
-
-    //! Method that allows the behavior context to expose this deprecated event
-    void Deprecated_SetScaleToDevice(bool scaleToDevice)
-    {
-        AZ_WarningOnce("UiTransformBus", false, "SetScaleToDevice is deprecated.  Please use SetScaleToDeviceMode.");
-        SetScaleToDeviceMode(scaleToDevice ? ScaleToDeviceMode::UniformScaleToFit : ScaleToDeviceMode::None);
-    }
 };
 
 typedef AZ::EBus<UiTransformInterface> UiTransformBus;

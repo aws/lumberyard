@@ -162,24 +162,6 @@ public: // member functions
     //! Sets whether the center of a sliced image is filled
     virtual void SetFillCenter(bool fillCenter) = 0;
 
-    //! Deprecated. Use UiIndexableImageInterface::SetImageIndex instead.
-    virtual void SetSpriteSheetCellIndex(AZ::u32 index) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndex instead.
-    virtual const AZ::u32 GetSpriteSheetCellIndex() = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexCount instead.
-    virtual const AZ::u32 GetSpriteSheetCellCount() = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexAlias instead.
-    virtual AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::SetImageIndexAlias instead.
-    virtual void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) = 0;
-
-    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexFromAlias instead.
-    virtual AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) = 0;
-
 public: // static member data
 
     //! Only one component on a entity can implement the events

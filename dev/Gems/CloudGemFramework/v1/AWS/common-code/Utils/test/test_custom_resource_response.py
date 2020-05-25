@@ -11,10 +11,11 @@
 # $Revision: #1 $
 
 import unittest
-import mock
-import httplib
+from unittest import mock
+from six.moves import http_client
 
 from cgf_utils import custom_resource_response
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response(unittest.TestCase):
 
@@ -34,15 +35,15 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
             'test-data-key': 'test-data-value'
         }
 
-        physical_resource_id = 'test-physical-resoruce-id'
+        physical_resource_id = 'test-physical-resource-id'
 
-        with mock.patch('httplib.HTTPSConnection') as mock_HTTPSConnection:
+        with mock.patch('six.moves.http_client.HTTPSConnection') as mock_HTTPSConnection:
 
             mock_connection = mock_HTTPSConnection.return_value
             mock_getresponse = mock_connection.getresponse
 
             mock_response = mock.MagicMock()
-            mock_response.status = httplib.OK
+            mock_response.status = http_client.OK
             mock_getresponse.return_value = mock_response
 
             mock_request = mock_connection.request
@@ -50,8 +51,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
             custom_resource_response.succeed(event, context, data, physical_resource_id)
 
             mock_HTTPSConnection.assert_called_once_with('test-host')
-            mock_request.assert_called_with('PUT', '/test-path/test-path?test-arg=test-value', '{"Status": "SUCCESS", "StackId": "test-stack-id", "PhysicalResourceId": "test-physical-resoruce-id", "RequestId": "test-request-id", "Data": {"test-data-key": "test-data-value"}, "LogicalResourceId": "test-logical-resource-id"}')
-
+            expected_params = '{"Status": "SUCCESS", "PhysicalResourceId": "test-physical-resource-id", "StackId": "test-stack-id", ' \
+                              '"RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id", "Data": {"test-data-key": "test-data-value"}}'
+            mock_request.assert_called_with('PUT', '/test-path/test-path?test-arg=test-value', expected_params)
 
     def test_failed_without_physical_resource_id(self):
 
@@ -67,13 +69,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
 
         reason = 'test-reason'
 
-        with mock.patch('httplib.HTTPSConnection') as mock_HTTPSConnection:
+        with mock.patch('six.moves.http_client.HTTPSConnection') as mock_HTTPSConnection:
 
             mock_connection = mock_HTTPSConnection.return_value
             mock_getresponse = mock_connection.getresponse
 
             mock_response = mock.MagicMock()
-            mock_response.status = httplib.OK
+            mock_response.status = http_client.OK
             mock_getresponse.return_value = mock_response
 
             mock_request = mock_connection.request
@@ -81,8 +83,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
             custom_resource_response.fail(event, context, reason)
 
             mock_HTTPSConnection.assert_called_once_with('test-host')
-            mock_request.assert_called_with('PUT', '/test-path', '{"Status": "FAILED", "StackId": "test-stack-id", "Reason": "test-reason", "PhysicalResourceId": "test-request-id", "RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id"}')
-
+            expected_params = '{"Status": "FAILED", "StackId": "test-stack-id", "RequestId": "test-request-id", ' \
+                              '"LogicalResourceId": "test-logical-resource-id", "PhysicalResourceId": "test-request-id", "Reason": "test-reason"}'
+            mock_request.assert_called_with('PUT', '/test-path', expected_params)
 
     def test_failed_with_physical_resource_id(self):
 
@@ -99,13 +102,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
 
         reason = 'test-reason'
 
-        with mock.patch('httplib.HTTPSConnection') as mock_HTTPSConnection:
+        with mock.patch('six.moves.http_client.HTTPSConnection') as mock_HTTPSConnection:
 
             mock_connection = mock_HTTPSConnection.return_value
             mock_getresponse = mock_connection.getresponse
 
             mock_response = mock.MagicMock()
-            mock_response.status = httplib.OK
+            mock_response.status = http_client.OK
             mock_getresponse.return_value = mock_response
 
             mock_request = mock_connection.request
@@ -113,7 +116,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
             custom_resource_response.fail(event, context, reason)
 
             mock_HTTPSConnection.assert_called_once_with('test-host')
-            mock_request.assert_called_with('PUT', '/test-path', '{"Status": "FAILED", "StackId": "test-stack-id", "Reason": "test-reason", "PhysicalResourceId": "test-physical-resource-id", "RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id"}')
+            expected_params = '{"Status": "FAILED", "StackId": "test-stack-id", "RequestId": "test-request-id", "LogicalResourceId": ' \
+                              '"test-logical-resource-id", "PhysicalResourceId": "test-physical-resource-id", "Reason": "test-reason"}'
+
+            mock_request.assert_called_with('PUT', '/test-path', expected_params)
 
     def test_retry(self):
 
@@ -130,17 +136,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
 
         reason = 'test-reason'
 
-        with mock.patch('httplib.HTTPSConnection') as mock_HTTPSConnection:
+        with mock.patch('six.moves.http_client.HTTPSConnection') as mock_HTTPSConnection:
 
             mock_connection = mock_HTTPSConnection.return_value
             mock_getresponse = mock_connection.getresponse
 
             mock_failed_response = mock.MagicMock()
-            mock_failed_response.status = httplib.INTERNAL_SERVER_ERROR
+            mock_failed_response.status = http_client.INTERNAL_SERVER_ERROR
             mock_ok_response = mock.MagicMock()
-            mock_ok_response.status = httplib.OK
+            mock_ok_response.status = http_client.OK
             mock_exception_response = RuntimeError('test')
-            mock_getresponse.side_effect = [ mock_failed_response, mock_exception_response, mock_ok_response ]
+            mock_getresponse.side_effect = [mock_failed_response, mock_exception_response, mock_ok_response]
 
             mock_request = mock_connection.request
 
@@ -149,10 +155,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response
             mock_HTTPSConnection.assert_called_with('test-host')
             mock_HTTPSConnection.assert_called_with('test-host')
             mock_HTTPSConnection.assert_called_with('test-host')
-            self.assertEquals(mock_HTTPSConnection.call_count, 3)
+            self.assertEqual(mock_HTTPSConnection.call_count, 3)
 
-            mock_request.assert_called_with('PUT', '/test-path', '{"Status": "FAILED", "StackId": "test-stack-id", "Reason": "test-reason", "PhysicalResourceId": "test-physical-resource-id", "RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id"}')
-            mock_request.assert_called_with('PUT', '/test-path', '{"Status": "FAILED", "StackId": "test-stack-id", "Reason": "test-reason", "PhysicalResourceId": "test-physical-resource-id", "RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id"}')
-            mock_request.assert_called_with('PUT', '/test-path', '{"Status": "FAILED", "StackId": "test-stack-id", "Reason": "test-reason", "PhysicalResourceId": "test-physical-resource-id", "RequestId": "test-request-id", "LogicalResourceId": "test-logical-resource-id"}')
-            self.assertEquals(mock_request.call_count, 3)
+            expected_parameters = '{"Status": "FAILED", "StackId": "test-stack-id", "RequestId": "test-request-id", ' \
+                                  '"LogicalResourceId": "test-logical-resource-id", "PhysicalResourceId": "test-physical-resource-id", "Reason": "test-reason"}'
+
+            mock_request.assert_called_with('PUT', '/test-path', expected_parameters)
+            mock_request.assert_called_with('PUT', '/test-path', expected_parameters)
+            mock_request.assert_called_with('PUT', '/test-path', expected_parameters)
+            self.assertEqual(mock_request.call_count, 3)
 

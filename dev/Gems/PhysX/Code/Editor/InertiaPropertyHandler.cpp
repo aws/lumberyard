@@ -55,7 +55,7 @@ namespace PhysX
         {
             AzToolsFramework::VectorElement** elements = GUI->getElements();
 
-            AZ::Vector3 diagonalElements(elements[0]->GetValue(), elements[1]->GetValue(), elements[2]->GetValue());
+            AZ::Vector3 diagonalElements(aznumeric_cast<float>(elements[0]->GetValue()), aznumeric_cast<float>(elements[1]->GetValue()), aznumeric_cast<float>(elements[2]->GetValue()));
             instance = AZ::Matrix3x3::CreateDiagonal(diagonalElements);
         }
 

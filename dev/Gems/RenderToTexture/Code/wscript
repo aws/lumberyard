@@ -25,9 +25,7 @@ def build(bld):
 
     bld.DefineGem(
         includes =  [
-            '.',
-            bld.ThirdPartyPath('boost'),
-            bld.Path('Code/CryEngine/CryCommon'),
+
             bld.Path('Code/CryEngine'),
             bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/Cry3DEngine'),
@@ -54,9 +52,6 @@ def build(bld):
             use	        = [ 'AzToolsFramework' ],
 
             includes    = [
-                '.',
-                bld.ThirdPartyPath('boost'),
-                bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine'),
                 bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine/Cry3DEngine'),

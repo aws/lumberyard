@@ -11,6 +11,7 @@
  */
 
 #include <AzCore/Module/ModuleManager.h>
+#include <AzCore/Module/Internal/ModuleManagerSearchPathTool.h>
 
 #include <AzCore/Module/Module.h>
 #include <AzCore/RTTI/AttributeReader.h>
@@ -559,9 +560,14 @@ namespace AZ
     {
         LoadModulesResult results;
 
+        Internal::ModuleManagerSearchPathTool moduleSearchPathHelper;
+
         // Load DLLs specified in the application descriptor
         for (const auto& moduleDescriptor : modules)
         {
+           // For each module that is loaded, attempt to set the module's folder as a path for dependent module resolution
+            moduleSearchPathHelper.SetModuleSearchPath(moduleDescriptor);
+
             LoadModuleOutcome result = LoadDynamicModule(moduleDescriptor.m_dynamicLibraryPath.c_str(), lastStepToPerform, maintainReferences);
             results.emplace_back(AZStd::move(result));
         }

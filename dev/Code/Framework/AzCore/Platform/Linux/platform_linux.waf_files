@@ -68,6 +68,11 @@
             "AzCore/Memory/OverrunDetectionAllocator_Platform.h"
         ],
 
+        "Module/Internal/Platform/Linux":
+        [
+            "AzCore/Module/Internal/ModuleManagerSearchPathTool_Linux.cpp"
+        ],
+
         "Math/Internal/Platform/Linux":
         [
             "AzCore/Math/Internal/MathTypes_Linux.h",

@@ -112,6 +112,8 @@ namespace EMotionFX
         });
 
         m_addSimulatedObjectButton = new QPushButton("Add simulated object");
+        m_addSimulatedObjectButton->setObjectName("addSimulatedObjectButton");
+
         connect(m_addSimulatedObjectButton, &QPushButton::clicked, this, [this]()
         {
             m_actionManager->OnAddNewObjectAndAddJoints(m_actor, /*selectedJoints=*/{}, /*addChildJoints=*/false, mDock);

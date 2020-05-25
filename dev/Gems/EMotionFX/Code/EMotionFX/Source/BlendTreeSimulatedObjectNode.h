@@ -36,14 +36,14 @@ namespace EMotionFX
             INPUTPORT_STIFFNESSFACTOR = 1,
             INPUTPORT_GRAVITYFACTOR = 2,
             INPUTPORT_DAMPINGFACTOR = 3,
-            INPUTPORT_WEIGHT = 4,
+            INPUTPORT_ACTIVE = 4,
             OUTPUTPORT_POSE = 0
         };
 
         enum
         {
             PORTID_INPUT_POSE = 0,
-            PORTID_INPUT_WEIGHT = 1,
+            PORTID_INPUT_ACTIVE = 1,
             PORTID_INPUT_STIFFNESSFACTOR = 2,
             PORTID_INPUT_GRAVITYFACTOR = 3,
             PORTID_INPUT_DAMPINGFACTOR = 4,

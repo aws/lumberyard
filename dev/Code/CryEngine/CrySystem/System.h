@@ -36,6 +36,7 @@
 #include <ThermalInfo.h>
 
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 namespace AzFramework
 {
@@ -403,6 +404,7 @@ class CSystem
     , public IWindowMessageHandler
     , public AZ::RenderNotificationsBus::Handler
     , public CrySystemRequestBus::Handler
+    , private AzFramework::Terrain::TerrainDataNotificationBus::Handler
 {
 public:
 
@@ -542,10 +544,8 @@ public:
     IViewSystem* GetIViewSystem();
     ILevelSystem* GetILevelSystem();
     IBudgetingSystem* GetIBudgetingSystem()  { return(m_pIBudgetingSystem); }
-    IFlowSystem* GetIFlowSystem() { return m_env.pFlowSystem; }
     IDialogSystem* GetIDialogSystem() { return m_env.pDialogSystem; }
     DRS::IDynamicResponseSystem* GetIDynamicResponseSystem() { return m_env.pDynamicResponseSystem; }
-    IHardwareMouse* GetIHardwareMouse() { return m_env.pHardwareMouse; }
     ISystemEventDispatcher* GetISystemEventDispatcher() { return m_pSystemEventDispatcher; }
     ITestSystem* GetITestSystem() { return m_pTestSystem; }
     IThreadTaskManager* GetIThreadTaskManager();
@@ -580,7 +580,6 @@ public:
     };
 
     void        SetIGame(IGame* pGame) {m_env.pGame = pGame; }
-    void    SetIFlowSystem(IFlowSystem* pFlowSystem) { m_env.pFlowSystem = pFlowSystem; }
     void    SetIDialogSystem(IDialogSystem* pDialogSystem) { m_env.pDialogSystem = pDialogSystem; }
     void SetIDynamicResponseSystem(DRS::IDynamicResponseSystem* pDynamicResponseSystem) { m_env.pDynamicResponseSystem = pDynamicResponseSystem; }
     void    SetIMaterialEffects(IMaterialEffects* pMaterialEffects) { m_env.pMaterialEffects = pMaterialEffects; }
@@ -1044,6 +1043,8 @@ private: // ------------------------------------------------------
     ICVar* m_level_load_screen_sequence_fixed_fps;
     ICVar* m_game_load_screen_max_fps;
     ICVar* m_level_load_screen_max_fps;
+    ICVar* m_game_load_screen_minimum_time{};
+    ICVar* m_level_load_screen_minimum_time{};
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
 
     ICVar* m_sys_initpreloadpacks;
@@ -1273,6 +1274,13 @@ private:
     std::vector<IErrorObserver*> m_errorObservers;
     ESystemGlobalState m_systemGlobalState;
     static const char* GetSystemGlobalStateName(const ESystemGlobalState systemGlobalState);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // AzFramework::Terrain::TerrainDataNotificationBus START
+    void OnTerrainDataCreateBegin() override;
+    void OnTerrainDataDestroyBegin() override;
+    // AzFramework::Terrain::TerrainDataNotificationBus END
+    ///////////////////////////////////////////////////////////////////////////
 
 public:
     void InitLocalization();

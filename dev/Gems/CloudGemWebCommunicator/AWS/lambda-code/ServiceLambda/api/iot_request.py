@@ -9,15 +9,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
-import registration_shared
+from . import registration_shared
 import os
 
 def force_disconnect(client_id):
-    print 'Attempting to force disconnect on client {}'.format(client_id)
+    print('Attempting to force disconnect on client {}'.format(client_id))
     endpoint, endpoint_port = registration_shared.get_endpoint_and_port('WEBSOCKET')
 
-    print 'Using endpoint {}:{}'.format(endpoint, endpoint_port)
+    print('Using endpoint {}:{}'.format(endpoint, endpoint_port))
 
     iot_client = AWSIoTMQTTClient(client_id, useWebsocket=True)
     iot_client.configureEndpoint(endpoint, endpoint_port)
@@ -30,11 +31,11 @@ def force_disconnect(client_id):
     session_token = os.environ.get('AWS_SESSION_TOKEN')
     iot_client.configureIAMCredentials(AWSAccessKeyID=access_key, AWSSecretAccessKey=secret_key, AWSSessionToken=session_token)
 
-    print 'Configured credentials, attempting connect...'
+    print('Configured credentials, attempting connect...')
     response = iot_client.connect()
 
-    print 'Connect returns {}'.format(response)
+    print('Connect returns {}'.format(response))
 
     if response:
-        print 'Disconnecting..'
+        print('Disconnecting..')
         iot_client.disconnect()

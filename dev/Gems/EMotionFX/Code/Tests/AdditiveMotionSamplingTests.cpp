@@ -120,7 +120,7 @@ namespace EMotionFX
             // Sample the motion.
             Transform transform;
             transform.Zero(); // Set all to Zero, not identity as this methods might return identity and we want to verify that.
-            m_motion->CalcNodeTransform(m_motionInstance, &transform, m_actor, skeleton->GetNode(jointIndex), /*timeValue=*/0.0f, /*retarget=*/false);
+            m_motion->CalcNodeTransform(m_motionInstance, &transform, m_actor.get(), skeleton->GetNode(jointIndex), /*timeValue=*/0.0f, /*enableRetargeting=*/false);
 
             const Transform& bindTransform = bindPose->GetLocalSpaceTransform(jointIndex);
             EXPECT_THAT(transform, IsClose(bindTransform));
@@ -129,7 +129,7 @@ namespace EMotionFX
         // Sample the motion for the foot node.
         Transform footTransform;
         footTransform.Zero(); // Set all to Zero, not identity as this methods might return identity and we want to verify that.
-        m_motion->CalcNodeTransform(m_motionInstance, &footTransform, m_actor, skeleton->GetNode(m_footIndex), /*timeValue=*/0.0f, /*retarget=*/false);
+        m_motion->CalcNodeTransform(m_motionInstance, &footTransform, m_actor.get(), skeleton->GetNode(m_footIndex), /*timeValue=*/0.0f, /*enableRetargeting=*/false);
 
         // Make sure we get an identity transform back as we try to sample a node that doesn't have a submotion in an additive motion.
         Transform identityTransform;
@@ -142,18 +142,16 @@ namespace EMotionFX
         // Make sure we do not get an identity transform back now that it is a non-additive motion.
         footTransform.Zero(); // Set all to Zero, not identity as this methods might return identity and we want to verify that.
         const Transform& expectedFootTransform = m_actorInstance->GetTransformData()->GetCurrentPose()->GetLocalSpaceTransform(m_footIndex);
-        m_motion->CalcNodeTransform(m_motionInstance, &footTransform, m_actor, skeleton->GetNode(m_footIndex), /*timeValue=*/0.0f, /*retarget=*/false);
+        m_motion->CalcNodeTransform(m_motionInstance, &footTransform, m_actor.get(), skeleton->GetNode(m_footIndex), /*timeValue=*/0.0f, /*enableRetargeting=*/false);
         EXPECT_THAT(footTransform, IsClose(expectedFootTransform));
     }
 
     TEST_F(MotionSamplingFixture, SampleAdditivePose)
     {
-        const Skeleton* skeleton = m_actor->GetSkeleton();
-
         // Sample a pose from the motion.
         Pose pose;
         pose.LinkToActorInstance(m_actorInstance);
-        pose.InitFromBindPose(m_actor);
+        pose.InitFromBindPose(m_actor.get());
         pose.Zero();
         m_motion->Update(&pose, &pose, m_motionInstance);
      

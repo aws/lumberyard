@@ -42,5 +42,10 @@ namespace AzQtComponents
     MappedPoint AZ_QT_COMPONENTS_API MappedCursorPosition();
 
     AZ_QT_COMPONENTS_API void bringWindowToTop(QWidget* widget);
+
+    inline bool isWin10()
+    {
+        return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
+    }
 } // namespace AzQtComponents
 

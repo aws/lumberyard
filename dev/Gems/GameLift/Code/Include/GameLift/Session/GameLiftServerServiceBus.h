@@ -11,13 +11,14 @@
 */
 #pragma once
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
 
 #include <GridMate/Session/SessionServiceBus.h>
 
 #pragma warning(push)
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
 #include <aws/gamelift/server/GameLiftServerAPI.h>
+#include <aws/gamelift/server/model/UpdateGameSession.h>
 #pragma warning(pop)
 
 namespace GridMate
@@ -34,8 +35,17 @@ namespace GridMate
         // Start hosting GameLift session, can only be called from GameLift ec2 instance
         virtual GridSession* HostSession(const GameLiftSessionParams& params, const CarrierDesc& carrierDesc) = 0;
 
+        // Stop hosted GameLift game sessison.
+        virtual void ShutdownSession(const GridSession* gridSession) = 0;
+
         // Retrieves GameLift specific session from base session, or nullptr if given generic session object is not GameLift session
         virtual GameLiftServerSession* QueryGameLiftSession(const GridSession* session) = 0;
+
+        // Starts a matchmaking backfill request with player data from player sessions.
+        virtual bool StartMatchmakingBackfill(const GridSession* gameSession, AZStd::string& matchmakingTicketId, bool checkForAutoBackfill) = 0;
+
+        // Stops a matchmaking backfill request in flight.
+        virtual bool StopMatchmakingBackfill(const GridSession* gameSession, const AZStd::string& matchmakingTicketId) = 0;
     };
     typedef AZ::EBus<GameLiftServerServiceInterface> GameLiftServerServiceBus;
 
@@ -59,6 +69,9 @@ namespace GridMate
 
             virtual void OnGameLiftGameSessionStarted(const Aws::GameLift::Server::Model::GameSession&) {}
             virtual void OnGameLiftServerWillTerminate() {}
+
+            // Called when backfilling players via matchmaking 
+            virtual void OnGameLiftGameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) {}
         };
 
         typedef AZ::EBus<GameLiftServerSystemEvents> GameLiftServerSystemEventsBus;

@@ -30,8 +30,8 @@ namespace EMotionFX
         MCORE_MEMORYOBJECTCATEGORY(AnimGraphRefCountedData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_REFCOUNTEDDATA);
 
     public:
-        MCORE_INLINE AnimGraphRefCountedData() {}
-        MCORE_INLINE ~AnimGraphRefCountedData() {}
+        MCORE_INLINE AnimGraphRefCountedData() = default;
+        MCORE_INLINE ~AnimGraphRefCountedData() = default;
 
         MCORE_INLINE AnimGraphEventBuffer& GetEventBuffer()                     { return mEventBuffer; }
         MCORE_INLINE const AnimGraphEventBuffer& GetEventBuffer() const         { return mEventBuffer; }
@@ -53,4 +53,4 @@ namespace EMotionFX
         Transform               mTrajectoryDelta;
         Transform               mTrajectoryDeltaMirrored;
     };
-}
+} // namespace EMotionFX

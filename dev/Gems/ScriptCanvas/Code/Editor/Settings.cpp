@@ -253,9 +253,15 @@ namespace ScriptCanvasEditor
                 classElement.AddElementWithData(context, "DropSplicingConfiguration", dropSplicingConfiguration);
             }
 
-            if (classElement.GetVersion() == 11)
+            if (classElement.GetVersion() <= 11)
             {
                 classElement.RemoveElementByName(AZ::Crc32("ConstructPresets"));
+            }
+
+            if (classElement.GetVersion() <= 14)
+            {
+                classElement.RemoveElementByName(AZ_CRC("m_showPreviewMessage", 0x375b279b));
+                classElement.RemoveElementByName(AZ_CRC("m_showExcludedNodes", 0x4c802d0c));
             }
 
             return true;
@@ -277,6 +283,12 @@ namespace ScriptCanvasEditor
                     ->Field("Enabled", &ToggleableConfiguration::m_enabled)
                     ->Field("TimeMS", &ToggleableConfiguration::m_timeMS)
                 ;
+
+                serialize->Class<AutoSaveSettings>()
+                    ->Version(1)
+                    ->Field("Enabled", &AutoSaveSettings::m_enabled)
+                    ->Field("TimeSeconds", &AutoSaveSettings::m_timeSeconds)
+                    ;
 
                 serialize->Class<ShakeToDespliceSettings>()
                     ->Version(1)
@@ -300,10 +312,8 @@ namespace ScriptCanvasEditor
                 ;
 
                 serialize->Class<ScriptCanvasEditorSettings>()
-                    ->Version(14, ScriptCanvasEditorSettings::VersionConverter)
-                    ->Field("m_showPreviewMessage", &ScriptCanvasEditorSettings::m_showPreviewMessage)
+                    ->Version(16, ScriptCanvasEditorSettings::VersionConverter)
                     ->Field("m_snapDistance", &ScriptCanvasEditorSettings::m_snapDistance)
-                    ->Field("m_showExcludedNodes", &ScriptCanvasEditorSettings::m_showExcludedNodes)
                     ->Field("m_pinnedDataTypes", &ScriptCanvasEditorSettings::m_pinnedDataTypes)
                     ->Field("m_allowBookmarkViewpointControl", &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl)
                     ->Field("DragCouplingConfiguration", &ScriptCanvasEditorSettings::m_dragNodeCouplingConfig)
@@ -314,7 +324,7 @@ namespace ScriptCanvasEditor
                     ->Field("VariableColumnSorting", &ScriptCanvasEditorSettings::m_variablePanelSorting)
                     ->Field("ShowWarnings", &ScriptCanvasEditorSettings::m_showValidationWarnings)
                     ->Field("ShowErrors", &ScriptCanvasEditorSettings::m_showValidationErrors)
-                    ->Field("AllowNodeNudging", &ScriptCanvasEditorSettings::m_allowNodeNudgingOnSplice)
+                    ->Field("AllowNodeNudging", &ScriptCanvasEditorSettings::m_allowNodeNudging)
                     ->Field("AlignmentTime", &ScriptCanvasEditorSettings::m_alignmentTimeMS)
                     ->Field("EdgePanningSettings", &ScriptCanvasEditorSettings::m_edgePanningSettings)
                     ->Field("ConstructPresets", &ScriptCanvasEditorSettings::m_constructPresets)
@@ -333,6 +343,15 @@ namespace ScriptCanvasEditor
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ToggleableConfiguration::m_timeMS, "Time MS", "Controls how long until the action takes place.")
                             ->Attribute(AZ::Edit::Attributes::Suffix, "ms")
                             ->Attribute(AZ::Edit::Attributes::Min, 1)
+                        ;
+
+                    editContext->Class<AutoSaveSettings>("Auto Save Configuration", "A pair of configuration values for actions that can be enabled/disabled and occur after a certain amount of time.")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &AutoSaveSettings::m_enabled, "Enabled", "Controls whether or not the action is Enabled.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &AutoSaveSettings::m_timeSeconds, "Time Seconds", "Controls how long until the action takes place.")
+                        ->Attribute(AZ::Edit::Attributes::Suffix, "seconds")
+                        ->Attribute(AZ::Edit::Attributes::Min, 10)
                         ;
 
                     editContext->Class<ShakeToDespliceSettings>("Shake To Desplice", "Settings that control various parameters of the shake to desplice feature")
@@ -382,17 +401,15 @@ namespace ScriptCanvasEditor
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showPreviewMessage, "Show Preview Message", "Show the Script Canvas (PREVIEW) welcome message.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_snapDistance, "Connection Snap Distance", "The distance from a slot under which connections will snap to it.")
                         ->Attribute(AZ::Edit::Attributes::Min, 10.0)
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showExcludedNodes, "Show nodes excluded from preview", "Show nodes that have been excluded from preview because they may not work correctly in Script Canvas yet.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl, "Bookmark Zooming", "Will cause the bookmarks to force the viewport into the state determined by the bookmark type\nBookmark Anchors - The viewport that exists when the bookmark is created.\nNode Groups - The area the Node Group covers")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeCouplingConfig, "Node Coupling Configuration", "Controls for managing Node Coupling.\nNode Coupling is when you are dragging a node and leave it hovered over another Node, we will try to connect the sides you overlapped with each other.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeSplicingConfig, "Drag Node Splicing Configuration", "Controls for managing Node Splicing on a Drag.\nNode Splicing on a Drag will let you drag a node onto a connection, and splice that node onto the specified connection.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dropNodeSplicingConfig, "Drop Node Splicing Configuration", "Controls for managing Node Splicing on a Drag.\nNode Splicing on a drop will let you drop a node onto a connection from the Node Palette, and splice that node onto the specified connection.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_autoSaveConfig, "AutoSave Configuration", "Controls for managing Auto Saving.\nAuto Saving will occur after the specified time of inactivity on a graph.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_shakeDespliceConfig, "Shake To Desplice", "Settings that controls various parameters of the Shake to Desplice feature")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowNodeNudgingOnSplice, "Allow Node Nudging On Splice", "Controls whether or not nodes that are spliced onto connections will nudge other nodes out of the way to make room for the spliced node.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowNodeNudging, "Allow Node Nudging", "Controls whether or not nodes will attempt to nudge each other out of the way under various interactions.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_alignmentTimeMS, "Alignment Time", "Controls the amount of time nodes will take to slide into place when performing alignment commands")
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_edgePanningSettings, "Edge Panning Settings", "Settings that control how the panning at the edge of the scene will be handled.")
@@ -407,15 +424,13 @@ namespace ScriptCanvasEditor
         
         ScriptCanvasEditorSettings::ScriptCanvasEditorSettings()
             : m_snapDistance(10.0)
-            , m_showPreviewMessage(true)
-            , m_showExcludedNodes(true)
             , m_allowBookmarkViewpointControl(true)
-            , m_allowNodeNudgingOnSplice(true)
+            , m_allowNodeNudging(true)
             , m_rememberOpenCanvases(true)
             , m_dragNodeCouplingConfig(true, 750)
             , m_dragNodeSplicingConfig(true, 1000)
             , m_dropNodeSplicingConfig(true, 1000)
-            , m_autoSaveConfig(false, 2000)
+            , m_autoSaveConfig(false, 10)
             , m_pinnedDataTypes({
                 ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Number()),
                 ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Boolean()),

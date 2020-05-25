@@ -49,15 +49,15 @@ namespace EMStudio
         mUseAnimation = true;
         mDashOffset = 0.0f;
         mScale = 1.0f;
-        mScrollOffset = QPoint(0.0f, 0.0f);
-        mScalePivot = QPoint(0.0f, 0.0f);
+        mScrollOffset = QPoint(0, 0);
+        mScalePivot = QPoint(0, 0);
         mMinStepSize = 1;
         mMaxStepSize = 75;
         mEntryNode      = nullptr;
 
         // init connection creation
-        mConStartOffset = QPoint(0.0f, 0.0f);
-        mConEndOffset = QPoint(0.0f, 0.0f);
+        mConStartOffset = QPoint(0, 0);
+        mConEndOffset = QPoint(0, 0);
         mConPortNr = MCORE_INVALIDINDEX32;
         mConIsInputPort = true;
         mConNode = nullptr;  // nullptr when no connection is being created
@@ -69,8 +69,8 @@ namespace EMStudio
         mReplaceTransitionTail = nullptr;
         mReplaceTransitionSourceNode = nullptr;
         mReplaceTransitionTargetNode = nullptr;
-        mReplaceTransitionStartOffset = QPoint(0.0f, 0.0f);
-        mReplaceTransitionEndOffset = QPoint(0.0f, 0.0f);
+        mReplaceTransitionStartOffset = QPoint(0, 0);
+        mReplaceTransitionEndOffset = QPoint(0, 0);
 
         // setup scroll interpolator
         mStartScrollOffset = QPointF(0.0f, 0.0f);
@@ -466,7 +466,7 @@ namespace EMStudio
 
 
         // calculate the line direction
-        AZ::Vector2 lineDir = AZ::Vector2(end.x(), end.y()) - AZ::Vector2(start.x(), start.y());
+        AZ::Vector2 lineDir = AZ::Vector2(aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y())) - AZ::Vector2(aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()));
         float length = lineDir.GetLength();
         lineDir.Normalize();
 
@@ -525,7 +525,7 @@ namespace EMStudio
                 while (x < maxX)
                 {
                     const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
-                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+                    const int32 y = aznumeric_cast<int32>(startY + (endY - startY) * t); // calculate the y coordinate
                     painter.drawLine(lastX, lastY, x, y);       // draw the line
                     lastX = x;
                     lastY = y;
@@ -533,7 +533,7 @@ namespace EMStudio
                 }
 
                 const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
-                const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+                const int32 y = aznumeric_cast<int32>(startY + (endY - startY) * t); // calculate the y coordinate
                 painter.drawLine(lastX, lastY, maxX, y);        // draw the line
             }
             else // special case where there is just one line up
@@ -570,7 +570,7 @@ namespace EMStudio
                 while (y < maxY)
                 {
                     const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
-                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+                    const int32 x = aznumeric_cast<int32>(startX + (endX - startX) * t); // calculate the y coordinate
                     painter.drawLine(lastX, lastY, x, y);       // draw the line
                     lastX = x;
                     lastY = y;
@@ -578,7 +578,7 @@ namespace EMStudio
                 }
 
                 const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
-                const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+                const int32 x = aznumeric_cast<int32>(startX + (endX - startX) * t); // calculate the y coordinate
                 painter.drawLine(lastX, lastY, x, maxY);        // draw the line
             }
             else // special case where there is just one line up
@@ -751,7 +751,7 @@ namespace EMStudio
 
         // calculate the connection stepsize
         // the higher the value, the less lines it renders (so faster)
-        int32 stepSize = ((1.0f / (mScale * (mScale * 1.75f))) * 10) - 7;
+        int32 stepSize = aznumeric_cast<int32>(((1.0f / (mScale * (mScale * 1.75f))) * 10) - 7);
         stepSize = MCore::Clamp<int32>(stepSize, mMinStepSize, mMaxStepSize);
 
         QRect scaledVisibleRect = mTransform.inverted().mapRect(visibleRect);
@@ -795,7 +795,7 @@ namespace EMStudio
         RenderCreateConnection(painter);
 
         RenderReplaceTransition(painter);
-        StateConnection::RenderInterruptedTransitions(painter, m_graphWidget->GetPlugin()->GetAnimGraphModel(), *this);
+        StateConnection::RenderInterruptedTransitions(painter, GetAnimGraphModel(), *this);
 
         // render the entry state arrow
         RenderEntryPoint(painter, mEntryNode);
@@ -881,7 +881,7 @@ namespace EMStudio
 
     void NodeGraph::SelectNodesInRect(const QRect& rect, bool overwriteCurSelection, bool toggleMode)
     {
-        const QItemSelectionModel& selectionModel = m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel();
+        QItemSelectionModel& selectionModel = GetAnimGraphModel().GetSelectionModel();
         const QModelIndexList oldSelectionModelIndices = selectionModel.selectedRows();
 
         QItemSelection newSelection;
@@ -905,7 +905,7 @@ namespace EMStudio
             }
         }
 
-        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(newSelection, QItemSelectionModel::Current | QItemSelectionModel::Rows | QItemSelectionModel::Clear | QItemSelectionModel::Select);
+        selectionModel.select(newSelection, QItemSelectionModel::Current | QItemSelectionModel::Rows | QItemSelectionModel::Clear | QItemSelectionModel::Select);
     }
 
     void NodeGraph::SelectAllNodes()
@@ -927,7 +927,7 @@ namespace EMStudio
             }
         }
 
-        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(selection, QItemSelectionModel::Current | QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+        GetAnimGraphModel().GetSelectionModel().select(selection, QItemSelectionModel::Current | QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     }
 
 
@@ -958,7 +958,7 @@ namespace EMStudio
 
     void NodeGraph::SelectConnectionCloseTo(const QPoint& point, bool overwriteCurSelection, bool toggle)
     {
-        const QItemSelectionModel& selectionModel = m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel();
+        QItemSelectionModel& selectionModel = GetAnimGraphModel().GetSelectionModel();
         const QModelIndexList oldSelectionModelIndices = selectionModel.selectedRows();
         QItemSelection newSelection;
 
@@ -977,7 +977,7 @@ namespace EMStudio
             }
         }
 
-        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(newSelection, QItemSelectionModel::Current | QItemSelectionModel::Rows | QItemSelectionModel::Clear | QItemSelectionModel::Select);
+        selectionModel.select(newSelection, QItemSelectionModel::Current | QItemSelectionModel::Rows | QItemSelectionModel::Clear | QItemSelectionModel::Select);
     }
 
     void NodeGraph::RenderBackground(QPainter& painter, int32 width, int32 height)
@@ -1005,7 +1005,7 @@ namespace EMStudio
         // calculate the alpha
         float scale = mScale * mScale * 1.5f;
         scale = MCore::Clamp<float>(scale, 0.0f, 1.0f);
-        const int32 alpha = MCore::CalcCosineInterpolationWeight(scale) * 255;
+        const int32 alpha = aznumeric_cast<int32>(MCore::CalcCosineInterpolationWeight(scale) * 255);
 
         if (alpha < 10)
         {
@@ -1146,7 +1146,7 @@ namespace EMStudio
         // check first if any of the points are inside the rect
         if (outX == nullptr && outY == nullptr)
         {
-            if (b.contains(QPoint(x1, y1)) || b.contains(QPoint(x2, y2)))
+            if (b.contains(QPoint(aznumeric_cast<int>(x1), aznumeric_cast<int>(y1))) || b.contains(QPoint(aznumeric_cast<int>(x2), aznumeric_cast<int>(y2))))
             {
                 return true;
             }
@@ -1487,7 +1487,7 @@ namespace EMStudio
 
         if (sceneRect.isEmpty() == false)
         {
-            const float border = 10.0f * (1.0f / mScale);
+            const int border = aznumeric_cast<int>(10.0f * (1.0f / mScale));
             sceneRect.adjust(-border, -border, border, border);
             ZoomOnRect(sceneRect, width, height, animate);
         }
@@ -1649,11 +1649,11 @@ namespace EMStudio
                     connection->CalcStartAndEndPoints(start, end);
 
                     // calculate the normalized direction vector of the transition from tail to head
-                    AZ::Vector2 dir = AZ::Vector2(end.x() - start.x(), end.y() - start.y());
+                    AZ::Vector2 dir = AZ::Vector2(aznumeric_cast<float>(end.x() - start.x()), aznumeric_cast<float>(end.y() - start.y()));
                     dir.Normalize();
 
-                    AZ::Vector2 newStart = AZ::Vector2(start.x(), start.y()) + dir * (float)circleRadius;
-                    painter.drawEllipse(QPoint(newStart.GetX(), newStart.GetY()), circleRadius, circleRadius);
+                    AZ::Vector2 newStart = AZ::Vector2(aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y())) + dir * (float)circleRadius;
+                    painter.drawEllipse(QPoint(aznumeric_cast<int>(newStart.GetX()), aznumeric_cast<int>(newStart.GetY())), circleRadius, circleRadius);
                     return;
                 }
             }
@@ -1848,10 +1848,10 @@ namespace EMStudio
 
             // calc the real start point
             double realX, realY;
-            if (NodeGraph::LineIntersectsRect(sourceRect, start.x(), start.y(), end.x(), end.y(), &realX, &realY))
+            if (NodeGraph::LineIntersectsRect(sourceRect, aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()), &realX, &realY))
             {
-                start.setX(realX);
-                start.setY(realY);
+                start.setX(aznumeric_cast<int>(realX));
+                start.setY(aznumeric_cast<int>(realY));
             }
 
             painter.drawLine(start, end);
@@ -1950,7 +1950,7 @@ namespace EMStudio
                     source = FindGraphNode(transition->GetSourceNode());
                 }
                 GraphNode* target = FindGraphNode(transition->GetTargetNode());
-                StateConnection* connection = new StateConnection(modelIndex, source, target, transition->GetIsWildcardTransition());
+                StateConnection* connection = new StateConnection(this, modelIndex, source, target, transition->GetIsWildcardTransition());
                 connection->SetIsDisabled(transition->GetIsDisabled());
                 connection->SetIsSynced(transition->GetSyncMode() != EMotionFX::AnimGraphObject::SYNCMODE_DISABLED);
                 target->AddConnection(connection);
@@ -1965,7 +1965,7 @@ namespace EMStudio
                 GraphNode* target = FindGraphNode(parentNode);
                 const uint32 sourcePort = connection->GetSourcePort();
                 const uint32 targetPort = connection->GetTargetPort();
-                NodeConnection* visualConnection = new NodeConnection(modelIndex, target, targetPort, source, sourcePort);
+                NodeConnection* visualConnection = new NodeConnection(this, modelIndex, target, targetPort, source, sourcePort);
                 target->AddConnection(visualConnection);
                 break;
             }
@@ -2031,9 +2031,7 @@ namespace EMStudio
             {
                 const QModelIndex parentModelIndex = modelIndex.model()->parent(modelIndex);
                 GraphNode* target = FindGraphNode(parentModelIndex);
-
-                const EMotionFX::BlendTreeConnection* connection = modelIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
-                target->RemoveConnection(connection);
+                target->RemoveConnection(modelIndex);
                 break;
             }
             default:
@@ -2140,64 +2138,6 @@ namespace EMStudio
         }
         default:
             break;
-        }
-    }
-
-    void NodeGraph::OnSelectionModelChanged(const QModelIndexList& selected, const QModelIndexList& deselected)
-    {
-        for (const QModelIndex& selectedIndex : selected)
-        {
-            const AnimGraphModel::ModelItemType itemType = selectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
-            switch (itemType)
-            {
-            case AnimGraphModel::ModelItemType::NODE:
-            {
-                GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(selectedIndex);
-                if (it != m_graphNodeByModelIndex.end())
-                {
-                    it->second->SetIsSelected(true);
-                }
-                break;
-            }
-            case AnimGraphModel::ModelItemType::CONNECTION:
-            {
-                NodeConnection* visualNodeConnection = FindNodeConnection(selectedIndex);
-                if (visualNodeConnection)
-                {
-                    visualNodeConnection->SetIsSelected(true);
-                }
-                break;
-            }
-            default:
-                break;
-            }
-        }
-        for (const QModelIndex& deselectedIndex : deselected)
-        {
-            const AnimGraphModel::ModelItemType itemType = deselectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
-            switch (itemType)
-            {
-            case AnimGraphModel::ModelItemType::NODE:
-            {
-                GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(deselectedIndex);
-                if (it != m_graphNodeByModelIndex.end())
-                {
-                    it->second->SetIsSelected(false);
-                }
-                break;
-            }
-            case AnimGraphModel::ModelItemType::CONNECTION:
-            {
-                NodeConnection* visualNodeConnection = FindNodeConnection(deselectedIndex);
-                if (visualNodeConnection)
-                {
-                    visualNodeConnection->SetIsSelected(false);
-                }
-                break;
-            }
-            default:
-                break;
-            }
         }
     }
 
@@ -2413,6 +2353,11 @@ namespace EMStudio
         }
     }
 
+    AnimGraphModel& NodeGraph::GetAnimGraphModel() const
+    {
+        return m_graphWidget->GetPlugin()->GetAnimGraphModel();
+    }
+
     void NodeGraph::Reinit()
     {
         AZ_Assert(m_currentModelIndex.isValid(), "Expected valid model index");
@@ -2463,7 +2408,7 @@ namespace EMStudio
                     source = FindGraphNode(transition->GetSourceNode());
                 }
                 GraphNode* target = FindGraphNode(transition->GetTargetNode());
-                StateConnection* connection = new StateConnection(modelIndex, source, target, transition->GetIsWildcardTransition());
+                StateConnection* connection = new StateConnection(this, modelIndex, source, target, transition->GetIsWildcardTransition());
                 connection->SetIsDisabled(transition->GetIsDisabled());
                 connection->SetIsSynced(transition->GetSyncMode() != EMotionFX::AnimGraphObject::SYNCMODE_DISABLED);
                 target->AddConnection(connection);
@@ -2503,11 +2448,6 @@ namespace EMStudio
                 }
             }
         }
-
-        // Update the selection
-        AnimGraphModel& animGraphModel = m_graphWidget->GetPlugin()->GetAnimGraphModel();
-        QModelIndexList selectedIndexes = animGraphModel.GetSelectionModel().selectedRows();
-        OnSelectionModelChanged(selectedIndexes, QModelIndexList());
 
         const QRect& graphWidgetRect = m_graphWidget->geometry();
         SetScalePivot(QPoint(graphWidgetRect.width() / 2, graphWidgetRect.height() / 2));

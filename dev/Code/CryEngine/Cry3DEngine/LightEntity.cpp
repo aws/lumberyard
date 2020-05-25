@@ -23,6 +23,9 @@
 #include "ClipVolumeManager.h"
 #include "ShadowCache.h"
 
+#include <MathConversion.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 PodArray<SPlaneObject> CLightEntity::s_lstTmpCastersHull;
 
 #define MIN_SHADOW_RES_OMNI_LIGHT 64
@@ -1400,13 +1403,11 @@ void CLightEntity::FillFrustumCastersList_SUN(ShadowMapFrustum* pFr, int dwAllow
         pFr->bBlendFrustum = true;
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    const float terrainSize = static_cast<float>(CTerrain::GetTerrainSize());
-#else
-    const float terrainSize = 0.0f;
-#endif
-
-    Vec3 vMapCenter = Vec3(terrainSize * 0.5f, terrainSize * 0.5f, terrainSize * 0.25f);
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    const AZ::Vector3 terrainCenter = terrainAabb.GetCenter();
+    const float terrainSize = AZ::GetMax(terrainAabb.GetWidth(), terrainAabb.GetHeight());
+    Vec3 vMapCenter = AZVec3ToLYVec3(terrainCenter);
 
     // prevent crash in qhull
     if (!dwAllowedTypes || !((passInfo.GetCamera().GetPosition() - vMapCenter).GetLength() < terrainSize * 4))

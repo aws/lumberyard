@@ -166,6 +166,7 @@ private:
     // TODO: move this to a more general place in CryEngine
     string& UnifyName(string& name);
     void ScanFolder(const char* subfolder, bool modFolder, const uint32 tag);
+    void PopulateLevels(string searchPattern, string& folder, ICryPak* pPak, bool& modFolder, const uint32& tag, bool fromFileSystemOnly);
     void LogLoadingTime();
     bool LoadLevelInfo(CLevelInfo& levelInfo);
 

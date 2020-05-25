@@ -12,8 +12,15 @@
 
 #pragma once
 
-#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Matrix3x3.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/string/string.h>
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace Physics
 {
@@ -47,6 +54,6 @@ namespace Physics
         void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> body);
 
         //! Returns true if the tag matches the filter tag, or the filter tag is empty
-        bool FilterTag(const AZ::Crc32& tag, const AZ::Crc32& filter);
+        bool FilterTag(AZ::Crc32 tag, AZ::Crc32 filter);
     }
 }

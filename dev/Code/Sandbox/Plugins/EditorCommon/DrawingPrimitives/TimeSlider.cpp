@@ -33,7 +33,7 @@ namespace DrawingPrimitives
         const QRect timeRect(fits ? thumbX : thumbX - textWidth, 3, textWidth, fm.height());
         painter.fillRect(timeRect.adjusted(fits ? 0 : -1, 0, fits ? 1 : 0, 0), options.m_bHasFocus ? palette.highlight() : palette.shadow());
         painter.setPen(palette.color(QPalette::HighlightedText));
-        painter.drawText(timeRect.adjusted(fits ? 0 : markerHeight * 0.2f, -1, fits ? -markerHeight * 0.2f : 0, 0), text, QTextOption(fits ? Qt::AlignRight : Qt::AlignLeft));
+        painter.drawText(timeRect.adjusted(fits ? 0 : aznumeric_cast<int>(markerHeight * 0.2f), -1, fits ? aznumeric_cast<int>(-markerHeight * 0.2f) : 0, 0), text, QTextOption(fits ? Qt::AlignRight : Qt::AlignLeft));
 
         painter.setPen(palette.color(QPalette::Text));
         painter.drawLine(QPointF(thumbX, 0), QPointF(thumbX, options.m_rect.height()));

@@ -261,7 +261,7 @@ void OffsetTool::Display(DisplayContext& dc)
 
     if (m_pOffsetedPolygon)
     {
-        int oldThickness = dc.GetLineWidth();
+        float oldThickness = dc.GetLineWidth();
         dc.SetLineWidth(CD::kLineThickness);
 
         dc.SetColor(CD::kResizedPolygonColor);

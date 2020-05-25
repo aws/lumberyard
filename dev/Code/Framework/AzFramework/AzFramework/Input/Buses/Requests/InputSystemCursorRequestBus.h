@@ -54,7 +54,7 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Inform input devices that the system cursor state should be changed. Calls to the method
         //! should usually be addressed to a mouse input device, but it may be possible for multiple
-        //! different device instances to each be associated with a system cursor (eg. Wii remotes).
+        //! different device instances to each be associated with a system cursor.
         //!
         //! Called using either:
         //! - EBus<>::Broadcast (any input device can respond to the request)
@@ -66,7 +66,7 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Query input devices for the current state of the system cursor. All calls to this method
         //! should usually be addressed to a mouse input device, but it may be possible for multiple
-        //! different device instances to each be associated with a system cursor (eg. Wii remotes).
+        //! different device instances to each be associated with a system cursor.
         //!
         //! Called using either:
         //! - EBus<>::Broadcast (any input device can respond to the request)
@@ -78,7 +78,7 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Inform input devices that the system cursor position should be set. Calls to the method
         //! should usually be addressed to a mouse input device, but it may be possible for multiple
-        //! different device instances to each be associated with a system cursor (eg. Wii remotes).
+        //! different device instances to each be associated with a system cursor.
         //!
         //! Called using either:
         //! - EBus<>::Broadcast (any input device can respond to the request)

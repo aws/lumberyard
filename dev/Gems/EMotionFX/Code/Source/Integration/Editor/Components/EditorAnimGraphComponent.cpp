@@ -20,6 +20,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <EMotionFX/Source/Parameter/BoolParameter.h>
 #include <EMotionFX/Source/Parameter/FloatParameter.h>
+#include <EMotionFX/Source/Parameter/IntParameter.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #include <Integration/ActorComponentBus.h>
@@ -192,6 +193,10 @@ namespace EMotionFX
                 AZ::Data::AssetBus::MultiHandler::BusConnect(m_animGraphAsset.GetId());
                 m_animGraphAsset.QueueLoad();
             }
+            else
+            {
+                m_parameterDefaults.m_parameters.clear();
+            }
 
             return AZ::Edit::PropertyRefreshLevels::EntireTree;
         }
@@ -230,6 +235,13 @@ namespace EMotionFX
             }
         }
 
+        bool EditorAnimGraphComponent::IsSupportedScriptPropertyType(const ValueParameter* param) const
+        {
+            return (azrtti_istypeof<FloatParameter>(param) ||
+                    azrtti_istypeof<IntParameter>(param) ||
+                    azrtti_istypeof<BoolParameter>(param));
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void EditorAnimGraphComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
@@ -249,8 +261,8 @@ namespace EMotionFX
                 // Remove any parameters we have values for that are no longer in the anim graph.
                 for (auto iter = m_parameterDefaults.m_parameters.begin(); iter != m_parameterDefaults.m_parameters.end(); )
                 {
-                
-                    if (!animGraph->FindValueParameterByName((*iter)->m_name))
+                    const ValueParameter* valueParameter = animGraph->FindValueParameterByName((*iter)->m_name);
+                    if (!valueParameter || !IsSupportedScriptPropertyType(valueParameter))
                     {
                         delete *iter;
                         iter = m_parameterDefaults.m_parameters.erase(iter);
@@ -289,10 +301,19 @@ namespace EMotionFX
                         const EMotionFX::FloatParameter* floatParam = static_cast<const EMotionFX::FloatParameter*>(param);
                         m_parameterDefaults.m_parameters.emplace_back(aznew AZ::ScriptPropertyNumber(paramName.c_str(), floatParam->GetDefaultValue()));
                     }
-                    else if (azrtti_typeid(param) == azrtti_typeid<EMotionFX::BoolParameter>())
+                    else if (azrtti_istypeof<EMotionFX::IntParameter>(param))
+                    {
+                        const EMotionFX::IntParameter* intParam = static_cast<const EMotionFX::IntParameter*>(param);
+                        m_parameterDefaults.m_parameters.emplace_back(aznew AZ::ScriptPropertyNumber(paramName.c_str(), intParam->GetDefaultValue()));
+                    }
+                    else if (azrtti_istypeof<EMotionFX::BoolParameter>(param))
                     {
                         const EMotionFX::BoolParameter* boolParam = static_cast<const EMotionFX::BoolParameter*>(param);
                         m_parameterDefaults.m_parameters.emplace_back(aznew AZ::ScriptPropertyBoolean(paramName.c_str(), boolParam->GetDefaultValue()));
+                    }
+                    else
+                    {
+                        AZ_Assert(!IsSupportedScriptPropertyType(param), "This value parameter of this type ('%s') should not be supported. Please update the IsSupportedScriptPropertyType() method.", param->GetTypeDisplayName().c_str());
                     }
                 }
             }

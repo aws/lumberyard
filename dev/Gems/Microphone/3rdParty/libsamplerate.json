@@ -7,7 +7,7 @@
             "libsamplerate"
         ]
     },
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": ["USE_LIBSAMPLERATE"],

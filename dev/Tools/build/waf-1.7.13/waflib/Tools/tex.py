@@ -229,7 +229,7 @@ class tex(Task.Task):
 			Logs.error('error bibunitscan')
 		else:
 			if bibunits:
-				fn  = ['bu' + str(i) for i in xrange(1, len(bibunits) + 1)]
+				fn  = ['bu' + str(i) for i in range(1, len(bibunits) + 1)]
 				if fn:
 					Logs.warn('calling bibtex on bibunits')
 

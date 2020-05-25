@@ -10,7 +10,7 @@
 *
 */
 #ifdef EDITOR_QT_UI_EXPORTS
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "AttributeItem.h"
 #include "AttributeView.h"
 #endif

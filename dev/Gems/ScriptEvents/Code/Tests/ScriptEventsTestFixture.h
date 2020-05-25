@@ -66,7 +66,7 @@ namespace ScriptEventsTests
                     appStartup.m_createStaticModulesCallback =
                         [](AZStd::vector<AZ::Module*>& modules)
                         {
-                            modules.emplace_back(new ScriptEvents::Module);
+                            modules.emplace_back(new ScriptEvents::ScriptEventsModule);
                         };
 
                     s_application->Start(descriptor, appStartup);
@@ -82,7 +82,6 @@ namespace ScriptEventsTests
 
                 AZ::Entity* systemEntity = s_application->FindEntity(AZ::SystemEntityId);
                 AZ_Assert(systemEntity, "SystemEntity must exist");
-                systemEntity->FindComponent<ScriptEvents::SystemComponent>()->RegisterAssetHandler();
 
             }
 
@@ -93,7 +92,6 @@ namespace ScriptEventsTests
         {
             AZ::Entity* systemEntity = s_application->FindEntity(AZ::SystemEntityId);
             AZ_Assert(systemEntity, "SystemEntity must exist");
-            systemEntity->FindComponent<ScriptEvents::SystemComponent>()->UnregisterAssetHandler();
 
             AZ::Data::AssetManager::Instance().DispatchEvents();
 

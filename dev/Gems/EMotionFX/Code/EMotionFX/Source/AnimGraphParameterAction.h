@@ -14,7 +14,7 @@
 
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/AnimGraphTriggerAction.h>
-
+#include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
 
 namespace EMotionFX
 {
@@ -27,9 +27,10 @@ namespace EMotionFX
      */
     class EMFX_API AnimGraphParameterAction
         : public AnimGraphTriggerAction
+        , public ObjectAffectedByParameterChanges
     {
     public:
-        AZ_RTTI(AnimGraphParameterAction, "{57329F53-3E8F-47FA-997D-FEF390CB2E57}", AnimGraphTriggerAction)
+        AZ_RTTI(AnimGraphParameterAction, "{57329F53-3E8F-47FA-997D-FEF390CB2E57}", AnimGraphTriggerAction, ObjectAffectedByParameterChanges)
         AZ_CLASS_ALLOCATOR_DECL
 
         AnimGraphParameterAction();
@@ -45,12 +46,18 @@ namespace EMotionFX
 
         void TriggerAction(AnimGraphInstance* animGraphInstance) const override;
 
+        AZ::Outcome<size_t> GetParameterIndex() const;
         void SetParameterName(const AZStd::string& parameterName);
         const AZStd::string& GetParameterName() const;
         AZ::TypeId GetParameterType() const;
 
         void SetTriggerValue(float value) { m_triggerValue = value; }
         float GetTriggerValue() const { return m_triggerValue; }
+
+        // ObjectAffectedByParameterChanges overrides
+        void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
+        void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
+        void ParameterRemoved(const AZStd::string& oldParameterName) override;
 
         static void Reflect(AZ::ReflectContext* context);
 

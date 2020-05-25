@@ -101,6 +101,7 @@ public Q_SLOTS:
     void Update(int count);
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API MainWindow
     : public QMainWindow
     , public IEditorNotifyListener
@@ -109,6 +110,7 @@ class SANDBOX_API MainWindow
     , public QAbstractNativeEventFilter
 #endif
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 
 public:
@@ -284,11 +286,13 @@ private:
 
     CLayoutWnd* m_pLayoutWnd;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     AZStd::shared_ptr<EngineConnectionListener> m_connectionListener;
     QTimer* m_connectionLostTimer;
 
     QPointer<ToolbarCustomizationDialog> m_toolbarCustomizationDialog;
     QScopedPointer<AzToolsFramework::QtSourceControlNotificationHandler> m_sourceControlNotifHandler;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     static MainWindow* m_instance;
 

@@ -49,6 +49,9 @@ namespace ZipDir
 
             // Store all file names as crc32 in a flat directory structure.
             FLAGS_FILENAMES_AS_CRC32 = BIT(6),
+
+            // if this is set, zip path will be searched inside other zips
+            FLAGS_READ_INSIDE_PAK = BIT(7),
         };
 
         // initializes the internal structures

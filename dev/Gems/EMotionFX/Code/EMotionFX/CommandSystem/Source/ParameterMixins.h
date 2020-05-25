@@ -30,6 +30,7 @@ namespace EMotionFX
     class AnimGraph;
     class AnimGraphNode;
     class AnimGraphStateTransition;
+    class AnimGraphTransitionCondition;
 
     class ParameterMixinActorId
     {
@@ -94,16 +95,17 @@ namespace EMotionFX
         void SetAnimGraphId(AZ::u32 animGraphId) { m_animGraphId = animGraphId; }
         AZ::u32 GetAnimGraphId() const { return m_animGraphId; }
 
-        AnimGraph* GetAnimGraph(MCore::Command* command, AZStd::string& outResult) const;
+        AnimGraph* GetAnimGraph(AZStd::string& outResult) const;
 
     protected:
         AZ::u32 m_animGraphId = MCORE_INVALIDINDEX32;
     };
 
     class ParameterMixinTransitionId
+        : public ParameterMixinAnimGraphId
     {
     public:
-        AZ_RTTI(ParameterMixinTransitionId, "{B70F34AB-CE3B-4AF2-B6D8-2D38F1CEBBC8}")
+        AZ_RTTI(ParameterMixinTransitionId, "{B70F34AB-CE3B-4AF2-B6D8-2D38F1CEBBC8}", ParameterMixinAnimGraphId)
         AZ_CLASS_ALLOCATOR_DECL
 
         virtual ~ParameterMixinTransitionId() = default;
@@ -117,10 +119,36 @@ namespace EMotionFX
         void SetTransitionId(AnimGraphConnectionId transitionId) { m_transitionId = transitionId; }
         AnimGraphConnectionId GetTransitionId() const { return m_transitionId; }
 
-        AnimGraphStateTransition* GetTransition(const AnimGraph* animGraph, const MCore::Command* command, AZStd::string& outResult) const;
+        AnimGraphStateTransition* GetTransition(const AnimGraph* animGraph, AZStd::string& outResult) const;
+        AnimGraphStateTransition* GetTransition(AZStd::string& outResult) const;
 
     protected:
         AnimGraphConnectionId m_transitionId;
+    };
+
+    class ParameterMixinConditionIndex
+        : public ParameterMixinTransitionId
+    {
+    public:
+        AZ_RTTI(ParameterMixinConditionIndex, "{A0E27C1F-FA15-4F9C-888A-3166187ABBCC}", ParameterMixinTransitionId)
+        AZ_CLASS_ALLOCATOR_DECL
+
+        virtual ~ParameterMixinConditionIndex() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        static const char* s_parameterName;
+        void InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired = true);
+        bool SetCommandParameters(const MCore::CommandLine& parameters);
+
+        void SetConditionIndex(size_t index) { m_conditionIndex = index; }
+        AZStd::optional<size_t> GetConditionIndex() const { return m_conditionIndex; }
+
+        AnimGraphTransitionCondition* GetCondition(const AnimGraph* animGraph, const AnimGraphStateTransition* transition, AZStd::string& outResult) const;
+        AnimGraphTransitionCondition* GetCondition(AZStd::string& outResult) const;
+
+    protected:
+        AZStd::optional<size_t> m_conditionIndex;
     };
 
     class ParameterMixinAnimGraphNodeId

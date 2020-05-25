@@ -23,6 +23,7 @@
 #include <API/CharacterControllerCosmeticReplica.h>
 #include <AzFramework/Physics/CollisionBus.h>
 #include <AzFramework/Physics/World.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysXCharacters
 {
@@ -88,7 +89,13 @@ namespace PhysXCharacters
         m_pxControllerFilters.mFilterCallback = this;
         m_pxControllerFilters.mCCTFilterCallback = this;
 
-        physx::PxU32 numShapes = m_pxController->getActor()->getNbShapes();
+        physx::PxRigidDynamic* actor = nullptr;
+        physx::PxU32 numShapes = 0;
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+            actor = m_pxController->getActor();
+            numShapes = actor->getNbShapes();
+        }
         if (numShapes != 1)
         {
             AZ_Error("PhysX Character Controller", false, "Found %i shapes, expected exactly 1.", numShapes)
@@ -96,12 +103,16 @@ namespace PhysXCharacters
         else
         {
             physx::PxShape* pxShape = nullptr;
-            m_pxController->getActor()->getShapes(&pxShape, 1, 0);
+            {
+                PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+                actor->getShapes(&pxShape, 1, 0);
 
-            // wrap the raw PhysX shape so that it is appropriately configured for raycasts etc.
-            PhysX::SystemRequestsBus::BroadcastResult(m_shape, &PhysX::SystemRequests::CreateWrappedNativeShape, pxShape);
+                // wrap the raw PhysX shape so that it is appropriately configured for raycasts etc.
+                PhysX::SystemRequestsBus::BroadcastResult(m_shape, &PhysX::SystemRequests::CreateWrappedNativeShape, pxShape);
+            }
             if (m_shape)
             {
+                m_shape->AttachedToActor(actor);
                 m_shape->SetCollisionLayer(characterConfig.m_collisionLayer);
                 m_shape->SetCollisionGroup(collisionGroup);
             }
@@ -113,6 +124,7 @@ namespace PhysXCharacters
         m_name = name;
         if (m_pxController)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
             m_pxController->getActor()->setName(m_name.c_str());
         }
     }
@@ -146,12 +158,13 @@ namespace PhysXCharacters
 
     CharacterController::~CharacterController()
     {
+        m_shape = nullptr; //shape has to go before m_pxController 
         if (m_pxController)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
             m_pxController->release();
         }
         m_pxController = nullptr;
-        m_shape = nullptr;
         m_material = nullptr;
     }
 
@@ -168,7 +181,7 @@ namespace PhysXCharacters
             AZ_Error("PhysX Character Controller", false, "Invalid character controller.");
             return AZ::Vector3::CreateZero();
         }
-
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         return PxMathConvertExtended(m_pxController->getFootPosition());
     }
 
@@ -180,6 +193,7 @@ namespace PhysXCharacters
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         m_pxController->setFootPosition(PxMathConvertExtended(position));
         if (m_shadowBody)
         {
@@ -195,6 +209,7 @@ namespace PhysXCharacters
             return AZ::Vector3::CreateZero();
         }
 
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
         {
             auto capsuleController = static_cast<physx::PxCapsuleController*>(m_pxController);
@@ -241,13 +256,20 @@ namespace PhysXCharacters
             AZ_Warning("PhysX Character Controller", false, "PhysX requires the step height to be positive.");
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         m_pxController->setStepOffset(stepHeight);
     }
 
     AZ::Vector3 CharacterController::GetUpDirection() const
     {
-        return CheckValidAndReturn(m_pxController,
-            m_pxController ? PxMathConvert(m_pxController->getUpDirection()) : AZ::Vector3::CreateZero());
+        if (!m_pxController)
+        {
+            AZ_Error("PhysX Character Controller", false, "Invalid character controller.");
+            return AZ::Vector3::CreateZero();
+        }
+
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+        return PxMathConvert(m_pxController->getUpDirection());
     }
 
     void CharacterController::SetUpDirection(const AZ::Vector3& upDirection)
@@ -258,8 +280,13 @@ namespace PhysXCharacters
 
     float CharacterController::GetSlopeLimitDegrees() const
     {
-        return CheckValidAndReturn(m_pxController,
-            m_pxController ? AZ::RadToDeg(acosf(m_pxController->getSlopeLimit())) : 0.0f);
+        if (!m_pxController)
+        {
+            AZ_Error("PhysX Character Controller", false, "Invalid character controller.");
+            return 0.0f;
+        }
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+        return AZ::RadToDeg(acosf(m_pxController->getSlopeLimit()));
     }
 
     void CharacterController::SetSlopeLimitDegrees(float slopeLimitDegrees)
@@ -278,6 +305,7 @@ namespace PhysXCharacters
                 "Value %f was clamped to %f", slopeLimitDegrees, slopeLimitClamped);
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         m_pxController->setSlopeLimit(cosf(AZ::DegToRad(slopeLimitClamped)));
     }
 
@@ -347,7 +375,10 @@ namespace PhysXCharacters
 
         if (m_pxController)
         {
-            m_pxController->move(PxMathConvert(deltaPosition), m_minimumMovementDistance, deltaTime, m_pxControllerFilters);
+            {
+                PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
+                m_pxController->move(PxMathConvert(deltaPosition), m_minimumMovementDistance, deltaTime, m_pxControllerFilters);
+            }
             if (m_shadowBody)
             {
                 m_shadowBody->SetKinematicTarget(AZ::Transform::CreateTranslation(GetBasePosition()));
@@ -423,6 +454,7 @@ namespace PhysXCharacters
 
         // use bounding box inflation factor of 1.0f so users can control inflation themselves
         const float inflationFactor = 1.0f;
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         return PxMathConvert(m_pxController->getActor()->getWorldBounds(inflationFactor));
     }
 
@@ -455,6 +487,7 @@ namespace PhysXCharacters
 
         if (scene)
         {
+            PHYSX_SCENE_WRITE_LOCK(scene);
             scene->removeActor(*m_pxController->getActor());
         }
 
@@ -467,6 +500,7 @@ namespace PhysXCharacters
     // physx::PxControllerFilterCallback
     bool CharacterController::filter(const physx::PxController& controllerA, const physx::PxController& controllerB)
     {
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         physx::PxRigidDynamic* actorA = controllerA.getActor();
         physx::PxRigidDynamic* actorB = controllerB.getActor();
 
@@ -529,16 +563,20 @@ namespace PhysXCharacters
             return;
         }
 
-        if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
         {
-            auto capsuleController = static_cast<physx::PxCapsuleController*>(m_pxController);
-            if (height <= 2.0f * capsuleController->getRadius())
+            PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+            if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
             {
-                AZ_Error("PhysX Character Controller", false, "Capsule height must exceed twice its radius.");
-                return;
+                auto capsuleController = static_cast<physx::PxCapsuleController*>(m_pxController);
+                if (height <= 2.0f * capsuleController->getRadius())
+                {
+                    AZ_Error("PhysX Character Controller", false, "Capsule height must exceed twice its radius.");
+                    return;
+                }
             }
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         m_pxController->resize(height);
     }
 
@@ -550,6 +588,7 @@ namespace PhysXCharacters
             return 0.0f;
         }
 
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
         {
             return static_cast<physx::PxBoxController*>(m_pxController)->getHalfHeight() * 2.0f;
@@ -574,8 +613,12 @@ namespace PhysXCharacters
             AZ_Error("PhysX Character Controller", false, "Invalid character controller.");
             return;
         }
-
-        if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
+        physx::PxControllerShapeType::Enum type;
+        {
+            PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
+            type = m_pxController->getType();
+        }
+        if (type == physx::PxControllerShapeType::eBOX)
         {
             if (height <= 0.0f)
             {
@@ -584,10 +627,11 @@ namespace PhysXCharacters
             }
 
             auto boxController = static_cast<physx::PxBoxController*>(m_pxController);
+            PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
             boxController->setHalfHeight(0.5f * height);
         }
 
-        else if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
+        else if (type == physx::PxControllerShapeType::eCAPSULE)
         {
             auto capsuleController = static_cast<physx::PxCapsuleController*>(m_pxController);
             float radius = capsuleController->getRadius();
@@ -597,6 +641,7 @@ namespace PhysXCharacters
                 return;
             }
 
+            PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
             // PhysX capsule height refers to the length of the cylindrical section.
             // LY capsule height refers to the length including the hemispherical caps.
             capsuleController->setHeight(height - 2.0f * radius);
@@ -616,6 +661,7 @@ namespace PhysXCharacters
             return 0.0f;
         }
 
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
         {
             return static_cast<physx::PxCapsuleController*>(m_pxController)->getRadius();
@@ -633,6 +679,7 @@ namespace PhysXCharacters
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
         {
             if (radius <= 0.0f)
@@ -658,6 +705,7 @@ namespace PhysXCharacters
             return 0.0f;
         }
 
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
         {
             return static_cast<physx::PxBoxController*>(m_pxController)->getHalfSideExtent();
@@ -675,6 +723,7 @@ namespace PhysXCharacters
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
         {
             if (halfSideExtent <= 0.0f)
@@ -700,6 +749,7 @@ namespace PhysXCharacters
             return 0.0f;
         }
 
+        PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
         {
             return static_cast<physx::PxBoxController*>(m_pxController)->getHalfForwardExtent();
@@ -717,6 +767,7 @@ namespace PhysXCharacters
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
         if (m_pxController->getType() == physx::PxControllerShapeType::eBOX)
         {
             if (halfForwardExtent <= 0.0f)

@@ -1,17 +1,35 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import contextlib
 import functools
 import logging
 
 import jsonschema
+import six
+from jsonschema import validators
 from jsonschema.compat import iteritems
 from jsonschema.validators import Draft4Validator
-from jsonschema import validators, _validators
+from jsonschema.validators import RefResolver
+
+from swagger_spec_validator import common
+
 
 log = logging.getLogger(__name__)
 
 
+default_handlers = {
+    'http': common.read_url,
+    'https': common.read_url,
+    'file': common.read_url,
+}
+
+
 def validate(instance, schema, instance_cls, cls=None, *args, **kwargs):
-    """This is a carbon-copy of :method:`jsonscema.validate` except that it
+    """This is a carbon-copy of :method:`jsonschema.validate` except that it
     takes two validator classes instead of just one. In the jsonschema
     implementation, `cls` is used to validate both the schema and the
     instance. This changes the behavior to have a separate validator for
@@ -47,31 +65,40 @@ def create_dereffing_validator(instance_resolver):
     """
     visited_refs = {}
 
-    custom_validators = {
-        '$ref': _validators.ref,
-        'properties': _validators.properties_draft4,
-        'additionalProperties': _validators.additionalProperties,
-        'patternProperties': _validators.patternProperties,
-        'type': _validators.type_draft4,
-        'dependencies': _validators.dependencies,
-        'required': _validators.required_draft4,
-        'minProperties': _validators.minProperties_draft4,
-        'maxProperties': _validators.maxProperties_draft4,
-        'allOf': _validators.allOf_draft4,
-        'oneOf': _validators.oneOf_draft4,
-        'anyOf': _validators.anyOf_draft4,
-        'not': _validators.not_draft4,
+    validators_to_bound = {
+        '$ref',
+        'additionalProperties',
+        'allOf',
+        'anyOf',
+        'dependencies',
+        'maxProperties',
+        'minProperties',
+        'not',
+        'oneOf',
+        'patternProperties',
+        'properties',
+        'required',
+        'type',
     }
 
-    bound_validators = {}
-    for k, v in iteritems(custom_validators):
-        bound_validators[k] = functools.partial(
+    bound_validators = {
+        k: functools.partial(
             validator_wrapper,
             instance_resolver=instance_resolver,
             visited_refs=visited_refs,
-            default_validator_callable=v)
+            default_validator_callable=v,
+        ) if k in validators_to_bound else v
+        for k, v in iteritems(Draft4Validator.VALIDATORS)
+    }
 
     return validators.extend(Draft4Validator, bound_validators)
+
+
+def validate_schema_value(schema, value, swagger_resolver=None):
+    # pass resolver to avoid to refetch schema files
+    if swagger_resolver is None:
+        swagger_resolver = RefResolver.from_schema(schema)
+    create_dereffing_validator(swagger_resolver)(schema, resolver=swagger_resolver).validate(value)
 
 
 @contextlib.contextmanager
@@ -139,10 +166,10 @@ def deref_and_validate(validator, schema_element, instance, schema,
         the swagger service spec.
     :param default_validator_callable: jsonschema._validators.* callable
     """
-    if isinstance(instance, dict) and '$ref' in instance:
+    if isinstance(instance, dict) and '$ref' in instance and isinstance(instance['$ref'], six.string_types):
         ref = instance['$ref']
         if ref in visited_refs:
-            log.debug("Found cycle in %s" % ref)
+            log.debug("Found cycle in %s", ref)
             return
 
         # Annotate $ref dict with scope - used by custom validations
@@ -166,12 +193,12 @@ def attach_scope(ref_dict, instance_resolver):
     validations.
 
     :param ref_dict: dict with $ref key
-    :type instance_resolver: :class:`jsonschema.validators.RefResolver`
+    :type instance_resolver: :class:`jsonschema.RefResolver`
     """
     if 'x-scope' in ref_dict:
-        log.debug('Ref %s already has scope attached' % ref_dict['$ref'])
+        log.debug('Ref %s already has scope attached', ref_dict['$ref'])
         return
-    log.debug('Attaching x-scope to {0}'.format(ref_dict))
+    log.debug('Attaching x-scope to %s', ref_dict)
     ref_dict['x-scope'] = list(instance_resolver._scopes_stack)
 
 
@@ -181,7 +208,7 @@ def in_scope(resolver, ref_dict):
 
     The resolver's original scope is restored when exiting the context manager.
 
-    :type resolver: :class:`jsonschema.validators.RefResolver
+    :type resolver: :class:`jsonschema.RefResolver
     :type ref_dict: dict
     """
     if 'x-scope' not in ref_dict:

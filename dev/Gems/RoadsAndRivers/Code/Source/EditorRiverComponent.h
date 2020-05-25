@@ -15,6 +15,7 @@
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "EditorUtils.h"
 #include "River.h"
@@ -32,6 +33,7 @@ namespace RoadsAndRivers
         , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
         , private LmbrCentral::SplineAttributeNotificationBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private AzFramework::Terrain::TerrainDataNotificationBus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
@@ -54,6 +56,8 @@ namespace RoadsAndRivers
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
     private:
+        AZ::Crc32 GetVisibilityProperty() const;
+
         // EntityDebugDisplayEventBus
         void DisplayEntityViewport(
             const AzFramework::ViewportInfo& viewportInfo,
@@ -79,6 +83,10 @@ namespace RoadsAndRivers
 
         // AzToolsFramework::EditorEvents::Handler
         void OnEditorSpecChange() override;
+
+        // TerrainNotificationBus::Handler
+        void OnTerrainDataCreateEnd() override;
+        void OnTerrainDataDestroyBegin() override;
 
         // Terrain heightmap properties
         float m_terrainBorderWidth = 5.0f;

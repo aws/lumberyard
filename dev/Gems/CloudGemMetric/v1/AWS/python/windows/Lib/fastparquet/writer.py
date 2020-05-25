@@ -1,27 +1,30 @@
 from __future__ import print_function
 
+from copy import copy
 import json
-import numpy as np
-import pandas as pd
 import re
 import struct
 import warnings
-from six import integer_types
 
 import numba
+import numpy as np
+import pandas as pd
+from six import integer_types
 
-from .thrift_structures import parquet_thrift, write_thrift
+from fastparquet.util import join_path, PANDAS_VERSION
+from .thrift_structures import write_thrift
+
 try:
     from pandas.api.types import is_categorical_dtype
 except ImportError:
     # Pandas <= 0.18.1
     from pandas.core.common import is_categorical_dtype
 from .thrift_structures import parquet_thrift
-from .compression import compress_data, decompress_data
+from .compression import compress_data
 from .converted_types import tobson
-from . import encoding, api
-from .util import (default_open, default_mkdirs, sep_from_open,
-                   ParquetException, thrift_copy, index_like, PY2, STR_TYPE,
+from . import encoding, api, __version__
+from .util import (default_open, default_mkdirs,
+                   PY2, STR_TYPE,
                    check_column_names, metadata_from_many, created_by,
                    get_column_metadata)
 from .speedups import array_encode_utf8, pack_byte_array
@@ -68,7 +71,7 @@ def find_type(data, fixed_text=None, object_encoding=None, times='int64'):
     fixed_text: int or None
         For str and bytes, the fixed-string length to use. If None, object
         column will remain variable length.
-    object_encoding: None or infer|bytes|utf8|json|bson|bool|int|float
+    object_encoding: None or infer|bytes|utf8|json|bson|bool|int|int32|float
         How to encode object type into bytes. If None, bytes is assumed;
         if 'infer', type is guessed from 10 first non-null values.
     times: 'int64'|'int96'
@@ -112,12 +115,15 @@ def find_type(data, fixed_text=None, object_encoding=None, times='int64'):
         elif object_encoding == 'int':
             type, converted_type, width = (parquet_thrift.Type.INT64, None,
                                            64)
+        elif object_encoding == 'int32':
+            type, converted_type, width = (parquet_thrift.Type.INT32, None,
+                                           32)
         elif object_encoding == 'float':
             type, converted_type, width = (parquet_thrift.Type.DOUBLE, None,
                                            64)
         else:
             raise ValueError('Object encoding (%s) not one of '
-                             'infer|utf8|bytes|json|bson|bool|int|float' %
+                             'infer|utf8|bytes|json|bson|bool|int|int32|float' %
                              object_encoding)
         if fixed_text:
             width = fixed_text
@@ -208,12 +214,12 @@ def convert(data, se):
 
 
 def infer_object_encoding(data):
-    head = data[:10] if isinstance(data, pd.Index) else data.valid()[:10]
+    head = data[:10] if isinstance(data, pd.Index) else data.dropna()[:10]
     if all(isinstance(i, STR_TYPE) for i in head) and not PY2:
         return "utf8"
     elif PY2 and all(isinstance(i, unicode) for i in head):
         return "utf8"
-    elif all(isinstance(i, (str, bytes)) for i in head) and PY2:
+    elif PY2 and all(isinstance(i, (str, bytes)) for i in head):
         return "bytes"
     elif all(isinstance(i, bytes) for i in head):
         return 'bytes'
@@ -335,7 +341,7 @@ def encode_rle_bp(data, width, o, withlength=False):
     if withlength:
         end = o.loc
         o.loc = start
-        write_length(wnd - start, o)
+        write_length(end - start, o)
         o.loc = end
 
 
@@ -398,7 +404,7 @@ def make_definitions(data, no_nulls):
         head = temp.so_far().tostring()
 
         block = struct.pack('<i', len(head + out)) + head + out
-        out = data.valid()  # better, data[data.notnull()], from above ?
+        out = data.dropna()  # better, data[data.notnull()], from above ?
     return block, out
 
 
@@ -412,8 +418,12 @@ def write_column(f, data, selement, compression=None):
     data: pandas Series or numpy (1d) array
     selement: thrift SchemaElement
         produced by ``find_type``
-    compression: str or None
-        if not None, must be one of the keys in ``compression.compress``
+    compression: str, dict, or None
+        if ``str``, must be one of the keys in ``compression.compress``
+        if ``dict``, must have key ``"type"`` which specifies the compression
+        type to use, which must be one of the keys in ``compression.compress``,
+        and may optionally have key ``"args`` which should be a dictionary of
+        options to pass to the underlying compression engine.
 
     Returns
     -------
@@ -455,6 +465,7 @@ def write_column(f, data, selement, compression=None):
     name = data.name
     diff = 0
     max, min = None, None
+    start = f.tell()
 
     if is_categorical_dtype(data.dtype):
         dph = parquet_thrift.DictionaryPageHeader(
@@ -494,9 +505,10 @@ def write_column(f, data, selement, compression=None):
         cats = True
         encoding = "PLAIN_DICTIONARY"
     elif str(data.dtype) in ['int8', 'int16', 'uint8', 'uint16']:
-        encoding = "RLE"
+        # encoding = "RLE"
+        # disallow bitpacking for compatability
+        data = data.astype('int32')
 
-    start = f.tell()
     bdata = definition_data + repetition_data + encode[encoding](
             data, selement)
     bdata += 8 * b'\x00'
@@ -531,8 +543,13 @@ def write_column(f, data, selement, compression=None):
                                    uncompressed_page_size=l0,
                                    compressed_page_size=l1,
                                    data_page_header=dph, crc=None)
+    try:
+        write_thrift(f, ph)
+    except OverflowError as err:
+        raise IOError('Overflow error while writing page; try using a smaller '
+                      'value for `row_group_offsets`. Original message: ' +
+                      str(err))
 
-    write_thrift(f, ph)
     f.write(bdata)
 
     compressed_size = f.tell() - start
@@ -545,13 +562,18 @@ def write_column(f, data, selement, compression=None):
             page_type=parquet_thrift.PageType.DATA_PAGE,
             encoding=parquet_thrift.Encoding.PLAIN, count=1)]
 
+    if isinstance(compression, dict):
+        algorithm = compression.get("type", None)
+    else:
+        algorithm = compression
+
     cmd = parquet_thrift.ColumnMetaData(
             type=selement.type, path_in_schema=[name],
             encodings=[parquet_thrift.Encoding.RLE,
                        parquet_thrift.Encoding.BIT_PACKED,
                        parquet_thrift.Encoding.PLAIN],
-            codec=(getattr(parquet_thrift.CompressionCodec, compression.upper())
-                   if compression else 0),
+            codec=(getattr(parquet_thrift.CompressionCodec, algorithm.upper())
+                   if algorithm else 0),
             num_values=tot_rows,
             statistics=s,
             data_page_offset=start,
@@ -589,6 +611,8 @@ def make_row_group(f, data, schema, compression=None):
         if column.type is not None:
             if isinstance(compression, dict):
                 comp = compression.get(column.name, None)
+                if comp is None:
+                    comp = compression.get('_default', None)
             else:
                 comp = compression
             chunk = write_column(f, data[column.name], column,
@@ -614,11 +638,10 @@ def make_part_file(f, data, schema, compression=None, fmd=None):
             foot_size = write_thrift(f, fmd)
             f.write(struct.pack(b"<i", foot_size))
         else:
-            prev = fmd.row_groups
+            fmd = copy(fmd)
             fmd.row_groups = [rg]
             foot_size = write_thrift(f, fmd)
             f.write(struct.pack(b"<i", foot_size))
-            fmd.row_groups = prev
         f.write(MARKER)
     return rg
 
@@ -628,8 +651,31 @@ def make_metadata(data, has_nulls=True, ignore_columns=[], fixed_text=None,
     if not data.columns.is_unique:
         raise ValueError('Cannot create parquet dataset with duplicate'
                          ' column names (%s)' % data.columns)
+    if not isinstance(index_cols, list):
+        if PANDAS_VERSION >= "0.25.0":
+            start = index_cols.start
+            stop = index_cols.stop
+            step = index_cols.step
+        else:
+            start = index_cols._start
+            stop = index_cols._stop
+            step = index_cols._step
+
+        index_cols = [{'name': index_cols.name,
+                       'start': start,
+                       'stop': stop,
+                       'step': step,
+                       'kind': 'range'}]
     pandas_metadata = {'index_columns': index_cols,
-                       'columns': [], 'pandas_version': pd.__version__}
+                       'columns': [],
+                       'column_indexes': [{'name': data.columns.name,
+                                           'field_name': data.columns.name,
+                                           'pandas_type': 'mixed-integer',
+                                           'numpy_type': 'object',
+                                           'metadata': None}],
+                       'creator': {'library': 'fastparquet',
+                                   'version': __version__},
+                       'pandas_version': pd.__version__,}
     root = parquet_thrift.SchemaElement(name='schema',
                                         num_children=0)
 
@@ -724,8 +770,36 @@ def write(filename, data, row_group_offsets=50000000,
         to make row groups about the same size; if a list, the explicit index
         values to start new row groups.
     compression: str, dict
-        compression to apply to each column, e.g. GZIP or SNAPPY or
-        {col1: "SNAPPY", col2: None} to specify per column.
+        compression to apply to each column, e.g. ``GZIP`` or ``SNAPPY`` or a
+        ``dict`` like ``{"col1": "SNAPPY", "col2": None}`` to specify per
+        column compression types.
+        In both cases, the compressor settings would be the underlying
+        compressor defaults. To pass arguments to the underlying compressor,
+        each ``dict`` entry should itself be a dictionary::
+
+            {
+                col1: {
+                    "type": "LZ4",
+                    "args": {
+                        "compression_level": 6,
+                        "content_checksum": True
+                     }
+                },
+                col2: {
+                    "type": "SNAPPY",
+                    "args": None
+                }
+                "_default": {
+                    "type": "GZIP",
+                    "args": None
+                }
+            }
+
+        where ``"type"`` specifies the compression type to use, and ``"args"``
+        specifies a ``dict`` that will be turned into keyword arguments for
+        the compressor.
+        If the dictionary contains a "_default" entry, this will be used for any
+        columns not explicitly specified in the dictionary.
     file_scheme: 'simple'|'hive'
         If simple: all goes in a single file
         If hive: each row group is in a separate file, and a separate file
@@ -763,7 +837,7 @@ def write(filename, data, row_group_offsets=50000000,
         and the schema must match the input data.
     object_encoding: str or {col: type}
         For object columns, this gives the data type, so that the values can
-        be encoded to bytes. Possible values are bytes|utf8|json|bson|bool|int,
+        be encoded to bytes. Possible values are bytes|utf8|json|bson|bool|int|int32,
         where bytes is assumed if not specified (i.e., no conversion). The
         special value 'infer' will cause the type to be guessed from the first
         ten non-null values.
@@ -779,17 +853,20 @@ def write(filename, data, row_group_offsets=50000000,
     """
     if str(has_nulls) == 'infer':
         has_nulls = None
-    sep = sep_from_open(open_with)
     if isinstance(row_group_offsets, int):
         l = len(data)
         nparts = max((l - 1) // row_group_offsets + 1, 1)
         chunksize = max(min((l - 1) // nparts + 1, l), 1)
         row_group_offsets = list(range(0, l, chunksize))
-    if write_index or write_index is None and index_like(data.index):
+    if (write_index or write_index is None
+            and not isinstance(data.index, pd.RangeIndex)):
         cols = set(data)
         data = data.reset_index()
         index_cols = [c for c in data if c not in cols]
-    else:
+    elif isinstance(data.index, pd.RangeIndex):
+        # write_index=None, range to metadata
+        index_cols = data.index
+    else:  # write_index=False
         index_cols = []
     check_column_names(data.columns, partition_on, fixed_text, object_encoding,
                        has_nulls)
@@ -814,7 +891,7 @@ def write(filename, data, row_group_offsets=50000000,
                                  ' match existing data')
         else:
             i_offset = 0
-        fn = sep.join([filename, '_metadata'])
+        fn = join_path(filename, '_metadata')
         mkdirs(filename)
         for i, start in enumerate(row_group_offsets):
             end = (row_group_offsets[i+1] if i < (len(row_group_offsets) - 1)
@@ -823,12 +900,12 @@ def write(filename, data, row_group_offsets=50000000,
             if partition_on:
                 rgs = partition_on_columns(
                     data[start:end], partition_on, filename, part, fmd,
-                    sep, compression, open_with, mkdirs,
+                    compression, open_with, mkdirs,
                     with_field=file_scheme == 'hive'
                 )
                 fmd.row_groups.extend(rgs)
             else:
-                partname = sep.join([filename, part])
+                partname = join_path(filename, part)
                 with open_with(partname, 'wb') as f2:
                     rg = make_part_file(f2, data[start:end], fmd.schema,
                                         compression=compression, fmd=fmd)
@@ -838,7 +915,7 @@ def write(filename, data, row_group_offsets=50000000,
                 fmd.row_groups.append(rg)
 
         write_common_metadata(fn, fmd, open_with, no_row_groups=False)
-        write_common_metadata(sep.join([filename, '_common_metadata']), fmd,
+        write_common_metadata(join_path(filename, '_common_metadata'), fmd,
                               open_with)
     else:
         raise ValueError('File scheme should be simple|hive, not', file_scheme)
@@ -849,7 +926,7 @@ def find_max_part(row_groups):
     Find the highest integer matching "**part.*.parquet" in referenced paths.
     """
     paths = [c.file_path or "" for rg in row_groups for c in rg.columns]
-    s = re.compile('.*part.(?P<i>[\d]+).parquet$')
+    s = re.compile(r'.*part.(?P<i>[\d]+).parquet$')
     matches = [s.match(path) for path in paths]
     nums = [int(match.groupdict()['i']) for match in matches if match]
     if nums:
@@ -858,7 +935,7 @@ def find_max_part(row_groups):
         return 0
 
 
-def partition_on_columns(data, columns, root_path, partname, fmd, sep,
+def partition_on_columns(data, columns, root_path, partname, fmd,
                          compression, open_with, mkdirs, with_field=True):
     """
     Split each row-group by the given columns
@@ -873,18 +950,22 @@ def partition_on_columns(data, columns, root_path, partname, fmd, sep,
     if not remaining:
         raise ValueError("Cannot include all columns in partition_on")
     rgs = []
-    for key in gb.indices:
-        df = gb.get_group(key)[remaining]
+    for key, group in zip(sorted(gb.indices), sorted(gb)):
+        if group[1].empty:
+            continue
+        df = group[1][remaining]
         if not isinstance(key, tuple):
             key = (key,)
         if with_field:
-            path = sep.join(["%s=%s" % (name, val)
-                             for name, val in zip(columns, key)])
+            path = join_path(*(
+                "%s=%s" % (name, val)
+                for name, val in zip(columns, key)
+            ))
         else:
-            path = sep.join(["%s" % val for val in key])
-        relname = sep.join([path, partname])
-        mkdirs(root_path + sep + path)
-        fullname = sep.join([root_path, path, partname])
+            path = join_path(*("%s" % val for val in key))
+        relname = join_path(path, partname)
+        mkdirs(join_path(root_path, path))
+        fullname = join_path(root_path, path, partname)
         with open_with(fullname, 'wb') as f2:
             rg = make_part_file(f2, df, fmd.schema,
                                 compression=compression, fmd=fmd)
@@ -916,10 +997,9 @@ def write_common_metadata(fn, fmd, open_with=default_open,
     with open_with(fn, 'wb') as f:
         f.write(MARKER)
         if no_row_groups:
-            rgs = fmd.row_groups
+            fmd = copy(fmd)
             fmd.row_groups = []
             foot_size = write_thrift(f, fmd)
-            fmd.row_groups = rgs
         else:
             foot_size = write_thrift(f, fmd)
         f.write(struct.pack(b"<i", foot_size))
@@ -936,7 +1016,7 @@ def consolidate_categories(fmd):
         for rg in fmd.row_groups:
             for col in rg.columns:
                 if ".".join(col.meta_data.path_in_schema) == cat['name']:
-                    ncats = [k.value for k in col.meta_data.key_value_metadata
+                    ncats = [k.value for k in (col.meta_data.key_value_metadata or [])
                              if k.key == 'num_categories']
                     if ncats and int(ncats[0]) > cat['metadata'][
                             'num_categories']:
@@ -972,14 +1052,13 @@ def merge(file_list, verify_schema=True, open_with=default_open,
     -------
     ParquetFile instance corresponding to the merged data.
     """
-    sep = sep_from_open(open_with)
     basepath, fmd = metadata_from_many(file_list, verify_schema, open_with,
                                        root=root)
 
-    out_file = sep.join([basepath, '_metadata'])
+    out_file = join_path(basepath, '_metadata')
     write_common_metadata(out_file, fmd, open_with, no_row_groups=False)
     out = api.ParquetFile(out_file, open_with=open_with)
 
-    out_file = sep.join([basepath, '_common_metadata'])
+    out_file = join_path(basepath, '_common_metadata')
     write_common_metadata(out_file, fmd, open_with)
     return out

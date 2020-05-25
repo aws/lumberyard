@@ -170,6 +170,7 @@ namespace AzQtComponents
 
         QMainWindow* m_mainWindow;
         QDesktopWidget* m_desktopWidget;
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QList<QScreen*> m_desktopScreens;
 
         // An empty QWidget used as a placeholder when dragging a dock window
@@ -177,6 +178,7 @@ namespace AzQtComponents
         QWidget* m_emptyWidget;
 
         FancyDockingDropZoneState m_dropZoneState;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
         // When a user hovers over a drop zone, we will fade it in using this timer
         QTimer* m_dropZoneHoverFadeInTimer;
@@ -219,8 +221,11 @@ namespace AzQtComponents
         private:
             QPointer<QScreen> m_placeholderScreen;
             QRect m_placeholder;
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         } m_state;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
+        AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         // map QDockWidget name with its last floating dock.
         QMap<QString, QString> m_placeholders;
         // map floating dock name with it's serialization and the geometry
@@ -238,6 +243,7 @@ namespace AzQtComponents
         QList<FancyDockingDropZoneWidget*> m_activeDropZoneWidgets;
 
         QList<QString> m_orderedFloatingDockWidgetNames;
+        AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
         QString m_floatingWindowIdentifierPrefix;
         QString m_tabContainerIdentifierPrefix;

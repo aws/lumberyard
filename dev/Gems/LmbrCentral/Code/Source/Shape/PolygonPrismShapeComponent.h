@@ -43,6 +43,7 @@ namespace LmbrCentral
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
             provided.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
+            provided.push_back(AZ_CRC("AreaLightShapeService", 0x68ea78dc));
             provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
             provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }
@@ -51,6 +52,7 @@ namespace LmbrCentral
         {
             incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
             incompatible.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
+            incompatible.push_back(AZ_CRC("AreaLightShapeService", 0x68ea78dc));
             incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
             incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }

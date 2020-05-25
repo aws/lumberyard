@@ -546,7 +546,7 @@ namespace AZStd
                 num_locks = Traits::num_locks,
                 lock_mask = num_locks - 1
             };
-            AZ_STATIC_ASSERT((num_locks & (num_locks - 1)) == 0, "must be power of 2");
+            static_assert((num_locks & (num_locks - 1)) == 0, "must be power of 2");
 
             storage_type m_storage;
             key_eq m_keyEqual;

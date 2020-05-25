@@ -11,7 +11,7 @@
 */
 #include "LmbrCentral_precompiled.h"
 #include "MeshComponent.h"
-#include "MaterialOwnerRequestBusHandlerImpl.h"
+#include <LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

@@ -1,5 +1,7 @@
 import service
 import errors
+from six import string_types
+
 import table_data
 
 @service.api
@@ -26,7 +28,7 @@ def create(request, data):
 def read(request, key):
     data = table_data.read(key)
     if data is None:
-        raise errors.NotFoundError('No data with key {} was found.'.format(key))
+        raise errors.HandledError('No data with key {} was found.'.format(key))
     return data
 
 
@@ -34,19 +36,19 @@ def read(request, key):
 def update(request, key, data):
     __validate_data(data)
     if not table_data.update(key, data):
-        raise errors.NotFoundError('No data with key {} was found.'.format(key))
+        raise errors.HandledError('No data with key {} was found.'.format(key))
 
 
 @service.api
 def delete(request, key):
     if not table_data.delete(key):
-        raise errors.NotFoundError('No data with key {} was found.'.format(key))
+        raise errors.HandledError('No data with key {} was found.'.format(key))
 
 
 def __validate_data(data):
 
-    if not isinstance(data.get('ExamplePropertyA', None), basestring):
-        raise errors.ClientError('Property ExamplePropertyA in provided data is missing or is not a string.')
+    if not isinstance(data.get('ExamplePropertyA', None), string_types):
+        raise errors.HandledError('Property ExamplePropertyA in provided data is missing or is not a string.')
 
     if not isinstance(data.get('ExamplePropertyB', None), int):
-        raise errors.ClientError('Property ExamplePropertyB in provided data is missing or is not an integer.')
+        raise errors.HandledError('Property ExamplePropertyB in provided data is missing or is not an integer.')

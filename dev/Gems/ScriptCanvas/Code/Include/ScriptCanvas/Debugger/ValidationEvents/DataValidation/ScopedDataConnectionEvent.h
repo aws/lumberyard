@@ -28,7 +28,7 @@ namespace ScriptCanvas
     {
     public:
         AZ_CLASS_ALLOCATOR(ScopedDataConnectionEvent, AZ::SystemAllocator, 0);
-        AZ_RTTI(ScopedDataConnectionEvent, "{58F76284-987C-4A15-A31B-407475586958}", ValidationEvent);
+        AZ_RTTI(ScopedDataConnectionEvent, "{4C77B468-1405-4997-9A0E-A399E7464906}", ValidationEvent);
         
         ScopedDataConnectionEvent(const AZ::EntityId& connectionId)
             : ValidationEvent(ValidationSeverity::Warning)

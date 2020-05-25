@@ -23,10 +23,12 @@ namespace EMotionFX
         MOCK_CONST_METHOD0(GetParameters, AZStd::vector<AZStd::string>());
         MOCK_CONST_METHOD0(GetParameterAnimGraph, AnimGraph*());
         MOCK_METHOD1(ParameterMaskChanged, void(const AZStd::vector<AZStd::string>& newParameterMask));
-        MOCK_METHOD1(ParameterAdded, void(size_t newParameterIndex));
+        MOCK_METHOD1(ParameterAdded, void(const AZStd::string& newParameterName));
         MOCK_METHOD2(ParameterRenamed, void(const AZStd::string& oldParameterName, const AZStd::string& newParameterName));
         MOCK_METHOD2(ParameterOrderChanged, void(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange));
         MOCK_METHOD1(ParameterRemoved, void(const AZStd::string& oldParameterName));
+        MOCK_METHOD2(BuildParameterRemovedCommands, void(MCore::CommandGroup& commandGroup, const AZStd::string& oldParameterName));
+
         static void SortAndRemoveDuplicates(AnimGraph* animGraph, AZStd::vector<AZStd::string>& parameterNames);
     };
 }

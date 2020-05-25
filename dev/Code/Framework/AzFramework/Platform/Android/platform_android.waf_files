@@ -30,6 +30,10 @@
         "TargetManagement/Platform/Android":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"
+        ],
+        "Windowing/Platform/Android":
+        [
+            "AzFramework/Windowing/NativeWindow_Android.cpp"
         ]
     },
     "AzFramework_Input_Uber_Android.cpp":
@@ -59,13 +63,14 @@
         [
             "AzFramework/Input/Devices/Touch/InputDeviceTouch_Android.cpp"
         ],
+        "Input/User/Platform/Android":
+        [
+            "AzFramework/Input/User/LocalUserId_Platform.h",
+            "../Common/Default/AzFramework/Input/User/LocalUserId_Default.h"
+        ],
         "Input/Devices/VirtualKeyboard/Platform/Android":
         [
             "AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Android.cpp"
-        ],
-        "Windowing":
-        [
-            "AzFramework/Windowing/NativeWindow_Android.cpp"
         ]
     }
 }

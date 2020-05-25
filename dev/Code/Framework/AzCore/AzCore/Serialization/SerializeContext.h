@@ -1187,10 +1187,6 @@ namespace AZ
             /// For class type that are empty, we want the serializer to create on load, but have no child elements.
             ClassBuilder* SerializeWithNoData();
 
-            AZ_DEPRECATED(
-                ClassBuilder* SerializerForEmptyClass(),
-                "This function was oft misused, and as such has been removed. If you truly need this functionality, please use SerializeWithNoData()");
-
             /**
              * Implement and provide interface for event handling when necessary.
              * An example for this will be when the class does some thread work and need to know when
@@ -1451,7 +1447,7 @@ namespace AZ
                     }
                     else
                     {
-                         // placement new construct the destination object if it has not been allocated on the heap
+                        // placement new construct the destination object if it has not been allocated on the heap
                         new (AZStd::any_cast<void>(dest)) ValueType();
                     }
                     break;
@@ -1487,7 +1483,15 @@ namespace AZ
             typeinfo.m_handler = NonCopyableAnyHandler(serializeContext);
             typeinfo.m_isPointer = AZStd::is_pointer<ValueType>::value;
             typeinfo.m_useHeap = AZStd::GetMax(sizeof(ValueType), AZStd::alignment_of<ValueType>::value) > AZStd::Internal::ANY_SBO_BUF_SIZE;
-            return serializeContext ? AZStd::any(typeinfo, AZStd::in_place_type_t<ValueType>{}) : AZStd::any();
+            if constexpr (AZStd::is_default_constructible_v<ValueType>)
+            {
+                return serializeContext ? AZStd::any(typeinfo, AZStd::in_place_type_t<ValueType>{}) : AZStd::any();
+            }
+            else
+            {
+                ValueType instance;
+                return serializeContext ? AZStd::any(reinterpret_cast<const void*>(&instance), typeinfo) : AZStd::any();
+            }
         }
     };
 
@@ -1781,7 +1785,7 @@ namespace AZ
 
     constexpr char const* c_serializeBaseClassStrings[] = { "BaseClass1", "BaseClass2", "BaseClass3" };
     constexpr size_t c_serializeMaxNumBaseClasses = 3;
-    AZ_STATIC_ASSERT(AZ_ARRAY_SIZE(c_serializeBaseClassStrings) == c_serializeMaxNumBaseClasses, "Expected matching array size for the names of serialized base classes.");
+    static_assert(AZ_ARRAY_SIZE(c_serializeBaseClassStrings) == c_serializeMaxNumBaseClasses, "Expected matching array size for the names of serialized base classes.");
 
     template<class T, class BaseClass>
     void SerializeContext::AddClassData(ClassData* classData, size_t index)
@@ -1829,8 +1833,8 @@ namespace AZ
     SerializeContext::ClassBuilder
     SerializeContext::Class(IObjectFactory* factory)
     {
-        AZ_STATIC_ASSERT((AZStd::negation_v< AZStd::disjunction<AZStd::is_same<T, TBaseClasses>...> >), "You cannot reflect a type as its own base");
-        AZ_STATIC_ASSERT(sizeof...(TBaseClasses) <= c_serializeMaxNumBaseClasses, "Only " AZ_STRINGIZE(c_serializeMaxNumBaseClasses) " base classes are supported. You can add more in c_serializeBaseClassStrings.");
+        static_assert((AZStd::negation_v< AZStd::disjunction<AZStd::is_same<T, TBaseClasses>...> >), "You cannot reflect a type as its own base");
+        static_assert(sizeof...(TBaseClasses) <= c_serializeMaxNumBaseClasses, "Only " AZ_STRINGIZE(c_serializeMaxNumBaseClasses) " base classes are supported. You can add more in c_serializeBaseClassStrings.");
 
         const Uuid& typeUuid = AzTypeInfo<T>::Uuid();
         const char* name = AzTypeInfo<T>::Name();
@@ -1997,7 +2001,7 @@ namespace AZ
     template<class ClassType, class BaseType, class FieldType>
     SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::FieldFromBase(const char* name, FieldType BaseType::* member)
     {
-        AZ_STATIC_ASSERT((AZStd::is_base_of<BaseType, ClassType>::value), "Classes BaseType and ClassType are unrelated. BaseType should be base class for ClassType");
+        static_assert((AZStd::is_base_of<BaseType, ClassType>::value), "Classes BaseType and ClassType are unrelated. BaseType should be base class for ClassType");
 
         if (m_context->IsRemovingReflection())
         {

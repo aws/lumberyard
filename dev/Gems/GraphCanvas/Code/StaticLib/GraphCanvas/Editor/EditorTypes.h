@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/std/any.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Component/EntityId.h>
 
@@ -47,12 +48,75 @@ namespace GraphCanvas
         };
     }
 
+    enum class DataSlotType
+    {
+        Unknown,
+
+        // These are options that can be used on most DataSlots
+        Value,
+        Reference
+    };
+
+    enum class DataValueType
+    {
+        Unknown,
+        
+        Primitive,
+
+        // Container types
+        Container
+    };
+
+    // Used to signal a drag/drop state
+    enum class DragDropState
+    {
+        Unknown,
+        Idle,
+        Valid,
+        Invalid
+    };
+
+    // Signals out which side of the connection is attempting to be moved.
+    enum class ConnectionMoveType
+    {
+        Unknown,
+        Source,
+        Target
+    };
+
     enum class ToastType
     {
         Information,
         Warning,
         Error,
         Custom
+    };
+
+    enum class ListingType
+    {
+        Unknown,
+        WhiteList,
+        BlackList
+    };
+
+    template<typename T>
+    class TypeListingConfiguration
+    {
+    public:
+        TypeListingConfiguration() = default;
+        ~TypeListingConfiguration() = default;
+
+        bool AllowsType(const T& type) const
+        {
+            size_t count = m_listing.count(type);
+
+            return (count > 0 && m_listingType == ListingType::BlackList) || (count == 0 && m_listingType == ListingType::WhiteList);
+        }
+
+        ListingType             m_listingType  = ListingType::BlackList;
+        AZStd::unordered_set<T> m_listing;
+
+    private:
     };
 
     class ToastConfiguration

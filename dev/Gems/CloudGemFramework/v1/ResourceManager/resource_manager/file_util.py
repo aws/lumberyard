@@ -9,17 +9,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision$
-
 import fnmatch
 import os
 import tempfile
 import shutil
 
+import six
+
 from zipfile import ZipFile, ZipInfo
 
-from errors import HandledError
+from .errors import HandledError
 
-def zip_directory(context, directory_path, aggregated_directories = None, aggregated_content = None):
+
+def zip_directory(context, directory_path, aggregated_directories=None, aggregated_content=None):
     '''Creates a zip file containing the contents of the specified directory.
 
     Args:
@@ -52,7 +54,7 @@ def zip_directory(context, directory_path, aggregated_directories = None, aggreg
     with tempfile.NamedTemporaryFile(
         prefix=os.path.basename(directory_path) + '_', 
         suffix='.zip', 
-        dir=os.path.dirname(directory_path), 
+        dir=os.path.dirname(directory_path),
         delete=False) as file:
             zip_file_path = file.name
 
@@ -63,14 +65,14 @@ def zip_directory(context, directory_path, aggregated_directories = None, aggreg
             __zip_directory(context, zip_file, zip_file_path, directory_path)
 
             if aggregated_directories:
-                for destination_path, directory_paths in aggregated_directories.iteritems():
+                for destination_path, directory_paths in six.iteritems(aggregated_directories):
                     if not isinstance(directory_paths, list):
                         directory_paths= [ directory_paths ]
                     for directory_path in directory_paths:
                         __zip_directory(context, zip_file, zip_file_path, directory_path, destination_path)
 
             if aggregated_content:
-                for destination_path, content in aggregated_content.iteritems():
+                for destination_path, content in six.iteritems(aggregated_content):
                     __zip_content(context, zip_file, zip_file_path, destination_path, content)
 
         return zip_file_path
@@ -89,12 +91,12 @@ def __zip_content(context, zip_file, zip_file_path, destination_path, content):
     try:
 
         info = ZipInfo(destination_path)
-        info.external_attr = 0777 << 16L # give full access to included file
+        info.external_attr = 0o0777 << 16  # give full access to included file
 
         zip_file.writestr(info, content)
 
     except Exception as e:
-        raise HandledError('Could not add content to zip file: {}'.format(e.message))
+        raise HandledError('Could not add content to zip file: {}'.format(e))
 
 
 def __zip_directory(context, zip_file, zip_file_path, src_directory_path, dst_directory_path = None):
@@ -113,10 +115,10 @@ def __zip_directory(context, zip_file, zip_file_path, src_directory_path, dst_di
                 try:
                     zip_file.write(src_file_path, dst_file_path)
                 except Exception as e:
-                    raise HandledError('Could not add {} to zip file: {}'.format(src_file_path, e.message))
+                    raise HandledError('Could not add {} to zip file: {}'.format(src_file_path, e))
 
 
-def copy_directory_content(context, destination_path, source_path, overwrite_existing = False, name_substituions = {}, content_substitutions = {}):
+def copy_directory_content(context, destination_path, source_path, overwrite_existing = False, name_substitutions=None, content_substitutions=None):
     '''Copy the contents of a directory. The source directory may contain an 
     .ignore_when_copying file listing content that should not be copied.
 
@@ -131,7 +133,7 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
 
         name_substitutions (default = {}): dict used to replace parts 
         of file and directory names when doing the copy. For each key, 
-        value in the dict all occurences of key will be replaced by value 
+        value in the dict all occurrences of key will be replaced by value
         in the destination file name.
 
         content_substitutions (default = {}): dict used to replace 
@@ -141,6 +143,11 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
         use if your copying a directory with lots of files in it.
 
     '''
+
+    if content_substitutions is None:
+        content_substitutions = {}
+    if name_substitutions is None:
+        name_substitutions = {}
 
     if not os.path.isdir(source_path):
         raise HandledError('Source is not a directory when copying from {} to {}.'.format(source_path, destination_path))
@@ -175,7 +182,7 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
                 continue
 
             dst_name = src_name
-            for key, value in name_substituions.iteritems():
+            for key, value in six.iteritems(name_substitutions):
                 dst_name = dst_name.replace(key, value)
 
             dst_file = os.path.join(dst_directory, dst_name)
@@ -183,7 +190,7 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
             copy_file(context, dst_file, src_file, overwrite_existing, content_substitutions)
 
 
-def copy_file(context, destination_path, source_path, overwrite_existing = False, content_substitutions = {}):                
+def copy_file(context, destination_path, source_path, overwrite_existing = False, content_substitutions=None):
     '''Copies a file.
 
     Arguments:
@@ -201,6 +208,9 @@ def copy_file(context, destination_path, source_path, overwrite_existing = False
         content in copied files. The keys are the content to look for in 
         the file and the value is the content that will replace the key.
     '''
+
+    if content_substitutions is None:
+        content_substitutions = {}
 
     if not os.path.isfile(source_path):
         raise HandledError('Source is not a file when copying from {} to {}.'.format(source_path, destination_path))
@@ -221,7 +231,7 @@ def copy_file(context, destination_path, source_path, overwrite_existing = False
         with open(destination_path, 'r') as file:
             content = file.read()
 
-        for key, value in content_substitutions.iteritems():
+        for key, value in six.iteritems(content_substitutions):
             content = content.replace(key, value)
 
         with open(destination_path, 'w') as file:
@@ -237,7 +247,7 @@ def create_file(context, destination_path, initial_content, overwrite_existing =
 
         initial_content: The file's initial content.
 
-        overwrite_existing (False): Overwite existing files. 
+        overwrite_existing (False): Overwrite existing files.
 
     Returns:
 
@@ -256,7 +266,10 @@ def create_file(context, destination_path, initial_content, overwrite_existing =
         return True
 
 
-def create_ignore_filter_function(context, ignore_file_path, ignore_file_name, always_ignore = []):
+def create_ignore_filter_function(context, ignore_file_path, ignore_file_name, always_ignore=None):
+    if always_ignore is None:
+        always_ignore = []
+
     ignore_filters = []
 
     try:
@@ -280,10 +293,10 @@ def create_ignore_filter_function(context, ignore_file_path, ignore_file_name, a
 
         # Do not allow absolute paths to be used
         if os.path.isabs(ignore_filter):
-            print 'Error, ignore filter \'' + ignore_filter + '\' is an absolute path and will not be used'
+            print('Error, ignore filter \'{}\' is an absolute path and will not be used'.format(ignore_filter))
             continue
 
-        # Cocatenate the ignore file path to get the ignore filter in the same 'space'
+        # Concatenate the ignore file path to get the ignore filter in the same 'space'
         ignore_filter = os.path.join(ignore_file_path, ignore_filter)
 
         # Normalize the path, removing any up/current level references, etc..

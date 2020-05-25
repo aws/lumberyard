@@ -34,6 +34,12 @@ namespace ScriptCanvas
     class Graph;
     class BehaviorContextObject;
 
+    struct SystemComponentConfiguration
+    {
+        //! Script Canvas offers infinite loop protection, this allows to specify the max number of iterations to attempt before deciding execution is likely an infinite loop
+        int m_maxIterationsForInfiniteLoopDetection;
+    };
+
     ////////////////////////////////////////////////////////////////
     // SystemRequests 
     ////////////////////////////////////////////////////////////////
@@ -52,15 +58,15 @@ namespace ScriptCanvas
         //! Create a graph, a pointer to the graph/
         //! The Init() function is not called on the graph to remapping of Entity Id's to still work
         virtual ScriptCanvas::Graph* MakeGraph() = 0;
-        virtual AZ::EntityId FindGraphId(AZ::Entity* /*graphEntity*/)
+        virtual ScriptCanvasId FindScriptCanvasId(AZ::Entity* /*graphEntity*/)
         {
-            return AZ::EntityId();
+            return ScriptCanvasId();
         }
 
         virtual ScriptCanvas::Node* GetNode(const AZ::EntityId&, const AZ::Uuid&) = 0;
      
         //! Given the ClassData for a type create a Script Canvas Node Component on the supplied entity
-        virtual Node* CreateNodeOnEntity(const AZ::EntityId& entityId, AZ::EntityId graphId, const AZ::Uuid& nodeType) = 0;
+        virtual Node* CreateNodeOnEntity(const AZ::EntityId& entityId, ScriptCanvasId scriptCanvasId, const AZ::Uuid& nodeType) = 0;
 
         template <typename NodeType>
         NodeType* GetNode(const AZ::EntityId& nodeId)
@@ -81,6 +87,8 @@ namespace ScriptCanvas
         virtual BehaviorContextObject* FindOwnedObjectReference(const void* object) = 0;
         //! Removes a mapping of the raw address of an object created by the behavior context to a BehaviorContextObject node
         virtual void RemoveOwnedObjectReference(const void* object) = 0;
+
+        virtual SystemComponentConfiguration GetSystemComponentConfiguration() = 0;
     };
 
     using SystemRequestBus = AZ::EBus<SystemRequests>;

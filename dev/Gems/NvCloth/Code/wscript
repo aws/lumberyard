@@ -41,10 +41,6 @@ def build(bld):
         win_features            = ['crcfix'],
         includes                = [bld.Path('Code/CryEngine/CryCommon')],
         
-        # Testing
-        disable_tests           = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
-        test_all_file_list      = ['nvcloth_tests.waf_files'],
-        
         # Dependencies
         use                     = ['EMotionFXStaticLib'],
         uselib                  = [nvcloth_lib],
@@ -56,10 +52,6 @@ def build(bld):
             defines             = ['NVCLOTH_EDITOR'],
             includes            = [bld.Path('Code/Tools'),
                                    bld.Path('Code/CryEngine/CryCommon')],
-            
-            # Testing
-            disable_tests       = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
-            test_all_file_list  = ['nvcloth_editor_tests.waf_files'],
             
             # Dependencies
             use                 = ['SceneCore', 'EMotionFXStaticLib'],

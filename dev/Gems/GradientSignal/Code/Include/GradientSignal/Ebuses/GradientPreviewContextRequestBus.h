@@ -42,7 +42,7 @@ namespace GradientSignal
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~GradientPreviewContextRequests() AZ_DEFAULT_METHOD;
+        virtual ~GradientPreviewContextRequests() = default;
 
         virtual AZ::EntityId GetPreviewEntity() const { return AZ::EntityId(); }
         virtual AZ::Aabb GetPreviewBounds() const { return AZ::Aabb::CreateNull(); }

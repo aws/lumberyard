@@ -100,7 +100,7 @@ namespace GraphCanvas
 
                 if (contextMenuAction)
                 {
-                    contextMenuAction->RefreshAction(graphId, targetMemberId);
+                    contextMenuAction->SetTarget(graphId, targetMemberId);
                 }
             }
 
@@ -113,7 +113,7 @@ namespace GraphCanvas
 
                     if (contextMenuAction)
                     {
-                        contextMenuAction->RefreshAction(graphId, targetMemberId);
+                        contextMenuAction->SetTarget(graphId, targetMemberId);
                         enableMenu = enableMenu || contextMenuAction->isEnabled();
                     }
                 }

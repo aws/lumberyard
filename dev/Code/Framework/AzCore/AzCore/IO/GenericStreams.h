@@ -76,15 +76,15 @@ namespace AZ
             StreamerStream(const char* filename, OpenMode flags, SizeType baseOffset = 0, SizeType fakeLen = static_cast<SizeType>(-1));
             ~StreamerStream() override = default;
 
-            virtual bool        IsOpen() const;
-            virtual bool        CanSeek() const                             { return true; }
-            virtual bool        CanRead() const override;
-            virtual bool        CanWrite() const override;
-            virtual void        Seek(OffsetType bytes, SeekMode mode);
-            virtual SizeType    Read(SizeType bytes, void* oBuffer);
-            virtual SizeType    Write(SizeType bytes, const void* iBuffer);
-            virtual SizeType    GetCurPos() const                           { return m_curPos; }
-            virtual SizeType    GetLength() const;
+            bool        IsOpen() const override;
+            bool        CanSeek() const override                             { return true; }
+            bool        CanRead() const override;
+            bool        CanWrite() const override;
+            void        Seek(OffsetType bytes, SeekMode mode) override;
+            SizeType    Read(SizeType bytes, void* oBuffer) override;
+            SizeType    Write(SizeType bytes, const void* iBuffer) override;
+            SizeType    GetCurPos() const override                           { return m_curPos; }
+            SizeType    GetLength() const override;
 
         protected:
             enum class Availability
@@ -110,24 +110,24 @@ namespace AZ
         {
         public:
             SystemFileStream(SystemFile* file, bool isOwner, SizeType baseOffset = 0, SizeType fakeLen = static_cast<SizeType>(-1));
-            ~SystemFileStream();
+            ~SystemFileStream() override;
 
             bool Open(const char* path, OpenMode mode);
 
             void Close() override;
 
-            virtual bool        IsOpen() const;
-            virtual bool        CanSeek() const                             { return true; }
-            virtual bool        CanRead() const override;
-            virtual bool        CanWrite() const override;
-            virtual void        Seek(OffsetType bytes, SeekMode mode);
-            virtual SizeType    Read(SizeType bytes, void* oBuffer);
-            virtual SizeType    Write(SizeType bytes, const void* iBuffer);
-            virtual SizeType    GetCurPos() const                           { return m_curPos; }
-            virtual SizeType    GetLength() const;
-            virtual const char* GetFilename() const override;
-            virtual OpenMode    GetModeFlags() const override { return m_mode; }
-            virtual bool        ReOpen() override;
+            bool        IsOpen() const override;
+            bool        CanSeek() const override                             { return true; }
+            bool        CanRead() const override;
+            bool        CanWrite() const override;
+            void        Seek(OffsetType bytes, SeekMode mode) override;
+            SizeType    Read(SizeType bytes, void* oBuffer) override;
+            SizeType    Write(SizeType bytes, const void* iBuffer) override;
+            SizeType    GetCurPos() const override                           { return m_curPos; }
+            SizeType    GetLength() const override;
+            const char* GetFilename() const override;
+            OpenMode    GetModeFlags() const override { return m_mode; }
+            bool        ReOpen() override;
 
         private:
             SystemFile* m_file;
@@ -169,16 +169,16 @@ namespace AZ
             {
             }
 
-            virtual bool        IsOpen() const                              { return m_buffer != NULL; }
-            virtual bool        CanSeek() const                             { return true; }
-            virtual bool        CanRead() const override                    { return true; }
-            virtual bool        CanWrite() const override                   { return true; }
-            virtual void        Seek(OffsetType bytes, SeekMode mode);
-            virtual SizeType    Read(SizeType bytes, void* oBuffer);
-            virtual SizeType    Write(SizeType bytes, const void* iBuffer);
+            bool        IsOpen() const override                              { return m_buffer != NULL; }
+            bool        CanSeek() const override                             { return true; }
+            bool        CanRead() const override                    { return true; }
+            bool        CanWrite() const override                   { return true; }
+            void        Seek(OffsetType bytes, SeekMode mode) override;
+            SizeType    Read(SizeType bytes, void* oBuffer) override;
+            SizeType    Write(SizeType bytes, const void* iBuffer) override;
             virtual const void* GetData() const                             { return m_buffer; }
-            virtual SizeType    GetCurPos() const                           { return m_curOffset; }
-            virtual SizeType    GetLength() const                           { return m_curLen; }
+            SizeType    GetCurPos() const override                           { return m_curOffset; }
+            SizeType    GetLength() const override                           { return m_curLen; }
 
         protected:
             const char*         m_buffer;

@@ -41,6 +41,7 @@ namespace AZ
                     ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_height, "Height", "Shape Height")
                         ->Attribute(Edit::Attributes::Suffix, " m")
                         ->Attribute(Edit::Attributes::Step, 0.05f)
+                        ->Attribute(Edit::Attributes::Min, 0.0f)
                         ->Attribute(Edit::Attributes::ChangeNotify, &PolygonPrism::OnChangeHeight)
                     ->DataElement(Edit::UIHandlers::Default, &PolygonPrism::m_vertexContainer, "Vertices", "Data representing the polygon, in the entity's local coordinate space")
                         ->Attribute(Edit::Attributes::ContainerCanBeModified, false)

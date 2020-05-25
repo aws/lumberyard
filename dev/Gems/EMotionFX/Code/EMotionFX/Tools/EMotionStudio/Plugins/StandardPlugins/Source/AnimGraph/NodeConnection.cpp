@@ -21,14 +21,14 @@
 namespace EMStudio
 {
     // constructor
-    NodeConnection::NodeConnection(const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr)
+    NodeConnection::NodeConnection(NodeGraph* parentGraph, const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr)
         : m_modelIndex(modelIndex)
+        , m_parentGraph(parentGraph)
     {
         mSourceNode     = sourceNode;
         mSourcePortNr   = sourceOutputPortNr;
         mTargetNode     = targetNode;
         mPortNr         = portNr;
-        mIsSelected     = false;
         mIsVisible      = false;
         mIsProcessed    = false;
         mIsDashed       = false;
@@ -78,7 +78,7 @@ namespace EMStudio
 
         // draw the connection
         mPainterPath = QPainterPath();
-        const float width = abs((endX - 3) - (startX + 3));
+        const float width = aznumeric_cast<float>(abs((endX - 3) - (startX + 3)));
         mPainterPath.moveTo(startX, startY);
         mPainterPath.lineTo(startX + 3, startY);
         mPainterPath.cubicTo(startX + (width / 2), startY, endX - (width / 2), endY, endX - 3, endY);
@@ -105,7 +105,7 @@ namespace EMStudio
         QColor penColor;
 
         // draw some small horizontal lines that go outside of the connection port
-        if (mIsSelected)
+        if (GetIsSelected())
         {
             penColor.setRgb(255, 128, 0);
 
@@ -130,7 +130,7 @@ namespace EMStudio
                 }
                 else
                 {
-                    uint32 col = scale * 200;
+                    uint32 col = aznumeric_cast<uint32>(scale * 200);
                     col = MCore::Clamp<uint32>(col, 130, 130);
                     penColor.setRgb(col, col, col);
                 }
@@ -183,12 +183,12 @@ namespace EMStudio
                 result = minOutput;
             }
 
-            pen->setWidth(result);
+            pen->setWidth(aznumeric_cast<int>(result));
             penColor = penColor.lighter(160);
         }
 
         // blinking red error color
-        if (mSourceNode && mSourceNode->GetHasError() && mIsSelected == false)
+        if (mSourceNode && mSourceNode->GetHasError() && !GetIsSelected())
         {
             NodeGraph* parentGraph = mTargetNode->GetParentGraph();
             if (parentGraph->GetUseAnimation())
@@ -370,5 +370,10 @@ namespace EMStudio
 
         MCORE_ASSERT(false);
         return QRect();
+    }
+
+    bool NodeConnection::GetIsSelected() const
+    {
+        return m_parentGraph->GetAnimGraphModel().GetSelectionModel().isSelected(m_modelIndex);
     }
 }   // namespace EMotionFX

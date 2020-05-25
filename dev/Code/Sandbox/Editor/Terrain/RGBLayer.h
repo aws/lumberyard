@@ -32,7 +32,7 @@ public:
 
     void Serialize(XmlNodeRef& node, bool bLoading);
 
-    void AllocateTiles(const uint32 dwTileCountX, const uint32 dwTileCountY, const uint32 dwTileResolution);
+    void AllocateTiles(const uint32 dwTileCountX, const uint32 dwTileCountY, const uint32 dwTileResolution, bool saveIfDirty = false);
 
     void FreeData();
 

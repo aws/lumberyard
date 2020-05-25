@@ -43,7 +43,7 @@ namespace GradientSignal
 
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~GradientRequests() AZ_DEFAULT_METHOD;
+        virtual ~GradientRequests() = default;
 
         /**
         * Given a certain position, generate a value.  Implementations of this need to be thread-safe without using locks, 

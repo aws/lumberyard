@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "DockableLibraryPanel.h"
 #include "Utils.h"
 #include "UIFactory.h"
@@ -129,7 +129,7 @@ void DockableLibraryPanel::Init(const QString& panelName, CBaseLibraryManager* l
     connect(m_searchField, &QComboBox::currentTextChanged, this, &DockableLibraryPanel::OnSearchFilterChanged);
     m_searchLayout->addWidget(m_searchField);
     m_searchLayout->addWidget(m_AddNewLibraryButton);
-    connect(m_AddNewLibraryButton, &QPushButton::pressed, this, &DockableLibraryPanel::OnLibraryToggleButtonPushed);
+    connect(m_AddNewLibraryButton, &QPushButton::clicked, this, &DockableLibraryPanel::OnLibraryToggleButtonPushed);
 
     //set up dock area
     m_scrollArea->setWidgetResizable(true);
@@ -342,7 +342,10 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
     {
     case DockableLibraryPanel::LibraryActions::ADD:
     {
-        connect(act, &QAction::triggered, this, &DockableLibraryPanel::AddLibrary, connection);
+        connect(act, &QAction::triggered, this, [=]()
+        {
+            AddLibrary();
+        }, connection);
         SET_ICON("Editor/UI/Icons/toolbar/libraryAdd.png");
         SET_SHORTCUT("File Menu.Create new library");
         break;
@@ -1814,7 +1817,9 @@ void DockableLibraryPanel::RegisterActions()
     // Library Action, Add Library
     action = new QAction(this);
     action->setShortcut(utils->HotKey_GetShortcut("File Menu.Create new library"));
-    connect(action, &QAction::triggered, this, [=]() { AddLibrary(); });
+    connect(action, &QAction::triggered, this, [=]() {
+        AddLibrary();
+    });
     addAction(action);
 
     ///////////////////////////////////////////

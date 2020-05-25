@@ -20,7 +20,6 @@
 #include "DisplaySettings.h"
 #include "CustomResolutionDlg.h"
 #include "CustomAspectRatioDlg.h"
-#include "Util/BoostPythonHelpers.h"
 #include "AI/AIManager.h"
 #include <INavigationSystem.h>
 #include "Objects/ObjectLayerManager.h"
@@ -39,7 +38,29 @@
 
 #include "ui_ViewportTitleDlg.h"
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
+
 // CViewportTitleDlg dialog
+
+inline namespace Helpers
+{
+    void ToggleHelpers()
+    {
+        GetIEditor()->GetDisplaySettings()->DisplayHelpers(!GetIEditor()->GetDisplaySettings()->IsDisplayHelpers());
+        GetIEditor()->Notify(eNotify_OnDisplayRenderUpdate);
+
+        if (GetIEditor()->GetDisplaySettings()->IsDisplayHelpers() == false)
+        {
+            GetIEditor()->GetObjectManager()->SendEvent(EVENT_HIDE_HELPER);
+        }
+    }
+
+    bool IsHelpersShown()
+    {
+        return GetIEditor()->GetDisplaySettings()->IsDisplayHelpers();
+    }
+}
 
 const int SEARCH_BY_NAME = 1;
 const int SEARCH_BY_TYPE = 2;
@@ -258,7 +279,7 @@ void CViewportTitleDlg::OnMaximize()
 //////////////////////////////////////////////////////////////////////////
 void CViewportTitleDlg::OnToggleHelpers()
 {
-    GetIEditor()->ExecuteCommand("general.toggle_helpers");
+    Helpers::ToggleHelpers();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -705,7 +726,7 @@ void CViewportTitleDlg::OnSearchTermChange()
     }
 
     // Make sure to lower case all terms because later we lower case all inputs to compare against
-    for (auto term : terms)
+    for (QString& term : terms)
     {
         term = term.toLower();
     }
@@ -1028,11 +1049,23 @@ namespace
     }
 }
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyToggleHelpers, general, toggle_helpers,
-    "Toggles the display of helpers.",
-    "general.toggle_helpers()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyIsHelpersShown, general, is_helpers_shown,
-    "Gets the display state of helpers.",
-    "general.is_helpers_shown()");
+namespace AzToolsFramework
+{
+    void ViewportTitleDlgPythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.general' module
+            auto addLegacyGeneral = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
+            };
+            addLegacyGeneral(behaviorContext->Method("toggle_helpers", PyToggleHelpers, nullptr, "Toggles the display of helpers."));
+            addLegacyGeneral(behaviorContext->Method("is_helpers_shown", PyIsHelpersShown, nullptr, "Gets the display state of helpers."));
+        }
+    }
+}
 
 #include <ViewportTitleDlg.moc>

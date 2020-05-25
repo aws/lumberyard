@@ -30,7 +30,7 @@
 // but not as hacky as any alternative feasible in reasonable time
 // CGF Parser is deeply intertwined with CryEngine and it's impossible to use it without 
 // dragging multiple modules with it
-#include <platform_impl.h>
+#include <TypeInfo_impl.h>
 #include <CryHeaders.h>
 #include <CryHeaders_info.h>
 #include <Common_TypeInfo.h>
@@ -347,9 +347,11 @@ namespace PhysX
             }
 
             MeshGroup meshGroup;
+            TriangleMeshAssetParams& triangleMeshAssetParams = meshGroup.GetTriangleMeshAssetParams();
+
             // cryphysics is duplicating vertices, using PhysX welding to remove duplicates
-            meshGroup.SetMeshWeldTolerance(0.001f);
-            meshGroup.SetWeldVertices(true);
+            triangleMeshAssetParams.SetMeshWeldTolerance(0.001f);
+            triangleMeshAssetParams.SetWeldVertices(true);
 
             // Note: CGF->Pxmesh builder only supports triangle mesh cooking, however if you wish to add support of primitives/convexes,
             // you can add it below by setting meshType = Physics::CookedMeshShapeConfiguration::MeshType::Convex 

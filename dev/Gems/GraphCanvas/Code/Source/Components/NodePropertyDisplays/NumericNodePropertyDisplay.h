@@ -81,6 +81,10 @@ namespace GraphCanvas
         QGraphicsLayoutItem* GetDisplayGraphicsLayoutItem() override;
         QGraphicsLayoutItem* GetEditableGraphicsLayoutItem() override;
         ////
+
+        // DataSlotNotifications
+        void OnDragDropStateStateChanged(const DragDropState& dragState) override;
+        ////
     
     private:
 

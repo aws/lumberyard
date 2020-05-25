@@ -9,7 +9,6 @@
         ],
         "Translations": [
             "Translations/editor_en-us.ts",
-            "Translations/flowgraph_en-us.ts",
             "Translations/assetbrowser_en-us.ts"
         ],
         "Resource Files": [
@@ -122,19 +121,12 @@
             "res/file_browse.ico",
             "res/filesimage.bmp",
             "res/filestatus.bmp",
-            "res/flowgraph_debugger.bmp",
-            "res/flowgraph_toolbar.bmp",
             "res/folder.ico",
             "res/fopen_back.ico",
             "res/fopen_up.ico",
             "res/grid.ico",
             "res/handDrag.cur",
             "res/hit.cur",
-            "res/hypergraph.ico",
-            "res/hypergraph_components.bmp",
-            "res/hypergraph_delete.ico",
-            "res/hypergraphgripper.ico",
-            "res/hypergraphtree.bmp",
             "res/ico00001.ico",
             "res/ico00002.ico",
             "res/icon1.ico",
@@ -263,6 +255,7 @@
             "res/MannFileManagerImageList.bmp"
         ],
         "Core": [
+            "EditorLoadDependencies.h",
             "ErrorDialog.cpp",
             "ErrorDialog.h",
             "ErrorDialog.ui",
@@ -277,6 +270,7 @@
             "CryEdit.h",
             "EditorToolsApplication.cpp",
             "EditorToolsApplication.h",
+            "EditorToolsApplicationAPI.h",
             "Core/EditorMetricsPlainTextNameRegistration.cpp",
             "Core/EditorMetricsPlainTextNameRegistration.h",
             "MainWindow.cpp",
@@ -297,29 +291,6 @@
         "Dialogs": [
             "LevelTreeModel.cpp",
             "LevelTreeModel.h"
-        ],
-        "HyperGraph": [
-            "HyperGraph/HyperGraphConstants.h",
-            "HyperGraph/HyperGraphDialog.qrc",
-            "HyperGraph/HyperGraphDialog.cpp",
-            "HyperGraph/HyperGraphWidget.cpp"
-        ],
-        "HyperGraph/FlowGraph": [
-            "HyperGraph/FlowGraphModuleManager.cpp",
-            "HyperGraph/FlowGraphSearchCtrl.cpp",
-            "HyperGraph/FlowGraphSearchCtrl.ui",
-            "HyperGraph/FlowGraphSearchCtrl.h"
-        ],
-        "HyperGraph/Node Painter": [
-            "HyperGraph/QHyperNodePainter_CommentBox.cpp",
-            "HyperGraph/QHyperNodePainter_CommentBox.h",
-            "HyperGraph/QHyperNodePainter_Default.cpp",
-            "HyperGraph/QHyperNodePainter_Default.h",
-            "HyperGraph/QHyperNodePainter_QuickSearch.cpp",
-            "HyperGraph/QHyperNodePainter_QuickSearch.h",
-            "HyperGraph/QHyperGraphComponentsPanel.ui",
-            "HyperGraph/QHyperGraphTaskPanel.ui",
-            "HyperGraph/QuickSearchNode.cpp"
         ],
         "Panels": [
             "ObjectPanel.cpp",
@@ -731,8 +702,6 @@
         "Controls": [
             "Controls/BitmapToolTip.cpp",
             "Controls/BitmapToolTip.h",
-            "Controls/BreakPointsCtrl.cpp",
-            "Controls/BreakPointsCtrl.h",
             "Controls/ColorGradientCtrl.cpp",
             "Controls/ColorGradientCtrl.h",
             "Controls/ConsoleSCB.cpp",
@@ -826,13 +795,6 @@
             "ShortcutDispatcher.cpp",
             "ShortcutDispatcher.h"
         ],
-        "CustomActions": [
-            "CustomActions/CustomActionsEditorManager.cpp",
-            "CustomActions/CustomActionDialog.cpp",
-            "CustomActions/CustomActionDialog.ui",
-            "CustomActions/CustomActionsEditorManager.h",
-            "CustomActions/CustomActionDialog.h"
-        ],
         "DataBase": [
             "BaseLibraryDialog.cpp",
             "BaseLibraryManager.cpp",
@@ -852,17 +814,6 @@
             "EntityPrototypeLibrary.h",
             "EntityPrototypeManager.h"
         ],
-        "DataBase/GameTokens": [
-            "GameTokens/GameTokenDialog.cpp",
-            "GameTokens/GameTokenItem.cpp",
-            "GameTokens/GameTokenLibrary.cpp",
-            "GameTokens/GameTokenManager.cpp",
-            "GameTokens/GameTokenDialog.h",
-            "GameTokens/GameTokenDialog.ui",
-            "GameTokens/GameTokenItem.h",
-            "GameTokens/GameTokenLibrary.h",
-            "GameTokens/GameTokenManager.h"
-        ],
         "DataBase/ParticlesEditor": [
             "Particles/ParticleDialog.cpp",
             "Particles/ParticleDialog.ui",
@@ -880,12 +831,10 @@
             "Prefabs/PrefabItem.cpp",
             "Prefabs/PrefabLibrary.cpp",
             "Prefabs/PrefabManager.cpp",
-            "Prefabs/PrefabEvents.cpp",
             "Prefabs/PrefabDialog.h",
             "Prefabs/PrefabItem.h",
             "Prefabs/PrefabLibrary.h",
-            "Prefabs/PrefabManager.h",
-            "Prefabs/PrefabEvents.h"
+            "Prefabs/PrefabManager.h"
         ],
         "Dialog Editor": [
             "DialogEditor/DialogEditor.qrc",
@@ -969,9 +918,6 @@
             "SelectEntityClsDialog.cpp",
             "SelectEntityClsDialog.h",
             "SelectEntityClsDialog.ui",
-            "SelectGameTokenDialog.cpp",
-            "SelectGameTokenDialog.h",
-            "SelectGameTokenDialog.ui",
             "SelectLightAnimationDialog.cpp",
             "SelectLightAnimationDialog.h",
             "SelectMissionObjectiveDialog.cpp",
@@ -1150,7 +1096,6 @@
             "SurfaceInfoPicker.h",
             "ToolBox.h",
             "TrackViewNewSequenceDialog.h",
-            "UndoCVar.h",
             "UndoConfigSpec.h",
             "UndoViewPosition.h",
             "UndoViewRotation.h",
@@ -1161,73 +1106,6 @@
             "WipFeaturesDlg.h",
             "WipFeaturesDlg.ui",
             "WipFeaturesDlg.qrc"
-        ],
-        "HyperGraph": [
-            "HyperGraph/HyperGraph.cpp",
-            "HyperGraph/HyperGraphManager.cpp",
-            "HyperGraph/HyperGraphNode.cpp",
-            "HyperGraph/HyperGraph.h",
-            "HyperGraph/HyperGraphDialog.h",
-            "HyperGraph/HyperGraphManager.h",
-            "HyperGraph/HyperGraphNode.h",
-            "HyperGraph/HyperGraphWidget.h",
-            "HyperGraph/IHyperGraph.h",
-            "HyperGraph/LyFlowGraphNotification.h",
-            "HyperGraph/LyFlowGraphNotification.cpp"
-        ],
-        "HyperGraph/FlowGraph": [
-            "HyperGraph/FlowFilters.cpp",
-            "HyperGraph/FlowFilters.h",
-            "HyperGraph/FlowGraph.cpp",
-            "HyperGraph/FlowGraph.h",
-            "HyperGraph/FlowGraphHelpers.cpp",
-            "HyperGraph/FlowGraphHelpers.h",
-            "HyperGraph/FlowGraphManager.cpp",
-            "HyperGraph/FlowGraphManager.h",
-            "HyperGraph/FlowGraphMigrationHelper.cpp",
-            "HyperGraph/FlowGraphMigrationHelper.h",
-            "HyperGraph/FlowGraphNode.cpp",
-            "HyperGraph/FlowGraphNode.h",
-            "HyperGraph/FlowGraphProperties.ui",
-            "HyperGraph/FlowGraphVariables.cpp",
-            "HyperGraph/FlowGraphDebuggerEditor.cpp",
-            "HyperGraph/FlowGraphTokensDlg.ui",
-            "HyperGraph/FlowGraphTokens.cpp",
-            "HyperGraph/FlowGraphEditModuleDlg.ui",
-            "HyperGraph/FlowGraphNewDlg.ui",
-            "HyperGraph/FlowGraphNewModuleInputDlg.ui",
-            "HyperGraph/FlowGraphModuleDlgs.cpp",
-            "HyperGraph/FlowGraphProperties.cpp",
-            "HyperGraph/FlowGraphVariables.h",
-            "HyperGraph/FlowGraphDebuggerEditor.h",
-            "HyperGraph/FlowGraphModuleManager.h",
-            "HyperGraph/FlowGraphNewTokenDlg.ui",
-            "HyperGraph/FlowGraphTokens.h",
-            "HyperGraph/FlowGraphModuleDlgs.h",
-            "HyperGraph/FlowGraphProperties.h"
-        ],
-        "HyperGraph/Node Painter": [
-            "HyperGraph/QHyperNodePainterBase.cpp",
-            "HyperGraph/QHyperNodePainterBase.h",
-            "HyperGraph/QHyperNodePainter_BlackBox.cpp",
-            "HyperGraph/QHyperNodePainter_BlackBox.h",
-            "HyperGraph/QHyperNodePainter_Comment.cpp",
-            "HyperGraph/QHyperNodePainter_Comment.h",
-            "HyperGraph/IQHyperNodePainter.h",
-            "HyperGraph/QDisplayList.h"
-        ],
-        "HyperGraph/Nodes": [
-            "HyperGraph/MissingNode.cpp",
-            "HyperGraph/TrackEventNode.cpp",
-            "HyperGraph/CommentNode.cpp",
-            "HyperGraph/CommentBoxNode.cpp",
-            "HyperGraph/MissingNode.h",
-            "HyperGraph/QuickSearchNode.h",
-            "HyperGraph/TrackEventNode.h",
-            "HyperGraph/CommentNode.h",
-            "HyperGraph/CommentBoxNode.h",
-            "HyperGraph/BlackBoxNode.cpp",
-            "HyperGraph/BlackBoxNode.h"
         ],
         "LevelIndependentFiles/LevelIndependentFiles": [
             "LevelIndependentFileMan.cpp",
@@ -1392,8 +1270,6 @@
             "Material/MaterialBrowserSearchFilters.h",
             "Material/MaterialBrowserFilterModel.cpp",
             "Material/MaterialBrowserFilterModel.h",
-            "Material/MaterialFXGraphMan.cpp",
-            "Material/MaterialFXGraphMan.h",
             "Material/MaterialImageListCtrl.cpp",
             "Material/MaterialImageListCtrl.h",
             "Material/MaterialLibrary.cpp",
@@ -1462,10 +1338,6 @@
             "Objects/TagComment.h",
             "Objects/TagPoint.cpp",
             "Objects/TagPoint.h",
-            "Objects/UndoEntityParam.cpp",
-            "Objects/UndoEntityParam.h",
-            "Objects/UndoEntityProperty.cpp",
-            "Objects/UndoEntityProperty.h",
             "Objects/VisAreaShapeObject.cpp",
             "Objects/VisAreaShapeObject.h",
             "Objects/Volume.cpp",
@@ -1603,10 +1475,6 @@
             "TerrainPanel.h"
         ],
         "Python": [
-            "Util/BoostPythonHelpers.cpp",
-            "Util/BoostPythonHelpers.h",
-            "PythonToAZOut.cpp",
-            "PythonToAZOut.h",
             "PythonEditorFuncs.cpp",
             "PythonEditorFuncs.h"
         ],
@@ -1666,10 +1534,6 @@
             "EditorPreferencesPageMannequinGeneral.cpp",
             "EditorPreferencesPageExperimentalLighting.h",
             "EditorPreferencesPageExperimentalLighting.cpp",
-            "EditorPreferencesPageFlowGraphGeneral.h",
-            "EditorPreferencesPageFlowGraphGeneral.cpp",
-            "EditorPreferencesPageFlowGraphColors.h",
-            "EditorPreferencesPageFlowGraphColors.cpp",
             "EditorPreferencesDialog.h",
             "EditorPreferencesDialog.cpp",
             "EditorPreferencesDialog.ui",
@@ -1684,8 +1548,6 @@
             "graphicssettingsdialog.ui"
         ],
         "SmartObjects": [
-            "SmartObjectActionDialog.cpp",
-            "SmartObjectActionDialog.h",
             "SmartObjectActionDialog.ui",
             "SmartObjectClassDialog.cpp",
             "SmartObjectClassDialog.h",
@@ -1733,7 +1595,6 @@
             "ToolBox.cpp",
             "TrackViewNewSequenceDialog.cpp",
             "TrackViewNewSequenceDialog.ui",
-            "UndoCVar.cpp",
             "UndoConfigSpec.cpp",
             "UndoViewPosition.cpp",
             "UndoViewRotation.cpp",

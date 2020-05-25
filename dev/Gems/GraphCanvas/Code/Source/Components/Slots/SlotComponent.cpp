@@ -32,6 +32,8 @@ namespace GraphCanvas
     // SlotComponent
     //////////////////
 
+    constexpr int k_defaultPriority = 10;
+
     void SlotComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -75,17 +77,20 @@ namespace GraphCanvas
     }
 
     SlotComponent::SlotComponent()
+        : m_layoutPriority(k_defaultPriority)
     {
     }
 
     SlotComponent::SlotComponent(const SlotType& slotType)
         : m_slotType(slotType)
+        , m_layoutPriority(k_defaultPriority)
     {
     }
 
     SlotComponent::SlotComponent(const SlotType& slotType, const SlotConfiguration& configuration)
         : m_slotType(slotType)
         , m_slotConfiguration(configuration)
+        , m_layoutPriority(k_defaultPriority)
     {
     }
 
@@ -362,7 +367,19 @@ namespace GraphCanvas
     bool SlotComponent::CanDisplayConnectionTo(const Endpoint& endpoint) const
     {
         bool isConnectable = false;
-        ConnectionFilterRequestBus::EventResult(isConnectable, GetEntityId(), &ConnectionFilterRequests::CanConnectWith, endpoint);
+
+        ConnectionMoveType moveType = ConnectionMoveType::Unknown;
+
+        if (GetConnectionType() == CT_Input)
+        {
+            moveType = ConnectionMoveType::Target;
+        }
+        else if (GetConnectionType() == CT_Output)
+        {
+            moveType = ConnectionMoveType::Source;
+        }
+
+        ConnectionFilterRequestBus::EventResult(isConnectable, GetEntityId(), &ConnectionFilterRequests::CanConnectWith, endpoint, moveType);
 
         return isConnectable;
     }
@@ -496,6 +513,21 @@ namespace GraphCanvas
         return m_modelRedirections;
     }
 
+    int SlotComponent::GetLayoutPriority() const
+    {
+        return m_layoutPriority;
+    }
+
+    void SlotComponent::SetLayoutPriority(int layoutPriority)
+    {
+        if (m_layoutPriority != layoutPriority)
+        {
+            m_layoutPriority = layoutPriority;
+            
+            SlotUINotificationBus::Event(GetEntityId(), &SlotUINotifications::OnSlotLayoutPriorityChanged, layoutPriority);
+        }
+    }
+
     void SlotComponent::PopulateSlotConfiguration(SlotConfiguration& slotConfiguration) const
     {
         slotConfiguration.m_connectionType = GetConnectionType();
@@ -546,6 +578,7 @@ namespace GraphCanvas
             connectionEntity->Activate();
 
             SceneRequestBus::Event(graphId, &SceneRequests::AddConnection, connectionEntity->GetId());
+
             return connectionEntity->GetId();
         }
 

@@ -11,8 +11,9 @@ fuel[\\/].*
 glew32.*
 icu.*
 imguilib.*
-lib(eay32|EGL|fbxsdk|GLES|ogg|opus|vo).*
+lib(eay32|EGL|fbxsdk|GLES|GLESv2|ogg|opus|vo).*
 libSce.*
+mcpp0.*
 Microsoft.*
 msvc.*
 nvToolsExt64.*\.(dll|dylib|so)
@@ -27,14 +28,35 @@ python.*
 (lib)?qt5.*
 qtlibs[\\/].*
 rad_tm.*
+.*[Bb]ink2.*
 (lib)?SDL2.*
 ssl.*
+libcrypto-1_1-x64.dll
+libssl-1_1-x64.dll
 substance.*
 swscale.*
 ToolkitPro.*
 xg.*
 xinput.*
 zlib.*
+(lib)?(dxcompiler|glcompiler|metalcompiler).(dll|dylib|so|3.7.dylib|so.3.7)
+dxil.*
+EGL.*
+GLESv2.*
+libMaliEmulator.*
+log4cplus.*
+WinPixEventRuntime.*
+Half.*\.dll
+Iex.*\.dll
+IexMath*\.dll
+IlmImf.*\.dll
+IlmImfUtil.*\.dll
+IlmThread.*\.dll
+Imath.*\.dll
+embree3\.dll
+luxcore\.dll
+OpenImage.*\.dll
+tbb.*\.dll
 
 # internal modules
 (lib)?AzCoreTestDLL\.(dll|dylib|so)
@@ -47,3 +69,7 @@ UiCanvasEditor\.(dll|dylib|so)
 AssetBuilder\.exe
 # disable save data gem until we add the save data implementation for linux and figure out where the saves should live
 .*Gem\.SaveData.*\.so
+azslc\.exe
+dxc\.exe
+glslangValidator\.exe
+spirv-cross\.exe

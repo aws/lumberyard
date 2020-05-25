@@ -46,7 +46,7 @@ SlicerManipulator::SlicerManipulator(SpriteBorder border,
         (m_isVertical ? UICANVASEDITOR_MANIPULATOR_GRASPABLE_THICKNESS_IN_PIXELS : (3.0f * UICANVASEDITOR_ARBITRARILY_LARGE_NUMBER)),
         (m_isVertical ? (3.0f * UICANVASEDITOR_ARBITRARILY_LARGE_NUMBER) : UICANVASEDITOR_MANIPULATOR_GRASPABLE_THICKNESS_IN_PIXELS));
 
-    setPixelPosition(GetBorderValueInPixels(m_sprite, m_border, (m_isVertical ? m_unscaledPixmapSize.width() : m_unscaledPixmapSize.height())));
+    setPixelPosition(GetBorderValueInPixels(m_sprite, m_border, aznumeric_cast<float>(m_isVertical ? m_unscaledPixmapSize.width() : m_unscaledPixmapSize.height())));
 
     setFlag(QGraphicsItem::ItemIsMovable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);   // This allows using the CTRL key to select multiple manipulators and move them simultaneously.
@@ -90,38 +90,38 @@ void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem*
     // Draw a thin line in the middle of the selectable area.
     if (m_isVertical)
     {
-        float x = ((rect().left() + rect().right()) * 0.5f);
+        float x = aznumeric_cast<float>((rect().left() + rect().right()) * 0.5f);
         float y_start = 0;
-        float y_end = m_scaledPixmapSize.height();
+        float y_end = aznumeric_cast<float>(m_scaledPixmapSize.height());
 
         // Back.
         painter->setPen(m_penBack);
-        painter->drawLine(x, y_start, x, y_end);
+        painter->drawLine(aznumeric_cast<int>(x), aznumeric_cast<int>(y_start), aznumeric_cast<int>(x), aznumeric_cast<int>(y_end));
 
         // Front.
         painter->setPen(m_penFront);
-        painter->drawLine(x, y_start, x, y_end);
+        painter->drawLine(aznumeric_cast<int>(x), aznumeric_cast<int>(y_start), aznumeric_cast<int>(x), aznumeric_cast<int>(y_end));
     }
     else // Horizontal.
     {
         float x_start = 0.0f;
-        float x_end = m_scaledPixmapSize.width();
-        float y = ((rect().top() + rect().bottom()) * 0.5f);
+        float x_end = aznumeric_cast<float>(m_scaledPixmapSize.width());
+        float y = aznumeric_cast<float>((rect().top() + rect().bottom()) * 0.5f);
 
         // Back.
         painter->setPen(m_penBack);
-        painter->drawLine(x_start, y, x_end, y);
+        painter->drawLine(aznumeric_cast<int>(x_start), aznumeric_cast<int>(y), aznumeric_cast<int>(x_end), aznumeric_cast<int>(y));
 
         // Front.
         painter->setPen(m_penFront);
-        painter->drawLine(x_start, y, x_end, y);
+        painter->drawLine(aznumeric_cast<int>(x_start), aznumeric_cast<int>(y), aznumeric_cast<int>(x_end), aznumeric_cast<int>(y));
     }
 }
 
 void SlicerManipulator::setPixelPosition(float p)
 {
-    float xPos = (m_isVertical ? (p * m_scaledOverUnscaledFactor.x()) : 0.0f);
-    float yPos = (m_isVertical ? 0.0f : (p * m_scaledOverUnscaledFactor.y()));
+    float xPos = aznumeric_cast<float>(m_isVertical ? (p * m_scaledOverUnscaledFactor.x()) : 0.0f);
+    float yPos = aznumeric_cast<float>(m_isVertical ? 0.0f : (p * m_scaledOverUnscaledFactor.y()));
 
     setPos(xPos, yPos);
 }
@@ -131,9 +131,9 @@ QVariant SlicerManipulator::itemChange(GraphicsItemChange change, const QVariant
     if ((change == ItemPositionChange) &&
         scene())
     {
-        const float totalScaledSizeInPixels = (m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height());
-        float manipulatorPos = AZ::GetMax<float>(m_isVertical ? value.toPointF().x() : value.toPointF().y(), 0.0f);
-        const float borderValue = m_isVertical ? (manipulatorPos * m_unscaledOverScaledFactor.x()) : (manipulatorPos * m_unscaledOverScaledFactor.y());
+        const float totalScaledSizeInPixels = aznumeric_cast<float>(m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height());
+        float manipulatorPos = aznumeric_cast<float>(AZ::GetMax(m_isVertical ? value.toPointF().x() : value.toPointF().y(), 0.0));
+        const float borderValue = aznumeric_cast<float>(m_isVertical ? (manipulatorPos * m_unscaledOverScaledFactor.x()) : (manipulatorPos * m_unscaledOverScaledFactor.y()));
         m_edit->setPixelPosition(borderValue);
 
         const float cellSize = (m_isVertical ? m_sprite->GetCellSize(m_cellIndex).GetX() : m_sprite->GetCellSize(m_cellIndex).GetY());

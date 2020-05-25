@@ -24,11 +24,19 @@ namespace ScriptCanvas
             void GetVariableNode::OnInit()
             {
                 VariableNodeRequestBus::Handler::BusConnect(GetEntityId());
+            }
+
+            void GetVariableNode::OnPostActivate()
+            {
                 if (m_variableId.IsValid())
                 {
-                    VariableNotificationBus::Handler::BusConnect(m_variableId);
                     RefreshPropertyFunctions();
                     PopulateNodeType();
+
+                    if (GetExecutionType() == ScriptCanvas::ExecutionType::Editor)
+                    {
+                        VariableNotificationBus::Handler::BusConnect(GraphScopedVariableId(GetOwningScriptCanvasId(), m_variableId));                        
+                    }
                 }
             }
 
@@ -64,6 +72,38 @@ namespace ScriptCanvas
                 }
             }
 
+            void GetVariableNode::CollectVariableReferences(AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const
+            {
+                if (m_variableId.IsValid())
+                {
+                    variableIds.insert(m_variableId);
+                }
+
+                return Node::CollectVariableReferences(variableIds);
+            }
+
+            bool GetVariableNode::ContainsReferencesToVariables(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const
+            {
+                if (m_variableId.IsValid() && variableIds.count(m_variableId) > 0)
+                {
+                    return true;
+                }
+
+                return Node::ContainsReferencesToVariables(variableIds);
+            }
+
+            bool GetVariableNode::RemoveVariableReferences(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds)
+            {
+                // These nodes should just be deleted when the variable they reference is removed. Don't try to 
+                // update the variable they reference.
+                if (m_variableId.IsValid() && variableIds.count(m_variableId) > 0)
+                {
+                    return false;
+                }
+
+                return Node::RemoveVariableReferences(variableIds);
+            }
+
             void GetVariableNode::SetId(const VariableId& variableDatumId)
             {
                 if (m_variableId != variableDatumId)
@@ -74,10 +114,14 @@ namespace ScriptCanvas
                     VariableNotificationBus::Handler::BusDisconnect();
 
                     ScriptCanvas::Data::Type oldType = ScriptCanvas::Data::Type::Invalid();
-                    VariableRequestBus::EventResult(oldType, oldVariableId, &VariableRequests::GetType);
+
+                    if (m_variableDataOutSlotId.IsValid())
+                    {
+                        oldType = GetSlotDataType(m_variableDataOutSlotId);
+                    }
 
                     ScriptCanvas::Data::Type newType = ScriptCanvas::Data::Type::Invalid();
-                    VariableRequestBus::EventResult(newType, m_variableId, &VariableRequests::GetType);
+                    VariableRequestBus::EventResult(newType, GetScopedVariableId(), &VariableRequests::GetType);
 
                     if (oldType != newType)
                     {
@@ -88,7 +132,7 @@ namespace ScriptCanvas
 
                     if (m_variableId.IsValid())
                     {
-                        VariableNotificationBus::Handler::BusConnect(m_variableId);
+                        VariableNotificationBus::Handler::BusConnect(GetScopedVariableId());
                     }
 
                     VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableIdChanged, oldVariableId, m_variableId);
@@ -109,19 +153,20 @@ namespace ScriptCanvas
 
             const Datum* GetVariableNode::GetDatum() const
             {
-                const VariableDatum* variableDatum{};
-                VariableRequestBus::EventResult(variableDatum, m_variableId, &VariableRequests::GetVariableDatumConst);
-                return variableDatum ? &variableDatum->GetData() : nullptr;
+                const GraphVariable* graphVariable = FindGraphVariable(m_variableId);
+                return graphVariable ? graphVariable->GetDatum() : nullptr;
             }
 
             void GetVariableNode::AddOutputSlot()
             {
                 if (m_variableId.IsValid())
                 {
+                    GraphScopedVariableId scopedVariableId = GetScopedVariableId();
+
                     AZStd::string_view varName;
                     Data::Type varType;
-                    VariableRequestBus::EventResult(varName, m_variableId, &VariableRequests::GetName);
-                    VariableRequestBus::EventResult(varType, m_variableId, &VariableRequests::GetType);
+                    VariableRequestBus::EventResult(varName, scopedVariableId, &VariableRequests::GetName);
+                    VariableRequestBus::EventResult(varType, scopedVariableId, &VariableRequests::GetType);
 
                     {
                         DataSlotConfiguration slotConfiguration;
@@ -132,6 +177,7 @@ namespace ScriptCanvas
 
                         m_variableDataOutSlotId = AddSlot(slotConfiguration);
                     }
+
                     AddPropertySlots(varType);
                 }
             }
@@ -174,8 +220,15 @@ namespace ScriptCanvas
 
             void GetVariableNode::RefreshPropertyFunctions()
             {
-                Data::Type sourceType;
-                VariableRequestBus::EventResult(sourceType, m_variableId, &VariableRequests::GetType);
+                GraphVariable* variable = FindGraphVariable(m_variableId);
+
+                if (variable == nullptr)
+                {
+                    return;
+                }
+
+                Data::Type sourceType = variable->GetDataType();
+
                 if (!sourceType.IsValid())
                 {
                     return;
@@ -207,7 +260,16 @@ namespace ScriptCanvas
                 ClearPropertySlots();
                 SlotId oldVariableDataOutSlotId;
                 AZStd::swap(oldVariableDataOutSlotId, m_variableDataOutSlotId);
-                RemoveSlot(oldVariableDataOutSlotId);
+
+                if (oldVariableDataOutSlotId.IsValid())
+                {
+                    RemoveSlot(oldVariableDataOutSlotId);
+                }
+            }
+
+            GraphScopedVariableId GetVariableNode::GetScopedVariableId() const
+            {
+                return GraphScopedVariableId(GetOwningScriptCanvasId(), m_variableId);
             }
 
             void GetVariableNode::OnIdChanged(const VariableId& oldVariableId)
@@ -227,21 +289,26 @@ namespace ScriptCanvas
                 if (m_variableId.IsValid())
                 {
                     ScriptCanvas::Data::Type baseType = ScriptCanvas::Data::Type::Invalid();
-                    VariableRequestBus::EventResult(baseType, m_variableId, &VariableRequests::GetType);
+                    VariableRequestBus::EventResult(baseType, GetScopedVariableId(), &VariableRequests::GetType);
 
-                    const AZStd::unordered_map<VariableId, VariableNameValuePair>* variableMap{};
-                    GraphVariableManagerRequestBus::EventResult(variableMap, GetGraphId(), &GraphVariableManagerRequests::GetVariables);
+                    const GraphVariableMapping* variableMap = GetRuntimeBus()->GetVariables();
+
                     if (variableMap && baseType.IsValid())
                     {
                         for (const auto& variablePair : *variableMap)
                         {
-                            ScriptCanvas::Data::Type variableType = variablePair.second.m_varDatum.GetData().GetType();
+                            ScriptCanvas::Data::Type variableType = variablePair.second.GetDatum()->GetType();
 
                             if (variableType == baseType)
                             {
                                 varNameToIdList.emplace_back(variablePair.first, variablePair.second.GetVariableName());
                             }
                         }
+
+                        AZStd::sort_heap(varNameToIdList.begin(), varNameToIdList.end(), [](const AZStd::pair<VariableId, AZStd::string>& lhs, const AZStd::pair<VariableId, AZStd::string>& rhs)
+                        {
+                            return lhs.second < rhs.second;
+                        });
                     }
                 }
 

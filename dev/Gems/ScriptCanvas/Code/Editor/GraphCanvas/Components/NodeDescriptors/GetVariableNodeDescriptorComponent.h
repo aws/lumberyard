@@ -25,6 +25,8 @@ namespace ScriptCanvasEditor
         AZ_COMPONENT(GetVariableNodeDescriptorComponent, "{78D946A9-4CC6-4BA7-A46A-A4C87191678D}", VariableNodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
 
+        GetVariableNodeDescriptorComponent();
+
     protected:
         void UpdateTitle(AZStd::string_view variableName) override;
     };

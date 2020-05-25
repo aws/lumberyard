@@ -11,6 +11,15 @@
 */
 
 #include "MissingDependencyScanner.h"
+
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
+#include <QSharedData>
+#include <QDateTime>
+#include <QString>
+#include <QAtomicInt>
+AZ_POP_DISABLE_WARNING
+
 #include "LineByLineDependencyScanner.h"
 #include "PotentialDependencies.h"
 #include "SpecializedDependencyScanner.h"
@@ -28,6 +37,7 @@
 
 namespace AssetProcessor
 {
+    const int MissingDependencyScanner::DefaultMaxScanIteration = 800;
     class MissingDependency
     {
     public:
@@ -65,7 +75,7 @@ namespace AssetProcessor
         using namespace AzFramework::FileTag;
         AZ_Printf(AssetProcessor::ConsoleChannel, "Scanning for missing dependencies:\t%s\n", fullPath.c_str());
 
-        AZStd::vector<AZStd::vector<AZStd::string>> blackListTagsList = {
+        AZStd::vector<AZStd::vector<AZStd::string>> excludedTagsList = {
         {
             FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)]
         },
@@ -73,10 +83,10 @@ namespace AssetProcessor
             FileTags[static_cast<unsigned int>(FileTagsIndex::Shader)]
         }};
         
-        for (const AZStd::vector<AZStd::string>& tags : blackListTagsList)
+        for (const AZStd::vector<AZStd::string>& tags : excludedTagsList)
         {
             bool shouldIgnore = false;
-            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::BlackList,
+            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude,
                 &QueryFileTagsEventBus::Events::Match, fullPath.c_str(), tags);
             if (shouldIgnore)
             {
@@ -487,7 +497,7 @@ namespace AssetProcessor
         for (const MissingDependency& missingDependency : missingDependencies)
         {
             bool shouldIgnore = false;
-            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::BlackList,
+            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude,
                 &QueryFileTagsEventBus::Events::Match, missingDependency.m_metaData.m_sourceString.c_str(), tags);
             if (!shouldIgnore)
             {

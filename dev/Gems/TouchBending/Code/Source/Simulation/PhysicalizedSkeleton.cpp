@@ -120,6 +120,8 @@ namespace TouchBending
                 return;
             }
 
+            PHYSX_SCENE_WRITE_LOCK(m_aggregate->getScene());
+
             for (PxD6Joint* joint : m_physicsJoints)
             {
                 if (joint)

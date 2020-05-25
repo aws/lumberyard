@@ -30,6 +30,10 @@
         "TargetManagement/Platform/Linux":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"
+        ],
+        "Windowing/Platform/Linux":
+        [
+            "AzFramework/Windowing/NativeWindow_Linux.cpp"
         ]
     },
     "AzFramework_Input_Uber_Linux.cpp":
@@ -54,13 +58,14 @@
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/Touch/InputDeviceTouch_Unimplemented.cpp"
         ],
+        "Input/User/Platform/Linux":
+        [
+            "AzFramework/Input/User/LocalUserId_Platform.h",
+            "../Common/Default/AzFramework/Input/User/LocalUserId_Default.h"
+        ],
         "Input/Devices/VirtualKeyboard/Platform/Linux":
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Unimplemented.cpp"
-        ],
-        "Windowing":
-        [
-            "AzFramework/Windowing/NativeWindow_Linux.cpp"
         ]
     }
 }

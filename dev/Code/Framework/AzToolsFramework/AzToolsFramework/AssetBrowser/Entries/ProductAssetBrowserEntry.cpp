@@ -31,7 +31,10 @@ namespace AzToolsFramework
     {
         ProductAssetBrowserEntry::~ProductAssetBrowserEntry()
         {
-            EntryCache::GetInstance()->m_productAssetIdMap.erase(m_assetId);
+            if (EntryCache* cache = EntryCache::GetInstance())
+            {
+                cache->m_productAssetIdMap.erase(m_assetId);
+            }
         }
 
         QVariant ProductAssetBrowserEntry::data(int column) const

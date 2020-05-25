@@ -49,8 +49,10 @@ namespace GraphCanvas
             m_slotTypes.insert(slotType);
         }
         
-        bool CanConnectWith(const Endpoint& endpoint) const override
+        bool CanConnectWith(const Endpoint& endpoint, const ConnectionMoveType& moveType) const override
         {
+            AZ_UNUSED(moveType);
+
             SlotType connectingSlotType = SlotTypes::Invalid;
             SlotRequestBus::EventResult(connectingSlotType, endpoint.GetSlotId(), &SlotRequests::GetSlotType);
             AZ_Assert(connectingSlotType != SlotGroups::Invalid, "Slot %s is in an invalid slot type. Connections to it are disabled", endpoint.GetSlotId().ToString().c_str());
@@ -105,8 +107,10 @@ namespace GraphCanvas
             m_connectionTypes.insert(connectionType);
         }
         
-        bool CanConnectWith(const Endpoint& endpoint) const override
+        bool CanConnectWith(const Endpoint& endpoint, const ConnectionMoveType& moveType) const override
         {
+            AZ_UNUSED(moveType);
+
             ConnectionType connectionType = ConnectionType::CT_Invalid;
             SlotRequestBus::EventResult(connectionType, endpoint.GetSlotId(), &SlotRequests::GetConnectionType);
             AZ_Assert(connectionType != ConnectionType::CT_Invalid, "Slot %s is in an invalid slot type. Connections to it are disabled", endpoint.GetSlotId().ToString().c_str())

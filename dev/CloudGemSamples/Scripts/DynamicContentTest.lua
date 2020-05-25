@@ -91,7 +91,7 @@ function DynamicContentTest:OnAction(entityId, actionName)
         DynamicContentRequestBus.Event.DeletePak(DynamicContent.ModuleEntity,self.Properties.UserRequestedPak)
         self:RefreshStatus()
     elseif actionName == "RequestPakStatusList" then
-        DynamicContentRequestBus.Event.UpdateFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak)
+        DynamicContentRequestBus.Event.UpdateFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false)
     elseif actionName == "RequestDownload" then
         DynamicContentRequestBus.Event.RequestDownload(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false)
     end

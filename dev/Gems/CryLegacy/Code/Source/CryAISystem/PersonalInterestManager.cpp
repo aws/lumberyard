@@ -21,7 +21,6 @@
 #include "CentralInterestManager.h"
 #include "CAISystem.h"
 #include "Puppet.h"
-#include "AIActions.h"
 // For persistent debugging
 #include "IGameFramework.h"
 
@@ -161,13 +160,6 @@ bool CPersonalInterestManager::Update(bool bCloseToCamera)
             }
             m_pCIM->OnInterestEvent(IInterestListener::eIE_InterestStart, pUser->GetId(), IdMostInteresting);
             m_IdInterestingEntity = IdMostInteresting;
-
-            if (!pMostInteresting->m_sActionName.empty() && pMostInteresting->m_sActionName.compareNoCase("none") != 0)
-            {
-                const IEntity* pMostInterestingEntity = pMostInteresting->GetEntity();
-                gAIEnv.pAIActionManager->ExecuteAIAction(
-                    pMostInteresting->m_sActionName.c_str(), pUser, const_cast<IEntity*>(pMostInterestingEntity), 1, 0, this);
-            }
         }
     }
     else
@@ -176,44 +168,6 @@ bool CPersonalInterestManager::Update(bool bCloseToCamera)
     }
 
     return bRet;
-}
-
-void CPersonalInterestManager::OnActionEvent(IAIAction::EActionEvent eActionEvent)
-{
-    if (m_IdInterestingEntity)
-    {
-        CAIActor* pAIActor = m_refAIActor.GetAIObject();
-        if (pAIActor)
-        {
-            IEntity* pUser = pAIActor->GetEntity();
-
-            //If no reference is available then exit without propagating the eActionEvent
-            if (pUser)
-            {
-                switch (eActionEvent)
-                {
-                case IAIAction::ActionEnd:
-                    m_pCIM->OnInterestEvent(IInterestListener::eIE_InterestActionComplete, pUser->GetId(), m_IdInterestingEntity);
-                    m_bIsPlayingAction = false;
-                    break;
-
-                case IAIAction::ActionStart:
-                    m_bIsPlayingAction = true;
-                    break;
-
-                case IAIAction::ActionCancel:
-                    m_pCIM->OnInterestEvent(IInterestListener::eIE_InterestActionCancel, pUser->GetId(), m_IdInterestingEntity);
-                    m_bIsPlayingAction = false;
-                    break;
-
-                case IAIAction::ActionAbort:
-                    m_pCIM->OnInterestEvent(IInterestListener::eIE_InterestActionAbort, pUser->GetId(), m_IdInterestingEntity);
-                    m_bIsPlayingAction = false;
-                    break;
-                }
-            }
-        }
-    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------

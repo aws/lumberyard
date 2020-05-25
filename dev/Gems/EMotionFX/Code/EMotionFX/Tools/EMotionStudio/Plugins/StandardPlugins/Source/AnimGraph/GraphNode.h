@@ -149,6 +149,7 @@ namespace EMStudio
         void RemoveAllOutputPorts();
         void RemoveAllConnections();
 
+        bool RemoveConnection(const QModelIndex& modelIndex, bool removeFromMemory = true);
         bool RemoveConnection(const void* connection, bool removeFromMemory = true);
 
         virtual int32 CalcRequiredHeight() const;
@@ -158,7 +159,6 @@ namespace EMStudio
         virtual uint32 CalcMaxOutputPortWidth() const;
 
         bool GetIsInside(const QPoint& globalPoint) const;
-        void SetIsSelected(bool selected);
         bool GetIsSelected() const;
         
         void MoveRelative(const QPoint& deltaMove);
@@ -233,7 +233,6 @@ namespace EMStudio
         QColor                          mHasChildIndicatorColor;
         MCore::Array<NodeConnection*>   mConnections;
         float                           mOpacity;
-        bool                            mIsSelected;
         bool                            mIsVisible;
         static QColor                   mPortHighlightColor;
         static QColor                   mPortHighlightBGColor;

@@ -38,7 +38,7 @@ namespace AZ
                 for (int i = 0; i < vectorProperty->getSize(); ++i)
                 {
                     AzToolsFramework::VectorElement* currentElement = elements[i];
-                    vector.SetElement(i, currentElement->GetValue());
+                    vector.SetElement(i, aznumeric_cast<float>(currentElement->GetValue()));
                 }
             }
 

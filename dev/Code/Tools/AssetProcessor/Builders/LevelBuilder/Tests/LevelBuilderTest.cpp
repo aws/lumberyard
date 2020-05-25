@@ -173,28 +173,8 @@ TEST_F(LevelBuilderTest, TestAudioControl_MultipleDependencies)
 
     ASSERT_THAT(productDependencies,
         testing::UnorderedElementsAre(
-            ProductPathDependency("libs/gameaudio/wwise/global.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
-            ProductPathDependency("libs/gameaudio/wwise/default_controls.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
             ProductPathDependency("libs/gameaudio/wwise/levels/testlevel/testcontrol.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
             ProductPathDependency("libs/gameaudio/wwise/levels/testlevel/very_specific_testcontrol.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile)
-        )
-    );
-}
-
-TEST_F(LevelBuilderTest, TestAudioControl_OnlyGlobalControls_MultipleDependencies)
-{
-    AZ::IO::FileIOBase::GetInstance()->SetAlias("@devassets@", GetTestFileFullPath("audiocontrol_test2").c_str());
-
-    LevelBuilderWorker worker;
-    ProductPathDependencySet productDependencies;
-
-    worker.PopulateLevelAudioControlDependenciesHelper("testlevel", productDependencies);
-    AZ::IO::FileIOBase::GetInstance()->ClearAlias("@devassets@");
-
-    ASSERT_THAT(productDependencies,
-        testing::UnorderedElementsAre(
-            ProductPathDependency("libs/gameaudio/wwise/global.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
-            ProductPathDependency("libs/gameaudio/wwise/default_controls.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile)
         )
     );
 }
@@ -264,6 +244,9 @@ TEST_F(LevelBuilderTest, TestLevelData_RequestOptionalLevelDependencies_Expected
     AZStd::string levelXmlPath;
     AzFramework::StringFunc::Path::Join(levelPath.c_str(), "levelName.xml", levelXmlPath);
 
+    AZStd::string terrainTexturePakPath;
+    AzFramework::StringFunc::Path::Join(levelPath.c_str(), "terraintexture.pak", terrainTexturePakPath);
+
     ASSERT_THAT(productDependencies,
         testing::UnorderedElementsAre(
             ProductPathDependency(coverPath.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile),
@@ -273,6 +256,7 @@ TEST_F(LevelBuilderTest, TestLevelData_RequestOptionalLevelDependencies_Expected
             ProductPathDependency(levelCfgPath.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile),
             ProductPathDependency(autoResourceList.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile),
             ProductPathDependency(mergedMeshesList.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile),
+            ProductPathDependency(terrainTexturePakPath.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile),
             ProductPathDependency(levelXmlPath.c_str(), AssetBuilderSDK::ProductPathDependencyType::SourceFile))
     );
 }

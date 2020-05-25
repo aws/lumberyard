@@ -13,7 +13,7 @@ import account_utils
 import errors
 import service
 import CloudCanvas
-import admin_accounts
+from . import admin_accounts
 
 @service.api
 def post(request, request_data):

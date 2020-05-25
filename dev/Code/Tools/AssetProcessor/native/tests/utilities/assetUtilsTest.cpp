@@ -348,6 +348,36 @@ TEST_F(AssetUtilitiesTest, GenerateFingerprint_MultipleFile_Differs)
     EXPECT_NE(fingerprint3, fingerprint1);
 }
 
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_OrderOnceJobDependency_NoChange)
+{
+    // OrderOnce Job dependency should not alter the fingerprint of the job
+    QTemporaryDir dir;
+    QDir tempPath(dir.path());
+    const char relFile1Path[] = "file.txt";
+    const char relFile2Path[] = "secondFile.txt";
+    QString absoluteTestFile1Path = tempPath.absoluteFilePath(relFile1Path);
+    QString absoluteTestFile2Path = tempPath.absoluteFilePath(relFile2Path);
+
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFile1Path, "contents"));
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFile2Path, "contents"));
+
+    AssetProcessor::JobDetails jobDetail;
+
+    jobDetail.m_jobEntry.m_databaseSourceName = relFile1Path;
+    jobDetail.m_jobEntry.m_watchFolderPath = tempPath.absolutePath();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(absoluteTestFile1Path.toUtf8().constData(), relFile1Path));
+  
+    AZ::u32 fingerprintWithoutOrderOnceJobDependency = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    AssetBuilderSDK::SourceFileDependency dep = { relFile2Path, AZ::Uuid::CreateNull() };
+    AssetBuilderSDK::JobDependency jobDep("key", "pc", AssetBuilderSDK::JobDependencyType::OrderOnce, dep);
+    jobDetail.m_jobDependencyList.push_back(AssetProcessor::JobDependencyInternal(jobDep));
+
+    AZ::u32 fingerprintWithOrderOnceJobDependency = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_EQ(fingerprintWithoutOrderOnceJobDependency, fingerprintWithOrderOnceJobDependency);
+}
+
 namespace AssetUtilsTest
 {
     class MockJobDependencyResponder : public AssetProcessor::ProcessingJobInfoBus::Handler

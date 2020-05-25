@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Windows": [
+        "UiClipboard_Windows.cpp"
+    ]
+  }
+}	

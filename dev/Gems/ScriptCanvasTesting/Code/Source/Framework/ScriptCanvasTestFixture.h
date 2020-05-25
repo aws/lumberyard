@@ -174,7 +174,7 @@ namespace ScriptCanvasTests
         ScriptCanvas::Graph* CreateGraph()
         {
             if (m_graph == nullptr)
-        {
+            {
                 m_graph = aznew ScriptCanvas::Graph();
                 m_graph->Init();
             }
@@ -187,13 +187,12 @@ namespace ScriptCanvasTests
             AZ::Entity* configurableNodeEntity = new AZ::Entity(entityName.c_str());         
             auto configurableNode = configurableNodeEntity->CreateComponent<TestNodes::ConfigurableUnitTestNode>();
 
-            configurableNodeEntity->Init();
-            configurableNodeEntity->Activate();
-
             if (m_graph == nullptr)
             {
                 CreateGraph();
             }
+
+            configurableNodeEntity->Init();
 
             m_graph->AddNode(configurableNodeEntity->GetId());
 

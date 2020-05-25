@@ -34,7 +34,8 @@ namespace CloudCanvas
 {
     namespace DynamicContent
     {
-
+        const int fileDownloadRetryMax = 1; // How many times will we retry the download for a file
+        const char presignedUrlLifeTimeKey[] = "X-Amz-Expires";
 
         class DynamicContentTransferManager : 
             public DynamicContentRequestBus::Handler, 
@@ -70,10 +71,12 @@ namespace CloudCanvas
             // Convenience call for a single request
             virtual bool RequestFileStatus(const char* fileName, const char* writeFile) override;
 
-            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList) override;
-            virtual bool UpdateFileStatus(const char* fileName);
+            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList, bool autoDownload = false) override;
+            virtual bool UpdateFileStatus(const char* fileName, bool autoDownload = false);
 
             virtual bool RequestDownload(const AZStd::string& fileName, bool forceDownload) override;
+            bool RequestUrlExpired(const AZStd::string& fileName);
+
             // Clear (And unmount) all pak records from Dynamic Content
             virtual bool ClearAllContent() override;
 
@@ -120,7 +123,7 @@ namespace CloudCanvas
             DynamicFileInfoPtr GetFileInfo(const char* localFileName) const;
 
             void ManifestUpdated(const AZStd::string& manifestPath, const AZStd::string& bucketName);
-           
+
             static AZStd::string GetDefaultWriteFolderAlias();
             static AZStd::string GetUserManifestFolder();
             static AZStd::string GetUserPakFolder();
@@ -199,6 +202,7 @@ namespace CloudCanvas
             // to more quickly process our listObjects return
             AZStd::unordered_map<AZStd::string, DynamicFileInfoPtr> m_bucketKeyToFileInfo;
             AZStd::unordered_map<AZStd::string, DynamicFileInfoPtr> m_presignedURLToFileInfo;
+            AZStd::unordered_map<AZStd::string, int> m_bucketKeyToDownloadRetryCount;
 
             static AZ::EntityId m_moduleEntity;
         };

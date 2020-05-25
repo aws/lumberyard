@@ -255,6 +255,11 @@ namespace LmbrCentral
 
     bool CharacterDefinitionAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
     {
+        if (!gEnv->pCharacterManager)
+        {
+            return false;
+        }
+
         AZ_Assert(asset.GetType() == AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid(), "Invalid asset type! We only load 'CharacterDefinitionAsset'");
         if (CharacterDefinitionAsset* meshAsset = asset.GetAs<CharacterDefinitionAsset>())
         {

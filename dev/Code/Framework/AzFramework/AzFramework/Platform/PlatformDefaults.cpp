@@ -11,15 +11,26 @@
 */
 
 #include <Platform/PlatformDefaults.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
 namespace AzFramework
 {
-    const char* PlatformNames[PlatformId::NumPlatforms] = { PlatformPC, PlatformES3, PlatformIOS, PlatformOSX, PlatformXenia, PlatformProvo, PlatformSalem, PlatformServer };
+    const char* PlatformNames[PlatformId::NumPlatformIds] = { PlatformPC, PlatformES3, PlatformIOS, PlatformOSX, PlatformXenia, PlatformProvo, PlatformSalem, PlatformServer, PlatformAll, PlatformAllCient };
 
     PlatformFlags PlatformHelper::GetPlatformFlagFromPlatformIndex(const PlatformId& platformIndex)
     {
-        if (platformIndex < 0 || platformIndex > PlatformId::NumPlatforms)
+        if (platformIndex < 0 || platformIndex > PlatformId::NumPlatformIds)
         {
             return PlatformFlags::Platform_NONE;
+        }
+        if (platformIndex == PlatformId::ALL)
+        {
+            return PlatformFlags::Platform_ALL;
+        }
+        if (platformIndex == PlatformId::ALL_CLIENT)
+        {
+            return PlatformFlags::Platform_ALL_CLIENT;
         }
         return static_cast<PlatformFlags>(1 << platformIndex);
     }
@@ -27,9 +38,16 @@ namespace AzFramework
     AZStd::vector<AZStd::string> PlatformHelper::GetPlatforms(const PlatformFlags& platformFlags)
     {
         AZStd::vector<AZStd::string> platforms;
-        for (int platformNum = 0; platformNum < PlatformId::NumPlatforms; ++platformNum)
+        for (int platformNum = 0; platformNum < PlatformId::NumPlatformIds; ++platformNum)
         {
-            if ((platformFlags & static_cast<PlatformFlags>(1 << platformNum)) != PlatformFlags::Platform_NONE)
+            const bool isAllPlatforms = PlatformId::ALL == static_cast<PlatformId>(platformNum)
+                && ((platformFlags & PlatformFlags::Platform_ALL) != PlatformFlags::Platform_NONE);
+
+            const bool isAllClientPlatforms = PlatformId::ALL_CLIENT == static_cast<PlatformId>(platformNum)
+                && ((platformFlags & PlatformFlags::Platform_ALL_CLIENT) != PlatformFlags::Platform_NONE);
+
+            if (isAllPlatforms || isAllClientPlatforms
+                || (platformFlags & static_cast<PlatformFlags>(1 << platformNum)) != PlatformFlags::Platform_NONE)
             {
                 platforms.push_back(PlatformNames[platformNum]);
             }
@@ -38,10 +56,15 @@ namespace AzFramework
         return platforms;
     }
 
+    AZStd::vector<AZStd::string> PlatformHelper::GetPlatformsInterpreted(const PlatformFlags& platformFlags)
+    {
+        return GetPlatforms(GetPlatformFlagsInterpreted(platformFlags));
+    }
+
     AZStd::vector<PlatformId> PlatformHelper::GetPlatformIndices(const PlatformFlags& platformFlags)
     {
         AZStd::vector<PlatformId> platformIndices;
-        for (int i = 0; i < PlatformId::NumPlatforms; i++)
+        for (int i = 0; i < PlatformId::NumPlatformIds; i++)
         {
             PlatformId index = static_cast<PlatformId>(i);
             if ((GetPlatformFlagFromPlatformIndex(index) & platformFlags) != PlatformFlags::Platform_NONE)
@@ -50,6 +73,11 @@ namespace AzFramework
             }
         }
         return platformIndices;
+    }
+
+    AZStd::vector<AzFramework::PlatformId> PlatformHelper::GetPlatformIndicesInterpreted(const PlatformFlags& platformFlags)
+    {
+        return GetPlatformIndices(GetPlatformFlagsInterpreted(platformFlags));
     }
 
     PlatformFlags PlatformHelper::GetPlatformFlag(const AZStd::string& platform)
@@ -61,12 +89,22 @@ namespace AzFramework
             return PlatformFlags::Platform_NONE;
         }
 
+        if(platformIndex == PlatformId::ALL)
+        {
+            return PlatformFlags::Platform_ALL;
+        }
+
+        if (platformIndex == PlatformId::ALL_CLIENT)
+        {
+            return PlatformFlags::Platform_ALL_CLIENT;
+        }
+
         return static_cast<PlatformFlags>(1 << platformIndex);
     }
 
     const char* PlatformHelper::GetPlatformName(const PlatformId& platform)
     { 
-        if (platform < 0 || platform > PlatformId::NumPlatforms)
+        if (platform < 0 || platform > PlatformId::NumPlatformIds)
         {
             return "invalid";
         }
@@ -76,7 +114,7 @@ namespace AzFramework
     int PlatformHelper::GetPlatformIndexFromName(const char* platformName)
     {
         AZStd::string platform(platformName);
-        for (int idx = 0; idx < PlatformId::NumPlatforms; idx++)
+        for (int idx = 0; idx < PlatformId::NumPlatformIds; idx++)
         {
             if (PlatformNames[idx] && platform.compare(PlatformNames[idx]) == 0)
             {
@@ -86,4 +124,89 @@ namespace AzFramework
 
         return PlatformId::Invalid;
     }
+
+    AZStd::string PlatformHelper::GetCommaSeparatedPlatformList(const PlatformFlags& platformFlags)
+    {
+        AZStd::vector<AZStd::string> platformNames = GetPlatforms(platformFlags);
+        AZStd::string platformsString;
+        AzFramework::StringFunc::Join(platformsString, platformNames.begin(), platformNames.end(), ", ");
+        return platformsString;
+    }
+
+    AzFramework::PlatformFlags PlatformHelper::GetPlatformFlagsInterpreted(const PlatformFlags& platformFlags)
+    {
+        PlatformFlags returnFlags = PlatformFlags::Platform_NONE;
+
+        if((platformFlags & PlatformFlags::Platform_ALL) != PlatformFlags::Platform_NONE)
+        {
+            for (int i = 0; i < NumPlatforms; ++i)
+            {
+                auto platformId = static_cast<PlatformId>(i);
+                
+                if (platformId != PlatformId::ALL && platformId != PlatformId::ALL_CLIENT)
+                {
+                    returnFlags |= GetPlatformFlagFromPlatformIndex(platformId);
+                }
+            }
+        }
+        else if((platformFlags & PlatformFlags::Platform_ALL_CLIENT) != PlatformFlags::Platform_NONE)
+        {
+            for (int i = 0; i < NumPlatforms; ++i)
+            {
+                auto platformId = static_cast<PlatformId>(i);
+                
+                if (platformId != PlatformId::ALL && platformId != PlatformId::ALL_CLIENT && platformId != PlatformId::SERVER)
+                {
+                    returnFlags |= GetPlatformFlagFromPlatformIndex(platformId);
+                }
+            }
+        }
+        else
+        {
+            returnFlags = platformFlags;
+        }
+
+        return returnFlags;
+    }
+
+    bool PlatformHelper::IsSpecialPlatform(const PlatformFlags& platformFlags)
+    {
+        return (platformFlags & PlatformFlags::Platform_ALL) != PlatformFlags::Platform_NONE
+            || (platformFlags & PlatformFlags::Platform_ALL_CLIENT) != PlatformFlags::Platform_NONE;
+    }
+
+    bool HasFlagHelper(PlatformFlags flags, PlatformFlags checkPlatform)
+    {
+        return (flags & checkPlatform) == checkPlatform;
+    }
+
+
+    bool PlatformHelper::HasPlatformFlag(PlatformFlags flags, PlatformId checkPlatform)
+    {
+        // If checkPlatform contains any kind of invalid id, just exit out here
+        if(checkPlatform == PlatformId::Invalid || checkPlatform == NumPlatforms)
+        {
+            return false;
+        }
+
+        // ALL_CLIENT + SERVER = ALL
+        if(HasFlagHelper(flags, PlatformFlags::Platform_ALL_CLIENT | PlatformFlags::Platform_SERVER))
+        {
+            flags = PlatformFlags::Platform_ALL;
+        }
+
+        if(HasFlagHelper(flags, PlatformFlags::Platform_ALL))
+        {
+            // It doesn't matter what checkPlatform is set to in this case, just return true
+            return true;
+        }
+
+        if(HasFlagHelper(flags, PlatformFlags::Platform_ALL_CLIENT))
+        {
+            return checkPlatform != PlatformId::SERVER;
+        }
+
+        return HasFlagHelper(flags, GetPlatformFlagFromPlatformIndex(checkPlatform));
+    }
+
 }

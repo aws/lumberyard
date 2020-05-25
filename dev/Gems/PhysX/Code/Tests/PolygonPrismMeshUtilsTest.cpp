@@ -12,8 +12,6 @@
 
 #include "PhysX_precompiled.h"
 
-#ifdef AZ_TESTS_ENABLED
-
 #include <AzCore/UnitTest/TestTypes.h>
 #include <Editor/PolygonPrismMeshUtils.h>
 #include <poly2tri.h>
@@ -326,4 +324,3 @@ namespace PolygonPrismMeshUtils
     }
 } // namespace PolygonPrismMeshUtils
 
-#endif // AZ_TESTS_ENABLED

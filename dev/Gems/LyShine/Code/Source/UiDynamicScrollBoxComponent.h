@@ -87,9 +87,6 @@ public: // member functions
     void SetAutoCalculateVariableHeaderSize(bool autoCalculateSize) override;
     float GetEstimatedVariableHeaderSize() override;
     void SetEstimatedVariableHeaderSize(float estimatedSize) override;
-    // Deprecated
-    AZ_DEPRECATED(AZ::EntityId GetChildElementAtLocationIndex(int index) override, "Deprecated. Use UiDynamicScrollBoxInterface::GetChildAtElementIndex instead.");
-    AZ_DEPRECATED(int GetLocationIndexOfChild(AZ::EntityId childElement) override, "Deprecated. Use UiDynamicScrollBoxInterface::GetElementIndexOfChild instead.");
     // ~UiDynamicScrollBoxInterface
 
     // UiScrollBoxNotifications
@@ -385,6 +382,10 @@ protected: // member functions
 
     // Used for visibility attribute in reflection
     bool HeadersHaveVariableSizes() const;
+
+    // Used to check if our item/header prototype elements contain this scrollbox which spawns it.
+    // Prototype elements are spawned dynamically, and we need to avoid recursively spawning elements
+    bool IsValidPrototype(AZ::EntityId entityId) const;
 
 protected: // data
 

@@ -47,6 +47,32 @@ namespace ScriptCanvas
             classElement.AddElement(baseNodeElement);
 
             return true;
-        }    
+        }
+
+        // Used to shim in a new base class i.e. A > C becomes A > B > C with InsertNewBaseClass<B>
+        template<class ClassType>
+        static bool InsertNewBaseClass(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            bool addedBaseClass = true;
+
+            // Need to shim in a new class
+            AZ::SerializeContext::DataElementNode baseClassElement = (*classElement.FindSubElement(AZ_CRC("BaseClass1", 0xd4925735)));            
+            classElement.RemoveElementByName(AZ_CRC("BaseClass1", 0xd4925735));
+
+            classElement.AddElement<ClassType>(serializeContext, "BaseClass1");
+
+            AZ::SerializeContext::DataElementNode* newClassNode = classElement.FindSubElement(AZ_CRC("BaseClass1", 0xd4925735));
+
+            if (newClassNode)
+            {
+                newClassNode->AddElement(baseClassElement);
+            }
+            else
+            {
+                addedBaseClass = false;
+            }
+
+            return addedBaseClass;
+        }
     };
 }

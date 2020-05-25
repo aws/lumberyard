@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from s3 import S3
 from keyparts import KeyParts
 from botocore.exceptions import ClientError
@@ -98,7 +110,9 @@ class Amoeba(object):
             memory_used = mutil.get_memory_usage()           
             debug_print("\t\tSize on S3: {}MB Size of new dataset: {}bytes Estimated Compression Ratio: {} Memory Used: {}% Project Compression Size {}MB  Target Excretion Size {}MB".format(size_in_megabytes, current_dataframe_size, compression_ratio, memory_used, main_file_size_mb, target_excretion_size))
             if util.elapsed(self.context) > timeout or memory_used > memory_trigger or main_file_size_mb > target_excretion_size :
-                print "Elapsed", util.elapsed(self.context), "Start:", self.starttime, "Timeout:", timeout, "Has timed out:", util.elapsed(self.context) > timeout, "Mem Used %:", memory_used, "Max Memory %:", memory_trigger
+                print(
+                "Elapsed", util.elapsed(self.context), "Start:", self.starttime, "Timeout:", timeout, "Has timed out:",
+                util.elapsed(self.context) > timeout, "Mem Used %:", memory_used, "Max Memory %:", memory_trigger)
                 break                
         
         #only save the files if we have a reasonable amount of time remaining before the lambda timeout.
@@ -110,16 +124,19 @@ class Amoeba(object):
             self.__excret(self.directory, main_filename, main_file_data, sep)            
             self.__delete_keys(keys_ingested)
         elif util.time_remaining(self.context) <= c.SAVE_WINDOW_IN_SECONDS:            
-            print "Time has run out!  We have less than {} seconds remaining before this lambda times out.  Abandoning the S3 commit to avoid file corruption.".format(c.SAVE_WINDOW_IN_SECONDS)
-            print "Aggregation window (Max Lambda Execution Time * {}): {} seconds".format(c.RATIO_OF_MAX_LAMBDA_TIME, timeout) 
-            print "S3 Save window: {} seconds".format(c.SAVE_WINDOW_IN_SECONDS) 
-            print "Lambda time remaining: {} seconds".format(util.time_remaining(self.context))                        
+            print(
+                "Time has run out!  We have less than {} seconds remaining before this lambda times out.  Abandoning the S3 commit to avoid file corruption.".format(
+                    c.SAVE_WINDOW_IN_SECONDS))
+            print("Aggregation window (Max Lambda Execution Time * {}): {} seconds".format(c.RATIO_OF_MAX_LAMBDA_TIME,
+                                                                                           timeout))
+            print("S3 Save window: {} seconds".format(c.SAVE_WINDOW_IN_SECONDS))
+            print("Lambda time remaining: {} seconds".format(util.time_remaining(self.context)))
            
         remaining_files = list(set(self.files) - set(keys_ingested))
         if len(remaining_files) > 0:        
             debug_print("Re-adding the {} paths to SQS to attempt again. The paths are \n{}".format(len(remaining_files), remaining_files))               
-            self.__add_to_sqs(remaining_files)        
-        print "I've consumed everything I can in bucket '{}'".format(self.directory)
+            self.__add_to_sqs(remaining_files)
+        print("I've consumed everything I can in bucket '{}'".format(self.directory))
         return
 
     def __size(self, key):        
@@ -129,7 +146,7 @@ class Amoeba(object):
             if str(e.response['Error']['Code']) == '404':                
                 return None
             else:
-                print "Error: ", e.response['Error']['Code'], key
+                print("Error: ", e.response['Error']['Code'], key)
                 raise e        
         return None
 
@@ -143,12 +160,12 @@ class Amoeba(object):
             data = reader.read(s3fs.S3FileSystem(), self.bucket, key)            
             return data           
         except ClientError as e:        
-            print e.response['Error']['Code'], "key=>", key                                                
+            print(e.response['Error']['Code'], "key=>", key)
             #handle corrupt files, this can happen if a write did not finish correctly                
-            if e.message == "Seek before start of file":
-                self.__move_corrupt_file(self.s3, key)
-            elif e.response['Error']['Code'] == 'NoSuchKey':                
-                print '{}: for key {}'.format(e.response['Error']['Code'], key)
+            if str(e) == "Seek before start of file":
+                self.__move_corrupt_file(key)
+            elif e.response['Error']['Code'] == 'NoSuchKey':
+                print('{}: for key {}'.format(e.response['Error']['Code'], key))
             else:
                 util.logger.error(e) 
         except Exception as unexpected:
@@ -182,24 +199,25 @@ class Amoeba(object):
                 if file_size_in_mb < max_file_size_in_mb: 
                     data = reader.read(s3fs.S3FileSystem(), self.bucket, key)   
                     return filename, data, file_size_in_mb
-            except Exception as e:                                                 
-                print e            
+            except Exception as e:
+                message = str(e)
+                print(message)
                 #handle corrupt files, this can happen if a write did not finish correctly                
-                if e.message == "Seek before start of file" or "invalid code lengths set" in e.message:                                
-                    self.__move_corrupt_file(s3, key)                                 
+                if message == "Seek before start of file" or "invalid code lengths set" in message:                                
+                    self.__move_corrupt_file(key)
                 return filename, pd.DataFrame(), 0      
             i += 1
 
     def __move_corrupt_file(self, key):        
         corrupt_path = "corrupt_data_files{}".format(key)
-        print "Moving corrupt file '{}' to '{}' for further analysis.".format(key, corrupt_path)                      
+        print("Moving corrupt file '{}' to '{}' for further analysis.".format(key, corrupt_path))
         body = self.s3.get_object(util.get_path_without_leading_seperator(key))["Body"].read()
         self.s3.put_object(corrupt_path,body)  
         self.s3.delete(util.get_path_without_leading_seperator(key))  
 
     def __excret(self, key, filename, data, sep):            
         output_path = "{}{}{}".format(key,sep,filename)
-        print "\t\tSaving ingested file to '{}{}'".format(self.bucket, output_path)            
+        print("\t\tSaving ingested file to '{}{}'".format(self.bucket, output_path))
         writer.write(self.bucket, output_path, data, sep, m_schema.object_encoding(data.columns.values)) 
         
     def __delete_keys(self, keys):

@@ -66,6 +66,7 @@ def build(bld):
         linux_rpath        = ['$ORIGIN/..'],
         # Testing
         test_all_file_list = ['resourcecompiler_test.waf_files'],
+        test_use           = ['AzFrameworkTestShared'],
 
         win_additional_manifests = 'WindowsCompatibility.xml',
     )

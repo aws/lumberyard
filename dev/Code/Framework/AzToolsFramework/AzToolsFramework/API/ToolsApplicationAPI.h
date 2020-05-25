@@ -378,6 +378,12 @@ namespace AzToolsFramework
         virtual bool IsSelected(const AZ::EntityId& entityId) = 0;
 
         /*!
+         * Returns true if the specified entity is a slice root.
+         * \param entityId
+         */
+        virtual bool IsSliceRootEntity(const AZ::EntityId& entityId) = 0;
+
+        /*!
          * Retrieves the undo stack.
          * \return a pointer to the undo stack.
          */
@@ -428,6 +434,16 @@ namespace AzToolsFramework
         virtual void DeleteEntitiesAndAllDescendants(const EntityIdList& entities) = 0;
 
         virtual bool DetachEntities(const AZStd::vector<AZ::EntityId>& entitiesToDetach, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) = 0;
+
+        /*!
+        * \brief Detaches the supplied subslices from their owning slice instance
+        * \param subsliceRootList A list of SliceInstanceAddresses paired with a mapping from the sub slices asset entityId's to the owing slice instance's live entityIds
+                                  See SliceComponent::GetMappingBetweenSubsliceAndSourceInstanceEntityIds for a helper to acquire this mapping
+        * \param restoreInfos A list of EntityRestoreInfo's to be filled with information on how to restore the entities in the subslices back to their original state before this operation
+        * \return Returns true on operation success, false otherwise
+        */
+        virtual bool DetachSubsliceInstances(const AZ::SliceComponent::SliceInstanceEntityIdRemapList& subsliceRootList,
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) = 0;
 
         /*!
         * \brief Finds the Common root of an entity list; Also finds the top level entities in a given list of active entities (who share the common root)
@@ -496,6 +512,13 @@ namespace AzToolsFramework
          * @return The root entity id.
          */
         virtual AZ::EntityId GetRootEntityIdOfSliceInstance(AZ::SliceComponent::SliceInstanceAddress sliceAddress) = 0;
+
+        /**
+         * Get the id of the level that is loaded currently in the editor.
+         * This is a "singleton" type of EntityId that represents the current level.
+         * It can be used to add level components to it.
+         */
+        virtual AZ::EntityId GetCurrentLevelEntityId() = 0;
 
         /**
         * Prepares a file for editability. Interacts with source-control if the asset is not already writable, in a blocking fashion.
@@ -589,15 +612,6 @@ namespace AzToolsFramework
          * system simulates its execution, and avoids some code duplication.
          */
         virtual void RunRedoSeparately(UndoSystem::URSequencePoint* redoCommand) = 0;
-
-        /**
-        * @deprecated
-        */
-        AZ_DEPRECATED(ResolveToolPathOutcome ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const, "ToolsApplicationRequests::ResolveToolPath is deprecated. Please use ToolsApplicationRequests::ResolveConfigToolsPath")
-        {
-            AZ_UNUSED(currentExecutablePath);
-            return ResolveConfigToolsPath(toolApplicationName);
-        };
     };
 
     using ToolsApplicationRequestBus = AZ::EBus<ToolsApplicationRequests>;

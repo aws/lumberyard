@@ -10,11 +10,12 @@
 #
 #!/bin/sh
 
+
 # Install updates
 apt-get update -y
 
 # Add Mozilla Security repo (needed to install binutils-2.26)
-add-apt-repository ppa:ubuntu-mozilla-security/ppa
+add-apt-repository -y ppa:ubuntu-mozilla-security/ppa
 apt-get update -y
 apt-get upgrade -y
 

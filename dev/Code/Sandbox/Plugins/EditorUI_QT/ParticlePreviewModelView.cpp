@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 
 //AZCore
 #include <AzCore/Math/MathUtils.h>

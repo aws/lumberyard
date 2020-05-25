@@ -15,9 +15,7 @@ def build(bld):
 
 
     bld.DefineGem(
-        includes     = [bld.ThirdPartyPath('boost'),
-                        bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')],
+        includes     = [bld.Path('Code/CryEngine/CryCommon')],
         export_includes = ['include'],
         win_features = ['crcfix'],
 
@@ -28,16 +26,13 @@ def build(bld):
             features    = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
 
             use         = ['AzToolsFramework', 'AzQtComponents'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
-            includes    = [bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           'include',
+            includes    = ['include',
                            'Source',
                            bld.Path('Code/Sandbox'),
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/CryEngine')
                            ],
             uselib      =['QT5CORE',

@@ -38,14 +38,18 @@ namespace AzToolsFramework
             void Deactivate() override;
 
             // EditorComponentAPIBus ...
-            AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) override;
+            AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) override; //@deprecated. Use FindComponentTypeIdsByEntityType
+            AZStd::vector<AZ::Uuid> FindComponentTypeIdsByEntityType(const AZStd::vector<AZStd::string>& componentTypeNames, EditorComponentAPIRequests::EntityType entityType) override;
             AZStd::vector<AZStd::string> FindComponentTypeNames(const AZ::ComponentTypeList& componentTypeIds) override;
-            AZStd::vector<AZStd::string> BuildComponentTypeNameList() override;
+            AZStd::vector<AZStd::string> BuildComponentTypeNameList() override; //@deprecated. Use BuildComponentTypeNameListByEntityType
+            AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EditorComponentAPIRequests::EntityType entityType) override;
+
             AddComponentsOutcome AddComponentsOfType(AZ::EntityId entityId, const AZ::ComponentTypeList& componentTypeIds) override;
             bool HasComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
             size_t CountComponentsOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
             GetComponentOutcome GetComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
             GetComponentsOutcome GetComponentsOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
+
             bool IsValid(AZ::EntityComponentIdPair componentInstance) override;
             bool EnableComponents(const AZStd::vector<AZ::EntityComponentIdPair>& componentInstances) override;
             bool IsComponentEnabled(const AZ::EntityComponentIdPair& componentInstance) override;
@@ -55,6 +59,7 @@ namespace AzToolsFramework
             PropertyTreeOutcome BuildComponentPropertyTreeEditor(const AZ::EntityComponentIdPair& componentInstance) override;
             PropertyOutcome GetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath) override;
             PropertyOutcome SetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) override;
+            bool CompareComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) override;
             const AZStd::vector<AZStd::string> BuildComponentPropertyList(const AZ::EntityComponentIdPair& componentInstance) override;
 
         private:

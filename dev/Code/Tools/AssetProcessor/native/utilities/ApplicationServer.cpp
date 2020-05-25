@@ -79,7 +79,7 @@ bool ApplicationServer::startListening(unsigned short port)
             }
         }
 #else
-        if (!listen(QHostAddress::Any, m_serverListeningPort))
+        if (!listen(QHostAddress::Any, aznumeric_cast<quint16>(m_serverListeningPort)))
         {
             AZ_Error(AssetProcessor::ConsoleChannel, false, "Cannot start Asset Processor server - another instance of the Asset Processor may already be running on port number %d.  If you'd like to run multiple Asset Processors on different branches at the same time, please edit bootstrap.cfg and assign different remote_port values to each branch instance.\n", m_serverListeningPort);
             return false;
@@ -87,7 +87,7 @@ bool ApplicationServer::startListening(unsigned short port)
 #endif
 
         ApplicationServerBus::Handler::BusConnect();
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Asset Processor server listening on port %d", m_serverListeningPort);
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Asset Processor server listening on port %d\n", m_serverListeningPort);
     }
     return true;
 }

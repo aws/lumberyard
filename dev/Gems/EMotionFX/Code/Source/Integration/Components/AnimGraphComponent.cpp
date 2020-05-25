@@ -415,6 +415,7 @@ namespace EMotionFX
 
                     if (azrtti_istypeof<AZ::ScriptPropertyNumber>(parameter))
                     {
+                        // This will handle float and integer types.
                         SetNamedParameterFloat(paramName, aznumeric_caster(static_cast<AZ::ScriptPropertyNumber*>(parameter)->m_value));
                     }
                     else if (azrtti_istypeof<AZ::ScriptPropertyBoolean>(parameter))

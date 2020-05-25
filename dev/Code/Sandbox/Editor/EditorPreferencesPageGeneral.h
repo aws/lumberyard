@@ -63,7 +63,6 @@ private:
         bool m_restoreViewportCamera;
         bool m_bLayerDoubleClicking;
         bool m_bShowNews;
-        bool m_showFlowGraphNotification;
         bool m_enableSceneInspector;
         bool m_enableUI2;
         bool m_enableLegacyUI;

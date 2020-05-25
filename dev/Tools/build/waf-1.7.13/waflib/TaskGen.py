@@ -86,7 +86,7 @@ class task_gen(object):
             self.env = self.bld.env.derive()
             self.path = self.bld.path # emulate chdir when reading scripts
 
-        for key, val in kw.items():
+        for key, val in list(kw.items()):
             setattr(self, key, val)
 
     def __str__(self):
@@ -96,7 +96,7 @@ class task_gen(object):
     def __repr__(self):
         """for debugging purposes"""
         lst = []
-        for x in self.__dict__.keys():
+        for x in list(self.__dict__.keys()):
             if x not in ['env', 'bld', 'compiled_tasks', 'tasks']:
                 lst.append("%s=%s" % (x, repr(getattr(self, x))))
         return "bld(%s) in %s" % (", ".join(lst), self.path.abspath())
@@ -177,7 +177,7 @@ class task_gen(object):
         # elements disconnected
         tmp = []
         for a in keys:
-            for x in prec.values():
+            for x in list(prec.values()):
                 if a in x: break
             else:
                 tmp.append(a)
@@ -234,7 +234,7 @@ class task_gen(object):
         for k in task_gen.mappings:
             if name.endswith(k):
                 return task_gen.mappings[k]
-        raise Errors.WafError("File %r has no mapping in %r (did you forget to load a waf tool?)" % (node, task_gen.mappings.keys()))
+        raise Errors.WafError("File %r has no mapping in %r (did you forget to load a waf tool?)" % (node, list(task_gen.mappings.keys())))
 
     def create_task(self, name, src=None, tgt=None):
         """

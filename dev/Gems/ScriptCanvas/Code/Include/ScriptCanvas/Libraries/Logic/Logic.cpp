@@ -60,6 +60,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Logic, Sequencer>(nodeRegistry);            
             AddNodeToRegistry<Logic, TargetedSequencer>(nodeRegistry);
             AddNodeToRegistry<Logic, WeightedRandomSequencer>(nodeRegistry);
+            AddNodeToRegistry<Logic, Cycle>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Logic::GetComponentDescriptors()
@@ -79,6 +80,7 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Logic::Sequencer::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::TargetedSequencer::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::WeightedRandomSequencer::CreateDescriptor(),
+                ScriptCanvas::Nodes::Logic::Cycle::CreateDescriptor(),
             });
         }
     }

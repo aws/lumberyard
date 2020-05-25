@@ -11,7 +11,6 @@
 # $Revision: #1 $
 
 import os
-import json
 
 import boto3
 from cgf_utils import aws_utils

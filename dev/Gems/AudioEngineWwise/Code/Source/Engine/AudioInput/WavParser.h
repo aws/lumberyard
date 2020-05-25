@@ -52,7 +52,7 @@ namespace Audio
         static const size_t MinSize = 44;
     };
 
-    AZ_STATIC_ASSERT(sizeof(WavHeader) == WavHeader::MinSize, "WavHeader struct size is not 44 bytes!");
+    static_assert(sizeof(WavHeader) == WavHeader::MinSize, "WavHeader struct size is not 44 bytes!");
 
 
     /**

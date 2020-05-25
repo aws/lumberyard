@@ -163,7 +163,7 @@ QCursor CMFCUtils::LoadCursor(unsigned int nIDResource, int hotX, int hotY)
     }
     path = QStringLiteral(":/cursors/res/") + path;
     QPixmap pm(path);
-    if (!pm.isNull() && (hotX < 0 || hotX < 0))
+    if (!pm.isNull() && (hotX < 0 || hotY < 0))
     {
         QFile f(path);
         f.open(QFile::ReadOnly);
@@ -258,6 +258,11 @@ namespace EditorUtils
         : m_window(window)
     { 
         BusConnect();
+    }
+
+    AzWarningAbsorber::~AzWarningAbsorber()
+    {
+        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
     }
 
     bool AzWarningAbsorber::OnPreWarning(const char* window, const char*, int, const char*, const char*)

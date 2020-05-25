@@ -23,7 +23,7 @@ def post(request, cognitoUsername):
         message = e.response.get('Error', {}).get('Message')
 
         if code == 'NotAuthorizedException' and 'CONFIRMED' in message:
-            print 'The user is already confirmed: {}'.format(message)
+            print('The user is already confirmed: {}'.format(message))
             return {}
 
         raise

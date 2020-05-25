@@ -284,14 +284,15 @@ namespace CommandSystem
 
     void CommandAnimGraphAdjustNodeGroup::InitSyntax()
     {
-        GetSyntax().ReserveParameters(7);
-        GetSyntax().AddRequiredParameter("name",    "The name of the node group to adjust.", MCore::CommandSyntax::PARAMTYPE_STRING);
-        GetSyntax().AddParameter("animGraphID",    "The id of the blend set the node group belongs to.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
-        GetSyntax().AddParameter("isVisible",       "The visibility flag of the node group.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
-        GetSyntax().AddParameter("newName",         "The new name of the node group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("nodeNames",       "A list of node names that should be added/removed to/from the node group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("nodeAction",      "The action to perform with the nodes passed to the command.", MCore::CommandSyntax::PARAMTYPE_STRING, "select");
-        GetSyntax().AddParameter("color",           "The color to render the node group with.", MCore::CommandSyntax::PARAMTYPE_VECTOR4, "(1.0, 1.0, 1.0, 1.0)");
+        GetSyntax().ReserveParameters(8);
+        GetSyntax().AddRequiredParameter("name", "The name of the node group to adjust.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("animGraphID", "The id of the blend set the node group belongs to.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        GetSyntax().AddParameter("isVisible", "The visibility flag of the node group.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
+        GetSyntax().AddParameter("newName", "The new name of the node group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("nodeNames", "A list of node names that should be added/removed to/from the node group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("nodeAction", "The action to perform with the nodes passed to the command.", MCore::CommandSyntax::PARAMTYPE_STRING, "select");
+        GetSyntax().AddParameter("color", "The color to render the node group with.", MCore::CommandSyntax::PARAMTYPE_VECTOR4, "(1.0, 1.0, 1.0, 1.0)");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the node groups UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -377,9 +378,10 @@ namespace CommandSystem
 
     void CommandAnimGraphAddNodeGroup::InitSyntax()
     {
-        GetSyntax().ReserveParameters(2);
+        GetSyntax().ReserveParameters(3);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the blend set the node group belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("name", "The name of the node group.", MCore::CommandSyntax::PARAMTYPE_STRING, "Unnamed Node Group");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the node groups UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -445,10 +447,11 @@ namespace CommandSystem
         {
             return false;
         }
-
+        const AZStd::string updateWindow = parameters.GetValue("updateUI",this);
+        
         MCore::CommandGroup commandGroup;
 
-        AZStd::string commandString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), mOldName.c_str());
+        AZStd::string commandString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\" -updateUI %s",animGraph->GetID(), mOldName.c_str(), updateWindow);
         commandGroup.AddCommandString(commandString);
 
         const AZStd::string nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIds);
@@ -457,7 +460,7 @@ namespace CommandSystem
         oldColor.FromU32(mOldColor);
         const AZStd::string oldColorString = AZStd::string::format("%.8f,%.8f,%.8f,%.8f", static_cast<float>(oldColor.GetR()), static_cast<float>(oldColor.GetG()), static_cast<float>(oldColor.GetB()), static_cast<float>(oldColor.GetA()));
 
-		commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\"", animGraph->GetID(), mOldName.c_str(), AZStd::to_string(mOldIsVisible).c_str(), oldColorString.c_str(), nodeNamesString.c_str());
+        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\" -updateUI %s", animGraph->GetID(), mOldName.c_str(), AZStd::to_string(mOldIsVisible).c_str(), oldColorString.c_str(), nodeNamesString.c_str(), updateWindow);
         commandGroup.AddCommandString(commandString);
 
         AZStd::string result;
@@ -474,9 +477,10 @@ namespace CommandSystem
 
     void CommandAnimGraphRemoveNodeGroup::InitSyntax()
     {
-        GetSyntax().ReserveParameters(2);
-        GetSyntax().AddRequiredParameter("animGraphID",    "The id of the blend set the node group belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
-        GetSyntax().AddRequiredParameter("name",            "The name of the node group to remove.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().ReserveParameters(3);
+        GetSyntax().AddRequiredParameter("animGraphID", "The id of the blend set the node group belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
+        GetSyntax().AddRequiredParameter("name", "The name of the node group to remove.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the node groups UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -508,8 +512,15 @@ namespace CommandSystem
             // get pointer to the current actor instance
             EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
 
-            commandString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroup->GetName());
-
+            // Only update/reinit node group window during first and last command to reduce runtime.
+            if (i == 0 || i == numNodeGroups - 1)
+            {
+                commandString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroup->GetName());
+            }
+            else
+            {
+                commandString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\" -updateUI false", animGraph->GetID(), nodeGroup->GetName());
+            }
             // add the command to the command group
             if (!commandGroup)
             {

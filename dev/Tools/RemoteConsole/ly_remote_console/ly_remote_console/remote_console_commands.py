@@ -8,14 +8,11 @@ or, if provided, by the license below or the license accompanying this file. Do 
 remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-RemoteConsole: Used to interact with Lumberyard Launchers throught the Remote Console
-to execute console commands.
+RemoteConsole: Used to interact with Lumberyard Launchers through the Remote Console to execute console commands.
 """
 
 import socket
-import time
 import threading
-import platform
 import os
 
 import logging
@@ -24,65 +21,47 @@ logger = logging.getLogger(__name__)
 
 
 # List of all console command types, some are not being used in this
+BASE_MSG_TYPE = ord('0')
 CONSOLE_MESSAGE_MAP = {
-    'NOOP': '0',
-    'REQ': '1',
-    'LOGMESSAGE': '2',
-    'LOGWARNING': '3',
-    'LOGERROR': '4',
-    'COMMAND': '5',
-    'AUTOCOMPLETELIST': '6',
-    'AUTOCOMPLETELISTDONE': '7',
-    'GAMEPLAYEVENT': '22'
+    'NOOP': BASE_MSG_TYPE + 0,
+    'REQ': BASE_MSG_TYPE + 1,
+    'LOGMESSAGE': BASE_MSG_TYPE + 2,
+    'LOGWARNING': BASE_MSG_TYPE + 3,
+    'LOGERROR': BASE_MSG_TYPE + 4,
+    'COMMAND': BASE_MSG_TYPE + 5,
+    'AUTOCOMPLETELIST': BASE_MSG_TYPE + 6,
+    'AUTOCOMPLETELISTDONE': BASE_MSG_TYPE + 7,
+    'GAMEPLAYEVENT': BASE_MSG_TYPE + 22
 }
-
-
-def in_game_screenshot(remote_console_instance, screenshot_name):
-    # type: (RemoteConsole, str) -> None
-    """
-    Uses the remote console's screenshot command.
-    :param remote_console_instance: RemoteConsole instance
-    :param screenshot_name: Name you want the screenshot to be called
-    :return: None
-    """
-    send_screenshot_command(remote_console_instance, 'capture_file_name {}'.format(screenshot_name),
-                              '$3capture_file_name = $6{} $5[]$4'.format(screenshot_name))
-
-    send_screenshot_command(remote_console_instance, 'capture_frame_once 1', '$3capture_frame_once = $61 $5[]$4')
-
-    send_screenshot_command(remote_console_instance, 'capture_frames 1', '$3capture_frames = $61 $5[]$4')
-
-    send_screenshot_command(remote_console_instance, 'capture_frames 0', '$3capture_frames = $60 $5[]$4')
-
-    logger.info("Screenshot for {} has been taken".format(screenshot_name))
 
 
 def capture_screenshot_command(remote_console_instance):
     # type: (RemoteConsole) -> None
     """
-    Used for an in-game screenshot
+    This is just a helper function to help capture in-game screenshot
     :param remote_console_instance: RemoteConsole instance
     :return: None
     """
-    screenshot_command = 'Screenshot: ' + os.path.join('@user@', 'screenshots')
-    send_screenshot_command(remote_console_instance, 'r_GetScreenShot 1', screenshot_command)
+    screenshot_response = 'Screenshot: ' + os.path.join('@user@', 'screenshots')
+    send_command_and_expect_response(remote_console_instance, 'r_GetScreenShot 2', screenshot_response)
     logger.info("Screenshot has been taken.")
 
 
-def send_screenshot_command(remote_console_instance, command_to_run, expected_log_line):
+def send_command_and_expect_response(remote_console_instance, command_to_run, expected_log_line, timeout=60):
     # type: (RemoteConsole, str, str) -> None
     """
-    This is just a helper function to help send and validate against screenshot console commands.
+    This is just a helper function to help send a command and validate against expected output.
     :param remote_console_instance: RemoteConsole instance
-    :param command_to_run: The screenshot command that you wish to run
+    :param command_to_run: The command that you wish to run
     :param expected_log_line:  The console log line to expect in order to set the event to true
     :return: None
     """
-    screenshotCommandSuccess = \
-        remote_console_instance.expect_log_line(expected_log_line, 60)
     remote_console_instance.send_command(command_to_run)
+    expect_func = remote_console_instance.expect_log_line(expected_log_line, timeout)
 
-    assert screenshotCommandSuccess(), '{} command failed. Was looking for {} in the log but did not find it.'.format(command_to_run, expected_log_line)
+    assert expect_func(),\
+        '{} command failed. Was looking for {} in the log but did not find it.'.format(
+            command_to_run, expected_log_line)
 
 
 def _default_on_message_received(raw):
@@ -144,12 +123,30 @@ class RemoteConsole:
             logger.warning('RemoteConsole is already connected.')
             return
 
-        self.socket.connect((self.addr, self.port))
+        # Do not wait more than 3.0 seconds per connection attempt.
+        self.socket.settimeout(3.0)
+        num_ports_to_scan = 8
+        max_port = self.port + num_ports_to_scan
+        while self.port < max_port:
+            try:
+                self.socket.connect((self.addr, self.port))
+                logger.info('Successfully connected to port: {}'.format(self.port))
+                break
+            except:
+                self.port += 1
+        if self.port >= max_port:
+            from_port_to_port = "from port {} to port {}".format(
+                self.port-num_ports_to_scan, self.port-1)
+            raise Exception(
+                "Remote console connection never became ready after scanning {}".format(
+                    from_port_to_port))
+        # Clear the timeout. Further socket operations won't timeout.
+        self.socket.settimeout(None)
         self.pump_thread.start()
         if not self.ready.wait(timeout):
             raise Exception("Remote console connection never became ready")
         self.connected = True
-        logger.info('Remote Console Started')
+        logger.info('Remote Console Started at port {}'.format(self.port))
 
     def stop(self):
         # type: () -> None
@@ -201,7 +198,7 @@ class RemoteConsole:
         :param timeout: The timeout to wait for the log line in seconds
         """
         evt = threading.Event()
-        self.handlers[match_string] = evt
+        self.handlers[match_string.encode()] = evt
 
         def log_event():
             logger.info("waiting for event '{0}'".format(match_string))
@@ -210,18 +207,20 @@ class RemoteConsole:
         return log_event
 
     def _create_message(self, message_type, message_body=''):
-        # type: (int, str) -> bytearray
+        # type: (bytes, str) -> bytearray
         """
         Transforms a message to be sent to the launcher. The string is converted to a bytearray and
         is prepended with the message type and appended with an ending 0.
         :param message_type: Uses CONSOLE_MESSAGE_MAP to prepend the bytearray message
         :param message_body: The message string to be converted
         """
+        message_body = message_body.encode()
         message = bytearray(0)
+
         message.append(message_type)
 
-        for char in message_body:
-            message.append(char)
+        for message_body_char in message_body:
+            message.append(message_body_char)
 
         message.append(0)
         return message
@@ -240,7 +239,7 @@ class RemoteConsole:
         """
         Handles the messages and and will poll for expected console messages that we are looking for and set() events to True.
         Displays the message if we determine it is a logging message.
-        :param message: The message received to be handled in various ways
+        :param message: The message (a byte array) received to be handled in various ways
         """
         # message[0] is the representation of the message type inside of the message received from our launchers
         message_type = message[0]
@@ -255,6 +254,7 @@ class RemoteConsole:
             for key in self.handlers.keys():
                 # message received, set flag handler as True for success
                 if key in message_body:
+                    logger.info("matched key=<{}>".format(key))
                     self.handlers[key].set()
                     continue
 
@@ -269,6 +269,7 @@ class RemoteConsole:
             self.ready.set()
 
         # cleanup expect_log_line handers if the matching string was found or timeout happened.
-        for key in self.handlers.keys():
+        handlers_dict = self.handlers.copy()
+        for key in handlers_dict.keys():
             if self.handlers[key].is_set():
                 del self.handlers[key]

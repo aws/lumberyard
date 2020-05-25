@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/Attachment.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
 #include "CommandManager.h"
 #include <AzFramework/API/ApplicationAPI.h>
@@ -88,8 +89,8 @@ namespace CommandSystem
         settings.mDualQuatSkinning              = parameters.GetValueAsBool("dualQuatSkinning",     this);
 
         // try to load the actor
-        EMotionFX::Actor* actor = EMotionFX::GetImporter().LoadActor(filename.c_str(), &settings);
-        if (actor == nullptr)
+        AZStd::shared_ptr<EMotionFX::Actor> actor {EMotionFX::GetImporter().LoadActor(filename.c_str(), &settings)};
+        if (!actor)
         {
             outResult = AZStd::string::format("Failed to load actor from '%s'. File may not exist at this path or may have incorrect permissions", filename.c_str());
             return false;
@@ -123,6 +124,9 @@ namespace CommandSystem
 
         // return the id of the newly created actor
         AZStd::to_string(outResult, actor->GetID());
+
+        EMotionFX::GetActorManager().RegisterActor(AZStd::move(actor));
+
         return true;
     }
 
@@ -145,14 +149,14 @@ namespace CommandSystem
         }
 
         // find the actor based on the given id
-        EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
+        AZStd::shared_ptr<EMotionFX::Actor> actor = EMotionFX::GetActorManager().FindSharedActorByID(actorID);
         if (actor == nullptr)
         {
             outResult = AZStd::string::format("Cannot remove actor. Actor ID %i is not valid.", actorID);
             return false;
         }
 
-        actor->Destroy();
+        EMotionFX::GetActorManager().UnregisterActor(actor);
 
         // update our render actors
         AZStd::string updateRenderActorsResult;

@@ -13,6 +13,7 @@
 // include the required headers
 #include "IntSlider.h"
 #include <QtWidgets/QHBoxLayout>
+#include <AzCore/Casting/numeric_cast.h>
 
 
 namespace MysticQt
@@ -189,8 +190,8 @@ namespace MysticQt
         mSpinBox->setValue(value);
 
         // remap range and set the value
-        const float minInput = mSpinBox->minimum();
-        const float maxInput = mSpinBox->maximum();
+        const float minInput = aznumeric_cast<float>(mSpinBox->minimum());
+        const float maxInput = aznumeric_cast<float>(mSpinBox->maximum());
         const float minOutput = 0;
         const float maxOutput = 1000;
         const float result = ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
@@ -210,8 +211,8 @@ namespace MysticQt
         mSlider->blockSignals(true);
 
         // remap range and set the value
-        const float min = mSpinBox->minimum();
-        const float max = mSpinBox->maximum();
+        const float min = aznumeric_cast<float>(mSpinBox->minimum());
+        const float max = aznumeric_cast<float>(mSpinBox->maximum());
         const float result = min + (max - min) * value;
         mSpinBox->setValue(result);
 
@@ -226,8 +227,8 @@ namespace MysticQt
     // gets called when the spinbox value changes
     void FloatSlider::OnSpinBoxChanged(double value)
     {
-        SetValue(value);
-        emit ValueChanged(value);
+        SetValue(aznumeric_cast<float>(value));
+        emit ValueChanged(aznumeric_cast<float>(value));
         emit ValueChanged();
     }
 
@@ -235,7 +236,7 @@ namespace MysticQt
     // gets called when the spinbox finished to edit the value
     void FloatSlider::OnSpinBoxEditingFinished(double value)
     {
-        emit FinishedValueChange(value);
+        emit FinishedValueChange(aznumeric_cast<float>(value));
     }
 
 
@@ -244,7 +245,7 @@ namespace MysticQt
     {
         const float normalizedValue = (float)value / 1000.0f;
         SetNormalizedValue(normalizedValue);
-        emit ValueChanged(mSpinBox->value());
+        emit ValueChanged(aznumeric_cast<float>(mSpinBox->value()));
         emit ValueChanged();
     }
 
@@ -252,7 +253,7 @@ namespace MysticQt
     // gets called when the slider was moved and then the mouse button got released
     void FloatSlider::OnSliderReleased()
     {
-        emit FinishedValueChange(mSpinBox->value());
+        emit FinishedValueChange(aznumeric_cast<float>(mSpinBox->value()));
     }
 
 

@@ -21,10 +21,7 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="api-definition\LoadTest_1_0_0.json" />
     <Content Include="common-code\Constant\leaderboard_constant.pyc" />
-    <Content Include="common-code\LoadTest\.import" />
-    <Content Include="common-code\LoadTest\LoadTest__CloudGemLeaderboard.pyc" />
     <Content Include="lambda-code\RecordSetProcessor\.ignore" />
     <Content Include="lambda-code\RecordSetProcessor\.import" />
     <Content Include="lambda-code\RecordSetProcessor\RecordSetProcessor.pyproj" />
@@ -38,7 +35,6 @@
     <Folder Include="api-definition\" />
     <Folder Include="common-code\" />
     <Folder Include="common-code\Constant\" />
-    <Folder Include="common-code\LoadTest\" />
     <Folder Include="lambda-code\" />
     <Folder Include="lambda-code\RecordSetProcessor\" />
     <Folder Include="lambda-code\ServiceLambda\" />
@@ -46,11 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="common-code\Constant\leaderboard_constant.py" />
-    <Compile Include="common-code\LoadTest\LoadTest__CloudGemLeaderboard.py" />
     <Compile Include="lambda-code\RecordSetProcessor\record_set_processor.py" />
     <Compile Include="lambda-code\ServiceLambda\api\leaderboard.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_setup.py" />
-    <Compile Include="lambda-code\ServiceLambda\api\loadtest_teardown.py" />
     <Compile Include="lambda-code\ServiceLambda\api\player_ban.py" />
     <Compile Include="lambda-code\ServiceLambda\api\player_ban_list.py" />
     <Compile Include="lambda-code\ServiceLambda\api\process_records.py" />

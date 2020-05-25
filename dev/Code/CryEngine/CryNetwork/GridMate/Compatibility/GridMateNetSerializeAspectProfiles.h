@@ -61,7 +61,7 @@ namespace GridMate
 
         private:
             AZ::u32 m_profilesMask;
-            AspectProfile m_aspectProfiles[ NetSerialize::kNumAspectSlots ];
+            AspectProfile m_aspectProfiles[ NetSerialize::kNumAspectSlots ] = { kUnsetAspectProfile };
         };
 
         typedef GridMate::DataSet<EntityAspectProfiles, EntityAspectProfiles::Marshaler>

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzCore/base.h>
+#include <AzFramework/Input/User/LocalUserId_Platform.h>
 
 #include <limits>
 
@@ -20,14 +20,10 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Alias for the type of a local user id
-    using LocalUserId = AZ::u32;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Constant representing any local user id
-    static const LocalUserId LocalUserIdAny = std::numeric_limits<LocalUserId>::max();
+    static const LocalUserId LocalUserIdAny(std::numeric_limits<AZ::u32>::max());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Constant representing no local user id
-    static const LocalUserId LocalUserIdNone = std::numeric_limits<LocalUserId>::max() - 1;
+    static const LocalUserId LocalUserIdNone(std::numeric_limits<AZ::u32>::max() - 1);
 } // namespace AzFramework

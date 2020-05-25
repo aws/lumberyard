@@ -32,6 +32,7 @@
 #include <PhysX/SystemComponentBus.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <Tests/PhysXTestCommon.h>
+#include <Utils.h>
 
 namespace PhysX
 {
@@ -58,18 +59,12 @@ namespace PhysX
 
     void SetCollisionLayerName(AZ::u8 index, const AZStd::string& name)
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
-        configuration.m_collisionLayers.SetName(index, name);
-        PhysX::ConfigurationRequestBus::Broadcast(&PhysX::ConfigurationRequests::SetConfiguration, configuration);
+        AZ::Interface<Physics::CollisionRequests>::Get()->SetCollisionLayerName(index, name);
     }
 
     void CreateCollisionGroup(const Physics::CollisionGroup& group, const AZStd::string& name)
     {
-        PhysX::Configuration configuration;
-        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
-        configuration.m_collisionGroups.CreateGroup(name, group);
-        PhysX::ConfigurationRequestBus::Broadcast(&PhysX::ConfigurationRequests::SetConfiguration, configuration);
+        AZ::Interface<Physics::CollisionRequests>::Get()->CreateCollisionGroup(name, group);
     }
 
     PointList GeneratePyramidPoints(float length)
@@ -1075,5 +1070,28 @@ namespace PhysX
         world->RemoveBody(*rigidBody);
         rigidBody = nullptr;
     }
+
+    TEST_F(PhysXSpecificTest, Shape_ConstructorDestructor_PxShapeReferenceCounterIsCorrect)
+    {
+        // Create physx::PxShape object
+        Physics::CollisionGroup assignedCollisionGroup = Physics::CollisionGroup::None;
+        physx::PxShape* shape = Utils::CreatePxShapeFromConfig(
+            Physics::ColliderConfiguration(), Physics::BoxShapeConfiguration(), assignedCollisionGroup);
+
+        // physx::PxShape object ref count is expected to be 1 after creation
+        EXPECT_EQ(shape->getReferenceCount(), 1);
+
+        // Create PhysX::Shape wrapper object and verify physx::PxShape ref count is increased to 2
+        AZStd::unique_ptr<Shape> shapeWrapper = AZStd::make_unique<Shape>(shape);
+        EXPECT_EQ(shape->getReferenceCount(), 2);
+
+        // Destroy PhysX::Shape wrapper object and verify physx::PxShape ref count is back to 1
+        shapeWrapper = nullptr;
+        EXPECT_EQ(shape->getReferenceCount(), 1);
+
+        // Clean up
+        shape->release();
+    }
+
 } // namespace PhysX
 

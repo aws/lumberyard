@@ -11,7 +11,9 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QGraphicsWidget>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
@@ -66,8 +68,8 @@ namespace GraphCanvas
         void SetSelected(bool selected) override;
         bool IsSelected() const override;
 
-        void SetZValue(int zValue) override;
-        int GetZValue() const override;
+        void SetZValue(qreal zValue) override;
+        qreal GetZValue() const override;
         ////
 
         // GeometryNotificationBus

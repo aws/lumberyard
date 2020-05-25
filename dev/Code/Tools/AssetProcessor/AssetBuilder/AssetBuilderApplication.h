@@ -29,6 +29,11 @@ public:
 
     bool IsInDebugMode() const;
 
+    bool GetOptionalAppRootArg(char destinationRootArgBuffer[], size_t destinationRootArgBufferSize) const;
+
+protected:
+    void ResolveModulePath(AZ::OSString& modulePath) override;
+
 private:
     bool ReadGameFolderFromBootstrap(AZStd::string& result) const;
     void InstallCtrlHandler();

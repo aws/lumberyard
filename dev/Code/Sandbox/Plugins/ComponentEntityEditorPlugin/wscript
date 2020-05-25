@@ -26,7 +26,7 @@ def build(bld):
         exclude_monolithic = True,
         client_only     = True,
         pch             = "ComponentEntityEditorPlugin_precompiled.cpp",
-        features        = ['qt5', 'EmbeddedPython'],
+        features        = ['qt5'],
         use             = ['EditorLib', 'AzQtComponents', 'EditorCommon'],
         uselib          = ['QT5CORE',
                            'QT5QUICK',
@@ -34,11 +34,9 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS',
                            'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
-                           'BOOSTPYTHON',
                            'AWS_CPP_SDK_IDENTITY_METRICS',
                            ],
         test_all_uselib = ['QT5TEST'],
-        defines         = ['USE_PYTHON_SCRIPTING',],
         includes        = [ bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/CryEngine/CryCommon'),
@@ -48,13 +46,7 @@ def build(bld):
         use_required_gems  = True,
         darwin_enable_rtti = True,
 
-        win_x64_clang_cxxflags 	= ['-fexceptions', #BOOSTPYTHON
-                                  '-Wno-inconsistent-dllimport', #BOOSTPYTHON
-                                  '-Wno-deprecated-register'], #BOOSTPYTHON
-
         darwin_cxxflags = ['-Wno-deprecated-register'],
-
-        darwin_x64_lib  = ['python2.7'],
 
         # Testing
         test_all_file_list = ['componententityeditorplugin_test.waf_files'],

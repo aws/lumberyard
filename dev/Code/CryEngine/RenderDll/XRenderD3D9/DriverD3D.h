@@ -115,10 +115,10 @@ struct SD3DContext
     int m_nViewportWidth;
     // Height of viewport on screen to display rendered content in
     int m_nViewportHeight;
-    // Number of samples per output (real offscreen) pixel used in X
-    int m_nSSSamplesX;
-    // Number of samples per output (real offscreen) pixel used in Y
-    int m_nSSSamplesY;
+    // Pixel resolution scale in X, includes scale from r_SuperSampling and any operating system screen or viewport scale
+    float m_fPixelScaleX;
+    // Pixel resolution scale in Y, includes scale from r_SuperSampling and any operating system screen or viewport scale
+    float m_fPixelScaleY;
     // Denotes if context refers to main viewport
     bool m_bMainViewport;
 };
@@ -1078,7 +1078,7 @@ public:
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
     virtual bool ChangeDisplay(unsigned int width, unsigned int height, unsigned int cbpp);
-    virtual void ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false);
+    virtual void ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false, float scaleWidth = 1.0f, float scaleHeight = 1.0f);
     virtual int  EnumDisplayFormats(SDispFormat* formats);
     //! Return all supported by video card video AA formats
     virtual int EnumAAFormats(SAAFormat* formats);
@@ -2188,6 +2188,8 @@ public:
     void RT_CopyToStereoTex(int channel);
     void RT_UpdateTrackingStates();
     void RT_DisplayStereo();
+
+    void RT_DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments) final;
 
     virtual void EnableGPUTimers2(bool bEnabled)
     {

@@ -20,6 +20,7 @@
 #include "I3DEngine.h"
 #include "IStatoscope.h"
 #include "AnimKey.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include <AzCore/Math/MathUtils.h>
 #include <IEngineModule.h>
@@ -601,7 +602,7 @@ void CD3D9Renderer::RT_Reset(void)
     }
 }
 
-void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport)
+void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport, float scaleWidth, float scaleHeight)
 {
     if (m_bDeviceLost)
     {
@@ -613,31 +614,43 @@ void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int 
     m_CurrContext->m_nViewportHeight = height;
     m_CurrContext->m_bMainViewport = bMainViewport;
 
+    const int nMaxRes = GetMaxSquareRasterDimension();
+    const float fMaxRes = aznumeric_cast<float>(nMaxRes);
+    float fWidth = aznumeric_cast<float>(width);
+    float fHeight = aznumeric_cast<float>(height);
+
     if (bMainViewport)
     {
-        const int nMaxRes = GetMaxSquareRasterDimension();
-
         if (CV_r_CustomResWidth && CV_r_CustomResHeight)
         {
             width = clamp_tpl(CV_r_CustomResWidth, 32, nMaxRes);
             height = clamp_tpl(CV_r_CustomResHeight, 32, nMaxRes);
+            fWidth = aznumeric_cast<float>(width);
+            fHeight = aznumeric_cast<float>(height);
         }
+        m_CurrContext->m_fPixelScaleX = 1.0f;
+        m_CurrContext->m_fPixelScaleY = 1.0f;
+
         if (CV_r_Supersampling > 1)
         {
-            const int nMaxSSX = nMaxRes / width;
-            const int nMaxSSY = nMaxRes / height;
-            m_CurrContext->m_nSSSamplesX = clamp_tpl(CV_r_Supersampling, 1, nMaxSSX);
-            m_CurrContext->m_nSSSamplesY = clamp_tpl(CV_r_Supersampling, 1, nMaxSSY);
+            m_CurrContext->m_fPixelScaleX *= aznumeric_cast<float>(CV_r_Supersampling);
+            m_CurrContext->m_fPixelScaleY *= aznumeric_cast<float>(CV_r_Supersampling);
         }
-        else
+        if ( scaleWidth > 1.0f || scaleHeight > 1.0f )
         {
-            m_CurrContext->m_nSSSamplesX = 1;
-            m_CurrContext->m_nSSSamplesY = 1;
+            m_CurrContext->m_fPixelScaleX *= scaleWidth;
+            m_CurrContext->m_fPixelScaleY *= scaleHeight;
         }
+
+        const float nMaxSSX = fMaxRes / fWidth;
+        const float nMaxSSY = fMaxRes / fHeight;
+        m_CurrContext->m_fPixelScaleX = clamp_tpl(m_CurrContext->m_fPixelScaleX, 1.0f, nMaxSSX);
+        m_CurrContext->m_fPixelScaleY = clamp_tpl(m_CurrContext->m_fPixelScaleY, 1.0f, nMaxSSY);
+
     }
 
-    width  *= m_CurrContext->m_nSSSamplesX;
-    height *= m_CurrContext->m_nSSSamplesY;
+    width  = aznumeric_cast<int>(fWidth * m_CurrContext->m_fPixelScaleX);
+    height = aznumeric_cast<int>(fHeight * m_CurrContext->m_fPixelScaleY);
 
     DXGI_FORMAT fmt = DXGI_FORMAT_R8G8B8A8_UNORM;
 
@@ -1595,7 +1608,10 @@ void CD3D9Renderer::RT_BeginFrame()
     }
 
 #if !defined(_RELEASE)
+    m_RP.m_pRNDrawCallsInfoPerNode[m_RP.m_nProcessThreadID].swap(m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nProcessThreadID]);
     m_RP.m_pRNDrawCallsInfoPerNode[m_RP.m_nProcessThreadID].clear();
+
+    m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID].swap(m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nProcessThreadID]);
     m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID].clear();
 #endif
 
@@ -1842,28 +1858,34 @@ bool CD3D9Renderer::PrepFrameCapture(FrameBufferDescription& frameBufDesc, CText
     frameBufDesc.pBackBufferTex->GetDesc(&frameBufDesc.backBufferDesc);
     if (frameBufDesc.backBufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
         || (m_CurrContext
-            && (m_CurrContext->m_nSSSamplesX > 1
-                || m_CurrContext->m_nSSSamplesY > 1)))
+            && (m_CurrContext->m_fPixelScaleX > 1.0f
+                || m_CurrContext->m_fPixelScaleY > 1.0f)))
     {
-        const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
-        const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
+        const int nResolvedWidth = aznumeric_cast<int>(aznumeric_cast<float>(m_width) / m_CurrContext->m_fPixelScaleX);
+        const int nResolvedHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / m_CurrContext->m_fPixelScaleY);
         frameBufDesc.backBufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         frameBufDesc.backBufferDesc.Width = nResolvedWidth;
         frameBufDesc.backBufferDesc.Height = nResolvedHeight;
-        ID3D11Texture2D* pTempCopyTex = NULL;
-        if (SUCCEEDED(GetDevice().CreateTexture2D(&frameBufDesc.backBufferDesc, 0, &pTempCopyTex)))
+        CTexture* pTempCopyTex = CTexture::Create2DTexture("TempCopyTex", nResolvedWidth, nResolvedHeight, 1, FT_USAGE_RENDERTARGET, nullptr, eTF_Unknown, eTF_R8G8B8A8, false);
+        if (pTempCopyTex)
         {
-            D3D11_BOX srcRegion;
-            srcRegion.left = 0;
-            srcRegion.right = nResolvedWidth;
-            srcRegion.top = 0;
-            srcRegion.bottom = nResolvedHeight;
-            srcRegion.front = 0;
-            srcRegion.back = 1;
-            // copy resolved part of backbuffer to temporary target
-            GetDeviceContext().CopySubresourceRegion(pTempCopyTex, 0, 0, 0, 0, frameBufDesc.pBackBufferTex, 0, &srcRegion);
+            CTexture* pSrc = pRenderTarget;
+            RT_SetViewport(0, 0, nResolvedWidth, nResolvedHeight);
+            if (!pSrc)
+            {
+                PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);
+                pSrc = CTexture::s_ptexBackBuffer;
+            }
+            assert(pSrc);
+            PostProcessUtils().StretchRect(pSrc, pTempCopyTex, false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, nullptr);
+
             frameBufDesc.pBackBufferTex->Release();
-            frameBufDesc.pBackBufferTex = pTempCopyTex;
+            CDeviceTexture* pTempDeviceTex = pTempCopyTex->GetDevTexture();
+            frameBufDesc.pBackBufferTex = pTempDeviceTex->Get2DTexture();
+            // we're holding on to pTempCopyTex's d3dSurface. IncRef so releasing pTempCopyTex doesn't invalidate.
+            // pBackBufferTex will release in frameBufDesc destructor.
+            frameBufDesc.pBackBufferTex->AddRef();
+            pTempCopyTex->Release();
         }
     }
     
@@ -2091,8 +2113,8 @@ bool CD3D9Renderer::InternalSaveToTIFF(ID3D11Texture2D* backBuffer, const char* 
 {
     bool result = false;
     //Have to copy from GPU to staging texture first.
-    const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
-    const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
+    const int nResolvedWidth = aznumeric_cast<int>(aznumeric_cast<float>(m_width) / m_CurrContext->m_fPixelScaleX);
+    const int nResolvedHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / m_CurrContext->m_fPixelScaleY);
     D3D11_TEXTURE2D_DESC bbDesc;
     backBuffer->GetDesc(&bbDesc);
     bbDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -2243,7 +2265,7 @@ void CD3D9Renderer::CaptureFrameBuffer()
 
 void CD3D9Renderer::ResolveSupersampledBackbuffer()
 {
-    if (IsEditorMode() && (m_CurrContext->m_nSSSamplesX <= 1 || m_CurrContext->m_nSSSamplesY <= 1))
+    if (IsEditorMode() && CV_r_Supersampling <= 1 )
     {
         return;
     }
@@ -2266,11 +2288,13 @@ void CD3D9Renderer::ResolveSupersampledBackbuffer()
 
     if (IsEditorMode())
     {
+        const int nResolvedWidth = aznumeric_cast<int>(aznumeric_cast<float>(m_width) / m_CurrContext->m_fPixelScaleX);
+        const int nResolvedHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / m_CurrContext->m_fPixelScaleY);
         RT_SetViewport(0, 0, m_width, m_height);
         PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);
         PostProcessUtils().Downsample(CTexture::s_ptexBackBuffer, NULL,
             m_width, m_height,
-            m_width / m_CurrContext->m_nSSSamplesX, m_height / m_CurrContext->m_nSSSamplesY,
+            nResolvedWidth, nResolvedHeight,
             eFilter, false);
     }
     else
@@ -2284,12 +2308,13 @@ void CD3D9Renderer::ResolveSupersampledBackbuffer()
 
 void CD3D9Renderer::ScaleBackbufferToViewport()
 {
-    if (m_CurrContext->m_nSSSamplesX > 1 || m_CurrContext->m_nSSSamplesY > 1)
+    // fPixelScale comes from OS screen scale as well as super sampling, so check both are active before scaling backbuffer
+    if ( CV_r_Supersampling > 1 && (m_CurrContext->m_fPixelScaleX > 1.0f || m_CurrContext->m_fPixelScaleY > 1.0f))
     {
         PROFILE_LABEL_SCOPE("STRETCH_TO_VIEWPORT");
 
-        const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
-        const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
+        const int nResolvedWidth = aznumeric_cast<int>(aznumeric_cast<float>(m_width) / m_CurrContext->m_fPixelScaleX);
+        const int nResolvedHeight = aznumeric_cast<int>(aznumeric_cast<float>(m_height) / m_CurrContext->m_fPixelScaleY);
 
         RECT srcRegion;
         srcRegion.left = 0;
@@ -4591,9 +4616,15 @@ void CD3D9Renderer::RT_EndFrame(bool isLoading)
 
         // indicate terrain texture streaming activity
         pDefTexture = CTextureManager::Instance()->GetDefaultTexture("IconStreamingTerrainTexture");
-        if (gEnv->p3DEngine && pDefTexture && gEnv->p3DEngine->IsTerrainTextureStreamingInProgress())
+        if (pDefTexture)
         {
-            Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
+            bool isTerrainTextureStreamingInProgress = false;
+            LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(isTerrainTextureStreamingInProgress
+                , &LegacyTerrain::LegacyTerrainDataRequests::IsTextureStreamingInProgress);
+            if (isTerrainTextureStreamingInProgress)
+            {
+                Push2dImage(nIconSize * nIconIndex + overscanOffset.x, overscanOffset.y, nIconSize, nIconSize, pDefTexture->GetID(), 0, 1, 1, 0);
+            }
         }
 
         ++nIconIndex;
@@ -5002,7 +5033,7 @@ void CD3D9Renderer::RT_PresentFast()
     assert(m_nRTStackLevel[0] == 0);
 
     FX_ClearTarget(m_pBackBuffer, Clr_Transparent, 0, nullptr);
-    FX_SetRenderTarget(0, m_pBackBuffer, &m_DepthBufferOrig);
+    FX_SetRenderTarget(0, m_pBackBuffer, nullptr, 0);
     FX_SetActiveRenderTargets(true);
 
     m_RP.m_TI[m_RP.m_nProcessThreadID].m_nFrameUpdateID++;
@@ -8316,4 +8347,10 @@ CD3D9Renderer::FrameBufferDescription::~FrameBufferDescription()
     SAFE_RELEASE(pTmpTexture);
 
     SAFE_RELEASE(pBackBufferTex);
+}
+
+void CD3D9Renderer::RT_DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments)
+{
+    AZ_Assert(pVideoRenderer != nullptr, "Expected video player to be passed in");
+    GetGraphicsPipeline().RenderVideo(drawArguments);
 }

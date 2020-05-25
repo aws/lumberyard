@@ -70,7 +70,7 @@ namespace Prop
         { IVariable::DT_SOANIMHELPER, "Smart Object Animation Helper", ePropertySOAnimHelper, 8 },
         { IVariable::DT_SOEVENT, "Smart Object Event", ePropertySOEvent, 8 },
         { IVariable::DT_SOTEMPLATE, "Smart Object Template", ePropertySOTemplate, 8 },
-        { IVariable::DT_CUSTOMACTION, "Custom Action", ePropertyCustomAction, 7 },
+        { IVariable::DT_DEPRECATED0, "Custom Action", ePropertyDeprecated0, 7 },
         { IVariable::DT_VEEDHELPER, "Vehicle Helper", ePropertySelection, -1 },
         { IVariable::DT_VEEDPART, "Vehicle Part", ePropertySelection, -1 },
         { IVariable::DT_VEEDCOMP, "Vehicle Component", ePropertySelection, -1 },

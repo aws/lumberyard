@@ -20,7 +20,6 @@
 #include "MFXParticleEffect.h"
 #include "MFXDecalEffect.h"
 #include "MFXRandomEffect.h"
-#include "MaterialFGManager.h"
 #include "MaterialEffectsDebug.h"
 #include "PoolAllocator.h"
 
@@ -51,7 +50,6 @@
 #define IMPL_POOL(type) IMPL_POOL_RETURNING(type, type*)
 
 IMPL_POOL_RETURNING(SMFXResourceList, SMFXResourceListPtr);
-IMPL_POOL(SMFXFlowGraphListNode);
 IMPL_POOL(SMFXDecalListNode);
 IMPL_POOL(SMFXParticleListNode);
 IMPL_POOL(SMFXAudioListNode);
@@ -79,8 +77,6 @@ CMaterialEffects::CMaterialEffects()
     m_bUpdateMode = false;
     m_defaultSurfaceId = MaterialEffectsUtils::FindSurfaceIdByName(MATERIAL_EFFECTS_SURFACE_TYPE_DEFAULT);
     m_canopySurfaceId = m_defaultSurfaceId;
-    m_pMaterialFGManager = new CMaterialFGManager();
-
 #ifdef MATERIAL_EFFECTS_DEBUG
     m_pVisualDebug =  new MaterialEffectsUtils::CVisualDebug();
 #endif
@@ -93,7 +89,6 @@ CMaterialEffects::~CMaterialEffects()
     m_mfxLibraries.clear();
     m_delayedEffects.clear();
     m_effectContainers.clear();
-    SAFE_DELETE(m_pMaterialFGManager);
 
 #ifdef MATERIAL_EFFECTS_DEBUG
     SAFE_DELETE(m_pVisualDebug);
@@ -198,23 +193,6 @@ bool CMaterialEffects::ExecuteEffect(TMFXEffectId effectId, SMFXRunTimeEffectPar
     }
 
     return success;
-}
-
-void CMaterialEffects::StopEffect(TMFXEffectId effectId)
-{
-    TMFXContainerPtr pEffectContainer = InternalGetEffect(effectId);
-    if (pEffectContainer)
-    {
-        SMFXResourceListPtr resources = SMFXResourceList::Create();
-        pEffectContainer->GetResources(*resources);
-
-        SMFXFlowGraphListNode* pNext = resources->m_flowGraphList;
-        while (pNext)
-        {
-            GetFGManager()->EndFGEffect(pNext->m_flowGraphParams.name);
-            pNext = pNext->pNext;
-        }
-    }
 }
 
 void CMaterialEffects::SetCustomParameter(TMFXEffectId effectId, const char* customParameter, const SMFXCustomParamValue& customParameterValue)
@@ -529,20 +507,6 @@ void CMaterialEffects::PreLoadAssets()
             m_effectContainers[id]->PreLoadAssets();
         }
     }
-
-    if (m_pMaterialFGManager)
-    {
-        return m_pMaterialFGManager->PreLoad();
-    }
-}
-
-bool CMaterialEffects::LoadFlowGraphLibs()
-{
-    if (m_pMaterialFGManager)
-    {
-        return m_pMaterialFGManager->LoadLibs();
-    }
-    return false;
 }
 
 TMFXEffectId CMaterialEffects::GetEffectIdByName(const char* libName, const char* effectName)
@@ -674,7 +638,6 @@ void CMaterialEffects::SetUpdateMode(bool bUpdate)
     if (!bUpdate)
     {
         m_delayedEffects.clear();
-        m_pMaterialFGManager->Reset(false);
     }
 
     m_bUpdateMode = bUpdate;
@@ -686,7 +649,6 @@ void CMaterialEffects::FullReload()
 
     LoadFXLibraries();
     LoadSpreadSheet();
-    LoadFlowGraphLibs();
 }
 
 void CMaterialEffects::Update(float frameTime)
@@ -715,14 +677,6 @@ void CMaterialEffects::Update(float frameTime)
 #endif
 }
 
-void CMaterialEffects::NotifyFGHudEffectEnd(IFlowGraphPtr pFG)
-{
-    if (m_pMaterialFGManager)
-    {
-        m_pMaterialFGManager->EndFGEffect(pFG);
-    }
-}
-
 void CMaterialEffects::Reset(bool bCleanup)
 {
     // make sure all pre load data has been propperly released to not have any
@@ -733,11 +687,6 @@ void CMaterialEffects::Reset(bool bCleanup)
         {
             m_effectContainers[id]->ReleasePreLoadAssets();
         }
-    }
-
-    if (m_pMaterialFGManager)
-    {
-        m_pMaterialFGManager->Reset(bCleanup);
     }
 
     if (bCleanup)
@@ -752,7 +701,6 @@ void CMaterialEffects::Reset(bool bCleanup)
         m_bDataInitialized = false;
 
         SMFXResourceList::FreePool();
-        SMFXFlowGraphListNode::FreePool();
         SMFXDecalListNode::FreePool();
         SMFXParticleListNode::FreePool();
         SMFXAudioListNode::FreePool();
@@ -765,19 +713,10 @@ void CMaterialEffects::ClearDelayedEffects()
     m_delayedEffects.resize(0);
 }
 
-void CMaterialEffects::Serialize(TSerialize ser)
-{
-    if (m_pMaterialFGManager && CMaterialEffectsCVars::Get().mfx_SerializeFGEffects != 0)
-    {
-        m_pMaterialFGManager->Serialize(ser);
-    }
-}
-
 void CMaterialEffects::GetMemoryUsage(ICrySizer* s) const
 {
     SIZER_SUBCOMPONENT_NAME(s, "MaterialEffects");
     s->AddObject(this, sizeof(*this));
-    s->AddObject(m_pMaterialFGManager);
 
     {
         SIZER_SUBCOMPONENT_NAME(s, "libs");
@@ -928,7 +867,6 @@ void CMaterialEffects::CompleteInit()
 
     LoadFXLibraries();
     LoadSpreadSheet();
-    LoadFlowGraphLibs();
 }
 
 int CMaterialEffects::GetDefaultCanopyIndex()
@@ -942,28 +880,3 @@ int CMaterialEffects::GetDefaultCanopyIndex()
 
     return m_canopySurfaceId;
 }
-
-void CMaterialEffects::ReloadMatFXFlowGraphs(bool editorReload)
-{
-    m_pMaterialFGManager->ReloadFlowGraphs(editorReload);
-}
-
-int CMaterialEffects::GetMatFXFlowGraphCount() const
-{
-    return m_pMaterialFGManager->GetFlowGraphCount();
-}
-
-IFlowGraphPtr CMaterialEffects::GetMatFXFlowGraph(int index, string* pFileName /*= NULL*/) const
-{
-    return m_pMaterialFGManager->GetFlowGraph(index, pFileName);
-}
-
-IFlowGraphPtr CMaterialEffects::LoadNewMatFXFlowGraph(const string& filename)
-{
-    IFlowGraphPtr res;
-    m_pMaterialFGManager->LoadFG(filename, &res);
-    return res;
-}
-
-
-

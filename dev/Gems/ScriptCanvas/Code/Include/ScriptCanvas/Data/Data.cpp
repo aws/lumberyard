@@ -36,6 +36,10 @@ namespace DataCpp
         {
             return { true, Type::AABB() };
         }
+        else if (IsAssetId(type))
+        {
+            return { true, Type::AssetId() };
+        }
         else if (IsBoolean(type))
         {
             return { true, Type::Boolean() };
@@ -247,6 +251,9 @@ namespace ScriptCanvas
             case eType::AABB:
                 return eTraits<eType::AABB>::GetName();
 
+            case eType::AssetId:
+                return eTraits<eType::AssetId>::GetName();
+
             case eType::BehaviorContextObject:
                 return GetBehaviorClassName(type.GetAZType());
 
@@ -332,6 +339,7 @@ namespace ScriptCanvas
                 return "String";
 
             case eType::AABB:
+            case eType::AssetId:
             case eType::BehaviorContextObject:
             case eType::Color:
             case eType::CRC:

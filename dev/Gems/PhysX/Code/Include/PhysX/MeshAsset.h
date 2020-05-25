@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <common/PxBase.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzFramework/Physics/Material.h>

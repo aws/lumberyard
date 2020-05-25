@@ -20,6 +20,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Math/MathUtils.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <MathConversion.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <SurfaceData/Utility/SurfaceDataUtility.h>
@@ -107,7 +108,7 @@ namespace Water
 
         SurfaceData::SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = m_shapeBounds;
+        registryEntry.m_bounds = AZ::Aabb::CreateNull();
         registryEntry.m_tags = m_configuration.m_providerTags;
 
         m_providerHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
@@ -170,16 +171,24 @@ namespace Water
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
-
         auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
-        if (engine)
+        if (!engine)
         {
+            return;
+        }
+
+        bool isTerrainActive = false;
+        auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+        {
+            isTerrainActive = true;
             const float waterHeight = engine->GetWaterLevel();
             const AZ::Vector3 resultPosition = AZ::Vector3(inPosition.GetX(), inPosition.GetY(), waterHeight);
             const AZ::Vector3 resultNormal = AZ::Vector3::CreateAxisZ();
-            const float terrainHeight = engine->GetTerrainElevation(resultPosition.GetX(), resultPosition.GetY());
-            if (waterHeight != WATER_LEVEL_UNKNOWN && (!engine->GetShowTerrainSurface() || !engine->GetTerrainAabb().Contains(inPosition) || waterHeight >= terrainHeight))
+            const float terrainHeight = terrain->GetHeightFromFloats(resultPosition.GetX(), resultPosition.GetY());
+            if (
+                (waterHeight != WATER_LEVEL_UNKNOWN)
+                && ((!SurfaceData::AabbContains2D(terrain->GetTerrainAabb(), inPosition) || waterHeight >= terrainHeight))
+                )
             {
                 SurfaceData::SurfacePoint point;
                 point.m_entityId = GetEntityId();
@@ -188,14 +197,33 @@ namespace Water
                 AddMaxValueForMasks(point.m_masks, m_configuration.m_providerTags, 1.0f);
                 surfacePointList.push_back(point);
             }
+            // Only one handler should exist.
+            return false;
+        };
+        AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
+        if (isTerrainActive)
+        {
+            return;
         }
+
+        const float waterHeight = engine->GetWaterLevel();
+        const AZ::Vector3 resultPosition = AZ::Vector3(inPosition.GetX(), inPosition.GetY(), waterHeight);
+        const AZ::Vector3 resultNormal = AZ::Vector3::CreateAxisZ();
+        if (waterHeight != WATER_LEVEL_UNKNOWN)
+        {
+            SurfaceData::SurfacePoint point;
+            point.m_entityId = GetEntityId();
+            point.m_position = resultPosition;
+            point.m_normal = resultNormal;
+            AddMaxValueForMasks(point.m_masks, m_configuration.m_providerTags, 1.0f);
+            surfacePointList.push_back(point);
+        }
+
     }
 
     void OceanSurfaceDataComponent::ModifySurfacePoints(SurfaceData::SurfacePointList& surfacePointList) const
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-
-        AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
 
         auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
         if (engine && !m_configuration.m_modifierTags.empty())
@@ -255,22 +283,13 @@ namespace Water
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        {
-            AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
-
-            m_shapeWorldTM = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(m_shapeWorldTM, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
-            m_shapeBounds = AZ::Aabb::CreateNull();
-        }
-
         SurfaceData::SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = m_shapeBounds;
+        registryEntry.m_bounds = AZ::Aabb::CreateNull();
         registryEntry.m_tags = m_configuration.m_providerTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, AZ::Aabb::CreateNull());
+        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry);
 
         registryEntry.m_tags = m_configuration.m_modifierTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry, AZ::Aabb::CreateNull());
+        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry);
     }
 }

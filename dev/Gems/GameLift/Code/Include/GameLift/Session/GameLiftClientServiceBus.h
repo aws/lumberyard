@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <GridMate/Session/SessionServiceBus.h>
 
@@ -34,7 +34,10 @@ namespace GridMate
         virtual GridSession* JoinSessionBySearchInfo(const GameLiftSearchInfo& params, const CarrierDesc& carrierDesc) = 0;
 
         // Asynchronous request to create and host new session using GameLift ec2 instances, listen for OnGridSearchComplete for completion event
-        virtual GameLiftSessionRequest* RequestSession(const GameLiftSessionRequestParams& params) = 0;
+        virtual GridSearch* RequestSession(const GameLiftSessionRequestParams& params) = 0;
+
+        // Asynchronous request to start matchmaking using the passed in matchmaking config, listen for OnGridSearchComplete for completion event
+        virtual GridSearch* StartMatchmaking(const AZStd::string& matchmakingConfig) = 0;
 
         // Asynchronous request to retrieve all gamelift sessions available for given search parameters, listen for OnGridSearchComplete for completion event
         virtual GameLiftSearch* StartSearch(const GameLiftSearchParams& params) = 0;

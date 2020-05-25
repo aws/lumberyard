@@ -22,6 +22,7 @@
 #include <ImageLoader/ImageLoaders.h>
 #include <BuilderSettings/BuilderSettingManager.h>
 #include <BuilderSettings/PresetSettings.h>
+#include <Processing/ImageFlags.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -290,7 +291,7 @@ namespace ImageProcessing
         {
             m_isFinished = true;
             AZStd::sys_time_t endTime = AZStd::GetTimeUTCMilliSecond();
-            m_processTime = (endTime - m_startTime) / 1000;
+            m_processTime = aznumeric_cast<double>((endTime - m_startTime) / 1000);
         }
         
         //output conversion log
@@ -695,6 +696,12 @@ namespace ImageProcessing
         bool canOverridePreset = false;
         
         multiTextureSetting = TextureSettings::GetMultiplatformTextureSetting(imageFilePath, canOverridePreset, context);
+        if (multiTextureSetting.empty())
+        {
+            AZ_Error("Image Processing", false, "Could not determine export settings for image file [%s] due to previous error(s). Skipping export...", imageFilePath.c_str());
+            return nullptr;
+        }
+
         if (multiTextureSetting.find(platformName) != multiTextureSetting.end())
         {
             textureSettings = multiTextureSetting[platformName];

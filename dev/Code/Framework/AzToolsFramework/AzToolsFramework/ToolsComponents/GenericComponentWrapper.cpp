@@ -256,9 +256,10 @@ namespace AzToolsFramework
             }
         }
 
-        AZ::ComponentValidationResult GenericComponentWrapper::ValidateComponentRequirements(const AZ::ImmutableEntityVector& sliceEntities) const
+        AZ::ComponentValidationResult GenericComponentWrapper::ValidateComponentRequirements(
+            const AZ::ImmutableEntityVector& sliceEntities, const AZStd::unordered_set<AZ::Crc32>& platformTags) const
         {
-            AZ::ComponentValidationResult baseClassResult = EditorComponentBase::ValidateComponentRequirements(sliceEntities);
+            AZ::ComponentValidationResult baseClassResult = EditorComponentBase::ValidateComponentRequirements(sliceEntities, platformTags);
             if (!baseClassResult.IsSuccess())
             {
                 return baseClassResult;
@@ -266,7 +267,7 @@ namespace AzToolsFramework
 
             if (m_template)
             {
-                return m_template->ValidateComponentRequirements(sliceEntities);
+                return m_template->ValidateComponentRequirements(sliceEntities, platformTags);
             }
 
             return AZ::Success();

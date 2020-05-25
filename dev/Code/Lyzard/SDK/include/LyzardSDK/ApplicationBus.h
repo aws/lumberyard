@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 namespace Lyzard
 {
@@ -36,6 +36,14 @@ namespace Lyzard
          * Return false to buy more time.
          */
         virtual bool IsReadyForShutdown() { return true; }
+
+        /// Called when the modules need to present a message of information to users.
+        /// This can possibly be presented to UI.
+        /// @param strTitle The title of the message.
+        /// @param strMessage The main body of the message.
+        /// @param strDetails The detailed message with more information.
+        virtual void PresentMessage(AZStd::string_view strTitle, AZStd::string_view strMessage, AZStd::string_view strDetails) {}
     };
+
     using ApplicationNotificationBus = AZ::EBus<ApplicationNotifications>;
 }

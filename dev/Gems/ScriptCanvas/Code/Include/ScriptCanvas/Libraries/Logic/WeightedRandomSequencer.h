@@ -44,13 +44,10 @@ namespace ScriptCanvas
                 ~WeightedRandomSequencer() = default;
                 
                 // Node
-                void OnInit();
+                void OnInit() override;
+                void ConfigureVisualExtensions() override;
                 
                 void OnInputSignal(const SlotId& slot);
-
-                bool IsNodeExtendable() const override;
-                int GetNumberOfExtensions() const override;
-                ExtendableSlotConfiguration GetExtensionConfiguration(int extensionIndex) const override;
 
                 SlotId HandleExtension(AZ::Crc32 extensionId) override;
 

@@ -28,33 +28,38 @@ namespace AZ
     {
         AZStd::string NativeUISystemComponent::DisplayBlockingDialog(const AZStd::string& title, const AZStd::string& message, const AZStd::vector<AZStd::string>& options) const
         {
-            NSAlert* alert = [[NSAlert alloc] init];
-            
-            [alert setMessageText: [NSString stringWithUTF8String:title.c_str()]];
-            [alert setInformativeText: [NSString stringWithUTF8String:message.c_str()]];
-            
-            for(int i = 0; i < options.size(); i++)
-            {
-                [alert addButtonWithTitle: [NSString stringWithUTF8String:options[i].c_str()]];
-            }
-            
-            [alert setAlertStyle: NSAlertStyleWarning];
-            
             __block NSModalResponse response = -1;
+            
+            auto showDialog = ^()
+            {
+                NSAlert* alert = [[NSAlert alloc] init];
+                
+                [alert setMessageText: [NSString stringWithUTF8String:title.c_str()]];
+                [alert setInformativeText: [NSString stringWithUTF8String:message.c_str()]];
+                
+                for(int i = 0; i < options.size(); i++)
+                {
+                    [alert addButtonWithTitle: [NSString stringWithUTF8String:options[i].c_str()]];
+                }
+                
+                [alert setAlertStyle: NSAlertStyleWarning];
+                
+                response = [alert runModal];
+                
+                [alert release];
+            };
             
             // Cannot invoke an alert from a thread that's not the main thread.
             if (!NSThread.isMainThread)
             {
                 // Dispatch_sync is necessary becuase we want this thread to wait till the main thread recieves user input for the alert.
                 // We also can't release the alert object below till it's done.
-                dispatch_sync(dispatch_get_main_queue(), ^(){ response = [alert runModal]; });
+                dispatch_sync(dispatch_get_main_queue(), showDialog);
             }
             else
             {
-                response = [alert runModal];
+                showDialog();
             }
-            
-            [alert release];
             
             if (response > 0)
             {

@@ -26,6 +26,7 @@
                                     "Sid": "PutBucketNotificationConfigurationForLambda",
                                     "Effect": "Allow",
                                     "Action": [
+                                        "lambda:GetPolicy",
                                         "lambda:AddPermission"
                                     ],
                                     "Resource": [
@@ -113,7 +114,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "PatchS3NotificationsResourceType",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Fn::GetAtt": [
                         "ProjectResourceHandler",

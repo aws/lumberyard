@@ -50,7 +50,7 @@ namespace ScriptCanvas
             serializeContext->Class<DatumValue>()
                 ->Version(1)
                 ->Field("behaviorContextObjectType", &DatumValue::m_behaviorContextObjectType)
-                ->Field("value", &DatumValue::m_value)
+                ->Field("value", &DatumValue::m_datum)
                 ;
 
             serializeContext->Class<LoggableEvent>()
@@ -125,15 +125,19 @@ namespace ScriptCanvas
         return AZStd::string::format("Entity: %s, Graph: %s, Variables: %s", m_runtimeEntity.ToString().data(), GraphInfo::ToString().data()), ScriptCanvas::ToString(m_variableValues).data();
     }
 
-    DatumValue DatumValue::Create(const VariableDatumBase& value)
+    ///////////////
+    // DatumValue
+    ///////////////
+
+    DatumValue DatumValue::Create(const GraphVariable& value)
     {
-        if (value.GetData().GetType().GetType() == Data::eType::BehaviorContextObject)
+        if (value.GetDatum()->GetType().GetType() == Data::eType::BehaviorContextObject)
         {
-            return DatumValue(value.GetData().GetType().GetAZType(), AZStd::string::format("(%p) %s", value.GetData().GetAsDanger(), value.GetData().ToString().data()));
+            return DatumValue(value.GetDatum()->GetType().GetAZType(), AZStd::string::format("(%p) %s", value.GetDatum()->GetAsDanger(), value.GetDatum()->ToString().data()));
         }
         else
         {
-            return DatumValue(value);
+            return DatumValue((*value.GetDatum()));
         }
     }
 
@@ -145,7 +149,7 @@ namespace ScriptCanvas
         }
         else
         {
-            return Data::GetName(m_value.GetData().GetType());
+            return Data::GetName(m_datum.GetType());
         }
     }
 
@@ -335,7 +339,7 @@ namespace ScriptCanvas
             result += ":";
             result += iter.first.m_name;
             result += " = ";
-            result += iter.second.m_value.GetData().ToString();
+            result += iter.second.m_datum.ToString();
             result += ", ";
         }
         
@@ -354,7 +358,7 @@ namespace ScriptCanvas
             result += "> ";
             result += variableEntry.second.first;
             result += " = ";
-            result += variableEntry.second.second.m_value.GetData().ToString();
+            result += variableEntry.second.second.m_datum.ToString();
             result += ", ";
         }
         

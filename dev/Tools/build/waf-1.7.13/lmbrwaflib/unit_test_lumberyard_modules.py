@@ -9,12 +9,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib import Errors
-import lumberyard_modules
+# System Imports
 import unittest
 import pytest
 
-import utils
+# waflib imports
+from waflib import Errors
+
+# lmbrwaflib imports
+from lmbrwaflib import lumberyard_modules
+from lmbrwaflib import utils
 
 
 class FakeContext(object):

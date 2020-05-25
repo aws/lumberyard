@@ -1,0 +1,15 @@
+{
+    "auto": {
+        "Include": [
+            "Include/VideoPlaybackFramework/VideoPlaybackFrameworkBus.h",
+            "Include/VideoPlaybackFramework/VideoPlaybackBus.h",
+            "Include/VideoPlaybackFramework/VideoPlaybackAsset.h"
+        ],
+        "Source": [
+            "Source/VideoPlaybackFrameworkModule.cpp",
+            "Source/VideoPlaybackFrameworkModule.h",
+            "Source/VideoPlaybackFrameworkSystemComponent.cpp",
+            "Source/VideoPlaybackFrameworkSystemComponent.h"
+        ]
+    }
+}

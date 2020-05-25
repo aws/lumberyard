@@ -27,9 +27,18 @@ namespace EMotionFX
             public:
                 AZ_RTTI(IMeshRule, "{299934A2-22EC-48AF-AB2B-953AFF8E0B19}", AZ::SceneAPI::DataTypes::IRule);
 
+                enum VertexColorMode : AZ::u8
+                {
+                    Precision_32 = 0,
+                    Precision_128 = 1
+                };
+
                 ~IMeshRule() override = default;
 
-                virtual bool GetOptimizeTriangleList() const = 0;
+                virtual VertexColorMode GetVertexColorMode() const = 0;
+                virtual const AZStd::string& GetVertexColorStreamName() const = 0;
+                virtual bool IsVertexColorsDisabled() const = 0;
+                virtual void DisableVertexColors() = 0;
             };
         }  // Rule
     }  // Pipeline

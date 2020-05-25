@@ -1,0 +1,76 @@
+{
+    "inputPath": "ProjectTemplates/GemTemplate/game_project_gem_template",
+    "copyFiles": [
+        {
+            "inFile": "preview.png",
+            "outfile": "preview.png",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "wscript",
+            "outfile": "Code/wscript",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "gem.json",
+            "outfile": "gem.json",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "gem.waf_files",
+            "outfile": "Code/${NameLower}.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "gem_tests.waf_files",
+            "outfile": "Code/${NameLower}_tests.waf_files",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "GemBus.h",
+            "outfile": "Code/Include/${Name}/${GemBus}.h",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Gem.cpp",
+            "outfile": "Code/Source/${ModuleClass}.cpp",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "GemSystemComponent.cpp",
+            "outfile": "Code/Source/${SysCompClass}.cpp",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "GemSystemComponent.h",
+            "outfile": "Code/Source/${SysCompClass}.h",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "Test.cpp",
+            "outfile": "Code/Tests/${GemTest}.cpp",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "GameSDK.ico",
+            "outfile": "Resources/GameSDK.ico",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": [
+        {
+            "outDir": "Assets"
+        }
+    ]
+}

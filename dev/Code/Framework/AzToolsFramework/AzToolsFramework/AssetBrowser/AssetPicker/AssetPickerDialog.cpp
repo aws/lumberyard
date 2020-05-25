@@ -80,14 +80,14 @@ namespace AzToolsFramework
             connect(m_ui->m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
             connect(m_ui->m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-            m_ui->m_assetBrowserTreeViewWidget->LoadState("AssetBrowserTreeView_" + name);
+            m_ui->m_assetBrowserTreeViewWidget->SetName("AssetBrowserTreeView_" + name);
 
             for (auto& assetId : selection.GetSelectedAssetIds())
             {
                 m_ui->m_assetBrowserTreeViewWidget->SelectProduct(assetId);
             }
 
-            setWindowTitle(tr("Pick %1").arg(name));
+            setWindowTitle(tr("Pick %1").arg(m_selection.GetTitle()));
 
             m_persistentState = AZ::UserSettings::CreateFind<AzToolsFramework::QWidgetSavedState>(AZ::Crc32(("AssetBrowserTreeView_Dialog_" + name).toUtf8().data()), AZ::UserSettings::CT_GLOBAL);
 

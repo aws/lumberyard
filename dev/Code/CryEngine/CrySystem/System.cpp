@@ -173,7 +173,6 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "ThreadProfiler.h"
 #include "IDiskProfiler.h"
 #include "SystemEventDispatcher.h"
-#include "IHardwareMouse.h"
 #include "ServerThrottle.h"
 #include "ILocalMemoryUsage.h"
 #include "ResourceManager.h"
@@ -578,12 +577,15 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #endif
 
     m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
+
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 CSystem::~CSystem()
 {
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
     ShutDown();
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
@@ -813,7 +815,6 @@ void CSystem::ShutDown()
 
     SAFE_DELETE(m_env.pResourceCompilerHelper);
 
-    SAFE_RELEASE(m_env.pHardwareMouse);
     SAFE_RELEASE(m_env.pMovieSystem);
     SAFE_DELETE(m_env.pServiceNetwork);
     SAFE_RELEASE(m_env.pAISystem);
@@ -999,6 +1000,8 @@ void CSystem::Quit()
     {
         GetIRenderer()->RestoreGamma();
     }
+
+    SAFE_RELEASE(m_env.pNetwork);
 
     /*
     * TODO: This call to _exit, _Exit, TerminateProcess etc. needs to
@@ -1324,6 +1327,21 @@ void CSystem::KillPhysicsThread()
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// AzFramework::Terrain::TerrainDataNotificationBus START
+void CSystem::OnTerrainDataCreateBegin()
+{
+    KillPhysicsThread();
+}
+
+void CSystem::OnTerrainDataDestroyBegin()
+{
+    OnTerrainDataCreateBegin();
+}
+
+// AzFramework::Terrain::TerrainDataNotificationBus END
+///////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////////////////////////////////////////////////
 void CSystem::TelemetryStreamFileChanged(ICVar* pCVar)
 {
@@ -1416,6 +1434,11 @@ void CSystem::SleepIfInactive()
 {
     // ProcessSleep()
     if (m_bDedicatedServer || m_bEditor || gEnv->bMultiplayer)
+    {
+        return;
+    }
+
+    if (gEnv->pRenderer->GetRenderType() == ERenderType::eRT_Other)
     {
         return;
     }
@@ -1588,7 +1611,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         m_env.pLog->Update();
     }
 
-#if !defined(RELEASE) || defined(RELEASE_LOGGING)
+#ifdef USE_REMOTE_CONSOLE
     GetIRemoteConsole()->Update();
 #endif
 
@@ -1878,6 +1901,12 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     {
         FRAME_PROFILER("SysUpdate:Console", this, PROFILE_SYSTEM);
         m_env.pConsole->Update();
+    }
+
+    if (IsQuitting())
+    {
+        Quit();
+        return false;
     }
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
@@ -2495,8 +2524,6 @@ inline const char* ValidatorModuleToString(EValidatorModule module)
         return "Network";
     case VALIDATOR_MODULE_PHYSICS:
         return "Physics";
-    case VALIDATOR_MODULE_FLOWGRAPH:
-        return "FlowGraph";
     case VALIDATOR_MODULE_ONLINE:
         return "Online";
     case VALIDATOR_MODULE_FEATURETESTS:

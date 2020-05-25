@@ -20,6 +20,8 @@
 #include <AzTest/AzTest.h>
 #include <AzTest/Platform.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <AzGameFramework/Application/GameApplication.h>
 
 #include <CryLibrary.h>
@@ -89,13 +91,14 @@ namespace LumberyardLauncher
     /// @param outputPathBuffer     Pointer to the character buffer to receive the application descriptor path
     /// @param outputPathBufferSize The size of the buffer to receive the application descriptor path
     /// @return true if we were able to determine the path to the application descriptor file for the game, false if not
-    static bool CalculateAppDescriptorPath(char *outputPathBuffer, size_t outputPathBufferSize)
+    static bool CalculateAppDescriptorPath(const char* appRootOverride, char *outputPathBuffer, size_t outputPathBufferSize)
     {
         SSystemInitParams systemInitParams;
         char pathToGameDescriptorFile[AZ_MAX_PATH_LEN] = { 0 };
         {
             // Use the Engine Config Parser to get the base path to the game assets
-            CEngineConfig   engineConfig;
+            const char* sourcePaths[] = { appRootOverride && appRootOverride[0] ? appRootOverride : "." }; // default constructor uses current dir (dot) as search path
+            CEngineConfig engineConfig(sourcePaths, 1);
 
             memset(&systemInitParams, 0, sizeof(SSystemInitParams));
             engineConfig.CopyToStartupParams(systemInitParams);
@@ -143,10 +146,10 @@ namespace LumberyardLauncher
     /// Recursively search through an xml document for 'dynamicLibraryPaths' and collect the values
     ///
     /// @param node                 The root rapidxml node of the application descriptor
-    /// @param baseExePath          The folder of the current executable that will be used to resolve the path to the dynamic modules
+    /// @param moduleSearchPath     The folder that will be used to resolve the path to the dynamic modules
     /// @param dynamicModuleList    The list of resolved dynamic modules to add the results to
     /// @return The number of resolved dynamic modules that were discovered
-    static size_t ScanAndCollectDynamicModulePaths(AZ::rapidxml::xml_node<char>* node, const char* baseExePath, std::list<std::string>& dynamicModuleList)
+    static size_t ScanAndCollectDynamicModulePaths(AZ::rapidxml::xml_node<char>* node, const char* moduleSearchPath, std::list<std::string>& dynamicModuleList)
     {
         AZ::rapidxml::xml_attribute<char>* attr_type = node->first_attribute("type");
         AZ::rapidxml::xml_attribute<char>* attr_value = node->first_attribute("value");
@@ -159,14 +162,14 @@ namespace LumberyardLauncher
             attr_value)
         {
             char dynamicModuleFullPath[AZ_MAX_PATH_LEN] = { '\0' };
-            azsnprintf(dynamicModuleFullPath, AZ_ARRAY_SIZE(dynamicModuleFullPath), AZ_TRAIT_SHARED_LIBRARY_FILENAME_FORMAT, baseExePath, attr_value->value());
+            azsnprintf(dynamicModuleFullPath, AZ_ARRAY_SIZE(dynamicModuleFullPath), AZ_TRAIT_SHARED_LIBRARY_FILENAME_FORMAT, moduleSearchPath, attr_value->value());
             dynamicModuleList.push_back(std::string(dynamicModuleFullPath));
             moduleCount++;
         }
 
         for (AZ::rapidxml::xml_node<char>* childNode = node->first_node(); childNode; childNode = childNode->next_sibling())
         {
-            moduleCount += ScanAndCollectDynamicModulePaths(childNode, baseExePath, dynamicModuleList);
+            moduleCount += ScanAndCollectDynamicModulePaths(childNode, moduleSearchPath, dynamicModuleList);
         }
         return moduleCount;
     }
@@ -177,7 +180,7 @@ namespace LumberyardLauncher
     /// @param baseExePath          The folder of the current executable that will be used to resolve the path to the dynamic modules
     /// @param dynamicModuleList    The list of resolved dynamic modules to add the results to
     /// @return true if we could resolve dynamic modules to process for unit testing, false if not
-    static bool CollectDynamicModulePathsFromCurrentGame(const char* baseExePath, std::list<std::string>& dynamicModuleList)
+    static bool CollectDynamicModulePathsFromCurrentGame(const char* baseExePath, const char* appRootOverride, std::list<std::string>& dynamicModuleList)
     {
         // Start with any modules that are not declared in the app descriptor
         // For now prepare a hard-coded static list. In the future we can either generate another configuration/manifest for these
@@ -187,7 +190,6 @@ namespace LumberyardLauncher
             "AzCoreTests",
             "GridMateTests"
         };
-        char additionalModuleFileName[AZ_MAX_PATH_LEN] = { '\0' };
         char additionalModuleFullPath[AZ_MAX_PATH_LEN] = { '\0' };
 
         for (const char* additionalTestModule : additionalTestModules)
@@ -201,7 +203,7 @@ namespace LumberyardLauncher
 
         // Calculate the app descriptor path if possible
         char appDescriptorPath[AZ_MAX_PATH_LEN] = { '\0' };
-        if (!CalculateAppDescriptorPath(appDescriptorPath, AZ_ARRAY_SIZE(appDescriptorPath)))
+        if (!CalculateAppDescriptorPath(appRootOverride, appDescriptorPath, AZ_ARRAY_SIZE(appDescriptorPath)))
         {
             // Cannot determine the app descriptor path
             AZ_TracePrintf("UnitTestLauncher", "Unable to resolve the path to the game application descriptor.");
@@ -234,7 +236,31 @@ namespace LumberyardLauncher
             return false;
         }
 
-        if (ScanAndCollectDynamicModulePaths(appDescriptorRootNode, baseExePath, dynamicModuleList)==0)
+        size_t foundModules = 0;
+        if (appRootOverride && appRootOverride[0])
+        {
+            // since the base path is already being used with the assumption it ends on a folder we can
+            // safely omit having to check for file extensions when extracting the bin folder name
+            std::string exePath(baseExePath);
+
+            size_t lastSlash = exePath.find_last_of(AZ_CORRECT_FILESYSTEM_SEPARATOR);
+            if (lastSlash == exePath.length() - 1)
+            {
+                lastSlash = exePath.find_last_of(AZ_CORRECT_FILESYSTEM_SEPARATOR, lastSlash - 1);
+            }
+            std::string binFolder = exePath.substr(lastSlash + 1);
+
+            char appRootBinaryPath[AZ_MAX_PATH_LEN] = { '\0' };
+            azsnprintf(appRootBinaryPath, AZ_ARRAY_SIZE(appRootBinaryPath), "%s%c%s", appRootOverride, AZ_CORRECT_FILESYSTEM_SEPARATOR, binFolder.c_str());
+
+            foundModules = ScanAndCollectDynamicModulePaths(appDescriptorRootNode, appRootBinaryPath, dynamicModuleList);
+        }
+        else
+        {
+            foundModules = ScanAndCollectDynamicModulePaths(appDescriptorRootNode, baseExePath, dynamicModuleList);
+        }
+
+        if (foundModules == 0)
         {
             // Unable to collect any dynamic modules from the app descriptor
             AZ_TracePrintf("UnitTestLauncher", "Unable to find any unit test modules to process from the game application descriptor file '%s'.", appDescriptorPath);
@@ -327,9 +353,46 @@ namespace LumberyardLauncher
         AZ_TracePrintf("UnitTestLauncher", "The UnitTest Launcher is disabled for monolithic builds.");
         return ReturnCode::ErrUnitTestNotSupported;
 #else
+
+    #if AZ_TRAIT_LAUNCHER_ALLOW_CMDLINE_APPROOT_OVERRIDE
+        char appRootOverride[AZ_MAX_PATH_LEN] = { 0 };
+        {
+            // Search for the app root argument (--app-root <PATH>) where <PATH> is the app root path to set for the application
+            const static char* appRootArgPrefix = "--app-root";
+            size_t appRootArgPrefixLen = strlen(appRootArgPrefix);
+
+            const char* appRootArg = nullptr;
+
+            for (int index = 0; index < argc; index++)
+            {
+                if (strncmp(appRootArgPrefix, argv[index], appRootArgPrefixLen) == 0)
+                {
+                    ++index;
+                    if (index < argc)
+                    {
+                        appRootArg = argv[index];
+                    }
+                    break;
+                }
+            }
+
+            if (appRootArg)
+            {
+                bool isAppRootValid = AzFramework::StringFunc::Path::StripQuotes(appRootArg, appRootOverride, AZ_MAX_PATH_LEN);
+                if (!isAppRootValid)
+                {
+                    AZ_Error("UnitTestLauncher", false, "Failed to extract the app-root override from the command line");
+                    appRootOverride[0] = 0;
+                }
+            }
+        }
+    #else
+        const char* appRootOverride = nullptr;
+    #endif // AZ_TRAIT_LAUNCHER_ALLOW_CMDLINE_APPROOT_OVERRIDE
+
         // Collect the potential modules to attempt to run the unit test hooks from
         std::list<std::string> moduleToList;
-        if (!CollectDynamicModulePathsFromCurrentGame(baseExePath, moduleToList))
+        if (!CollectDynamicModulePathsFromCurrentGame(baseExePath, appRootOverride, moduleToList))
         {
             return ReturnCode::ErrAppDescriptor;
         }
@@ -380,7 +443,7 @@ namespace LumberyardLauncher
             if (!testModule->IsValid())
             {
                 // The module was invalid (or doesnt exist)
-                AZ_TracePrintf("UnitTestLauncher", "Unable to run unit test on '%s'. Moduile does not exist or is invalid.", module.c_str());
+                AZ_TracePrintf("UnitTestLauncher", "Unable to run unit test on '%s'. Module does not exist or is invalid.", module.c_str());
                 missingModules.push_back(module);
                 continue;
             }

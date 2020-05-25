@@ -244,11 +244,6 @@ namespace AZ {
         // If the asset is flagged to pre-load, kick off a blocking load.
         if (loadBehavior == Data::AssetLoadBehavior::PreLoad)
         {
-            AZ_Warning("Serialization", asset.GetStatus() != Data::AssetData::AssetStatus::Loading, 
-                "Dependent asset (%s:%s) is already loading asynchronously.",
-                asset.GetId().ToString<AZStd::string>().c_str(),
-                asset.GetHint().c_str());
-
             // Conduct a blocking load within the current thread.
             AZ_Assert(Data::AssetManager::IsReady(), "AssetManager has not been started!");
             asset = Data::AssetManager::Instance().GetAsset(asset.GetId(), asset.GetType(), true, assetFilterCallback, true /*blocking*/);

@@ -1,5 +1,6 @@
 #
-# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# All or portions of this file Cop
+# yright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
 # For complete copyright and license terms please see the LICENSE at the root of this
@@ -8,22 +9,30 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib.Task import Task, RUN_ME, SKIP_ME
-from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
-from cry_utils import flatten_list
-from utils import fast_copy2, should_overwrite_file, calculate_file_hash
-from waflib import Logs, Utils, Errors
+
+
+# System Imports
 import os
 import glob
 import shutil
 import time
 import stat
 import fnmatch
-
 try:
-    import _winreg
+    import winreg
 except ImportError:
     pass
+
+# waflib imports
+from waflib import Logs, Utils, Errors
+from waflib.Task import Task, RUN_ME, SKIP_ME
+from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
+
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import flatten_list
+from lmbrwaflib.utils import fast_copy2, should_overwrite_file, calculate_file_hash
+
+
 DEPENDENT_TARGET_BLACKLISTED_SUBFOLDERS = ['EditorPlugins', 'Builders']
 
 def hash_range(filename, start, size):
@@ -47,9 +56,9 @@ def fast_hash(fname):
     if stat.S_ISDIR(st[stat.ST_MODE]):
         raise IOError('not a file')
     m = Utils.md5()
-    m.update(str(st.st_mtime))
-    m.update(str(st.st_size))
-    m.update(fname)
+    m.update(str(st.st_mtime).encode('utf-8'))
+    m.update(str(st.st_size).encode('utf-8'))
+    m.update(fname.encode('utf-8'))
     return m.digest()
 
 # pdbs and dlls have a guid embedded in their header which should change
@@ -884,6 +893,9 @@ def add_copy_3rd_party_artifacts(self):
                         # In case the file is readonly, we'll remove the existing file first
                         if os.path.exists(target_full_path):
                             os.chmod(target_full_path, stat.S_IWRITE)
+                        # In case the target folder doesn't exist yet
+                        if not os.path.exists(os.path.dirname(target_full_path)):
+                            os.makedirs(os.path.dirname(target_full_path))
                         fast_copy2(source_full_path, target_full_path)
                         copied_files += 1
                     except:
@@ -1299,7 +1311,7 @@ def copy_module_dependent_files_keep_folder_tree(self):
 
 
 UNC_LONGPATH_THRESHOLD = 255
-UNC_LONGPATH_PREFIX = u'\\\\?\\'
+UNC_LONGPATH_PREFIX = '\\\\?\\'
 
 
 def preprocess_pathlen_for_windows(path):

@@ -12,6 +12,8 @@
 
 #include <PhysX_precompiled.h>
 
+#include <platform_impl.h> // must be included once per DLL so things from CryCommon will function
+
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

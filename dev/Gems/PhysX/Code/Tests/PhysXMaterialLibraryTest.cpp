@@ -15,11 +15,11 @@
 #include <PhysX/SystemComponentBus.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzFramework/Physics/SystemBus.h>
 
 namespace PhysX
 {
-    using namespace AZ::Data;
-
     class MaterialLibraryTest_MockCatalog
         : public AZ::Data::AssetCatalog
         , public AZ::Data::AssetCatalogRequestBus::Handler
@@ -27,33 +27,33 @@ namespace PhysX
 
     private:
         AZ::Uuid m_randomUuid = AZ::Uuid::CreateRandom();
-        AZStd::vector<AssetId> m_mockAssetIds;
+        AZStd::vector<AZ::Data::AssetId> m_mockAssetIds;
 
     public:
         AZ_CLASS_ALLOCATOR(MaterialLibraryTest_MockCatalog, AZ::SystemAllocator, 0);
 
         MaterialLibraryTest_MockCatalog()
         {
-            AssetCatalogRequestBus::Handler::BusConnect();
+            AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
         }
 
         ~MaterialLibraryTest_MockCatalog()
         {
-            AssetCatalogRequestBus::Handler::BusDisconnect();
+            AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
         }
 
-        AssetId GenerateMockAssetId()
+        AZ::Data::AssetId GenerateMockAssetId()
         {
-            AssetId assetId = AssetId(AZ::Uuid::CreateRandom(), 0);
+            AZ::Data::AssetId assetId = AZ::Data::AssetId(AZ::Uuid::CreateRandom(), 0);
             m_mockAssetIds.push_back(assetId);
             return assetId;
         }
 
         //////////////////////////////////////////////////////////////////////////
         // AssetCatalogRequestBus
-        AssetInfo GetAssetInfoById(const AssetId& id) override
+        AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& id) override
         {
-            AssetInfo result;
+            AZ::Data::AssetInfo result;
             result.m_assetType = AZ::AzTypeInfo<Physics::MaterialLibraryAsset>::Uuid();
             auto foundId = AZStd::find(m_mockAssetIds.begin(), m_mockAssetIds.end(), id);
             if (foundId != m_mockAssetIds.end())
@@ -65,10 +65,10 @@ namespace PhysX
         }
         //////////////////////////////////////////////////////////////////////////
 
-        AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
+        AZ::Data::AssetStreamInfo GetStreamInfoForLoad(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override
         {
             EXPECT_TRUE(type == AZ::AzTypeInfo<Physics::MaterialLibraryAsset>::Uuid());
-            AssetStreamInfo info;
+            AZ::Data::AssetStreamInfo info;
             info.m_dataOffset = 0;
             info.m_isCustomStreamType = false;
             info.m_streamFlags = AZ::IO::OpenMode::ModeRead;
@@ -96,21 +96,21 @@ namespace PhysX
             return info;
         }
 
-        AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& type) override
+        AZ::Data::AssetStreamInfo GetStreamInfoForSave(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override
         {
-            AssetStreamInfo info;
+            AZ::Data::AssetStreamInfo info;
             info = GetStreamInfoForLoad(id, type);
             info.m_streamFlags = AZ::IO::OpenMode::ModeWrite;
             return info;
         }
 
-        bool SaveAsset(Asset<Physics::MaterialLibraryAsset>& asset)
+        bool SaveAsset(AZ::Data::Asset<Physics::MaterialLibraryAsset>& asset)
         {
             volatile bool isDone = false;
             volatile bool succeeded = false;
-            AssetBusCallbacks callbacks;
+            AZ::Data::AssetBusCallbacks callbacks;
             callbacks.SetCallbacks(nullptr, nullptr, nullptr,
-                [&isDone, &succeeded](const Asset<AssetData>& /*asset*/, bool isSuccessful, AssetBusCallbacks& /*callbacks*/)
+                [&isDone, &succeeded](const AZ::Data::Asset<AZ::Data::AssetData>& /*asset*/, bool isSuccessful, AZ::Data::AssetBusCallbacks& /*callbacks*/)
                 {
                     isDone = true;
                     succeeded = isSuccessful;
@@ -121,7 +121,7 @@ namespace PhysX
 
             while (!isDone)
             {
-                AssetManager::Instance().DispatchEvents();
+                AZ::Data::AssetManager::Instance().DispatchEvents();
             }
             return succeeded;
         }
@@ -134,12 +134,12 @@ namespace PhysX
         void SetUp() override
         {
             m_catalog = AZStd::make_unique<MaterialLibraryTest_MockCatalog>();
-            AssetManager::Instance().RegisterCatalog(m_catalog.get(), AZ::AzTypeInfo<Physics::MaterialLibraryAsset>::Uuid());
+            AZ::Data::AssetManager::Instance().RegisterCatalog(m_catalog.get(), AZ::AzTypeInfo<Physics::MaterialLibraryAsset>::Uuid());
         }
 
         void TearDown() override
         {
-            AssetManager::Instance().UnregisterCatalog(m_catalog.get());
+            AZ::Data::AssetManager::Instance().UnregisterCatalog(m_catalog.get());
         }
 
         AZStd::unique_ptr<MaterialLibraryTest_MockCatalog> m_catalog;
@@ -147,16 +147,15 @@ namespace PhysX
     
     TEST_F(DISABLED_PhysXMaterialLibraryTest, DISABLED_DefaultMaterialLibrary_CorrectMaterialLibraryIsInferred)
     {
-        PhysX::Configuration globalConfig;
-        PhysX::ConfigurationRequestBus::BroadcastResult(globalConfig, &PhysX::ConfigurationRequests::GetConfiguration);
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> materialLibrary = *AZ::Interface<Physics::SystemRequests>::Get()->GetDefaultMaterialLibraryAssetPtr();
 
         AZ::Data::AssetId dummyAssetId = AZ::Data::AssetId(AZ::Uuid::CreateName("DummyLibrary.physmaterial"));
         AZ::Data::Asset<Physics::MaterialLibraryAsset> dummyMaterialLibAsset = AZ::Data::AssetManager::Instance().GetAsset<Physics::MaterialLibraryAsset>(dummyAssetId);
-        globalConfig.m_materialLibrary = dummyMaterialLibAsset;
-        PhysX::ConfigurationRequestBus::Broadcast(&PhysX::ConfigurationRequests::SetConfiguration, globalConfig);
+        materialLibrary = dummyMaterialLibAsset;
+        AZ::Interface<Physics::SystemRequests>::Get()->SetDefaultMaterialLibrary(materialLibrary);
 
         // We must have now a default material library setup
-        ASSERT_TRUE(globalConfig.m_materialLibrary.GetId().IsValid());
+        ASSERT_TRUE(materialLibrary.GetId().IsValid());
 
         AZ::Data::AssetId otherDummyAssetId = AZ::Data::AssetId(AZ::Uuid::CreateName("OtherDummyLibrary.physmaterial"));
         AZ::Data::Asset<Physics::MaterialLibraryAsset> otherDummyMaterialLibAsset = AZ::Data::AssetManager::Instance().GetAsset<Physics::MaterialLibraryAsset>(otherDummyAssetId);
@@ -167,16 +166,16 @@ namespace PhysX
 
         ASSERT_TRUE(selectionTest.GetMaterialLibraryAssetId().IsValid());
         ASSERT_EQ(selectionTest.GetMaterialLibraryAssetId(), selectionTest.GetMaterialLibraryAssetId());
-        ASSERT_NE(selectionTest.GetMaterialLibraryAssetId(), globalConfig.m_materialLibrary.GetId());
+        ASSERT_NE(selectionTest.GetMaterialLibraryAssetId(), materialLibrary.GetId());
 
         // By reseting the selection, now it should infer to the default material library set in the global configuration
         selectionTest.ResetToDefaultMaterialLibrary();
 
         ASSERT_TRUE(selectionTest.GetMaterialLibraryAssetId().IsValid());
-        ASSERT_EQ(selectionTest.GetMaterialLibraryAssetId(), globalConfig.m_materialLibrary.GetId());
+        ASSERT_EQ(selectionTest.GetMaterialLibraryAssetId(), materialLibrary.GetId());
 
         // Release material library so we exit gracefully
-        globalConfig.m_materialLibrary = {};
-        PhysX::ConfigurationRequestBus::Broadcast(&PhysX::ConfigurationRequests::SetConfiguration, globalConfig);
+        materialLibrary = {};
+        AZ::Interface<Physics::SystemRequests>::Get()->SetDefaultMaterialLibrary(materialLibrary);
     }
 }

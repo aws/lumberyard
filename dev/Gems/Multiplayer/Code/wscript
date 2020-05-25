@@ -16,9 +16,7 @@ def build(bld):
         # Add custom build options here
         use         = ['GridMate','GameLift'],
         uselib      = ['OPENSSL'],
-        includes    = [bld.ThirdPartyPath('boost'),
-                       bld.Path('Code/CryEngine/CryCommon'),
-                       bld.Path('Code/CryEngine/CryAction'),
+        includes    = [bld.Path('Code/CryEngine/CryCommon'),
                        bld.Path('Code/CryEngine/CryNetwork')
                       ],
         file_list   = [
@@ -43,6 +41,12 @@ def build(bld):
         linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+
+        test_all_file_list = ['multiplayer_tests.waf_files'],
+
+        # Enabling Multiplayer gem server and client code on Windows for testing targets to make it easier to work with them.
+        win_test_use = ['AWS_CPP_SDK_GAMELIFT_SHARED', 'AWS_GAMELIFT_SERVER_SHARED'],
+        linux_test_use = ['AWS_GAMELIFT_SERVER_STATIC']
     )
 
     bld.DefineGem(**kw)

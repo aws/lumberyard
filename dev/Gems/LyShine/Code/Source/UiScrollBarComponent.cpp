@@ -74,6 +74,40 @@ UiScrollBarComponent::~UiScrollBarComponent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::Update(float deltaTime)
+{
+    UiInteractableComponent::Update(deltaTime);
+
+    if (m_isAutoFadeEnabled)
+    {
+        // count down secondsBeforeFade
+        if (!m_isFading && m_secondsRemainingBeforeFade > 0)
+        {
+            m_secondsRemainingBeforeFade -= deltaTime;
+
+            if (m_secondsRemainingBeforeFade <= 0)
+            {
+                m_isFading = true;
+                // if m_secondsBeforeFade is below 0, use any leftover time for fading
+                deltaTime = abs(m_secondsRemainingBeforeFade);
+            }
+        }
+
+        // calculate fade and set alpha for image components
+        if (m_isFading && m_isAutoFadeEnabled && m_currFade > 0)
+        {
+            float deltaFade = deltaTime * m_fadeSpeed;
+            m_currFade -= deltaFade;
+            if (m_currFade < 0)
+            {
+                m_currFade = 0;
+            }
+            SetImageComponentsAlpha(m_currFade);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 float UiScrollBarComponent::GetValue()
 {
     return m_value;
@@ -152,6 +186,43 @@ float UiScrollBarComponent::GetMinHandlePixelSize()
 void UiScrollBarComponent::SetMinHandlePixelSize(float size)
 {
     m_minHandlePixelSize = size;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiScrollBarComponent::IsAutoFadeEnabled()
+{
+    return m_isAutoFadeEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::SetAutoFadeEnabled(bool isAutoFadeEnabled)
+{
+    m_isAutoFadeEnabled = isAutoFadeEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiScrollBarComponent::GetAutoFadeDelay()
+{
+    return m_inactiveSecondsBeforeFade;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::SetAutoFadeDelay(float delay)
+{
+    m_inactiveSecondsBeforeFade = delay;
+    ResetFade();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiScrollBarComponent::GetAutoFadeSpeed()
+{
+    return m_fadeSpeed;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::SetAutoFadeSpeed(float speed)
+{
+    m_fadeSpeed = speed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -332,6 +403,9 @@ void UiScrollBarComponent::OnScrollableParentToContentRatioChanged(AZ::Vector2 p
 void UiScrollBarComponent::InGamePostActivate()
 {
     SetHandleSize(m_handleSize);
+    ResetFade();
+    UiImageBus::EventResult(m_initialScrollBarAlpha, GetEntityId(), &UiImageBus::Events::GetAlpha);
+    UiImageBus::EventResult(m_initialHandleAlpha, m_handleEntity, &UiImageBus::Events::GetAlpha);
 
     // Listen for canvas space rect changes
     UiTransformChangeNotificationBus::Handler::BusConnect(GetEntityId());
@@ -701,16 +775,20 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
     {
         serializeContext->Class<UiScrollBarComponent, UiInteractableComponent>()
             ->Version(1)
-        // Elements group
+            // Elements group
             ->Field("HandleEntity", &UiScrollBarComponent::m_handleEntity)
-        // Values group
+            // Values group
             ->Field("Orientation", &UiScrollBarComponent::m_orientation)
             ->Field("Value", &UiScrollBarComponent::m_value)
             ->Field("HandleSize", &UiScrollBarComponent::m_handleSize)
             ->Field("MinHandlePixelSize", &UiScrollBarComponent::m_minHandlePixelSize)
-        // Actions group
+            // Actions group
             ->Field("ValueChangingActionName", &UiScrollBarComponent::m_valueChangingActionName)
-            ->Field("ValueChangedActionName", &UiScrollBarComponent::m_valueChangedActionName);
+            ->Field("ValueChangedActionName", &UiScrollBarComponent::m_valueChangedActionName)
+            // Visibility group
+            ->Field("IsAutoFadeEnabled", &UiScrollBarComponent::m_isAutoFadeEnabled)
+            ->Field("FadeDelay", &UiScrollBarComponent::m_inactiveSecondsBeforeFade)
+            ->Field("FadeSpeed", &UiScrollBarComponent::m_fadeSpeed);
 
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
@@ -764,6 +842,19 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
                 editInfo->DataElement(0, &UiScrollBarComponent::m_valueChangingActionName, "Change", "The action triggered while the value is changing.");
                 editInfo->DataElement(0, &UiScrollBarComponent::m_valueChangedActionName, "End change", "The action triggered when the value is done changing.");
             }
+
+            // Visibility group
+            {
+                editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Fade")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+
+                editInfo->DataElement(0, &UiScrollBarComponent::m_isAutoFadeEnabled, "Auto Fade When Not In Use", "The scrollbar will automatically fade away when not in use.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
+                editInfo->DataElement(0, &UiScrollBarComponent::m_inactiveSecondsBeforeFade, "Fade Delay", "The delay in seconds before the scrollbar will begin to fade.")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &UiScrollBarComponent::m_isAutoFadeEnabled);
+                editInfo->DataElement(0, &UiScrollBarComponent::m_fadeSpeed, "Fade Speed", "The speed in seconds at which the scrollbar will fade away.")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &UiScrollBarComponent::m_isAutoFadeEnabled);
+            }
         }
     }
 
@@ -778,7 +869,17 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetHandleEntity", &UiScrollBarBus::Events::GetHandleEntity)
             ->Event("SetHandleEntity", &UiScrollBarBus::Events::SetHandleEntity)
             ->VirtualProperty("HandleSize", "GetHandleSize", "SetHandleSize")
-            ->VirtualProperty("MinHandlePixelSize", "GetMinHandlePixelSize", "SetMinHandlePixelSize");
+            ->VirtualProperty("MinHandlePixelSize", "GetMinHandlePixelSize", "SetMinHandlePixelSize")
+            ->Event("IsAutoFadeEnabled", &UiScrollBarBus::Events::IsAutoFadeEnabled)
+            ->Event("SetAutoFadeEnabled", &UiScrollBarBus::Events::SetAutoFadeEnabled)
+            ->Event("GetAutoFadeDelay", &UiScrollBarBus::Events::GetAutoFadeDelay)
+            ->Event("SetAutoFadeDelay", &UiScrollBarBus::Events::SetAutoFadeDelay)
+            ->Event("GetAutoFadeSpeed", &UiScrollBarBus::Events::GetAutoFadeSpeed)
+            ->Event("SetAutoFadeSpeed", &UiScrollBarBus::Events::SetAutoFadeSpeed)
+            ->VirtualProperty("AutoFadeEnabled", "IsAutoFadeEnabled", "SetAutoFadeEnabled")
+            ->VirtualProperty("AutoFadeDelay", "GetAutoFadeDelay", "SetAutoFadeDelay")
+            ->VirtualProperty("AutoFadeSpeed", "GetAutoFadeSpeed", "SetAutoFadeSpeed");
+
 
         behaviorContext->Enum<(int)UiScrollerInterface::Orientation::Horizontal>("eUiScrollerOrientation_Horizontal")
             ->Enum<(int)UiScrollerInterface::Orientation::Vertical>("eUiScrollerOrientation_Vertical");
@@ -982,6 +1083,7 @@ void UiScrollBarComponent::DoChangingActions()
         EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_valueChangingActionName);
     }
 
+    ResetFade();
     NotifyListenersOnValueChanging();
 }
 
@@ -1180,4 +1282,20 @@ void UiScrollBarComponent::ResetDragInfo()
     m_pressedValue = m_value;
     m_pressedPoint = m_lastDragPoint;
     m_pressedPosAlongAxis = GetPosAlongAxis(m_pressedPoint);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::SetImageComponentsAlpha(float fade)
+{
+    UiImageBus::Event(GetEntityId(), &UiImageBus::Events::SetAlpha, m_initialScrollBarAlpha * fade);
+    UiImageBus::Event(m_handleEntity, &UiImageBus::Events::SetAlpha, m_initialHandleAlpha * fade);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::ResetFade()
+{
+    m_currFade = 1;
+    m_secondsRemainingBeforeFade = m_inactiveSecondsBeforeFade;
+    m_isFading = false;
+    SetImageComponentsAlpha(m_currFade);
 }

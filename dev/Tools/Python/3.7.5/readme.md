@@ -4,7 +4,7 @@ This Python VM is meant to be used through out the Lumberyard ecosystem of tools
 
 # Python Packages
 
-The packages where downloaded from repo.anaconda.com since the packages where pre-compiled for each platform.
+The packages were downloaded from repo.anaconda.com since the packages were pre-compiled for each platform.
 
 ## Linux
 - PACKAGE: https://repo.anaconda.com/pkgs/main/linux-64/python-3.7.5-h0371630_0.tar.bz2
@@ -17,11 +17,17 @@ The packages where downloaded from repo.anaconda.com since the packages where pr
 - PACKAGE: https://repo.anaconda.com/pkgs/main/osx-64/python-3.7.5-h359304d_0.tar.bz2
   - SHA256: 75ddfa5923ad4fe6580b4eba86cf46f7e0f1c21c691ad35d81d7d24d030e8f6f
 
+- PACKAGE: https://repo.anaconda.com/pkgs/main/osx-64/libffi-3.2.1-h475c297_4.tar.bz2
+  -SHA256: 16ab49e1dac2380d198834bb2d76f466a563c713903fbe0bbe30ee7231f86025
+
+
 ## Win64
 - PACKAGE: https://repo.anaconda.com/pkgs/main/win-64/python-3.7.5-h8c8aaf0_0.tar.bz2
   - SHA256: e3ce28504a05be6aca91b92625861b54a411d7871e3517c6b0b448170977a454
 - OPENSSL: https://repo.anaconda.com/pkgs/main/win-64/openssl-1.1.1d-he774522_3.tar.bz2
   - SHA256: f07b079d819d3ec6fdddd7cb43f54688ed49a6b42c7fb14fa02ac74ef1e7c390
+- SQLITE3: https://repo.anaconda.com/pkgs/main/win-64/sqlite-3.31.1-he774522_0.tar.bz2
+  - SHA256: 6d86c34dd919081975aaa3fd22685a9906e54e1e98b5ee976c9c04d13943b937
 
 # The Launchers
 
@@ -37,6 +43,6 @@ The Python launch scripts are used to uniformly execute Python 3.7.5 using the s
 - pip3.cmd is for Windows use (needs libcrypto-1_1-x64.dll & libssl-1_1-x64.dll)
 - pip3.sh is for Linux or OSX use
 
-# Pip Instal
+# Pip Install
 - https://pypi.org/simple/setuptools/setuptools-41.6.0-py2.py3-none-any.whl
 - https://pypi.org/simple/pip/pip-19.3.1-py2.py3-none-any.whl

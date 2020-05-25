@@ -64,6 +64,7 @@
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/Archive/ArchiveComponent.h>
+#include <AzToolsFramework/SourceControl/PerforceComponent.h>
 
 namespace AssetProcessor
 {
@@ -154,6 +155,8 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
             ++iter;
         }
     }
+
+    components.push_back(azrtti_typeid<AzToolsFramework::PerforceComponent>());
 
     return components;
 }
@@ -469,8 +472,9 @@ void ApplicationManager::PopulateApplicationDependencies()
     // Note that its not necessary for any of these files to actually exist.  It is considered a "change" if they 
     // change their file modtime, or if they go from existing to not existing, or if they go from not existing, to existing.
     // any of those should cause AP to drop.
-    for (const QString& pathName : { "CrySystem", "CryAction", "SceneCore", 
-                                     "SceneData", "FbxSceneBuilder", "AzQtComponents", 
+    for (const QString& pathName : { "CrySystem",
+                                     "SceneCore", "SceneData",
+                                     "FbxSceneBuilder", "AzQtComponents", 
                                      "LyIdentity_shared", "LyMetricsProducer_shared", "LyMetricsShared_shared" 
                                      })
     {

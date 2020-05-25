@@ -2386,8 +2386,7 @@ void AbstractSplineWidget::RedrawWindowAroundMarker()
     int redrawRangeEnd = (keyTimeIndex < int(m_keyTimes.size()) - 2 ? TimeToXOfs(m_keyTimes[keyTimeIndex + 2].time) : m_rcSpline.right() + 1);
 
     QRect rc(QPoint(redrawRangeStart, m_rcSpline.top()), QPoint(redrawRangeEnd, m_rcSpline.bottom() + 1) - QPoint(1, 1));
-    rc.normalized();
-    rc = rc.intersected(m_rcSpline);
+    rc = rc.normalized().intersected(m_rcSpline);
 
     m_TimeUpdateRect = QRect(QPoint(1, 2), QSize(2, 2));
     update(rc);

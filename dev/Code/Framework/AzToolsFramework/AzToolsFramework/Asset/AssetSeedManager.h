@@ -40,6 +40,7 @@ namespace AzToolsFramework
         AssetFileInfo() = default;
         static void Reflect(AZ::ReflectContext* context);
 
+
         AZ::Data::AssetId m_assetId;
         AZStd::string m_assetRelativePath;
         uint64_t m_modificationTime = 0;
@@ -69,6 +70,8 @@ namespace AzToolsFramework
         AZ_CLASS_ALLOCATOR(AssetSeedManager, AZ::SystemAllocator, 0);
 
         using AssetsInfoList = AZStd::vector<AZ::Data::AssetInfo>;
+
+        ~AssetSeedManager();
         
         void AddSeedAsset(AZ::Data::AssetId assetId, AzFramework::PlatformFlags platformFlags, AZStd::string path = AZStd::string());
         void AddSeedAsset(const AZStd::string& assetPath, AzFramework::PlatformFlags platformFlags);
@@ -104,14 +107,14 @@ namespace AzToolsFramework
         const AzFramework::AssetSeedList& GetAssetSeedList() const;
 
         // Using the entries in the seed list retrieves a list of product dependencies and their AssetInfo 
-        AssetsInfoList GetDependenciesInfo(AzFramework::PlatformId platformIndex, AssetFileDebugInfoList* optionalDebugList = nullptr) const;
+        AssetsInfoList GetDependenciesInfo(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, AssetFileDebugInfoList* optionalDebugList = nullptr) const;
 
         // Creates a AssetFileInfoList comprising of all known product dependencies from the seed list. 
-        AssetFileInfoList GetDependencyList(AzFramework::PlatformId platformIndex, AssetFileDebugInfoList* optionalDebugList = nullptr) const;
+        AssetFileInfoList GetDependencyList(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList = {}, AssetFileDebugInfoList* optionalDebugList = nullptr) const;
 
         // Expands the current seed list to gather all dependencies based on the given platform. If given a debugFilePath,
         // also stores information that is useful for understanding what is in the asset list info file and why, but not necessary to generate bundles.
-        bool SaveAssetFileInfo(const AZStd::string& destinationFilePath, AzFramework::PlatformFlags platformFlags, const AZStd::string& debugFilePath = AZStd::string());
+        bool SaveAssetFileInfo(const AZStd::string& destinationFilePath, AzFramework::PlatformFlags platformFlags, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList = {}, const AZStd::string& debugFilePath = AZStd::string());
 
         AZ::Outcome<AssetFileInfoList, AZStd::string> LoadAssetFileInfo(const AZStd::string& assetListFileAbsolutePath);
 
@@ -135,18 +138,23 @@ namespace AzToolsFramework
 
         static void Reflect(AZ::ReflectContext* context);
 
-    private:
         AZ::Data::AssetId FindAssetIdByPathHint(const AZStd::string& pathHint) const;
         AZ::Data::AssetId GetAssetIdByPath(const AZStd::string& assetPath, const AzFramework::PlatformFlags& platformFlags) const;
         AZ::Data::AssetId GetAssetIdByAssetKey(const AZStd::string& assetKey, const AzFramework::PlatformFlags& platformFlags) const;
         AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& assetId, const AzFramework::PlatformId& platformIndex) const;
+    private:
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependencies(
             const AZ::Data::AssetId& assetId, 
             const AzFramework::PlatformId& platformIndex,
+            const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
             AssetFileDebugInfoList* optionalDebugList = nullptr,
             AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet = nullptr) const;
 
+        void PopulateAssetTypeMap();
+
         AzFramework::AssetSeedList m_assetSeedList;
+
+        AZStd::unordered_map<AZStd::string, AZStd::string> m_sourceAssetTypeToRuntimeAssetTypeMap;
 
         AZStd::unordered_map<AzFramework::PlatformFlags, AZStd::string> m_platformFlagsToReadablePlatformList;
     };

@@ -205,6 +205,7 @@ public:
     bool DeserializeLayout(const XmlNodeRef& parentNode);
 
     static QtViewPaneManager* instance();
+    static bool exists();
 
     /**
      * Returns the known view panes (regardless of them being open or not).
@@ -236,6 +237,7 @@ private:
 
     bool ClosePane(QtViewPane* pane, QtViewPane::CloseModes closeModes = QtViewPane::CloseMode::None);
     int NextAvailableId();
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QtViewPanes m_registeredPanes;
     QByteArray m_defaultMainWindowState;
     QByteArray m_loadedMainWindowState;
@@ -251,6 +253,7 @@ private:
     using EditorComponentModeNotificationBusImpl = AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBusImpl;
     EditorComponentModeNotificationBusImpl m_componentModeNotifications; /**< Helper for EditorComponentModeNotificationBus so 
                                                                            *  QtViewPaneManager does not need to inherit directly from it. */
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 template<class TWidget>
@@ -278,7 +281,7 @@ void UnregisterQtViewPane()
 template<typename TWidget>
 TWidget* FindViewPane(const QString& name)
 {
-    QtViewPane* pane = QtViewPaneManager::instance()->GetPane(name);
+    QtViewPane* pane = QtViewPaneManager::exists() ? QtViewPaneManager::instance()->GetPane(name) : nullptr;
     return pane ? qobject_cast<TWidget*>(pane->Widget()) : nullptr;
 }
 

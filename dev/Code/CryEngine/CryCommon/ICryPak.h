@@ -100,6 +100,9 @@ struct ICryArchive
         // to ensure that specific paks stay in the position(to keep the same priority) but beeing disabled
         // when running multiplayer
         FLAGS_DISABLE_PAK = BIT(11),
+
+        // flag is set when pak is inside another pak
+        FLAGS_INSIDE_PAK = BIT(12),
     };
 
     typedef void* Handle;
@@ -298,6 +301,9 @@ struct ICryPak
 
         // if this is set, the pak would be stored in memory (cpu)
         FLAGS_PAK_IN_MEMORY_CPU = BIT(30),
+
+        // if this is set, the level pak is inside another pak
+        FLAGS_LEVEL_PAK_INSIDE_PAK = BIT(31),
     };
 
     // Used for widening FOpen functionality. They're ignored for the regular File System files.
@@ -340,6 +346,7 @@ struct ICryPak
         eInMemoryPakLocale_Unload = 0,
         eInMemoryPakLocale_CPU,
         eInMemoryPakLocale_GPU,
+        eInMemoryPakLocale_PAK,
     };
 
     struct PakInfo
@@ -393,9 +400,9 @@ struct ICryPak
     // after this call, the pak file will be searched for files when they aren't on the OS file system
     // Arguments:
     //   pName - must not be 0
-    virtual bool OpenPack(const char* pName, unsigned nFlags = FLAGS_PATH_REAL, IMemoryBlock* pData = 0, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath = 0) = 0;
+    virtual bool OpenPack(const char* pName, unsigned nFlags = FLAGS_PATH_REAL, IMemoryBlock* pData = 0, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath = 0, bool addLevels = true) = 0;
     // after this call, the pak file will be searched for files when they aren't on the OS file system
-    virtual bool OpenPack(const char* pBindingRoot, const char* pName, unsigned nFlags = FLAGS_PATH_REAL, IMemoryBlock* pData = 0, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath = 0) = 0;
+    virtual bool OpenPack(const char* pBindingRoot, const char* pName, unsigned nFlags = FLAGS_PATH_REAL, IMemoryBlock* pData = 0, CryFixedStringT<ICryPak::g_nMaxPath>* pFullPath = 0, bool addLevels = true) = 0;
     // after this call, the file will be unlocked and closed, and its contents won't be used to search for files
     virtual bool ClosePack(const char* pName, unsigned nFlags = FLAGS_PATH_REAL) = 0;
     // opens pack files by the path and wildcard

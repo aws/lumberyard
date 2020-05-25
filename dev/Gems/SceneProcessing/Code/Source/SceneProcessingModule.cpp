@@ -17,6 +17,7 @@
 #include <SceneBuilder/SceneSerializationHandler.h>
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
 #include <Config/Components/SoftNameBehavior.h>
+#include <Config/Widgets/GraphTypeSelector.h>
 #include <Exporting/Components/TangentGenerateComponent.h>
 #include <Exporting/Components/TangentPreExportComponent.h>
 
@@ -53,6 +54,8 @@ namespace AZ
                 LoadSceneModule(s_fbxSceneBuilderModule, "FbxSceneBuilder");
 #endif // defined(SCENE_CORE_STATIC)
 
+                SceneProcessingConfig::GraphTypeSelector::Register();
+
                 m_descriptors.insert(m_descriptors.end(),
                 {
                     SceneProcessingConfig::SceneProcessingConfigSystemComponent::CreateDescriptor(),
@@ -76,6 +79,8 @@ namespace AZ
 
             ~SceneProcessingModule()
             {
+                SceneProcessingConfig::GraphTypeSelector::Unregister();
+
                 #if defined(SCENE_CORE_STATIC)
                 AZ::SceneAPI::FbxSceneBuilder::Uninitialize();
                 AZ::SceneAPI::SceneData::Uninitialize();

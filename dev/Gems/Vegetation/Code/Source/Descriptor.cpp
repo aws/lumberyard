@@ -88,6 +88,8 @@ namespace Vegetation
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
+            serialize->RegisterGenericType<AZStd::vector<Descriptor>>();
+
             serialize->Class<Descriptor>()
                 ->Version(5, &DescriptorUtil::UpdateVersion)
                 ->Field("MeshAsset", &Descriptor::m_meshAsset)
@@ -361,7 +363,9 @@ namespace Vegetation
         {
             behaviorContext->Class<Descriptor>()
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "vegetation")
                 ->Constructor()
                 ->Property("weight", BehaviorValueProperty(&Descriptor::m_weight))
                 ->Property("autoMerge", BehaviorValueProperty(&Descriptor::m_autoMerge))

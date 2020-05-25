@@ -67,5 +67,15 @@ namespace AZ
             delete this;
         }
     }
+
+    void UserSettings::Reflect(ReflectContext* context)
+    {
+        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+        {
+            serializeContext->Class<UserSettings>()
+                ;
+        }
+    }
+
     //-------------------------------------------------------------------------
 }   // namespace AZ

@@ -12,6 +12,7 @@
 #include "FileWatcher.h"
 
 #include <Windows.h>
+#include <functional>
 
 struct FolderRootWatch::PlatformImplementation
 {

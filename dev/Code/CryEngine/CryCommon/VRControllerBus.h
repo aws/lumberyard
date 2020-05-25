@@ -13,7 +13,7 @@
 /*
 * This is a bus for interfacing with any available VR controllers. Most 
 * VR controllers will connect to this bus when their respective HMDs have 
-* been initialized but that's not always the case. OSVR and PSVR support 
+* been initialized but that's not always the case. PSVR supports
 * controller systems that can be used without any HMD. We still want to get
 * tracking information about these controllers even if we're not rendering in VR. 
 */

@@ -16,7 +16,6 @@
 #include "LyShineExamplesSystemComponent.h"
 #include "UiTestScrollBoxDataProviderComponent.h"
 #include "UiCustomImageComponent.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include <IGem.h>
 
@@ -47,16 +46,6 @@ namespace LyShineExamples
             return AZ::ComponentTypeList{
                 azrtti_typeid<LyShineExamplesSystemComponent>(),
             };
-        }
-
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
-        {
-            switch (event)
-            {
-            case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-                RegisterExternalFlowNodes();
-                break;
-            }
         }
     };
 }

@@ -8,22 +8,26 @@ validation, augmented with custom validation code where necessary.
 
 https://github.com/swagger-api/swagger-spec/blob/master/versions/1.2.md
 """
-try:
-    import simplejson as json
-except ImportError:
-    import json
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import logging
 import os
 
 import jsonschema
+import six
 from jsonschema import RefResolver
 from pkg_resources import resource_filename
-import six
 from six.moves.urllib.parse import urlparse
 
+from swagger_spec_validator.common import get_uri_from_file_path
+from swagger_spec_validator.common import read_file
+from swagger_spec_validator.common import read_url
 from swagger_spec_validator.common import SwaggerValidationError
-from swagger_spec_validator.common import load_json
 from swagger_spec_validator.common import wrap_exception
+from swagger_spec_validator.ref_validators import default_handlers
 
 log = logging.getLogger(__name__)
 
@@ -75,8 +79,8 @@ def validate_spec_url(url):
     :raises: :py:class:`swagger_spec_validator.SwaggerValidationError`
     """
 
-    log.info('Validating %s' % url)
-    validate_spec(load_json(url), url)
+    log.info('Validating %s', url)
+    validate_spec(read_url(url), url)
 
 
 def validate_spec(resource_listing, url):
@@ -97,8 +101,8 @@ def validate_spec(resource_listing, url):
 
     for api in resource_listing['apis']:
         path = get_resource_path(url, api['path'])
-        log.info('Validating %s' % path)
-        validate_api_declaration(load_json(path))
+        log.info('Validating %s', path)
+        validate_api_declaration(read_url(path))
 
 
 def validate_data_type(obj, model_ids, allow_arrays=True, allow_voids=False,
@@ -166,7 +170,7 @@ def validate_model(model, model_name, model_ids):
                 (model_name, required))
 
     if model_name != model['id']:
-        error = 'model name: {0} does not match model id: {1}'.format(model_name, model['id'])
+        error = 'model name: {} does not match model id: {}'.format(model_name, model['id'])
         raise SwaggerValidationError(error)
 
     for prop_name, prop in six.iteritems(model.get('properties', {})):
@@ -175,7 +179,7 @@ def validate_model(model, model_name, model_ids):
         except SwaggerValidationError as e:
             # Add more context to the exception and re-raise
             raise SwaggerValidationError(
-                'Model "%s", property "%s": %s' % (model_name, prop_name, str(e)))
+                'Model "{}", property "{}": {}'.format(model_name, prop_name, str(e)))
 
 
 def validate_parameter(parameter, model_ids):
@@ -191,7 +195,7 @@ def validate_operation(operation, model_ids):
         validate_data_type(operation, model_ids, allow_refs=False, allow_voids=True)
     except SwaggerValidationError as e:
         raise SwaggerValidationError(
-            'Operation "%s": %s' % (operation['nickname'], str(e)))
+            'Operation "{}": {}'.format(operation['nickname'], str(e)))
 
     for parameter in operation['parameters']:
         try:
@@ -253,7 +257,11 @@ def validate_json(json_document, schema_path):
     :param schema_path: package relative path of the json schema file.
     """
     schema_path = resource_filename('swagger_spec_validator', schema_path)
-    with open(schema_path) as schema_file:
-        schema = json.loads(schema_file.read())
-    resolver = RefResolver('file://{0}'.format(schema_path), schema)
+    schema = read_file(schema_path)
+
+    resolver = RefResolver(
+        base_uri=get_uri_from_file_path(schema_path),
+        referrer=schema,
+        handlers=default_handlers,
+    )
     jsonschema.validate(json_document, schema, resolver=resolver)

@@ -65,6 +65,11 @@ namespace AzToolsFramework
         {
             AZStd::string assetPath;
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, id);
+            if (assetPath.empty())
+            {
+                AZ_Assert(!assetPath.empty(), "A valid path needs to be resolved, if this failed, the provided asset path is not a valid asset.");
+                return;
+            }
 
             AZStd::string assetFullPath;
             AssetSystemRequestBus::Broadcast(&AssetSystem::AssetSystemRequest::GetFullSourcePathFromRelativeProductPath, assetPath, assetFullPath);
@@ -77,19 +82,18 @@ namespace AzToolsFramework
                     {
                         if (!info.IsReadOnly())
                         {
-                        AZ::Outcome<bool, AZStd::string> outcome = AZ::Success(true);
-                        AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::EventResult(outcome, id, &AzToolsFramework::AssetEditor::AssetEditorValidationRequests::IsAssetDataValid, asset);
-                        if (!outcome.IsSuccess())
-                        {
-                            assetCheckoutAndSaveCallback(false, outcome.GetError(), assetFullPath);
+                            AZ::Outcome<bool, AZStd::string> outcome = AZ::Success(true);
+                            AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::EventResult(outcome, id, &AzToolsFramework::AssetEditor::AssetEditorValidationRequests::IsAssetDataValid, asset);
+                            if (!outcome.IsSuccess())
+                            {
+                                assetCheckoutAndSaveCallback(false, outcome.GetError(), assetFullPath);
+                            }
+                            else
+                            {
+                                AssetEditorValidationRequestBus::Event(id, &AssetEditorValidationRequests::PreAssetSave, asset);
+                                assetCheckoutAndSaveCallback(true, "", assetFullPath);
+                            }
                         }
-                        else
-                        {
-                            AssetEditorValidationRequestBus::Event(id, &AssetEditorValidationRequests::PreAssetSave, asset);
-
-                            assetCheckoutAndSaveCallback(true, "", assetFullPath);
-                        }
-                    }
                         else
                         {
                             AZStd::string error = AZStd::string::format("Could not check out asset file: %s.", assetFullPath.c_str());
@@ -243,6 +247,11 @@ namespace AzToolsFramework
             PopulateRecentMenu();
         }
 
+        AssetEditorWidget::~AssetEditorWidget()
+        {
+            AZ::SystemTickBus::Handler::BusDisconnect();
+        }
+
         void AssetEditorWidget::CreateAsset(AZ::Data::AssetType assetType)
         {
             auto typeIter = AZStd::find_if(m_genericAssetTypes.begin(), m_genericAssetTypes.end(), [assetType](const AZ::Data::AssetType& testType) { return assetType == testType; });
@@ -261,7 +270,7 @@ namespace AzToolsFramework
         {
             m_dirty = false;
 
-            AZ::Data::AssetBus::Handler::BusDisconnect(asset.GetId());            
+            AZ::Data::AssetBus::Handler::BusDisconnect(asset.GetId());
 
             // Clone the asset
             AZ::Data::AssetId newAssetId = AZ::Data::AssetId(AZ::Uuid::CreateRandom());
@@ -829,7 +838,15 @@ namespace AzToolsFramework
             SetStatusText(Status::emptyString);
         }
 
-        void AssetEditorWidget::SetStatusText(const QString& assetStatus)
+        void AssetEditorWidget::OnSystemTick()
+        {
+            if (!m_queuedAssetStatus.isEmpty())
+            {
+                ApplyStatusText();
+            }
+        }
+
+        void AssetEditorWidget::ApplyStatusText()
         {
             QString statusString;
 
@@ -842,15 +859,26 @@ namespace AzToolsFramework
                 statusString = QString("%1");
             }
 
-            statusString = statusString.arg(m_currentAsset).arg(assetStatus);
+            statusString = statusString.arg(m_currentAsset).arg(m_queuedAssetStatus);
 
-            if (!assetStatus.isEmpty())
+            if (!m_queuedAssetStatus.isEmpty())
             {
                 statusString.append(" - ");
-                statusString.append(assetStatus);
+                statusString.append(m_queuedAssetStatus);
             }
 
             m_statusBar->textEdit->setPlainText(statusString);
+
+            m_queuedAssetStatus.clear();
+
+            AZ::SystemTickBus::Handler::BusDisconnect();
+
+        }
+
+        void AssetEditorWidget::SetStatusText(const QString& assetStatus)
+        {
+            m_queuedAssetStatus = assetStatus;
+            AZ::SystemTickBus::Handler::BusConnect();
         }
 
         void AssetEditorWidget::AddRecentPath(const AZStd::string& recentPath)

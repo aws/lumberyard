@@ -62,7 +62,7 @@ namespace ScriptCanvas
             }
         }
 
-        return AZ::Failure(AZStd::string::format("Type does not support the method: %s", m_supportedOperator.c_str()));
+        return AZ::Failure(AZStd::string("Unable to find Node for Target Slot"));
     }
 
     AZ::Outcome<void, AZStd::string> MathOperatorContract::OnEvaluateForType(const Data::Type& dataType) const
@@ -100,6 +100,11 @@ namespace ScriptCanvas
             {
                 return AZ::Success();
             }
+        }
+
+        if (m_supportedOperator.empty())
+        {
+            return AZ::Failure(AZStd::string::format("%s is not on list of supported types for Math Operation.", ScriptCanvas::Data::GetName(dataType)));
         }
 
         return AZ::Failure(AZStd::string::format("%s does not support the method: %s", ScriptCanvas::Data::GetName(dataType), m_supportedOperator.c_str()));

@@ -26,11 +26,8 @@ namespace GraphCanvas
         AddSlotMenuAction(QObject* parent);
         virtual ~AddSlotMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
-
-    private:
-        AZ::EntityId m_targetId;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class RemoveSlotMenuAction
@@ -42,11 +39,8 @@ namespace GraphCanvas
         RemoveSlotMenuAction(QObject* parent);
         virtual ~RemoveSlotMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
-
-    private:
-        AZ::EntityId m_targetId;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
 
@@ -59,11 +53,8 @@ namespace GraphCanvas
         ClearConnectionsMenuAction(QObject* parent);
         virtual ~ClearConnectionsMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
-    
-    private:
-        AZ::EntityId m_targetId;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     //////////////////////
@@ -79,10 +70,34 @@ namespace GraphCanvas
         ResetToDefaultValueMenuAction(QObject* parent);
         virtual ~ResetToDefaultValueMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
-
-    private:
-        AZ::EntityId m_targetId;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
+
+    class ToggleReferenceStateAction
+        : public GraphCanvas::SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(ToggleReferenceStateAction, AZ::SystemAllocator, 0);
+
+        ToggleReferenceStateAction(QObject* parent);
+        virtual ~ToggleReferenceStateAction() = default;
+
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
+    };
+
+    class PromoteToVariableAction
+        : public GraphCanvas::SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(PromoteToVariableAction, AZ::SystemAllocator, 0);
+
+        PromoteToVariableAction(QObject* parent);
+        virtual ~PromoteToVariableAction() = default;
+
+        void RefreshAction() override;
+        GraphCanvas::ContextMenuAction::SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
+    };
+
 }

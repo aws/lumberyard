@@ -18,7 +18,6 @@
 #include <IAudioSystem.h>
 #include "IMovieSystem.h"
 #include "CryAction.h"
-#include "IGameTokens.h"
 #include "IDialogSystem.h"
 #include "TimeOfDayScheduler.h"
 #include "IGameRulesSystem.h"
@@ -31,13 +30,13 @@
 #include "ICooperativeAnimationManager.h"
 #include "IDeferredCollisionEvent.h"
 #include "IPlatformOS.h"
-#include <ICustomActions.h>
 #include "CustomEvents/CustomEventsManager.h"
 
 #include <LoadScreenBus.h>
 
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <IGameVolumes.h>
 #include <AzCore/Script/ScriptSystemBus.h>
@@ -53,6 +52,9 @@
 //#define LOCAL_WARNING(cond, msg)  CRY_ASSERT_MESSAGE(cond, msg)
 
 int CLevelSystem::s_loadCount = 0;
+
+const char* ArchiveExtension = ".pak";
+const char TerrarinTexturePakName[] = "terraintexture.pak";
 
 //------------------------------------------------------------------------
 CLevelRotation::CLevelRotation()
@@ -986,6 +988,7 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
             if (m_pSystem->IsMODValid(pModArg->GetValue()))
             {
                 m_levelsFolder.Format("Mods/%s/%s", pModArg->GetValue(), levelsFolder);
+                m_levelInfos.clear();
                 ScanFolder(0, true, tag);
             }
         }
@@ -994,6 +997,7 @@ void CLevelSystem::Rescan(const char* levelsFolder, const uint32 tag)
     }
 
     CRY_ASSERT(!m_levelsFolder.empty());
+    m_levelInfos.clear();
     m_levelInfos.reserve(64);
     ScanFolder(0, false, tag);
 
@@ -1040,7 +1044,6 @@ void CLevelSystem::LoadRotation()
 //------------------------------------------------------------------------
 void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint32 tag)
 {
-    //CryLog("[DLC] ScanFolder:'%s' tag:'%.4s'", subfolder, (char*)&tag);
     string folder;
     if (subfolder && subfolder[0])
     {
@@ -1050,20 +1053,80 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
     string search(m_levelsFolder);
     if (!folder.empty())
     {
-        search += string("/") + folder;
+        if (AZ::StringFunc::StartsWith(folder.c_str(), m_levelsFolder.c_str()))
+        {
+            search = folder;
+        }
+        else
+        {
+            search += string("/") + folder;
+        }
     }
     search += "/*.*";
 
+    AZ_Assert(gEnv && gEnv->pCryPak, "gEnv and must be initialized for loading levels.");
+    if (!gEnv || !gEnv->pCryPak)
+    {
+        return;
+    }
     ICryPak* pPak = gEnv->pCryPak;
 
-    _finddata_t fd;
-    intptr_t handle = 0;
+    AZStd::unordered_set<AZStd::string> pakList;
 
-    //CryLog("[DLC] ScanFolder: search:'%s'", search.c_str());
-    // --kenzo
+    _finddata_t fd;
+    bool allowFileSystem = true;
+    intptr_t handle = pPak->FindFirst(search.c_str(), &fd, 0, allowFileSystem);
+
+    if (handle > -1)
+    {
+        do
+        {
+            AZStd::string extension;
+            AZStd::string levelName;
+            AzFramework::StringFunc::Path::Split(fd.name, nullptr, nullptr, &levelName, &extension);
+            if (extension == ArchiveExtension)
+            {
+                if (AZ::StringFunc::Equal(fd.name, ILevelSystem::LevelPakName) || AZ::StringFunc::Equal(fd.name, TerrarinTexturePakName))
+                {
+                    // level folder contain pak files like 'level.pak' and 'terraintexture.pak'
+                    // which we only want to load during level loading.
+                    continue;
+                }
+                AZStd::string levelContainerPakPath;
+                AzFramework::StringFunc::Path::Join("@assets@", m_levelsFolder.c_str(), levelContainerPakPath);
+                if (subfolder && subfolder[0])
+                {
+                    AzFramework::StringFunc::Path::Join(levelContainerPakPath.c_str(), subfolder, levelContainerPakPath);
+                }
+                AzFramework::StringFunc::Path::Join(levelContainerPakPath.c_str(), fd.name, levelContainerPakPath);
+                pakList.emplace(levelContainerPakPath);
+                continue;
+            }
+        } while (pPak->FindNext(handle, &fd) >= 0);
+
+        pPak->FindClose(handle);
+    }
+
+    // Open all the available paks found in the levels folder
+    for (auto iter = pakList.begin(); iter != pakList.end(); iter++)
+    {
+        CryFixedStringT<ICryPak::g_nMaxPath> fullLevelPakPath;
+        gEnv->pCryPak->OpenPack(iter->c_str(), (unsigned)0, nullptr, &fullLevelPakPath, false);
+    }
+
+    // Levels in bundles now take priority over levels outside of bundles.
+    PopulateLevels(search, folder, pPak, modFolder, tag, false);
+    // Load levels outside of the bundles to maintain backward compatibility.
+    PopulateLevels(search, folder, pPak, modFolder, tag, true);
+      
+}
+
+void CLevelSystem::PopulateLevels(string searchPattern, string& folder, ICryPak* pPak, bool& modFolder, const uint32& tag, bool fromFileSystemOnly)
+{
+    _finddata_t fd;
     // allow this find first to actually touch the file system
     // (causes small overhead but with minimal amount of levels this should only be around 150ms on actual DVD Emu)
-    handle = pPak->FindFirst(search.c_str(), &fd, 0, true);
+    intptr_t handle = pPak->FindFirst(searchPattern.c_str(), &fd, 0, fromFileSystemOnly);
 
     if (handle > -1)
     {
@@ -1074,22 +1137,38 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
                 continue;
             }
 
-            string levelFolder = (folder.empty() ? "" : (folder + "/")) + string(fd.name);
-            string levelPath = m_levelsFolder + "/" + levelFolder;
-            string paks = levelPath + string("/*.pak");
+            string levelFolder;
+            if (fromFileSystemOnly)
+            {
+                levelFolder = (folder.empty() ? "" : (folder + "/")) + string(fd.name);
+            }
+            else
+            {
+                AZStd::string levelName;
+                AzFramework::StringFunc::Path::GetComponent(fd.name, levelName, 1, true);
+                levelFolder = (folder.empty() ? "" : (folder + "/")) + string(levelName.c_str());
+            }
 
-            //CryLog("[DLC] ScanFolder fd:'%s' levelPath:'%s'", fd.name, levelPath.c_str());
+            string levelPath;
+            if (AZ::StringFunc::StartsWith(levelFolder.c_str(), m_levelsFolder.c_str()))
+            {
+                levelPath = levelFolder;
+            }
+            else
+            {
+                levelPath = m_levelsFolder + "/" + levelFolder;
+            }
+            string paks = levelPath + string("/*.pak");
 
             const string levelPakName = levelPath + "/level.pak";
             const string levelInfoName = levelPath + "/levelinfo.xml";
 
-            if (!pPak->IsFileExist(levelPakName.c_str(), ICryPak::eFileLocation_OnDisk) && !pPak->IsFileExist(levelInfoName.c_str()))
+            if (!pPak->IsFileExist(levelPakName.c_str(), fromFileSystemOnly ? ICryPak::eFileLocation_OnDisk : ICryPak::eFileLocation_InPak) && !pPak->IsFileExist(levelInfoName.c_str(), fromFileSystemOnly ? ICryPak::eFileLocation_OnDisk : ICryPak::eFileLocation_InPak))
             {
                 ScanFolder(levelFolder.c_str(), modFolder, tag);
                 continue;
             }
 
-            //CryLog("[DLC] ScanFolder adding level:'%s'", levelPath.c_str());
             CLevelInfo levelInfo;
             levelInfo.m_levelPath = levelPath;
             levelInfo.m_levelPaks = paks;
@@ -1098,6 +1177,7 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
             levelInfo.m_isModLevel = modFolder;
             levelInfo.m_scanTag = tag;
             levelInfo.m_levelTag = ILevelSystem::TAG_UNKNOWN;
+            levelInfo.m_isPak = !fromFileSystemOnly;
 
             SwapEndian(levelInfo.m_scanTag, eBigEndian);
             SwapEndian(levelInfo.m_levelTag, eBigEndian);
@@ -1118,8 +1198,16 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
             }
             else
             {
-                // Update the scan tag
-                pExistingInfo->m_scanTag = tag;
+                // Levels in bundles take priority over levels outside bundles.
+                if (!pExistingInfo->m_isPak && levelInfo.m_isPak)
+                {
+                    *pExistingInfo = levelInfo;
+                }
+                else
+                {
+                    // Update the scan tag
+                    pExistingInfo->m_scanTag = tag;
+                }
             }
         } while (pPak->FindNext(handle, &fd) >= 0);
 
@@ -1332,8 +1420,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         // Reset the camera to (0,0,0) which is the invalid/uninitialised state
         CCamera defaultCam;
         m_pSystem->SetViewCamera(defaultCam);
-        IGameTokenSystem* pGameTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-        pGameTokenSystem->Reset();
 
         m_pLoadingLevelInfo = pLevelInfo;
         OnLoadingStart(pLevelInfo);
@@ -1367,10 +1453,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             spamDelay = pSpamDelay->GetFVal();
             pSpamDelay->Set(0.0f);
         }
-
-
-        // load all GameToken libraries this level uses incl. LevelLocal
-        pGameTokenSystem->LoadLibs(pLevelInfo->GetPath() + string("/GameTokens/*.xml"));
 
         if (gEnv->pEntitySystem)
         {
@@ -1461,12 +1543,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
 
         gEnv->pGame->LoadExportedLevelData(pLevelInfo->GetPath(), pLevelInfo->GetDefaultGameType()->name.c_str());
 
-        ICustomActionManager* pCustomActionManager = gEnv->pGame->GetIGameFramework()->GetICustomActionManager();
-        if (pCustomActionManager)
-        {
-            pCustomActionManager->LoadLibraryActions(CUSTOM_ACTIONS_PATH);
-        }
-
         if (gEnv->pEntitySystem)
         {
             gEnv->pEntitySystem->ReserveEntityId(1);
@@ -1536,11 +1612,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         if (CCryAction::GetCryAction()->GetIMaterialEffects())
         {
             CCryAction::GetCryAction()->GetIMaterialEffects()->PreLoadAssets();
-        }
-
-        if (gEnv->pFlowSystem)
-        {
-            gEnv->pFlowSystem->Reset(false);
         }
 
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START_PRECACHE);
@@ -1943,14 +2014,10 @@ void CLevelInfo::GetMemoryUsage(ICrySizer* pSizer) const
 bool CLevelInfo::OpenLevelPak()
 {
     LOADING_TIME_PROFILE_SECTION;
-
     string levelpak = m_levelPath + string("/level.pak");
     CryFixedStringT<ICryPak::g_nMaxPath> fullLevelPakPath;
-    bool bOk = gEnv->pCryPak->OpenPack(levelpak, (unsigned)0, NULL, &fullLevelPakPath);
+    bool bOk = gEnv->pCryPak->OpenPack(levelpak, m_isPak ? ICryPak::FLAGS_LEVEL_PAK_INSIDE_PAK : (unsigned)0, NULL, &fullLevelPakPath, false);
     m_levelPakFullPath.assign(fullLevelPakPath.c_str());
-
-    gEnv->pCryPak->SetPacksAccessibleForLevel(GetName());
-
     return bOk;
 }
 
@@ -2017,14 +2084,6 @@ void CLevelSystem::UnLoadLevel()
 
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
 
-    // One last update to execute pending requests.
-    // Do this before the EntitySystem resets!
-    if (gEnv->pFlowSystem)
-    {
-        gEnv->pFlowSystem->Update();
-        gEnv->pFlowSystem->Uninitialize();
-    }
-
     I3DEngine* p3DEngine = gEnv->p3DEngine;
     if (p3DEngine)
     {
@@ -2085,14 +2144,6 @@ void CLevelSystem::UnLoadLevel()
         }
 
         pCryAction->ClearBreakHistory();
-
-        // Custom actions (Active + Library) keep a smart ptr to flow graph and need to be cleared before get below to the gEnv->pFlowSystem->Reset(true);
-        ICustomActionManager* pCustomActionManager = pCryAction->GetICustomActionManager();
-        if (pCustomActionManager)
-        {
-            pCustomActionManager->ClearActiveActions();
-            pCustomActionManager->ClearLibraryActions();
-        }
 
         IGameVolumes* pGameVolumes = pCryAction->GetIGameVolumesManager();
         if (pGameVolumes)
@@ -2166,15 +2217,6 @@ void CLevelSystem::UnLoadLevel()
     {
         IGameObjectSystem* pGameObjectSystem = pCryAction->GetIGameObjectSystem();
         pGameObjectSystem->Reset();
-    }
-
-    IGameTokenSystem* pGameTokenSystem = CCryAction::GetCryAction()->GetIGameTokenSystem();
-    pGameTokenSystem->RemoveLibrary("Level");
-    pGameTokenSystem->Unload();
-
-    if (gEnv->pFlowSystem)
-    {
-        gEnv->pFlowSystem->Reset(true);
     }
 
     if (gEnv->pEntitySystem)

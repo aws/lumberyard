@@ -79,9 +79,9 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         AZ::Crc32 GetStartValueVisibility() const;
 
-        float               m_interpolationSpeed;
-        float               m_startValue;
-        bool                m_useStartValue;
-        static const float  s_targetReachedRelativeTolerance;
+        float               m_interpolationSpeed = 0.75f;
+        float               m_startValue = 0.0f;
+        float               m_snapTolerance = 0.01f;
+        bool                m_useStartValue = false;
     };
 } // namespace EMotionFX

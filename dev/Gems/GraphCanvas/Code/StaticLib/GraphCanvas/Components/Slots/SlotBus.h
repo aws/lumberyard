@@ -56,7 +56,7 @@ namespace GraphCanvas
 
         static const SlotType PropertySlot = AZ_CRC("SlotType_Property", 0xccaefd85);
 
-        static const SlotType VariableReferenceSlot = AZ_CRC("SlotType_Variable", 0x8b1166d6);
+        //static const SlotType VariableReferenceSlot = AZ_CRC("SlotType_Variable", 0x8b1166d6);
     }
 
     // Visual Identification of how the Slot should be grouped for display
@@ -155,7 +155,7 @@ namespace GraphCanvas
     };
 
     typedef AZStd::unordered_map< SlotGroup, SlotGroupConfiguration > SlotGroupConfigurationMap;
-    
+
     class SlotGroupConfigurationComparator
     {
     public:
@@ -239,15 +239,9 @@ namespace GraphCanvas
 
         // Used by the layout to set the ordering for the slot after it's been display. Will not be respected during the layout phase.
         virtual void SetDisplayOrdering(int ordering) = 0;
-        
+
         //! Returns the ordering index of the slot within it's given group.
         virtual int GetDisplayOrdering() const = 0;
-
-        //! Returns whether or not this slot will accept a connection to the passed in slot.
-        AZ_DEPRECATED(bool CanAcceptConnection(const Endpoint& endpoint), "CanAcceptConnection has been renamed to IsConnectedTo. Return value has also been inverted.")
-        {
-            return !IsConnectedTo(endpoint);
-        }
 
         virtual bool IsConnectedTo(const Endpoint& endpoint) const = 0;
 
@@ -259,11 +253,6 @@ namespace GraphCanvas
         //! Returns the connection to be used when trying to create a connection from this object.
         //! Will create a connection with the underlying data model.
         virtual AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) = 0;
-
-        AZ_DEPRECATED(AZ::EntityId CreateConnection(), "Renamed CreateConnection to DisplayConnection for logical consistency (create implies interaction with the model, which display implies interaction with the view)")
-        {
-            return DisplayConnection();
-        }
 
         //! Returns the connection to be used when trying to create a connection from this object.
         virtual AZ::EntityId DisplayConnection() = 0;
@@ -283,7 +272,7 @@ namespace GraphCanvas
 
         //! Remove the specified connection from the slot.
         virtual void RemoveConnectionId(const AZ::EntityId& connectionId, const Endpoint& endpoint) = 0;
-        
+
         //! Gets the UserData on the slot.
         virtual AZStd::any* GetUserData() = 0;
 
@@ -321,14 +310,16 @@ namespace GraphCanvas
 
         // Returns the list of slot remapping
         virtual AZStd::vector< Endpoint > GetRemappedModelEndpoints() const = 0;
-        
+
         // Returns the layout priority of the slot. Higher priority means higher up on the list.
         virtual int GetLayoutPriority() const {
             return 10;
         }
+
+        virtual void SetLayoutPriority(int layoutPriority) = 0;
     };
 
-    using SlotRequestBus = AZ::EBus<SlotRequests>;    
+    using SlotRequestBus = AZ::EBus<SlotRequests>;
     
     struct SlotLayoutInfo
     {
@@ -348,13 +339,25 @@ namespace GraphCanvas
     public:
         //! BusId is the entity id of the slot object.
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = SlotId;
 
         virtual QPointF GetConnectionPoint() const = 0;
         virtual QPointF GetJutDirection() const = 0;
     };
 
     using SlotUIRequestBus = AZ::EBus<SlotUIRequests>;
+
+    class SlotUINotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void OnSlotLayoutPriorityChanged(int layoutPriority) = 0;
+    };
+
+    using SlotUINotificationBus = AZ::EBus<SlotUINotifications>;
 
     //! SlotNotifications
     //! Notifications that indicate changes to a slot's state.
@@ -363,7 +366,7 @@ namespace GraphCanvas
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = SlotId;
 
         //! When the name of the slot changes, the new name is signaled.
         virtual void OnNameChanged(const TranslationKeyedString&) {}

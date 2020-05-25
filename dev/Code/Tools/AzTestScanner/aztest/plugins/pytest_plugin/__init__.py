@@ -11,7 +11,7 @@
 import argparse
 import sys
 
-import pytest_runner
+import aztest.plugins.pytest_plugin.pytest_runner
 from aztest.common import DEFAULT_OUTPUT_PATH
 
 DEFAULT_TIMEOUT = 3600  # one hour of seconds

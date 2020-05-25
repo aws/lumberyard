@@ -1967,7 +1967,7 @@ void CRenderMesh::SetCustomTexID(int nCustomTID)
 
 void CRenderMesh::SetChunk(int nIndex, CRenderChunk& inChunk)
 {
-    if (!inChunk.nNumIndices || !inChunk.nNumVerts)
+    if (!inChunk.nNumIndices || !inChunk.nNumVerts || m_nInds == 0)
     {
         return;
     }

@@ -29,12 +29,12 @@ namespace ScriptCanvas
                 AZStd::string text = ProcessFormat();
 
                 AZ_TracePrintf("Script Canvas", "%s\n", text.c_str());
-                LogNotificationBus::Event(GetGraphId(), &LogNotifications::LogMessage, text);
+                LogNotificationBus::Event(GetOwningScriptCanvasId(), &LogNotifications::LogMessage, text);
 
                 AZ::EntityId assetNodeId{};
-                ScriptCanvas::RuntimeRequestBus::EventResult(assetNodeId, GetGraphId(), &ScriptCanvas::RuntimeRequests::FindAssetNodeIdByRuntimeNodeId, GetEntityId());
+                ScriptCanvas::RuntimeRequestBus::EventResult(assetNodeId, GetOwningScriptCanvasId(), &ScriptCanvas::RuntimeRequests::FindAssetNodeIdByRuntimeNodeId, GetEntityId());
 
-                SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), (AnnotateNodeSignal(CreateGraphInfo(GetGraphId(), GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, text, AZ::NamedEntityId(assetNodeId, GetNodeName()))));
+                SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), (AnnotateNodeSignal(CreateGraphInfo(GetOwningScriptCanvasId(), GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, text, AZ::NamedEntityId(assetNodeId, GetNodeName()))));
 #endif
                 SignalOutput(GetSlotId("Out"));
 

@@ -143,21 +143,6 @@ namespace AZ
             return returnClass;
         }
 
-        ////////////////////////////////////////////////////////////////
-        // [deprecated] Use AZ::Android::JNI::GetClassName instead
-        AZStd::string AndroidEnv::GetClassName(jclass classRef) const
-        {
-            return JNI::GetClassName(classRef);
-        }
-
-        ////////////////////////////////////////////////////////////////
-        // [deprecated] Use AZ::Android::JNI::GetSimpleClassName instead
-        AZStd::string AndroidEnv::GetSimpleClassName(jclass classRef) const
-        {
-            return JNI::GetSimpleClassName(classRef);
-        }
-
-
 
         // ----
         // AndroidEnv (private)

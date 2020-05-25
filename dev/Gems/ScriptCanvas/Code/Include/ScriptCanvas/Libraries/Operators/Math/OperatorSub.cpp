@@ -27,15 +27,7 @@ namespace ScriptCanvas
                 Type operator()(const Type& a, const Datum& b)
                 {
                     const Type* dataB = b.GetAs<Type>();
-
-                    if (dataB)
-                    {
-                        return a - (*dataB);
-                    }
-                    else
-                    {
-                        return a;
-                    }
+                    return a - (*dataB);
                 }
             };
 
@@ -46,20 +38,13 @@ namespace ScriptCanvas
                 {
                     const AZ::Color* dataB = rhs.GetAs<AZ::Color>();
 
-                    if (dataB)
-                    {
-                        // TODO: clamping should happen at the AZ::Color level, not here - but it does not.
-                        float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetA(), 0.f, 1.f);
-                        float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetR(), 0.f, 1.f);
-                        float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetG(), 0.f, 1.f);
-                        float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetB(), 0.f, 1.f);
+                    // TODO: clamping should happen at the AZ::Color level, not here - but it does not.
+                    float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetA(), 0.f, 1.f);
+                    float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetR(), 0.f, 1.f);
+                    float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetG(), 0.f, 1.f);
+                    float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) - AZ::GetClamp<float>(dataB->GetB(), 0.f, 1.f);
 
-                        return AZ::Color(r, g, b, a);
-                    }
-                    else
-                    {
-                        return lhs;
-                    }
+                    return AZ::Color(r, g, b, a);
                 }
             };
 
@@ -70,12 +55,7 @@ namespace ScriptCanvas
                 {
                     const AZ::Matrix3x3* dataRhs = rhs.GetAs<AZ::Matrix3x3>();
 
-                    if (dataRhs)
-                    {
-                        return AZ::Matrix3x3::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2));
-                    }
-
-                    return lhs;
+                    return AZ::Matrix3x3::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2));                    
                 }
             };
 
@@ -85,12 +65,8 @@ namespace ScriptCanvas
                 Data::Matrix4x4Type operator()(const Data::Matrix4x4Type& lhs, const Datum& rhs)
                 {
                     const AZ::Matrix4x4* dataRhs = rhs.GetAs<AZ::Matrix4x4>();
-                    if (dataRhs)
-                    {
-                        return AZ::Matrix4x4::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2), lhs.GetColumn(3) - dataRhs->GetColumn(3));
-                    }
 
-                    return lhs;
+                    return AZ::Matrix4x4::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2), lhs.GetColumn(3) - dataRhs->GetColumn(3));
                 }
             };
 

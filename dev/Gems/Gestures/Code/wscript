@@ -13,9 +13,7 @@
 def build(bld):
 
     bld.DefineGem(
-        includes    = [bld.Path('Code/CryEngine/CryCommon'),
-                       bld.Path('Code/CryEngine/CryAction')
-                      ],
+        includes    = [bld.Path('Code/CryEngine/CryCommon')],
 
         # To enable multi-touch simulation, uncomment this line.
         # defines = [ 'SIMULATE_MULTI_TOUCH' ],

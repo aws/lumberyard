@@ -18,14 +18,14 @@
 #define CRYINCLUDE_EDITOR_SCRIPTTERMDIALOG_H
 #pragma once
 
-#include "Util/BoostPythonHelpers.h"
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
 #include <QWidget>
 
 #include <QScopedPointer>
 #include <QColor>
 
-#define SCRIPT_TERM_WINDOW_NAME "Script Terminal"
+#define SCRIPT_TERM_WINDOW_NAME "Python Console"
 
 class QStringListModel;
 namespace Ui {
@@ -34,7 +34,7 @@ namespace Ui {
 
 class CScriptTermDialog
     : public QWidget
-    , public PyScript::IPyScriptListener
+    , protected AzToolsFramework::EditorPythonConsoleNotificationBus::Handler
 {
     Q_OBJECT
 public:
@@ -42,11 +42,14 @@ public:
     ~CScriptTermDialog();
 
     void AppendText(const char* pText);
-    void AppendError(const char* pText);
     static void RegisterViewClass();
 
 protected:
     bool eventFilter(QObject* obj, QEvent* e) override;
+
+    //! EditorPythonConsoleNotificationBus::Handler
+    void OnTraceMessage(AZStd::string_view message) override;
+    void OnErrorMessage(AZStd::string_view message) override;
 
 private slots:
     void OnScriptHelp();
@@ -59,9 +62,6 @@ private:
     void ExecuteAndPrint(const char* cmd);
 
     void AppendToConsole(const QString& string, const QColor& color = Qt::white);
-
-    virtual void OnStdOut(const char* pString) { AppendText(pString); }
-    virtual void OnStdErr(const char* pString) { AppendError(pString); }
 
     QScopedPointer<Ui::CScriptTermDialog> ui;
     QStringListModel* m_completionModel;

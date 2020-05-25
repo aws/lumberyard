@@ -54,6 +54,8 @@ public:
         m_pForeignData = 0;
         m_iForeignData = m_iForeignFlags = 0;
         m_bOBBThunks = 0;
+        m_iDeletionTime = 0;
+        m_iSimClass = -1;
     }
 
     virtual CPhysicalEntity* GetEntity();
@@ -113,6 +115,7 @@ public:
     int m_id : 23;
     int m_bOBBThunks : 1;
     int m_iSimClass : 8;
+    int m_iDeletionTime;
     mutable int m_lockUpdate;
 };
 

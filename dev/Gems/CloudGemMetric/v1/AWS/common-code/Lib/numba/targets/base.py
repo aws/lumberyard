@@ -5,6 +5,7 @@ import copy
 import os
 import sys
 from itertools import permutations, takewhile
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -13,9 +14,9 @@ import llvmlite.llvmpy.core as lc
 from llvmlite.llvmpy.core import Type, Constant, LLVMException
 import llvmlite.binding as ll
 
-from numba import llvmthreadsafe as llvmts
-from numba import types, utils, cgutils, typing, funcdesc, debuginfo
+from numba import types, utils, cgutils, typing, funcdesc, debuginfo, config
 from numba import _dynfunc, _helperlib
+from numba.compiler_lock import global_compiler_lock
 from numba.pythonapi import PythonAPI
 from . import arrayobj, builtins, imputils
 from .imputils import (user_function, user_generator,
@@ -106,7 +107,7 @@ class OverloadSelector(object):
 
     def _match_arglist(self, formal_args, actual_args):
         """
-        Returns True if the the signature is "matching".
+        Returns True if the signature is "matching".
         A formal signature is "matching" if the actual signature matches exactly
         or if the formal signature is a compatible generic signature.
         """
@@ -180,7 +181,7 @@ class BaseContext(object):
 
     Most objects are lowered as plain-old-data structure in the generated
     llvm.  They are passed around by reference (a pointer to the structure).
-    Only POD structure can life across function boundaries by copying the
+    Only POD structure can live across function boundaries by copying the
     data.
     """
     # True if the target requires strict alignment
@@ -196,7 +197,15 @@ class BaseContext(object):
     DIBuilder = debuginfo.DIBuilder
 
     # Bound checking
-    enable_boundcheck = False
+    @property
+    def enable_boundscheck(self):
+        if config.BOUNDSCHECK is not None:
+            return config.BOUNDSCHECK
+        return self._boundscheck
+
+    @enable_boundscheck.setter
+    def enable_boundscheck(self, value):
+        self._boundscheck = value
 
     # NRT
     enable_nrt = False
@@ -214,10 +223,13 @@ class BaseContext(object):
     allow_dynamic_globals = False
 
     # Fast math flags
-    enable_fastmath = False
+    fastmath = False
 
-    # python exceution environment
+    # python execution environment
     environment = None
+
+    # the function descriptor
+    fndesc = None
 
     def __init__(self, typing_context):
         _load_global_helpers()
@@ -238,6 +250,9 @@ class BaseContext(object):
         self.special_ops = {}
         self.cached_internal_func = {}
         self._pid = None
+        self._codelib_stack = []
+
+        self._boundscheck = False
 
         self.data_model_manager = datamodel.default_manager
 
@@ -256,8 +271,8 @@ class BaseContext(object):
         """
         # Populate built-in registry
         from . import (arraymath, enumimpl, iterators, linalg, numbers,
-                       optional, polynomial, rangeobj, slicing, smartarray,
-                       tupleobj)
+                       optional, polynomial, rangeobj, slicing, tupleobj,
+                       gdb_hook, hashing, heapq, literal)
         try:
             from . import npdatetime
         except NotImplementedError:
@@ -270,7 +285,7 @@ class BaseContext(object):
 
     def load_additional_registries(self):
         """
-        Load target-specific registries.  Can be overriden by subclasses.
+        Load target-specific registries.  Can be overridden by subclasses.
         """
 
     def mangler(self, name, types):
@@ -278,6 +293,35 @@ class BaseContext(object):
         Perform name mangling.
         """
         return funcdesc.default_mangler(name, types)
+
+    def get_env_name(self, fndesc):
+        """Get the environment name given a FunctionDescriptor.
+
+        Use this instead of the ``fndesc.env_name`` so that the target-context
+        can provide necessary mangling of the symbol to meet ABI requirements.
+        """
+        return fndesc.env_name
+
+    def declare_env_global(self, module, envname):
+        """Declare the Environment pointer as a global of the module.
+
+        The pointer is initialized to NULL.  It must be filled by the runtime
+        with the actual address of the Env before the associated function
+        can be executed.
+
+        Parameters
+        ----------
+        module :
+            The LLVM Module
+        envname : str
+            The name of the global variable.
+        """
+        if envname not in module.globals:
+            gv = llvmir.GlobalVariable(module, cgutils.voidptr_t, name=envname)
+            gv.linkage = 'common'
+            gv.initializer = cgutils.get_null_value(gv.type.pointee)
+
+        return module.globals[envname]
 
     def get_arg_packer(self, fe_args):
         return datamodel.ArgPacker(self.data_model_manager, fe_args)
@@ -301,7 +345,7 @@ class BaseContext(object):
                 raise NameError("unknown option {0!r}".format(k))
             setattr(obj, k, v)
         if obj.codegen() is not self.codegen():
-            # We can't share functions accross different codegens
+            # We can't share functions across different codegens
             obj.cached_internal_func = {}
         return obj
 
@@ -375,7 +419,7 @@ class BaseContext(object):
     def declare_function(self, module, fndesc):
         fnty = self.call_conv.get_function_type(fndesc.restype, fndesc.argtypes)
         fn = module.get_or_insert_function(fnty, name=fndesc.mangled_name)
-        self.call_conv.decorate_function(fn, fndesc.args, fndesc.argtypes)
+        self.call_conv.decorate_function(fn, fndesc.args, fndesc.argtypes, noalias=fndesc.noalias)
         if fndesc.inline:
             fn.attributes.add('alwaysinline')
         return fn
@@ -395,6 +439,16 @@ class BaseContext(object):
         stringtype = GENERIC_POINTER
         name = ".const.%s" % string
         text = cgutils.make_bytearray(string.encode("utf-8") + b"\x00")
+        gv = self.insert_unique_const(mod, name, text)
+        return Constant.bitcast(gv, stringtype)
+
+    def insert_const_bytes(self, mod, bytes, name=None):
+        """
+        Insert constant *byte* (a `bytes` object) into module *mod*.
+        """
+        stringtype = GENERIC_POINTER
+        name = ".bytes.%s" % (name or hash(bytes))
+        text = cgutils.make_bytearray(bytes)
         gv = self.insert_unique_const(mod, name, text)
         return Constant.bitcast(gv, stringtype)
 
@@ -455,7 +509,7 @@ class BaseContext(object):
             impl = self._get_constants.find((ty,))
             return impl(self, builder, ty, val)
         except NotImplementedError:
-            raise NotImplementedError("cannot lower constant of type '%s'" % (ty,))
+            raise NotImplementedError("Cannot lower constant of type '%s'" % (ty,))
 
     def get_constant(self, ty, val):
         """
@@ -478,6 +532,7 @@ class BaseContext(object):
         Return the implementation of function *fn* for signature *sig*.
         The return value is a callable with the signature (builder, args).
         """
+        assert sig is not None
         sig = sig.as_function()
         if isinstance(fn, (types.Function, types.BoundFunction,
                            types.Dispatcher)):
@@ -515,7 +570,9 @@ class BaseContext(object):
     def get_generator_impl(self, genty):
         """
         """
-        return self._generators[genty][1]
+        res = self._generators[genty][1]
+        self.add_linking_libs(getattr(res, 'libs', ()))
+        return res
 
     def get_bound_function(self, builder, obj, ty):
         assert self.get_value_type(ty) == obj.type
@@ -620,14 +677,14 @@ class BaseContext(object):
 
     def pair_first(self, builder, val, ty):
         """
-        Extract the first element of a heterogenous pair.
+        Extract the first element of a heterogeneous pair.
         """
         pair = self.make_helper(builder, ty, val)
         return pair.first
 
     def pair_second(self, builder, val, ty):
         """
-        Extract the second element of a heterogenous pair.
+        Extract the second element of a heterogeneous pair.
         """
         pair = self.make_helper(builder, ty, val)
         return pair.second
@@ -659,8 +716,11 @@ class BaseContext(object):
         assert ty is not None
         cav = self.cast(builder, av, at, ty)
         cbv = self.cast(builder, bv, bt, ty)
-        cmpsig = typing.signature(types.boolean, ty, ty)
-        cmpfunc = self.get_function(key, cmpsig)
+        fnty = self.typing_context.resolve_value_type(key)
+        # the sig is homogeneous in the unified casted type
+        cmpsig = fnty.get_call_type(self.typing_context, (ty, ty), {})
+        cmpfunc = self.get_function(fnty, cmpsig)
+        self.add_linking_libs(getattr(cmpfunc, 'libs', ()))
         return cmpfunc(builder, (cav, cbv))
 
     def make_optional_none(self, builder, valtype):
@@ -678,7 +738,9 @@ class BaseContext(object):
         """
         Return the truth value of a value of the given Numba type.
         """
-        impl = self.get_function(bool, typing.signature(types.boolean, typ))
+        fnty = self.typing_context.resolve_value_type(bool)
+        sig = fnty.get_call_type(self.typing_context, (typ,), {})
+        impl = self.get_function(fnty, sig)
         return impl(builder, (val,))
 
     def get_c_value(self, builder, typ, name, dllimport=False):
@@ -744,7 +806,8 @@ class BaseContext(object):
     def get_dummy_type(self):
         return GENERIC_POINTER
 
-    def compile_subroutine_no_cache(self, builder, impl, sig, locals={}, flags=None):
+    def _compile_subroutine_no_cache(self, builder, impl, sig, locals={},
+                                     flags=None):
         """
         Invoke the compiler to compile a function to be used inside a
         nopython function, but without generating code to call that
@@ -755,48 +818,59 @@ class BaseContext(object):
         # Compile
         from numba import compiler
 
-        codegen = self.codegen()
-        library = codegen.create_library(impl.__name__)
-        if flags is None:
-            flags = compiler.Flags()
-        flags.set('no_compile')
-        flags.set('no_cpython_wrapper')
-        cres = compiler.compile_internal(self.typing_context, self,
-                                         library,
-                                         impl, sig.args,
-                                         sig.return_type, flags,
-                                         locals=locals)
+        with global_compiler_lock:
+            codegen = self.codegen()
+            library = codegen.create_library(impl.__name__)
+            if flags is None:
+                flags = compiler.Flags()
+            flags.set('no_compile')
+            flags.set('no_cpython_wrapper')
+            cres = compiler.compile_internal(self.typing_context, self,
+                                            library,
+                                            impl, sig.args,
+                                            sig.return_type, flags,
+                                            locals=locals)
 
-        # Allow inlining the function inside callers.
-        codegen.add_linking_library(cres.library)
-        return cres
+            # Allow inlining the function inside callers.
+            self.active_code_library.add_linking_library(cres.library)
+            return cres
 
-    def compile_subroutine(self, builder, impl, sig, locals={}):
+    def compile_subroutine(self, builder, impl, sig, locals={}, flags=None,
+                           caching=True):
         """
         Compile the function *impl* for the given *sig* (in nopython mode).
-        Return a placeholder object that's callable from another Numba
-        function.
+        Return an instance of CompileResult.
+
+        If *caching* evaluates True, the function keeps the compiled function
+        for reuse in *.cached_internal_func*.
         """
         cache_key = (impl.__code__, sig, type(self.error_model))
-        if impl.__closure__:
-            # XXX This obviously won't work if a cell's value is
-            # unhashable.
-            cache_key += tuple(c.cell_contents for c in impl.__closure__)
-        ty = self.cached_internal_func.get(cache_key)
-        if ty is None:
-            cres = self.compile_subroutine_no_cache(builder, impl, sig,
-                                                    locals=locals)
-            ty = types.NumbaFunction(cres.fndesc, sig)
-            self.cached_internal_func[cache_key] = ty
-        return ty
+        if not caching:
+            cached = None
+        else:
+            if impl.__closure__:
+                # XXX This obviously won't work if a cell's value is
+                # unhashable.
+                cache_key += tuple(c.cell_contents for c in impl.__closure__)
+            cached = self.cached_internal_func.get(cache_key)
+        if cached is None:
+            cres = self._compile_subroutine_no_cache(builder, impl, sig,
+                                                     locals=locals,
+                                                     flags=flags)
+            self.cached_internal_func[cache_key] = cres
+
+        cres = self.cached_internal_func[cache_key]
+        # Allow inlining the function inside callers.
+        self.active_code_library.add_linking_library(cres.library)
+        return cres
 
     def compile_internal(self, builder, impl, sig, args, locals={}):
         """
         Like compile_subroutine(), but also call the function with the given
         *args*.
         """
-        ty = self.compile_subroutine(builder, impl, sig, locals)
-        return self.call_internal(builder, ty.fndesc, sig, args)
+        cres = self.compile_subroutine(builder, impl, sig, locals)
+        return self.call_internal(builder, cres.fndesc, sig, args)
 
     def call_internal(self, builder, fndesc, sig, args):
         """
@@ -811,6 +885,8 @@ class BaseContext(object):
 
         with cgutils.if_unlikely(builder, status.is_error):
             self.call_conv.return_status_propagate(builder, status)
+
+        res = imputils.fix_returning_optional(self, builder, sig, status, res)
         return res
 
     def call_unresolved(self, builder, name, sig, args):
@@ -853,6 +929,8 @@ class BaseContext(object):
                                                    sig.args, args)
         with cgutils.if_unlikely(builder, status.is_error):
             self.call_conv.return_status_propagate(builder, status)
+
+        res = imputils.fix_returning_optional(self, builder, sig, status, res)
         return res
 
     def get_executable(self, func, fndesc):
@@ -997,7 +1075,6 @@ class BaseContext(object):
         gv.initializer = addr
         return builder.load(gv)
 
-    @llvmts.lock_llvm
     def get_abi_sizeof(self, ty):
         """
         Get the ABI size of LLVM type *ty*.
@@ -1028,6 +1105,28 @@ class BaseContext(object):
         """
         return lc.Module(name)
 
+    @property
+    def active_code_library(self):
+        """Get the active code library
+        """
+        return self._codelib_stack[-1]
+
+    @contextmanager
+    def push_code_library(self, lib):
+        """Push the active code library for the context
+        """
+        self._codelib_stack.append(lib)
+        try:
+            yield
+        finally:
+            self._codelib_stack.pop()
+
+    def add_linking_libs(self, libs):
+        """Add iterable of linking libraries to the *active_code_library*.
+        """
+        colib = self.active_code_library
+        for lib in libs:
+            colib.add_linking_library(lib)
 
 
 class _wrap_impl(object):
@@ -1038,15 +1137,59 @@ class _wrap_impl(object):
     """
 
     def __init__(self, imp, context, sig):
-        self._imp = imp
+        self._callable = _wrap_missing_loc(imp)
+        self._imp = self._callable()
         self._context = context
         self._sig = sig
 
-    def __call__(self, builder, args):
-        return self._imp(self._context, builder, self._sig, args)
+    def __call__(self, builder, args, loc=None):
+        res = self._imp(self._context, builder, self._sig, args, loc=loc)
+        self._context.add_linking_libs(getattr(self, 'libs', ()))
+        return res
 
     def __getattr__(self, item):
         return getattr(self._imp, item)
 
     def __repr__(self):
-        return "<wrapped %s>" % self._imp
+        return "<wrapped %s>" % repr(self._callable)
+
+def _has_loc(fn):
+    """Does function *fn* take ``loc`` argument?
+    """
+    sig = utils.pysignature(fn)
+    return 'loc' in sig.parameters
+
+
+class _wrap_missing_loc(object):
+
+    def __init__(self, fn):
+        self.func = fn # store this to help with debug
+
+    def __call__(self):
+        """Wrap function for missing ``loc`` keyword argument.
+        Otherwise, return the original *fn*.
+        """
+        fn = self.func
+        if not _has_loc(fn):
+            def wrapper(*args, **kwargs):
+                kwargs.pop('loc')     # drop unused loc
+                return fn(*args, **kwargs)
+
+            # Copy the following attributes from the wrapped.
+            # Following similar implementation as functools.wraps but
+            # ignore attributes if not available (i.e fix py2.7)
+            attrs = '__name__', 'libs'
+            for attr in attrs:
+                try:
+                    val = getattr(fn, attr)
+                except AttributeError:
+                    pass
+                else:
+                    setattr(wrapper, attr, val)
+
+            return wrapper
+        else:
+            return fn
+
+    def __repr__(self):
+        return "<wrapped %s>" % self.func

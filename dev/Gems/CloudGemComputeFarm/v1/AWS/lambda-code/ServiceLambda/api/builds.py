@@ -6,6 +6,7 @@ import json
 import CloudCanvas
 import service
 from cgf_utils import custom_resource_utils
+from six import iteritems
 
 # import errors
 #
@@ -27,7 +28,7 @@ def _process_data(d):
     if type == 'L':
         result = [_process_data(item) for item in data]
     elif type == 'M':
-        result = {k: _process_data(v) for k, v in data.iteritems()}
+        result = {k: _process_data(v) for k, v in iteritems(data)}
     elif type != 'NULL':
         result = data
 

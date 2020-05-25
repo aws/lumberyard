@@ -15,7 +15,9 @@
 #include <Processing/ImageObjectImpl.h>
 #include <Processing/PixelFormatInfo.h>
 #include <Converters/PixelOperation.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/string/conversions.h>
+#include <Processing/ImageFlags.h>
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/GenericStreams.h>
@@ -382,7 +384,7 @@ namespace ImageProcessing
             AZ::IO::SizeType startPos = fileSaveStream.GetCurPos();
             bOk = alphaImage->SaveImage(fileSaveStream);
             AZ::IO::SizeType endPos = fileSaveStream.GetCurPos();
-            size = endPos - startPos;
+            size = aznumeric_cast<AZ::u32>(endPos - startPos);
 
             //move back to beginning of chunk and write chunk size then move back to end
             fileSaveStream.Seek(startPos - sizeBytes, AZ::IO::GenericStream::ST_SEEK_BEGIN);

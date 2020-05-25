@@ -20,8 +20,6 @@ import re
 ########################################################################################################################
 BINTEMP_FOLDER = 'BinTemp'             # Name of the of working build folder that will be created at the root folder
 WAF_FILE_GLOB_WARNING_THRESHOLD = 1000 # Define a warning threshold in number file files that were hit during a waf_file
-SOLUTION_FOLDER = 'Solutions'
-SOLUTION_NAME = 'Lumberyard'
 CACHE_FOLDER = 'Cache'
 
 
@@ -100,10 +98,10 @@ SCRIPT_PATH = os.path.dirname(__file__)
 with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) as ENGINE_FILE:
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
-LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
+LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0')
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 1051473
-LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
+LUMBERYARD_BUILD = 1070056
+LUMBERYARD_ENGINE_PATH = os.path.abspath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.'))
 
 # validate the Lumberyard version string above
 VERSION_NUMBER_PATTERN = re.compile("^(\.?\d+)*$")
@@ -115,9 +113,8 @@ BINTEMP_CACHE_TOOLS = '__cache_tools_'
 BINTEMP_MODULE_DEF = 'module_def'
 
 ########################################################################################################################
-# Sub folder within the root folder to recurse into for the WAF build.
+# Additional paths to search for the WAF build. Can use alias' such as @ENGINE@ and @PROJECT@ for the engine and project
+# roots, respectively
 ########################################################################################################################
-SUBFOLDERS = [
-    'Code',
-    'Engine',
+ADDITIONAL_SEARCH_PATHS = [
 ]

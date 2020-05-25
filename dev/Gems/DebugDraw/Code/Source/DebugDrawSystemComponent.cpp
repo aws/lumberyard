@@ -365,12 +365,7 @@ namespace DebugDraw
         // Draw Obb elements and remove any that are expired
         for (auto& obbElement : m_activeObbs)
         {
-            AZ::Obb transformedObb;
-            transformedObb = transformedObb.CreateFromPositionAndAxes(AZ::Vector3::CreateZero(),
-                AZ::Vector3(1, 0, 0), 1.0f,
-                AZ::Vector3(0, 1, 0), 1.0f,
-                AZ::Vector3(0, 0, 1), 1.0f
-                );
+            AZ::Obb transformedObb = obbElement.m_obb;
 
             // Entity-attached Obbs get positioned and rotated according to entity transform
             if (obbElement.m_targetEntityId.IsValid())

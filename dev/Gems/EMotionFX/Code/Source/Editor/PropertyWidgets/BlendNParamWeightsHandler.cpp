@@ -121,7 +121,7 @@ namespace EMotionFX
 
     float BlendNParamWeightElementWidget::GetWeightRange() const
     {
-        return m_weightField->value();
+        return aznumeric_cast<float>(m_weightField->value());
     }
 
     void BlendNParamWeightElementWidget::UpdateGui()

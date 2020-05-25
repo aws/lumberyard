@@ -83,7 +83,6 @@
             "IGameRef.h",
             "IGameStartup.h",
             "IGameStatistics.h",
-            "IGameTokens.h",
             "IGameVolumes.h",
             "IGem.h",
             "IGemManager.h",
@@ -91,7 +90,6 @@
             "IGeomCache.h",
             "IGoalPipe.h",
             "IGPUParticleEngine.h",
-            "IHardwareMouse.h",
             "IImage.h",
             "IImageHandler.h",
             "IIndexedMesh.h",
@@ -177,6 +175,7 @@
             "ITimer.h",
             "IValidator.h",
             "IVertexAnimation.h",
+            "IVideoRenderer.h",
             "IViewSystem.h",
             "IVisionMap.h",
             "IVisualLog.h",
@@ -204,7 +203,8 @@
             "ColorGradingBus.h",
             "HeightmapUpdateNotificationBus.h",
             "RTTBus.h",
-            "IVegetationPoolManager.h" 
+            "IVegetationPoolManager.h",
+            "IObjManager.h"
         ],
         "Interfaces_h/AI Interfaces":
         [
@@ -762,7 +762,6 @@
             "LyShine/Bus/UiTooltipDisplayBus.h",
             "LyShine/Bus/UiTransform2dBus.h",
             "LyShine/Bus/UiTransformBus.h",
-            "LyShine/Bus/UiUpdateBus.h",
             "LyShine/Bus/UiVisualBus.h"
         ],
         "LyShine/Bus/Sprite":
@@ -813,6 +812,11 @@
             "Terrain/Bus/TerrainRendererBus.h",
             "Terrain/Bus/HeightmapDataBus.h",
             "Terrain/Bus/TerrainProviderBus.h"
+        ],
+
+        "Terrain":
+        [
+            "Terrain/ITerrainNode.h"
         ],
 
         "Vegetation":

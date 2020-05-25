@@ -34,7 +34,7 @@ namespace GameLift
 
         bool IsGameLiftServer() const override;
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         GridMate::GameLiftClientService* StartClientService(const GridMate::GameLiftClientServiceDesc& desc) override;
         void StopClientService() override;
         GridMate::GameLiftClientService* GetClientService() override;
@@ -42,7 +42,7 @@ namespace GameLift
         GridMate::GameLiftClientService* m_clientService;
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
         GridMate::GameLiftServerService* StartServerService(const GridMate::GameLiftServerServiceDesc& desc) override;
         void StopServerService() override;
         GridMate::GameLiftServerService* GetServerService() override;

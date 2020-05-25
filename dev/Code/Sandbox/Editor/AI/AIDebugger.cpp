@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include <cmath>
 #include <cstdlib>
-#include <IAIAction.h>
 #include <IAISystem.h>
 #include <IAgent.h>
 

@@ -40,11 +40,15 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // SourceControlCommandBus::Handler overrides
         void GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void GetBulkFileInfo(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback) override;
         void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& respCallback) override;
+        void RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback) override;
         void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestDeleteBulk(const char* fullFilePath, const SourceControlResponseCallbackBulk& respCallback) override;
         void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) override;
+        void RequestRenameBulk(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallbackBulk& respCallback) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

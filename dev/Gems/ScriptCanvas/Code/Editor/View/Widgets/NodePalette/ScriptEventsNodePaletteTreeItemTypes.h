@@ -52,7 +52,7 @@ namespace ScriptCanvasEditor
 
     protected:
 
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& scriptCanvasGraphId) const;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const;
 
     private:
         
@@ -71,7 +71,7 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(ScriptEventsPaletteTreeItem, AZ::SystemAllocator, 0);
 
         ScriptEventsPaletteTreeItem(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset);
-        ~ScriptEventsPaletteTreeItem() = default;
+        ~ScriptEventsPaletteTreeItem() override;
 
         const ScriptEvents::ScriptEvent& GetBusDefinition() const;
         AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> GetAsset() const { return m_asset; }
@@ -168,7 +168,7 @@ namespace ScriptCanvasEditor
 
         const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> GetAsset();
 
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
 

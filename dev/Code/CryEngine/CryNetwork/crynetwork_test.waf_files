@@ -3,6 +3,7 @@
     {
         "Tests":
         [
+            "Tests/GridMateAspectProfilesTest.cpp",
             "Tests/test_Main.cpp"
         ]
     }

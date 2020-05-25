@@ -2,7 +2,7 @@
     "name": "cityhash",
     "source": "@3P:cityhash@",
     "description": "CityHash for 64 bit hash",
-    "includes": [
+    "system_includes": [
         "src"
     ],
     "defines": [],

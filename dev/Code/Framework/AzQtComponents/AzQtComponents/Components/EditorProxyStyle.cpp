@@ -287,7 +287,7 @@ namespace AzQtComponents
         // Doing it in C so the selection frame can have a size depending on the icon size
         // which can be variable
         QPen pen(g_activeButtonBorderColor);
-        const int penWidth = 1.0;
+        const int penWidth = 1;
         painter->save();
         pen.setWidth(penWidth);
         pen.setCosmetic(true);

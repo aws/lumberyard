@@ -24,36 +24,19 @@
 #include <AzTest/AzTest.h>
 
 #include <Tests/UI/UIFixture.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 
 namespace EMotionFX
 {
     using SimulatedObjectModelTestsFixture = UIFixture;
     TEST_F(SimulatedObjectModelTestsFixture, CanUndoAddSimulatedObjectAndSimulatedJointWithChildren)
     {
-        EMotionFX::Actor* actor = Actor::Create("simulatedObjectModelTestActor");
-        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
-        EMotionFX::Node* root = Node::Create("root", skeleton);
-        root->SetNodeIndex(0);
-        root->SetParentIndex(MCORE_INVALIDINDEX32);
-        skeleton->AddNode(root);
-
-        for (int i = 1; i < 3; ++i)
-        {
-            EMotionFX::Node* node = Node::Create(AZStd::string::format("child%d", i).c_str(), skeleton);
-            node->SetNodeIndex(i);
-            node->SetParentIndex(i-1);
-            skeleton->AddNode(node);
-            skeleton->GetNode(node->GetParentIndex())->AddChild(i);
-        }
-
-        actor->SetNumNodes(3);
-        actor->ResizeTransformData();
-        actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
+        AutoRegisteredActor actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(3, "simulatedObjectModelTestActor");
 
         EMotionFX::SimulatedObjectWidget* simulatedObjectWidget = static_cast<EMotionFX::SimulatedObjectWidget*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SimulatedObjectWidget::CLASS_ID));
         ASSERT_TRUE(simulatedObjectWidget) << "Simulated Object plugin not loaded";
-        simulatedObjectWidget->ActorSelectionChanged(actor);
+        simulatedObjectWidget->ActorSelectionChanged(actor.get());
 
         SimulatedObjectModel* model = simulatedObjectWidget->GetSimulatedObjectModel();
 
@@ -87,7 +70,6 @@ namespace EMotionFX
         ASSERT_TRUE(CommandSystem::GetCommandManager()->Undo(result)) << result.c_str();
         EXPECT_EQ(model->rowCount(), 0) << "Failed to remove the first simulated object from the model";
 
-        actor->Destroy();
         model->SetActor(nullptr); // Reset the model as otherwise when we destroy the plugin it will still try to use the actor that isn't valid anymore.
     }
 } // namespace EMotionFX

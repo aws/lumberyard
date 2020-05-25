@@ -15,6 +15,7 @@ def build(bld):
             vs_filter       = 'Gems/ScriptCanvas',
             win_features    = ['crcfix'],
             autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            uselib          = ['AWS_CPP_SDK_CORE'],
             features        = ['qt5','az_code_gen'],
             configurations  = ['profile', 'debug', 'debug_test', 'profile_test'],
             includes        = [ '.', '..', 'Source'],

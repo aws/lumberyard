@@ -506,13 +506,13 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         // Check to help identify common mistakes
         /// @cond EXCLUDE_DOCS
-        AZ_STATIC_ASSERT((HasId || AZStd::is_same<BusIdType, NullBusId>::value),
+        static_assert((HasId || AZStd::is_same<BusIdType, NullBusId>::value),
             "When you use EBusAddressPolicy::Single there is no need to define BusIdType!");
-        AZ_STATIC_ASSERT((!HasId || !AZStd::is_same<BusIdType, NullBusId>::value),
+        static_assert((!HasId || !AZStd::is_same<BusIdType, NullBusId>::value),
             "You must provide a valid BusIdType when using EBusAddressPolicy::ById or EBusAddressPolicy::ByIdAndOrdered! (ex. using BusIdType = int;");
-        AZ_STATIC_ASSERT((BusTraits::AddressPolicy == EBusAddressPolicy::ByIdAndOrdered || AZStd::is_same<BusIdOrderCompare, NullBusIdCompare>::value),
+        static_assert((BusTraits::AddressPolicy == EBusAddressPolicy::ByIdAndOrdered || AZStd::is_same<BusIdOrderCompare, NullBusIdCompare>::value),
             "When you use EBusAddressPolicy::Single or EBusAddressPolicy::ById there is no need to define BusIdOrderCompare!");
-        AZ_STATIC_ASSERT((BusTraits::AddressPolicy != EBusAddressPolicy::ByIdAndOrdered || !AZStd::is_same<BusIdOrderCompare, NullBusIdCompare>::value),
+        static_assert((BusTraits::AddressPolicy != EBusAddressPolicy::ByIdAndOrdered || !AZStd::is_same<BusIdOrderCompare, NullBusIdCompare>::value),
             "When you use EBusAddressPolicy::ByIdAndOrdered you must define BusIdOrderCompare (ex. using BusIdOrderCompare = AZStd::less<BusIdType>)");
         /// @endcond
         /// //////////////////////////////////////////////////////////////////////////
@@ -986,6 +986,10 @@ namespace AZ
         context.m_buses.Connect(handler, id);
 
         BusPtr ptr;
+        if constexpr (EBus::HasId)
+        {
+            ptr = handler.m_holder;
+        }
         CallstackEntry entry(&context, &id);
         ConnectionPolicy::Connect(ptr, context, handler, id);
     }
@@ -1020,12 +1024,17 @@ namespace AZ
             callstack->OnRemoveHandler(handler);
         }
 
+        BusPtr ptr;
+        if constexpr (EBus::HasId)
+        {
+            ptr = handler.m_holder;
+        }
+        ConnectionPolicy::Disconnect(context, handler, ptr);
+
+        CallstackEntry entry(&context, nullptr);
+
         // Do the actual disconnection
         context.m_buses.Disconnect(handler);
-
-        BusPtr ptr;
-        CallstackEntry entry(&context, nullptr);
-        ConnectionPolicy::Disconnect(context, handler, ptr);
 
         if (callstack)
         {
@@ -1349,8 +1358,8 @@ namespace AZ
         template <class EBus, class TargetEBus, class BusIdType>
         struct EBusRouterQueueEventForwarder
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<BusIdType, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
-            AZ_STATIC_ASSERT((AZStd::is_same<BusIdType, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+            static_assert((AZStd::is_same<BusIdType, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+            static_assert((AZStd::is_same<BusIdType, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
 
             template<class Event, class... Args>
             static void ForwardEvent(Event event, Args&&... args);
@@ -1442,8 +1451,8 @@ namespace AZ
         template <class EBus, class TargetEBus>
         struct EBusRouterQueueEventForwarder<EBus, TargetEBus, NullBusId>
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
-            AZ_STATIC_ASSERT((AZStd::is_same<NullBusId, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+            static_assert((AZStd::is_same<NullBusId, typename EBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
+            static_assert((AZStd::is_same<NullBusId, typename TargetEBus::BusIdType>::value), "Routers may only route between buses with the same id/traits");
 
             template<class Event, class... Args>
             static void ForwardEvent(Event event, Args&&... args);

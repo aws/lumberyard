@@ -153,7 +153,7 @@ namespace GraphCanvas
         if (m_configuration.m_enableGradient)
         {
             QColor fullColor = m_configuration.m_drawColor;
-            fullColor.setAlpha(255 - (255 * percent));
+            fullColor.setAlpha(aznumeric_cast<int>(255 - (255 * percent)));
 
             QColor transparentColor(0,0,0,0);
 
@@ -215,7 +215,7 @@ namespace GraphCanvas
             painterPath.closeSubpath();
 
             QColor drawColor = m_configuration.m_drawColor;
-            drawColor.setAlpha(255 - 192 * percent);
+            drawColor.setAlpha(aznumeric_cast<int>(255 - 192 * percent));
             painter->setBrush(drawColor);
 
             painter->drawPath(painterPath);

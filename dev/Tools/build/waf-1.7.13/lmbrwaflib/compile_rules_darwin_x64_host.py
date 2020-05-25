@@ -8,13 +8,21 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib.Configure import conf, Logs
+
+
+# System Imports
 import os
 import subprocess
+import sys
+
+# waflib imports
+from waflib.Configure import conf, Logs
+
 # being a _host file, this means that these settings apply to any build at all that is
 # being done from this kind of host
 
 PLATFORM = 'darwin_x64'
+
 
 @conf
 def load_darwin_x64_host_settings(conf):
@@ -29,25 +37,32 @@ def load_darwin_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('/System/Library/Frameworks/Python.framework/Versions/2.7'),
-                                        conf.Path('/System/Library/Frameworks/Python.framework/Versions/2.7/lib'),
-                                        conf.Path('/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7'),
-                                        conf.Path('/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/mac'),
+                                        conf.Path('Tools/Python/3.7.5/mac/lib'),
+                                        conf.Path('Tools/Python/3.7.5/mac/lib/python3.7'),
+                                        conf.Path('Tools/Python/3.7.5/mac/lib/python3.7/lib-dynload'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.ThirdPartyPath('markupsafe', 'x64'),
-                                              conf.ThirdPartyPath('jinja2', 'x64')]
-
-    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('/System/Library/Frameworks/Python.framework/Versions/2.7')
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('/System/Library/Frameworks/mac/Python.framework/Versions/2.7')
+                                              conf.ThirdPartyPath('jinja2', 'x64'),
+                                              conf.Path('Tools/Python/3.7.5/mac'),
+                                              conf.Path('Tools/Python/3.7.5/mac/lib'),
+                                              conf.Path('Tools/Python/3.7.5/mac/lib/python3.7'),
+                                              conf.Path('Tools/Python/3.7.5/mac/lib/python3.7/lib-dynload')]
+                                              
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/mac'
+    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/mac')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
-
-    v['EMBEDDED_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.13/mac/Python.framework/Versions/2.7')
-    v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'include/python2.7')
+    
+    v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']
+    # Set include path to the pymalloc build
+    v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'include/python3.7m')
     v['EMBEDDED_PYTHON_LIBPATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib')
-    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib/libpython2.7.dylib')
+    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'lib/libpython3.7m.dylib')
 
-    clang_search_dirs = subprocess.check_output(['clang++', '-print-search-dirs']).strip().split('\n')
+	
+    clang_search_dirs = subprocess.check_output(['clang++', '-print-search-dirs']).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip().split('\n')
     clang_search_paths = {}
     for search_dir in clang_search_dirs:
         (type, dirs) = search_dir.split(': =')

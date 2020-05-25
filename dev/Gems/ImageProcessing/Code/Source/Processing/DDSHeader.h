@@ -170,7 +170,7 @@ namespace ImageProcessing
 
         inline const bool IsValid() const { return sizeof(*this) == dwSize; }
         inline const bool IsDX10Ext() const { return ddspf.dwFourCC == FOURCC_DX10; }
-        inline const uint32 GetMipCount() const { return AZStd::max(1u, (uint32)dwMipMapCount); }
+        inline const AZ::u32 GetMipCount() const { return AZStd::GetMax(1u, (AZ::u32)dwMipMapCount); }
 
         inline const size_t GetFullHeaderSize() const
         {

@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/base.h>
 
+#include <AzFramework/AzFramework_Traits_Platform.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <ISystem.h>
@@ -74,7 +75,7 @@ namespace CloudCanvasCommon
                 ec->Class<CloudCanvasCommonSystemComponent>(COMPONENT_DISPLAY_NAME, COMPONENT_DESCRIPTION)
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, COMPONENT_CATEGORY)
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC(COMPONENT_CATEGORY))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &CloudCanvasCommonSystemComponent::m_threadCount,
                             "Thread Count", "Number of threads dedicated to executing AWS API jobs. A value of 0 means that AWS API jobs execute on the global job thread pool.")
@@ -309,6 +310,7 @@ namespace CloudCanvasCommon
     int CloudCanvasCommonSystemComponent::GetEndpointHttpResponseCode(const AZStd::string& endPoint)
     {        
         auto config = Aws::Client::ClientConfiguration();
+        config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
         AZStd::string caFile;
         CloudCanvas::RequestRootCAFileResult requestResult;
         EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);

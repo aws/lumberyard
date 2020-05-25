@@ -128,8 +128,6 @@ namespace AssetProcessor
             }
         }
 
-        CheckCompileAssetsGroup(rcJob->GetElementID(), rcJob->GetState());
-
         if (rcJob->IsCritical())
         {
             int criticalJobsCount = m_pendingCriticalJobsPerPlatform[platform.toLower()] - 1;
@@ -311,7 +309,7 @@ namespace AssetProcessor
         }
     }
 
-    void RCController::OnRequestCompileGroup(AssetProcessor::NetworkRequestID groupID, QString platform, QString searchTerm, bool isStatusRequest)
+    void RCController::OnRequestCompileGroup(AssetProcessor::NetworkRequestID groupID, QString platform, QString searchTerm, AZ::Data::AssetId assetId, bool isStatusRequest)
     {
         // someone has asked for a compile group to be created that conforms to that search term.
         // the goal here is to use a heuristic to find any assets that match the search term and place them in a new group
@@ -320,15 +318,27 @@ namespace AssetProcessor
         // lets do some minimal processing on the search term
         AssetProcessor::JobIdEscalationList escalationList;
         QSet<AssetProcessor::QueueElementID> results;
-        m_RCJobListModel.PerformHeuristicSearch(AssetUtilities::NormalizeAndRemoveAlias(searchTerm), platform, results, escalationList, isStatusRequest);
+
+        if (assetId.IsValid())
+        {
+            m_RCJobListModel.PerformUUIDSearch(assetId.m_guid, platform, results, escalationList, isStatusRequest);
+        }
+        else
+        {
+            m_RCJobListModel.PerformHeuristicSearch(AssetUtilities::NormalizeAndRemoveAlias(searchTerm), platform, results, escalationList, isStatusRequest);
+        }
 
         if (results.isEmpty())
         {
             // nothing found
             Q_EMIT CompileGroupCreated(groupID, AzFramework::AssetSystem::AssetStatus_Unknown);
+
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "OnRequestCompileGroup:  %s - %s requested, but no matching source assets found.\n", searchTerm.toUtf8().constData(), assetId.ToString<AZStd::string>().c_str());
         }
         else
         {
+            // it is not necessary to denote the search terms or list of results here because
+            // PerformHeursticSearch already prints out the results.
             m_RCQueueSortModel.OnEscalateJobs(escalationList);
             
             m_activeCompileGroups.push_back(AssetCompileGroup());
@@ -339,25 +349,64 @@ namespace AssetProcessor
         }
     }
 
-    void RCController::CheckCompileAssetsGroup(const AssetProcessor::QueueElementID& queuedElement, RCJob::JobState state)
+    void RCController::OnEscalateJobsBySearchTerm(QString platform, QString searchTerm)
+    {
+        AssetProcessor::JobIdEscalationList escalationList;
+        QSet<AssetProcessor::QueueElementID> results;
+        m_RCJobListModel.PerformHeuristicSearch(AssetUtilities::NormalizeAndRemoveAlias(searchTerm), platform, results, escalationList, true);
+
+        if (!results.isEmpty())
+        {
+            // it is not necessary to denote the search terms or list of results here because
+            // PerformHeursticSearch already prints out the results.
+            m_RCQueueSortModel.OnEscalateJobs(escalationList);
+        }
+        // do not print a warning out when this fails, its fine for things to escalate jobs as a matter of course just to "make sure" they are escalated
+        // and its fine if none are in the build queue.
+    }
+
+    void RCController::OnEscalateJobsBySourceUUID(QString platform, AZ::Uuid sourceUuid)
+    {
+        AssetProcessor::JobIdEscalationList escalationList;
+        QSet<AssetProcessor::QueueElementID> results;
+        m_RCJobListModel.PerformUUIDSearch(sourceUuid, platform, results, escalationList, true);
+
+        if (!results.isEmpty())
+        {
+            for (const AssetProcessor::QueueElementID& result : results)
+            {
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "OnEscalateJobsBySourceUUID:  %s --> %s\n", sourceUuid.ToString<AZStd::string>().c_str(), result.GetInputAssetName().toUtf8().constData());
+            }
+            m_RCQueueSortModel.OnEscalateJobs(escalationList);
+        }
+        // do not print a warning out when this fails, its fine for things to escalate jobs as a matter of course just to "make sure" they are escalated
+        // and its fine if none are in the build queue.
+    }
+
+    void RCController::OnJobComplete(JobEntry completeEntry, AzToolsFramework::AssetSystem::JobStatus state)
     {
         if (m_activeCompileGroups.empty())
         {
             return;
         }
 
+        QueueElementID jobQueueId(completeEntry.m_databaseSourceName, completeEntry.m_platformInfo.m_identifier.c_str(), completeEntry.m_jobKey);
+
+        // only the 'completed' status means success:
+        bool statusSucceeded = (state == AzToolsFramework::AssetSystem::JobStatus::Completed);
+
         // start at the end so that we can actually erase the compile groups and not skip any:
         for (int groupIdx = m_activeCompileGroups.size() - 1; groupIdx >= 0; --groupIdx)
         {
             AssetCompileGroup& compileGroup = m_activeCompileGroups[groupIdx];
-            auto it = compileGroup.m_groupMembers.find(queuedElement);
+            auto it = compileGroup.m_groupMembers.find(jobQueueId);
             if (it != compileGroup.m_groupMembers.end())
             {
                 compileGroup.m_groupMembers.erase(it);
-                if ((compileGroup.m_groupMembers.isEmpty()) || (state != RCJob::completed))
+                if ((compileGroup.m_groupMembers.isEmpty()) || (!statusSucceeded))
                 {
                     // if we get here, we're either empty (and succeeded) or we failed one and have now failed
-                    Q_EMIT CompileGroupFinished(compileGroup.m_requestID, state != RCJob::completed ? AzFramework::AssetSystem::AssetStatus_Failed : AzFramework::AssetSystem::AssetStatus_Compiled);
+                    Q_EMIT CompileGroupFinished(compileGroup.m_requestID, statusSucceeded ? AzFramework::AssetSystem::AssetStatus_Compiled: AzFramework::AssetSystem::AssetStatus_Failed);
                     m_activeCompileGroups.removeAt(groupIdx);
                 }
             }
@@ -378,7 +427,7 @@ namespace AssetProcessor
         }
     }
 
-    void RCController::OnFinishedProcessingJob(JobEntry jobEntry)
+    void RCController::OnAddedToCatalog(JobEntry jobEntry)
     {
         AssetProcessor::QueueElementID checkFile(jobEntry.m_databaseSourceName, jobEntry.m_platformInfo.m_identifier.c_str(), jobEntry.m_jobKey);
 

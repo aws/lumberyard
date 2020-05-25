@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from sqs import Sqs
 from aws_lambda import Lambda
 from threading import Thread
@@ -36,15 +48,15 @@ def main(event, lambdacontext):
     queues = sqs.get_queues()    
     for queue_url in queues:                
         payload = { c.KEY_SQS_QUEUE_URL: queue_url,
-                    "context": context}        
-        print "Starting {} with queue url '{}'".format("lambda" if is_lambda else "thread", queue_url)        
+                    "context": context}
+        print("Starting {} with queue url '{}'".format("lambda" if is_lambda else "thread", queue_url))
         if is_lambda:            
             invoke(context, awslambda, payload)
         else:       
             payload[c.ENV_STACK_ID]= event['StackId']              
-            consumer.main(payload, type('obj', (object,), {'function_name' : context[c.KEY_LAMBDA_FUNCTION]}))             
-        
-    print "{} {} lambdas have started".format(len(queues), context[c.KEY_LAMBDA_FUNCTION] )
+            consumer.main(payload, type('obj', (object,), {'function_name' : context[c.KEY_LAMBDA_FUNCTION]}))
+
+    print("{} {} lambdas have started".format(len(queues), context[c.KEY_LAMBDA_FUNCTION]))
     return custom_resource_response.success_response({}, "*")
 
 def invoke(context, awslambda, payload):    

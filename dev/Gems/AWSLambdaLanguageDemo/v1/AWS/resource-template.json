@@ -61,6 +61,18 @@
             "Type": "Custom::AccessControl"
         }, 
         "PythonLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ]
+                        }
+                    ]
+                }
+            },
             "Properties": {
                 "Code": {
                     "S3Bucket": {
@@ -109,7 +121,7 @@
                     "Ref": "ConfigurationKey"
                 }, 
                 "FunctionName": "PythonLambda", 
-                "Runtime": "python2.7", 
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }

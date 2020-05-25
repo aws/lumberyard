@@ -27,7 +27,8 @@ namespace GradientSignal
         if (serialize)
         {
             serialize->Class<GradientSurfaceDataConfig, AZ::ComponentConfig>()
-                ->Version(1)
+                ->Version(2)
+                ->Field("ShapeConstraintEntityId", &GradientSurfaceDataConfig::m_shapeConstraintEntityId)
                 ->Field("ThresholdMin", &GradientSurfaceDataConfig::m_thresholdMin)
                 ->Field("ThresholdMax", &GradientSurfaceDataConfig::m_thresholdMax)
                 ->Field("ModifierTags", &GradientSurfaceDataConfig::m_modifierTags)
@@ -41,6 +42,8 @@ namespace GradientSignal
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &GradientSurfaceDataConfig::m_shapeConstraintEntityId, "Surface Bounds", "Optionally constrain surface data to the shape on the selected entity")
+                    ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ShapeService", 0xe86aa5fe))
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &GradientSurfaceDataConfig::m_thresholdMin, "Threshold Min", "Minimum value accepted from input gradient that allows tags to be applied.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
@@ -62,6 +65,7 @@ namespace GradientSignal
                 ->Method("GetTag", &GradientSurfaceDataConfig::GetTag)
                 ->Method("RemoveTag", &GradientSurfaceDataConfig::RemoveTag)
                 ->Method("AddTag", &GradientSurfaceDataConfig::AddTag)
+                ->Property("ShapeConstraintEntityId", BehaviorValueProperty(&GradientSurfaceDataConfig::m_shapeConstraintEntityId))
                 ;
         }
     }
@@ -131,6 +135,9 @@ namespace GradientSignal
             behaviorContext->EBus<GradientSurfaceDataRequestBus>("GradientSurfaceDataRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Event("GetShapeConstraintEntityId", &GradientSurfaceDataRequestBus::Events::GetShapeConstraintEntityId)
+                ->Event("SetShapeConstraintEntityId", &GradientSurfaceDataRequestBus::Events::SetShapeConstraintEntityId)
+                ->VirtualProperty("ShapeConstraintEntityId", "GetShapeConstraintEntityId", "SetShapeConstraintEntityId")
                 ->Event("SetThresholdMin", &GradientSurfaceDataRequestBus::Events::SetThresholdMin)
                 ->Event("GetThresholdMin", &GradientSurfaceDataRequestBus::Events::GetThresholdMin)
                 ->VirtualProperty("ThresholdMin", "GetThresholdMin", "SetThresholdMin")
@@ -155,20 +162,23 @@ namespace GradientSignal
         m_gradientSampler.m_gradientId = GetEntityId();
         m_gradientSampler.m_ownerEntityId = GetEntityId();
 
-        SurfaceData::SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = AZ::Aabb::CreateNull();
-        registryEntry.m_tags = m_configuration.m_modifierTags;
-
-        m_modifierHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
-        SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(m_modifierHandle, &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, registryEntry);
-        SurfaceData::SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
         LmbrCentral::DependencyNotificationBus::Handler::BusConnect(GetEntityId());
         GradientSurfaceDataRequestBus::Handler::BusConnect(GetEntityId());
+
+        if (m_configuration.m_shapeConstraintEntityId.IsValid())
+        {
+            LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(m_configuration.m_shapeConstraintEntityId);
+        }
+
+        // Register with the SurfaceData system and update our cached shape information if necessary.
+        m_modifierHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
+        UpdateRegistryAndCache(m_modifierHandle);
+        SurfaceData::SurfaceDataModifierRequestBus::Handler::BusConnect(m_modifierHandle);
     }
 
     void GradientSurfaceDataComponent::Deactivate()
     {
+        LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
         LmbrCentral::DependencyNotificationBus::Handler::BusDisconnect();
         SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataModifier, m_modifierHandle);
         SurfaceData::SurfaceDataModifierRequestBus::Handler::BusDisconnect();
@@ -200,18 +210,51 @@ namespace GradientSignal
     {
         if (!m_configuration.m_modifierTags.empty())
         {
+            // This method can be called from the vegetation thread, but our shape bounds can get updated from the main thread.
+            // If we have an optional constraining shape bounds, grab a copy of it with minimized mutex lock times.  Avoid mutex
+            // locking entirely if we aren't using the shape bounds option at all.
+            // (m_validShapeBounds is an atomic bool, so it can be queried outside of the mutex)
+            bool validShapeBounds = false;
+            AZ::Aabb shapeConstraintBounds;
+            if (m_validShapeBounds)
+            {
+                AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
+                shapeConstraintBounds = m_cachedShapeConstraintBounds;
+                validShapeBounds = m_cachedShapeConstraintBounds.IsValid();
+            }
+
             const AZ::EntityId entityId = GetEntityId();
             for (auto& point : surfacePointList)
             {
                 if (point.m_entityId != entityId)
                 {
-                    const GradientSampleParams sampleParams = { point.m_position };
-                    const float value = m_gradientSampler.GetValue(sampleParams);
-                    if (value >= m_configuration.m_thresholdMin &&
-                        value <= m_configuration.m_thresholdMax)
+                    bool inBounds = true;
+
+                    // If we have an optional shape bounds, verify the point exists inside of it before querying the gradient value.
+                    // Otherwise, assume an unbounded surface modifier and allow *all* points through the shape check.
+                    if (validShapeBounds)
                     {
-                        SurfaceData::AddMaxValueForMasks(point.m_masks, m_configuration.m_modifierTags, value);
+                        inBounds = false;
+                        if (shapeConstraintBounds.Contains(point.m_position))
+                        {
+                            LmbrCentral::ShapeComponentRequestsBus::EventResult(inBounds, m_configuration.m_shapeConstraintEntityId,
+                                                                                &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, point.m_position);
+                        }
                     }
+
+                    // If the point is within our allowed shape bounds, verify that it meets the gradient thresholds.
+                    // If so, then add the value to the surface tags.
+                    if (inBounds)
+                    {
+                        const GradientSampleParams sampleParams = { point.m_position };
+                        const float value = m_gradientSampler.GetValue(sampleParams);
+                        if (value >= m_configuration.m_thresholdMin &&
+                            value <= m_configuration.m_thresholdMax)
+                        {
+                            SurfaceData::AddMaxValueForMasks(point.m_masks, m_configuration.m_modifierTags, value);
+                        }
+                    }
+
                 }
             }
         }
@@ -220,12 +263,7 @@ namespace GradientSignal
     void GradientSurfaceDataComponent::OnCompositionChanged()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-
-        SurfaceData::SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = AZ::Aabb::CreateNull();
-        registryEntry.m_tags = m_configuration.m_modifierTags;
-        SurfaceData::SurfaceDataSystemRequestBus::Broadcast(&SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier, m_modifierHandle, registryEntry, AZ::Aabb::CreateNull());
+        UpdateRegistryAndCache(m_modifierHandle);
     }
 
     void GradientSurfaceDataComponent::SetThresholdMin(float thresholdMin)
@@ -270,5 +308,73 @@ namespace GradientSignal
     {
         m_configuration.AddTag(tag);
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
+    }
+
+    void GradientSurfaceDataComponent::UpdateRegistryAndCache(SurfaceData::SurfaceDataRegistryHandle& registryHandle)
+    {
+        // Set up the registry information for this component.
+        SurfaceData::SurfaceDataRegistryEntry registryEntry;
+        registryEntry.m_entityId = GetEntityId();
+        registryEntry.m_tags = m_configuration.m_modifierTags;
+        registryEntry.m_bounds = AZ::Aabb::CreateNull();
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(registryEntry.m_bounds, m_configuration.m_shapeConstraintEntityId, &LmbrCentral::ShapeComponentRequestsBus::Events::GetEncompassingAabb);
+
+        // Update our cached shape bounds within a mutex lock so that we don't have data contention
+        // with ModifySurfacePoints() on the vegetation thread.
+        {
+            AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
+
+            // Cache our new shape bounds so that we don't have to look it up for every surface point.
+            m_cachedShapeConstraintBounds = registryEntry.m_bounds;
+
+            // Separately keep track of whether or not the bounds are valid in an atomic bool so that we can easily check
+            // validity without requiring the mutex.
+            m_validShapeBounds = m_cachedShapeConstraintBounds.IsValid();
+        }
+
+        // If this is our first time calling this, we need to register with the SurfaceData system.  On subsequent
+        // calls, just update the entry that already exists.
+        if (registryHandle == SurfaceData::InvalidSurfaceDataRegistryHandle)
+        {
+            // Register with the SurfaceData system and get a valid registryHandle.
+            SurfaceData::SurfaceDataSystemRequestBus::BroadcastResult(registryHandle,
+                &SurfaceData::SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataModifier, registryEntry);
+        }
+        else
+        {
+            // Update the registry entry with the SurfaceData system using the existing registryHandle.
+            SurfaceData::SurfaceDataSystemRequestBus::Broadcast(
+                &SurfaceData::SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataModifier,
+                registryHandle, registryEntry);
+
+        }
+    }
+
+    void GradientSurfaceDataComponent::OnShapeChanged(LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons reasons)
+    {
+        LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
+    }
+
+    AZ::EntityId GradientSurfaceDataComponent::GetShapeConstraintEntityId() const
+    {
+        return m_configuration.m_shapeConstraintEntityId;
+    }
+
+    void GradientSurfaceDataComponent::SetShapeConstraintEntityId(AZ::EntityId entityId)
+    {
+        if (m_configuration.m_shapeConstraintEntityId != entityId)
+        {
+            m_configuration.m_shapeConstraintEntityId = entityId;
+
+            LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
+            if (m_configuration.m_shapeConstraintEntityId.IsValid())
+            {
+                LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(m_configuration.m_shapeConstraintEntityId);
+            }
+
+            // If our shape constraint entity has changed, trigger a notification that our component's composition has changed.
+            // This will lead to a refresh of any surface data that this component intersects with.
+            LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
+        }
     }
 }

@@ -12,12 +12,13 @@
 
 import base64
 from boto3.dynamodb.conditions import Key
-import unittest
+
 import json
-import mock
-from mock import MagicMock, call
+import unittest
+from unittest.mock import MagicMock
 
 import dynamodb_pagination
+
 
 class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.TestCase):
 
@@ -284,9 +285,8 @@ class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.T
             }
         )
 
-
-    # Test a forward search using an exclusive page token
     def test_forward_exclusive(self):
+        """Test a forward search using an exclusive page token"""
         partition_1 = self.create_results(1, 'F', 'H', 'J')
         partition_2 = self.create_results(2, 'E', 'G', 'I')
         expected_page = [
@@ -429,7 +429,7 @@ class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.T
 
         forward_page_token = search.get_page_token(forward=True)
         if forward_page_token:
-            print 'Page token was not None: ', json.loads(base64.b64decode(forward_page_token))
+            print('Page token was not None: {}'.format(json.loads(base64.b64decode(forward_page_token))))
         self.assertIsNone(forward_page_token)
 
         backward_page_token = search.get_page_token(forward=False)
@@ -487,7 +487,7 @@ class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.T
         )
         backward_page_token = search.get_page_token(forward=False)
         if backward_page_token:
-            print 'Page token was not None: ', json.loads(base64.b64decode(backward_page_token))
+            print('Page token was not None: {}'.format(json.loads(base64.b64decode(backward_page_token))))
         self.assertIsNone(backward_page_token)
 
     # Test reaching the last page going forward, with all results on the same partition, and a full page of results.
@@ -514,7 +514,7 @@ class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.T
 
         forward_page_token = search.get_page_token(forward=True)
         if forward_page_token:
-            print 'Page token was not None: ', json.loads(base64.b64decode(forward_page_token))
+            print('Page token was not None: {}'.format(json.loads(base64.b64decode(forward_page_token))))
         self.assertIsNone(forward_page_token)
 
         backward_page_token = search.get_page_token(forward=False)
@@ -570,9 +570,9 @@ class UnitTest_CloudGemPlayerAccount_ServiceLambda_DynamodbPagination(unittest.T
                 else:
                     self.assertNotIn('ExclusiveStartKey', kwargs)
             except:
-                print 'Test failed while checking call at index {}.'.format(index)
-                print 'Expected: {}'.format(expected)
-                print 'Actual (the structure is expected to be different): {}'.format(kwargs)
+                print('Test failed while checking call at index {}.'.format(index))
+                print('Expected: {}'.format(expected))
+                print('Actual (the structure is expected to be different): {}'.format(kwargs))
                 raise
 
     def assert_conditions_equal(self, condition1, condition2):

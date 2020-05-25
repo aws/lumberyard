@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Linux": [
+        "../Common/Unimplemented/UiClipboard_Unimplemented.cpp"
+    ]
+  }
+}

@@ -24,9 +24,7 @@ namespace JsonSerializationTests
         // Structures
         SimpleClass, SimpleInheritence, MultipleInheritence, SimpleNested, SimpleEnumWrapper,
         // Containers
-        SimpleContainer_Vector, SimpleContainer_List, SimpleContainer_ForwardList,
         SimpleContainer_FixedVector, SimpleContainer_Array,
-        ComplexContainer_Vector, ComplexContainer_List, ComplexContainer_ForwardList,
         ComplexContainer_FixedVector, ComplexContainer_Array,
         // Pointers
         SimpleNullPointer, SimpleAssignedPointer, ComplexAssignedPointer, ComplexNullInheritedPointer,

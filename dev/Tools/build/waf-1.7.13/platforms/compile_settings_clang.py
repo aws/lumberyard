@@ -10,8 +10,12 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
+
+# waflib imports
 from waflib.Configure import conf
-from lumberyard import deprecated, multi_conf
+
+# lmbrwaflib imports
+from lmbrwaflib.lumberyard import deprecated, multi_conf
 
 
 @conf
@@ -36,6 +40,7 @@ def load_clang_common_settings(conf):
     v['CC_TGT_F']   = v['CXX_TGT_F']    = ['-c', '-o']
 
     v['CPPPATH_ST']     = '-I%s'
+    v['SYSTEM_CPPPATH_ST'] = '-isystem%s'
     v['DEFINES_ST']     = '-D%s'
 
     v['ARCH_ST']        = ['-arch']

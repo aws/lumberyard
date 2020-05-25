@@ -851,7 +851,7 @@ namespace EMotionFX
 
             // Update the joint transforms and colliders.
             // This has to be done before the collision detection, so that the colliders are up to date.
-            UpdateJointTransforms(outPose, 1.0f);
+            UpdateJointTransforms(outPose);
             UpdateCollisionObjects(outPose, 1.0f);
 
             // Perform collision.
@@ -880,6 +880,7 @@ namespace EMotionFX
         CalcForces(inputPose, scaleFactor);
         Integrate(deltaTime);
         SatisfyConstraints(inputPose, outPose, m_numIterations, scaleFactor);
+        UpdateJointTransforms(outPose);
     }
 
     void SpringSolver::UpdateFixedParticles(const Pose& pose)
@@ -912,7 +913,7 @@ namespace EMotionFX
         }
     }
 
-    void SpringSolver::Update(const Pose& inputPose, Pose& pose, float timePassedInSeconds, float weight)
+    void SpringSolver::Update(const Pose& inputPose, Pose& pose, float timePassedInSeconds)
     {
         if (!m_actorInstance)
         {
@@ -944,13 +945,8 @@ namespace EMotionFX
         }
     }
 
-    void SpringSolver::UpdateJointTransforms(Pose& pose, float weight)
+    void SpringSolver::UpdateJointTransforms(Pose& pose)
     {
-        if (weight < 0.0001f)
-        {
-            return;
-        }
-
         for (const Spring& spring : m_springs)
         {
             if (spring.m_isSupportSpring)
@@ -965,20 +961,12 @@ namespace EMotionFX
             const AZ::Vector3 oldDir = (modelTransformA.mPosition - modelTransformB.mPosition).GetNormalizedSafeExact();
             const AZ::Vector3 newDir = m_actorInstance->GetWorldSpaceTransformInversed().TransformVector(particleA.m_pos - particleB.m_pos).GetNormalizedSafeExact();
 
-            if (weight > 0.9999f)
-            {
-                modelTransformB.mRotation = AZ::Quaternion::CreateShortestArc(oldDir, newDir).GetNormalizedExact() * modelTransformB.mRotation;
-                modelTransformB.mRotation.NormalizeExact();
-            }
-            else
-            {
-                const AZ::Quaternion targetRot = AZ::Quaternion::CreateShortestArc(oldDir, newDir) * modelTransformB.mRotation;
-                modelTransformB.mRotation = modelTransformB.mRotation.NLerp(targetRot, weight);
-            }
+            modelTransformB.mRotation = AZ::Quaternion::CreateShortestArc(oldDir, newDir).GetNormalizedExact() * modelTransformB.mRotation;
+            modelTransformB.mRotation.NormalizeExact();
 
             if (spring.m_allowStretch)
             {
-                modelTransformB.mPosition = modelTransformB.mPosition.Lerp(particleB.m_pos, weight);
+                modelTransformB.mPosition = particleB.m_pos;
             }
 
             pose.SetModelSpaceTransform(particleB.m_joint->GetSkeletonJointIndex(), modelTransformB);

@@ -146,6 +146,7 @@ namespace AzFramework
         InputDeviceId::Reflect(context);
         InputChannel::Reflect(context);
         InputDevice::Reflect(context);
+        LocalUserIdReflect(context);
 
         InputDeviceGamepad::Reflect(context);
         InputDeviceKeyboard::Reflect(context);

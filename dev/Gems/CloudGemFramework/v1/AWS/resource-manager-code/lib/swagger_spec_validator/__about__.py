@@ -1,13 +1,18 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 __all__ = [
     "__title__", "__summary__", "__uri__", "__version__", "__author__",
     "__email__", "__license__"
 ]
 
-__title__ = "swagger_spec_validator"
+__title__ = "swagger-spec-validator"
 __summary__ = "Validation of Swagger specifications"
 __uri__ = "http://github.com/Yelp/swagger_spec_validator"
 
-__version__ = "2.0.2"
+__version__ = "2.5.0"
 
 __author__ = "John Billings"
 __email__ = "billings@yelp.com"

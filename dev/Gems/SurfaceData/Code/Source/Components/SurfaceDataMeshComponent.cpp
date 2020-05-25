@@ -92,29 +92,35 @@ namespace SurfaceData
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
 
-        SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = GetSurfaceAabb();
-        registryEntry.m_tags = GetSurfaceTags();
-
         m_providerHandle = InvalidSurfaceDataRegistryHandle;
-        SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
-        SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
-
-        UpdateMeshData();
         m_refresh = false;
+
+        // Update the cached mesh data and bounds, then register the surface data provider
+        UpdateMeshData();
     }
 
     void SurfaceDataMeshComponent::Deactivate()
     {
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
-        m_providerHandle = InvalidSurfaceDataRegistryHandle;
+        if (m_providerHandle != InvalidSurfaceDataRegistryHandle)
+        {
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+        }
 
         SurfaceDataProviderRequestBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         LmbrCentral::MeshComponentNotificationBus::Handler::BusDisconnect();
         m_refresh = false;
+
+        // Clear the cached mesh data
+        {
+            AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
+            m_meshAssetData = {};
+            m_meshBounds = AZ::Aabb::CreateNull();
+            m_meshWorldTM = AZ::Transform::CreateIdentity();
+            m_meshWorldTMInverse = AZ::Transform::CreateIdentity();
+        }
     }
 
     bool SurfaceDataMeshComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -237,17 +243,13 @@ namespace SurfaceData
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        AZ::Aabb dirtyVolume = AZ::Aabb::CreateNull();
+        bool meshValidBeforeUpdate = false;
+        bool meshValidAfterUpdate = false;
 
         {
             AZStd::lock_guard<decltype(m_cacheMutex)> lock(m_cacheMutex);
 
-            // To make sure we update our surface data even if our surface shrinks or grows, keep track of a bounding box
-            // that contains the old surface volume.  At the end, we'll add in our new surface volume.
-            if (m_meshBounds.IsValid())
-            {
-                dirtyVolume.AddAabb(m_meshBounds);
-            }
+            meshValidBeforeUpdate = (m_meshAssetData.GetAs<LmbrCentral::MeshAsset>() != nullptr) && (m_meshBounds.IsValid());
 
             m_meshAssetData = {};
             LmbrCentral::MeshComponentRequestBus::EventResult(m_meshAssetData, GetEntityId(), &LmbrCentral::MeshComponentRequestBus::Events::GetMeshAsset);
@@ -259,17 +261,43 @@ namespace SurfaceData
             AZ::TransformBus::EventResult(m_meshWorldTM, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
             m_meshWorldTMInverse = m_meshWorldTM.GetInverseFull();
 
-            // Add our new surface volume to our dirty volume, so that we have a bounding box that encompasses everything that's been added / changed / removed
-            if (m_meshBounds.IsValid())
-            {
-                dirtyVolume.AddAabb(m_meshBounds);
-            }
+            meshValidAfterUpdate = (m_meshAssetData.GetAs<LmbrCentral::MeshAsset>() != nullptr) && (m_meshBounds.IsValid());
         }
 
         SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
         registryEntry.m_bounds = GetSurfaceAabb();
         registryEntry.m_tags = GetSurfaceTags();
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, dirtyVolume);
+
+        if (!meshValidBeforeUpdate && !meshValidAfterUpdate)
+        {
+            // We didn't have a valid mesh asset before or after running this, so do nothing.
+        }
+        else if (!meshValidBeforeUpdate && meshValidAfterUpdate)
+        {
+            // Our mesh has become valid, so register as a provider and save off the provider handle
+            AZ_Assert((m_providerHandle == InvalidSurfaceDataRegistryHandle), "Surface data handle is initialized before our mesh became active");
+            AZ_Assert(m_meshBounds.IsValid(), "Mesh Geometry isn't correctly initialized.");
+            SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
+
+            // Start listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+        }
+        else if (meshValidBeforeUpdate && !meshValidAfterUpdate)
+        {
+            // Our mesh has stopped being valid, so unregister and stop listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+
+            SurfaceDataProviderRequestBus::Handler::BusDisconnect();
+        }
+        else if (meshValidBeforeUpdate && meshValidAfterUpdate)
+        {
+            // Our mesh was valid before and after, it just changed in some way, so update our registry entry.
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry);
+        }
     }
 }

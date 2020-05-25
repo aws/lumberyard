@@ -16,7 +16,7 @@ def build(bld):
         use    = [ 'AzFramework' ],
         disable_tests = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         file_list     = ['CameraFramework.waf_files'],
-        includes      = [bld.ThirdPartyPath('boost'),
-                         bld.Path('Code/CryEngine/CryCommon')],
         win_features  = ['crcfix'],
+        includes      = [bld.Path('Code/CryEngine/CryCommon')
+                         ],
     )

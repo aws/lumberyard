@@ -21,6 +21,9 @@
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/TransformData.h>
 
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
+
 namespace EMotionFX
 {
     class BlendTreeTestInputNode
@@ -83,7 +86,7 @@ namespace EMotionFX
     };
 
 
-    typedef std::vector<std::vector<std::string> > MaskNodeTestParam;
+    using MaskNodeTestParam = std::vector<std::vector<std::string>>;
 
     /*
      * The general idea is to identify the origin of the joints by embedding identification values into the joint transform
@@ -100,33 +103,16 @@ namespace EMotionFX
     public:
         void ConstructActor() override
         {
-            m_actor = Actor::Create("testActor");
-            Skeleton* skeleton = m_actor->GetSkeleton();
-            for (const std::string& jointName : m_jointNames)
-            {
-                Node* joint = Node::Create(jointName.c_str(), skeleton);
-                m_actor->AddNode(joint);
-            }
-            skeleton->UpdateNodeIndexValues();
-
-            // Set bind pose to identity transforms.
-            const AZ::u32 numJoints = m_actor->GetNumNodes();
-            Pose& actorBindPose = *m_actor->GetBindPose();
-            EMotionFX::Transform transform;
-            transform.Identity();
-            for (AZ::u32 i = 0; i < numJoints; ++i)
-            {
-                actorBindPose.SetModelSpaceTransform(i, transform);
-            }
+            m_actor = ActorFactory::CreateAndInit<AllRootJointsActor>(5);
         }
 
         AZStd::vector<AZStd::string> ConstructMask(const std::vector<std::string>& in)
         {
             AZStd::vector<AZStd::string> result;
             result.reserve(in.size());
-            for (const std::string& jointName : in)
+            for (const std::string& str : in)
             {
-                result.push_back(jointName.c_str());
+                result.emplace_back(AZStd::string(str.c_str(), str.size()));
             }
             return result;
         }
@@ -158,6 +144,9 @@ namespace EMotionFX
         {
             AnimGraphFixture::ConstructGraph();
             const MaskNodeTestParam& param = GetParam();
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             /*
             +-----------+
@@ -176,9 +165,6 @@ namespace EMotionFX
             | Mask 3      +--------+
             +-------------+
             */
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
 
             m_maskNode = aznew BlendTreeMaskNode();
             m_blendTree->AddChildNode(m_maskNode);
@@ -208,11 +194,19 @@ namespace EMotionFX
             {
                 m_maskNode->SetMask(i, ConstructMask(param[i]));
             }
+
+            m_blendTreeAnimGraph->InitAfterLoading();
+        }
+
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
         }
 
     public:
-        std::vector<std::string> m_jointNames = {"joint1", "joint2", "joint3", "joint4", "joint5"};
-
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTreeMaskNode* m_maskNode = nullptr;
         BlendTreeTestInputNode* m_basePoseNode = nullptr;
         const size_t m_basePosePosValue = 100; // Special identification value for the base pose to easily distinguish it from the mask indices.
@@ -223,7 +217,6 @@ namespace EMotionFX
 
     TEST_P(BlendTreeMaskNodeTestFixture, MaskTests)
     {
-        const MaskNodeTestParam& param = GetParam();
         GetEMotionFX().Update(0.0f);
 
         Skeleton* skeleton = m_actor->GetSkeleton();
@@ -269,54 +262,54 @@ namespace EMotionFX
             {},
         },
         {
-            { "joint1" },
+            { "rootJoint" },
             {},
             {},
         },
         {
+            { "rootJoint", "joint2" },
+            {},
+            {},
+        },
+        {
+            { "rootJoint", "joint1", "joint2" },
+            {},
+            {},
+        },
+        {
+            { "rootJoint", "joint1", "joint2", "joint3", "joint4" },
+            {},
+            {},
+        },
+        {
+            {},
             { "joint1", "joint3" },
             {},
-            {},
         },
         {
-            { "joint1", "joint2", "joint3" },
             {},
-            {},
-        },
-        {
-            { "joint1", "joint2", "joint3", "joint4", "joint5" },
-            {},
-            {},
-        },
-        {
             {},
             { "joint2", "joint4" },
+        },
+        {
+            { "rootJoint", "joint1" },
+            { "joint3", "joint4" },
             {},
         },
         {
+            { "rootJoint", "joint1" },
             {},
-            {},
-            { "joint3", "joint5" },
+            { "joint3", "joint4" },
         },
         {
+            {},
+            { "rootJoint", "joint1" },
+            { "joint3", "joint4" },
+        },
+        {
+            { "rootJoint" },
             { "joint1", "joint2" },
-            { "joint4", "joint5" },
-            {},
-        },
-        {
-            { "joint1", "joint2" },
-            {},
-            { "joint4", "joint5" },
-        },
-        {
-            {},
-            { "joint1", "joint2" },
-            { "joint4", "joint5" },
-        },
-        {
-            { "joint1" },
-            { "joint2", "joint3" },
-            { "joint4", "joint5" },
+            { "joint3", "joint4" },
         },
     };
 

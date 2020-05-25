@@ -67,7 +67,7 @@ namespace EMotionFX
         m_normalizedProbabilityText = new QLineEdit();
 
         // The read only text for the normalized probabilities does not need the space for the SpinBox buttons
-        m_normalizedProbabilityText->setMaximumWidth(m_randomWeightSpinbox->maximumWidth() * 0.5);
+        m_normalizedProbabilityText->setMaximumWidth(aznumeric_cast<int>(m_randomWeightSpinbox->maximumWidth() * 0.5));
         m_normalizedProbabilityText->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
         m_normalizedProbabilityText->setEnabled(false);
 
@@ -138,7 +138,7 @@ namespace EMotionFX
         const double actualPercentage = 100.0 * weight / m_dataContainer->GetWeightSum();
         const double compensatedValue = actualPercentage - s_displayedRoundingError;
         const double roundedValue = qRound(compensatedValue);
-        s_displayedRoundingError = roundedValue - actualPercentage;
+        s_displayedRoundingError = aznumeric_cast<float>(roundedValue - actualPercentage);
         QString str = m_normalizedProbabilityText->locale().toString(roundedValue, 'f', 1);
         m_normalizedProbabilityText->setText(str);
         m_labelMotion->setText(m_dataContainer->GetMotionId(m_id).c_str());
@@ -360,8 +360,8 @@ namespace EMotionFX
 
     void MotionSetMotionIdPicker::OnRandomWeightChanged(size_t id, double value)
     {
-        m_weightsSum += value - m_motions[id].second;
-        m_motions[id].second = value;
+        m_weightsSum = aznumeric_cast<float>(m_weightsSum + (value - m_motions[id].second));
+        m_motions[id].second = aznumeric_cast<float>(value);
         UpdateGui();
         emit SelectionChanged();
     }

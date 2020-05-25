@@ -67,25 +67,6 @@ namespace EMotionFX
         void ForceUpdateFullLocalSpacePose();
         void ForceUpdateFullModelSpacePose();
 
-        AZ_DEPRECATED(void UpdateAllLocalTranforms(), "This method has been deprecated, please use UpdateAllLocalSpaceTransforms instead.");
-        AZ_DEPRECATED(void UpdateAllGlobalTranforms(), "This method has been deprecated, please use UpdateAllModelSpaceTransforms instead.");
-        AZ_DEPRECATED(void ForceUpdateFullLocalPose(), "This method has been deprecated, please use ForceUpdateFullLocalSpacePose instead.");
-        AZ_DEPRECATED(void ForceUpdateFullGlobalPose(), "This method has been deprecated, please use ForceUpdateFullModelSpacePose instead.");
-        AZ_DEPRECATED(const Transform&GetLocalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use GetLocalSpaceTransform instead.");
-        AZ_DEPRECATED(Transform GetGlobalTransformInclusive(uint32 nodeIndex) const, "This method has been deprecated, please use GetWorldSpaceTransform instead.");
-        AZ_DEPRECATED(void GetLocalTransform(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetLocalTransform.");
-        AZ_DEPRECATED(void GetGlobalTransformInclusive(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetWorldSpaceTransform instead.");
-        AZ_DEPRECATED(void SetLocalTransform(uint32 nodeIndex, const Transform&newTransform, bool invalidateGlobalTransforms = true), "This method has been deprecated, please use SetLocalSpaceTransform instead.");
-        AZ_DEPRECATED(void SetGlobalTransformInclusive(uint32 nodeIndex, const Transform&newTransform, bool invalidateChildGlobalTransforms = true), "This method has been deprecated, please use SetWorldSpaceTransform instead. There is also no need to call UpdateLocalTransform anymore afterwards, this happens internally now.");
-        AZ_DEPRECATED(const Transform&GetGlobalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use GetModelSpaceTransform instead.");
-        AZ_DEPRECATED(void GetGlobalTransform(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetModelSpaceTransform instead.");
-        AZ_DEPRECATED(void SetGlobalTransform(uint32 nodeIndex, const Transform&newTransform, bool invalidateChildGlobalTransforms = true), "This method has been deprecated, please use SetModelSpaceTransform instead.");
-        AZ_DEPRECATED(void UpdateGlobalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use UpdateModelSpaceTransform instead.");
-        AZ_DEPRECATED(void UpdateLocalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use UpdateLocalSpaceTransform instead.");
-        AZ_DEPRECATED(void InvalidateAllLocalTransforms(), "This method  has been deprecated, please use InvalidateAllLocalSpaceTransforms instead.");
-        AZ_DEPRECATED(void InvalidateAllGlobalTransforms(), "This method  has been deprecated, please use InvalidateAllModelSpaceTransforms instead.");
-        AZ_DEPRECATED(void InvalidateAllLocalAndGlobalTransforms(), "This method  has been deprecated, please use InvalidateAllLocalAndModelSpaceTransforms instead.");
-
         const Transform& GetLocalSpaceTransform(uint32 nodeIndex) const;
         const Transform& GetModelSpaceTransform(uint32 nodeIndex) const;
         Transform GetWorldSpaceTransform(uint32 nodeIndex) const;

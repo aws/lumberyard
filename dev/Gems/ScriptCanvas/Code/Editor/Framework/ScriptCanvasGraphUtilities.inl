@@ -35,7 +35,7 @@ namespace ScriptCanvasEditor
 
         if (loadResult.m_graph)
         {
-            reporter.SetGraph(loadResult.m_graph->GetUniqueId(), loadResult.m_graph->GetEntityId());
+            reporter.SetGraph(loadResult.m_graph->GetScriptCanvasId(), loadResult.m_graph->GetEntityId());
 
             loadResult.m_graphEntity->Init();
             TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);

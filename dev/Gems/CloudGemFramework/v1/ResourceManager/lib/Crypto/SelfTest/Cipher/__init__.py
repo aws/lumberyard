@@ -35,9 +35,21 @@ def get_tests(config={}):
     from Crypto.SelfTest.Cipher import test_CAST;     tests += test_CAST.get_tests(config=config)
     from Crypto.SelfTest.Cipher import test_DES3;     tests += test_DES3.get_tests(config=config)
     from Crypto.SelfTest.Cipher import test_DES;      tests += test_DES.get_tests(config=config)
-    from Crypto.SelfTest.Cipher import test_XOR;      tests += test_XOR.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_Salsa20; tests += test_Salsa20.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_ChaCha20; tests += test_ChaCha20.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_ChaCha20_Poly1305; tests += test_ChaCha20_Poly1305.get_tests(config=config)
     from Crypto.SelfTest.Cipher import test_pkcs1_15; tests += test_pkcs1_15.get_tests(config=config)
     from Crypto.SelfTest.Cipher import test_pkcs1_oaep; tests += test_pkcs1_oaep.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_OCB;        tests += test_OCB.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_CBC;        tests += test_CBC.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_CFB;        tests += test_CFB.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_OpenPGP;    tests += test_OpenPGP.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_OFB;        tests += test_OFB.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_CTR;        tests += test_CTR.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_CCM;        tests += test_CCM.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_EAX;        tests += test_EAX.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_GCM;        tests += test_GCM.get_tests(config=config)
+    from Crypto.SelfTest.Cipher import test_SIV;        tests += test_SIV.get_tests(config=config)
     return tests
 
 if __name__ == '__main__':

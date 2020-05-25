@@ -5,11 +5,12 @@ import functools
 import sys
 
 from numba import utils
-
+from numba.ir import Loc
+from numba.errors import UnsupportedError
 
 # List of bytecodes creating a new block in the control flow graph
 # (in addition to explicit jump labels).
-NEW_BLOCKERS = frozenset(['SETUP_LOOP', 'FOR_ITER'])
+NEW_BLOCKERS = frozenset(['SETUP_LOOP', 'FOR_ITER', 'SETUP_WITH'])
 
 
 class CFBlock(object):
@@ -26,15 +27,17 @@ class CFBlock(object):
         self.terminating = False
 
     def __repr__(self):
-        args = self.offset, sorted(self.outgoing_jumps), sorted(self.incoming_jumps)
+        args = (self.offset,
+                sorted(self.outgoing_jumps),
+                sorted(self.incoming_jumps))
         return "block(offset:%d, outgoing: %s, incoming: %s)" % args
 
     def __iter__(self):
         return iter(self.body)
 
 
-class Loop(
-    collections.namedtuple("Loop", ("entries", "exits", "header", "body"))):
+class Loop(collections.namedtuple("Loop",
+                                  ("entries", "exits", "header", "body"))):
     """
     A control flow loop, as detected by a CFGraph object.
     """
@@ -79,8 +82,12 @@ class CFGraph(object):
         If such an edge already exists, it is replaced (duplicate edges
         are not possible).
         """
-        assert src in self._nodes
-        assert dest in self._nodes
+        if src not in self._nodes:
+            raise ValueError("Cannot add edge as src node %s not in nodes %s" %
+                             (src, self._nodes))
+        if dest not in self._nodes:
+            raise ValueError("Cannot add edge as dest node %s not in nodes %s" %
+                             (dest, self._nodes))
         self._add_edge(src, dest, data)
 
     def successors(self, src):
@@ -121,13 +128,16 @@ class CFGraph(object):
         self._find_descendents()
         self._find_loops()
         self._find_post_dominators()
+        self._find_immediate_dominators()
+        self._find_dominance_frontier()
+        self._find_dominator_tree()
 
     def dominators(self):
         """
         Return a dictionary of {node -> set(nodes)} mapping each node to
         the nodes dominating it.
 
-        A node D dominates a node N when any path leading to N must go through D.
+        A node D dominates a node N when any path leading to N must go through D
         """
         return self._doms
 
@@ -140,6 +150,35 @@ class CFGraph(object):
         through P.
         """
         return self._post_doms
+
+    def immediate_dominators(self):
+        """
+        Return a dictionary of {node -> node} mapping each node to its
+        immediate dominator (idom).
+
+        The idom(B) is the closest strict dominator of V
+        """
+        return self._idom
+
+    def dominance_frontier(self):
+        """
+        Return a dictionary of {node -> set(nodes)} mapping each node to
+        the nodes in its dominance frontier.
+
+        The dominance frontier _df(N) is the set of all nodes that are
+        immediate successors to blocks dominanted by N but which aren't
+        stricly dominanted by N
+        """
+        return self._df
+
+    def dominator_tree(self):
+        """
+        return a dictionary of {node -> set(nodes)} mapping each node to
+        the set of nodes it immediately dominates
+
+        The domtree(B) is the closest strict set of nodes that B dominates
+        """
+        return self._domtree
 
     def descendents(self, node):
         """
@@ -182,7 +221,7 @@ class CFGraph(object):
         Return the list of Loop objects the *node* belongs to,
         from innermost to outermost.
         """
-        return [self._loops[x] for x in self._in_loops[node]]
+        return [self._loops[x] for x in self._in_loops.get(node, ())]
 
     def dead_nodes(self):
         """
@@ -234,6 +273,35 @@ class CFGraph(object):
         pprint.pprint(self._loops, stream=file)
         print("CFG node-to-loops:", file=file)
         pprint.pprint(self._in_loops, stream=file)
+        print("CFG backbone:", file=file)
+        pprint.pprint(self.backbone(), stream=file)
+
+    def render_dot(self, filename="numba_cfg.dot"):
+        """Render the controlflow graph with GraphViz DOT via the
+        ``graphviz`` python binding.
+
+        Returns
+        -------
+        g : graphviz.Digraph
+            Use `g.view()` to open the graph in the default PDF application.
+        """
+
+        try:
+            import graphviz as gv
+        except ImportError:
+            raise ImportError(
+                "The feature requires `graphviz` but it is not available. "
+                "Please install with `pip install graphviz`"
+            )
+        g = gv.Digraph(filename=filename)
+        # Populate the nodes
+        for n in self._nodes:
+            g.node(str(n))
+        # Populate the edges
+        for n in self._nodes:
+            for edge in self._succs[n]:
+                g.edge(str(n), str(edge))
+        return g
 
     # Internal APIs
 
@@ -288,6 +356,91 @@ class CFGraph(object):
             if not self._succs.get(n):
                 exit_points.add(n)
         self._exit_points = exit_points
+
+    def _find_postorder(self):
+        succs = self._succs
+        back_edges = self._back_edges
+        post_order = []
+        seen = set()
+
+        def _dfs_rec(node):
+            if node not in seen:
+                seen.add(node)
+                for dest in succs[node]:
+                    if (node, dest) not in back_edges:
+                        _dfs_rec(dest)
+                post_order.append(node)
+
+        _dfs_rec(self._entry_point)
+        return post_order
+
+    def _find_immediate_dominators(self):
+        # The algorithm implemented computes the immediate dominator
+        # for each node in the CFG which is equivalent to build a dominator tree
+        # Based on the implementation from NetworkX
+        # library - nx.immediate_dominators
+        # https://github.com/networkx/networkx/blob/858e7cb183541a78969fed0cbcd02346f5866c02/networkx/algorithms/dominance.py    # noqa: E501
+        # References:
+        #   Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
+        #   A Simple, Fast Dominance Algorithm
+        #   https://www.cs.rice.edu/~keith/EMBED/dom.pdf
+        def intersect(u, v):
+            while u != v:
+                while idx[u] < idx[v]:
+                    u = idom[u]
+                while idx[u] > idx[v]:
+                    v = idom[v]
+            return u
+
+        entry = self._entry_point
+        preds_table = self._preds
+
+        order = self._find_postorder()
+        idx = {e: i for i, e in enumerate(order)} # index of each node
+        idom = {entry : entry}
+        order.pop()
+        order.reverse()
+
+        changed = True
+        while changed:
+            changed = False
+            for u in order:
+                new_idom = functools.reduce(intersect,
+                                            (v for v in preds_table[u]
+                                             if v in idom))
+                if u not in idom or idom[u] != new_idom:
+                    idom[u] = new_idom
+                    changed = True
+
+        self._idom = idom
+
+    def _find_dominator_tree(self):
+        idom = self._idom
+        domtree = collections.defaultdict(set)
+
+        for u, v in idom.items():
+            # v dominates u
+            if u not in domtree:
+                domtree[u] = set()
+            if u != v:
+                domtree[v].add(u)
+
+        self._domtree = domtree
+
+    def _find_dominance_frontier(self):
+        idom = self._idom
+        preds_table = self._preds
+        df = {u: set() for u in idom}
+
+        for u in idom:
+            if len(preds_table[u]) < 2:
+                continue
+            for v in preds_table[u]:
+                while v != idom[u]:
+                    df[v].add(u)
+                    v = idom[v]
+
+        self._df = df
 
     def _find_dominators_internal(self, post=False):
         # See theoretical description in
@@ -443,10 +596,27 @@ class CFGraph(object):
         self._in_loops = in_loops
 
     def _dump_adj_lists(self, file):
-        adj_lists = dict((src, list(dests))
+        adj_lists = dict((src, sorted(list(dests)))
                          for src, dests in self._succs.items())
         import pprint
         pprint.pprint(adj_lists, stream=file)
+
+    def __eq__(self, other):
+        if not isinstance(other, CFGraph):
+            raise NotImplementedError
+
+        # A few derived items are checked to makes sure process() has been
+        # invoked equally.
+        for x in ['_nodes', '_edge_data', '_entry_point', '_preds', '_succs',
+                  '_doms', '_back_edges']:
+            this = getattr(self, x, None)
+            that = getattr(other, x, None)
+            if this != that:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class ControlFlowAnalysis(object):
@@ -478,6 +648,7 @@ class ControlFlowAnalysis(object):
         self._curblock = None
         self._blockstack = []
         self._loops = []
+        self._withs = []
 
     def iterblocks(self):
         """
@@ -511,8 +682,17 @@ class ControlFlowAnalysis(object):
             fn = getattr(self, fname, None)
             if fn is not None:
                 fn(inst)
+            elif inst.is_jump:
+                # this catches e.g. try... except
+                l = Loc(self.bytecode.func_id.filename, inst.lineno)
+                if inst.opname in {"SETUP_EXCEPT", "SETUP_FINALLY"}:
+                    msg = "'try' block not supported until python3.7 or later"
+                else:
+                    msg = "Use of unsupported opcode (%s) found" % inst.opname
+                raise UnsupportedError(msg, loc=l)
             else:
-                assert not inst.is_jump, inst
+                # Non-jump instructions are ignored
+                pass  # intentionally
 
         # Close all blocks
         for cur, nxt in zip(self.blockseq, self.blockseq[1:]):
@@ -553,9 +733,8 @@ class ControlFlowAnalysis(object):
         inloopblocks = set()
 
         for b in self.blocks.keys():
-            for s, e in self._loops:
-                if s <= b < e:
-                    inloopblocks.add(b)
+            if self.graph.in_loops(b):
+                inloopblocks.add(b)
 
         self.backbone = backbone - inloopblocks
 
@@ -594,6 +773,16 @@ class ControlFlowAnalysis(object):
         self._blockstack.append(end)
         self._loops.append((inst.offset, end))
         # TODO: Looplifting requires the loop entry be its own block.
+        #       Forcing a new block here is the simplest solution for now.
+        #       But, we should consider other less ad-hoc ways.
+        self.jump(inst.next)
+        self._force_new_block = True
+
+    def op_SETUP_WITH(self, inst):
+        end = inst.get_jump_target()
+        self._blockstack.append(end)
+        self._withs.append((inst.offset, end))
+        # TODO: WithLifting requires the loop entry be its own block.
         #       Forcing a new block here is the simplest solution for now.
         #       But, we should consider other less ad-hoc ways.
         self.jump(inst.next)

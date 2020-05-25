@@ -438,7 +438,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "RecordSetProcessor",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },
@@ -664,7 +664,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "ServiceLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },

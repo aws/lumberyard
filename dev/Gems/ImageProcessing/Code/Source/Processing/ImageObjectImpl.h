@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
+#include <Processing/DDSHeader.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
 namespace ImageProcessing

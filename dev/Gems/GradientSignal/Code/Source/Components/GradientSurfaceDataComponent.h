@@ -18,6 +18,7 @@
 #include <SurfaceData/SurfaceDataModifierRequestBus.h>
 #include <SurfaceData/SurfaceDataTypes.h>
 #include <LmbrCentral/Dependency/DependencyNotificationBus.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -37,6 +38,7 @@ namespace GradientSignal
         float m_thresholdMin = 0.1f;
         float m_thresholdMax = 1.0f;
         SurfaceData::SurfaceTagVector m_modifierTags;
+        AZ::EntityId m_shapeConstraintEntityId;
 
         size_t GetNumTags() const;
         AZ::Crc32 GetTag(int tagIndex) const;
@@ -50,6 +52,7 @@ namespace GradientSignal
         : public AZ::Component
         , private SurfaceData::SurfaceDataModifierRequestBus::Handler
         , private LmbrCentral::DependencyNotificationBus::Handler
+        , private LmbrCentral::ShapeComponentNotificationsBus::Handler
         , private GradientSurfaceDataRequestBus::Handler
     {
     public:
@@ -80,6 +83,10 @@ namespace GradientSignal
         void OnCompositionChanged() override;
 
     protected:
+        ////////////////////////////////////////////////////////////////////////
+        // LmbrCentral::ShapeComponentNotificationsBus
+        void OnShapeChanged(LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons reasons) override;
+
         //////////////////////////////////////////////////////////////////////////
         // GradientSurfaceDataRequestBus
         void SetThresholdMin(float thresholdMin) override;
@@ -90,10 +97,20 @@ namespace GradientSignal
         AZ::Crc32 GetTag(int tagIndex) const override;
         void RemoveTag(int tagIndex) override;
         void AddTag(AZStd::string tag) override;
+        AZ::EntityId GetShapeConstraintEntityId() const override;
+        void SetShapeConstraintEntityId(AZ::EntityId entityId) override;
 
     private:
+        void UpdateRegistryAndCache(SurfaceData::SurfaceDataRegistryHandle& registryHandle);
+
         SurfaceData::SurfaceDataRegistryHandle m_modifierHandle = SurfaceData::InvalidSurfaceDataRegistryHandle;
         GradientSurfaceDataConfig m_configuration;
         GradientSampler m_gradientSampler;
+
+        // cached shape constraint data that allows us to safely perform bounds tests from the vegetation
+        // thread while the main thread potentially updates the bounds.
+        AZStd::atomic_bool m_validShapeBounds{ false };
+        mutable AZStd::recursive_mutex m_cacheMutex;
+        AZ::Aabb m_cachedShapeConstraintBounds = AZ::Aabb::CreateNull();
     };
 }

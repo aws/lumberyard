@@ -85,9 +85,11 @@ enum EStdCursor
     STD_CURSOR_LAST,
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API CViewport
     : public IDisplayViewport
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     typedef void(* DropCallback)(CViewport* viewport, int ptx, int pty, void* custom);
 
@@ -273,6 +275,7 @@ public:
 protected:
     CLayoutViewPane* m_viewPane;
     CViewManager* m_viewManager;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     // Viewport matrix.
     Matrix34 m_viewTM;
     // Screen Matrix
@@ -280,6 +283,7 @@ protected:
     int m_nCurViewportID;
     // Final game view matrix before drpping back to editor
     Matrix34 m_gameTM;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // Custom drop callback (Leroy@Conffx)
     DropCallback m_dropCallback;
@@ -498,8 +502,16 @@ public:
     virtual void setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir);
     virtual void setHitcontext(QPoint& vp, Vec3& raySrc, Vec3& rayDir);
     QPoint m_vp;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     Vec3 m_raySrc;
     Vec3 m_rayDir;
+
+    // Greater than 0 while running MouseCallback() function. It needs to be a counter
+    // because of recursive calls to MouseCallback(). It's used to make an exception
+    // during the SScopedCurrentContext count check of m_cameraSetForWidgetRenderingCount.
+    int m_processingMouseCallbacksCounter = 0;
+
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 protected:
     friend class CViewManager;
     bool IsVectorInValidRange(const Vec3& v) const { return fabs(v.x) < 1e+8 && fabs(v.y) < 1e+8 && fabs(v.z) < 1e+8; }
@@ -567,10 +579,12 @@ protected:
 
     int m_activeAxis;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //! Current construction plane.
     Plane m_constructionPlane;
     Vec3 m_constructionPlaneAxisX;
     Vec3 m_constructionPlaneAxisY;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     // When true selection helpers will be shown and hit tested against.
     bool m_bAdvancedSelectMode;
@@ -598,12 +612,14 @@ protected:
 
     QRect m_rcClient;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     // Same construction matrix is shared by all viewports.
     Matrix34 m_constructionMatrix[LAST_COORD_SYSTEM];
 
     QPointer<CEditTool> m_pLocalEditTool;
 
     std::vector<IRenderListener*>           m_cRenderListeners;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     typedef std::vector<_smart_ptr<IPostRenderer> > PostRenderers;
     PostRenderers   m_postRenderers;

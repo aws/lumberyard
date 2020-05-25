@@ -74,11 +74,15 @@ namespace SurfaceData
         void HeightmapModified(const AZ::Aabb& bounds) override;
 
     private:
+        void UpdateTerrainData(const AZ::Aabb& dirtyRegion);
         AZ::Aabb GetSurfaceAabb() const;
         SurfaceTagVector GetSurfaceTags() const;
         SurfaceDataRegistryHandle m_providerHandle = InvalidSurfaceDataRegistryHandle;
 
         TerrainSurfaceDataSystemConfig m_configuration;
         ISystem* m_system = nullptr;
+
+        AZ::Aabb m_terrainBounds = AZ::Aabb::CreateNull();
+        AZStd::atomic_bool m_terrainBoundsIsValid{ false };
     };
 }

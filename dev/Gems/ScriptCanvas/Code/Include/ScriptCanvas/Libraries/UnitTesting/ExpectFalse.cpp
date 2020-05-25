@@ -41,11 +41,11 @@ namespace ScriptCanvas
 
             void ExpectFalse::OnInputSignal(const SlotId& slotId)
             {
-                const auto value = GetInput(GetSlotId("Candidate"))->GetAs<Data::BooleanType>();
-                const auto report = GetInput(GetSlotId("Report"))->GetAs<Data::StringType>();
+                const auto value = FindDatum(GetSlotId("Candidate"))->GetAs<Data::BooleanType>();
+                const auto report = FindDatum(GetSlotId("Report"))->GetAs<Data::StringType>();
 
                 ScriptCanvas::UnitTesting::Bus::Event
-                          ( GetGraphId()
+                          ( GetOwningScriptCanvasId()
                           , &ScriptCanvas::UnitTesting::BusTraits::ExpectFalse
                           , *value
                           , *report);

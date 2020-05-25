@@ -8,18 +8,18 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from __future__ import print_function
+import six  # for six re-raise
 
 from copy import deepcopy
 import importlib
 import inspect
-from types import DictionaryType, FunctionType, ListType
 from cgf_utils import logging
-from error import ClientError
+from .error import ClientError, message
 import sys
 
+
 def api(function_to_decorate=None, unlogged_parameters=None, logging_filter=None):
-    '''Decorator that allows the dispatcher to call an handler function.'''
+    """Decorator that allows the dispatcher to call an handler function."""
 
     # If no arguments are provided to @api, this function acts as a normal decorator and
     # receives the function to decorate as a single positional argument.
@@ -30,16 +30,17 @@ def api(function_to_decorate=None, unlogged_parameters=None, logging_filter=None
     # The function to decorate will be passed as a single positional argument to the following lambda.
     return lambda f: __decorate_api(f, unlogged_parameters, logging_filter)
 
+
 def __decorate_api(f, unlogged_parameters, logging_filter):
     f.is_dispatch_handler = True
-    f.arg_spec = inspect.getargspec(f) # See __check_function_parameters below.
+    f.arg_spec = inspect.getargspec(f)  # See __check_function_parameters below.
     f.unlogged_parameters = unlogged_parameters
     f.logging_filter = logging_filter
     return f
 
+
 class Request(object):
-    '''Enecapuslates the event and context object's passed to the 
-    handler function by AWS Lambda.'''
+    """Encapsulates the event and context object's passed to the handler function by AWS Lambda."""
 
     def __init__(self, event, context):
         self.__context = context
@@ -55,30 +56,28 @@ class Request(object):
 
 
 def dispatch(event, context):
-    '''Main entry point for the service AWS Lambda Function. It dispatches requests 
+    """
+    Main entry point for the service AWS Lambda Function. It dispatches requests
     to the correct code for processing.
 
-    Arguments:
-
-        event: An object containing the request data as constructed by the service's
-        AWS API Gateway. This object is expected to include the following properties:
+    :param event: An object containing the request data as constructed by the service's
+    AWS API Gateway. This object is expected to include the following properties:
 
             * module - the name of the module that implements the handler function.
               This name is prefixed with "api." so that only modules defined in the
               api directory will be loaded.
 
-            * function - the name of the handler function. The function must be 
+            * function - the name of the handler function. The function must be
               decorated using @dispatch.handler or the dispatcher will not execute it.
-              The function will be passed a dispatch.Reqeust object followed by the
+              The function will be passed a dispatch. Request object followed by the
               value of the parameters dict passed as **kwargs.
 
             * parameters - an dict containing parameter values.
+    :param context: The AWS Lambda defined context object for the request.
+    See https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html.
 
-        context: The AWS Lambda defined context object for the request. See 
-        https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html.
-
-    '''
-
+    :return: The result including request id from calling to Service AWS function
+    """
     aws_request_id = context.aws_request_id
     if isinstance(sys.stdout, logging.CloudCanvasLogger):
         logging.CloudCanvasLogger.override_id(aws_request_id=aws_request_id)
@@ -114,32 +113,31 @@ def dispatch(event, context):
 
     __check_function_parameters(function, parameters)
 
-
     # The request parameters are logged after finding the handler function since that's where the logging filters are defined.
     # Request logging is also after the request validation so that the logging filters don't have to know how to filter unexpected data.
     filtered_parameters = __apply_logging_filter(function, parameters)
     print('dispatching function {} with parameters {}'.format('api.{}.{}'.format(module_name, function_name), filtered_parameters))
 
     request = Request(event, context)
+    result = {}
 
     try:
         result = function(request, **parameters)
     except Exception as e:
-        raise type(e), 'CloudCanvas_request_id : {} -- {}'.format(aws_request_id, str(e)), sys.exc_info()[2]
+        error_message = 'CloudCanvas_request_id : {} -- {}'.format(aws_request_id, message(e))
+        six.reraise(type(e), type(e)(error_message), sys.exc_info()[2])
 
     try:
         result["CloudCanvas_request_id"] = aws_request_id
-    except:
-        print('Failed to add request id to request result')
+    except Exception as e:
+        print('Failed to add request id to request result {}'.format(message(e)))
 
     filtered_result = __apply_logging_filter(function, result)
     print('returning result {}'.format(filtered_result))
 
     return result
 
-
 def __check_function_parameters(function, parameters):
-
     # arg_spec is a named tuple as produced by inspect.getargspec: ArgSpec(args, varargs, keywords, defaults)
     arg_spec = function.arg_spec
 
@@ -149,17 +147,17 @@ def __check_function_parameters(function, parameters):
     # Check to see if all expected parameters have a value provided and that there aren't any values for 
     # which there are no parameters.
     expected_parameters = set(arg_spec.args)
-    unexpected_paramters = set()
-    for parameter_name, parameter_value in parameters.iteritems():
+    unexpected_parameters = set()
+    for parameter_name, parameter_value in six.iteritems(parameters):
         if parameter_name in expected_parameters:
             if parameter_value is not None:
                 if parameter_name == arg_spec.args[0]:
                     raise ValueError('Invalid handler arguments. The first parameter\'s name, {}, matches an api parameter name. Use an unique name for the first parameter, which is always a service.Request object.'.format(parameter_name))
                 expected_parameters.remove(parameter_name)
         elif not has_kwargs_parameter: # There are no "unexpected" parameters if there is a **kwargs parameter.
-            unexpected_paramters.add(parameter_name)
+            unexpected_parameters.add(parameter_name)
     
-    # The request object is passed as the first parameter, reguardless of it's name.
+    # The request object is passed as the first parameter, regardless of it's name.
     expected_parameters.remove(arg_spec.args[0])
 
     # Values do not need to be provided for any parameter with a default value. The arg_spec.defaults
@@ -176,16 +174,17 @@ def __check_function_parameters(function, parameters):
 
     # If there are any expected parameters for which values are not present, or parameters with names
     # that are not expected, generate a 400 response for the client.
-    if expected_parameters or unexpected_paramters:
+    if expected_parameters or unexpected_parameters:
         error_message = ''
         if expected_parameters:
             if error_message: error_message += ' '
             error_message += 'Expected the following parameters: {}.'.format(', '.join(expected_parameters))
-        if unexpected_paramters:
+        if unexpected_parameters:
             if error_message: error_message += ' '
-            error_message += 'The following parameters are unexpected: {}.'.format(', '.join(unexpected_paramters))
+            error_message += 'The following parameters are unexpected: {}.'.format(', '.join(unexpected_parameters))
         error_message += ' Check the documentation for the the API your calling.'
         raise ClientError(error_message)
+
 
 def __apply_logging_filter(function, parameters):
     if not function.unlogged_parameters and not function.logging_filter:

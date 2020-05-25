@@ -20,6 +20,8 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/IO/FileOperations.h>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
+#include <AzFramework/Viewport/ViewportBus.h>
+#include <MathConversion.h>
 
 #include <LoadScreenBus.h>
 
@@ -549,6 +551,7 @@ private:
 struct SRenderPipeline;
 class CRenderer
     : public IRenderer
+    , public AzFramework::ViewportRequestBus::Handler
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_3
     #if defined(AZ_PLATFORM_XENIA)
@@ -1066,7 +1069,7 @@ public:
     virtual void  DrawPrimitivesInternal(CVertexBuffer* src, int vert_num, const eRenderPrimitiveType prim_type) = 0;
 
     virtual bool    ChangeDisplay(unsigned int width, unsigned int height, unsigned int cbpp) = 0;
-    virtual void  ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false) = 0;
+    virtual void  ChangeViewport(unsigned int x, unsigned int y, unsigned int width, unsigned int height, bool bMainViewport = false, float scaleWidth = 1.0f, float scaleHeight = 1.0f) = 0;
 
     virtual bool    SaveTga(unsigned char* sourcedata, int sourceformat, int w, int h, const char* filename, bool flip) const;
 
@@ -1196,6 +1199,35 @@ public:
     virtual int GetOverlayWidth() const { return m_nativeWidth; }
     virtual int GetOverlayHeight() const { return m_nativeHeight; }
 #endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
+    // ViewportRequestBus::Handler
+    virtual AZ::Vector2 GetViewportSize() const override { return AZ::Vector2(static_cast<float>(GetOverlayWidth()), static_cast<float>(GetOverlayHeight())); }
+    
+    virtual AZ::Vector3 UnprojectViewportToWorldDirection(const AZ::Vector2& viewportPos) override 
+    {
+        const CCamera& camera = GetCamera();
+
+        Vec3 worldPos;
+        if (!camera.Unproject(Vec3(viewportPos.GetX(), viewportPos.GetY(), 0.f), worldPos))
+        {
+            return AZ::Vector3::CreateZero();
+        }
+
+        return LYVec3ToAZVec3((worldPos - camera.GetPosition()).GetNormalized());
+    }
+
+    virtual AZ::Vector2 ProjectWorldToViewportPosition(const AZ::Vector3& worldPos) override
+    { 
+        const CCamera& camera = GetCamera();
+
+        Vec3 screenPos;
+        if (camera.Project(AZVec3ToLYVec3(worldPos), screenPos))
+        {
+            return AZ::Vector2(screenPos.x, screenPos.y);
+        }
+
+        return AZ::Vector2::CreateZero();
+    }
 
     void SetPixelAspectRatio(float fPAR) {m_pixelAspectRatio = fPAR; }
     virtual float GetPixelAspectRatio() const { return (m_pixelAspectRatio); }
@@ -1814,9 +1846,10 @@ public:
     virtual void ClearShaderItem(SShaderItem* pShaderItem);
     virtual void UpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
     virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
-    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
+    virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, IMaterial* pMaterial);
 
     void RT_UpdateShaderItem (SShaderItem* pShaderItem, IMaterial* material);
+    void RT_RefreshShaderResourceConstants(SShaderItem* shaderItem) const;
 
     bool UseHalfFloatRenderTargets();
 
@@ -1839,6 +1872,25 @@ public:
     virtual void RemoveSyncWithMainListener(const ISyncMainWithRenderListener* pListener);
 
     IGPUParticleEngine* GetGPUParticleEngine() const { return m_gpuParticleEngine; }
+
+    void InitializeVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer) final
+    {
+        m_pRT->RC_InitializeVideoRenderer(pVideoRenderer);
+    }
+    void RT_InitializeVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer);
+
+    void CleanupVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer) final
+    {
+        m_pRT->RC_CleanupVideoRenderer(pVideoRenderer);
+    }
+    void RT_CleanupVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer);
+
+    void DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments) final
+    {
+        m_pRT->RC_DrawVideoRenderer(pVideoRenderer, drawArguments);
+    }
+    virtual void RT_DrawVideoRenderer(AZ::VideoRenderer::IVideoRenderer* pVideoRenderer, const AZ::VideoRenderer::DrawArguments& drawArguments) = 0;
+
 protected:
     void EF_AddParticle(CREParticle* pParticle, SShaderItem& shaderItem, CRenderObject* pRO, const SRenderingPassInfo& passInfo);
     void EF_RemoveParticlesFromScene();
@@ -2109,6 +2161,8 @@ public:
 #include "Xenia/Renderer_h_xenia.inl"
 #elif defined(AZ_PLATFORM_PROVO)
 #include "Provo/Renderer_h_provo.inl"
+#elif defined(AZ_PLATFORM_SALEM)
+#include "Salem/Renderer_h_salem.inl"
 #endif
 #endif
 
@@ -2459,6 +2513,7 @@ public:
     static float CV_r_texturesstreamingResidencyThrottle;
     static float CV_r_envcmupdateinterval;
     static float CV_r_envtexupdateinterval;
+    static int   CV_r_SlimGBuffer;
     static float CV_r_TextureLodDistanceRatio;
     static float CV_r_water_godrays_distortion;
     static float CV_r_waterupdateFactor;
@@ -2671,6 +2726,31 @@ public:
             return m_RP.m_pRNDrawCallsInfoPerMesh[m_RP.m_nProcessThreadID];
         }
     }
+    
+    // Added functionality for retrieving previous frames stats to use this frame
+    virtual RNDrawcallsMapMesh& GetDrawCallsInfoPerMeshPreviousFrame(bool mainThread = true)
+    {
+        if (mainThread)
+        {
+            return m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nFillThreadID];
+        }
+        else
+        {
+            return m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[m_RP.m_nProcessThreadID];
+        }
+    }
+    virtual RNDrawcallsMapNode& GetDrawCallsInfoPerNodePreviousFrame(bool mainThread = true)
+    {
+        if (mainThread)
+        {
+            return m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nFillThreadID];
+        }
+        else
+        {
+            return m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[m_RP.m_nProcessThreadID];
+        }
+    }
+
     virtual int GetDrawCallsPerNode(IRenderNode* pRenderNode);
 
     //Routine to perform an emergency flush of a particular render node from the stats, as not all render node holders are delay-deleted
@@ -2690,8 +2770,10 @@ public:
     {
         for (int i = 0; i < RT_COMMAND_BUF_COUNT; i++)
         {
-            m_RP.m_pRNDrawCallsInfoPerMesh[ i ].clear();
-            m_RP.m_pRNDrawCallsInfoPerNode[ i ].clear();
+            m_RP.m_pRNDrawCallsInfoPerMesh[i].swap(m_RP.m_pRNDrawCallsInfoPerMeshPreviousFrame[i]);
+            m_RP.m_pRNDrawCallsInfoPerMesh[i].clear();
+            m_RP.m_pRNDrawCallsInfoPerNode[i].swap(m_RP.m_pRNDrawCallsInfoPerNodePreviousFrame[i]);
+            m_RP.m_pRNDrawCallsInfoPerNode[i].clear();
         }
     }
 #endif

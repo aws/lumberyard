@@ -74,8 +74,19 @@ namespace ScriptEvents
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructibleFromNil, false)
                     ->Method("Get", &ScriptEventsAssetRef::GetDefinition)
+                    ->Method("GetName", &ScriptEventsAssetRef::GetName)
                     ;
             }
+        }
+
+        AZStd::string GetName() const
+        {
+            if (ScriptEventsAsset* ebusAsset = m_asset.GetAs<ScriptEventsAsset>())
+            {
+                return ebusAsset->m_definition.GetName();
+            }
+
+            return "Not Found";
         }
 
         ScriptEventsAssetRef() = default;
@@ -86,6 +97,8 @@ namespace ScriptEvents
             , m_userData(userData)
         {
             SetAsset(asset);
+
+            Load(false);
         }
 
         ~ScriptEventsAssetRef()
@@ -116,17 +129,15 @@ namespace ScriptEvents
                     scriptEventAsset->m_definition.RegisterInternal();
                 }
             }
-
-            if (AZ::Data::AssetBus::Handler::BusIsConnectedId(m_asset.GetId()))
+            else
             {
-                AZ::Data::AssetBus::Handler::BusDisconnect(m_asset.GetId());
-            }
+                if (AZ::Data::AssetBus::Handler::BusIsConnectedId(m_asset.GetId()))
+                {
+                    AZ::Data::AssetBus::Handler::BusDisconnect(m_asset.GetId());
+                }
 
-            if (m_asset.GetId().IsValid())
-            {
                 AZ::Data::AssetBus::Handler::BusConnect(m_asset.GetId());
             }
-
         }
 
         AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> GetAsset() const
@@ -185,15 +196,6 @@ namespace ScriptEvents
 
         void OnAssetUnloaded(const AZ::Data::AssetId assetId, const AZ::Data::AssetType assetType) override
         {
-            if (ScriptEventsAsset* ebusAsset = m_asset.GetAs<ScriptEventsAsset>())
-            {
-                bool isRegistered = false;
-                //ScriptEventsLegacy::RegistrationRequestBus::BroadcastResult(isRegistered, &ScriptEventsLegacy::RegistrationRequestBus::Events::IsBusRegistered, ebusAsset->m_scriptEventsDefinition.m_name);
-                if (isRegistered)
-                {
-                    //ScriptEventsLegacy::RegistrationRequestBus::Broadcast(&ScriptEventsLegacy::RegistrationRequestBus::Events::Unregister, ebusAsset->m_scriptEventsDefinition.m_name);
-                }
-            }
         }
 
         void OnAssetSaved(AZ::Data::Asset<AZ::Data::AssetData> asset, bool isSuccessful) override

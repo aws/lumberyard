@@ -15,6 +15,7 @@
 
 #include <PhysX/MeshAsset.h>
 #include <PhysX/ColliderShapeBus.h>
+#include <Source/Utils.h>
 
 #include <AzCore/Math/Color.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
@@ -41,10 +42,10 @@ namespace PhysX
     /// Aggregates points on trigger collider components in an entity.
     struct TriggerRandomPointsAggregator
     {
-        ForceRegionUtil::PointList operator()(ForceRegionUtil::PointList& left
-            , const ForceRegionUtil::PointList& right) const
+        Utils::Geometry::PointList operator()(Utils::Geometry::PointList& left
+            , const Utils::Geometry::PointList& right) const
         {
-            ForceRegionUtil::PointList combinedPoints;
+            Utils::Geometry::PointList combinedPoints;
             combinedPoints.reserve(left.size() + right.size());
             combinedPoints.insert(combinedPoints.end(), left.begin(), left.end());
             combinedPoints.insert(combinedPoints.end(), right.begin(), right.end());
@@ -257,93 +258,5 @@ namespace PhysX
             , &ColliderShapeRequestBus::Events::GetColliderShapeAabb);
         entityParams.m_aabb = triggerAabb.value;
         return entityParams;
-    }
-
-    ForceRegionUtil::PointList ForceRegionUtil::GenerateBoxPoints(const AZ::Vector3& min, const AZ::Vector3& max)
-    {
-        ForceRegionUtil::PointList pointList;
-
-        auto size = max - min;
-
-        const auto minSamples = 2.f;
-        const auto maxSamples = 8.f;
-        const auto desiredSampleDelta = 2.f;
-
-        // How many sample in each axis
-        int numSamples[] =
-        {
-            static_cast<int>((size.GetX() / desiredSampleDelta).GetClamp(minSamples, maxSamples)),
-            static_cast<int>((size.GetY() / desiredSampleDelta).GetClamp(minSamples, maxSamples)),
-            static_cast<int>((size.GetZ() / desiredSampleDelta).GetClamp(minSamples, maxSamples))
-        };
-
-        float sampleDelta[] =
-        {
-            size.GetX() / static_cast<float>(numSamples[0] - 1),
-            size.GetY() / static_cast<float>(numSamples[1] - 1),
-            size.GetZ() / static_cast<float>(numSamples[2] - 1),
-        };
-
-        for (auto i = 0; i < numSamples[0]; ++i)
-        {
-            for (auto j = 0; j < numSamples[1]; ++j)
-            {
-                for (auto k = 0; k < numSamples[2]; ++k)
-                {
-                    pointList.emplace_back(
-                        min.GetX() + i * sampleDelta[0],
-                        min.GetY() + j * sampleDelta[1],
-                        min.GetZ() + k * sampleDelta[2]
-                    );
-                }
-            }
-        }
-
-        return pointList;
-    }
-
-    ForceRegionUtil::PointList ForceRegionUtil::GenerateSpherePoints(float radius)
-    {
-        ForceRegionUtil::PointList points;
-
-        int nSamples = static_cast<int>(radius * 5);
-        nSamples = AZ::GetClamp(nSamples, 5, 512);
-
-        // Draw arrows using Fibonacci sphere
-        float offset = 2.f / nSamples;
-        float increment = AZ::Constants::Pi * (3.f - sqrt(5.f));
-        for (int i = 0; i < nSamples; ++i)
-        {
-            float phi = ((i + 1) % nSamples) * increment;
-            float y = ((i * offset) - 1) + (offset / 2.f);
-            float r = sqrt(1 - pow(y, 2));
-            float x = cos(phi) * r;
-            float z = sin(phi) * r;
-            points.emplace_back(x * radius, y * radius, z * radius);
-        }
-        return points;
-    }
-
-    ForceRegionUtil::PointList ForceRegionUtil::GenerateCylinderPoints(float height, float radius)
-    {
-        ForceRegionUtil::PointList points;
-        AZ::Vector3 base(0.f, 0.f, -height * 0.5f);
-        AZ::Vector3 radiusVector(radius, 0.f, 0.f);
-
-        const auto sides = AZ::GetClamp(radius, 3.f, 8.f);
-        const auto segments = AZ::GetClamp(height * 0.5f, 2.f, 8.f);
-        const auto angleDelta = AZ::Quaternion::CreateRotationZ(AZ::Constants::TwoPi / sides);
-        const auto segmentDelta = height / (segments - 1);
-        for (auto segment = 0; segment < segments; ++segment)
-        {
-            for (auto side = 0; side < sides; ++side)
-            {
-                auto point = base + radiusVector;
-                points.emplace_back(point);
-                radiusVector = angleDelta * radiusVector;
-            }
-            base += AZ::Vector3(0, 0, segmentDelta);
-        }
-        return points;
     }
 }

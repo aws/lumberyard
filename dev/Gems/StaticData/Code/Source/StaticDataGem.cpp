@@ -11,7 +11,6 @@
 */
 #include <platform_impl.h>
 #include "StaticDataGem.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <StaticDataManager.h>
 
 namespace StaticData

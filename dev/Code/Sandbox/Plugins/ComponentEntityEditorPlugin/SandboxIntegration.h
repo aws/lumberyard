@@ -22,7 +22,6 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Viewport/DisplayContextRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <AzToolsFramework/API/HyperGraphBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/Slice/SliceOverridesNotificationWindowManager.hxx>
 #include <AzToolsFramework/UI/Slice/SliceOverridesNotificationWindow.hxx>
@@ -65,7 +64,6 @@ class QMenu;
 class QWidget;
 class CComponentEntityObject;
 class CHyperGraph;
-struct IFlowGraph;
 
 namespace AzToolsFramework
 {
@@ -77,18 +75,15 @@ namespace AzToolsFramework
 
 //////////////////////////////////////////////////////////////////////////
 
-AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
 class SandboxIntegrationManager
     : private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
     , private AzToolsFramework::EditorRequests::Bus::Handler
     , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private AzToolsFramework::EditorEvents::Bus::Handler
     , private AzFramework::AssetCatalogEventBus::Handler
-    , private AzFramework::EntityDebugDisplayRequestBus::Handler
     , private AzFramework::DebugDisplayRequestBus::Handler
     , private AzFramework::DisplayContextRequestBus::Handler
     , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
-    , private AzToolsFramework::HyperGraphRequestBus::Handler
     , private IUndoManagerListener
     , private AZ::LegacyConversion::LegacyConversionRequestBus::Handler
     , private AzToolsFramework::NewViewportInteractionModelEnabledRequestBus::Handler
@@ -186,20 +181,7 @@ private:
         const AzFramework::SliceInstantiationTicket& ticket) override;
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // AzToolsFramework::HyperGraphRequestBus::Handler
-    AZStd::string GetHyperGraphName(IFlowGraph* runtimeGraphPtr) override;
-    void RegisterHyperGraphEntityListener(IFlowGraph* runtimeGraphPtr, IEntityObjectListener* listener) override;
-    void UnregisterHyperGraphEntityListener(IFlowGraph* runtimeGraphPtr, IEntityObjectListener* listener) override;
-    void SetHyperGraphEntity(IFlowGraph* runtimeGraphPtr, const AZ::EntityId& /*id*/) override;
-    void OpenHyperGraphView(IFlowGraph* runtimeGraphPtr) override;
-    void ReleaseHyperGraph(IFlowGraph* runtimeGraphPtr) override;
-    void SetHyperGraphGroupName(IFlowGraph* runtimeGraphPtr, const char* name) override;
-    void SetHyperGraphName(IFlowGraph* runtimeGraphPtr, const char* name) override;
-    void BuildSerializedFlowGraph(IFlowGraph* flowGraph, LmbrCentral::SerializedFlowGraph& graphData) override;
-    //////////////////////////////////////////////////////////////////////////
-
-    // AzToolsFramework::DebugDisplayRequestBus (and @deprecated EntityDebugDisplayRequestBus)
+    // AzToolsFramework::DebugDisplayRequestBus
     void SetColor(float r, float g, float b, float a) override;
     void SetColor(const AZ::Color& color) override;
     void SetColor(const AZ::Vector4& color) override;
@@ -235,7 +217,9 @@ private:
     void DrawTerrainLine(AZ::Vector3 worldPos1, AZ::Vector3 worldPos2) override;
     void DrawWireSphere(const AZ::Vector3& pos, float radius) override;
     void DrawWireSphere(const AZ::Vector3& pos, const AZ::Vector3 radius) override;
+    void DrawWireDisk(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius) override;
     void DrawBall(const AZ::Vector3& pos, float radius, bool drawShaded = true) override;
+    void DrawDisk(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius) override;
     void DrawArrow(const AZ::Vector3& src, const AZ::Vector3& trg, float fHeadScale, bool b2SidedArrow) override;
     void DrawTextLabel(const AZ::Vector3& pos, float size, const char* text, const bool bCenter, int srcOffsetX, int scrOffsetY) override;
     void Draw2dTextLabel(float x, float y, float size, const char* text, bool bCenter) override;
@@ -261,7 +245,7 @@ private:
     void PushMatrix(const AZ::Transform& tm) override;
     void PopMatrix() override;
 
-    // AzFramework::DisplayContextRequestBus (and @deprecated EntityDebugDisplayRequestBus)
+    // AzFramework::DisplayContextRequestBus
     void SetDC(DisplayContext* dc) override;
     DisplayContext* GetDC() override;
 
@@ -291,12 +275,6 @@ private:
     void ContextMenu_Duplicate();
     void ContextMenu_DeleteSelected();
     void ContextMenu_ResetToSliceDefaults(AzToolsFramework::EntityIdList entities);
-
-    bool CreateFlowGraphNameDialog(AZ::EntityId entityId, AZStd::string& flowGraphName);
-    void ContextMenu_NewFlowGraph(AzToolsFramework::EntityIdList entities);
-    void ContextMenu_OpenFlowGraph(AZ::EntityId entityId, IFlowGraph* flowgraph);
-    void ContextMenu_AddFlowGraph(AZ::EntityId entities);
-    void ContextMenu_RemoveFlowGraph(AZ::EntityId entityId, IFlowGraph* flowgraph);
 
     void MakeSliceFromEntities(const AzToolsFramework::EntityIdList& entities, bool inheritSlices, bool setAsDynamic);
 
@@ -332,7 +310,6 @@ private:
     void SetupLayerContextMenu(QMenu* menu);
     void SetupSliceContextMenu(QMenu* menu);
     void SetupSliceContextMenu_Modify(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices);
-    void SetupFlowGraphContextMenu(QMenu* menu);
     void SetupScriptCanvasContextMenu(QMenu* menu);
     void SaveSlice(const bool& QuickPushToFirstLevel);
     void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances);
@@ -381,7 +358,6 @@ private:
     const AZStd::string m_defaultComponentViewportIconLocation = "Editor/Icons/Components/Viewport/Component_Placeholder.png";
     const AZStd::string m_defaultEntityIconLocation = "Editor/Icons/Components/Viewport/Transform.png";
 };
-AZ_POP_DISABLE_WARNING
 
 //////////////////////////////////////////////////////////////////////////
 class CToolsApplicationUndoLink

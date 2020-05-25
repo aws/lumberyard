@@ -30,17 +30,16 @@
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // conversion from 'int' to 'float', possible loss of data, needs to have dll-interface to be used by clients of class
+                                                                    // 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QMenu>
 #include <QHeaderView>
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // conversion from 'int' to 'float', possible loss of data
 #include <QMouseEvent>
-AZ_POP_DISABLE_WARNING
 #include <QCoreApplication>
 #include <QPen>
-AZ_PUSH_DISABLE_WARNING(4800 4251, "-Wunknown-warning-option") // 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QPainter>
-AZ_POP_DISABLE_WARNING
 #include <QTimer>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -86,14 +85,30 @@ namespace AzToolsFramework
             connect(m_scTimer, &QTimer::timeout, this, &AssetBrowserTreeView::OnUpdateSCThumbnailsList);
 
             AssetBrowserViewRequestBus::Handler::BusConnect();
+            AssetBrowserComponentNotificationBus::Handler::BusConnect();
         }
 
-        AssetBrowserTreeView::~AssetBrowserTreeView() = default;
+        AssetBrowserTreeView::~AssetBrowserTreeView()
+        {
+            AssetBrowserViewRequestBus::Handler::BusDisconnect();
+            AssetBrowserComponentNotificationBus::Handler::BusDisconnect();
+        }
+
+        void AssetBrowserTreeView::SetName(const QString& name)
+        {
+            m_name = name;
+
+            bool isAssetBrowserComponentReady = false;
+            AssetBrowserComponentRequestBus::BroadcastResult(isAssetBrowserComponentReady, &AssetBrowserComponentRequests::AreEntriesReady);
+            if (isAssetBrowserComponentReady)
+            {
+                OnAssetBrowserComponentReady();
+            }
+        }
 
         void AssetBrowserTreeView::LoadState(const QString& name)
         {
             Q_ASSERT(model());
-
             m_sendMetrics = false; // do not send metrics events when loading tree state
             auto crc = AZ::Crc32(name.toUtf8().data());
             InitializeTreeViewSaving(crc);
@@ -179,6 +194,18 @@ namespace AzToolsFramework
             emit ClearStringFilter();
             emit ClearTypeFilter();
             m_assetBrowserSortFilterProxyModel->FilterUpdatedSlotImmediate();
+        }
+
+        void AssetBrowserTreeView::OnAssetBrowserComponentReady()
+        {
+            if (!m_name.isEmpty())
+            {
+                m_sendMetrics = false; // do not send metrics events when loading tree state
+                auto crc = AZ::Crc32(m_name.toUtf8().data());
+                InitializeTreeViewSaving(crc);
+                ApplyTreeViewSnapshot();
+                m_sendMetrics = true;
+            }
         }
 
         void AssetBrowserTreeView::startDrag(Qt::DropActions supportedActions)
@@ -360,8 +387,11 @@ namespace AzToolsFramework
             m_assetBrowserModel = qobject_cast<AssetBrowserModel*>(m_assetBrowserSortFilterProxyModel->sourceModel());
             QTreeViewWithStateSaving::setModel(model);
         }
-        void AssetBrowserTreeView::OnContextMenu(const QPoint&)
+
+        void AssetBrowserTreeView::OnContextMenu(const QPoint& point)
         {
+            AZ_UNUSED(point);
+
             auto selectedAssets = GetSelectedAssets();
             if (selectedAssets.size() != 1)
             {

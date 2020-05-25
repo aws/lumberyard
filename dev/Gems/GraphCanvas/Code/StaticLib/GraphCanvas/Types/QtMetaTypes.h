@@ -11,8 +11,10 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QMetaType>
 #include <QFont>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Styling/definitions.h>
 #include <GraphCanvas/Editor/EditorTypes.h>

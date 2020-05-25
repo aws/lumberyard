@@ -9,11 +9,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import os
+import sys
+
+# waflib imports
 from waflib import Context, Utils, Logs
 from waflib.Configure import conf
-from third_party import ThirdPartySettings
-import sys
-import os
+
+# lmbrwaflib imports
+from lmbrwaflib.third_party import ThirdPartySettings
+
 
 LMBR_SETUP_REL_PATH = os.path.join('Tools', 'LmbrSetup')
 
@@ -41,7 +47,7 @@ def exec_command(cmd, realtimeOutput=False, **kw):
             out = ""
 
             for line in iter(p.stdout.readline, b''):
-                print line,
+                print(line, end=' ')
                 out += line
 
             p.stdout.close()
@@ -56,9 +62,9 @@ def exec_command(cmd, realtimeOutput=False, **kw):
 
 
         if out:
-            out = out.decode(sys.stdout.encoding or 'iso8859-1')
+            out = out.decode('utf-8', 'replace')
         if err:
-            err = err.decode(sys.stdout.encoding or 'iso8859-1')
+            err = err.decode('utf-8', 'replace')
 
         return p.returncode, out, err
 

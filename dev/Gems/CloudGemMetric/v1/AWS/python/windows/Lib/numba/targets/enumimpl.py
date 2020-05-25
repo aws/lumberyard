@@ -1,39 +1,39 @@
 """
 Implementation of enums.
 """
-
+import operator
 
 from .imputils import (lower_builtin, lower_getattr, lower_getattr_generic,
                        lower_cast, lower_constant, impl_ret_untracked)
 from .. import types
 
 
-@lower_builtin('==', types.EnumMember, types.EnumMember)
+@lower_builtin(operator.eq, types.EnumMember, types.EnumMember)
 def enum_eq(context, builder, sig, args):
     tu, tv = sig.args
     u, v = args
-    res = context.generic_compare(builder, "==",
+    res = context.generic_compare(builder, operator.eq,
                                   (tu.dtype, tv.dtype), (u, v))
     return impl_ret_untracked(context, builder, sig.return_type, res)
 
 
-@lower_builtin('is', types.EnumMember, types.EnumMember)
+@lower_builtin(operator.is_, types.EnumMember, types.EnumMember)
 def enum_is(context, builder, sig, args):
     tu, tv = sig.args
     u, v = args
     if tu == tv:
-        res = context.generic_compare(builder, "==",
+        res = context.generic_compare(builder, operator.eq,
                                       (tu.dtype, tv.dtype), (u, v))
     else:
         res = context.get_constant(sig.return_type, False)
     return impl_ret_untracked(context, builder, sig.return_type, res)
 
 
-@lower_builtin('!=', types.EnumMember, types.EnumMember)
+@lower_builtin(operator.ne, types.EnumMember, types.EnumMember)
 def enum_ne(context, builder, sig, args):
     tu, tv = sig.args
     u, v = args
-    res = context.generic_compare(builder, "!=",
+    res = context.generic_compare(builder, operator.ne,
                                   (tu.dtype, tv.dtype), (u, v))
     return impl_ret_untracked(context, builder, sig.return_type, res)
 
@@ -68,12 +68,12 @@ def enum_class_getattr(context, builder, ty, val, attr):
     return context.get_constant_generic(builder, ty.dtype, member.value)
 
 
-@lower_builtin('static_getitem', types.EnumClass, types.Const)
+@lower_builtin('static_getitem', types.EnumClass, types.StringLiteral)
 def enum_class_getitem(context, builder, sig, args):
     """
     Return an enum member by index name.
     """
     enum_cls_typ, idx = sig.args
-    member = enum_cls_typ.instance_class[idx.value]
+    member = enum_cls_typ.instance_class[idx.literal_value]
     return context.get_constant_generic(builder, enum_cls_typ.dtype,
                                         member.value)

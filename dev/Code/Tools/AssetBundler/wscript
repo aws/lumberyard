@@ -20,6 +20,7 @@ def build(bld):
         file_list       = ['assetbundlerbatch.waf_files'],
         platforms       = ['win', 'darwin'],
         configurations  = ['debug_all', 'profile_all'],
+        client_only        = True,
         vs_filter       = 'Tools/AssetBundler',
         use             = ['AzToolsFramework'] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
         uselib          = ['QT5CORE',

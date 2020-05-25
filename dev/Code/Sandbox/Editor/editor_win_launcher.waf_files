@@ -1,0 +1,8 @@
+{
+    "none": {
+         "Resources": [
+            "Launcher/editor_launcher.rc",
+            "Launcher/resource.h"
+        ]
+    }
+}

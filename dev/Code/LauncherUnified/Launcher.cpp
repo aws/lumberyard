@@ -17,6 +17,8 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/IO/SystemFile.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <AzGameFramework/Application/GameApplication.h>
 
 #include <CryLibrary.h>
@@ -302,7 +304,7 @@ namespace LumberyardLauncher
             needsQuote ? "\"%s\"" : "%s",
             arg);
 
-        // Inject the argmument in the argument buffer to preserve/replicate argC and argV
+        // Inject the argument in the argument buffer to preserve/replicate argC and argV
         azstrncpy(&m_commandLineArgBuffer[m_nextCommandLineArgInsertPoint],
             AZ_COMMAND_LINE_LEN - m_nextCommandLineArgInsertPoint,
             arg,
@@ -364,8 +366,50 @@ namespace LumberyardLauncher
 
         CryAllocatorsRAII cryAllocatorsRAII;
 
-        // Engine Config (bootstrap.cfg)
+        bool applyAppRootOverride = (AZ_TRAIT_LAUNCHER_SET_APPROOT_OVERRIDE == 1);
         const char* pathToAssets = mainInfo.m_appResourcesPath;
+
+    #if AZ_TRAIT_LAUNCHER_ALLOW_CMDLINE_APPROOT_OVERRIDE
+        char appRootOverride[AZ_MAX_PATH_LEN] = { 0 };
+        {
+            // Search for the app root argument (--app-root <PATH>) where <PATH> is the app root path to set for the application
+            const static char* appRootArgPrefix = "--app-root";
+            size_t appRootArgPrefixLen = strlen(appRootArgPrefix);
+
+            const char* appRootArg = nullptr;
+
+            char cmdLineCopy[AZ_COMMAND_LINE_LEN] = { 0 };
+            azstrncpy(cmdLineCopy, AZ_COMMAND_LINE_LEN, mainInfo.m_commandLine, mainInfo.m_commandLineLen);
+
+            const char* delimiters = " ";
+            char* nextToken = nullptr;
+            char* token = azstrtok(cmdLineCopy, 0, delimiters, &nextToken);
+            while (token != NULL)
+            {
+                if (azstrnicmp(appRootArgPrefix, token, appRootArgPrefixLen) == 0)
+                {
+                    appRootArg = azstrtok(nullptr, 0, delimiters, &nextToken);
+                    break;
+                }
+                token = azstrtok(nullptr, 0, delimiters, &nextToken);
+            }
+
+            if (appRootArg)
+            {
+                if (AzFramework::StringFunc::Path::StripQuotes(appRootArg, appRootOverride, AZ_MAX_PATH_LEN))
+                {
+                    pathToAssets = appRootOverride;
+                    applyAppRootOverride = true;
+                }
+                else
+                {
+                    AZ_Error("Launcher", false, "Failed to extract the app-root override from the command line");
+                }
+            }
+        }
+    #endif // AZ_TRAIT_LAUNCHER_ALLOW_CMDLINE_APPROOT_OVERRIDE
+
+        // Engine Config (bootstrap.cfg)
         const char* sourcePaths[] = { pathToAssets };
         CEngineConfig engineConfig(sourcePaths, 1);
 
@@ -453,11 +497,11 @@ namespace LumberyardLauncher
 
             AzGameFramework::GameApplication::StartupParameters gameApplicationStartupParams;
 
-        #if AZ_TRAIT_LAUNCHER_SET_APPROOT_OVERRIDE
-            // setting this on windows will prevent the asset processor from auto launching and doesn't work 
-            // properly on android when the assets are in the APK
-            gameApplicationStartupParams.m_appRootOverride = pathToAssets;
-        #endif // AZ_TRAIT_LAUNCHER_SET_APPROOT_OVERRIDE
+            if (applyAppRootOverride)
+            {
+                // NOTE: setting this on android doesn't work when assets are packaged in the APK
+                gameApplicationStartupParams.m_appRootOverride = pathToAssets;
+            }
 
             if (mainInfo.m_allocator)
             {
@@ -514,7 +558,7 @@ namespace LumberyardLauncher
             AZ_TracePrintf("Launcher", "Log and cache files will be written to the Cache directory on your host PC");
 
             const char* message = "If your game does not run, check any of the following:\n"
-                                  "\t- Verify the remove_ip address is correct in bootstrap.cfg";
+                                  "\t- Verify the remote_ip address is correct in bootstrap.cfg";
 
             if (mainInfo.m_additionalVfsResolution)
             {

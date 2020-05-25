@@ -769,7 +769,7 @@ struct SFlowSystemConversion<FlowEntityId, float>
 {
     static ILINE bool ConvertValue(const FlowEntityId& from, float& to)
     {
-        AZ_STATIC_ASSERT(sizeof(FlowEntityId::StorageType) == sizeof(AZ::u64), "FlowEntityId storage is expectd to be 64-bit for flow graph numeric conversions.");
+        static_assert(sizeof(FlowEntityId::StorageType) == sizeof(AZ::u64), "FlowEntityId storage is expectd to be 64-bit for flow graph numeric conversions.");
         if (Is32BitId(from))
         {
             to = static_cast<float>(from.GetId());
@@ -800,7 +800,7 @@ struct SFlowSystemConversion<FlowEntityId, int>
 {
     static ILINE bool ConvertValue(const FlowEntityId& from, int& to)
     {
-        AZ_STATIC_ASSERT(sizeof(FlowEntityId::StorageType) == sizeof(AZ::u64), "FlowEntityId storage is expectd to be 64-bit for flow graph numeric conversions.");
+        static_assert(sizeof(FlowEntityId::StorageType) == sizeof(AZ::u64), "FlowEntityId storage is expectd to be 64-bit for flow graph numeric conversions.");
         if (Is32BitId(from))
         {
             to = static_cast<int>(from.GetId());

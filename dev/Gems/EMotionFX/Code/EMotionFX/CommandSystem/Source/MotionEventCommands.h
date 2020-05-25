@@ -220,6 +220,7 @@ namespace CommandSystem
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     void COMMANDSYSTEM_API CommandAddEventTrack();
     void COMMANDSYSTEM_API CommandRemoveEventTrack(uint32 trackIndex);
+    void COMMANDSYSTEM_API CommandRemoveEventTrack(EMotionFX::Motion* motion, uint32 trackIndex);
     void COMMANDSYSTEM_API CommandRenameEventTrack(uint32 trackIndex, const char* newName);
     void COMMANDSYSTEM_API CommandEnableEventTrack(uint32 trackIndex, bool isEnabled);
     void COMMANDSYSTEM_API CommandHelperAddMotionEvent(const char* trackName, float startTime, float endTime, const EMotionFX::EventDataSet& eventDatas = EMotionFX::EventDataSet {}, MCore::CommandGroup* commandGroup = nullptr);

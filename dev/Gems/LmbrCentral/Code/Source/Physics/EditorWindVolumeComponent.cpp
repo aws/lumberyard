@@ -178,7 +178,7 @@ namespace LmbrCentral
     void EditorWindVolumeComponent::DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const float radius = m_size.GetX();
-        int nSamples = radius * 5;
+        int nSamples = aznumeric_cast<int>(radius * 5);
         nSamples = AZ::GetClamp(nSamples, 5, 512);
 
         // Draw arrows using Fibonacci sphere

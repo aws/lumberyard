@@ -24,8 +24,8 @@ namespace AzFramework
         //! These are list of some common file tags 
         extern const char* FileTags[];
 
-        extern const char* BlackListFileName;
-        extern const char* WhiteListFileName;
+        extern const char* ExcludeFileName;
+        extern const char* IncludeFileName;
 
         //! helper enum for retrieving indexes in FileTags array 
         enum class FileTagsIndex : unsigned int

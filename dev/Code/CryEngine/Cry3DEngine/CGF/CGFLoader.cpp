@@ -36,7 +36,6 @@
 #include <InplaceFactory.h>
 #include "CryPath.h"
 #include "ReadOnlyChunkFile.h"
-#include "../MeshCompiler/VertexCacheOptimizer.h"
 #include "IStatObj.h"
 
 // #define DEBUG_DUMP_RBATCHES
@@ -3501,12 +3500,6 @@ bool CLoaderCGF::LoadIndexStreamChunk(CMesh& mesh, const MESH_CHUNK_DESC& chunk)
     else
     {
         m_LastError.Format("Index stream %d has damaged data (elemSize:%u)", (int)MStream, (uint)nStreamElemSize);
-        return false;
-    }
-
-    if (!vcache::VertexCacheOptimizer::ReorderIndicesInPlace(pStreamData, nElemCount, nStreamElemSize))
-    {
-        m_LastError.Format("Failed to reorder / optimize index stream %d", (int)MStream);
         return false;
     }
 

@@ -20,7 +20,7 @@ def build(bld):
         #==============================
         target          = 'DynamicContentEditorPlugin',
         vs_filter       = 'CloudGemDynamicContent/Plugins',
-        file_list       = 'dynamiccontentplugin.waf_files',
+        file_list       = 'dynamiccontentplugin_common.waf_files',
         platforms       = ['win', 'darwin'],
         configurations  = ['all'],
         exclude_monolithic = True,
@@ -32,9 +32,8 @@ def build(bld):
                            'QT5CORE',
                            'QT5GUI',
                            'QT5WIDGETS',
-                           'BOOSTPYTHON'],
-        use             = ['AWS',
-                           'MaglevControlPanel',
+                           'PYBIND11'],
+        use             = ['MaglevControlPanel',
                            'AzQtComponents',
                            'EditorUI_QT',
                            'EditorCommon',
@@ -43,23 +42,21 @@ def build(bld):
                            'EmbeddedPython'],
         win_lib         = ['gdi32'],
 
-        darwin_cxxflags = ['-Wno-unused-local-typedef',
-                           '-Wno-deprecated-register'],
-        darwin_x64_lib  = ['python2.7', 'bsm'],
-        darwin_x64_framework = ['Security'],
-
-        test_all_file_list = ['dynamiccontentplugin_test.waf_files'],
-
+        win_test_all_file_list = ['dynamiccontentplugin_test.waf_files'],
+        win_file_list = ['dynamiccontentplugin_win.waf_files'],
+		
+        darwin_file_list = ['dynamiccontentplugin_darwin.waf_files'],
+        darwin_disable_tests = True,
+		
         includes        = [ '.',
                             bld.Path('Code/CryEngine/CryCommon'),
                             bld.Path('Gems/CloudGemDynamicContent/Code/EditorPlugin'),
-                            bld.Path('Code/CryEngine/CryAction'),
                             bld.Path('Code/CryEngine/CrySystem'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                             bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
+                            bld.Path('Code/Sandbox/Plugins/MaglevControlPanel/Include'),
                             bld.Path('Code/Sandbox/Plugins/MaglevControlPanel'),
-                            bld.Path('Gems/AWS/Code/Include'),
                             bld.Path('Code/Tools')
                         ],
     )

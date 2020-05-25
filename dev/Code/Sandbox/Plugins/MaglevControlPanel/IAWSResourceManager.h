@@ -53,7 +53,7 @@ public:
 
     virtual void ImportResource(const QString& resourceGroup, const QString& resourceName, const QString& resourceArn) = 0;
     virtual void ListImportableResources(QString region) = 0;
-    
+
 signals:
 
     void ImporterOutput(const QVariant& output, const char* outputType);
@@ -590,7 +590,7 @@ class IAWSProjectModel
     Q_OBJECT
 
 public:
-    
+
     enum Roles
     {
         PathRole = Qt::UserRole    // QString: file/directory path for file/directory types
@@ -630,7 +630,7 @@ public:
         GAME,
         BASE
     };
-    // 
+
     virtual QJsonValue GetResourceGroupSetting(const QString& resourceGroupName, const QString& settingName, ResourceGroupSettingPriority settingPriority = ResourceGroupSettingPriority::GAME_OR_BASE) const = 0;
 
     virtual QVector<QString> GetWritableFilesforUploadResources() const = 0;
@@ -683,7 +683,7 @@ public:
     virtual void RetryLoading() = 0;
 
     virtual void GetRegionList() = 0;
-    virtual bool InitializeProject(const QString& region, const QString& stackName, const QString& accessKey = "", const QString& secretKey = "") = 0;
+    virtual bool InitializeProject(const QString& region, const QString& stackName, const QString& accessKey = "", const QString& secretKey = "", bool createAdminRoles=false) = 0;
 
     virtual void RequestEditProjectSettings() = 0;
     virtual void RequestEditDeploymentTemplate() = 0;

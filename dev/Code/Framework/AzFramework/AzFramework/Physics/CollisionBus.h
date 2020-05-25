@@ -20,11 +20,17 @@ namespace Physics
     //! CollisionRequests configures global project-level collision filtering settings.
     //! This is equivalent to setting values via the UI.
     class CollisionRequests
-        : public AZ::EBusTraits
     {
     public:
 
-        virtual ~CollisionRequests() {}
+        AZ_TYPE_INFO(CollisionRequests, "{5A937391-DC65-4E1D-84A6-AE151A1200D1}");
+
+        CollisionRequests() = default;
+        virtual ~CollisionRequests() = default;
+
+        // AZ::Interface requires these to be deleted.
+        CollisionRequests(CollisionRequests&&) = delete;
+        CollisionRequests& operator=(CollisionRequests&&) = delete;
 
         /// Gets a collision layer by name. The Default layer is returned if the layer name was not found.
         virtual CollisionLayer GetCollisionLayerByName(const AZStd::string& layerName) = 0;
@@ -54,9 +60,22 @@ namespace Physics
 
         /// Creates a new collision group preset with corresponding groupName.
         virtual void CreateCollisionGroup(const AZStd::string& groupName, const Physics::CollisionGroup& group) = 0;
+
+        virtual void SetCollisionConfiguration(const CollisionConfiguration& collisionConfiguration) = 0;
+
+        virtual CollisionConfiguration GetCollisionConfiguration() = 0;
     };
 
-    using CollisionRequestBus = AZ::EBus<CollisionRequests>;
+    /// Collision requests bus traits. Singleton pattern.
+    class CollisionRequestsTraits
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    };
+
+    using CollisionRequestBus = AZ::EBus<CollisionRequests, CollisionRequestsTraits>;
 
     //! CollisionFilteringRequests configures filtering settings per entity.
     class CollisionFilteringRequests
@@ -68,7 +87,7 @@ namespace Physics
         //! Sets the collision layer on an entity.
         //! layerName should match a layer defined in the PhysX cConfiguration window.
         //! Colliders with a matching colliderTag will be updated. Specify the empty tag to update all colliders.
-        virtual void SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag) = 0;
+        virtual void SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag) = 0;
 
         //! Gets the collision layer name for a collider on an entity
         //! If the collision layer can't be found, an empty string is returned.
@@ -78,7 +97,7 @@ namespace Physics
         //! Sets the collision group on an entity.
         //! groupName should match a group defined in the PhysX configuration window.
         //! Colliders with a matching colliderTag will be updated. Specify the empty tag to update all colliders.
-        virtual void SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& colliderTag) = 0;
+        virtual void SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 colliderTag) = 0;
 
         //! Gets the collision group name for a collider on an entity. 
         //! If the collision group can't be found, an empty string is returned.
@@ -88,7 +107,7 @@ namespace Physics
         //! Toggles a single collision layer on or off on an entity.
         //! layerName should match a layer defined in the PhysX configuration window.
         //! Colliders with a matching colliderTag will be updated. Specify the empty tag to update all colliders.
-        virtual void ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag, bool enabled) = 0;
+        virtual void ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled) = 0;
     };
     using CollisionFilteringRequestBus = AZ::EBus<CollisionFilteringRequests>;
 

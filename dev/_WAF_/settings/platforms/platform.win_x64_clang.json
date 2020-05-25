@@ -4,7 +4,7 @@
     "hosts"         : "win32",
     "aliases"       : "clang,win",
     "has_server"    : true,
-    "enabled"       : true,
+    "enabled"       : false,
 
     "modules"       : [
         "platforms/compile_settings_cryengine",
@@ -26,7 +26,7 @@
         "legacy_platform_name"  : "win64_clang",
         "compiler"              : "clang",
         "sa_capability": {
-            "key"               : "vc140",
+            "key"               : "winclang",
             "description"       : "Clang"
         },
         "qt_supported"          : true,
@@ -35,6 +35,9 @@
             "win32/vc140/qtga.dll",
             "win32/vc140/qtgad.dll",
             "win32/vc140/qtgad.pdb"
+        ],
+        "binary_compatible_platforms": [
+            "win_x64_vs2015"
         ]
     },
 

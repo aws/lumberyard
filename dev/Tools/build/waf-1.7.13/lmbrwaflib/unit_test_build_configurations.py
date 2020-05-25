@@ -9,16 +9,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib import Errors
-
-import unit_test
-import lumberyard
-
+# System Imports
 import pytest
-import json
-import os
 
-import settings_manager
+# lmbrwaflib imports
+from lmbrwaflib import settings_manager
+from lmbrwaflib import unit_test
+
 
 TEST_DICT = {
     'has_test_configs': True,
@@ -44,8 +41,12 @@ def _stub_get_all_platform_settings():
 MOCK_LUMBERYARD_SETTINGS.get_all_platform_settings = _stub_get_all_platform_settings
 
 
-import build_configurations
+from . import build_configurations
 
+@pytest.fixture()
+def test_context(tmpdir):
+    fake_context = unit_test.FakeContext(str(tmpdir.realpath()), False)
+    return fake_context
 
 class MockConfigSettings(object):
     def __init__(self, name, has_test, is_monolithic):
@@ -208,7 +209,7 @@ def test_PlatformDetail_Init_Success(enable_test, enable_server, platform, enabl
                 assert has_profile_test_server
                 
             if expected_monotype_map:
-                for expected_config, expected_monolithic in expected_monotype_map.items():
+                for expected_config, expected_monolithic in list(expected_monotype_map.items()):
                     assert test.platform_configs[expected_config].is_monolithic == expected_monolithic
     finally:
         build_configurations.ENABLE_TEST_CONFIGURATIONS = old_enable_test_configurations
@@ -218,7 +219,7 @@ def test_PlatformDetail_Init_Success(enable_test, enable_server, platform, enabl
 
 class MockPlatformSettings(object):
     
-    def __init__(self, aliases, platform, is_monolithic, enabled=True, has_server=True, has_test=True):
+    def __init__(self, aliases, platform, is_monolithic=False, enabled=True, has_server=True, has_test=True):
         self.aliases = aliases
         self.platform = platform
         self.is_monolithic = is_monolithic
@@ -279,3 +280,55 @@ def test_ReadPlatformsForHost_CheckMonolithicBuildOverride():
     
     finally:
         settings_manager.LUMBERYARD_SETTINGS = old_lumberyard_settings
+
+
+@pytest.mark.parametrize(
+    "platform_name, expected_result", [
+        pytest.param('platform_alias_a', True),
+        pytest.param('platform_alias_b', False),
+        pytest.param('platform_a1', False),
+        pytest.param('platform_a2', True),
+        pytest.param('platform_b1', False),
+        pytest.param('platform_b2', False),
+        pytest.param('platform_c1', False),
+        pytest.param('platform_c2', True),
+        pytest.param('platform_zz', None),
+    ]
+)
+def test_IsTargetPlatformEnabled_DifferentPlatforms_Mixed(test_context, platform_name, expected_result):
+    original_alias_to_platforms_map = build_configurations.ALIAS_TO_PLATFORMS_MAP
+    original_settings_is_platform_enabled = settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled
+    try:
+        build_configurations.ALIAS_TO_PLATFORMS_MAP = {
+            'platform_alias_a': ['platform_a1', 'platform_a2'],
+            'platform_alias_b': ['platform_b1', 'platform_b2']
+        }
+
+        def _mock_is_platform_enabled(platform_name):
+            if platform_name in ['platform_a1', 'platform_c1']:
+                return False
+            else:
+                return True
+        settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled = _mock_is_platform_enabled
+
+        mock_platform_settings_map = {
+            'platform_a1': MockPlatformSettings(['platform_alias_a'], 'platform_a1', enabled=False),
+            'platform_a2': MockPlatformSettings(['platform_alias_a'], 'platform_a2', enabled=True),
+            'platform_b1': MockPlatformSettings(['platform_alias_b'], 'platform_b1', enabled=False),
+            'platform_b2': MockPlatformSettings(['platform_alias_b'], 'platform_b2', enabled=False),
+            'platform_c1': MockPlatformSettings(['platform_alias_c'], 'platform_c1', enabled=True),
+            'platform_c2': MockPlatformSettings(['platform_alias_c'], 'platform_c2', enabled=True),
+        }
+
+        def mock_get_target_platform_detail(platform):
+            return mock_platform_settings_map[platform]
+        test_context.get_target_platform_detail = mock_get_target_platform_detail
+
+        result = build_configurations.is_target_platform_enabled(test_context, platform_name)
+        assert result == expected_result
+    except:
+        assert expected_result is None
+    finally:
+        build_configurations.ALIAS_TO_PLATFORMS_MAP = original_alias_to_platforms_map
+        settings_manager.LUMBERYARD_SETTINGS.is_platform_enabled = original_settings_is_platform_enabled
+

@@ -104,8 +104,8 @@ namespace GraphCanvas
         QRect dialogGeometry = geometry();
 
         QPoint finalPosition;
-        finalPosition.setX(screenPosition.x() - dialogGeometry.width() * anchorPoint.x());
-        finalPosition.setY(screenPosition.y() - dialogGeometry.height() * anchorPoint.y());
+        finalPosition.setX(aznumeric_cast<int>(screenPosition.x() - dialogGeometry.width() * anchorPoint.x()));
+        finalPosition.setY(aznumeric_cast<int>(screenPosition.y() - dialogGeometry.height() * anchorPoint.y()));
 
         move(finalPosition);
     }

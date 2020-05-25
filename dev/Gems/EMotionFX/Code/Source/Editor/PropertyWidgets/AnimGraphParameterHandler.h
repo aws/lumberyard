@@ -33,6 +33,7 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_DECL
         
         AnimGraphParameterPicker(QWidget* parent,  bool singleSelection = false, bool parameterMaskMode = false);
+        void SetFilterTypes(const AZStd::vector<AZ::TypeId>& filterTypes) { m_filterTypes = filterTypes; }
         void SetAnimGraph(AnimGraph* animGraph) { m_animGraph = animGraph; }
         void SetObjectAffectedByParameterChanges(ObjectAffectedByParameterChanges* affectedObject);
 
@@ -58,14 +59,15 @@ namespace EMotionFX
     private:
         void UpdateInterface();
 
-        AnimGraph*                      m_animGraph;
+        AnimGraph* m_animGraph;
         ObjectAffectedByParameterChanges* m_affectedByParameterChanges;
-        AZStd::vector<AZStd::string>    m_parameterNames;
-        QPushButton*                    m_pickButton;
-        QPushButton*                    m_resetButton;
-        QPushButton*                    m_shrinkButton;
-        bool                            m_singleSelection;
-        bool                            m_parameterMaskMode;
+        AZStd::vector<AZStd::string> m_parameterNames;
+        AZStd::vector<AZ::TypeId> m_filterTypes;
+        QPushButton* m_pickButton;
+        QPushButton* m_resetButton;
+        QPushButton* m_shrinkButton;
+        bool m_singleSelection;
+        bool m_parameterMaskMode;
     };
 
 
@@ -93,6 +95,18 @@ namespace EMotionFX
         AnimGraph* m_animGraph;
     };
 
+    class AnimGraphSingleNumberParameterHandler
+        : public AnimGraphSingleParameterHandler
+    {
+        Q_OBJECT // AUTOMOC
+
+    public:
+        AZ_CLASS_ALLOCATOR_DECL
+        AnimGraphSingleNumberParameterHandler();
+
+        AZ::u32 GetHandlerName() const override;
+        QWidget* CreateGUI(QWidget* parent) override;
+    };
 
     class AnimGraphMultipleParameterHandler
         : public QObject

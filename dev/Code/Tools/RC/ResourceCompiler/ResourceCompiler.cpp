@@ -538,19 +538,21 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
     }
     else
     {
-        if (filespec.find_first_of("*?") != string::npos)
+        bool wildcardSearch = false;
+        // It's a mask (path\*.mask). Scan directory and accumulate matching filenames in the list.
+        // Multiple masks allowed, for example path\*.xml;*.dlg;path2\*.mtl
+
+        std::vector<string> tokens;
+        StringHelpers::Split(filespec, ";", false, tokens);
+
+        for (size_t i = 0; i < sourceRootsReversed.size(); ++i)
         {
-            // It's a mask (path\*.mask). Scan directory and accumulate matching filenames in the list.
-            // Multiple masks allowed, for example path\*.xml;*.dlg;path2\*.mtl
-
-            std::vector<string> tokens;
-            StringHelpers::Split(filespec, ";", false, tokens);
-
-            for (size_t i = 0; i < sourceRootsReversed.size(); ++i)
+            const string& sourceRoot = sourceRootsReversed[i];
+            for (size_t t = 0; t < tokens.size(); ++t)
             {
-                const string& sourceRoot = sourceRootsReversed[i];
-                for (size_t t = 0; t < tokens.size(); ++t)
+                if (tokens[t].find_first_of("*?") != string::npos)
                 {
+                    wildcardSearch = true;
                     // Scan directory and accumulate matching filenames in the list.
                     const string path = PathHelpers::ToPlatformPath(PathHelpers::Join(sourceRoot, PathHelpers::GetDirectory(tokens[t])));
                     const string pattern = PathHelpers::GetFilename(tokens[t]);
@@ -583,79 +585,68 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
                         }
                     }
                 }
-            }
-
-            if (files.empty())
-            {
-                // We failed to find any file matching the mask specified by user.
-                // Using mask (say, *.cgf) usually means that user doesn't know if
-                // the file exists or not, so it's better to return "success" code.
-                RCLog("RC can't find files matching '%s', 0 files converted", filespec.c_str());
-                return true;
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < sourceRootsReversed.size(); ++i)
-            {
-                const string& sourceRoot = sourceRootsReversed[i];
-                const DWORD dwFileSpecAttr = GetFileAttributes(PathHelpers::Join(sourceRoot, filespec));
-
-                if (dwFileSpecAttr == INVALID_FILE_ATTRIBUTES)
-                {
-                    // There's no such file
-                    RCLog("RC can't find file '%s'. Will try to find the file in .pak files.", filespec.c_str());
-                    if (sourceRoot.empty())
-                    {
-                        AddRcFile(files, addedFiles, sourceRootsReversed, PathHelpers::GetDirectory(filespec), PathHelpers::GetFilename(filespec), targetLeftPath);
-                    }
-                    else
-                    {
-                        AddRcFile(files, addedFiles, sourceRootsReversed, sourceRoot, filespec, targetLeftPath);
-                    }
-                }
                 else
                 {
-                    // The file exists
+                    const auto& thisFile = tokens[t];
+                    const DWORD dwFileSpecAttr = GetFileAttributes(PathHelpers::Join(sourceRoot, thisFile));
 
-                    if (dwFileSpecAttr & FILE_ATTRIBUTE_DIRECTORY)
+                    if (dwFileSpecAttr == INVALID_FILE_ATTRIBUTES)
                     {
-                        // We found a file, but it's a directory, not a regular file.
-                        // Let's assume that the user wants to export every file in the
-                        // directory (with subdirectories if bRecursive == true) or
-                        // that he wants to export a file specified in /file option.
-                        const string path = PathHelpers::Join(sourceRoot, filespec);
-                        const string pattern = config->GetAsString("file", "*.*", "*.*");
-                        RCLog("Scanning directory '%s' for '%s'...", path.c_str(), pattern.c_str());
-                        std::vector<string> filenames;
-                        FileUtil::ScanDirectory(path, pattern, filenames, bRecursive, targetLeftPath);
-                        for (size_t i = 0; i < filenames.size(); ++i)
-                        {
-                            string sourceLeftPath;
-                            string sourceInnerPathAndName;
-                            if (sourceRoot.empty())
-                            {
-                                sourceLeftPath = filespec;
-                                sourceInnerPathAndName = filenames[i];
-                            }
-                            else
-                            {
-                                sourceLeftPath = sourceRoot;
-                                sourceInnerPathAndName = PathHelpers::Join(filespec, filenames[i]);
-                            }
-                            AddRcFile(files, addedFiles, sourceRootsReversed, sourceLeftPath, sourceInnerPathAndName, targetLeftPath);
-                        }
-                    }
-                    else
-                    {
-                        // we found a regular file
+                        // There's no such file
+                        RCLog("RC did not find %s in %s", thisFile.c_str(), sourceRoot.c_str());
                         if (sourceRoot.empty())
                         {
-                            AddRcFile(files, addedFiles, sourceRootsReversed, PathHelpers::GetDirectory(filespec), PathHelpers::GetFilename(filespec), targetLeftPath);
+                            AddRcFile(files, addedFiles, sourceRootsReversed, PathHelpers::GetDirectory(thisFile), PathHelpers::GetFilename(thisFile), targetLeftPath);
                         }
                         else
                         {
-                            AddRcFile(files, addedFiles, sourceRootsReversed, sourceRoot, filespec, targetLeftPath);
+                            AddRcFile(files, addedFiles, sourceRootsReversed, sourceRoot, thisFile, targetLeftPath);
+                        }
+                    }
+                    else
+                    {
+                        // The file exists
+
+                        if (dwFileSpecAttr & FILE_ATTRIBUTE_DIRECTORY)
+                        {
+                            // We found a file, but it's a directory, not a regular file.
+                            // Let's assume that the user wants to export every file in the
+                            // directory (with subdirectories if bRecursive == true) or
+                            // that he wants to export a file specified in /file option.
+                            const string path = PathHelpers::Join(sourceRoot, thisFile);
+                            const string pattern = config->GetAsString("file", "*.*", "*.*");
+                            RCLog("Scanning directory '%s' for '%s'...", path.c_str(), pattern.c_str());
+                            std::vector<string> filenames;
+                            FileUtil::ScanDirectory(path, pattern, filenames, bRecursive, targetLeftPath);
+                            for (size_t i = 0; i < filenames.size(); ++i)
+                            {
+                                string sourceLeftPath;
+                                string sourceInnerPathAndName;
+                                if (sourceRoot.empty())
+                                {
+                                    sourceLeftPath = thisFile;
+                                    sourceInnerPathAndName = filenames[i];
+                                }
+                                else
+                                {
+                                    sourceLeftPath = sourceRoot;
+                                    sourceInnerPathAndName = PathHelpers::Join(thisFile, filenames[i]);
+                                }
+                                AddRcFile(files, addedFiles, sourceRootsReversed, sourceLeftPath, sourceInnerPathAndName, targetLeftPath);
+                            }
+                        }
+                        else
+                        {
+                            RCLog("Found %s in %s", thisFile.c_str(), sourceRoot.c_str());
+                            // we found a regular file
+                            if (sourceRoot.empty())
+                            {
+                                AddRcFile(files, addedFiles, sourceRootsReversed, PathHelpers::GetDirectory(thisFile), PathHelpers::GetFilename(thisFile), targetLeftPath);
+                            }
+                            else
+                            {
+                                AddRcFile(files, addedFiles, sourceRootsReversed, sourceRoot, thisFile, targetLeftPath);
+                            }
                         }
                     }
                 }
@@ -664,6 +655,14 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
 
         if (files.empty())
         {
+            if (wildcardSearch)
+            {
+                // We failed to find any file matching the mask specified by user.
+                // Using mask (say, *.cgf) usually means that user doesn't know if
+                // the file exists or not, so it's better to return "success" code.
+                RCLog("RC can't find files matching '%s', 0 files converted", filespec.c_str());
+                return true;
+            }
             if (!bSkipMissing)
             {
                 RCLogError("No files found to convert.");
@@ -1889,15 +1888,15 @@ std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
 }
 
 #ifdef AZ_TESTS_ENABLED
-int AzMainUnitTests();
+int AzMainUnitTests(int argc, char** argv);
 #endif // AZ_TESTS_ENABLED
 
 int rcmain(int argc, char** argv, char** envp)
 {
 #ifdef AZ_TESTS_ENABLED
-    if (argc == 2 && 0 == stricmp(argv[1], "--unittest"))
+    if (argc >= 2 && 0 == stricmp(argv[1], "--unittest"))
     {
-        return AzMainUnitTests();
+        return AzMainUnitTests(argc, argv);
     }
 #endif // AZ_TESTS_ENABLED
 
@@ -1928,93 +1927,7 @@ int rcmain(int argc, char** argv, char** envp)
         AddCommandLineArgumentsFromFile(args, filename.c_str());
     }
 
-    rc.RegisterKey("_debug", "");   // hidden key for debug-related activities. parsing is module-dependent and subject to change without prior notice.
-
-    rc.RegisterKey("wait",
-        "wait for an user action on start and/or finish of RC:\n"
-        "0-don't wait (default),\n"
-        "1 or empty-wait for a key pressed on finish,\n"
-        "2-pop up a message box and wait for the button pressed on finish,\n"
-        "3-pop up a message box and wait for the button pressed on start,\n"
-        "4-pop up a message box and wait for the button pressed on start and on finish\n");
-    rc.RegisterKey("wx", "pause and display message box in case of warning or error");
-    rc.RegisterKey("recursive", "traverse input directory with sub folders");
-    rc.RegisterKey("refresh", "force recompilation of resources with up to date timestamp");
-    rc.RegisterKey("p", "to specify platform (for supported names see [_platform] sections in rc.ini)");
-    rc.RegisterKey("pi", "provides the platform id from the Asset Processor");
-    rc.RegisterKey("statistics", "log statistics to rc_stats_* files");
-    rc.RegisterKey("dependencies",
-        "Use it to specify a file with dependencies to be written.\n"
-        "Each line in the file will contain an input filename\n"
-        "and an output filename for every file written by RC.");
-    rc.RegisterKey("clean_targetroot", "When 'targetroot' switch specified will clean up this folder after rc runs, to delete all files that were not processed");
-    rc.RegisterKey("verbose", "to control amount of information in logs: 0-default, 1-detailed, 2-very detailed, etc");
-    rc.RegisterKey("quiet", "to suppress all printouts");
-    rc.RegisterKey("skipmissing", "do not produce warnings about missing input files");
-    rc.RegisterKey("logfiles", "to suppress generating log file rc_log.log");
-    rc.RegisterKey("logprefix", "prepends this prefix to every log file name used (by default the prefix is the rc.exe's folder).");
-    rc.RegisterKey("logtime", "logs time passed: 0=off, 1=on (default)");
-    rc.RegisterKey("gameroot", "The root of the current game project.  Used to find files related to the current game.");
-    rc.RegisterKey("watchfolder", "The watched root folder that this file is located in.  Used to produce the relative asset name.");
-    rc.RegisterKey("nosourcecontrol", "Boolean - if true, disables initialization of source control.  Disabling Source Control in the editor automatically disables it here, too.");
-    rc.RegisterKey("sourceroot", "list of source folders separated by semicolon");
-    rc.RegisterKey("targetroot", "to define the destination folder. note: this folder and its subtrees will be excluded from the source files scanning process");
-    rc.RegisterKey("targetnameformat",
-        "Use it to specify format of the output filenames.\n"
-        "syntax is /targetnameformat=\"<pair[;pair[;pair[...]]]>\" where\n"
-        "<pair> is <mask>,<resultingname>.\n"
-        "<mask> is a name consisting of normal and wildcard chars.\n"
-        "<resultingname> is a name consisting of normal chars and special strings:\n"
-        "{0} filename of a file matching the mask,\n"
-        "{1} part of the filename matching the first wildcard of the mask,\n"
-        "{2} part of the filename matching the second wildcard of the mask,\n"
-        "and so on.\n"
-        "A filename will be processed by first pair that has matching mask.\n"
-        "If no any match for a filename found, then the filename stays\n"
-        "unmodified.\n"
-        "Example: /targetnameformat=\"*alfa*.txt,{1}beta{2}.txt\"");
-    rc.RegisterKey("filesperprocess",
-        "to specify number of files converted by one process in one step\n"
-        "default is 100. this option is unused if /processes is 0.");
-    rc.RegisterKey("failonwarnings", "return error code if warnings are encountered");
-
-    rc.RegisterKey("help", "lists all usable keys of the ResourceCompiler with description");
-    rc.RegisterKey("version", "shows version and exits");
-    rc.RegisterKey("overwriteextension", "ignore existing file extension and use specified convertor");
-    rc.RegisterKey("overwritefilename", "use the filename for output file (folder part is not affected)");
-
-    rc.RegisterKey("listfile", "Specify List file, List file can contain file lists from zip files like: @Levels\\Test\\level.pak|resourcelist.txt");
-    rc.RegisterKey("listformat",
-        "Specify format of the file name read from the list file. You may use special strings:\n"
-        "{0} the file name from the file list,\n"
-        "{1} text matching first wildcard from the input file mask,\n"
-        "{2} text matching second wildcard from the input file mask,\n"
-        "and so on.\n"
-        "Also, you can use multiple format strings, separated by semicolons.\n"
-        "In this case multiple filenames will be generated, one for\n"
-        "each format string.");
-    rc.RegisterKey("copyonly", "copy source files to target root without processing");
-    rc.RegisterKey("copyonlynooverwrite", "copy source files to target root without processing, will not overwrite if target file exists");
-    rc.RegisterKey("outputproductdependencies", "output product dependencies");
-    rc.RegisterKey("name_as_crc32", "When creating Pak File outputs target filename as the CRC32 code without the extension");
-    rc.RegisterKey("exclude", "List of file exclusions for the command, separated by semicolon, may contain wildcard characters");
-    rc.RegisterKey("exclude_listfile", "Specify a file which contains a list of files to be excluded from command input");
-
-    rc.RegisterKey("validate", "When specified RC is running in a resource validation mode");
-    rc.RegisterKey("MailServer", "SMTP Mail server used when RC needs to send an e-mail");
-    rc.RegisterKey("MailErrors", "0=off 1=on When enabled sends an email to the user who checked in asset that failed validation");
-    rc.RegisterKey("cc_email", "When sending mail this address will be added to CC, semicolon separates multiple addresses");
-    rc.RegisterKey("job", "Process a job xml file");
-    rc.RegisterKey("jobtarget", "Run only a job with specific name instead of whole job-file. Used only with /job option");
-    rc.RegisterKey("unittest", "Run the unit tests for resource compiler and nothing else");
-    rc.RegisterKey("gamesubdirectory", "The relative path to game folder from root from @devroot@.  Defines @devassets@ when concatenated with @devroot@.  Used to find files related to the this game.");
-    rc.RegisterKey("unattended", "Prevents RC from opening any dialogs or message boxes");
-    rc.RegisterKey("createjobs", "Instructs RC to read the specified input file (a CreateJobsRequest) and output a CreateJobsResponse");
-    rc.RegisterKey("port", "Specifies the port that should be used to connect to the asset processor.  If not set, the default from the bootstrap cfg will be used instead");
-    rc.RegisterKey("approot", "Specifies a custom directory for the engine root path. This path should contain bootstrap.cfg.");
-    rc.RegisterKey("branchtoken", "Specifies a branchtoken that should be used by the RC to negotiate with the asset processor. if not set it will be set from the bootstrap file.");
-    rc.RegisterKey("recompress", "Recompress a pack file during a copy job using the multi-variant process which picks the fastest decompressor");
-    rc.RegisterKey("use_fastest", "Checks every compressor and uses the one that decompresses the data fastest when adding files to a PAK");
+    rc.RegisterDefaultKeys();
 
     string fileSpec;
     bool bUnitTestMode = false;
@@ -2356,9 +2269,9 @@ int rcmain(int argc, char** argv, char** envp)
 int __cdecl main(int argc, char** argv, char** envp)
 {
 #ifdef AZ_TESTS_ENABLED
-    if (argc == 2 && 0 == azstricmp(argv[1], "--unittest"))
+    if (argc >= 2 && 0 == azstricmp(argv[1], "--unittest"))
     {
-        return AzMainUnitTests();
+        return AzMainUnitTests(argc, argv);
     }
 #endif // AZ_TESTS_ENABLED
 
@@ -4273,6 +4186,98 @@ void ResourceCompiler::LogMemoryUsage(bool bReportProblemsOnly)
         }
     }
 #endif
+}
+
+void ResourceCompiler::RegisterDefaultKeys()
+{
+    RegisterKey("_debug", "");   // hidden key for debug-related activities. parsing is module-dependent and subject to change without prior notice.
+
+    RegisterKey("wait",
+        "wait for an user action on start and/or finish of RC:\n"
+        "0-don't wait (default),\n"
+        "1 or empty-wait for a key pressed on finish,\n"
+        "2-pop up a message box and wait for the button pressed on finish,\n"
+        "3-pop up a message box and wait for the button pressed on start,\n"
+        "4-pop up a message box and wait for the button pressed on start and on finish\n");
+    RegisterKey("wx", "pause and display message box in case of warning or error");
+    RegisterKey("recursive", "traverse input directory with sub folders");
+    RegisterKey("refresh", "force recompilation of resources with up to date timestamp");
+    RegisterKey("p", "to specify platform (for supported names see [_platform] sections in ini)");
+    RegisterKey("pi", "provides the platform id from the Asset Processor");
+    RegisterKey("statistics", "log statistics to rc_stats_* files");
+    RegisterKey("dependencies",
+        "Use it to specify a file with dependencies to be written.\n"
+        "Each line in the file will contain an input filename\n"
+        "and an output filename for every file written by ");
+    RegisterKey("clean_targetroot", "When 'targetroot' switch specified will clean up this folder after rc runs, to delete all files that were not processed");
+    RegisterKey("verbose", "to control amount of information in logs: 0-default, 1-detailed, 2-very detailed, etc");
+    RegisterKey("quiet", "to suppress all printouts");
+    RegisterKey("skipmissing", "do not produce warnings about missing input files");
+    RegisterKey("logfiles", "to suppress generating log file rc_log.log");
+    RegisterKey("logprefix", "prepends this prefix to every log file name used (by default the prefix is the exe's folder).");
+    RegisterKey("logtime", "logs time passed: 0=off, 1=on (default)");
+    RegisterKey("gameroot", "The root of the current game project.  Used to find files related to the current game.");
+    RegisterKey("watchfolder", "The watched root folder that this file is located in.  Used to produce the relative asset name.");
+    RegisterKey("nosourcecontrol", "Boolean - if true, disables initialization of source control.  Disabling Source Control in the editor automatically disables it here, too.");
+    RegisterKey("sourceroot", "list of source folders separated by semicolon");
+    RegisterKey("targetroot", "to define the destination folder. note: this folder and its subtrees will be excluded from the source files scanning process");
+    RegisterKey("targetnameformat",
+        "Use it to specify format of the output filenames.\n"
+        "syntax is /targetnameformat=\"<pair[;pair[;pair[...]]]>\" where\n"
+        "<pair> is <mask>,<resultingname>.\n"
+        "<mask> is a name consisting of normal and wildcard chars.\n"
+        "<resultingname> is a name consisting of normal chars and special strings:\n"
+        "{0} filename of a file matching the mask,\n"
+        "{1} part of the filename matching the first wildcard of the mask,\n"
+        "{2} part of the filename matching the second wildcard of the mask,\n"
+        "and so on.\n"
+        "A filename will be processed by first pair that has matching mask.\n"
+        "If no any match for a filename found, then the filename stays\n"
+        "unmodified.\n"
+        "Example: /targetnameformat=\"*alfa*.txt,{1}beta{2}.txt\"");
+    RegisterKey("filesperprocess",
+        "to specify number of files converted by one process in one step\n"
+        "default is 100. this option is unused if /processes is 0.");
+    RegisterKey("failonwarnings", "return error code if warnings are encountered");
+
+    RegisterKey("help", "lists all usable keys of the ResourceCompiler with description");
+    RegisterKey("version", "shows version and exits");
+    RegisterKey("overwriteextension", "ignore existing file extension and use specified convertor");
+    RegisterKey("overwritefilename", "use the filename for output file (folder part is not affected)");
+
+    RegisterKey("listfile", "Specify List file, List file can contain file lists from zip files like: @Levels\\Test\\level.pak|resourcelist.txt");
+    RegisterKey("listformat",
+        "Specify format of the file name read from the list file. You may use special strings:\n"
+        "{0} the file name from the file list,\n"
+        "{1} text matching first wildcard from the input file mask,\n"
+        "{2} text matching second wildcard from the input file mask,\n"
+        "and so on.\n"
+        "Also, you can use multiple format strings, separated by semicolons.\n"
+        "In this case multiple filenames will be generated, one for\n"
+        "each format string.");
+    RegisterKey("copyonly", "copy source files to target root without processing");
+    RegisterKey("copyonlynooverwrite", "copy source files to target root without processing, will not overwrite if target file exists");
+    RegisterKey("outputproductdependencies", "output product dependencies");
+    RegisterKey("name_as_crc32", "When creating Pak File outputs target filename as the CRC32 code without the extension");
+    RegisterKey("exclude", "List of file exclusions for the command, separated by semicolon, may contain wildcard characters");
+    RegisterKey("exclude_listfile", "Specify a file which contains a list of files to be excluded from command input");
+
+    RegisterKey("validate", "When specified RC is running in a resource validation mode");
+    RegisterKey("MailServer", "SMTP Mail server used when RC needs to send an e-mail");
+    RegisterKey("MailErrors", "0=off 1=on When enabled sends an email to the user who checked in asset that failed validation");
+    RegisterKey("cc_email", "When sending mail this address will be added to CC, semicolon separates multiple addresses");
+    RegisterKey("job", "Process a job xml file");
+    RegisterKey("jobtarget", "Run only a job with specific name instead of whole job-file. Used only with /job option");
+    RegisterKey("unittest", "Run the unit tests for resource compiler and nothing else");
+    RegisterKey("gamesubdirectory", "The relative path to game folder from root from @devroot@.  Defines @devassets@ when concatenated with @devroot@.  Used to find files related to the this game.");
+    RegisterKey("unattended", "Prevents RC from opening any dialogs or message boxes");
+    RegisterKey("createjobs", "Instructs RC to read the specified input file (a CreateJobsRequest) and output a CreateJobsResponse");
+    RegisterKey("port", "Specifies the port that should be used to connect to the asset processor.  If not set, the default from the bootstrap cfg will be used instead");
+    RegisterKey("approot", "Specifies a custom directory for the engine root path. This path should contain bootstrap.cfg.");
+    RegisterKey("branchtoken", "Specifies a branchtoken that should be used by the RC to negotiate with the asset processor. if not set it will be set from the bootstrap file.");
+    RegisterKey("recompress", "Recompress a pack file during a copy job using the multi-variant process which picks the fastest decompressor");
+    RegisterKey("use_fastest", "Checks every compressor and uses the one that decompresses the data fastest when adding files to a PAK");
+    RegisterKey("skiplevelpaks", "Prevents RC from adding level related pak files to the auxiliary contents during auxiliary content creation step.");
 }
 
 void ResourceCompiler::AddUnitTest(FnRunUnitTests unitTestFunction)

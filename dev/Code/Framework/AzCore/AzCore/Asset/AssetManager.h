@@ -202,7 +202,7 @@ namespace AZ
             /**
              * Requests a reload of a given asset from storage.
              */
-            void ReloadAsset(const AssetId& assetId);
+            void ReloadAsset(const AssetId& assetId, bool isAutoReload = false);
 
             /**
              * Reloads an asset from provided in-memory data.
@@ -238,6 +238,15 @@ namespace AZ
             */
             void        SetAssetInfoUpgradingEnabled(bool enable);
             bool        GetAssetInfoUpgradingEnabled() const;
+            bool        GetCancelAllActiveJobs() const;
+
+            /**
+            * This method must be invoked before you start unregistering handlers manually and shutting down the asset manager.
+            * This method ensures that all jobs in flight are either canceled or completed.
+            * This method is automatically called in the destructor but if you are unregistering handlers manually,
+            * you must invoke it yourself. 
+            */
+            void        PrepareShutDown();
 
         protected:
             AssetManager(const Descriptor& desc);
@@ -292,6 +301,9 @@ namespace AZ
             // to avoid recursive thread deadlocks, we keep track of which thread is loading which asset, and don't allow
             // a thread to wait for its own asset blocking.
             AZStd::unordered_map<AssetId, AZStd::thread::id> m_assetsLoadingByThread;
+
+            // Setting this to true will cause all loadAssets jobs that have not started yet to cancel as soon as they start.
+            bool m_cancelAllActiveJobs = false;
         };
 
         /**
@@ -363,6 +375,16 @@ namespace AZ
 
             // Called by the asset manager to perform actual asset save. Returns true if successful otherwise false (default - as we don't require support save).
             virtual bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) { (void)asset; (void)stream; return false; }
+
+            //! Called when an asset requested to load is actually missing from the catalog when we are trying to resolve it
+            //! from an ID to a file name and other streaming info.
+            //! Here, optionally, you can return a non-empty asset ID for it to try to use that as fallback data instead.
+            //! Providing it with a non-empty assetId will cause it to attach the handler to the file data for that asset instead,
+            //! but still retain the original assetId for the loaded asset.  This allows you to perform simple 'placeholder'
+            //! substitution for assets that are missing, errored, or still being compiled.  If you need your
+            //! system to do something more complicated than simple substitution, the place for that is in the component entity
+            //! class that requested the load in the first place.  This API is just for basic substitution cases.
+            virtual AZ::Data::AssetId AssetMissingInCatalog(const Asset<AssetData>& /*asset*/) {return AZ::Data::AssetId(); }
 
             // Called after the data loading stage and after all dependencies have been fulfilled.
             // Override this if the asset needs post-load init. If overriden, the handler is responsible

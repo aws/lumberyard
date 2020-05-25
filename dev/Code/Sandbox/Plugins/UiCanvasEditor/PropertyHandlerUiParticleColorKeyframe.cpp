@@ -158,7 +158,7 @@ void PropertyHandlerUiParticleColorKeyframe::WriteGUIValuesIntoProperty(size_t /
     QColor val = GUI->GetColorCtrl()->value();
     AZ::Color asAZColor((float)val.redF(), (float)val.greenF(), (float)val.blueF(), (float)val.alphaF());
     instance.color = asAZColor;
-    instance.time = GUI->GetTimeCtrl()->value();
+    instance.time = aznumeric_cast<float>(GUI->GetTimeCtrl()->value());
     instance.inTangent = static_cast<UiParticleEmitterInterface::ParticleKeyframeTangentType>(GUI->GetInTangentCtrl()->value());
     instance.outTangent = static_cast<UiParticleEmitterInterface::ParticleKeyframeTangentType>(GUI->GetOutTangentCtrl()->value());
 }

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QGradientColorPickerWidget.h"
 #include "QCustomGradientWidget.h"
 #include "ISplines.h"
@@ -71,7 +71,7 @@ QGradientColorPickerWidget::QGradientColorPickerWidget(SCurveEditorContent conte
     m_gradientMenuEditAction->setDefaultWidget(m_gradientMenuEdit);
     m_gradientMenuBtnAction->setDefaultWidget(m_gradientMenuBtn);
 
-    connect(m_gradientMenuBtn, &QPushButton::pressed, this, [&] {
+    connect(m_gradientMenuBtn, &QPushButton::clicked, this, [&] {
             if ((bool)callback_add_gradient_to_library)
             {
                 callback_add_gradient_to_library(m_gradientMenuEdit->text());

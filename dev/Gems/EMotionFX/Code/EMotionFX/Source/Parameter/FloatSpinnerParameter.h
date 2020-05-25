@@ -27,6 +27,11 @@ namespace EMotionFX
             : FloatParameter()
         {}
         
+        explicit FloatSpinnerParameter(AZStd::string name, AZStd::string description = {})
+            : FloatParameter(AZStd::move(name), AZStd::move(description))
+        {
+        }
+
         static void Reflect(AZ::ReflectContext* context);
         
         const AZStd::string& GetTypeDisplayName() const override;

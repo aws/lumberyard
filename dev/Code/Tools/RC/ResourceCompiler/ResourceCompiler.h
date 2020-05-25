@@ -77,6 +77,8 @@ public:
 
     // interface IProgress --------------------------------------------------
 
+    void RegisterDefaultKeys();
+
     virtual void StartProgress();
     virtual void ShowProgress(const char* pMessage, size_t progressValue, size_t maxProgressValue);
     virtual void FinishProgress();

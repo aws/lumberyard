@@ -274,6 +274,8 @@ namespace ScriptCanvasEditor
 
     UnitTestDockWidget::~UnitTestDockWidget()
     {
+        GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         UnitTestWidgetNotificationBus::Handler::BusDisconnect();
         delete m_itemButtonsDelegate;
     }

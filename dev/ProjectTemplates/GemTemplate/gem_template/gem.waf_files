@@ -1,0 +1,15 @@
+{
+    "none":
+    {
+        "Include":
+        [
+            "Include/${Name}/${GemBus}.h"
+        ],
+        "Source":
+        [
+            "Source/${ModuleClass}.cpp",
+            "Source/${SysCompClass}.cpp",
+            "Source/${SysCompClass}.h"
+        ]
+    }
+}

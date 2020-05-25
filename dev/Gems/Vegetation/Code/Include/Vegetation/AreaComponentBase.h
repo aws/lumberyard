@@ -96,9 +96,16 @@ namespace Vegetation
         // ShapeComponentNotificationsBus
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons reasons) override;
 
+    protected:
+        // Give subclasses the ability to do work whenever areas are registered and unregistered
+        virtual void OnRegisterArea() {}
+        virtual void OnUnregisterArea() {}
+
     private:
+        void UpdateRegistration();
+
         AreaConfig m_configuration;
-        AZStd::atomic_bool m_refreshPending{ false };
+        bool m_areaRegistered { false };
         AZStd::atomic_int m_changeIndex{ 0 };
     };
 }

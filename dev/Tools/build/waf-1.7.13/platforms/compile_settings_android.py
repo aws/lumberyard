@@ -8,11 +8,17 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# System Imports
 import os
+
+# waflib imports
 from waflib import Logs
 from waflib.Configure import conf
-from cry_utils import append_to_unique_list
-import lumberyard
+
+# lmbrwaflib imports
+from lmbrwaflib import lumberyard
+from lmbrwaflib.cry_utils import append_to_unique_list
 
 
 @conf
@@ -187,3 +193,138 @@ def generate_ib_profile_tool_elements(ctx):
         '<Tool Filename="adb" AllowRemote="false" AllowIntercept="false" SuccessExitCodes="-1,0,1"/>'
     ]
     return android_tool_elements
+
+
+def _load_android_settings(ctx):
+    """ Helper function for loading the global android settings """
+
+    if hasattr(ctx, 'android_settings'):
+        return
+
+    settings_files = list()
+    for root_node in ctx._get_settings_search_roots():
+        settings_node = root_node.make_node(['_WAF_', 'android', 'android_settings.json'])
+        if os.path.exists(settings_node.abspath()):
+            settings_files.append(settings_node)
+
+    ctx.android_settings = dict()
+    for settings_file in settings_files:
+        try:
+            ctx.android_settings.update(ctx.parse_json_file(settings_file))
+        except Exception as e:
+            ctx.cry_file_error(str(e), settings_file.abspath())
+
+
+def _get_android_setting(ctx, setting, default_value = None):
+    """" Helper function for getting android settings """
+    _load_android_settings(ctx)
+
+    return ctx.android_settings.get(setting, default_value)
+
+@conf
+def get_android_dev_keystore_alias(conf):
+    return _get_android_setting(conf, 'DEV_KEYSTORE_ALIAS')
+
+@conf
+def get_android_dev_keystore_path(conf):
+    local_path = _get_android_setting(conf, 'DEV_KEYSTORE')
+    debug_ks_node = conf.engine_node.make_node(local_path)
+    return debug_ks_node.abspath()
+
+@conf
+def get_android_distro_keystore_alias(conf):
+    return _get_android_setting(conf, 'DISTRO_KEYSTORE_ALIAS')
+
+@conf
+def get_android_distro_keystore_path(conf):
+    local_path = _get_android_setting(conf, 'DISTRO_KEYSTORE')
+    release_ks_node = conf.engine_node.make_node(local_path)
+    return release_ks_node.abspath()
+
+@conf
+def get_android_build_environment(conf):
+    env = _get_android_setting(conf, 'BUILD_ENVIRONMENT')
+    if env == 'Development' or env == 'Distribution':
+        return env
+    else:
+        Logs.fatal('[ERROR] Invalid android build environment, valid environments are: Development and Distribution')
+
+@conf
+def get_android_env_keystore_alias(conf):
+    env = conf.get_android_build_environment()
+    if env == 'Development':
+        return conf.get_android_dev_keystore_alias()
+    elif env == 'Distribution':
+        return conf.get_android_distro_keystore_alias()
+
+@conf
+def get_android_env_keystore_path(conf):
+    env = conf.get_android_build_environment()
+    if env == 'Development':
+        return conf.get_android_dev_keystore_path()
+    elif env == 'Distribution':
+        return conf.get_android_distro_keystore_path()
+
+@conf
+def get_android_build_tools_version(conf):
+    """
+    Get the version of build-tools to use for Android APK packaging process.  Also
+    sets the 'buildToolsVersion' when generating the Android Studio gradle project.
+    The following is require in order for validation and use of "latest" value.
+
+    def configure(conf):
+        conf.load('android')
+    """
+    build_tools_version = conf.env['ANDROID_BUILD_TOOLS_VER']
+
+    if not build_tools_version:
+        build_tools_version = _get_android_setting(conf, 'BUILD_TOOLS_VER')
+
+    return build_tools_version
+
+@conf
+def get_android_sdk_version(conf):
+    """
+    Gets the desired Android API version used when building the Java code,
+    must be equal to or greater than the ndk_platform.  The following is
+    required for the validation to work and use of "latest" value.
+
+    def configure(conf):
+        conf.load('android')
+    """
+    sdk_version = conf.env['ANDROID_SDK_VERSION']
+
+    if not sdk_version:
+        sdk_version = _get_android_setting(conf, 'SDK_VERSION')
+
+    return sdk_version
+
+@conf
+def get_android_ndk_platform(conf):
+    """
+    Gets the desired Android API version used when building the native code,
+    must be equal to or less than the sdk_version.  If not specified, the
+    specified sdk version, or closest match, will be used.  The following is
+    required for the auto-detection and validation to work.
+
+    def configure(conf):
+        conf.load('android')
+    """
+    ndk_platform = conf.env['ANDROID_NDK_PLATFORM']
+
+    if not ndk_platform:
+        ndk_platform = _get_android_setting(conf, 'NDK_PLATFORM')
+
+    return ndk_platform
+
+@conf
+def get_android_project_relative_path(self):
+    return '{}/{}'.format(self.options.android_studio_project_folder, self.options.android_studio_project_name)
+
+@conf
+def get_android_project_absolute_path(self):
+    return self.path.make_node([ self.options.android_studio_project_folder, self.options.android_studio_project_name ]).abspath()
+
+@conf
+def get_android_patched_libraries_relative_path(self):
+    return '{}/{}'.format(self.get_android_project_relative_path(), 'AndroidLibraries')

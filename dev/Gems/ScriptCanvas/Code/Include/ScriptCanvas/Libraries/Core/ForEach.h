@@ -38,8 +38,10 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{31823035-A3FF-4B8D-A3A6-819519478B7C}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Placeholder.png")
                     ScriptCanvas_Node::Category("Containers")
-                    ScriptCanvas_Node::Version(1)
+                    ScriptCanvas_Node::Version(2, VersionConverter)
                 );
+
+                static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
 
                 Data::Type GetSourceSlotDataType() const;
                 AZStd::vector<AZStd::pair<AZStd::string_view, SlotId>> GetPropertyFields() const;
@@ -53,13 +55,12 @@ namespace ScriptCanvas
                 bool SetPropertySlotData(Datum& atResult, size_t propertyIndex);
                 void ResetLoop();
 
-                // Endpoint NotificationBus
-                void OnEndpointConnected(const Endpoint& targetEndpoint) override;
-                void OnEndpointDisconnected(const Endpoint& targetEndpoint) override;
-                ////
+                void OnDynamicGroupDisplayTypeChanged(const AZ::Crc32& dynamicGroup, const Data::Type& dataType) override;
 
                 void ClearPropertySlots();
-                void AddPropertySlotsFromSlot(const Slot* sourceSlotId);
+                void AddPropertySlotsFromType(const Data::Type& dataType);
+
+                static AZ::Crc32 GetContainerGroupId() { return AZ_CRC("ContainerGroup", 0xb81ed451); }
 
                 // Inputs
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", "Signaled upon node entry"));
@@ -70,7 +71,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Finished", "The container has been fully iterated over"));
 
                 // Properties
-                ScriptCanvas_SerializeProperty(SlotMetadata, m_sourceSlot);
+                ScriptCanvas_SerializeProperty(SlotId, m_sourceSlot);
                 ScriptCanvas_SerializeProperty(AZ::TypeId, m_previousTypeId);
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertySlots);
 

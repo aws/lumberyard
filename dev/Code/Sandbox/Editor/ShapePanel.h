@@ -135,12 +135,14 @@ protected:
     CShapeObject* m_shape;
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 // CShapePanel dialog
 class SANDBOX_API CShapePanel
     : public QWidget
     , public ShapeEditSplitPanel
     , public IPickObjectCallback
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 
 public:

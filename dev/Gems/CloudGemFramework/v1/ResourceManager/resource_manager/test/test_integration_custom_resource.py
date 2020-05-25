@@ -8,19 +8,10 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
-import itertools
-import json
-import subprocess
-import os
-import time
-import urllib
-
+import warnings
 from resource_manager.test import lmbr_aws_test_support
 from resource_manager.test import base_stack_test
 from cgf_utils import custom_resource_utils
-import cgf_service_client
-import test_constant
 
 _LAMBDA_NAME = lmbr_aws_test_support.unique_name("VerTestType")
 _LAMBDA_FILE_NAME = "VersioningTest"
@@ -29,29 +20,35 @@ _TEST_PHYSICAL_ID = "Foo"
 _TEST_INSTANCE_A = "TestInstanceA"
 _TEST_RESOURCE_TYPE = lmbr_aws_test_support.unique_name("TRT")
 
-class IntegrationTest_CloudGemFramework_CustomResourceHandlers(base_stack_test.BaseStackTestCase):    
+
+class IntegrationTest_CloudGemFramework_CustomResourceHandlers(base_stack_test.BaseStackTestCase):
 
     def __init__(self, *args, **kwargs):
         super(IntegrationTest_CloudGemFramework_CustomResourceHandlers, self).__init__(*args, **kwargs)
         self.lambda_code_path = ["project-code", "lambda-code", _LAMBDA_NAME, "resource_types"]
 
-    def setUp(self):        
+    def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.set_deployment_name(lmbr_aws_test_support.unique_name())
         self.set_resource_group_name(lmbr_aws_test_support.unique_name('icr'))
-        self.prepare_test_environment("cloud_gem_framework_custom_resource_test")        
+        self.prepare_test_environment("cloud_gem_framework_custom_resource_test")
 
     def test_end_to_end(self):
         self.run_all_tests()
 
-    def __000_create_stacks(self):                                 
-        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
+    def __000_create_stacks(self):
+        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage',
+                      '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
         self.lmbr_aws(
             'cloud-gem', 'create',
             '--gem', self.TEST_RESOURCE_GROUP_NAME,
-            '--initial-content', 'no-resources', 
-            '--enable','--no-sln-change', ignore_failure=True)
-        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
-
+            '--initial-content', 'no-resources',
+            '--enable', '--no-sln-change', ignore_failure=True)
+        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage',
+                      '--confirm-security-change')
 
     def __010_add_test_type_files(self):
         # Create the project-template.json file that defines our custom resources
@@ -82,7 +79,7 @@ class IntegrationTest_CloudGemFramework_CustomResourceHandlers(base_stack_test.B
 
     def __040_update_deployment(self):
         # Add the new instance to AWS.
-        self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-resource-deletion', 
+        self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-resource-deletion',
                       '--confirm-security-change')
 
     def __050_validate_correct_physical_id(self):
@@ -107,7 +104,7 @@ class IntegrationTest_CloudGemFramework_CustomResourceHandlers(base_stack_test.B
                     'Foo': "Bar"
                 }
             }
-        self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage',  '--confirm-resource-deletion', 
+        self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-resource-deletion',
                       '--confirm-security-change')
 
     def __080_resource_update_with_coercion(self):
@@ -126,7 +123,9 @@ class IntegrationTest_CloudGemFramework_CustomResourceHandlers(base_stack_test.B
                 }
             }
         result = self.lmbr_aws('deployment', 'update', '-d', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage',
-                      '--confirm-security-change', ignore_failure=True)
+                               '--confirm-security-change', ignore_failure=True)
+        print("Result: {}".format(result))
+
         self.assertTrue("UPDATE_FAILED" in self.lmbr_aws_stdout and "raise Exception()" in self.lmbr_aws_stdout)
 
     def __999_cleanup(self):
@@ -171,7 +170,7 @@ _TEST_RESOURCE_TYPE_DEFINITION = {
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "{}".format(_LAMBDA_NAME),
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Fn::GetAtt": [
                         "ProjectResourceHandler",

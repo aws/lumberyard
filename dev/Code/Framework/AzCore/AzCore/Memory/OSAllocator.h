@@ -34,7 +34,7 @@ namespace AZ
         AZ_TYPE_INFO(OSAllocator, "{9F835EE3-F23C-454E-B4E3-011E2F3C8118}")
 
         OSAllocator();
-        ~OSAllocator();
+        ~OSAllocator() override;
 
         /**
          * You can override the default allocation policy.
@@ -48,7 +48,7 @@ namespace AZ
 
         bool Create(const Descriptor& desc);
 
-        void Destroy();
+        void Destroy() override;
 
         //////////////////////////////////////////////////////////////////////////
         // IAllocator
@@ -56,16 +56,16 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // IAllocatorAllocate
-        virtual pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0);
-        virtual void            DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0);
-        virtual size_type       Resize(pointer_type ptr, size_type newSize) { return m_custom ? m_custom->Resize(ptr, newSize) : 0; }
-        virtual pointer_type    ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)     { return m_custom ? m_custom->ReAllocate(ptr, newSize, newAlignment) : NULL; }
-        virtual size_type       AllocationSize(pointer_type ptr) { return m_custom ? m_custom->AllocationSize(ptr) : 0; }
+        pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override;
+        void            DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override;
+        size_type       Resize(pointer_type ptr, size_type newSize) override { return m_custom ? m_custom->Resize(ptr, newSize) : 0; }
+        pointer_type    ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override     { return m_custom ? m_custom->ReAllocate(ptr, newSize, newAlignment) : NULL; }
+        size_type       AllocationSize(pointer_type ptr) override { return m_custom ? m_custom->AllocationSize(ptr) : 0; }
 
-        virtual size_type       NumAllocatedBytes() const       { return m_custom ? m_custom->NumAllocatedBytes() : m_numAllocatedBytes; }
-        virtual size_type       Capacity() const                { return m_custom ? m_custom->Capacity() : AZ_CORE_MAX_ALLOCATOR_SIZE; } // custom size or unlimited
-        virtual size_type       GetMaxAllocationSize() const    { return m_custom ? m_custom->GetMaxAllocationSize() : AZ_CORE_MAX_ALLOCATOR_SIZE; } // custom size or unlimited
-        virtual IAllocatorAllocate*  GetSubAllocator()          { return m_custom ? m_custom : NULL; }
+        size_type       NumAllocatedBytes() const override       { return m_custom ? m_custom->NumAllocatedBytes() : m_numAllocatedBytes; }
+        size_type       Capacity() const override                { return m_custom ? m_custom->Capacity() : AZ_CORE_MAX_ALLOCATOR_SIZE; } // custom size or unlimited
+        size_type       GetMaxAllocationSize() const override    { return m_custom ? m_custom->GetMaxAllocationSize() : AZ_CORE_MAX_ALLOCATOR_SIZE; } // custom size or unlimited
+        IAllocatorAllocate*  GetSubAllocator() override          { return m_custom ? m_custom : NULL; }
          
     protected:
         OSAllocator(const OSAllocator&);

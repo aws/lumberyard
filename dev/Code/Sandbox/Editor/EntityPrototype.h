@@ -19,11 +19,13 @@
 #include "Objects/EntityScript.h"
 
 //////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Prototype of entity, contain specified entity properties.
 */
 class CRYEDIT_API CEntityPrototype
     : public IEntityPrototype
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     typedef Functor0 UpdateCallback;
 

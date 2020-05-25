@@ -14,9 +14,11 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <NullVR_Traits_Platform.h>
 
 #include <IConsole.h>
 
+#if AZ_TRAIT_NULLVR_SUPPORTED
 #include "NullVRDevice.h"
 #include <d3d11.h>
 
@@ -221,3 +223,4 @@ namespace NullVR
         return nullptr;
     }
 }
+#endif //AZ_TRAIT_NULLVR_SUPPORTED

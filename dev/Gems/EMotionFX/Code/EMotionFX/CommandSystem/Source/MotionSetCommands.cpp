@@ -155,7 +155,7 @@ namespace CommandSystem
         AZStd::to_string(outResult, mPreviouslyUsedID);
 
         // Set the motion set callback for custom motion loading.
-        motionSet->SetCallback(new CommandSystemMotionSetCallback(motionSet), true);
+        motionSet->SetCallback(aznew CommandSystemMotionSetCallback(motionSet), true);
 
         // Set the dirty flag.
         const AZStd::string commandString = AZStd::string::format("AdjustMotionSet -motionSetID %i -dirtyFlag true", mPreviouslyUsedID);
@@ -887,9 +887,12 @@ namespace CommandSystem
 
     bool CommandLoadMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        // Get the filename of the motion set to load.
-        AZStd::string filename;
-        parameters.GetValue("filename", this, filename);
+        // Get the filename of the motion set asset.
+        AZStd::string filename = parameters.GetValue("filename", this);
+        if (m_relocateFilenameFunction)
+        {
+            m_relocateFilenameFunction(filename);
+        }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
         // Get the old log levels.

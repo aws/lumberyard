@@ -19,9 +19,10 @@ namespace AzFramework
 {
     namespace FileTag
     {
-        FileTagData::FileTagData(AZStd::set<AZStd::string> fileTags, FilePatternType filePatternType)
+        FileTagData::FileTagData(AZStd::set<AZStd::string> fileTags, FilePatternType filePatternType, const AZStd::string& comment)
             : m_filePatternType(filePatternType)
             , m_fileTags(fileTags)
+            , m_comment(AZStd::move(comment))
         {
         }
 

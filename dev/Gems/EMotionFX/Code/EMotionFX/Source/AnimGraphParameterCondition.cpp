@@ -23,8 +23,9 @@
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
 #include <EMotionFX/Source/Parameter/FloatSpinnerParameter.h>
 #include <EMotionFX/Source/Parameter/StringParameter.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
 #include <MCore/Source/Compare.h>
-
+#include <MCore/Source/ReflectionSerializer.h>
 
 namespace EMotionFX
 {
@@ -45,6 +46,30 @@ namespace EMotionFX
 
     AnimGraphParameterCondition::UniqueData::UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
         : AnimGraphObjectData(object, animGraphInstance)
+    {
+    }
+
+    AnimGraphParameterCondition::AnimGraphParameterCondition(
+        AZStd::string parameterName,
+        float testValue,
+        EFunction function,
+        float rangeValue
+    )
+        : m_parameterName(AZStd::move(parameterName))
+        , m_function(function)
+        , m_testValue(testValue)
+        , m_rangeValue(rangeValue)
+    {
+    }
+
+    AnimGraphParameterCondition::AnimGraphParameterCondition(
+        AZStd::string parameterName,
+        AZStd::string testString,
+        EStringFunction stringFunction
+    )
+        : m_parameterName(AZStd::move(parameterName))
+        , m_testString(AZStd::move(testString))
+        , m_stringFunction(stringFunction)
     {
     }
 
@@ -123,10 +148,7 @@ namespace EMotionFX
             const ValueParameter* valueParameter = mAnimGraph->FindValueParameter(m_parameterIndex.GetValue());
             return azrtti_typeid(valueParameter);
         }
-        else
-        {
-            return AZ::TypeId();
-        }
+        return AZ::TypeId::CreateNull();
     }
 
     bool AnimGraphParameterCondition::IsFloatParameter() const
@@ -502,9 +524,9 @@ namespace EMotionFX
         // The parameter is replaceable
     }
 
-    void AnimGraphParameterCondition::ParameterAdded(size_t newParameterIndex)
+    void AnimGraphParameterCondition::ParameterAdded(const AZStd::string& newParameterName)
     {
-        AZ_UNUSED(newParameterIndex);
+        AZ_UNUSED(newParameterName);
         // Just recompute the index in the case the new parameter was inserted before ours
         m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
     }
@@ -531,6 +553,28 @@ namespace EMotionFX
         {
             m_parameterName.clear();
             m_parameterIndex = AZ::Failure();
+        }
+        else
+        {
+            m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+        }
+    }
+
+    void AnimGraphParameterCondition::BuildParameterRemovedCommands(MCore::CommandGroup& commandGroup, const AZStd::string& parameterNameToBeRemoved)
+    {
+        // Only handle in case the parameter condition is linked to the to be removed parameter.
+        if (!m_parameterName.empty() && m_parameterName == parameterNameToBeRemoved)
+        {
+            AZ::Outcome<size_t> conditionIndex = m_transition->FindConditionIndex(this);
+            if (conditionIndex.IsSuccess())
+            {
+                CommandSystem::CommandAdjustTransitionCondition* command = aznew CommandSystem::CommandAdjustTransitionCondition(
+                    m_transition->GetAnimGraph()->GetID(),
+                    m_transition->GetId(),
+                    conditionIndex.GetValue(),
+                    /*attributesString=*/"-parameterName \"\""); // Clear the linked parameter as it got removed.
+                commandGroup.AddCommand(command);
+            }
         }
     }
 
@@ -575,7 +619,7 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphParameterCondition::m_parameterName, "Parameter", "The parameter name to apply the condition on.")
+            ->DataElement(AZ_CRC("AnimGraphNumberParameter", 0x8023eba9), &AnimGraphParameterCondition::m_parameterName, "Parameter", "The parameter name to apply the condition on.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphParameterCondition::Reinit)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                 ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphParameterCondition::GetAnimGraph)

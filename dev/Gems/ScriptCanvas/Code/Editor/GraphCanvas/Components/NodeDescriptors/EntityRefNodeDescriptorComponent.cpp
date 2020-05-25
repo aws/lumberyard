@@ -87,8 +87,8 @@ namespace ScriptCanvasEditor
     {
         AZ::EntityId retVal;
 
-        ScriptCanvas::Datum* object = nullptr;
-        ScriptCanvas::EditorNodeRequestBus::EventResult(object, m_endpoint.GetNodeId(), &ScriptCanvas::EditorNodeRequests::ModInput, m_endpoint.GetSlotId());
+        const ScriptCanvas::Datum* object = nullptr;
+        ScriptCanvas::NodeRequestBus::EventResult(object, m_endpoint.GetNodeId(), &ScriptCanvas::NodeRequests::FindDatum, m_endpoint.GetSlotId());
 
         if (object && object->IS_A<AZ::EntityId>())
         {

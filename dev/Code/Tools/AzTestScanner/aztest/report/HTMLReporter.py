@@ -10,7 +10,18 @@
 #
 import json
 import os
-import urllib
+
+try:
+    # Python 3
+    import urllib.request, urllib.parse, urllib.error
+    url_quote_func = urllib.parse.quote
+except:
+    # Fallback to Python 2
+    import urllib
+    url_quote_func = urllib.quote
+
+
+
 from xml.etree import ElementTree
 from collections import namedtuple
 
@@ -152,7 +163,8 @@ def aggregate_results(scan_results):
     duration = 0.0
 
     for result in scan_results:
-        if result.return_code not in [RunnerReturnCodes.TESTS_SUCCEEDED, RunnerReturnCodes.TESTS_FAILED, RunnerReturnCodes.MODULE_SKIPPED]:
+        if result.return_code not in [RunnerReturnCodes.TESTS_SUCCEEDED, RunnerReturnCodes.TESTS_FAILED,
+                                      RunnerReturnCodes.MODULE_SKIPPED]:
             errors += 1
             continue
 
@@ -338,7 +350,7 @@ def create_html_report(scan_results, output_dir, failures_only=False):
 
         def generate_anchor_name(path):
             """ Generate an on-page anchor name from the input path. """
-            return urllib.quote(path)
+            return url_quote_func(path)
 
         f.write("<html><head><style>{}</style></head><body>\n".format(css))
         f.write("<h1>AzTestScanner Report</h1>")

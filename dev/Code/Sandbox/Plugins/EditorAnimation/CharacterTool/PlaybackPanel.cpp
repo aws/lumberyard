@@ -234,7 +234,7 @@ namespace CharacterTool
             const STimelineElement& element = track.elements[i];
             if (element.selected)
             {
-                m_selectedEvents.push_back(element.userId - 1);
+                m_selectedEvents.push_back(aznumeric_cast<int>(element.userId - 1));
             }
         }
 
@@ -579,7 +579,7 @@ namespace CharacterTool
             m_timeEdit->setDecimals(m_timeUnits == TIME_IN_FRAMES ? 0 : 2);
             m_timeEditChanging = false;
 
-            m_timeline->SetTimeUnitScale(totalDisplay, step);
+            m_timeline->SetTimeUnitScale(aznumeric_cast<float>(totalDisplay), aznumeric_cast<float>(step));
         }
 
         if (timeChanged)
@@ -647,7 +647,7 @@ namespace CharacterTool
                 {
                     if (elements[i].userId)
                     {
-                        selectedIds.push_back(elements[i].userId);
+                        selectedIds.push_back(aznumeric_cast<int>(elements[i].userId));
                     }
                     else
                     {
@@ -808,7 +808,7 @@ namespace CharacterTool
             const AnimEvent* handle = (const AnimEvent*)handles[i];
             if (handle >= events && handle < eventsEnd)
             {
-                int index = handle - events;
+                int index = aznumeric_cast<int>(handle - events);
                 int userId = index + 1;
                 newSelection.push_back(userId);
             }

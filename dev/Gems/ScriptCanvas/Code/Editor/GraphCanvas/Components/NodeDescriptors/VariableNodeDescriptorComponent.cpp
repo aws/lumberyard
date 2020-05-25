@@ -22,6 +22,8 @@
 #include <Editor/Translation/TranslationHelper.h>
 #include <Editor/View/Widgets/PropertyGridBus.h>
 
+#include <ScriptCanvas/Bus/RequestBus.h>
+
 namespace ScriptCanvasEditor
 {
     ////////////////////////////////////
@@ -40,7 +42,8 @@ namespace ScriptCanvasEditor
         }
     }
 
-    VariableNodeDescriptorComponent::VariableNodeDescriptorComponent()
+    VariableNodeDescriptorComponent::VariableNodeDescriptorComponent(NodeDescriptorType descriptorType)
+        : NodeDescriptorComponent(descriptorType)
     {
     }
 
@@ -49,11 +52,13 @@ namespace ScriptCanvasEditor
         NodeDescriptorComponent::Activate();
 
         GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
+        VariableNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void VariableNodeDescriptorComponent::Deactivate()
     {
         ScriptCanvas::VariableNodeNotificationBus::Handler::BusDisconnect();
+        VariableNodeDescriptorRequestBus::Handler::BusDisconnect();
         GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
 
         NodeDescriptorComponent::Deactivate();
@@ -78,14 +83,19 @@ namespace ScriptCanvasEditor
 
     void VariableNodeDescriptorComponent::OnVariableIdChanged(const ScriptCanvas::VariableId& /*oldVariableId*/, const ScriptCanvas::VariableId& newVariableId)
     {
-        ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
-        VariableGraphMemberRefCountRequestBus::Handler::BusDisconnect();
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;        
 
-        ScriptCanvas::VariableNotificationBus::Handler::BusConnect(newVariableId);
-        VariableGraphMemberRefCountRequestBus::Handler::BusConnect(newVariableId);
+        AZ::EntityId scriptCanvasNodeId = FindScriptCanvasNodeId();
+        ScriptCanvas::NodeRequestBus::EventResult(scriptCanvasId, scriptCanvasNodeId, &ScriptCanvas::NodeRequests::GetOwningScriptCanvasId);
+
+        ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+
+        ScriptCanvas::GraphScopedVariableId newScopedVariableId = ScriptCanvas::GraphScopedVariableId(scriptCanvasId, newVariableId);
+
+        ScriptCanvas::VariableNotificationBus::Handler::BusConnect(newScopedVariableId);
 
         ScriptCanvas::Data::Type scriptCanvasType;
-        ScriptCanvas::VariableRequestBus::EventResult(scriptCanvasType, newVariableId, &ScriptCanvas::VariableRequests::GetType);
+        ScriptCanvas::VariableRequestBus::EventResult(scriptCanvasType, newScopedVariableId, &ScriptCanvas::VariableRequests::GetType);
 
         const AZStd::string typeName = TranslationHelper::GetSafeTypeName(scriptCanvasType);
         GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetSubTitle, typeName);
@@ -94,7 +104,7 @@ namespace ScriptCanvasEditor
         GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetDataPaletteOverride, dataType);
 
         AZStd::string_view variableName;
-        ScriptCanvas::VariableRequestBus::EventResult(variableName, newVariableId, &ScriptCanvas::VariableRequests::GetName);
+        ScriptCanvas::VariableRequestBus::EventResult(variableName, newScopedVariableId, &ScriptCanvas::VariableRequests::GetName);
         UpdateTitle(variableName);
 
         PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RebuildPropertyGrid);
@@ -113,7 +123,7 @@ namespace ScriptCanvasEditor
         
         auto mapIter = userDataMapRef.find(ScriptCanvas::CopiedVariableData::k_variableKey);
 
-        ScriptCanvas::CopiedVariableData::VariableMapping* variableConfigurations = nullptr;
+        ScriptCanvas::GraphVariableMapping* variableConfigurations = nullptr;
 
         if (mapIter == userDataMapRef.end())
         {
@@ -133,11 +143,11 @@ namespace ScriptCanvasEditor
 
         if (variableConfigurations->find(variableId) == variableConfigurations->end())
         {
-            AZ::EntityId scriptCanvasGraphId;
-            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetActiveScriptCanvasGraphId);
+            ScriptCanvas::ScriptCanvasId scriptCanvasId;
+            GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetActiveScriptCanvasId);
 
-            ScriptCanvas::VariableNameValuePair* configuration = nullptr;
-            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(configuration, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);            
+            ScriptCanvas::GraphVariable* configuration = nullptr;
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(configuration, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
 
             if (configuration)
             {
@@ -148,11 +158,14 @@ namespace ScriptCanvasEditor
 
     void VariableNodeDescriptorComponent::OnSceneMemberDeserialized(const AZ::EntityId& graphCanvasGraphId, const GraphCanvas::GraphSerialization& graphSerialization)
     {
-        ScriptCanvas::VariableNameValuePair* variableData = nullptr;
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableData, graphCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, GetVariableId());
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
+
+        ScriptCanvas::GraphVariable* graphVariable = nullptr;
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(graphVariable, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, GetVariableId());
 
         // If the variable is null. We need to create it from our copied data.
-        if (variableData == nullptr)
+        if (graphVariable == nullptr)
         {
             const auto& userDataMapRef = graphSerialization.GetUserDataMapRef();
 
@@ -161,20 +174,20 @@ namespace ScriptCanvasEditor
             if (mapIter != userDataMapRef.end())
             {
                 const ScriptCanvas::CopiedVariableData* copiedVariableData = AZStd::any_cast<ScriptCanvas::CopiedVariableData>(&mapIter->second);
-                const ScriptCanvas::CopiedVariableData::VariableMapping* mapping = (&copiedVariableData->m_variableMapping);
+                const ScriptCanvas::GraphVariableMapping* mapping = (&copiedVariableData->m_variableMapping);
 
                 ScriptCanvas::VariableId originalVariable = GetVariableId();
                 auto variableIter = mapping->find(originalVariable);
 
                 if (variableIter != mapping->end())
                 {
-                    AZ::EntityId scriptCanvasGraphId;
-                    GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+                    ScriptCanvas::ScriptCanvasId scriptCanvasId;
+                    GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
                     
-                    const ScriptCanvas::VariableNameValuePair& variableConfiguration = variableIter->second;
+                    const ScriptCanvas::GraphVariable& variableConfiguration = variableIter->second;
 
                     AZ::Outcome<ScriptCanvas::VariableId, AZStd::string> remapVariableOutcome = AZ::Failure(AZStd::string());
-                    ScriptCanvas::GraphVariableManagerRequestBus::EventResult(remapVariableOutcome, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::RemapVariable, variableConfiguration);
+                    ScriptCanvas::GraphVariableManagerRequestBus::EventResult(remapVariableOutcome, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::RemapVariable, variableConfiguration);
 
                     if (remapVariableOutcome)
                     {
@@ -199,11 +212,6 @@ namespace ScriptCanvasEditor
         }
 
         return variableId;
-    }
-
-    AZ::EntityId VariableNodeDescriptorComponent::GetGraphMemberId() const
-    {
-        return GetEntityId();
     }
 
     void VariableNodeDescriptorComponent::UpdateTitle(AZStd::string_view variableName)

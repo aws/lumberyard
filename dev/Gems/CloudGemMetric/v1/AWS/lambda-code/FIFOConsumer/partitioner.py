@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import datetime
 import metric_constant as c
 import metric_schema
@@ -37,7 +49,7 @@ class Partitioner(object):
     
     @property
     def partitions(self):
-        return self.__definitions;
+        return self.__definitions
 
     def extract(self, schema_hash, row, sensitivity):
         partition = ''
@@ -50,7 +62,9 @@ class Partitioner(object):
             type = definition["type"]        
             parts = definition["parts"] if "parts" in definition else [] 
             if key.id not in row and key.long_name not in row and key.id not in self.__map and key.long_name not in self.__map:
-                print "ROW DROPPED: The partition definition with key '{}' (long name: '{}') was not found in the data row \n{}".format(key.id, key.long_name, row)    
+                print(
+                    "ROW DROPPED: The partition definition with key '{}' (long name: '{}') was not found in the data row \n{}".format(
+                        key.id, key.long_name, row))
                 return tablename, None
 
             if len(parts) == 0:  
@@ -104,8 +118,8 @@ class Partitioner(object):
         try: 
             return "{}p_{}={}".format(self.__sep, name, eval(cmd))
         except NameError as e:
-            print "Erroneous row:", row                        
-            print "ERROR: Partitioner error: ", e
+            print("Erroneous row:", row)
+            print("ERROR: Partitioner error: ", e)
             return None              
 
     def get_value(self, key, row):

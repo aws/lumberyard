@@ -10,10 +10,13 @@
 *
 */
 
+#include <MCore/Source/AttributeFloat.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/AnimGraphParameterCondition.h>
+#include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Importer/Importer.h>
@@ -24,7 +27,13 @@
 #include <EMotionFX/Source/Skeleton.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/TransformData.h>
+#include <EMotionFX/Source/MotionEventTable.h>
+#include <EMotionFX/Source/MotionEventTrack.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
+#include <EMotionFX/Source/Parameter/BoolParameter.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <Tests/JackGraphFixture.h>
+#include <Tests/TestAssetCode/TestMotionAssets.h>
 
 namespace EMotionFX
 {
@@ -47,7 +56,7 @@ namespace EMotionFX
         , public ::testing::WithParamInterface<testing::tuple<bool, MotionExtractionTestsData>>
     {
     public:
-        void ConstructGraph() override
+        virtual void ConstructGraph() override
         {
             JackGraphFixture::ConstructGraph();
             m_jackSkeleton = m_actor->GetSkeleton();
@@ -59,8 +68,8 @@ namespace EMotionFX
             rootNode = m_jackSkeleton->FindNodeAndIndexByName("jack_root", m_jack_rootIndex);
             hipNode = m_jackSkeleton->FindNodeAndIndexByName("Bip01__pelvis", m_jack_hipIndex);
             m_jackPose = m_actorInstance->GetTransformData()->GetCurrentPose();
-            AddMotionEntry("TU9UIAEAAMkAAAAMAAAAAwAAAAAAAAD/////BwAAAMoAAABQOgAAAQAAAD8AAAAAAAAAAAD/fwAAAAAAAP9/AAAAAByYhLYAAAAAAACAPwAAgD8AAIA/AAAAAByYhLYAAAAAAACAPwAAgD8AAIA/IQAAAAAAAAAAAAAACQAAAGphY2tfcm9vdAAAAAAcmIS2AAAAAAAAAAApTLqi8t8oPQAAAACJiAg9cKB2o0WT3z0AAAAAiYiIPbXCuaNyZig+AAAAAM3MzD2zNvajczRfPgAAAACJiAg+2iMXpDIEiT4AAAAAq6oqPmp7MqTCzaE+AAAAAM3MTD48VE2kbSS6PgAAAADv7m4+dMRnpEQc0j4AAAAAiYiIPtXdgKRlpuk+AAAAAJqZmT6p/I2kM7gAPwAAAACrqqo+2h2bpFefDD8AAAAAvLu7Pq7qqKQVIhk/AAAAAM3MzD49jrekfWcmPwAAAADe3d0+RGPGpL3ZMz8AAAAA7+7uPpsv1aQeREE/AAAAAAAAAD97eeSkTiBPPwAAAACJiAg/FUP0pEpwXT8AAAAAERERP40KAqXmx2s/AAAAAJqZGT+w3gmlqvl5PwAAAAAiIiI/yUQRpfSxgz8AAAAAq6oqP1BMGKVYEYo/AAAAADMzMz9dOh+lpFmQPwAAAAC8uzs/Ev0lpaN6lj8AAAAAREREPyq5LKWklZw/AAAAAM3MTD9hbTOlgqmiPwAAAABVVVU/yyY6pRTCqD8AAAAA3t1dPznjQKVk3a4/AAAAAGZmZj9h0Eel4CS1PwAAAADv7m4/Ru5OpYqYuz8AAAAAd3d3P1JcVqXeVMI/AAAAAAAAgD9u9F2lVTfJPwAAAABERIQ/HeJlpWBn0D8AAAAAiYiIP6T9IgTvA9h/pP0iBO8D2H+JPG62qTeHpuM3dj///38/AACAP///fz+JPG62AAAAAOM3dj///38/AACAP///fz8hAAAAIQAAAAAAAAANAAAAQmlwMDFfX3BlbHZpc4k8brapN4em4zd2PwAAAAAU2zA7ZmaGpslCdT+JiAg93YPlO3A9iqbVqHQ/iYiIPS""9MKjy4HoWmF/R0P83MzD1Lrl08uB6FpoEEdj+JiAg+hBmGPHA9iqYvJ3g/q6oqPoJtmDy4HoWmS6h6P83MTD7aeaM8KVyPppVYfT/v7m4+1zSrPLgehaYDln8/iYiIPvdtsDy4HoWm/52AP5qZmT5dvrQ8KVyPpg3XgD+rqqo+3YW4PClcj6Ywx4A/vLu7PtfXvDy4HoWmD22AP83MzD6TeMI8KVyPpn2Bfj/e3d0+E33CPClcj6YB8ns/7+7uPjnFtjwpXI+mmeR4PwAAAD/UfaI8KVyPppU3dj+JiAg/RtuFPI/CdaaLQnU/ERERPzkLVjyPwnWmIY11P5qZGT/4KiQ8KVyPpiyIdj8iIiI/KyHtOwrXo6aMIng/q6oqP5udmjspXI+mIrl6PzMzMz8uNSk7KVyPpiB/fT+8uzs/QQJSOgrXo6ZmJ4A/REREP5ypTropXI+mQR2BP83MTD+bvw27KVyPpgOigT9VVVU/G0VauwrXo6Yvh4E/3t1dPyvoi7uPwnWm5AeBP2ZmZj+4yaS7CtejphwbgD/v7m4/4GOyuwrXo6YZ130/d3d3P74BmrsK16Om9HZ7PwAAgD+Ksz+7j8J1pr3keD9ERIQ/iTxutgrXo6bjN3Y/iYiIP6T9IgTvA9h/AAAAAHj9KgN2A+J/iYgIPVP9wwH2Aut/iYiIPbH98QDjAvB/zczMPff9VwDgAvJ/iYgIPv/95P9iA+9/q6oqPgP+v/+1A+1/zcxMPvz95/+BA+5/7+5uPu79CgDkAvJ/iYiIPsf9GAC7Afd/mpmZPqH9HQCjAPh/q6qqPoH9+f/T//h/vLu7Pnz9e//Y/vd/zczMPuv9e/6a/fJ/3t3dPv/9PP62/O1/7+7uPvb9bf47/Op/AAAAP+39Qv9G/Ox/iYgIP5b97gDM/O5/ERERP539FQLK/Op/mpkZP9z9wAJV/OV/IiIiPyD+WAN//ON/q6oqP17+1gNZ/eZ/MzMzP4H+",
-                "jack_walk_forward_aim_zup");
+            SkeletalMotion* motion = TestMotionAssets::GetJackWalkForward();
+            AddMotionEntry(motion, "jack_walk_forward_aim_zup");
 
             /*
             +------------+       +---------+
@@ -81,13 +90,11 @@ namespace EMotionFX
             finalNode->AddConnection(m_motionNode, AnimGraphMotionNode::OUTPUTPORT_POSE, BlendTreeFinalNode::INPUTPORT_POSE);
         }
 
-        void AddMotionEntry(const AZStd::string& base64MotionData, const AZStd::string& motionId)
+        void AddMotionEntry(SkeletalMotion* motion, const AZStd::string& motionId)
         {
-            AZStd::vector<AZ::u8> skeletalMotiondata;
-            AzFramework::StringFunc::Base64::Decode(skeletalMotiondata, base64MotionData.c_str(), base64MotionData.size());
-            Motion* newMotion = EMotionFX::GetImporter().LoadSkeletalMotion(skeletalMotiondata.begin(), skeletalMotiondata.size());
+            m_motion = motion;
             EMotionFX::MotionSet::MotionEntry* newMotionEntry = aznew EMotionFX::MotionSet::MotionEntry();
-            newMotionEntry->SetMotion(newMotion);
+            newMotionEntry->SetMotion(m_motion);
             m_motionSet->AddMotionEntry(newMotionEntry);
             m_motionSet->SetMotionEntryId(newMotionEntry, motionId);
         }
@@ -97,6 +104,7 @@ namespace EMotionFX
         AZ::u32 m_jack_hipIndex = MCORE_INVALIDINDEX32;
         AnimGraphMotionNode* m_motionNode = nullptr;
         BlendTree* m_blendTree = nullptr;
+        SkeletalMotion* m_motion = nullptr;
         bool m_reverse = false;
         Node* rootNode = nullptr;
         Node* hipNode = nullptr;
@@ -104,6 +112,62 @@ namespace EMotionFX
         Skeleton* m_jackSkeleton = nullptr;
         MotionExtractionTestsData m_param;
     };
+
+    class SyncMotionExtractionFixture
+        : public MotionExtractionFixture
+    {
+    public:
+        void ConstructGraph() override
+        {
+            JackGraphFixture::ConstructGraph();
+            m_jackSkeleton = m_actor->GetSkeleton();
+            m_actorInstance->SetMotionExtractionEnabled(true);
+            m_actor->AutoSetMotionExtractionNode();
+
+            m_jackPose = m_actorInstance->GetTransformData()->GetCurrentPose();
+
+            SkeletalMotion* motion = TestMotionAssets::GetJackWalkForward();
+            AddMotionEntry(motion, "jack_walk_forward_aim_zup");
+
+            /*
+                +-------------+        +-------------+
+                |m_motionNode1|---o--->+m_motionNode2|
+                +-------------+        +-------------+
+
+                Where o = parameter condition, checking if the parameter "Trigger" is set to a value of 1.
+            */
+            m_motionNode1 = aznew AnimGraphMotionNode();
+            m_motionNode1->AddMotionId("jack_walk_forward_aim_zup");
+
+            m_motionNode2 = aznew AnimGraphMotionNode();
+            m_motionNode2->AddMotionId("jack_walk_forward_aim_zup");
+
+            m_triggerParameter = static_cast<BoolParameter*>(ParameterFactory::Create(azrtti_typeid<BoolParameter>()));
+            m_triggerParameter->SetName("Trigger");
+            m_triggerParameter->SetDefaultValue(false);
+            m_animGraph->AddParameter(m_triggerParameter);
+
+            m_motion->GetEventTable()->GetSyncTrack()->AddEvent(0.3f, AZStd::make_shared<TwoStringEventData>("SyncA"));
+            m_motion->GetEventTable()->GetSyncTrack()->AddEvent(0.6f, AZStd::make_shared<TwoStringEventData>("SyncB"));
+
+            AnimGraphParameterCondition* paramCondition = aznew AnimGraphParameterCondition("Trigger", 1.0f, AnimGraphParameterCondition::EFunction::FUNCTION_EQUAL);
+            AnimGraphStateTransition* transition = aznew AnimGraphStateTransition(m_motionNode1, m_motionNode2, {paramCondition}, 0.1f);
+            transition->SetSyncMode(AnimGraphObject::ESyncMode::SYNCMODE_CLIPBASED);
+            transition->SetExtractionMode(AnimGraphObject::EExtractionMode::EXTRACTIONMODE_TARGETONLY);
+            transition->SetEventFilterMode(AnimGraphObject::EEventMode::EVENTMODE_SLAVEONLY);
+            m_animGraph->GetRootStateMachine()->AddTransition(transition);
+            
+            m_animGraph->GetRootStateMachine()->AddChildNode(m_motionNode1);
+            m_animGraph->GetRootStateMachine()->AddChildNode(m_motionNode2);
+            m_animGraph->GetRootStateMachine()->SetEntryState(m_motionNode1);
+        }
+
+    protected:
+        AnimGraphMotionNode* m_motionNode1 = nullptr;
+        AnimGraphMotionNode* m_motionNode2 = nullptr;
+        BoolParameter* m_triggerParameter = nullptr;
+    };
+
 
     TEST_P(MotionExtractionFixture, ReverseRotationMotionExtractionOutputsCorrectDelta)
     {
@@ -181,6 +245,35 @@ namespace EMotionFX
             EXPECT_TRUE(AZ::GetAbs(actualDeltaY - expectedDeltaY) < 0.001f)
                 << "Diagonal Rotation: The absolute difference between actual delta and expected delta of Y-axis should be less than 0.001f.";
         }
+    }
+
+    TEST_F(SyncMotionExtractionFixture, VerifyFirstFrameSync)
+    {
+        ASSERT_NE(m_motionNode1->FindMotionInstance(m_animGraphInstance), nullptr);
+        ASSERT_NE(m_motionNode2->FindMotionInstance(m_animGraphInstance), nullptr);
+        GetEMotionFX().Update(0.0f);
+
+        // Make sure we're out of sync first.
+        m_motionNode1->SetCurrentPlayTimeNormalized(m_animGraphInstance, 0.75f);
+        m_motionNode2->SetCurrentPlayTimeNormalized(m_animGraphInstance, 0.2f);
+        auto* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeBool>(0); 
+        param->SetValue(true); // Trigger the transition into motion 2.
+
+        // Update one frame, which is the first frame during the synced transition.
+        // We currently expect the motion extraction delta to be zero here. This is in order to prevent possible teleports which can happen.
+        // This is because the presync time value of the second motion node is from the unsynced playback.
+        // When we improve our syncing system we can handle this differently and we won't expect a zero trajectory delta anymore.
+        GetEMotionFX().Update(0.15f);
+        EXPECT_FLOAT_EQ(m_actorInstance->GetTrajectoryDeltaTransform().mPosition.GetLengthExact(), 0.0f);
+        EXPECT_FLOAT_EQ(m_motionNode1->GetCurrentPlayTime(m_animGraphInstance), m_motionNode2->GetCurrentPlayTime(m_animGraphInstance));
+        EXPECT_EQ(m_animGraphInstance->GetEventBuffer().GetNumEvents(), 0);
+
+        // The second frame should be as normal.
+        GetEMotionFX().Update(0.15f);
+        EXPECT_GT(m_actorInstance->GetTrajectoryDeltaTransform().mPosition.GetLengthExact(), 0.0f);
+        EXPECT_LE(m_actorInstance->GetTrajectoryDeltaTransform().mPosition.GetLengthExact(), 0.3f);
+        EXPECT_FLOAT_EQ(m_motionNode1->GetCurrentPlayTime(m_animGraphInstance), m_motionNode2->GetCurrentPlayTime(m_animGraphInstance));
+        EXPECT_EQ(m_animGraphInstance->GetEventBuffer().GetNumEvents(), 0);
     }
     
     INSTANTIATE_TEST_CASE_P(MotionExtraction_OutputTests,

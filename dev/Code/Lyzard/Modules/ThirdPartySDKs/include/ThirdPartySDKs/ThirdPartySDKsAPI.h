@@ -9,6 +9,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
 
 #include <LyzardSDK/Base.h>
@@ -74,6 +75,7 @@ namespace ThirdPartySDKs
             const AZStd::string& thirdPartyPath) = 0;
 
     };
+
     using SDKRequestBus = AZ::EBus<SDKRequests>;
 
     /**
@@ -97,4 +99,5 @@ namespace ThirdPartySDKs
     };
 
     using SDKsControllerRequestBus = AZ::EBus<SDKsControllerRequests>;
-}
+
+} // namespace ThirdPartySDKs

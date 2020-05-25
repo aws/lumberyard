@@ -14,6 +14,12 @@
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
+#include <EMotionFX/Source/Parameter/BoolParameter.h>
+#include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
+#include <EMotionFX/Source/Parameter/FloatSpinnerParameter.h>
+#include <EMotionFX/Source/Parameter/IntSliderParameter.h>
+#include <EMotionFX/Source/Parameter/IntSpinnerParameter.h>
+#include <EMotionFX/Source/Parameter/TagParameter.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterSelectionWindow.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
@@ -207,6 +213,7 @@ namespace EMotionFX
 
         // Create and show the node picker window
         EMStudio::ParameterSelectionWindow selectionWindow(this, m_singleSelection);
+        selectionWindow.GetParameterWidget()->SetFilterTypes(m_filterTypes);
         selectionWindow.Update(animGraph, m_parameterNames);
         selectionWindow.setModal(true);
 
@@ -284,6 +291,39 @@ namespace EMotionFX
         QSignalBlocker signalBlocker(GUI);
         GUI->SetSingleParameterName(instance);
         return true;
+    }
+
+    //---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSingleNumberParameterHandler, EditorAllocator, 0);
+
+    AnimGraphSingleNumberParameterHandler::AnimGraphSingleNumberParameterHandler()
+        : AnimGraphSingleParameterHandler()
+    {
+    }
+
+    AZ::u32 AnimGraphSingleNumberParameterHandler::GetHandlerName() const
+    {
+        return AZ_CRC("AnimGraphNumberParameter", 0x8023eba9);
+    }
+
+    QWidget* AnimGraphSingleNumberParameterHandler::CreateGUI(QWidget* parent)
+    {
+        AnimGraphParameterPicker* picker = aznew AnimGraphParameterPicker(parent, true);
+        picker->SetFilterTypes({
+            azrtti_typeid<BoolParameter>(),
+            azrtti_typeid<FloatSliderParameter>(),
+            azrtti_typeid<FloatSpinnerParameter>(),
+            azrtti_typeid<IntSliderParameter>(),
+            azrtti_typeid<IntSpinnerParameter>(),
+            azrtti_typeid<TagParameter>()});
+
+        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker](const AZStd::vector<AZStd::string>& newParameters)
+            {
+                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
+            });
+
+        return picker;
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------

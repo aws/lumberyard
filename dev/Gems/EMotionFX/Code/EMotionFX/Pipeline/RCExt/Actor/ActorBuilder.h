@@ -25,6 +25,7 @@ namespace AZ
         {
             class IMeshData;
             class IBlendShapeRule;
+            class IMeshVertexColorData;
         }
     }
     namespace GFxFramework
@@ -42,6 +43,7 @@ namespace EMotionFX
     class Mesh;
     class MeshBuilder;
     class MeshBuilderSkinningInfo;
+    class MeshBuilderVertexAttributeLayerUInt32;
 
     namespace Pipeline
     {
@@ -57,7 +59,6 @@ namespace EMotionFX
             bool m_loadMeshes;                      /* Set to false if you wish to disable loading any meshes. */
             bool m_loadStandardMaterialLayers;      /* Set to false if you wish to disable loading any standard material layers. */
             bool m_loadSkinningInfo;
-            bool m_optimizeTriangleList;
             AZ::u32 m_maxWeightsPerVertex;
             float m_weightThreshold;                /* removes skinning influences below this threshold and re-normalize others. */
 
@@ -65,7 +66,6 @@ namespace EMotionFX
                 : m_loadMeshes(true)
                 , m_loadStandardMaterialLayers(true)
                 , m_loadSkinningInfo(true)
-                , m_optimizeTriangleList(true)
                 , m_maxWeightsPerVertex(4)
                 , m_weightThreshold(0.001f)
             {
@@ -126,10 +126,19 @@ namespace EMotionFX
             bool GetMaterialInfoForActorGroup(ActorBuilderContext& context);
             void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
 
+            AZ::SceneAPI::DataTypes::IMeshVertexColorData* FindVertexColorData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZStd::string& colorNodeName);
+
             void GetNodeIndicesOfSelectedBaseMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
             bool GetIsMorphed(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZ::SceneAPI::DataTypes::IBlendShapeRule* morphTargetRule) const;
 
             AZStd::string_view RemoveLODSuffix(const AZStd::string_view& lodName);
+
+            using ClothLayerAndData = AZStd::tuple<
+                EMotionFX::MeshBuilderVertexAttributeLayerUInt32*,
+                AZ::SceneAPI::DataTypes::IMeshVertexColorData*>;
+
+            ClothLayerAndData ExtractClothInfo(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex,
+                const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel);
 
         protected:
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;

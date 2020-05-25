@@ -603,6 +603,11 @@ void CD3D9Renderer::RT_PrecacheDefaultShaders()
 {
     SShaderCombination cmb;
     m_cEF.s_ShaderStereo->mfPrecache(cmb, true, true, NULL);
+
+    cmb.m_RTMask |= g_HWSR_MaskBit[HWSR_SAMPLE0];
+    cmb.m_RTMask |= g_HWSR_MaskBit[HWSR_SAMPLE1];
+    cmb.m_RTMask |= g_HWSR_MaskBit[HWSR_SAMPLE2];
+    m_cEF.s_ShaderVideo->mfPrecache(cmb, true, true, nullptr);
 }
 
 void CD3D9Renderer::RT_ResetGlass()

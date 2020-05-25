@@ -18,7 +18,7 @@ from waflib import ConfigSet, Utils, Options, Logs, Context, Build, Errors
 try:
 	from urllib import request
 except ImportError:
-	from urllib import urlopen
+	from urllib.request import urlopen
 else:
 	urlopen = request.urlopen
 
@@ -268,17 +268,6 @@ class ConfigurationContext(Context.Context):
 		env.out_dir = Context.out_dir
 		env.lock_dir = Context.lock_dir
 
-		# Add lmbr_waf.bat or lmbr_waf for dependency tracking
-		###############################################################################
-		waf_command = os.path.basename(sys.executable)
-		if waf_command.lower().startswith('python'):
-			waf_executable = self.engine_node.make_node('./Tools/build/waf-1.7.13/lmbr_waf')
-		else:
-			waf_executable = self.path.make_node(waf_command)
-
-		self.hash = hash((self.hash, waf_executable.read('rb')))
-		self.files.append(os.path.normpath(waf_executable.abspath()))
-
 		# conf.hash & conf.files hold wscript files paths and hash
 		# (used only by Configure.autoconfig)
 		env['hash'] = self.hash
@@ -338,7 +327,7 @@ class ConfigurationContext(Context.Context):
 				lmbr_waf_lib = self.root.make_node(tooldir).make_node(input + '.py')
 			else:
 				lmbr_waf_lib = self.path.make_node(tooldir).make_node(input + '.py')
-			self.hash = hash((self.hash, lmbr_waf_lib.read('rb')))
+			self.hash = Utils.h_list((self.hash, lmbr_waf_lib.read('rb')))
 			self.files.append(os.path.normpath(lmbr_waf_lib.abspath()))			
 		for tool in tools:
 			# avoid loading the same tool more than once with the same functions
@@ -383,12 +372,12 @@ class ConfigurationContext(Context.Context):
 		:type node: :py:class:`waflib.Node.Node`
 		"""
 		super(ConfigurationContext, self).post_recurse(node)
-		self.hash = hash((self.hash, node.read('rb')))
+		self.hash = Utils.h_list((self.hash, node.read('rb')))
 		self.files.append(node.abspath())
 		
 		if hasattr(self, 'additional_files_to_track'):
 			for file_node in self.additional_files_to_track:
-				self.hash = hash((self.hash, file_node.read('rb')))
+				self.hash = Utils.h_list((self.hash, file_node.read('rb')))
 				self.files.append(file_node.abspath())
 			self.additional_files_to_track = []
 			
@@ -449,7 +438,7 @@ def conf(f):
 		try:
 			global DEPRECATED_FUNCTIONS
 			if f.__name__ in DEPRECATED_FUNCTIONS:
-				print 'Calling deprecated function {}'.format(f.__name__)
+				print('Calling deprecated function {}'.format(f.__name__))
 
 			if f.__name__ in pre_conf_method_events:
 				for pre_conf_event in pre_conf_method_events[f.__name__]:
@@ -468,17 +457,15 @@ def conf(f):
 			if mandatory:
 				raise
 
-	callstack = inspect.stack()
-	func_location = '{}:{}'.format(callstack[1][1],callstack[1][2])
-
-	if f.__name__ in REGISTERED_CONF_FUNCTIONS:
-		raise Errors.WafError("function '{}' at {} already registered in {}.".format(f.__name__, func_location, REGISTERED_CONF_FUNCTIONS[f.__name__]))
-
-	setattr(Options.OptionsContext, f.__name__, fun)
-	setattr(ConfigurationContext, f.__name__, fun)
-	setattr(Build.BuildContext, f.__name__, fun)
-
-	REGISTERED_CONF_FUNCTIONS[f.__name__] = func_location
+	func_location = __file__
+	previous_location = REGISTERED_CONF_FUNCTIONS.get(f.__name__)
+	if not previous_location:
+		setattr(Options.OptionsContext, f.__name__, fun)
+		setattr(ConfigurationContext, f.__name__, fun)
+		setattr(Build.BuildContext, f.__name__, fun)
+		REGISTERED_CONF_FUNCTIONS[f.__name__] = func_location
+	elif previous_location != func_location:
+		raise Errors.WafError("function '{}' at {} already registered in {}.".format(f.__name__, func_location, previous_location))
 
 	return f
 
@@ -690,11 +677,12 @@ def conf_event(*k, **kw):
 							len(method_event_map[name]) > 0:
 				pass
 			else:
-				method_event_map[name].append(func)
+				if func not in method_event_map[name]:
+					method_event_map[name].append(func)
 
 		def _reorder_events(conf_method_table, order_restriction_table):
 
-			for conf_method, conf_events in conf_method_table.items():
+			for conf_method, conf_events in list(conf_method_table.items()):
 
 				# Check any remove existing func
 				if func in conf_events:

@@ -234,35 +234,43 @@ namespace EMStudio
             return;
         }
         
-        editContext->Class<GUIOptions>("EMStudio properties", "")
+        editContext->Class<GUIOptions>("EMStudio properties", "General Animation Editor properties")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_maxRecentFiles, "Maximum recent files", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_maxRecentFiles, "Maximum recent files",
+                "When opening more than the maximum recent files, the oldest opened file won't be displayed in the recent files menu anymore.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnMaxRecentFilesChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
                 ->Attribute(AZ::Edit::Attributes::Max, 99)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_maxHistoryItems, "Undo history size", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_maxHistoryItems, "Undo history size",
+                "Maximum number of available undo steps.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnMaxHistoryItemsChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
                 ->Attribute(AZ::Edit::Attributes::Max, 9999)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_notificationVisibleTime, "Notification visible time", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_notificationVisibleTime, "Notification visible time",
+                "Time in seconds the notification window will show after saving a file.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnNotificationVisibleTimeChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
                 ->Attribute(AZ::Edit::Attributes::Max, 10)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_enableAutoSave, "Enable autosave", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_enableAutoSave, "Enable autosave",
+                "Autosave will automatically save in-progress versions of newly created or opened assets.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnEnableAutoSaveChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoSaveInterval, "Autosave interval (minutes)", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoSaveInterval, "Autosave interval (minutes)",
+                "Saves an in-progress version every X minutes if auto-save is enabled.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnAutoSaveIntervalChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
                 ->Attribute(AZ::Edit::Attributes::Max, 60)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoSaveNumberOfFiles, "Autosave number of files", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoSaveNumberOfFiles, "Autosave number of files",
+                "Keep X auto-saved versions before overwriting the oldest.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnAutoSaveNumberOfFilesChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
                 ->Attribute(AZ::Edit::Attributes::Max, 99)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_importerLogDetailsEnabled, "Importer detailed logging", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_importerLogDetailsEnabled, "Importer detailed logging",
+                "Enable to show detailed logging for the importer. (This will affect load time significantly).")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnImporterLogDetailsEnabledChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoLoadLastWorkspace, "Auto load last workspace", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoLoadLastWorkspace, "Auto load last workspace",
+                "Opens the last workspace when starting the Animation Editor.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnAutoLoadLastWorkspaceChangedCallback)
             ;
     }

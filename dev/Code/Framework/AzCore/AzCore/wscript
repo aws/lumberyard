@@ -16,21 +16,6 @@ def build(bld):
     
     bld.CryEngineStaticLibrary(
         # Settings
-        target          = 'AzCoreTestCommon',
-        vs_filter       = 'AZ Framework',
-        file_list       = ['azcore_test.waf_files'],
-        disable_pch     = True,
-        test_only       = True,
-        includes        = ['..'],
-        export_includes = ['..'],
-        use             = ['GMOCK', 'UNWIND'],
-        
-        # Platform Roots
-        platform_roots = [bld.PlatformRoot('../Platform', export_includes=True)]
-    )
-
-    bld.CryEngineStaticLibrary(
-        # Settings
         target          = 'AzCore',
         vs_filter       = 'AZ Framework',
         file_list       = ['azcore.waf_files', 'std/azstd.waf_files'],
@@ -47,8 +32,7 @@ def build(bld):
                            'ZLIB',
                            'RAD_TELEMETRY',
                            'UNWIND'],
-        test_all_use    = ['GMOCK',
-                           'AzCoreTestCommon'],
+        test_all_use    = ['GMOCK'],
         defines         = list(defines),
         export_defines  = list(defines),
         features        = ['internal_telemetry'],
@@ -59,9 +43,9 @@ def build(bld):
         # Test Specific
         create_test_driver  = True,
         test_vs_filter      = 'AZ Framework/TestSuites',
-        test_file_list      = ['../Tests/azcoretests.waf_files'],
+        test_file_list      = ['../Tests/azcoretests.waf_files', ],
         test_includes       = ['../Tests'],
-        test_use            = ['BENCHMARK', 'AzTestShared'],
+        test_use            = ['BENCHMARK', 'UNWIND', 'AzTestShared'],
         test_platforms      = ['win', 'darwin', 'linux'],
         test_platform_roots = [bld.PlatformRoot('../Tests/Platform', export_includes=False)],
     )
@@ -69,11 +53,11 @@ def build(bld):
     bld.CryEngineStaticLibrary(
         target                  = 'AzTestShared',
         vs_filter               = 'AZ Framework',
-        file_list               = '../Tests/aztestshared.waf_files',
+        file_list               = ['../Tests/aztestshared.waf_files', 'azcore_test.waf_files'],
         platforms               = ['win', 'darwin', 'linux'],
         configurations          = ['all'],
         test_only               = True,
-        use                     = ['AzCore'],
+        use                     = ['GMOCK', 'AzCore'],
         includes                = ['../Tests'],
         export_includes         = ['../Tests'],
         msvc_cxxflags           = ['/W4'],

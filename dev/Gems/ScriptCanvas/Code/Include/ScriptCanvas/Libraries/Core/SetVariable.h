@@ -43,12 +43,16 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Version(1)
                 );
 
+                // Node
+                void CollectVariableReferences(AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+                bool ContainsReferencesToVariables(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+                bool RemoveVariableReferences(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) override;
+                ////
+
                 //// VariableNodeRequestBus
                 void SetId(const VariableId& variableId) override;
                 const VariableId& GetId() const override;
                 ////
-
-                const Datum* GetDatum() const;
 
                 const SlotId& GetDataInSlotId() const;
                 const SlotId& GetDataOutSlotId() const;
@@ -56,6 +60,7 @@ namespace ScriptCanvas
             protected:
 
                 void OnInit() override;
+                void OnPostActivate() override;                
                 void OnInputSignal(const SlotId&) override;
 
                 void AddSlots();
@@ -64,12 +69,14 @@ namespace ScriptCanvas
                 void ClearPropertySlots();
                 void RefreshPropertyFunctions();
 
-                VariableDatumBase* ModVariable() const;
+                GraphScopedVariableId GetScopedVariableId() const;
+
+                GraphVariable* ModVariable() const;
 
                 void OnIdChanged(const VariableId& oldVariableId);
                 AZStd::vector<AZStd::pair<VariableId, AZStd::string>> GetGraphVariables() const;
 
-                // VariableIdNotificationBus
+                // VariableNotificationBus
                 void OnVariableRemoved() override;
                 ////
 
@@ -87,6 +94,8 @@ namespace ScriptCanvas
                 ScriptCanvas_SerializeProperty(SlotId, m_variableDataOutSlotId);
 
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
+
+                ModifiableDatumView m_variableView;
 
             };
         }

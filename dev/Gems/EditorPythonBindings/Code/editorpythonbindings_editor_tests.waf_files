@@ -1,0 +1,16 @@
+{
+    "auto": {
+      "Tests": [
+        "Tests/EditorPythonBindingsTest.cpp",
+        "Tests/PythonBindingLibTests.cpp",
+        "Tests/PythonContainerAnyTests.cpp",
+        "Tests/PythonDictionaryTests.cpp",
+        "Tests/PythonGlobalsTests.cpp",
+        "Tests/PythonProxyBusTests.cpp",
+        "Tests/PythonProxyObjectTests.cpp",
+        "Tests/PythonReflectionComponentTests.cpp",
+        "Tests/PythonTestingUtility.h",
+        "Tests/PythonTraceMessageSink.h"
+      ]
+    }
+}

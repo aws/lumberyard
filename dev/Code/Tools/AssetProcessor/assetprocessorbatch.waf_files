@@ -20,7 +20,9 @@
             "native/AssetManager/FileStateCache.h",
             "native/AssetManager/FileStateCache.cpp",
             "native/AssetManager/PathDependencyManager.h",
-            "native/AssetManager/PathDependencyManager.cpp"
+            "native/AssetManager/PathDependencyManager.cpp",
+            "native/AssetManager/SourceFileRelocator.h",
+            "native/AssetManager/SourceFileRelocator.cpp"
         ],
 
         "connection": [

@@ -22,13 +22,11 @@
 #include "VisAreas.h"
 #include "Ocean.h"
 #include <Terrain/Bus/TerrainProviderBus.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include "IParticles.h"
 #include "DecalManager.h"
 #include "SkyLightManager.h"
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain.h"
-#endif
 
 #include "VegetationPoolManager.h"
 
@@ -960,9 +958,22 @@ void C3DEngine::RenderInternal(const int nRenderFlags, const SRenderingPassInfo&
     assert(m_pObjManager);
     assert(m_pPartManager);
 
-    UpdatePreRender(passInfo);
-    RenderScene(nRenderFlags, passInfo);
-    UpdatePostRender(passInfo);
+
+    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
+    {
+        GetRenderer()->EF_EndEf3D(
+            IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,
+            GetObjManager()->GetUpdateStreamingPrioriryRoundId(),
+            GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(),
+            passInfo);
+    }
+    else
+    {
+        UpdatePreRender(passInfo);
+        RenderScene(nRenderFlags, passInfo);
+        UpdatePostRender(passInfo);
+    }
+
 }
 
 
@@ -1264,6 +1275,15 @@ void C3DEngine::PrintDebugInfo(const SRenderingPassInfo& passInfo)
         case 22:
             szMode = "object's current LOD vertex count";
             break;
+        case 23:
+            szMode = "Display shadow casters in red";
+            break;
+        case 24:
+            szMode = "Objects without LODs.\n    name - (triangle count)\n    draw calls - zpass/general/transparent/shadows/misc";
+            break;
+        case 25:
+            szMode = "Objects without LODs (Red). Objects that need more LODs (Blue)\n    name - (triangle count)\n    draw calls - zpass/general/transparent/shadows/misc";
+            break;
 
         default:
             assert(0);
@@ -1496,26 +1516,36 @@ void C3DEngine::UpdatePostRender(const SRenderingPassInfo& passInfo)
             memUsage.Allocate(nArrayDim);
             CCamera camOld = passInfo.GetCamera();
 
-            int nStep = Get3DEngine()->GetTerrainSize() / nArrayDim;
-
             PrintMessage("Computing mesh streaming heat map");
 
-            for (int x = 0; x < Get3DEngine()->GetTerrainSize(); x += nStep)
+            //The assumption is that this is called on Main Thread, otherwise the loop
+            //Should be wrapped inside a EnumerateHandlers lambda.
+            auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+            const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+
+            const AZ::Aabb terrainAabb = terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            const int nTerrainSizeX = static_cast<int>(terrainAabb.GetWidth());
+            const int nTerrainSizeY = static_cast<int>(terrainAabb.GetHeight());
+            const int nStepX = nTerrainSizeX / nArrayDim;
+            const int nStepY = nTerrainSizeY / nArrayDim;
+
+            for (int x = 0; x < nTerrainSizeX; x += nStepX)
             {
-                for (int y = 0; y < Get3DEngine()->GetTerrainSize(); y += nStep)
+                for (int y = 0; y < nTerrainSizeY; y += nStepY)
                 {
                     CCamera camTmp = camOld;
-                    camTmp.SetPosition(Vec3((float)x + (float)nStep / 2.f, (float)y + (float)nStep / 2.f, Get3DEngine()->GetTerrainElevation((float)x, (float)y)));
+                    float terrainHeight = terrain ? terrain->GetHeightFromFloats((float)x, (float)y) : defaultTerrainHeight;
+                    camTmp.SetPosition(Vec3((float)x + (float)nStepX / 2.f, (float)y + (float)nStepY / 2.f, terrainHeight));
                     //SetCamera(camTmp);
                     m_pObjManager->ProcessObjectsStreaming(passInfo);
 
                     SObjectsStreamingStatus objectsStreamingStatus;
                     m_pObjManager->GetObjectsStreamingStatus(objectsStreamingStatus);
 
-                    memUsage[x / nStep][y / nStep] = objectsStreamingStatus.nMemRequired;
+                    memUsage[x / nStepX][y / nStepY] = objectsStreamingStatus.nMemRequired;
                 }
 
-                if (!((x / nStep) & 31))
+                if (!((x / nStepX) & 31))
                 {
                     PrintMessage(" working ...");
                 }
@@ -1528,14 +1558,22 @@ void C3DEngine::UpdatePostRender(const SRenderingPassInfo& passInfo)
         }
         else if (GetCVars()->e_StreamCgfDebugHeatMap == 2)
         {
-            float fStep = (float)Get3DEngine()->GetTerrainSize() / (float)nArrayDim;
+            auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+            const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+
+            const AZ::Aabb terrainAabb = terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            const float terrainSizeX = terrainAabb.GetWidth();
+            const float terrainSizeY = terrainAabb.GetHeight();
+            const float fStepX = terrainSizeX / nArrayDim;
+            const float fStepY = terrainSizeY / nArrayDim;
 
             for (int x = 0; x < memUsage.GetSize(); x++)
             {
                 for (int y = 0; y < memUsage.GetSize(); y++)
                 {
-                    Vec3 v0((float)x* fStep,       (float)y* fStep,       Get3DEngine()->GetTerrainElevation((float)x* fStep, (float)y* fStep));
-                    Vec3 v1((float)x* fStep + fStep, (float)y* fStep + fStep, v0.z + fStep);
+                    float terrainHeight = terrain ? terrain->GetHeightFromFloats((float)x * fStepX, (float)y * fStepY) : defaultTerrainHeight;
+                    Vec3 v0((float)x* fStepX,       (float)y* fStepY,       terrainHeight);
+                    Vec3 v1((float)x* fStepX + fStepX, (float)y* fStepY + fStepY, v0.z + fStepX);
                     v0 += Vec3(.25f, .25f, .25f);
                     v1 -= Vec3(.25f, .25f, .25f);
                     AABB box(v0, v1);
@@ -1728,12 +1766,12 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     m_nOceanRenderFlags &= ~OCR_OCEANVOLUME_VISIBLE;
 
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+    if (legacyTerrain)
     {
-        m_pTerrain->ClearVisSectors();
+        legacyTerrain->ClearVisSectors();
     }
-#endif
+
     if (IsOutdoorVisible() || GetRenderer()->IsPost3DRendererEnabled())
     {
         if (m_pVisAreaManager != nullptr && m_pVisAreaManager->m_lstOutdoorPortalCameras.Count()   &&
@@ -1747,22 +1785,20 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
             RenderSkyBox(GetSkyMaterial(), passInfo);
         }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
         // start processing terrain
         // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-        if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated() &&
-            m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+        if (IsOutdoorVisible() && passInfo.RenderTerrain() && !gEnv->IsDedicated() &&
+            legacyTerrain != nullptr)
         {
-            m_pTerrain->CheckVis(passInfo);
+            legacyTerrain->CheckVis(passInfo);
         }
 
         // process streaming and procedural vegetation distribution
         // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-        if (m_pTerrain && !Terrain::TerrainProviderRequestBus::HasHandlers())
+        if (legacyTerrain)
         {
-            m_pTerrain->UpdateNodesIncrementaly(passInfo);
+            legacyTerrain->UpdateNodesIncrementally(passInfo);
         }
-#endif
 
         rendItemSorter.IncreaseOctreeCounter();
         {
@@ -1864,14 +1900,12 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+    if (legacyTerrain)
     {
-        m_pTerrain->ClearTextureSets();
-        m_pTerrain->DrawVisibleSectors(passInfo);
+        const bool clearVisSectors = true;
+        legacyTerrain->ClearTextureSetsAndDrawVisibleSectors(clearVisSectors, passInfo);
     }
-#endif
 
     if (m_pPartManager != nullptr)
     {
@@ -1894,13 +1928,11 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     SetupClearColor();
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+    if (legacyTerrain)
     {
-        m_pTerrain->UpdateSectorMeshes(passInfo);
+        legacyTerrain->UpdateSectorMeshes(passInfo);
     }
-#endif
 
     if (gEnv->pCharacterManager)
     {
@@ -1920,13 +1952,11 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         m_pMergedMeshesManager->Update(passInfo);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+    if (legacyTerrain)
     {
-        m_pTerrain->CheckNodesGeomUnload(passInfo);
+        legacyTerrain->CheckNodesGeomUnload(passInfo);
     }
-#endif
 
     bool bIsMultiThreadedRenderer = false;
     gEnv->pRenderer->EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
@@ -1943,6 +1973,13 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         m_LightVolumesMgr.DrawDebug(passInfo);
     }
 #endif
+}
+
+void C3DEngine::WaitForCullingJobsCompletion()
+{
+    const bool waitForOcclusionJobCompletion = true;
+    m_pObjManager->EndOcclusionCulling(waitForOcclusionJobCompletion);
+    COctreeNode::WaitForContentJobCompletion();
 }
 
 void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPassInfo& passInfo)
@@ -1987,12 +2024,12 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         m_pVisAreaManager->DrawVisibleSectors(passInfo, rendItemSorter);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain != nullptr)
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+
+    if (legacyTerrain != nullptr)
     {
-        m_pTerrain->ClearVisSectors();
+        legacyTerrain->ClearVisSectors();
     }
-#endif
 
     if (IsOutdoorVisible() || GetRenderer()->IsPost3DRendererEnabled())
     {
@@ -2007,24 +2044,16 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
             RenderSkyBox(GetSkyMaterial(), passInfo);
         }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-
         // start processing terrain
         // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
-        if (m_pTerrain != nullptr)
+        if (legacyTerrain != nullptr)
         {
-#ifdef LY_TERRAIN_RUNTIME
-            if (!Terrain::TerrainProviderRequestBus::HasHandlers())
-#endif
+            if (IsOutdoorVisible() && passInfo.RenderTerrain() && !gEnv->IsDedicated())
             {
-                if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated())
-                {
-                    m_pTerrain->CheckVis(passInfo);
-                }
-                m_pTerrain->UpdateNodesIncrementaly(passInfo);
+                legacyTerrain->CheckVis(passInfo);
             }
+            legacyTerrain->UpdateNodesIncrementally(passInfo);
         }
-#endif
 
         {
             rendItemSorter.IncreaseOctreeCounter();
@@ -2098,13 +2127,11 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         m_pDecalManager->Render(passInfo);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
-
+    if (legacyTerrain)
     {
-        m_pTerrain->DrawVisibleSectors(passInfo);
+        const bool clearVisSectors = false;
+        legacyTerrain->ClearTextureSetsAndDrawVisibleSectors(clearVisSectors, passInfo);
     }
-#endif
 
     if (m_pPartManager != nullptr)
     {
@@ -2116,12 +2143,10 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         gEnv->pGame->OnRenderScene(passInfo);
     }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+    if (legacyTerrain)
     {
-        m_pTerrain->UpdateSectorMeshes(passInfo);
+        legacyTerrain->UpdateSectorMeshes(passInfo);
     }
-#endif
 
     if (gEnv->pCharacterManager)
     {
@@ -2160,14 +2185,12 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
     }
     else
     {
-        bOceanVisible = !Get3DEngine()->m_bShowTerrainSurface;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+        auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+        bOceanVisible = (legacyTerrain == nullptr);
+        if (legacyTerrain)
         {
-            bOceanVisible |= m_pTerrain->GetDistanceToSectorWithWater() >= 0 && m_pTerrain->IsOceanVisible();
+            bOceanVisible |= (legacyTerrain->GetDistanceToSectorWithWater() >= 0.0f) && legacyTerrain->IsOceanVisible();
         }
-#endif
-
     }
 
     if (bOceanVisible && passInfo.RenderWaterOcean() && m_bOcean)
@@ -2592,6 +2615,9 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         break;
     case eRT_Metal:
         pRenderType = "Metal";
+        break;
+    case eRT_Other:
+        pRenderType = "Other";
         break;
     case eRT_Null:
         pRenderType = "Null";
@@ -3593,11 +3619,11 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Frame #%d", frameCounter);
 #endif
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (GetCVars()->e_TerrainTextureStreamingDebug && m_pTerrain)
+    auto legacyTerrain = LegacyTerrain::LegacyTerrainDataRequestBus::FindFirstHandler();
+    if (GetCVars()->e_TerrainTextureStreamingDebug && legacyTerrain)
     {
-        MacroTexture::TileStatistics statistics;
-        if (m_pTerrain->TryGetTextureStatistics(statistics))
+        LegacyTerrain::MacroTexture::TileStatistics statistics;
+        if (legacyTerrain->TryGetTextureStatistics(statistics))
         {
             DrawTextRightAligned(
                 fTextPosX,
@@ -3611,10 +3637,12 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         }
     }
 
-    if (GetCVars()->e_TerrainBBoxes && m_pTerrain)
+    if (legacyTerrain)
     {
+        ICVar* cvarTerrainBBoxes = GetConsole()->GetCVar("e_TerrainBBoxes");
+        if (cvarTerrainBBoxes && cvarTerrainBBoxes->GetIVal())
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY,
-            "GetDistanceToSectorWithWater() = %.2f", m_pTerrain->GetDistanceToSectorWithWater());
+            "GetDistanceToSectorWithWater() = %.2f", legacyTerrain->GetDistanceToSectorWithWater());
     }
 
     if (GetCVars()->e_ProcVegetation == 2 && m_vegetationPoolManager)
@@ -3622,10 +3650,11 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         LegacyProceduralVegetation::VegetationSectorsPool& pool = m_vegetationPoolManager->GetVegetationSectorPool();
         int nAll;
         int nUsed = pool.GetUsedInstancesCount(nAll);
+        int activeProcObjNodesCount = legacyTerrain ? legacyTerrain->GetActiveProcObjNodesCount() : 0;
 
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "---------------------------------------");
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Procedural root pool status: used=%d, all=%d, active=%d",
-            nUsed, nAll, GetTerrain()->GetActiveProcObjNodesCount());
+            nUsed, nAll, activeProcObjNodesCount);
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "---------------------------------------");
         for (int i = 0; i < pool.m_lstUsed.Count(); i++)
         {
@@ -3650,7 +3679,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
                 nAll * int(GetCVars()->e_ProcVegetationMaxObjectsInChunk) * (int)sizeof(CVegetation) / 1024 / 1024);
         }
     }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
     if (GetCVars()->e_MergedMeshesDebug)
     {

@@ -57,6 +57,7 @@
 
 
 #if defined(EMOTIONFXANIMATION_EDITOR) // EMFX tools / editor includes
+#   include <IEditor.h>
 // Qt
 #   include <QtGui/QSurfaceFormat>
 // EMStudio tools and main window registration
@@ -652,9 +653,21 @@ namespace EMotionFX
                 GetEMotionFX().Update(realDelta);
             }
 
+            // Check if we are in game mode.
+            IEditor* editor = nullptr;
+            EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+            const bool inGameMode = editor ? editor->IsInGameMode() : false;
+
             // Update all the animation editor plugins (redraw viewports, timeline, and graph windows etc).
-            // But only update this when the main window is visible.
-            if (EMotionFX::GetEMotionFX().GetIsInEditorMode() && EMStudio::GetManager() && EMStudio::HasMainWindow() && !EMStudio::GetMainWindow()->visibleRegion().isEmpty())
+            // But only update this when the main window is visible and we are in game mode.
+            const bool isEditorActive =
+                EMotionFX::GetEMotionFX().GetIsInEditorMode() &&
+                EMStudio::GetManager() &&
+                EMStudio::HasMainWindow() &&
+                !EMStudio::GetMainWindow()->visibleRegion().isEmpty() &&
+                !inGameMode;
+
+            if (isEditorActive)
             {
                 UpdateAnimationEditorPlugins(realDelta);
             }

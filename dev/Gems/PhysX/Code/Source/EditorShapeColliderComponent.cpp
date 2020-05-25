@@ -25,6 +25,7 @@
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 #include <PhysX/SystemComponentBus.h>
 #include <AzCore/Math/Geometry2DUtils.h>
+#include <Source/Utils.h>
 
 namespace PhysX
 {
@@ -52,6 +53,7 @@ namespace PhysX
                         ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysXCollider.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/PhysXCollider.svg")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorShapeColliderComponent::m_colliderConfig,
                         "Collider configuration", "Configuration of the collider")
@@ -86,6 +88,85 @@ namespace PhysX
         incompatible.push_back(AZ_CRC("PhysXShapeColliderService", 0x98a7e779));
     }
 
+    const AZStd::vector<AZ::Vector3>& EditorShapeColliderComponent::GetSamplePoints() const
+    {
+        if (m_geometryCache.m_cachedSamplePointsDirty)
+        {
+            UpdateCachedSamplePoints();
+            m_geometryCache.m_cachedSamplePointsDirty = false;
+        }
+
+        return m_geometryCache.m_cachedSamplePoints;
+    }
+
+    void EditorShapeColliderComponent::UpdateCachedSamplePoints() const
+    {
+        m_geometryCache.m_cachedSamplePoints.clear();
+
+        switch (m_shapeType)
+        {
+        case ShapeType::Box:
+        {
+            const AZ::Vector3 boxMax = 0.5f * m_geometryCache.m_boxDimensions;
+            const AZ::Vector3 boxMin = -boxMax;
+            m_geometryCache.m_cachedSamplePoints = Utils::Geometry::GenerateBoxPoints(boxMin, boxMax);
+            break;
+        }
+        case ShapeType::Sphere:
+        {
+            m_geometryCache.m_cachedSamplePoints = Utils::Geometry::GenerateSpherePoints(m_geometryCache.m_radius);
+            break;
+        }
+        case ShapeType::Capsule:
+        {
+            const float cylinderHeight = m_geometryCache.m_height - 2 * m_geometryCache.m_radius;
+            if (cylinderHeight > 0.0f)
+            {
+                m_geometryCache.m_cachedSamplePoints = Utils::Geometry::GenerateCylinderPoints(cylinderHeight,
+                    m_geometryCache.m_radius);
+            }
+            break;
+        }
+        case ShapeType::PolygonPrism:
+        {
+            if (!m_shapeConfigs.empty())
+            {
+                AZ::PolygonPrismPtr polygonPrismPtr;
+                LmbrCentral::PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(),
+                    &LmbrCentral::PolygonPrismShapeComponentRequests::GetPolygonPrism);
+
+                if (polygonPrismPtr)
+                {
+                    const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
+
+                    const AZStd::vector<AZ::Vector2>& vertices = polygonPrismPtr->m_vertexContainer.GetVertices();
+                    for (const auto& vertex : vertices)
+                    {
+                        const float scalarScale = uniformScale.GetX();
+                        const float scaledX = scalarScale * vertex.GetX();
+                        const float scaledY = scalarScale * vertex.GetY();
+                        m_geometryCache.m_cachedSamplePoints.emplace_back(AZ::Vector3(scaledX, scaledY, 0.0f));
+                        m_geometryCache.m_cachedSamplePoints.emplace_back(AZ::Vector3(scaledX, scaledY, m_geometryCache.m_height));
+                    }
+                }
+            }
+
+            break;
+        }
+        default:
+            AZ_WarningOnce("PhysX Shape Collider Component", false, "Unsupported shape type in UpdateCachedSamplePoints");
+            break;
+        }
+
+        AZ::Transform transform = GetWorldTM();
+        transform.ExtractScaleExact();
+        const size_t numPoints = m_geometryCache.m_cachedSamplePoints.size();
+        for (size_t pointIndex = 0; pointIndex < numPoints; ++pointIndex)
+        {
+            m_geometryCache.m_cachedSamplePoints[pointIndex] = transform * m_geometryCache.m_cachedSamplePoints[pointIndex];
+        }
+    }
+
     const Physics::ColliderConfiguration& EditorShapeColliderComponent::GetColliderConfiguration() const
     {
         return m_colliderConfig;
@@ -109,13 +190,15 @@ namespace PhysX
         }
 
         shapeColliderComponent->SetShapeConfigurationList(shapeConfigurationList);
+
+        StaticRigidBodyUtils::TryCreateRuntimeComponent(*GetEntity(), *gameEntity);
     }
 
     void EditorShapeColliderComponent::CreateStaticEditorCollider()
     {
-        // We're ignoring dynamic bodies in the editor for now
-        auto rigidBody = GetEntity()->FindComponent<PhysX::EditorRigidBodyComponent>();
-        if (rigidBody)
+        // Don't create static rigid body in the editor if current entity components
+        // don't allow creation of runtime static rigid body component
+        if (!StaticRigidBodyUtils::CanCreateRuntimeComponent(*GetEntity()))
         {
             return;
         }
@@ -161,28 +244,31 @@ namespace PhysX
     void EditorShapeColliderComponent::UpdateShapeConfigs()
     {
         m_shapeConfigs.clear();
+        m_geometryCache.m_cachedSamplePointsDirty = true;
 
         AZ::Crc32 shapeCrc;
         LmbrCentral::ShapeComponentRequestsBus::EventResult(shapeCrc, GetEntityId(),
             &LmbrCentral::ShapeComponentRequests::GetShapeType);
 
+        const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
+
         // using if blocks because switch statements aren't supported for values generated by the crc macro
         if (shapeCrc == ShapeConstants::Box)
         {
             m_shapeType = ShapeType::Box;
-            UpdateBoxConfig(GetUniformScale());
+            UpdateBoxConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::Capsule)
         {
             m_shapeType = ShapeType::Capsule;
-            UpdateCapsuleConfig(GetUniformScale());
+            UpdateCapsuleConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::Sphere)
         {
             m_shapeType = ShapeType::Sphere;
-            UpdateSphereConfig(GetUniformScale());
+            UpdateSphereConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::PolygonPrism)
@@ -204,14 +290,6 @@ namespace PhysX
             &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
     }
 
-    AZ::Vector3 EditorShapeColliderComponent::GetUniformScale()
-    {
-        // all currently supported shape types scale uniformly based on the largest element of the non-uniform scale
-        AZ::Vector3 nonUniformScale = AZ::Vector3::CreateOne();
-        AZ::TransformBus::EventResult(nonUniformScale, GetEntityId(), &AZ::TransformBus::Events::GetLocalScale);
-        return AZ::Vector3(nonUniformScale.GetMaxElement());
-    }
-
     void EditorShapeColliderComponent::UpdateBoxConfig(const AZ::Vector3& scale)
     {
         AZ::Vector3 boxDimensions = AZ::Vector3::CreateOne();
@@ -219,6 +297,7 @@ namespace PhysX
             &LmbrCentral::BoxShapeComponentRequests::GetBoxDimensions);
         m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::BoxShapeConfiguration>(boxDimensions));
         m_shapeConfigs.back()->m_scale = scale;
+        m_geometryCache.m_boxDimensions = scale * boxDimensions;
     }
 
     void EditorShapeColliderComponent::UpdateCapsuleConfig(const AZ::Vector3& scale)
@@ -226,9 +305,13 @@ namespace PhysX
         LmbrCentral::CapsuleShapeConfig lmbrCentralCapsuleShapeConfig;
         LmbrCentral::CapsuleShapeComponentRequestsBus::EventResult(lmbrCentralCapsuleShapeConfig, GetEntityId(),
             &LmbrCentral::CapsuleShapeComponentRequests::GetCapsuleConfiguration);
-        m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::CapsuleShapeConfiguration>(
-            Utils::ConvertFromLmbrCentralCapsuleConfig(lmbrCentralCapsuleShapeConfig)));
+        const Physics::CapsuleShapeConfiguration& capsuleShapeConfig =
+            Utils::ConvertFromLmbrCentralCapsuleConfig(lmbrCentralCapsuleShapeConfig);
+        m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::CapsuleShapeConfiguration>(capsuleShapeConfig));
         m_shapeConfigs.back()->m_scale = scale;
+        const float scalarScale = scale.GetMaxElement();
+        m_geometryCache.m_radius = scalarScale * capsuleShapeConfig.m_radius;
+        m_geometryCache.m_height = scalarScale * capsuleShapeConfig.m_height;
     }
 
     void EditorShapeColliderComponent::UpdateSphereConfig(const AZ::Vector3& scale)
@@ -238,6 +321,7 @@ namespace PhysX
             &LmbrCentral::SphereShapeComponentRequests::GetRadius);
         m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::SphereShapeConfiguration>(radius));
         m_shapeConfigs.back()->m_scale = scale;
+        m_geometryCache.m_radius = scale.GetMaxElement() * radius;
     }
 
     void EditorShapeColliderComponent::UpdatePolygonPrismDecomposition()
@@ -318,7 +402,11 @@ namespace PhysX
         {
             m_shapeConfigs.reserve(numFacesTotal - numFacesRemoved);
         }
-        const float height = polygonPrismPtr->GetHeight();
+
+        const float unscaledPrismHeight = polygonPrismPtr->GetHeight();
+
+        const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
+        m_geometryCache.m_height = uniformScale.GetX() * unscaledPrismHeight;
 
         for (int faceIndex = 0; faceIndex < numFacesTotal; faceIndex++)
         {
@@ -334,7 +422,7 @@ namespace PhysX
             for (int edgeIndex = 0; edgeIndex < faces[faceIndex].m_numEdges; edgeIndex++)
             {
                 points.emplace_back(AZ::Vector3(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), 0.0f));
-                points.emplace_back(AZ::Vector3(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), height));
+                points.emplace_back(AZ::Vector3(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), unscaledPrismHeight));
                 currentEdge = currentEdge->m_next;
             }
 
@@ -345,7 +433,7 @@ namespace PhysX
             Physics::CookedMeshShapeConfiguration shapeConfig;
             shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(),
                 Physics::CookedMeshShapeConfiguration::MeshType::Convex);
-            shapeConfig.m_scale = m_scale;
+            shapeConfig.m_scale = uniformScale;
 
             m_shapeConfigs.push_back(AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(shapeConfig));
         }
@@ -365,7 +453,6 @@ namespace PhysX
         m_colliderDebugDraw.Connect(GetEntityId());
         m_colliderDebugDraw.SetDisplayCallback(this);
 
-        m_scale = AZ::Vector3(GetTransform()->GetLocalScale().GetMaxElement());
         CreateStaticEditorCollider();
 
         ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
@@ -400,14 +487,14 @@ namespace PhysX
     // TransformBus
     void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        m_scale = AZ::Vector3(GetTransform()->GetLocalScale().GetMaxElement());
         UpdatePolygonPrismDecomposition();
         CreateStaticEditorCollider();
+        m_geometryCache.m_cachedSamplePointsDirty = true;
         ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
     }
 
     // PhysX::ConfigurationNotificationBus
-    void EditorShapeColliderComponent::OnConfigurationRefreshed(const Configuration& /*configuration*/)
+    void EditorShapeColliderComponent::OnPhysXConfigurationRefreshed(const PhysXConfiguration& /*configuration*/)
     {
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
             &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
@@ -439,9 +526,10 @@ namespace PhysX
                 &LmbrCentral::PolygonPrismShapeComponentRequests::GetPolygonPrism);
             if (polygonPrismPtr)
             {
+                const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
                 const float height = polygonPrismPtr->GetHeight();
                 m_colliderDebugDraw.DrawPolygonPrism(debugDisplay, m_colliderConfig, m_mesh.GetDebugDrawPoints(height,
-                    m_scale.GetMaxElement()));
+                    uniformScale.GetX()));
             }
         }
 
@@ -455,19 +543,19 @@ namespace PhysX
                 case Physics::ShapeType::Box:
                 {
                     const auto& boxConfig = static_cast<const Physics::BoxShapeConfiguration&>(*shapeConfig);
-                    m_colliderDebugDraw.DrawBox(debugDisplay, m_colliderConfig, boxConfig, boxConfig.m_scale);
+                    m_colliderDebugDraw.DrawBox(debugDisplay, m_colliderConfig, boxConfig, AZ::Vector3::CreateOne(), true);
                     break;
                 }
                 case Physics::ShapeType::Capsule:
                 {
                     const auto& capsuleConfig = static_cast<const Physics::CapsuleShapeConfiguration&>(*shapeConfig);
-                    m_colliderDebugDraw.DrawCapsule(debugDisplay, m_colliderConfig, capsuleConfig, capsuleConfig.m_scale);
+                    m_colliderDebugDraw.DrawCapsule(debugDisplay, m_colliderConfig, capsuleConfig, AZ::Vector3::CreateOne(), true);
                     break;
                 }
                 case Physics::ShapeType::Sphere:
                 {
                     const auto& sphereConfig = static_cast<const Physics::SphereShapeConfiguration&>(*shapeConfig);
-                    m_colliderDebugDraw.DrawSphere(debugDisplay, m_colliderConfig, sphereConfig, sphereConfig.m_scale);
+                    m_colliderDebugDraw.DrawSphere(debugDisplay, m_colliderConfig, sphereConfig);
                     break;
                 }
                 default:

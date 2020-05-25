@@ -14,22 +14,80 @@
 
 #include <AzTest/AzTest.h>
 
-#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/Jobs/JobManagerComponent.h>
+#include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/Memory/MemoryComponent.h>
+#include <AzCore/Module/Module.h>
+#include <AzCore/Module/ModuleManagerBus.h>
+#include <AzFramework/Application/Application.h>
+#include <AzFramework/Application/Application.h>
 #include <AzFramework/Asset/AssetCatalogComponent.h>
+#include <AzFramework/IO/LocalFileIO.h>
 
 #include <Integration/System/SystemComponent.h>
 #include <Integration/AnimationBus.h>
 
-#include <AzCore/Asset/AssetManager.h>
-#include <AzCore/Memory/PoolAllocator.h>
-#include <AzCore/Jobs/JobManagerComponent.h>
-
-#include <AzCore/UnitTest/TestTypes.h>
 
 namespace EMotionFX
 {
+    template<class... Components>
+    class EMotionFXTestModule
+        : public AZ::Module
+    {
+    public:
+        AZ_RTTI(EMotionFXTestModule, "{32567457-5341-4D8D-91A9-E48D8395DE65}", AZ::Module);
+        AZ_CLASS_ALLOCATOR(EMotionFXTestModule, AZ::OSAllocator, 0);
+
+        EMotionFXTestModule()
+        {
+            m_descriptors.insert(m_descriptors.end(), {Components::CreateDescriptor()...});
+        }
+    };
+
+    template<class... Components>
+    class ComponentFixtureApp
+        : public AzFramework::Application
+    {
+    public:
+
+        ComponentFixtureApp()
+        {
+            m_defaultFileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
+            AZ::IO::FileIOBase::SetInstance(m_defaultFileIO.get());
+        }
+
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override
+        {
+            return {azrtti_typeid<Components>()...};
+        }
+
+        void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override
+        {
+            // This is intentionally bypassing the static modules that
+            // AzFramework::Application would create. That creates more
+            // components than these tests need.
+            outModules.emplace_back(aznew EMotionFXTestModule<Components...>());
+        }
+
+        void StartCommon(AZ::Entity* systemEntity) override
+        {
+            m_systemEntity = systemEntity;
+            AzFramework::Application::StartCommon(systemEntity);
+        }
+
+        AZ::Entity* GetSystemEntity() const
+        {
+            return m_systemEntity;
+        }
+
+    private:
+        AZ::Entity* m_systemEntity = nullptr;
+    };
+
     //! A fixture that constructs an EMotionFX::Integration::SystemComponent
     /*!
      * This fixture can be used by any test that needs the EMotionFX runtime to
@@ -37,60 +95,63 @@ namespace EMotionFX
      * objects to be successfully instantiated.
     */
     template<class... Components>
-    class ComponentFixture : public UnitTest::AllocatorsTestFixture
+    class ComponentFixture
+        : public UnitTest::ScopedAllocatorSetupFixture
     {
     public:
+
         void SetUp() override
         {
-            UnitTest::AllocatorsTestFixture::SetUp();
+            UnitTest::ScopedAllocatorSetupFixture::SetUp();
 
-            AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_enableDrilling = false;
-            mSystemEntity = mApp.Create(appDesc);
+            auto localFileIO = AZ::IO::FileIOBase::GetInstance();
+            localFileIO->SetAlias("@root@", GetWorkingDirectory());
+            localFileIO->SetAlias("@assets@", GetAssetFolder().c_str());
+            localFileIO->SetAlias("@devassets@", GetAssetFolder().c_str());
 
-            mLocalFileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
+            PreStart();
 
-            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
-            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+            m_app.Start(AZ::ComponentApplication::Descriptor{});
 
-            AZ::IO::FileIOBase::SetInstance(mLocalFileIO.get());
+            GetSerializeContext()->CreateEditContext();
 
-            m_workingDirectory = mApp.GetExecutableFolder();
-            const AZStd::string assetFolder = GetAssetFolder();
-
-            mLocalFileIO->SetAlias("@root@", m_workingDirectory);
-            mLocalFileIO->SetAlias("@assets@", assetFolder.c_str());
-            mLocalFileIO->SetAlias("@devassets@", assetFolder.c_str());
-
-            Activate();
+            if (HasComponentType<AzFramework::AssetCatalogComponent>())
+            {
+                AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::LoadCatalog, "@assets@/assetcatalog.xml");
+            }
         }
 
         void TearDown() override
         {
             // If we loaded the asset catalog, call this function to release all the assets that has been loaded internally.
-            if (mSystemEntity->FindComponent<AzFramework::AssetCatalogComponent>())
+            if (HasComponentType<AzFramework::AssetCatalogComponent>())
             {
                 AZ::Data::AssetManager::Instance().DispatchEvents();
             }
 
-            Deactivate();
+            GetSerializeContext()->DestroyEditContext();
+            // Clear the queue of messages from unit tests on our buses
+            EMotionFX::Integration::ActorNotificationBus::ClearQueuedEvents();
 
-            // Clean things up in the reverse order that things happened in SetUp
-            AZ::IO::FileIOBase::SetInstance(nullptr);
-
-            mLocalFileIO.reset();
-
-            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
-            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
-
-            mApp.Destroy();
-
-            UnitTest::AllocatorsTestFixture::TearDown();
+            UnitTest::ScopedAllocatorSetupFixture::TearDown();
         }
 
-        AZ::SerializeContext* GetSerializeContext() const
+        ~ComponentFixture() override
         {
-            return m_serializeContext;
+            if (GetSystemEntity()->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                GetSystemEntity()->Deactivate();
+            }
+        }
+
+        AZ::SerializeContext* GetSerializeContext()
+        {
+            return m_app.GetSerializeContext();
+        }
+
+        AZ::Entity* GetSystemEntity() const
+        {
+            return m_app.GetSystemEntity();
         }
 
         AZStd::string ResolvePath(const char* path)
@@ -103,72 +164,41 @@ namespace EMotionFX
 
         const char* GetWorkingDirectory()
         {
-            return m_workingDirectory;
+            return m_app.GetExecutableFolder();
         }
 
     protected:
 
         virtual AZStd::string GetAssetFolder() const
         {
-            return mApp.GetExecutableFolder();
+            return m_app.GetExecutableFolder();
         }
 
-        virtual void Activate()
+        // Runs after allocators are set up but before application startup
+        // Used by the InitSceneAPI fixture to load the SceneAPI dlls
+        virtual void PreStart() {}
+
+        template<typename T>
+        static constexpr bool HasComponentType()
         {
-            // Poor-man's c++11 fold expression
-            std::initializer_list<int> {(mApp.RegisterComponentDescriptor(Components::CreateDescriptor()), 0)...};
-            std::initializer_list<int> {(mSystemEntity->CreateComponent<Components>(), 0)...};
-            mSystemEntity->Init();
-            mSystemEntity->Activate();
-
-            m_serializeContext = mApp.GetSerializeContext();
-            m_serializeContext->CreateEditContext();
-
-            if (mSystemEntity->FindComponent<AzFramework::AssetCatalogComponent>())
-            {
-                AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::LoadCatalog, "@assets@/assetcatalog.xml");
-            }
+            // Return true if T is somewhere in the Components parameter pack
+            // This expands to
+            // return (((AZStd::is_same_v<Components[0], T> || AZStd::is_same_v<Components[1], T>) || AZStd::is_same_v<Components[2], T>) || ...)
+            return ((... || AZStd::is_same_v<Components, T>));
         }
 
-        virtual void Deactivate()
-        {
-            m_serializeContext->DestroyEditContext();
-            // Clear the queue of messages from unit tests on our buses
-            EMotionFX::Integration::ActorNotificationBus::ClearQueuedEvents();
-
-            mSystemEntity->Deactivate();
-            // Remove SceneAPI components before the DLL is uninitialized
-            std::initializer_list<int> {(([&]() {
-                auto component = mSystemEntity->FindComponent<Components>();
-                mSystemEntity->RemoveComponent(component);
-                delete component;
-            })(), 0)...};
-
-            std::initializer_list<int> {(mApp.UnregisterComponentDescriptor(Components::CreateDescriptor()), 0)...};
-        }
-
+    protected:
         // The ComponentApplication must not be a pointer, because it cannot be
         // dynamically allocated. Calls to new will try to use the SystemAllocator
         // that has not been created yet. If one is created before
         // ComponentApplication::Create() is called, ComponentApplication will
         // complain that there's already a SystemAllocator, as it tries to make one
         // itself.
-        AZ::ComponentApplication mApp;
-
-    private:
-        // The destructor of the LocalFileIO object uses the AZ::OSAllocator. Make
-        // sure that it still exists when this fixture is destroyed.
-        AZStd::unique_ptr<AZ::IO::LocalFileIO> mLocalFileIO;
-
-        AZ::Entity* mSystemEntity = nullptr;
-
-        AZ::SerializeContext* m_serializeContext = nullptr;
-
-        const char* m_workingDirectory = nullptr;
+        ComponentFixtureApp<Components...> m_app;
     };
 
-    // Note that the SystemComponent depends on the AssetManagerComponent
     using SystemComponentFixture = ComponentFixture<
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
         EMotionFX::Integration::SystemComponent
@@ -177,9 +207,10 @@ namespace EMotionFX
     // Use this fixture if you want to load asset catalog. Some assets (reference anim graph for example)
     // can only be loaded when asset catalog is loaded.
     using SystemComponentFixtureWithCatalog = ComponentFixture<
-        AzFramework::AssetCatalogComponent,
+        AZ::MemoryComponent,
         AZ::AssetManagerComponent,
         AZ::JobManagerComponent,
+        AzFramework::AssetCatalogComponent,
         EMotionFX::Integration::SystemComponent
     >;
 } // end namespace EMotionFX

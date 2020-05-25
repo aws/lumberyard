@@ -20,12 +20,27 @@
 #include <Source/Shape.h>
 #include <Include/PhysX/NativeTypeIdentifiers.h>
 #include <AzFramework/Physics/World.h>
+#include <PhysX/PhysXLocks.h> 
 
 namespace PhysX
 {
     RigidBodyStatic::RigidBodyStatic(const Physics::WorldBodyConfiguration& configuration)
     {
         CreatePxActor(configuration);
+    }
+
+    RigidBodyStatic::~RigidBodyStatic()
+    {
+        //clean up the attached shapes
+        {
+            PHYSX_SCENE_WRITE_LOCK(m_staticRigidBody->getScene());
+            for (auto shape : m_shapes)
+            {
+                m_staticRigidBody->detachShape(*shape->GetPxShape());
+                shape->DetachedFromActor();
+            }
+        }
+        m_shapes.clear();
     }
 
     void RigidBodyStatic::CreatePxActor(const Physics::WorldBodyConfiguration& configuration)
@@ -49,7 +64,11 @@ namespace PhysX
         auto pxShape = AZStd::rtti_pointer_cast<PhysX::Shape>(shape);
         if (pxShape && pxShape->GetPxShape())
         {
-            m_staticRigidBody->attachShape(*pxShape->GetPxShape());
+            {
+                PHYSX_SCENE_WRITE_LOCK(m_staticRigidBody->getScene());
+                m_staticRigidBody->attachShape(*pxShape->GetPxShape());
+            }
+            pxShape->AttachedToActor(m_staticRigidBody.get());
             m_shapes.push_back(pxShape);
         }
         else
@@ -80,30 +99,51 @@ namespace PhysX
 
     AZ::Transform RigidBodyStatic::GetTransform() const
     {
-        return m_staticRigidBody ? PxMathConvert(m_staticRigidBody->getGlobalPose()) : AZ::Transform::CreateZero();
+        if (m_staticRigidBody)
+        {
+            PHYSX_SCENE_READ_LOCK(m_staticRigidBody->getScene());
+            return PxMathConvert(m_staticRigidBody->getGlobalPose());
+        }
+        return AZ::Transform::CreateZero();
     }
 
     void RigidBodyStatic::SetTransform(const AZ::Transform & transform)
     {
         if (m_staticRigidBody)
         {
+            PHYSX_SCENE_WRITE_LOCK(m_staticRigidBody->getScene());
             m_staticRigidBody->setGlobalPose(PxMathConvert(transform));
         }
     }
 
     AZ::Vector3 RigidBodyStatic::GetPosition() const
     {
-        return m_staticRigidBody ? PxMathConvert(m_staticRigidBody->getGlobalPose().p) : AZ::Vector3::CreateZero();
+        if (m_staticRigidBody)
+        {
+            PHYSX_SCENE_READ_LOCK(m_staticRigidBody->getScene());
+            return PxMathConvert(m_staticRigidBody->getGlobalPose().p);
+        }
+        return AZ::Vector3::CreateZero();
     }
 
     AZ::Quaternion RigidBodyStatic::GetOrientation() const
     {
-        return m_staticRigidBody ? PxMathConvert(m_staticRigidBody->getGlobalPose().q) : AZ::Quaternion::CreateZero();
+        if (m_staticRigidBody)
+        {
+            PHYSX_SCENE_READ_LOCK(m_staticRigidBody->getScene());
+            return PxMathConvert(m_staticRigidBody->getGlobalPose().q);
+        }
+        return  AZ::Quaternion::CreateZero();
     }
 
     AZ::Aabb RigidBodyStatic::GetAabb() const
     {
-        return m_staticRigidBody ? PxMathConvert(m_staticRigidBody->getWorldBounds(1.0f)) : AZ::Aabb::CreateNull();
+        if (m_staticRigidBody)
+        {
+            PHYSX_SCENE_READ_LOCK(m_staticRigidBody->getScene());
+            return PxMathConvert(m_staticRigidBody->getWorldBounds(1.0f));
+        }
+        return AZ::Aabb::CreateNull();
     }
 
     void RigidBodyStatic::RayCast(const Physics::RayCastRequest & request, Physics::RayCastResult & result) const
@@ -142,6 +182,7 @@ namespace PhysX
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(scene);
         scene->addActor(*m_staticRigidBody);
     }
 
@@ -160,6 +201,7 @@ namespace PhysX
             return;
         }
 
+        PHYSX_SCENE_WRITE_LOCK(scene);
         scene->removeActor(*m_staticRigidBody);
     }
 }

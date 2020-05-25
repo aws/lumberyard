@@ -1,7 +1,7 @@
 """
 Typing for enums.
 """
-
+import operator
 from numba import types
 from numba.typing.templates import (AbstractTemplate, AttributeTemplate,
                                     signature, Registry)
@@ -40,7 +40,7 @@ class EnumClassStaticGetItem(AbstractTemplate):
         enum, idx = args
         if (isinstance(enum, types.EnumClass)
                 and idx in enum.instance_class.__members__):
-            return enum.member_type
+            return signature(enum.member_type, *args)
 
 
 class EnumCompare(AbstractTemplate):
@@ -53,11 +53,12 @@ class EnumCompare(AbstractTemplate):
             return signature(types.boolean, lhs, rhs)
 
 
-@infer
+@infer_global(operator.eq)
 class EnumEq(EnumCompare):
-    key = '=='
+    pass
 
 
-@infer
+
+@infer_global(operator.ne)
 class EnumNe(EnumCompare):
-    key = '!='
+    pass

@@ -315,7 +315,7 @@ namespace CopyDependencyBuilder
     {
         AssetBuilderSDK::AssetBuilderDesc xmlSchemaBuilderDescriptor;
         xmlSchemaBuilderDescriptor.m_name = "XmlBuilderWorker";
-        xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.xml", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+        xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("(?!.*libs\\/gameaudio\\/).*\\.xml", AssetBuilderSDK::AssetBuilderPattern::PatternType::Regex));
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.ent", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.vegdescriptorlist", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_busId = azrtti_typeid<XmlBuilderWorker>();
@@ -374,7 +374,8 @@ namespace CopyDependencyBuilder
             for (const AZStd::string& schemaPath : findFilesResult.GetValue())
             {
                 AzFramework::XmlSchemaAsset schemaAsset;
-                if (!AZ::Utils::LoadObjectFromFileInPlace(schemaPath, schemaAsset))
+                AZ::ObjectStream::FilterDescriptor loadFilter = AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+                if (!AZ::Utils::LoadObjectFromFileInPlace(schemaPath, schemaAsset, nullptr, loadFilter))
                 {
                     return AZ::Failure(AZStd::string::format("Failed to load schema file: %s.", schemaPath.c_str()));
                 }
@@ -508,7 +509,8 @@ namespace CopyDependencyBuilder
         }
 
         AzFramework::XmlSchemaAsset schemaAsset;
-        if (!AZ::Utils::LoadObjectFromFileInPlace(schemaFilePath, schemaAsset))
+        AZ::ObjectStream::FilterDescriptor loadFilter = AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+        if (!AZ::Utils::LoadObjectFromFileInPlace(schemaFilePath, schemaAsset, nullptr, loadFilter))
         {
             AZ_Error("XmlBuilderWorker", false, "Failed to load schema file: %s.", schemaFilePath.c_str());
             // This isn't a blocking error, the error was on this schema, so try checking the next schema for a match.

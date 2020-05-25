@@ -379,6 +379,9 @@ ILocalizationManager::EPlatformIndependentLanguageID CLocalizedStringsManager::P
     #elif defined(AZ_PLATFORM_SALEM)
         #include "Salem/LocalizedStringManager_cpp_salem.inl"
     #endif
+    #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+        #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #endif // AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 //////////////////////////////////////////////////////////////////////////
 ILocalizationManager::EPlatformIndependentLanguageID CLocalizedStringsManager::GetSystemLanguage()

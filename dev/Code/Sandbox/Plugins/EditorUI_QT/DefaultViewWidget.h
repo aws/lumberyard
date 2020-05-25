@@ -54,7 +54,9 @@ signals:
 private:
     virtual void showEvent(QShowEvent* e);
     void Invalidate();
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QVector<QPushButton*> m_buttons;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QLabel* m_label;
     QLabel* m_image;
     QVBoxLayout* m_layout;

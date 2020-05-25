@@ -16,6 +16,7 @@
 #include <Processing/ImageToProcess.h>
 #include <Processing/PixelFormatInfo.h>
 #include <Processing/ImageConvert.h>
+#include <Processing/ImageFlags.h>
 
 #include <Compressors/Compressor.h>
 #include <Converters/PixelOperation.h>

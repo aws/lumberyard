@@ -143,8 +143,8 @@ namespace ExporterLib
     void SaveActorHeader(MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
     void SaveActorFileInfo(MCore::Stream* file, uint32 numLODLevels, uint32 motionExtractionNodeIndex, uint32 retargetRootNodeIndex, const char* sourceApp, const char* orgFileName, const char* actorName, MCore::Distance::EUnitType unitType, MCore::Endian::EEndianType targetEndianType, bool optimizeSkeleton);
 
-    void SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
-    bool SaveActor(AZStd::string& filename, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
+    void SaveActor(MCore::MemoryFile* file, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
+    bool SaveActor(AZStd::string& filename, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
 
     // deformable attachments
     void SaveDeformableAttachments(const char* fileNameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType, MCore::CommandManager* commandManager = nullptr);

@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import service
 import os
 import metric_constant as c
@@ -23,11 +24,12 @@ from dynamodb import DynamoDb
 from thread_pool import ThreadPool
 from cgf_utils import custom_resource_response
 from aws_lambda import Lambda
+from cgf_lambda_service import ClientError
 
 @service.api
 def message(request, compression_mode, sensitivity_type, payload_type, data):    
-    p_lambda = Lambda({})    
-    print "Target lambda {}".format(os.environ[c.ENV_LAMBDA_PRODUCER])
+    p_lambda = Lambda({})
+    print("Target lambda {}".format(os.environ[c.ENV_LAMBDA_PRODUCER]))
     util.debug_print("Invoking lambda {} with payload size: {} Compression mode: {}, Sensitivity Type: {}, Payload Type: {}".format(os.environ[c.ENV_LAMBDA_PRODUCER], len(data), compression_mode, sensitivity_type,  payload_type))
     payload_data = {c.API_PARAM_SOURCE_IP:request.event[c.API_PARAM_SOURCE_IP], c.SQS_PARAM_SENSITIVITY_TYPE:  sensitivity_type, c.SQS_PARAM_PAYLOAD_TYPE:  payload_type, c.SQS_PARAM_COMPRESSION_TYPE:  compression_mode, c.API_PARAM_PAYLOAD : data }       
     
@@ -43,8 +45,8 @@ def message(request, compression_mode, sensitivity_type, payload_type, data):
     }
 
     if error and len(error) > 0:
-        print "Error:", sb
-        raise errors.ClientError("An error occurred invoking the SQS event producer.  Please check the cloud watch logs.");
+        print("Error:", sb)
+        raise ClientError("An error occurred invoking the SQS event producer.  Please check the cloud watch logs.")
 
     return returnObj
 
@@ -70,14 +72,14 @@ def thread_job(functionid, iterations_per_thread, events_per_iteration, use_lamb
             data = data_generator.csv(events_per_iteration, event_type)       
 
         if os.environ[c.ENV_VERBOSE]:
-            print "Data: \t{}".format(os.environ[c.ENV_VERBOSE]) 
+            print("Data: \t{}".format(os.environ[c.ENV_VERBOSE]))
 
         if use_lambda:            
             response = message(type('obj', (object,), {'event' :{c.API_PARAM_SOURCE_IP:'127.0.0.1'}}), compression_mode, sensitivity_type, payload_type, {c.API_PARAM_DATA: data})            
         else:          
             payload_data = {c.API_PARAM_SOURCE_IP:'127.0.0.1', c.SQS_PARAM_SENSITIVITY_TYPE:  sensitivity_type, c.SQS_PARAM_PAYLOAD_TYPE:  payload_type, c.SQS_PARAM_COMPRESSION_TYPE:  compression_mode, c.API_PARAM_PAYLOAD : {c.API_PARAM_DATA: data} }
             response = lambda_fifo_message_producer.main(payload_data, type('obj', (object,), {}))
-        print "StatusCode: {}".format(response['StatusCode'])
+        print("StatusCode: {}".format(response['StatusCode']))
         time.sleep(sleep_duration)
         
 
@@ -86,19 +88,20 @@ def generate_threads(functionid, threads_count, iterations_per_thread, events_pe
     context = {}            
     threadpool = ThreadPool(context, threads_count)  
     context=dict({})        
-    db = DynamoDb(context) 
-    print "Sleep durations: ", sleep_duration
-    print "Number of threads: ", threads_count
-    print "Number of iterations per thread: ", iterations_per_thread
-    print "Number of events per iteration: ", events_per_iteration
-    print "Using event type: ", event_type
-    print "Using sensitivity type: ", sensitivity_type
-    print "Using compression mode: ", compression_mode
+    db = DynamoDb(context)
+    print("Sleep durations: ", sleep_duration)
+    print("Number of threads: ", threads_count)
+    print("Number of iterations per thread: ", iterations_per_thread)
+    print("Number of events per iteration: ", events_per_iteration)
+    print("Using event type: ", event_type)
+    print("Using sensitivity type: ", sensitivity_type)
+    print("Using compression mode: ", compression_mode)
     for i in range(0, threads_count):          
         threadpool.add(thread_job, functionid, iterations_per_thread, events_per_iteration, use_lambda, context, sleep_duration, event_type, sensitivity_type, compression_mode)                                                    
-    threadpool.wait()      
-    print "A total of {} metrics have been sent to the FIFO queues.".format((iterations_per_thread*events_per_iteration)*threads_count)    
-    print "The overall process took {} seconds.".format(time.time() - start)
+    threadpool.wait()
+    print("A total of {} metrics have been sent to the FIFO queues.".format(
+        (iterations_per_thread * events_per_iteration) * threads_count))
+    print("The overall process took {} seconds.".format(time.time() - start))
 
 def cli(context, args):
     util.set_logger(args.verbose)

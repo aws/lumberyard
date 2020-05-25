@@ -14,7 +14,9 @@
 #define AZFRAMEWORK_NETWORK_ENTITYIDMARSHALER_H
 
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Component/NamedEntityId.h>
 
+#include <GridMate/Serialize/ContainerMarshal.h>
 #include <GridMate/Serialize/DataMarshal.h>
 
 namespace GridMate
@@ -39,6 +41,34 @@ namespace GridMate
             idMarshaler.Unmarshal(id,rb);
             
             target = AZ::EntityId(id);
+        }
+    };
+
+    template<>
+    class Marshaler<AZ::NamedEntityId>
+    {
+    public:
+        void Marshal(GridMate::WriteBuffer& wb, const AZ::NamedEntityId& source) const
+        {
+            Marshaler<AZ::u64> idMarshaler;
+            idMarshaler.Marshal(wb, static_cast<AZ::u64>(source));
+
+            Marshaler<AZStd::string> stringMarshaler;
+            stringMarshaler.Marshal(wb, source.GetName());
+        }
+
+        void Unmarshal(AZ::NamedEntityId& target, GridMate::ReadBuffer& rb) const
+        {
+            AZ::u64 id = 0;
+
+            Marshaler<AZ::u64> idMarshaler;
+            idMarshaler.Unmarshal(id, rb);
+
+            AZStd::string name;
+            Marshaler<AZStd::string> stringMarshaler;
+            stringMarshaler.Unmarshal(name, rb);
+
+            target = AZ::NamedEntityId(AZ::EntityId(id), name);
         }
     };
 }

@@ -16,12 +16,10 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-#include "terrain_sector.h"
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "IndexedMesh.h"
 #include "Brush.h"
-#include "terrain.h"
 
 const char* CBrush::GetEntityClassName() const
 {

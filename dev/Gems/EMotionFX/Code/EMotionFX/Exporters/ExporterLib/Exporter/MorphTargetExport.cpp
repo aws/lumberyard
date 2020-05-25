@@ -39,13 +39,6 @@ namespace ExporterLib
         const uint32 numDeformDatas     = morphTarget->GetNumDeformDatas();
         const uint32 numTransformations = morphTarget->GetNumTransformations();
 
-        // if this morph target doesn't contain any deform datas nor transformations we don't save it
-        if (numDeformDatas == 0 && numTransformations == 0)
-        {
-            MCore::LogWarning("Empty  morph target found '%s'. Skipped.",  morphTarget->GetName());
-            return;
-        }
-
         // copy over the information to the chunk
         EMotionFX::FileFormat::Actor_MorphTarget morphTargetChunk;
         morphTargetChunk.mLOD                   = lodLevel;
@@ -214,13 +207,6 @@ namespace ExporterLib
         const uint32 numDeformDatas     = morphTarget->GetNumDeformDatas();
         const uint32 numTransformations = morphTarget->GetNumTransformations();
 
-        // if this morph target doesn't contain any deform data nor transformations we don't save it
-        // return a 0 chunk size
-        if (numDeformDatas == 0 && numTransformations == 0)
-        {
-            return 0;
-        }
-
         uint32 totalSize = 0;
         totalSize += sizeof(EMotionFX::FileFormat::Actor_MorphTarget);
         totalSize += GetStringChunkSize(morphTarget->GetName());
@@ -265,27 +251,10 @@ namespace ExporterLib
         return totalSize;
     }
 
-
-    // get the number of morph targets we have to save, skip the ones that don't contain any deltas
     uint32 GetNumSavedMorphTargets(EMotionFX::MorphSetup* morphSetup)
     {
-        uint32 numSavedMorphTargets = 0;
-
-        // get the number of morph targets
-        const uint32 numMorphTargets = morphSetup->GetNumMorphTargets();
-        for (uint32 i = 0; i < numMorphTargets; ++i)
-        {
-            EMotionFX::MorphTargetStandard* morphTarget = (EMotionFX::MorphTargetStandard*)morphSetup->GetMorphTarget(i);
-
-            if (morphTarget->GetNumDeformDatas() != 0 || morphTarget->GetNumTransformations() != 0)
-            {
-                numSavedMorphTargets++;
-            }
-        }
-
-        return numSavedMorphTargets;
+        return morphSetup->GetNumMorphTargets();
     }
-
 
     // save all morph targets for a given LOD level
     void SaveMorphTargets(MCore::Stream* file, EMotionFX::Actor* actor, uint32 lodLevel, MCore::Endian::EEndianType targetEndianType)
@@ -399,19 +368,13 @@ namespace ExporterLib
         loadSettings.mUnitTypeConvert = false;
 
         // the morph target actor will be automatically destructed when the morph target will be created
-        EMotionFX::Actor* morphTargetActor = EMotionFX::GetImporter().LoadActor(file, &loadSettings);
-        if (morphTargetActor == nullptr)
+        AZStd::unique_ptr<EMotionFX::Actor> morphTargetActor = EMotionFX::GetImporter().LoadActor(file, &loadSettings);
+        if (!morphTargetActor)
         {
             MCore::LogError("Could not load morph target '%s'.", morphTargetName.c_str());
             return false;
         }
-        /*
-            if (fixSkeleton)
-            {
-                MCore::Array<MCore::Matrix> deltaMatrices;
-                EMotionFX::FixSkeleton( actor, &deltaMatrices );
-            }
-        */
+
         // set the morph target name as actor name
         morphTargetActor->SetName(morphTargetName.c_str());
 
@@ -427,15 +390,15 @@ namespace ExporterLib
         switch (captureMode)
         {
         case 0: // transforms
-            morphTarget = EMotionFX::MorphTargetStandard::Create(true, false, actor, morphTargetActor, morphTargetName.c_str());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(true, false, actor, morphTargetActor.get(), morphTargetName.c_str());
             break;
 
         case 1: // mesh deforms
-            morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, actor, morphTargetActor, morphTargetName.c_str());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, actor, morphTargetActor.get(), morphTargetName.c_str());
             break;
 
         case 2: // both
-            morphTarget = EMotionFX::MorphTargetStandard::Create(true, true, actor, morphTargetActor, morphTargetName.c_str());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(true, true, actor, morphTargetActor.get(), morphTargetName.c_str());
             break;
 
         default:
@@ -449,15 +412,7 @@ namespace ExporterLib
         morphTarget->SetRangeMax(rangeMax);
 
         // add the morph target to the morph setup
-        if (morphTarget->GetNumTransformations() > 0 ||  morphTarget->GetNumDeformDatas() > 0)
-        {
-            morphSetup->AddMorphTarget(morphTarget);
-        }
-        else
-        {
-            MCore::LogWarning("Skipping morph target '%s' as it doesn't contain any transformations as well as deform datas.", morphTargetName.c_str());
-            morphTarget->Destroy();
-        }
+        morphSetup->AddMorphTarget(morphTarget);
 
         return true;
     }

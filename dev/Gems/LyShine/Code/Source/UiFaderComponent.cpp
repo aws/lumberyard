@@ -316,28 +316,6 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiFaderComponent::ComputeElementFadeValue(AZ::Entity* element)
-{
-    // --- THIS FUNCTION IS DEPRECATED ---
-    // NOTE: This is a short-term solution. In the longer term I want to use eBus.
-    // We would probably cache the accumulate fade value in the visual components and visual
-    // components could listen for update events from their closest ancestor element that can
-    // generate those events (i.e. has a fader component)
-    float fade = 1.0f;
-    auto curElem = element;
-    while (curElem)
-    {
-        float fadeValue = 1.0f;
-        EBUS_EVENT_ID_RESULT(fadeValue, curElem->GetId(), UiFaderBus, GetFadeValue);
-        fade *= fadeValue;
-
-        EBUS_EVENT_ID_RESULT(curElem, curElem->GetId(), UiElementBus, GetParent);
-    }
-
-    return fade;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 // PROTECTED MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

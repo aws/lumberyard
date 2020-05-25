@@ -76,7 +76,7 @@ namespace ScriptEvents
             if (dc.GetNumArguments() > 0)
             {
                 AZStd::string name;
-                if (dc.ReadArg(0, name))
+                if (dc.IsString(0) && dc.ReadArg(0, name))
                 {
                     m_name.Set(name.c_str());
                 }
@@ -238,6 +238,17 @@ namespace ScriptEvents
             for (Parameter parameter : m_parameters)
             {
                 parameter.PreSave();
+            }
+        }
+
+        void Flatten()
+        {
+            m_name.Flatten();
+            m_tooltip.Flatten();
+            m_returnType.Flatten();
+            for (Parameter& parameter : m_parameters)
+            {
+                parameter.Flatten();
             }
         }
 

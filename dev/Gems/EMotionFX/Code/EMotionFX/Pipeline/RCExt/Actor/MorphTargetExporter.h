@@ -50,8 +50,7 @@ namespace EMotionFX
             AZ::SceneAPI::Events::ProcessingResult ProcessMorphTargets(ActorMorphBuilderContext& context);
         protected:
             void BuildMorphTargetMesh(EMotionFX::Actor* actor, EMotionFX::Node* emfxNode,
-                const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IBlendShapeData>& morphTargetData, const AZ::Transform& globalTransform, const AZ::Transform& globalTransformN, CoordinateSystemConverter& coordinateSystemConverter,
-                bool optimizeTriangleList);
+                const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IBlendShapeData>& morphTargetData, const AZ::Transform& globalTransform, const AZ::Transform& globalTransformN, CoordinateSystemConverter& coordinateSystemConverter);
         };
     }
 } // namespace EMotionFX

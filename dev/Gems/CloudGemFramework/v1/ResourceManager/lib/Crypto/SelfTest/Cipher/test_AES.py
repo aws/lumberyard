@@ -24,9 +24,11 @@
 
 """Self-test suite for Crypto.Cipher.AES"""
 
-__revision__ = "$Id$"
+from __future__ import print_function
 
-from common import dict     # For compatibility with Python 2.1 and 2.2
+import unittest
+from Crypto.Hash import SHA256
+from Crypto.Cipher import AES
 from Crypto.Util.py3compat import *
 from binascii import hexlify
 
@@ -1231,199 +1233,117 @@ test_data = [
      '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
      'NIST 800-38A, F.1.3, ECB and AES-256'),
 
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '7649abac8119b246cee98e9b12e9197d'+'5086cb9b507219ee95db113a917678b2'+
-     '73bed6b8e3c1743b7116e69e22229516'+'3ff1caa1681fac09120eca307586e1a7',
-     '2b7e151628aed2a6abf7158809cf4f3c',
-     'NIST 800-38A, F.2.1, CBC and AES-128',
-     dict(mode='CBC', iv='000102030405060708090a0b0c0d0e0f')),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '4f021db243bc633d7178183a9fa071e8'+'b4d9ada9ad7dedf4e5e738763f69145a'+
-     '571b242012fb7ae07fa9baac3df102e0'+'08b0e27988598881d920a9e64f5615cd',
-     '8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b',
-     'NIST 800-38A, F.2.1, CBC and AES-192',
-     dict(mode='CBC', iv='000102030405060708090a0b0c0d0e0f')),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     'f58c4c04d6e5f1ba779eabfb5f7bfbd6'+'9cfc4e967edb808d679f777bc6702c7d'+
-     '39f23369a9d9bacfa530e26304231461'+'b2eb05e2c39be9fcda6c19078c6a9d1b',
-     '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
-     'NIST 800-38A, F.2.1, CBC and AES-256',
-     dict(mode='CBC', iv='000102030405060708090a0b0c0d0e0f')),
-
-    # Skip CFB-1 since it is not supported by PyCrypto
-
-    ('6bc1bee22e409f96e93d7e117393172aae2d','3b79424c9c0dd436bace9e0ed4586a4f32b9',
-     '2b7e151628aed2a6abf7158809cf4f3c',
-     'NIST 800-38A, F.3.7, CFB-8 and AES-128',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=8)),
-
-    ('6bc1bee22e409f96e93d7e117393172aae2d','cda2521ef0a905ca44cd057cbf0d47a0678a',
-     '8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b',
-     'NIST 800-38A, F.3.9, CFB-8 and AES-192',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=8)),
-
-    ('6bc1bee22e409f96e93d7e117393172aae2d','dc1f1a8520a64db55fcc8ac554844e889700',
-     '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
-     'NIST 800-38A, F.3.11, CFB-8 and AES-256',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=8)),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '3b3fd92eb72dad20333449f8e83cfb4a'+'c8a64537a0b3a93fcde3cdad9f1ce58b'+
-     '26751f67a3cbb140b1808cf187a4f4df'+'c04b05357c5d1c0eeac4c66f9ff7f2e6',
-     '2b7e151628aed2a6abf7158809cf4f3c',
-     'NIST 800-38A, F.3.13, CFB-128 and AES-128',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=128)),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     'cdc80d6fddf18cab34c25909c99a4174'+'67ce7f7f81173621961a2b70171d3d7a'+
-     '2e1e8a1dd59b88b1c8e60fed1efac4c9'+'c05f9f9ca9834fa042ae8fba584b09ff',
-     '8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b',
-     'NIST 800-38A, F.3.15, CFB-128 and AES-192',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=128)),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     'dc7e84bfda79164b7ecd8486985d3860'+'39ffed143b28b1c832113c6331e5407b'+
-     'df10132415e54b92a13ed0a8267ae2f9'+'75a385741ab9cef82031623d55b1e471',
-     '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
-     'NIST 800-38A, F.3.17, CFB-128 and AES-256',
-     dict(mode='CFB', iv='000102030405060708090a0b0c0d0e0f', segment_size=128)),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '3b3fd92eb72dad20333449f8e83cfb4a'+'7789508d16918f03f53c52dac54ed825'+
-     '9740051e9c5fecf64344f7a82260edcc'+'304c6528f659c77866a510d9c1d6ae5e',
-     '2b7e151628aed2a6abf7158809cf4f3c',
-     'NIST 800-38A, F.4.1, OFB and AES-128',
-     dict(mode='OFB', iv='000102030405060708090a0b0c0d0e0f')),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     'cdc80d6fddf18cab34c25909c99a4174'+'fcc28b8d4c63837c09e81700c1100401'+
-     '8d9a9aeac0f6596f559c6d4daf59a5f2'+'6d9f200857ca6c3e9cac524bd9acc92a',
-     '8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b',
-     'NIST 800-38A, F.4.3, OFB and AES-192',
-     dict(mode='OFB', iv='000102030405060708090a0b0c0d0e0f')),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     'dc7e84bfda79164b7ecd8486985d3860'+'4febdc6740d20b3ac88f6ad82a4fb08d'+
-     '71ab47a086e86eedf39d1c5bba97c408'+'0126141d67f37be8538f5a8be740e484',
-     '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
-     'NIST 800-38A, F.4.5, OFB and AES-256',
-     dict(mode='OFB', iv='000102030405060708090a0b0c0d0e0f')),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '874d6191b620e3261bef6864990db6ce'+'9806f66b7970fdff8617187bb9fffdff'+
-     '5ae4df3edbd5d35e5b4f09020db03eab'+'1e031dda2fbe03d1792170a0f3009cee',
-     '2b7e151628aed2a6abf7158809cf4f3c',
-     'NIST 800-38A, F.5.1, CTR and AES-128',
-     dict(mode='CTR', ctr_params=dict(nbits=16, prefix='f0f1f2f3f4f5f6f7f8f9fafbfcfd', initial_value=0xfeff))),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '1abc932417521ca24f2b0459fe7e6e0b'+'090339ec0aa6faefd5ccc2c6f4ce8e94'+
-     '1e36b26bd1ebc670d1bd1d665620abf7'+'4f78a7f6d29809585a97daec58c6b050',
-     '8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b',
-     'NIST 800-38A, F.5.3, CTR and AES-192',
-     dict(mode='CTR', ctr_params=dict(nbits=16, prefix='f0f1f2f3f4f5f6f7f8f9fafbfcfd', initial_value=0xfeff))),
-
-    ('6bc1bee22e409f96e93d7e117393172a'+'ae2d8a571e03ac9c9eb76fac45af8e51'+
-     '30c81c46a35ce411e5fbc1191a0a52ef'+'f69f2445df4f9b17ad2b417be66c3710',
-     '601ec313775789a5b7a7f504bbf3d228'+'f443e3ca4d62b59aca84e990cacaf5c5'+
-     '2b0930daa23de94ce87017ba2d84988d'+'dfc9c58db67aada613c2dd08457941a6',
-     '603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4',
-     'NIST 800-38A, F.5.5, CTR and AES-256',
-     dict(mode='CTR', ctr_params=dict(nbits=16, prefix='f0f1f2f3f4f5f6f7f8f9fafbfcfd', initial_value=0xfeff))),
-
-    # RFC 3686 test vectors
-    # This is a list of (plaintext, ciphertext, key[, description[, params]]) tuples.
-    ('53696e676c6520626c6f636b206d7367', 'e4095d4fb7a7b3792d6175a3261311b8',
-        'ae6852f8121067cc4bf7a5765577f39e',
-        'RFC 3686 Test Vector #1: Encrypting 16 octets using AES-CTR with 128-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='00000030'+'0000000000000000'))),
-    ('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
-        '5104a106168a72d9790d41ee8edad388eb2e1efc46da57c8fce630df9141be28',
-        '7e24067817fae0d743d6ce1f32539163',
-        'RFC 3686 Test Vector #2: Encrypting 32 octets using AES-CTR with 128-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='006cb6db'+'c0543b59da48d90b'))),
-    ('000102030405060708090a0b0c0d0e0f'+'101112131415161718191a1b1c1d1e1f'+'20212223',
-        'c1cf48a89f2ffdd9cf4652e9efdb72d7'+'4540a42bde6d7836d59a5ceaaef31053'+'25b2072f',
-        '7691be035e5020a8ac6e618529f9a0dc',
-        'RFC 3686 Test Vector #3: Encrypting 36 octets using AES-CTR with 128-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='00e0017b'+'27777f3f4a1786f0'))),
-    ('53696e676c6520626c6f636b206d7367',
-        '4b55384fe259c9c84e7935a003cbe928',
-        '16af5b145fc9f579c175f93e3bfb0eed'+'863d06ccfdb78515',
-        'RFC 3686 Test Vector #4: Encrypting 16 octets using AES-CTR with 192-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='00000048'+'36733c147d6d93cb'))),
-    ('000102030405060708090a0b0c0d0e0f'+'101112131415161718191a1b1c1d1e1f',
-        '453243fc609b23327edfaafa7131cd9f'+'8490701c5ad4a79cfc1fe0ff42f4fb00',
-        '7c5cb2401b3dc33c19e7340819e0f69c'+'678c3db8e6f6a91a',
-        'RFC 3686 Test Vector #5: Encrypting 32 octets using AES-CTR with 192-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='0096b03b'+'020c6eadc2cb500d'))),
-    ('000102030405060708090a0b0c0d0e0f'+'101112131415161718191a1b1c1d1e1f'+'20212223',
-        '96893fc55e5c722f540b7dd1ddf7e758'+'d288bc95c69165884536c811662f2188'+'abee0935',
-        '02bf391ee8ecb159b959617b0965279b'+'f59b60a786d3e0fe',
-        'RFC 3686 Test Vector #6: Encrypting 36 octets using AES-CTR with 192-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='0007bdfd'+'5cbd60278dcc0912'))),
-    ('53696e676c6520626c6f636b206d7367',
-        '145ad01dbf824ec7560863dc71e3e0c0',
-        '776beff2851db06f4c8a0542c8696f6c'+'6a81af1eec96b4d37fc1d689e6c1c104',
-        'RFC 3686 Test Vector #7: Encrypting 16 octets using AES-CTR with 256-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='00000060'+'db5672c97aa8f0b2'))),
-    ('000102030405060708090a0b0c0d0e0f'+'101112131415161718191a1b1c1d1e1f',
-        'f05e231b3894612c49ee000b804eb2a9'+'b8306b508f839d6a5530831d9344af1c',
-        'f6d66d6bd52d59bb0796365879eff886'+'c66dd51a5b6a99744b50590c87a23884',
-        'RFC 3686 Test Vector #8: Encrypting 32 octets using AES-CTR with 256-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='00faac24'+'c1585ef15a43d875'))),
-    ('000102030405060708090a0b0c0d0e0f'+'101112131415161718191a1b1c1d1e1f'+'20212223',
-        'eb6c52821d0bbbf7ce7594462aca4faa'+'b407df866569fd07f48cc0b583d6071f'+'1ec0e6b8',
-        'ff7a617ce69148e4f1726e2f43581de2'+'aa62d9f805532edff1eed687fb54153d',
-        'RFC 3686 Test Vector #9: Encrypting 36 octets using AES-CTR with 256-bit key',
-        dict(mode='CTR', ctr_params=dict(nbits=32, prefix='001cc5b7'+'51a51d70a1c11148'))),
-
-    # The following test vectors have been generated with gpg v1.4.0.
-    # The command line used was:
-    #
-    #    gpg -c -z 0 --cipher-algo AES --passphrase secret_passphrase \
-    #     --disable-mdc --s2k-mode 0 --output ct pt
-    #
-    # As result, the content of the file 'pt' is encrypted with a key derived
-    # from 'secret_passphrase' and written to file 'ct'.
-    # Test vectors must be extracted from 'ct', which is a collection of
-    # TLVs (see RFC4880 for all details):
-    # - the encrypted data (with the encrypted IV as prefix) is the payload
-    #   of the TLV with tag 9 (Symmetrical Encrypted Data Packet).
-    #   This is the ciphertext in the test vector.
-    # - inside the encrypted part, there is a further layer of TLVs. One must
-    #   look for tag 11 (Literal Data  Packet); in its payload, after a short
-    #   but time dependent header, there is the content of file 'pt'.
-    #   In the test vector, the plaintext is the complete set of TLVs that gets
-    #   encrypted. It is not just the content of 'pt'.
-    # - the key is the leftmost 16 bytes of the SHA1 digest of the password.
-    #   The test vector contains such shortened digest.
-    #
-    # Note that encryption uses a clear IV, and decryption an encrypted IV
-    ( 'ac18620270744fb4f647426c61636b4361745768697465436174',   # Plaintext, 'BlackCatWhiteCat'
-      'dc6b9e1f095de609765c59983db5956ae4f63aea7405389d2ebb',   # Ciphertext
-      '5baa61e4c9b93f3f0682250b6cf8331b', # Key (hash of 'password')
-      'GPG Test Vector #1',
-      dict(mode='OPENPGP', iv='3d7d3e62282add7eb203eeba5c800733', encrypted_iv='fd934601ef49cb58b6d9aebca6056bdb96ef' ) ),
 ]
 
+test_data_8_lanes = []
+for td in test_data:
+    test_data_8_lanes.append((td[0] * 8, td[1] * 8, td[2], td[3]))
+test_data += test_data_8_lanes
+
+class TestMultipleBlocks(unittest.TestCase):
+
+    def __init__(self, use_aesni):
+        unittest.TestCase.__init__(self)
+        self.use_aesni = use_aesni
+
+    def runTest(self):
+        # Encrypt data which is 8*2+4 bytes long, so as to trigger (for the
+        # AESNI variant) both the path that parallelizes 8 lanes and the one
+        # that processes data serially
+
+        tvs = [
+                (b'a' * 16, 'c0b27011eb15bf144d2fc9fae80ea16d4c231cb230416c5fac02e6835ad9d7d0'),
+                (b'a' * 24, 'df8435ce361a78c535b41dcb57da952abbf9ee5954dc6fbcd75fd00fa626915d'),
+                (b'a' * 32, '211402de6c80db1f92ba255881178e1f70783b8cfd3b37808205e48b80486cd8')
+        ]
+
+        for key, expected in tvs:
+
+            cipher = AES.new(key, AES.MODE_ECB, use_aesni=self.use_aesni)
+            h = SHA256.new()
+
+            pt = b"".join([ tobytes('{0:016x}'.format(x)) for x in range(20) ])
+            ct = cipher.encrypt(pt)
+            self.assertEqual(SHA256.new(ct).hexdigest(), expected)
+
+
+class TestIncompleteBlocks(unittest.TestCase):
+
+    def __init__(self, use_aesni):
+        unittest.TestCase.__init__(self)
+        self.use_aesni = use_aesni
+
+    def runTest(self):
+        # Encrypt data with length not multiple of 16 bytes
+
+        cipher = AES.new(b'4'*16, AES.MODE_ECB, use_aesni=self.use_aesni)
+
+        for msg_len in range(1, 16):
+            self.assertRaises(ValueError, cipher.encrypt, b'1' * msg_len)
+            self.assertRaises(ValueError, cipher.encrypt, b'1' * (msg_len+16))
+            self.assertRaises(ValueError, cipher.decrypt, b'1' * msg_len)
+            self.assertRaises(ValueError, cipher.decrypt, b'1' * (msg_len+16))
+
+        self.assertEqual(cipher.encrypt(b''), b'')
+        self.assertEqual(cipher.decrypt(b''), b'')
+
+
+class TestOutput(unittest.TestCase):
+
+    def __init__(self, use_aesni):
+        unittest.TestCase.__init__(self)
+        self.use_aesni = use_aesni
+
+    def runTest(self):
+        # Encrypt/Decrypt data and test output parameter
+
+        cipher = AES.new(b'4'*16, AES.MODE_ECB, use_aesni=self.use_aesni)
+
+        pt = b'5' * 16
+        ct = cipher.encrypt(pt)
+
+        output = bytearray(16)
+        res = cipher.encrypt(pt, output=output)
+        self.assertEqual(ct, output)
+        self.assertEqual(res, None)
+        
+        res = cipher.decrypt(ct, output=output)
+        self.assertEqual(pt, output)
+        self.assertEqual(res, None)
+
+        import sys
+        if sys.version[:3] != '2.6':
+            output = memoryview(bytearray(16))
+            cipher.encrypt(pt, output=output)
+            self.assertEqual(ct, output)
+        
+            cipher.decrypt(ct, output=output)
+            self.assertEqual(pt, output)
+
+        self.assertRaises(TypeError, cipher.encrypt, pt, output=b'0'*16)
+        self.assertRaises(TypeError, cipher.decrypt, ct, output=b'0'*16)
+
+        shorter_output = bytearray(15)
+        self.assertRaises(ValueError, cipher.encrypt, pt, output=shorter_output)
+        self.assertRaises(ValueError, cipher.decrypt, ct, output=shorter_output)
+
+
 def get_tests(config={}):
-    from Crypto.Cipher import AES
-    from common import make_block_tests
-    return make_block_tests(AES, "AES", test_data)
+    from Crypto.Util import _cpu_features
+    from .common import make_block_tests
+
+    tests = make_block_tests(AES, "AES", test_data, {'use_aesni': False})
+    tests += [ TestMultipleBlocks(False) ]
+    tests += [ TestIncompleteBlocks(False) ]
+    if _cpu_features.have_aes_ni():
+        # Run tests with AES-NI instructions if they are available.
+        tests += make_block_tests(AES, "AESNI", test_data, {'use_aesni': True})
+        tests += [ TestMultipleBlocks(True) ]
+        tests += [ TestIncompleteBlocks(True) ]
+        tests += [ TestOutput(True) ]
+    else:
+        print("Skipping AESNI tests")
+    return tests
 
 if __name__ == '__main__':
     import unittest

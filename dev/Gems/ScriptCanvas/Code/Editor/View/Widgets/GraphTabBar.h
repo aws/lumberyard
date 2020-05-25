@@ -12,8 +12,10 @@
 
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QTabBar>
 #include <QMetaType>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>

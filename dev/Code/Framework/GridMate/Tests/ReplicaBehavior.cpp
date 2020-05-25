@@ -324,7 +324,7 @@ namespace UnitTest {
             "DataSet31","DataSet32"
         };
 
-        AZ_STATIC_ASSERT(EntityLikeScriptReplicaChunk::k_maxScriptableDataSets <= AZ_ARRAY_SIZE(s_nameArray), "Insufficient number of names supplied to EntityLikeScriptDataSet::GetDataSetName()");
+        static_assert(EntityLikeScriptReplicaChunk::k_maxScriptableDataSets <= AZ_ARRAY_SIZE(s_nameArray), "Insufficient number of names supplied to EntityLikeScriptDataSet::GetDataSetName()");
 
         if (s_chunkIndex > EntityLikeScriptReplicaChunk::k_maxScriptableDataSets)
         {

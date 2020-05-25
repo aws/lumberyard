@@ -131,6 +131,13 @@
              </property>
             </widget>
            </item>
+            <item>
+              <widget class="ClickableLabel" name="exportSplatMapClickable">
+                <property name="text">
+                  <string>Export Splat Map</string>
+                </property>
+              </widget>
+            </item>
           </layout>
          </widget>
         </item>

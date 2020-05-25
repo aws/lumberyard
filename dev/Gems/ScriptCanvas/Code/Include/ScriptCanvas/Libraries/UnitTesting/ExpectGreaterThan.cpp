@@ -57,13 +57,13 @@ namespace ScriptCanvas
 
             void ExpectGreaterThan::OnInputSignal(const SlotId& slotId)
             {
-                auto lhs = GetInput(GetSlotId("Candidate"));
+                auto lhs = FindDatum(GetSlotId("Candidate"));
                 if (!lhs)
                 {
                     return;
                 }
 
-                auto rhs = GetInput(GetSlotId("Reference"));
+                auto rhs = FindDatum(GetSlotId("Reference"));
                 if (!rhs)
                 {
                     return;
@@ -72,7 +72,7 @@ namespace ScriptCanvas
                 if (lhs->GetType() != rhs->GetType())
                 {
                     ScriptCanvas::UnitTesting::Bus::Event
-                    (GetGraphId()
+                    ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::AddFailure
                         , "Type mismatch in comparison operator");
 
@@ -80,13 +80,13 @@ namespace ScriptCanvas
                     return;
                 }
 
-                const auto report = GetInput(GetSlotId("Report"))->GetAs<Data::StringType>();
+                const auto report = FindDatum(GetSlotId("Report"))->GetAs<Data::StringType>();
 
                 switch (lhs->GetType().GetType())
                 {
                 case Data::eType::Number:
                       ScriptCanvas::UnitTesting::Bus::Event
-                          ( GetGraphId()
+                          ( GetOwningScriptCanvasId()
                           , &ScriptCanvas::UnitTesting::BusTraits::ExpectGreaterThanNumber
                           , *lhs->GetAs<Data::NumberType>()
                           , *rhs->GetAs<Data::NumberType>()
@@ -95,7 +95,7 @@ namespace ScriptCanvas
 
                 case Data::eType::String:
                     ScriptCanvas::UnitTesting::Bus::Event
-                        ( GetGraphId()
+                        ( GetOwningScriptCanvasId()
                         , &ScriptCanvas::UnitTesting::BusTraits::ExpectGreaterThanString
                         , *lhs->GetAs<Data::StringType>()
                         , *rhs->GetAs<Data::StringType>()

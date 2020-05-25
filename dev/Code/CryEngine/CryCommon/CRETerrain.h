@@ -32,6 +32,11 @@ struct SelectedNode;
 
 namespace Terrain
 {
+    namespace Debug
+    {
+        class TerrainProfiler;
+    }
+
     class TerrainTextureCache;
     class TerrainRenderingParameters;
 
@@ -113,6 +118,11 @@ namespace Terrain
 
         // Guards against the case that terrain gets initialized between mfPrepare and mfDraw calls
         bool m_dataPrepared{ false };
+
+#if !defined(_RELEASE)
+        Debug::TerrainProfiler* m_terrainProfiler;
+#endif
+
     };
 }
 

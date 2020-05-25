@@ -38,7 +38,10 @@ AZ_POP_DISABLE_WARNING
 #define AZ_ENETUNREACH   WSAENETUNREACH
 #define AZ_ETIMEDOUT     WSAETIMEDOUT
 
-namespace Platform
+namespace GridMate
 {
-    using SocketType_Platform = AZStd::size_t;
+    namespace Platform
+    {
+        using SocketType_Platform = AZStd::size_t;
+    }
 }

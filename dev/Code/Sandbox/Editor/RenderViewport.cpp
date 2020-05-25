@@ -73,6 +73,7 @@
 #include <AzFramework/Components/CameraBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Viewport/DisplayContextRequestBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -109,6 +110,8 @@ void StartFixedCursorMode(QObject *viewport);
 #define RENDER_MESH_TEST_DISTANCE (0.2f)
 #define CURSOR_FONT_HEIGHT  8.0f
 
+static const char TextCantCreateCameraNoLevel[] = "Cannot create camera when no level is loaded.";
+
 struct CRenderViewport::SScopedCurrentContext
 {
     const CRenderViewport* m_viewport;
@@ -118,7 +121,16 @@ struct CRenderViewport::SScopedCurrentContext
         : m_viewport(viewport)
     {
         m_previousContext = viewport->SetCurrentContext();
-        AZ_Assert(viewport->m_cameraSetForWidgetRenderingCount == 0,
+
+        // During normal updates of RenderViewport the value of m_cameraSetForWidgetRenderingCount is expected to be 0.
+        // This is to guarantee no loss in performance by tracking unnecessary calls to SetCurrentContext/RestorePreviousContext.
+        // If some code makes additional calls to Pre/PostWidgetRendering then the assert will be triggered because
+        // m_cameraSetForWidgetRenderingCount will be greater than 0.
+        // There is a legitimate case where the counter can be greater than 0. This is when QtViewport is processing mouse callbacks.
+        // QtViewport::MouseCallback() is surrounded by Pre/PostWidgetRendering and the m_processingMouseCallbacksCounter
+        // tracks this specific case. If an update of a RenderViewport happens while processing the mouse callback,
+        // for example when showing a QMessageBox, then both counters must match.
+        AZ_Assert(viewport->m_cameraSetForWidgetRenderingCount == viewport->m_processingMouseCallbacksCounter,
             "SScopedCurrentContext constructor was called while viewport widget context is active "
             "- this is unnecessary");
     }
@@ -234,10 +246,13 @@ void CRenderViewport::resizeEvent(QResizeEvent* event)
 
     gEnv->pRenderer->EF_DisableTemporalEffects();
 
-    // We queue the window resize event because the render overlay may be hidden.
-    // If the render overlay is not visible, the native window that is backing it will
-    // also be hidden, and it will not resize until it becomes visible.
-    m_windowResizedEvent = true;
+    if (m_renderer->GetRenderType() == eRT_Other)
+    {
+        // We queue the window resize event because the render overlay may be hidden.
+        // If the render overlay is not visible, the native window that is backing it will
+        // also be hidden, and it will not resize until it becomes visible.
+        m_windowResizedEvent = true;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1067,27 +1082,24 @@ void CRenderViewport::Update()
         ProcessKeys();
     }
 
-    if (GetIEditor()->IsInGameMode())
+    const bool isGameMode = GetIEditor()->IsInGameMode();
+    const bool isSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
+
+    // Allow debug visualization in both 'game' (Ctrl-G) and 'simulation' (Ctrl-P) modes
+    if (isGameMode || isSimulationMode)
     {
         if (!IsRenderingDisabled())
         {
             // Disable rendering to avoid recursion into Update()
             PushDisableRendering();
 
-            // draw debug visualizations in game mode
+            // draw debug visualizations
             {
                 const AzFramework::DisplayContextRequestGuard displayContextGuard(m_displayContext);
 
                 const AZ::u32 prevState = m_displayContext.GetState();
                 m_displayContext.SetState(
                     e_Mode3D | e_AlphaBlended | e_FillModeSolid | e_CullModeBack | e_DepthWriteOn | e_DepthTestOn);
-
-                AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-                bool unused;
-                // @deprecated DisplayEntity call
-                AzFramework::EntityDebugDisplayEventBus::Broadcast(
-                    &AzFramework::EntityDebugDisplayEvents::DisplayEntity, unused);
-                AZ_POP_DISABLE_WARNING
 
                 AzFramework::DebugDisplayRequestBus::BusPtr debugDisplayBus;
                 AzFramework::DebugDisplayRequestBus::Bind(
@@ -1108,7 +1120,11 @@ void CRenderViewport::Update()
             PopDisableRendering();
         }
 
-        return;
+        // Game mode rendering is handled by CryAction
+        if (isGameMode)
+        {
+            return;
+        }
     }
 
     // Prevents rendering recursion due to recursive Paint messages.
@@ -1365,8 +1381,10 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
 #else
-            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
-            float sy = sx;
+            AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+            float sx = terrainAabb.GetWidth();
+            float sy = terrainAabb.GetHeight();
 #endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
@@ -1391,8 +1409,10 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
 #else
-            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
-            float sy = sx;
+            AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+            float sx = terrainAabb.GetWidth();
+            float sy = terrainAabb.GetHeight();
 #endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
@@ -1412,10 +1432,14 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndSceneSave:
         PopDisableRendering();
         break;
-    case eNotify_OnBeginLoad:
+    
+    case eNotify_OnBeginLoad: // disables viewport input when starting to load an existing level
+    case eNotify_OnBeginCreate: // disables viewport input when starting to create a new level
         m_freezeViewportInput = true;
         break;
-    case eNotify_OnEndLoad:
+    
+    case eNotify_OnEndLoad: // enables viewport input when finished loading an existing level
+    case eNotify_OnEndCreate: // enables viewport input when finished creating a new level
         m_freezeViewportInput = false;
         break;
     }
@@ -1592,10 +1616,14 @@ void CRenderViewport::OnRender()
     {
         const auto rendererSize = WidgetToViewport(QSize(m_renderer->GetWidth(), m_renderer->GetHeight()));
         m_renderer->SetViewport(0, 0, rendererSize.width(), rendererSize.height(), m_nCurViewportID);
-        m_engine->Tick();
-        m_engine->Update();
 
-        m_engine->RenderWorld(SHDF_ALLOW_AO | SHDF_ALLOWPOSTPROCESS | SHDF_ALLOW_WATER | SHDF_ALLOWHDR | SHDF_ZPASS, SRenderingPassInfo::CreateGeneralPassRenderingInfo(m_Camera), __FUNCTION__);
+        if (m_renderer->GetRenderType() != eRT_Other)
+        {
+            m_engine->Tick();
+            m_engine->Update();
+
+            m_engine->RenderWorld(SHDF_ALLOW_AO | SHDF_ALLOWPOSTPROCESS | SHDF_ALLOW_WATER | SHDF_ALLOWHDR | SHDF_ZPASS, SRenderingPassInfo::CreateGeneralPassRenderingInfo(m_Camera), __FUNCTION__);
+        }
     }
     else
     {
@@ -2338,14 +2366,30 @@ void CRenderViewport::OnTitleMenu(QMenu* menu)
     // Set ourself as the active viewport so the following actions create a camera from this view
     GetIEditor()->GetViewManager()->SelectViewport(this);
 
+    CGameEngine* gameEngine = GetIEditor()->GetGameEngine();
+
     if (Camera::EditorCameraSystemRequestBus::HasHandlers())
     {
         action = menu->addAction(tr("Create camera entity from current view"));
         connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraEntityFromCurrentView);
+
+        if (!gameEngine || !gameEngine->IsLevelLoaded())
+        {
+            action->setEnabled(false);
+            action->setToolTip(tr(TextCantCreateCameraNoLevel));
+            menu->setToolTipsVisible(true);
+        }
     }
 
     action = menu->addAction(tr("Create legacy camera from current view"));
     connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraFromCurrentView);
+
+    if (!gameEngine || !gameEngine->IsLevelLoaded())
+    {
+        action->setEnabled(false);
+        action->setToolTip(tr(TextCantCreateCameraNoLevel));
+        menu->setToolTipsVisible(true);
+    }
 
     if (GetCameraObject())
     {
@@ -2741,33 +2785,24 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
         {
             Vec3 p = camMatrix.GetTranslation();
             bool adjustCameraElevation = true;
-
-            if (GetIEditor()->Get3DEngine())
+            auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+            if (terrain)
             {
-                AZ::Aabb terrainAabb(GetIEditor()->Get3DEngine()->GetTerrainAabb());
-#ifdef LY_TERRAIN_EDITOR
-                if (!GetIEditor()->GetTerrainManager()->GetUseTerrain())
-                {
-                    adjustCameraElevation = false;
-                }
-                else if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
-                {
-                    adjustCameraElevation = false;
-                }
-                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
-                {
-                    adjustCameraElevation = false;
-                }
-#else
+                AZ::Aabb terrainAabb(terrain->GetTerrainAabb());
+
+                // Adjust the AABB to include all Z values.  Since the goal here is to snap the camera to the terrain height if
+                // it's below the terrain, we only want to verify the camera is within the XY bounds of the terrain to adjust the elevation.
+                terrainAabb.SetMin(AZ::Vector3(terrainAabb.GetMin().GetX(), terrainAabb.GetMin().GetY(), -AZ_FLT_MAX));
+                terrainAabb.SetMax(AZ::Vector3(terrainAabb.GetMax().GetX(), terrainAabb.GetMax().GetY(), AZ_FLT_MAX));
+
                 if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
                 {
                     adjustCameraElevation = false;
                 }
-                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
+                else if (terrain->GetIsHoleFromFloats(p.x, p.y))
                 {
                     adjustCameraElevation = false;
                 }
-#endif //#ifdef LY_TERRAIN_EDITOR
             }
 
             if (adjustCameraElevation)
@@ -2928,24 +2963,27 @@ void CRenderViewport::RenderSelectedRegion()
     float offset = 0.01f;
     Vec3 p1, p2;
 
+    const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+
     for (float y = y1; y < y2; y += fStep)
     {
         p1.x = x1;
         p1.y = y;
-        p1.z = m_engine->GetTerrainElevation(p1.x, p1.y) + offset;
+        p1.z = terrain ? terrain->GetHeightFromFloats(p1.x, p1.y) + offset : defaultTerrainHeight + offset;
 
         p2.x = x1;
         p2.y = y + fStep;
-        p2.z = m_engine->GetTerrainElevation(p2.x, p2.y) + offset;
+        p2.z = terrain ? terrain->GetHeightFromFloats(p2.x, p2.y) + offset : defaultTerrainHeight + offset;
         dc.DrawLine(p1, p2);
 
         p1.x = x2;
         p1.y = y;
-        p1.z = m_engine->GetTerrainElevation(p1.x, p1.y) + offset;
+        p1.z = terrain ? terrain->GetHeightFromFloats(p1.x, p1.y) + offset : defaultTerrainHeight + offset;
 
         p2.x = x2;
         p2.y = y + fStep;
-        p2.z = m_engine->GetTerrainElevation(p2.x, p2.y) + offset;
+        p2.z = terrain ? terrain->GetHeightFromFloats(p2.x, p2.y) + offset : defaultTerrainHeight + offset;
         dc.DrawLine(p1, p2);
 
         fMinZ = min(fMinZ, min(p1.z, p2.z));
@@ -2955,20 +2993,20 @@ void CRenderViewport::RenderSelectedRegion()
     {
         p1.x = x;
         p1.y = y1;
-        p1.z = m_engine->GetTerrainElevation(p1.x, p1.y) + offset;
+        p1.z = terrain ? terrain->GetHeightFromFloats(p1.x, p1.y) + offset : defaultTerrainHeight + offset;
 
         p2.x = x + fStep;
         p2.y = y1;
-        p2.z = m_engine->GetTerrainElevation(p2.x, p2.y) + offset;
+        p2.z = terrain ? terrain->GetHeightFromFloats(p2.x, p2.y) + offset : defaultTerrainHeight + offset;
         dc.DrawLine(p1, p2);
 
         p1.x = x;
         p1.y = y2;
-        p1.z = m_engine->GetTerrainElevation(p1.x, p1.y) + offset;
+        p1.z = terrain ? terrain->GetHeightFromFloats(p1.x, p1.y) + offset : defaultTerrainHeight + offset;
 
         p2.x = x + fStep;
         p2.y = y2;
-        p2.z = m_engine->GetTerrainElevation(p2.x, p2.y) + offset;
+        p2.z = terrain ? terrain->GetHeightFromFloats(p2.x, p2.y) + offset : defaultTerrainHeight + offset;
         dc.DrawLine(p1, p2);
 
         fMinZ = min(fMinZ, min(p1.z, p2.z));
@@ -3374,7 +3412,12 @@ Vec3 CRenderViewport::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bo
         colp = hit.pt;
         if (hit.bTerrain)
         {
-            colp.z = m_engine->GetTerrainElevation(colp.x, colp.y);
+            float terrainElevation = 0.0f;
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , colp.x, colp.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+                , nullptr);
+            colp.z = terrainElevation;
         }
     }
 
@@ -3833,8 +3876,11 @@ bool CRenderViewport::CreateRenderContext()
     {
         m_bRenderContextCreated = true;
 
-        AzFramework::WindowRequestBus::Handler::BusConnect(renderOverlayHWND());
-        AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, renderOverlayHWND());
+        if (m_renderer->GetRenderType() == eRT_Other)
+        {
+            AzFramework::WindowRequestBus::Handler::BusConnect(renderOverlayHWND());
+            AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, renderOverlayHWND());
+        }
 
         WIN_HWND oldContext = m_renderer->GetCurrentContextHWND();
         m_renderer->CreateContext(renderOverlayHWND());
@@ -4313,10 +4359,14 @@ CRenderViewport::SPreviousContext CRenderViewport::SetCurrentContext(int newWidt
     x.rendererCamera = m_renderer->GetCamera();
 
     const float scale = CLAMP(gEnv->pConsole->GetCVar("r_ResolutionScale")->GetFVal(), MIN_RESOLUTION_SCALE, MAX_RESOLUTION_SCALE);
-    const auto newSize = WidgetToViewport(QSize(newWidth, newHeight)) * scale;
+    const QSize newSize = WidgetToViewport(QSize(newWidth, newHeight)) * scale;
+
+    // No way to query the requested Qt scale here, so do it this way for now
+    float widthScale = aznumeric_cast<float>(newSize.width()) / aznumeric_cast<float>(newWidth);
+    float heightScale = aznumeric_cast<float>(newSize.height()) / aznumeric_cast<float>(newHeight);
 
     m_renderer->SetCurrentContext(renderOverlayHWND());
-    m_renderer->ChangeViewport(0, 0, newSize.width(), newSize.height(), true);
+    m_renderer->ChangeViewport(0, 0, newWidth, newHeight, true, widthScale, heightScale);
     m_renderer->SetCamera(m_Camera);
 
     return x;

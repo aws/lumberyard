@@ -35,7 +35,7 @@ namespace
         AZ::Vector4(0.0f, 0.0f, 1.0f, 1.0f)
     };
 
-    AZ_STATIC_ASSERT(AnchorPresets::PresetIndexCount == AZ_ARRAY_SIZE(presets), "presets and PresetIndexCount MUST be the same size.");
+    static_assert(AnchorPresets::PresetIndexCount == AZ_ARRAY_SIZE(presets), "presets and PresetIndexCount MUST be the same size.");
 } // anonymous namespace.
 
 namespace AnchorPresets

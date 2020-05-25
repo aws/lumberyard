@@ -27,6 +27,16 @@ namespace AZ
     {
         using namespace JsonSerializationResult;
 
+        // First check if there's a generic serializer registered for this. This makes it possible to use serializers that
+        // are not (directly) registered with the Serialize Context.
+        auto serializer = settings.m_registrationContext->GetSerializerForType(typeId);
+        if (serializer)
+        {
+            // Start by setting the object to be an explicit default.
+            output.SetObject();
+            return serializer->Store(output, allocator, object, defaultObject, typeId, path, settings);
+        }
+
         const SerializeContext::ClassData* classData = settings.m_serializeContext->FindClassData(typeId);
         if (!classData)
         {

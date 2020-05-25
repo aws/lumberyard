@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <BuilderSettings/PixelFormats.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/PixelFormats.h>
+#include <ImageProcessing/ImageObject.h>
 
 namespace ImageProcessing
 {

@@ -714,6 +714,16 @@ namespace UnitTest
                 AZStd::string expectedResolvedPath = folderName + "some/path/somefile.txt";
                 AZ_TEST_ASSERT(aliasResolvedPath == expectedResolvedPath);
 
+                // more resolve path tests with invalid inputs
+                const char* testPath = nullptr;
+                char* testResolvedPath = nullptr;
+                resolveDidWork = local.ResolvePath(testPath, aliasResolvedPath, AZ_MAX_PATH_LEN);
+                AZ_TEST_ASSERT(!resolveDidWork);
+                resolveDidWork = local.ResolvePath(aliasTestPath, testResolvedPath, AZ_MAX_PATH_LEN);
+                AZ_TEST_ASSERT(!resolveDidWork);
+                resolveDidWork = local.ResolvePath(aliasTestPath, aliasResolvedPath, 0);
+                AZ_TEST_ASSERT(!resolveDidWork);
+
                 // Test that sending in a too small output path fails,
                 // if the output buffer is smaller than the string being resolved
                 size_t SMALLER_THAN_PATH_BEING_RESOLVED = strlen(aliasTestPath) - 1;

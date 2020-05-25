@@ -12,21 +12,21 @@
 
 import os
 import json
-import shutil
-import util
-import imp
 import re
-from resource_manager_common import constant
 import copy
-import file_util
 import collections
 import time
 import sys
+import six
 
-from StringIO import StringIO
-from errors import HandledError
-from ConfigParser import RawConfigParser
-from botocore.exceptions import ClientError
+# Python 2.7/3.7 compatibility
+from six import StringIO
+from six.moves import configparser
+
+from . import util
+from . import file_util
+from resource_manager_common import constant
+from .errors import HandledError
 from cgf_utils.version_utils import Version
 
 RESOURCE_MANAGER_PATH = os.path.dirname(__file__)
@@ -42,15 +42,23 @@ class ConfigContext(object):
     """
 
     def __init__(self, context):
-
         self.__context = context
-
         self.__deployment_names = None
         self.__project_settings = None
         self.__configuration_bucket_name = None
         self.__project_resources = None
         self.__framework_version = None
         self.__aggregate_settings = None
+        self.__verbose = False
+        self.__project_template_aggregator = None
+        self.__deployment_access_template_aggregator = None
+        self.__deployment_template_aggregator = None
+        self.__create_admin_roles = None  # Needs to be loaded from local project settings
+        self.__assume_role_name = None
+
+        # Need to call bootstrap/initialize to use these values
+        self.local_project_settings = None
+        self.region = None
 
     @property
     def context(self):
@@ -170,7 +178,6 @@ class ConfigContext(object):
             return False
         except:
             return False
-        return True
 
     def validate_writable(self, path):
         if not self.is_writable(path):
@@ -178,8 +185,7 @@ class ConfigContext(object):
             if self.no_prompt:
                 raise HandledError('File Not Writable: {}'.format(path))
 
-            writable_list = []
-            writable_list.append(path)
+            writable_list = [path]
 
             util.validate_writable_list(self.context, writable_list)
         return self.is_writable(path)
@@ -198,18 +204,17 @@ class ConfigContext(object):
 
     @property
     def project_stack_id(self):
-        id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)
-        if id is None:
-            id = self.local_project_settings.get(constant.PENDING_PROJECT_STACK_ID, None)
-        return id
+        _id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)
+        if _id is None:
+            _id = self.local_project_settings.get(constant.PENDING_PROJECT_STACK_ID, None)
+        return _id
 
     @property
     def project_initialized(self):
-        id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)
-        return id != None
+        _id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)
+        return _id is not None
 
     def __load_aws_directory(self):
-
         self.has_aws_directory_content = os.path.exists(self.aws_directory_path) and os.listdir(self.aws_directory_path)
 
         self.__project_template_aggregator = None
@@ -297,8 +302,21 @@ class ConfigContext(object):
             self.__initialize_project_settings()
         return self.__project_settings
 
-    def __initialize_project_settings(self):
+    @property
+    def create_admin_roles(self):
+        if self.__create_admin_roles is None:
+            metadata = self.local_project_settings.get(constant.METADATA, {})
+            # if stack is newer and has value set then use metadata value
+            if constant.ADMIN_ROLES in metadata:
+                self.__create_admin_roles = metadata[constant.ADMIN_ROLES]
+            # Otherwise see if existing ProjectOwner/ProjectAdmin roles exist for existing legacy stack
+            elif self.project_initialized:
+                project_owner = self.project_resources.get('ProjectOwner', {}).get('PhysicalResourceId', None)
+                project_admin = self.project_resources.get('ProjectAdmin', {}).get('PhysicalResourceId', None)
+                self.__create_admin_roles = bool(project_owner or project_admin)
+        return self.__create_admin_roles
 
+    def __initialize_project_settings(self):
         if self.project_initialized:
 
             self.__project_resources = self.context.stack.describe_resources(self.project_stack_id, recursive=False)
@@ -320,19 +338,21 @@ class ConfigContext(object):
             # Note that the create-project-stack command does not support an --assume-role option and
             # it doesn't do anything after creating the project stack, so there is no need to start 
             # using the role after the project stack is created.
-            self.assume_role()
+            self.assume_role(region=self.project_region)
 
         else:
 
             # If the project hasn't been initialized, then there are no settings in s3 yet so we just pretend we have an empty set(because we do)
             # Because the project hasn't been init'd, we don't have a config bucket to save to yet. The logic dealing with pending project Id
             # will update this to the actual cloud-based settings file
-            self.__project_settings = UnitializedCloudProjectSettings(self.__context)
+            self.__project_settings = UnitializedCloudProjectSettings(context=self.__context, bucket=None, initial_settings={}, verbose=self.__verbose)
             self.__project_resources = {}
 
-    def assume_role(self):
+    def assume_role(self, region=None):
+        # Always use the sts regionalized endpoints
+        _region = region if region is not None else self.project_region
         if self.__assume_role_name:
-            self.context.aws.assume_role(self.__assume_role_name, self.__assume_role_deployment_name)
+            self.context.aws.assume_role(self.__assume_role_name, self.__assume_role_deployment_name, _region)
             self.__assume_role_name = None
 
     @property
@@ -346,7 +366,7 @@ class ConfigContext(object):
         if self.__project_resources is None:
 
             if not self.project_initialized:
-                raise HandledError('The project has not been initialized.')
+                raise HandledError('[Config] The project has not been initialized.')
 
             # Initializing the project settings loads the project resources. We
             # want both to happen, and for us to assume a role if --assume-role
@@ -419,6 +439,17 @@ class ConfigContext(object):
             self.project_settings.remove_release_deployment()
         if save:
             self.save_project_settings()
+
+    def set_project_metadata(self, metadata):
+        self.local_project_settings[constant.METADATA] = metadata
+        self.local_project_settings.save()
+
+    def set_project_admin_roles(self, create_admin_roles):
+        metadata = self.local_project_settings.get(constant.METADATA, {})
+        value = bool(create_admin_roles)
+        metadata[constant.ADMIN_ROLES] = value
+        self.__create_admin_roles = value
+        self.set_project_metadata(metadata)
 
     def set_pending_project_stack_id(self, project_stack_id):
         self.local_project_settings[constant.PENDING_PROJECT_STACK_ID] = project_stack_id
@@ -517,11 +548,12 @@ class ConfigContext(object):
 
             # If we add a section header and change the comment prefix, then
             # bootstrap.cfg looks like an ini file and we can use ConfigParser.
-            ini_str = '[default]\n' + open(path, 'r').read()
-            ini_str = ini_str.replace('\n--', '\n#')
-            ini_fp = StringIO(ini_str)
-            config = RawConfigParser()
-            config.readfp(ini_fp)
+            with open(path, 'r') as fp:
+                ini_str = '[default]\n' + fp.read()
+                ini_str = ini_str.replace('\n--', '\n#')
+                ini_fp = StringIO(ini_str)
+                config = configparser.RawConfigParser()
+                config.read_file(ini_fp)
 
             game_directory_name = config.get('default', 'sys_game_folder')
 
@@ -574,7 +606,7 @@ class ConfigContext(object):
 
     def creating_deployment(self, deployment_name):
         deployment_map = self.__ensure_map(self.project_settings, 'deployment')
-        deployment_name_map = self.__ensure_map(deployment_map, deployment_name)
+        self.__ensure_map(deployment_map, deployment_name)
         self.save_project_settings()
 
     def set_pending_deployment_stack_id(self, deployment_name, deployment_stack_id):
@@ -625,7 +657,7 @@ class ConfigContext(object):
 
     def protect_deployment(self, deployment_name):
         if not deployment_name:
-            raise HandledError('No deployment spcified in protect_deployment')
+            raise HandledError('No deployment specified in protect_deployment')
         if deployment_name and deployment_name not in self.deployment_names:
             raise HandledError('There is no {} deployment'.format(deployment_name))
 
@@ -643,17 +675,16 @@ class ConfigContext(object):
         deployment.pop('Protected', None)
         self.save_project_settings()
 
-    def get_protected_depolyment_names(self):
+    def get_protected_deployment_name(self):
         deployments = self.project_settings.get_deployments()
         return [name for name in deployments if name != '*' and 'Protected' in deployments[name]]
 
     def __ensure_map(self, map, name):
-        if not name in map:
+        if name not in map:
             map[name] = {}
         return map[name]
 
     def init_project_settings(self):
-
         # This function is called after the project stack has been created with the bootstrap template,
         # but before it is updated with the full template. We need to initialize config to the point
         # that project.update_stack and update it. Basically this means making the configuration bucket
@@ -684,14 +715,15 @@ class ConfigContext(object):
                 if pending_project_stack_id:
                     self.__configuration_bucket_name = self.context.stack.get_physical_resource_id(pending_project_stack_id, 'Configuration')
                 else:
-                    raise HandledError('The project has not been initialized.')
+                    raise HandledError('[Config] The project has not been initialized.')
             self.__initialize_project_settings()
         return self.__configuration_bucket_name
 
     def verify_framework_version(self):
         if self.__context.gem.framework_gem.version != self.local_project_settings.framework_version:
             raise HandledError(
-                'The project\'s AWS resources are from CloudGemFramework version {} but version {} of the CloudGemFramework gem is now enabled for the project. You must use the command "lmbr_aws project update-framework-version" to update to the framework version used by the project\'s AWS resources.'.format(
+                'The project\'s AWS resources are from CloudGemFramework version {} but version {} of the CloudGemFramework gem is now enabled for the project.'
+                '\ You must use the command "lmbr_aws project update-framework-version" to update to the framework version used by the project\'s AWS resources.'.format(
                     self.local_project_settings.framework_version, self.__context.gem.framework_gem.version))
 
     @property
@@ -708,8 +740,9 @@ class ConfigContext(object):
         self.local_project_settings.save()
 
 
-class LocalProjectSettings():
+class LocalProjectSettings:
     """A dict-like class that persists a python dictionary to disk."""
+
     def __init__(self, context, settings_path, region=None):
 
         self.__path = settings_path
@@ -727,6 +760,7 @@ class LocalProjectSettings():
             self.__dict = dict({})
             self.create_default_section()
             self.__framework_version = self.__context.gem.framework_gem.version
+
         elif self.default_set() is not None:
             self.default(self.default_set()[constant.SET])
 
@@ -747,7 +781,8 @@ class LocalProjectSettings():
 
         if self.__framework_version is None:
             self.__framework_version = Version(
-                self.__default[constant.FRAMEWORK_VERSION_KEY] if self.__default != None and constant.FRAMEWORK_VERSION_KEY in self.__default else self.__dict[
+                self.__default[constant.FRAMEWORK_VERSION_KEY] if self.__default is not None and constant.FRAMEWORK_VERSION_KEY in self.__default else
+                self.__dict[
                     constant.FRAMEWORK_VERSION_KEY] if constant.FRAMEWORK_VERSION_KEY in self.__dict else "1.0.0")
 
     @property
@@ -854,25 +889,24 @@ class LocalProjectSettings():
             migration_set.pop(constant.PENDING_PROJECT_STACK_ID, None)
 
 
-'''
-Base class for the cloud project settings.
-Project settings are stored in the project configuration bucket at the root.
-There are two types of serializations.
-
-V1 (legacy before 1.16)
-V2 
-
-'''
-
-
 class CloudProjectSettings(dict):
+    """
+    Base class for the cloud project settings.
+    Project settings are stored in the project configuration bucket at the root.
+    There are two types of serializations.
+
+    V1 (legacy before 1.16)
+    V2
+
+    """
+
     ATTR_RELEASE_DEPLOYMENT_NAME = "ReleaseDeployment"
     ATTR_DEFAULT_DEPLOYMENT_NAME = "DefaultDeployment"
     ATTR_DEPLOYMENT = "deployment"
     DEFAULT = "default"
 
     def __init__(self, context, bucket, initial_settings, verbose):
-        if not initial_settings:
+        if initial_settings is None:
             initial_settings = self.load(context, bucket, initial_settings, verbose)
         context.view.loaded_project_settings(initial_settings)
         super(CloudProjectSettings, self).__init__(initial_settings)
@@ -897,120 +931,93 @@ class CloudProjectSettings(dict):
         return CloudProjectSettings_V2(context, bucket, initial_settings, verbose)
 
 
-'''
-Version two of the cloud project settings stores 
-each deployment in a separate json file with the suffix 'dstack'.
-This was done to remove the bottleneck deployments had when performing actions 
-as they would require mutually exclusion locks on the project stack.
-
-Example:
-dstack.ReleaseDeployment.default.json
-    Contents:   TestDeployment1
-
-dstack.DefaultDeployment.default.json
-    Contents:   TestDeployment1
-
-dstack.deployment.TestDeployment1.json
-    Contents:   {
-                    "DeploymentAccessStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A-Access/9f5585f0-767a-11e8-a9bc-500abe22848d", 
-                    "DeploymentStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A/7557dbe0-767a-11e8-a1f5-503aca4a58d1"
-                }
-'''
-
-
 class CloudProjectSettings_V2(CloudProjectSettings):
+    """
+    Version two of the cloud project settings stores
+    each deployment in a separate json file with the suffix 'dstack'.
+    This was done to remove the bottleneck deployments had when performing actions
+    as they would require mutually exclusion locks on the project stack.
+
+    Example:
+    dstack.ReleaseDeployment.default.json
+        Contents:   TestDeployment1
+
+    dstack.DefaultDeployment.default.json
+        Contents:   TestDeployment1
+
+    dstack.deployment.TestDeployment1.json
+        Contents:   {
+                        "DeploymentAccessStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A-Access/9f5585f0-767a-11e8-a9bc-500abe22848d",
+                        "DeploymentStackId": "arn:aws:cloudformation:us-east-1:XXXXXXXX:stack/cctestWUQW4NE-hyptest-cctest0DZ2Y8A/7557dbe0-767a-11e8-a1f5-503aca4a58d1"
+                    }
+    """
 
     def __init__(self, context, bucket, initial_settings, verbose):
         super(CloudProjectSettings_V2, self).__init__(context, bucket, initial_settings, verbose)
         self.__initial_state_of_deployments = None
 
-    '''
-    Suffix for the files
-    '''
-
     @staticmethod
     def file_name():
+        """Suffix for the files"""
         return "dstack"
-
-    '''
-    S3 key name to use during the loading
-    '''
 
     @property
     def key(self):
+        """S3 key name to use during the loading"""
         return CloudProjectSettings_V2.file_name()
 
-    '''
-    Get the default project deployment stack name.  
-    User defaults have high priorities than the project default.
-    '''
-
     def get_project_default_deployment(self):
+        """
+        Get the default project deployment stack name.
+        User defaults have high priorities than the project default.
+        """
         return self.get(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)
 
-    '''
-    Set the default project deployment.
-    Requires the deletion of the s3 file associated to the previous default.
-    '''
-
     def set_project_default_deployment(self, new_default):
+        """
+        Set the default project deployment.
+        Requires the deletion of the s3 file associated to the previous default.
+        :param new_default:
+        """
         self.remove_project_default_deployment()
         self[self.ATTR_DEFAULT_DEPLOYMENT_NAME] = new_default
 
-    '''
-    Remove the project default deployment stack.
-    '''
-
     def remove_project_default_deployment(self):
+        """Remove the project default deployment stack."""
         if self.ATTR_DEFAULT_DEPLOYMENT_NAME in self:
             self.delete(self.ATTR_DEFAULT_DEPLOYMENT_NAME, self.DEFAULT)
             self.pop(self.ATTR_DEFAULT_DEPLOYMENT_NAME, None)
 
-    '''
-    Get the release deployment stack name
-    '''
-
     def get_release_deployment(self):
+        """    Get the release deployment stack name"""
         return self.get(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)
 
-    '''
-    Set the release deployment stack name
-    Requires the deletion of the s3 file associated to the previous default.
-    '''
-
     def set_release_deployment(self, new_release_deployment):
+        """
+        Set the release deployment stack name
+        Requires the deletion of the s3 file associated to the previous default.
+        :param new_release_deployment:
+        """
         self.remove_release_deployment()
         self[self.ATTR_RELEASE_DEPLOYMENT_NAME] = new_release_deployment
 
-    '''
-    Remove the project default deployment stack.
-    '''
-
     def remove_release_deployment(self):
+        """Remove the project default deployment stack."""
         if self.ATTR_RELEASE_DEPLOYMENT_NAME in self:
             self.delete(self.ATTR_RELEASE_DEPLOYMENT_NAME, self.DEFAULT)
             self.pop(self.ATTR_RELEASE_DEPLOYMENT_NAME, None)
 
-    '''
-    Get a list of all of the deployments
-    '''
-
     def get_deployments(self):
+        """Get a list of all of the deployments."""
         deployments = self.get(self.ATTR_DEPLOYMENT, {})
         return deployments
 
-    '''
-    Get information on a specific deployment
-    '''
-
     def get_deployment(self, deployment_name):
+        """Get information on a specific deployment"""
         return self.get_deployments().get(deployment_name, {})
 
-    '''
-    Remove a specific deployment and any associated default files.
-    '''
-
     def remove_deployment(self, deployment_name):
+        """Remove a specific deployment and any associated default files."""
         self.delete(self.ATTR_DEPLOYMENT, deployment_name)
         if self.get_release_deployment() == deployment_name:
             self.remove_release_deployment()
@@ -1042,15 +1049,14 @@ class CloudProjectSettings_V2(CloudProjectSettings):
                 file_name = deployment['Key']
                 prefix, group, deployment_name, ext = file_name.split('.')
                 if group == self.ATTR_DEFAULT_DEPLOYMENT_NAME or group == self.ATTR_RELEASE_DEPLOYMENT_NAME:
-                    initial_settings[group] = s3.get_object(Bucket=bucket, Key=file_name)["Body"].read()
+                    initial_settings[group] = s3.get_object(Bucket=bucket, Key=file_name)["Body"].read().decode()
                 else:
                     contents = json.load(s3.get_object(Bucket=bucket, Key=file_name)["Body"])
                     self.__initial_state_of_deployments = entries[deployment_name] = contents
             return initial_settings
         except Exception as e:
-            raise HandledError('Cloud not read V2 project settings from bucket {} object {}: {}.'.format(bucket,
-                                                                                                         CloudProjectSettings_V2.file_name(),
-                                                                                                         e.message))
+            raise HandledError('Could not read V2 project settings from bucket {} object {}: {}.'.format(bucket,
+                                                                                                         CloudProjectSettings_V2.file_name(), e))
 
     def save(self):
         """
@@ -1064,7 +1070,7 @@ class CloudProjectSettings_V2(CloudProjectSettings):
                 for key2 in self[key1].keys():
                     file_name = "{}.{}.{}.json".format(self.key, key1, key2)
                     value = self[key1][key2]
-                    if self.__initial_state_of_deployments != None and key2 in self.__initial_state_of_deployments and value == \
+                    if self.__initial_state_of_deployments is not None and key2 in self.__initial_state_of_deployments and value == \
                             self.__initial_state_of_deployments[key2]:
                         continue
                     s3.put_object(Bucket=self.bucket, Key=file_name, Body=json.dumps(value, indent=4, sort_keys=True))
@@ -1072,7 +1078,7 @@ class CloudProjectSettings_V2(CloudProjectSettings):
                 file_name = "{}.{}.default.json".format(self.key, key1)
                 value = self[key1]
                 s3.put_object(Bucket=self.bucket, Key=file_name, Body=value)
-        print "Saving the project configuration to {}".format(self.bucket)
+        print("Saving the project configuration to {}".format(self.bucket))
         self.context.view.saved_project_settings(self)
 
     def delete(self, group_name, deployment):
@@ -1157,8 +1163,7 @@ class CloudProjectSettings_V1(CloudProjectSettings):
             return initial_settings
         except Exception as e:
             raise HandledError('Cloud not read legacy V1 project settings from bucket {} object {}: {}.'.format(bucket,
-                                                                                                                CloudProjectSettings_V1.file_name(),
-                                                                                                                e.message))
+                                                                                                                CloudProjectSettings_V1.file_name(), e))
 
     def save(self):
         s3 = self.context.aws.client('s3')
@@ -1173,7 +1178,8 @@ class UnitializedCloudProjectSettings(CloudProjectSettings_V2):
     Once the project is setup, init_project_settings will create the initial settings in the cloud.
     """
 
-    def __init__(self, context):
+    def __init__(self, context, bucket, initial_settings, verbose):
+        super(UnitializedCloudProjectSettings, self).__init__(context, bucket, initial_settings, verbose)
         self.__context = context
 
     @property
@@ -1237,7 +1243,6 @@ class TemplateAggregator(object):
         if self.__base_template is None:
             path = self.base_file_path
             self.__context.view.loading_file(path)
-            self.__context.config.load_json(path)
             self.__base_template = util.load_json(path, optional=False)
         return self.__base_template
 
@@ -1283,7 +1288,7 @@ class TemplateAggregator(object):
 
     def _copy_parameters(self, target, source, source_path):
         parameters = target.setdefault('Parameters', {})
-        for name, definition in source.get('Parameters', {}).iteritems():
+        for name, definition in six.iteritems(source.get('Parameters', {})):
             if name in parameters:
                 if self.__apply_merge_function(definition, parameters[name], source_path):
                     raise HandledError('Parameter {} cannot be overridden by extension template {}.'.format(name, source_path))
@@ -1294,7 +1299,7 @@ class TemplateAggregator(object):
 
     def _copy_resources(self, target, source, source_path, attribution):
         resources = target.setdefault('Resources', {})
-        for name, definition in source.get('Resources', {}).iteritems():
+        for name, definition in six.iteritems(source.get('Resources', {})):
             if name in resources:
                 if not self.__apply_merge_function(definition, resources[name], source_path):
                     raise HandledError('Resource {} cannot be overridden by extension template {}.'.format(name, source_path))
@@ -1305,7 +1310,7 @@ class TemplateAggregator(object):
 
     def _copy_outputs(self, target, source, source_path):
         outputs = target.setdefault('Outputs', {})
-        for name, definition in source.get('Outputs', {}).iteritems():
+        for name, definition in six.iteritems(source.get('Outputs', {})):
             if name in outputs:
                 if not self.__apply_merge_function(definition, outputs[name], source_path):
                     raise HandledError('Output {} cannot be overridden by extension template {}.'.format(name, source_path))
@@ -1318,7 +1323,7 @@ class TemplateAggregator(object):
 
         Arguments:
 
-            fn - A dict with a single keyt that starts with "MergeFn::".
+            fn - A dict with a single key that starts with "MergeFn::".
 
             target - a value to which the function will be applied.
 
@@ -1339,7 +1344,7 @@ class TemplateAggregator(object):
         if not isinstance(fn, dict) or not fn:
             return False
 
-        for fn_name, fn_args in fn.iteritems():
+        for fn_name, fn_args in six.iteritems(fn):
 
             if not fn_name.startswith('MergeFn'):
                 return False
@@ -1366,7 +1371,7 @@ class TemplateAggregator(object):
 
         """
 
-        for path, value in args.iteritems():
+        for path, value in six.iteritems(args):
             path_target = self.__get_merge_fn_path_list(path, target, source_path)
             path_target.append(value)
 
@@ -1383,11 +1388,11 @@ class TemplateAggregator(object):
           source_path - The path to the file that defines the function.
         """
 
-        for path, new_value in args.iteritems():
+        for path, new_value in six.iteritems(args):
             lvalue = self.__get_merge_fn_path_lvalue(path, target, source_path)
             if not isinstance(lvalue.container, dict):
                 raise HandledError(
-                    'MergeFn::SetProperty path {} did not identify an object property when applied to {} as requsted by {}.'.format(path, target, source_path))
+                    'MergeFn::SetProperty path {} did not identify an object property when applied to {} as requested by {}.'.format(path, target, source_path))
             lvalue.container[lvalue.key] = new_value
 
     MERGE_FUNCTIONS = {
@@ -1402,7 +1407,7 @@ class TemplateAggregator(object):
     __LValue = collections.namedtuple('LValue', ['container', 'key', 'value'])
 
     def __get_merge_fn_path_list(self, path, target, source_path):
-        '''Returns the list object identified by a path when applied to a target.
+        """Returns the list object identified by a path when applied to a target.
 
         Arguments:
 
@@ -1420,15 +1425,15 @@ class TemplateAggregator(object):
 
             HandledError if the path did not identify a list object.
 
-        '''
+        """
         path_target = self.__get_merge_fn_path_value(path, target, source_path)
         if not isinstance(path_target, list):
             raise HandledError(
-                'MergeFn::AppendToArray path {} did not identify an array when applied to {} as requsted by {}.'.format(path, target, source_path))
+                'MergeFn::AppendToArray path {} did not identify an array when applied to {} as requested by {}.'.format(path, target, source_path))
         return path_target
 
     def __get_merge_fn_path_value(self, path, target, source_path):
-        '''Returns the value identified by a path when applied to a target.
+        """Returns the value identified by a path when applied to a target.
 
         Arguments:
 
@@ -1446,38 +1451,26 @@ class TemplateAggregator(object):
 
             HandledError if the path did not identify a value.
 
-        '''
+        """
         lvalue = self.__get_merge_fn_path_lvalue(path, target, source_path)
         if lvalue.value is None:
             raise HandledError('The property identified by the MergeFn path {} was not found in {} as specified by {}.'.format(path, target, source_path))
         return lvalue.value
 
     def __get_merge_fn_path_lvalue(self, path, target, source_path):
-        '''Returns the lvalue identified by a path when applied to a target.
+        """
+        Returns the lvalue identified by a path when applied to a target.
 
-        Arguments:
-
-            path - a string consisting of dot separated property names.
-
-            target - A dict to which the path is applied.
-
-            source_path - the path to the file that contains the path being applied.
-
-        Returns:
-
-            An __LValue instance initialized as follows:
-
+        :param path: a string consisting of dot separated property names.
+        :param target: A dict to which the path is applied.
+        :param source_path: the path to the file that contains the path being applied.
+        :return:  An __LValue instance initialized as follows:
                 container - the dict that contains the property at the end of the path
-
                 key - the name of the property at the end of the path
-
                 value - the key's value in the container, None if the contained doesn't contain the key
 
-        Raises:
-
-            HandledError if the path did not identify a lvalue.
-
-        '''
+        :raises HandledError: if the path did not identify a lvalue.
+        """
 
         # TODO: this could be replaced with a json path library to enable
         # a lot more functionality without breaking existing uses.
@@ -1502,17 +1495,17 @@ class TemplateAggregator(object):
         return result
 
     def __update_access_control_dependencies(self, target):
-
         # The AccessControl resource, if there is one, depends on all resources that
         # don't directly depend on it.
-
         access_control_definition = target.get('Resources', {}).get('AccessControl')
-        if access_control_definition:
 
+        # Scan for all resources that are:
+        #    a) not already attached to access control
+        #    b) not being ignored (ie conditional resources will not be generated)
+        if access_control_definition:
             access_control_depends_on = []
 
-            for name, definition in target.get('Resources', {}).iteritems():
-
+            for name, definition in six.iteritems(target.get('Resources', {})):
                 if name == 'AccessControl':
                     continue
 
@@ -1546,12 +1539,30 @@ class ProjectTemplateAggregator(TemplateAggregator):
 
     def __init__(self, context):
         super(ProjectTemplateAggregator, self).__init__(context, constant.PROJECT_TEMPLATE_FILENAME, constant.PROJECT_TEMPLATE_EXTENSIONS_FILENAME)
+        self.__admin_roles_template = None
+
+    @property
+    def admin_roles_file_path(self):
+        return os.path.join(os.path.join(RESOURCE_MANAGER_PATH, 'templates'), constant.PROJECT_ADMIN_ROLES_FILENAME)
+
+    @property
+    def admin_template(self):
+        if self.__admin_roles_template is None:
+            path = self.admin_roles_file_path
+            self.context.view.loading_file(path)
+            self.__admin_roles_template = util.load_json(path, optional=True)
+            if self.__admin_roles_template is None:
+                self.__admin_roles_template = copy.deepcopy(self.DEFAULT_EXTENSION_TEMPLATE)
+        return self.__admin_roles_template
 
     def _add_effective_content(self, effective_template, attribution):
-
         super(ProjectTemplateAggregator, self)._add_effective_content(effective_template, attribution)
 
-        # TODO: The use of poject-template.json files in gems was deprecated in Lumberyard 1.10
+        # Optionally load the admin roles template
+        if self.context.config.create_admin_roles:
+            self._copy_resources(effective_template, self.admin_template, self.admin_roles_file_path, attribution)
+
+        # TODO: The use of project-template.json files in gems was deprecated in Lumberyard 1.10
         for gem in self.context.gem.enabled_gems:
             path = os.path.join(gem.aws_directory_path, constant.PROJECT_TEMPLATE_FILENAME)
             if os.path.isfile(path):
@@ -1601,17 +1612,18 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                 }
             }
 
+            # Tags: Set up standard tags for a deployment including Gem & Deployment
             resources[resource_group.name] = {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": {"Fn::GetAtt": [configuration_name, "TemplateURL"]},
                     "Tags": [
                         {
-                            "Key": "Gem",
+                            "Key": constant.DEPLOYMENT_GEM_TAG,
                             "Value": resource_group.name
                         },
                         {
-                            "Key": "Deployment",
+                            "Key": constant.DEPLOYMENT_TAG,
                             "Value": {"Ref": "DeploymentName"}
                         }
                     ],

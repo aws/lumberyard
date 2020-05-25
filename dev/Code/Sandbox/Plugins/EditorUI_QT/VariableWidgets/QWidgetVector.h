@@ -14,9 +14,10 @@
 #define CRYINCLUDE_EDITORUI_QT_VARIABLE_WIDGETS_QWIDGETVECTOR_H
 #pragma once
 
+#include <AzCore/PlatformDef.h>
 #include "BaseVariableWidget.h"
 
-#include <QtWidgets/QtWidgets>
+#include <QtWidgets>
 #include <QHBoxLayout>
 #include <QValidator>
 #include <vector>

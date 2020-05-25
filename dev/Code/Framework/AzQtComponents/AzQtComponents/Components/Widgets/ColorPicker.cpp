@@ -31,6 +31,7 @@
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QEvent>
 #include <QResizeEvent>
@@ -399,7 +400,7 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
     m_alphaSlider->setMaximum(255);
 
     connect(m_alphaSlider, &QSlider::valueChanged, this, [this](int alpha) {
-        m_currentColorController->setAlpha(static_cast<qreal>(alpha)/255.0);
+        m_currentColorController->setAlpha(aznumeric_cast<float>(alpha)/255.0f);
     });
     connect(m_currentColorController, &Internal::ColorController::colorChanged, m_alphaSlider, &GradientSlider::updateGradient);
     connect(m_currentColorController, &Internal::ColorController::alphaChanged, this, [this](qreal alpha) {
@@ -435,7 +436,7 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
     m_hueSlider->setMaximum(360);
 
     connect(m_hueSlider, &QSlider::valueChanged, this, [this](int value) {
-        m_currentColorController->setHsvHue(static_cast<qreal>(value)/360.0);
+        m_currentColorController->setHsvHue(aznumeric_cast<float>(value)/360.0f);
     });
     connect(m_hueSlider, &GradientSlider::sliderPressed, this, &ColorPicker::beginDynamicColorChange);
     connect(m_hueSlider, &GradientSlider::sliderReleased, this, &ColorPicker::endDynamicColorChange);
@@ -458,7 +459,7 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
     m_valueSlider->setMaximum(255);
 
     connect(m_valueSlider, &QSlider::valueChanged, this, [this](int value) {
-        m_currentColorController->setValue(static_cast<qreal>(value)/255.0);
+        m_currentColorController->setValue(aznumeric_cast<float>(value)/255.0f);
     });
     connect(m_valueSlider, &GradientSlider::sliderPressed, this, &ColorPicker::beginDynamicColorChange);
     connect(m_valueSlider, &GradientSlider::sliderReleased, this, &ColorPicker::endDynamicColorChange);
@@ -805,7 +806,7 @@ void ColorPicker::applyConfigurationHueSaturation()
     m_rgbSliders->hide();
     m_rgbSlidersSeparator->hide();
 
-    initializeValidation(new HueSaturationValidator(m_defaultVForHsMode, this));
+    initializeValidation(new HueSaturationValidator(aznumeric_cast<float>(m_defaultVForHsMode), this));
 }
 
 ColorPicker::~ColorPicker()
@@ -1376,7 +1377,7 @@ int ColorPicker::colorLibraryIndex(const Palette* palette) const
 {
     auto it = std::find_if(m_colorLibraries.begin(), m_colorLibraries.end(),
                            [palette](const ColorLibrary& entry) { return entry.palette.data() == palette; });
-    return it == m_colorLibraries.end() ? -1 : std::distance(m_colorLibraries.begin(), it);
+    return it == m_colorLibraries.end() ? -1 : aznumeric_cast<int>(std::distance(m_colorLibraries.begin(), it));
 }
 
 void ColorPicker::readSettings()
@@ -1506,7 +1507,7 @@ void ColorPicker::writeSettings() const
                            [](QAction* action) { return action->isChecked(); });
     if (it != swatchSizeActions.end())
     {
-        int swatchSize = std::distance(swatchSizeActions.begin(), it);
+        int swatchSize = aznumeric_cast<int>(std::distance(swatchSizeActions.begin(), it));
         settings.setValue(g_swatchSizeKey, swatchSize);
     }
 

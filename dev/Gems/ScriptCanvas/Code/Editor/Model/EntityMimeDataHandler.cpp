@@ -106,8 +106,8 @@ namespace ScriptCanvasEditor
             return;
         }
 
-        AZ::EntityId scriptCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
         AZStd::vector< ScriptCanvas::VariableId > variableIds;
         variableIds.reserve(entityIdListContainer.m_entityIds.size());
@@ -115,7 +115,7 @@ namespace ScriptCanvasEditor
         {
             GraphCanvas::ScopedGraphUndoBlocker undoBlocker(graphCanvasGraphId);
 
-            AZ::Vector2 pos(dropPoint.x(), dropPoint.y());
+            AZ::Vector2 pos(aznumeric_cast<float>(dropPoint.x()), aznumeric_cast<float>(dropPoint.y()));
 
             for (const AZ::EntityId& entityId : entityIdListContainer.m_entityIds)
             {
@@ -131,20 +131,20 @@ namespace ScriptCanvasEditor
                     // If we just use the name, we'll run into some potential rename issues when looking things up.
                     variableName = AZStd::string::format("%s %s", entity->GetName().c_str(), entityId.ToString().c_str());
 
-                    ScriptCanvas::VariableDatum* variableDatum = nullptr;
-                    ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableDatum, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariable, variableName);
+                    ScriptCanvas::GraphVariable* graphVariable = nullptr;
+                    ScriptCanvas::GraphVariableManagerRequestBus::EventResult(graphVariable, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::FindVariable, variableName);
 
                     // If the variable datum already exists. That means we already have a reference to that. So we don't need to create it.
-                    if (variableDatum)
+                    if (graphVariable)
                     {
-                        variableIds.emplace_back(variableDatum->GetId());
+                        variableIds.emplace_back(graphVariable->GetVariableId());
                     }
                     else
                     {
                         ScriptCanvas::Datum datum = ScriptCanvas::Datum(entityId);
 
                         AZ::Outcome<ScriptCanvas::VariableId, AZStd::string > addVariableOutcome;
-                        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(addVariableOutcome, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, variableName, datum);
+                        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(addVariableOutcome, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, variableName, datum);
 
                         if (addVariableOutcome.IsSuccess())
                         {
@@ -164,7 +164,7 @@ namespace ScriptCanvasEditor
 
                 for (const ScriptCanvas::VariableId& variableId : variableIds)
                 {
-                    NodeIdPair nodePair = Nodes::CreateGetVariableNode(variableId, scriptCanvasGraphId);
+                    NodeIdPair nodePair = Nodes::CreateGetVariableNode(variableId, scriptCanvasId);
                     GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, pos);
                     pos += gridStep;
                 }
@@ -174,7 +174,7 @@ namespace ScriptCanvasEditor
 
         if (!variableIds.empty())
         {
-            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasId);
         }
     }
 

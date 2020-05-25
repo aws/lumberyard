@@ -29,4 +29,31 @@ namespace Vegetation
     {
         ReflectSubClass<DerivedClassType, BaseClassType>(context, 1, &EditorAreaComponentBaseVersionConverter<typename BaseClassType::WrappedComponentType, typename BaseClassType::WrappedConfigType>);
     }
+
+    void EditorAreaBlenderComponent::Init()
+    {
+        ForceOneEntry();
+        BaseClassType::Init();
+    }
+
+    void EditorAreaBlenderComponent::Activate()
+    {
+        ForceOneEntry();
+        BaseClassType::Activate();
+    }
+
+    AZ::u32 EditorAreaBlenderComponent::ConfigurationChanged()
+    {
+        ForceOneEntry();
+        return BaseClassType::ConfigurationChanged();
+    }
+
+    void EditorAreaBlenderComponent::ForceOneEntry()
+    {
+        if (m_configuration.m_vegetationAreaIds.empty())
+        {
+            m_configuration.m_vegetationAreaIds.push_back();
+            SetDirty();
+        }
+    }
 }

@@ -107,10 +107,12 @@ namespace Terrain
     void TerrainTextureCache::Init()
     {
         TerrainRendererRequestBus::Handler::BusConnect();
+        HeightmapDataNotificationBus::Handler::BusConnect();
     }
 
     void TerrainTextureCache::Shutdown()
     {
+        HeightmapDataNotificationBus::Handler::BusDisconnect();
         TerrainRendererRequestBus::Handler::BusDisconnect();
     }
 
@@ -178,19 +180,8 @@ namespace Terrain
 
         m_heightMapVirtualTexturePtr->Update(tileUpdatesPerFrame);
 
-        CTexture* heightAndNormalTexture = m_heightMapVirtualTexturePtr->GetPhysicalTexture(0);
-
-        // callback for pushing terrain data to terrain textures
-        auto updatePhysicalCacheTextureRegion = [&](AZ::u32* heightAndNormalData, int topLeftX, int topLeftY, int width, int height)
-            {
-                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Renderer, "TerrainTextureCache.updatePhysicalCacheTextureRegion");
-
-                // Update texture regions
-                heightAndNormalTexture->UpdateTextureRegion(reinterpret_cast<byte*>(heightAndNormalData), topLeftX, topLeftY, 0, width, height, 1, eTF_R8G8B8A8);
-            };
-
         // Consume a request from the extension
-        TerrainProviderNotificationBus::Broadcast(&TerrainProviderNotificationBus::Events::ProcessHeightmapDataRequests, heightDataRequestsPerFrame, updatePhysicalCacheTextureRegion);
+        ProcessHeightmapDataRequests(heightDataRequestsPerFrame);
 
         // Pump terrain texture compositer
         const int compositerRequestsPerFrame = AZ::GetMax(m_perFrameCompositerRequestsCount, 1);
@@ -301,38 +292,26 @@ namespace Terrain
     ///////////////////////////////////////////////////
     // CRETerrainContext Impl
 
-    void TerrainTextureCache::SetPSConstant(ConstantNames name, float x, float y, float z, float w)
-    {
-        CCryNameR cryName;
-        switch (name)
-        {
-        case ConstantNames::MountainParams:
-            cryName = CCryNameR("g_mountainParams");
-            break;
-        case ConstantNames::TractMapTransform:
-            cryName = CCryNameR("g_tractMapTransform");
-            break;
-        case ConstantNames::ValleyIntensity:
-            cryName = CCryNameR("g_valleyParams");
-            break;
-        default:
-            return;
-        }
-
-        Vec4 v(x, y, z, w);
-        m_currentShader->FXSetPSFloat(cryName, &v, 1);
-    }
-
     void TerrainTextureCache::OnTractVersionUpdate()
     {
         // Material assets have been modified, refresh the composited material cache
         m_Compositer.ClearCompositedTextureCache();
     }
 
-    void TerrainTextureCache::OnHeightMapVersionUpdate()
+    void TerrainTextureCache::OnTerrainHeightDataChanged(const AZ::Aabb& dirtyRegion)
     {
-        // This event will only trigger if we are rendering with heightmaps
-        ClearHeightmapCache();
+        // If there's a valid region, just clear out the affected tiles.  Otherwise, clear the whole cache. 
+        if (dirtyRegion.IsValid())
+        {
+            for (int lod = 0; lod < m_heightMapVirtualTexturePtr->GetMipLevels(); lod++)
+            {
+                m_heightMapVirtualTexturePtr->ClearTiles(dirtyRegion.GetMin().GetX(), dirtyRegion.GetMin().GetY(), dirtyRegion.GetExtents().GetX(), dirtyRegion.GetExtents().GetY(), lod);
+            }
+        }
+        else
+        {
+            ClearHeightmapCache();
+        }
     }
 
     bool TerrainTextureCache::IsReady()
@@ -380,7 +359,7 @@ namespace Terrain
             AZ::Vector2(vTileMinMax.GetZ(), vTileMinMax.GetW())     // AZ::Vector2 worldMax
             );
 
-        TerrainProviderNotificationBus::Broadcast(&TerrainProviderNotificationBus::Events::QueueHeightmapDataRequest, heightMapRequest);
+        QueueHeightmapDataRequest(heightMapRequest);
 
         // These can be flagged as always successful
         return true;
@@ -474,6 +453,134 @@ namespace Terrain
             gRenDev->FX_SetActiveRenderTargets();
         }
     }
+
+    AZ::u32 TerrainTextureCache::PackHeightAndNormalAsUint(float height, AZ::Vector3 normal, float maxHeight)
+    {
+        struct Components
+        {
+            AZ::u16 height;
+            AZ::u8 normalX;
+            AZ::u8 normalY;
+        };
+        static_assert(sizeof(struct Components) == 4, "components must be 4 bytes");
+
+        union
+        {
+            AZ::u32 result;
+            Components components;
+        } packedResult;
+
+        // NEW-TERRAIN LY-103283: Figure out a better way to handle the float->u16 height conversion.
+
+        // can just pack straight as an integer type - it's little endian so byte 1 is the
+        // low significance bits and byte 2 is the high significant bits.
+        packedResult.components.height = static_cast<AZ::u16>(height * (65536.0f / maxHeight));
+
+        // Terrain normals are trivially packed by just dropping the Z-component - it will be
+        // reconstructed in the shader. We can consider changing this if the error-level is
+        // unnacceptable but with simple terrain, it's probably fine.
+        packedResult.components.normalX = static_cast<uint8>(255.0f * (normal.GetX() * 0.5f + 0.5f));
+        packedResult.components.normalY = static_cast<uint8>(255.0f * (normal.GetY() * 0.5f + 0.5f));
+
+        return packedResult.result;
+    }
+
+    void TerrainTextureCache::QueueHeightmapDataRequest(const Terrain::HeightmapDataRequestInfo& heightmapDataRequest)
+    {
+        // request all of the tiles necessary for this height map
+        // once we have all of the tiles (or none, if none are found, then call the callback and send the data to the renderer
+
+        AZStd::lock_guard<AZStd::mutex> readyHeightmapRequestsGuard(m_readyHeightmapRequestsMutex);
+
+        // queue request
+        m_readyHeightmapRequestsQueue.emplace(heightmapDataRequest);
+    }
+
+    void TerrainTextureCache::ProcessHeightmapDataRequests(int numRequestsToHandle)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
+
+        int requestsProcessed = 0;
+        int metersPerPixelsWarningCount = 0;
+        while (requestsProcessed < numRequestsToHandle)
+        {
+            ++requestsProcessed;
+
+            HeightmapDataRequestInfo heightmapDataRequest;
+            {
+                AZStd::lock_guard<AZStd::mutex> readyHeightmapRequestsGuard(m_readyHeightmapRequestsMutex);
+
+                if (!m_readyHeightmapRequestsQueue.empty())
+                {
+                    heightmapDataRequest = m_readyHeightmapRequestsQueue.front();
+                    m_readyHeightmapRequestsQueue.pop();
+                }
+                else
+                {
+                    // No requests are ready
+                    continue;
+                }
+            }
+
+            AZ::Vector2 heightRange(0.0f);
+            TerrainProviderRequestBus::BroadcastResult(heightRange, &TerrainProviderRequestBus::Events::GetHeightRange);
+            float maxHeight = heightRange.GetY();
+
+            // Make sure our working data buffers are large enough
+            // * Basing the buffer size off of full viewport instead of the modified viewport
+            // * This will result in less reallocation of the working buffers, as data tile size won't change during normal execution
+            const AZ::Vector2 requestMinBounds = heightmapDataRequest.GetWorldMin();
+            const AZ::Vector2 requestWidth = heightmapDataRequest.GetWorldWidth();
+
+            const Terrain::Viewport2D requestViewport = heightmapDataRequest.GetViewport();
+            AZ::u32 maxBufferSizeRequired = requestViewport.m_width * requestViewport.m_height;
+            if (m_workBufferSize < maxBufferSizeRequired)
+            {
+                m_workBuffer = AZStd::make_unique<AZ::u32[]>(maxBufferSizeRequired);
+                m_workBufferSize = maxBufferSizeRequired;
+            }
+
+            // Perform data copy
+            for (int y = 0; y < requestViewport.m_height; y++)
+            {
+                for (int x = 0; x < requestViewport.m_width; x++)
+                {
+                    float fx = (float)(requestMinBounds.GetX() + (x * heightmapDataRequest.GetMetersPerPixel()));
+                    float fy = (float)(requestMinBounds.GetY() + (y * heightmapDataRequest.GetMetersPerPixel()));
+                    float heightSample = 0.0f;
+                    AZ::Vector3 normalSample = AZ::Vector3::CreateAxisZ();
+                    TerrainDataRequestBus::BroadcastResult(heightSample, &TerrainDataRequestBus::Events::GetHeightSynchronous, fx, fy);
+                    TerrainDataRequestBus::BroadcastResult(normalSample, &TerrainDataRequestBus::Events::GetNormalSynchronous, fx, fy);
+
+                    m_workBuffer[(y * requestViewport.m_width) + x] = PackHeightAndNormalAsUint(heightSample, normalSample, maxHeight);
+                }
+            }
+
+            // Apply modified viewport to the requested viewport
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Renderer, "TerrainTextureCache.updatePhysicalCacheTextureRegion");
+                CTexture* heightAndNormalTexture = m_heightMapVirtualTexturePtr->GetPhysicalTexture(0);
+
+                // Update texture regions
+                heightAndNormalTexture->UpdateTextureRegion(reinterpret_cast<byte*>(m_workBuffer.get()),
+                    requestViewport.m_topLeftX, requestViewport.m_topLeftY, 0,
+                    requestViewport.m_width, requestViewport.m_height, 1,
+                    eTF_R8G8B8A8);
+            }
+        }
+
+        // Output error message for existence of tiles that have a meters per pixel greater than
+        // the requested metersPerPixel.
+        // Threshold higher than 1 can be used to reduce per frame prints.
+        if (metersPerPixelsWarningCount > 1)
+        {
+            AZ_Error("TerrainTextureCache", false,
+                "ProcessHeightmapDataRequests | Source tile meters per pixel is lower than the requested - %d occurences",
+                metersPerPixelsWarningCount);
+        }
+    }
+
+
 }
 
 #endif

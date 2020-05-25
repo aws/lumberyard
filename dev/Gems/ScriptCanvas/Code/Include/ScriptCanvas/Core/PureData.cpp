@@ -86,7 +86,10 @@ namespace ScriptCanvas
 
     void PureData::OnInputChanged(const Datum& input, const SlotId& id) 
     {
-        OnOutputChanged(input);
+        if (IsActivated())
+        {
+            OnOutputChanged(input);
+        }
     }
 
     AZStd::string_view PureData::GetInputDataName() const
@@ -109,7 +112,7 @@ namespace ScriptCanvas
 
             if (!outputNodes.empty())
             {
-                auto getterOutcome = getterFuncIt->second.m_getterFunction(GetVarDatum(0).GetData());
+                auto getterOutcome = getterFuncIt->second.m_getterFunction((*FindDatum(GetSlotId(k_setThis))));
                 if (!getterOutcome)
                 {
                     SCRIPTCANVAS_REPORT_ERROR((*this), getterOutcome.GetError().data());
@@ -155,11 +158,14 @@ namespace ScriptCanvas
             // push this value, as usual
             Node::SetInput(AZStd::move(input), id);
 
-            // now, call every getter, as every property has (presumably) been changed
-            for (const auto& propertyNameSlotIdsPair : m_propertyAccount.m_getterSetterIdPairs)
+            if (IsActivated())
             {
-                const SlotId& getterSlotId = propertyNameSlotIdsPair.second.first;
-                CallGetter(getterSlotId);
+                // now, call every getter, as every property has (presumably) been changed
+                for (const auto& propertyNameSlotIdsPair : m_propertyAccount.m_getterSetterIdPairs)
+                {
+                    const SlotId& getterSlotId = propertyNameSlotIdsPair.second.first;
+                    CallGetter(getterSlotId);
+                }
             }
         }
         else
@@ -181,12 +187,22 @@ namespace ScriptCanvas
             AZ_Error("Script Canvas", false, "BehaviorContextObject setter is not invocable for SlotId %s is nullptr", setterId.m_id.ToString<AZStd::string>().data());
             return;
         }
-        auto setterOutcome = methodBySlotIter->second.m_setterFunction(ModVarDatum(0).GetData(), input);
+
+        ModifiableDatumView datumView;
+        FindModifiableDatumView(GetSlotId(k_setThis), datumView);
+
+        Datum* datum = datumView.ModifyDatum();
+
+        auto setterOutcome = methodBySlotIter->second.m_setterFunction((*datum), input);
+
         if (!setterOutcome)
         {
             SCRIPTCANVAS_REPORT_ERROR((*this), setterOutcome.TakeError().data());
             return;
         }
+
+        datumView.SignalModification();
+
         PushThis();
 
         auto getterSetterIt = m_propertyAccount.m_getterSetterIdPairs.find(methodBySlotIter->second.m_propertyName);

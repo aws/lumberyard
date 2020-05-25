@@ -108,6 +108,16 @@ namespace AzToolsFramework
             return !m_results.empty();
         }
 
+        void AssetSelectionModel::SetTitle(const QString& title)
+        {
+            m_title = title;
+        }
+
+        QString AssetSelectionModel::GetTitle() const
+        {
+            return m_title.isEmpty() ? GetDisplayFilter()->GetName() : m_title;
+        }
+
         AssetSelectionModel AssetSelectionModel::AssetTypeSelection(const AZ::Data::AssetType& assetType, bool multiselect)
         {
             AssetSelectionModel selection;

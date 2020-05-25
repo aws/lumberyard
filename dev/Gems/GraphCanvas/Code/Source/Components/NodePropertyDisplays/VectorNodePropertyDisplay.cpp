@@ -104,9 +104,19 @@ namespace GraphCanvas
         return m_index;
     }
 
+    GraphCanvasLabel* ReadOnlyVectorControl::GetTextLabel()
+    {
+        return m_textLabel;
+    }
+
     const GraphCanvasLabel* ReadOnlyVectorControl::GetTextLabel() const
     {
         return m_textLabel;
+    }
+
+    GraphCanvasLabel* ReadOnlyVectorControl::GetValueLabel()
+    {
+        return m_valueLabel;
     }
 
     const GraphCanvasLabel* ReadOnlyVectorControl::GetValueLabel() const
@@ -118,14 +128,13 @@ namespace GraphCanvas
     // VectorNodePropertyDisplay
     //////////////////////////////
     VectorNodePropertyDisplay::VectorNodePropertyDisplay(VectorDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_dataInterface(dataInterface)
         , m_disabledLabel(nullptr)
         , m_propertyVectorCtrl(nullptr)
         , m_proxyWidget(nullptr)
         , m_displayWidget(nullptr)
-    {    
-        m_dataInterface->RegisterDisplay(this);
-        
+    {
         m_displayWidget = new QGraphicsWidget();
         m_displayWidget->setContentsMargins(0, 0, 0, 0);
         m_displayWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -215,8 +224,8 @@ namespace GraphCanvas
 
         if (m_propertyVectorCtrl)
         {
-            m_propertyVectorCtrl->setMinimumSize(elementWidth, elementHeight);
-            m_propertyVectorCtrl->setMaximumSize(elementWidth, elementHeight);
+            m_propertyVectorCtrl->setMinimumSize(aznumeric_cast<int>(elementWidth), aznumeric_cast<int>(elementHeight));
+            m_propertyVectorCtrl->setMaximumSize(aznumeric_cast<int>(elementWidth), aznumeric_cast<int>(elementHeight));
             m_propertyVectorCtrl->adjustSize();
         }
     }
@@ -254,7 +263,25 @@ namespace GraphCanvas
     {
         SetupProxyWidget();
         return m_proxyWidget;
-    }    
+    }
+
+    void VectorNodePropertyDisplay::OnDragDropStateStateChanged(const DragDropState& dragState)
+    {
+        for (ReadOnlyVectorControl* vectorControl : m_vectorDisplays)
+        {
+            {
+                Styling::StyleHelper& styleHelper = vectorControl->GetTextLabel()->GetStyleHelper();
+                UpdateStyleForDragDrop(dragState, styleHelper);
+                vectorControl->GetTextLabel()->update();
+            }
+
+            {
+                Styling::StyleHelper& styleHelper = vectorControl->GetValueLabel()->GetStyleHelper();
+                UpdateStyleForDragDrop(dragState, styleHelper);
+                vectorControl->GetValueLabel()->update();
+            }
+        }
+    }
     
     void VectorNodePropertyDisplay::OnFocusIn()
     {

@@ -23,6 +23,7 @@ namespace GraphCanvas
         : EditorContextMenu(editorId, parent)
     {
         m_editActionGroup.PopulateMenu(this);
+        m_commentActionGroup.PopulateMenu(this);
         m_nodeGroupActionGroup.PopulateMenu(this);
         m_alignmentActionGroup.PopulateMenu(this);
         
@@ -30,7 +31,7 @@ namespace GraphCanvas
         
         {
             // Preset Creation
-            m_createPresetFrom = aznew CreatePresetFromSelection(this);        
+            m_createPresetFrom = aznew CreatePresetFromSelection(this);
             AddMenuAction(m_createPresetFrom);
         }
     }

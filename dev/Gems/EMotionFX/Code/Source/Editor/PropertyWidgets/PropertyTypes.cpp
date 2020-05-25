@@ -59,6 +59,7 @@ namespace EMotionFX
             aznew EMotionFX::AnimGraphNodeNameHandler(),
             aznew EMotionFX::AnimGraphMotionNodeIdHandler(),
             aznew EMotionFX::AnimGraphSingleParameterHandler(),
+            aznew EMotionFX::AnimGraphSingleNumberParameterHandler(),
             aznew EMotionFX::AnimGraphMultipleParameterHandler(),
             aznew EMotionFX::AnimGraphParameterMaskHandler(),
             aznew EMotionFX::AnimGraphStateIdHandler(),

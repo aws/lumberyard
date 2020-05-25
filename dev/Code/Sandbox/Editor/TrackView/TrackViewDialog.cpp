@@ -48,8 +48,6 @@
 #include <IMovieSystem.h>
 #include <IEntitySystem.h>
 
-#include "Util/BoostPythonHelpers.h"
-
 #include "Util/EditorUtils.h"
 #include "FBXExporterDialog.h"
 #include "Maestro/Types/AnimParamType.h"
@@ -72,7 +70,7 @@
 #include <QTimer>
 
 //////////////////////////////////////////////////////////////////////////
-namespace
+inline namespace TrackViewInternal
 {
     const char* s_kTrackViewLayoutSection = "TrackViewLayout";
     const char* s_kTrackViewSection = "DockingPaneLayouts\\TrackView";
@@ -95,6 +93,31 @@ namespace
 
     const int TRACKVIEW_LAYOUT_VERSION = 0x0001; // Bump this up on every substantial pane layout change
     const int TRACKVIEW_REBAR_VERSION = 0x0002; // Bump this up on every substantial rebar change
+
+    CTrackViewSequence* GetSequenceByEntityIdOrName(const CTrackViewSequenceManager* pSequenceManager, const char* entityIdOrName)
+    {
+        // the "name" string will be an AZ::EntityId in string form if this was called from
+        // TrackView code. But for backward compatibility we also support a sequence name.
+        bool isNameAValidU64 = false;
+        QString entityIdString = entityIdOrName;
+        AZ::u64 nameAsU64 = entityIdString.toULongLong(&isNameAValidU64);
+
+        CTrackViewSequence* pSequence = nullptr;
+        if (isNameAValidU64)
+        {
+            // "name" string was a valid u64 represented as a string. Use as an entity Id to search for sequence.
+            pSequence = pSequenceManager->GetSequenceByEntityId(AZ::EntityId(nameAsU64));
+        }
+
+        if (!pSequence)
+        {
+            // name passed in could not find a sequence by using it as an EntityId. Use it as a
+            // sequence name for backward compatibility
+            pSequence = pSequenceManager->GetSequenceByName(entityIdOrName);
+        }
+
+        return pSequence;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1027,9 +1050,14 @@ void CTrackViewDialog::OnAddSequence()
             CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
             AZ_Assert(sequenceManager, "Expected valid sequenceManager.");
 
-            QString newSequenceCmd = QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName, QStringLiteral("%1").arg(static_cast<int>(sequenceType)));
+            CTrackViewSequence* pSequence = sequenceManager->GetSequenceByName(sequenceName);
+            if (pSequence)
+            {
+                throw std::runtime_error("A sequence with this name already exists");
+            }
+
             AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
-            GetIEditor()->ExecuteCommand(newSequenceCmd);
+            sequenceManager->CreateSequence(sequenceName, sequenceType);
             CTrackViewSequence* newSequence = sequenceManager->GetSequenceByName(sequenceName);
             AZ_Assert(newSequence, "Creating new sequence failed.");
             undoBatch.MarkEntityDirty(newSequence->GetSequenceComponentEntityId());
@@ -1219,7 +1247,12 @@ void CTrackViewDialog::OnDelSequence()
                 AZ::EntityId entityId = AZ::EntityId(entityIdString.toULongLong());
                 if (entityId.IsValid())
                 {
-                    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.delete_sequence '%1'").arg(entityIdString));
+                    CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+                    CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, entityIdString.toUtf8().constData());
+                    if (pSequence)
+                    {
+                        pSequenceManager->DeleteSequence(pSequence);
+                    }
                 }
             }
 
@@ -1259,7 +1292,16 @@ void CTrackViewDialog::OnSequenceComboBox()
 
     // Display current sequence.
     QString entityIdString = m_sequencesComboBox->currentData().toString();
-    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.set_current_sequence '%1'").arg(entityIdString));
+    const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+    CTrackViewSequence* sequence = GetSequenceByEntityIdOrName(sequenceManager, entityIdString.toUtf8().constData());
+    CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+    if (sequence && animationContext)
+    {
+        const bool force = false;
+        const bool noNotify = false;
+        const bool user = true;
+        animationContext->SetSequence(sequence, force, noNotify, user);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1401,12 +1443,12 @@ void CTrackViewDialog::OnPlay()
                     pAnimationContext->SetRecording(false);
                 }
             }
-            GetIEditor()->ExecuteCommand("trackview.play_sequence");
+            pAnimationContext->SetPlaying(true);
         }
     }
     else
     {
-        GetIEditor()->ExecuteCommand("trackview.stop_sequence");
+        pAnimationContext->SetPlaying(false);
     }
     UpdateActions();
 }

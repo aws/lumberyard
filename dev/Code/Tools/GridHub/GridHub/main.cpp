@@ -25,6 +25,7 @@
 #endif
 
 #include "gridhub.hxx"
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMessageBox>
 #include <QtCore/QFile>
@@ -33,6 +34,7 @@
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QSharedMemory>
 #include <QtCore/QProcess>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/AllocatorManager.h>

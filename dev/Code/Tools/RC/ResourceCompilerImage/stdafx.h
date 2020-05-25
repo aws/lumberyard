@@ -14,63 +14,30 @@
 // stdafx.h : include file for standard system include files,
 // or project specific include files that are used frequently, but
 // are changed infrequently
+//
 
 #pragma once
 
-#include <cassert>
+#include <assert.h>
 
-// Define this to prevent including CryAssert (there is no proper hook for turning this off).
+#define CRY_ASSERT(condition) assert(condition)
+#define CRY_ASSERT_TRACE(condition, message) assert(condition)
+#define CRY_ASSERT_MESSAGE(condition, message) assert(condition)
+
+// Define this to prevent including CryAssert (there is no proper hook for turning this off, like the above).
 #define CRYINCLUDE_CRYCOMMON_CRYASSERT_H
 
-#ifndef CRY_ASSERT
-#define CRY_ASSERT(condition)
-#endif
-
-#ifndef CRY_ASSERT_MESSAGE
-#define CRY_ASSERT_MESSAGE(condition, message)
-#endif
-
-#ifndef CRY_ASSERT_TRACE
-#define CRY_ASSERT_TRACE(condition, parenthese_message)
-#endif
-
 #include <platform.h>
-#if defined(AZ_PLATFORM_WINDOWS)
-#define WIN32_LEAN_AND_MEAN     // Exclude rarely-used stuff from Windows headers
 
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0500     // min Win2000 for GetConsoleWindow()     Baustelle
-#endif
-
-// Windows Header Files:
-#include <windows.h>
+#include <functional>
+#include <vector>
+#include <map>
 
 #include <stdio.h>
+#include <AzCore/PlatformDef.h>
+
+#if defined(AZ_PLATFORM_WINDOWS)
 #include <tchar.h>
 #endif
 
-#include <vector>
-#include <map>
-#include <memory>
-#include <algorithm>
-
-extern HMODULE g_hInst;
-
-#ifndef ReleasePpo
-#define ReleasePpo(ppo)      \
-    if (*(ppo) != NULL)      \
-    {                        \
-        (*(ppo))->Release(); \
-        *(ppo) = NULL;       \
-    }                        \
-    else (VOID)0
-#endif
-
-#include "CompileTimeAssert.h"
-#include <Cry_Math.h>
-#include <IConsole.h>
-
-#include <QDir>
-#include <QFile>
-// TODO: reference additional headers your program requires here
+#include "IRCLog.h"

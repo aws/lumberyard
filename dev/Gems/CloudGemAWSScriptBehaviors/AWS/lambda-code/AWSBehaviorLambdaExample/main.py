@@ -58,9 +58,10 @@
 #        }
 #
 
-import boto3            # Python AWS API
+import boto3  # Python AWS API
 
-# Setting values come from the Settings property of the AWS Lambda Function's 
+
+# Setting values come from the Settings property of the AWS Lambda Function's
 # configuration resource definition in the resource groups's resource-template.json 
 # file. 
 #
@@ -70,9 +71,10 @@ import boto3            # Python AWS API
 # for each deployment.
 #
 # You can also use settings to pass a resource's physical id to the Lambda Function.
-# The Lambda Function code can use the pyhsical id to access the AWS resource using
+# The Lambda Function code can use the physical id to access the AWS resource using
 # the boto3 api.
 
 
 def AWSBehaviorLambdaExample(event, context):
     return 'Hello World'
+

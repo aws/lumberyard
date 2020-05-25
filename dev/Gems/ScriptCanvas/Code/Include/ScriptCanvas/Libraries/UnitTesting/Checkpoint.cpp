@@ -22,10 +22,10 @@ namespace ScriptCanvas
         {
             void Checkpoint::OnInputSignal(const SlotId& slotId)
             {
-                const auto report = GetInput(GetSlotId("Report"))->GetAs<Data::StringType>();
+                const auto report = FindDatum(GetSlotId("Report"))->GetAs<Data::StringType>();
 
                 ScriptCanvas::UnitTesting::Bus::Event
-                          ( GetGraphId()
+                          ( GetOwningScriptCanvasId()
                           , &ScriptCanvas::UnitTesting::BusTraits::Checkpoint
                           , *report);
                 

@@ -70,7 +70,7 @@ void CMiniTable::OnPaint(CDrawContext& dc)
     float y = m_rect.top + indent;
 
     const int nColumns = m_columns.size();
-    int numEntries = m_columns[0].cells.size();
+    int numEntries = nColumns > 0 ? m_columns[0].cells.size() : 0;
 
     int startIdx = 0;
     int endIdx = numEntries;

@@ -122,6 +122,12 @@ namespace AzToolsFramework
     }
 
     template<typename T>
+    void GenericComboBoxCtrl<T>::setInvalidValue()
+    {
+        m_pComboBox->setCurrentIndex(-1);
+    }
+
+    template<typename T>
     void GenericComboBoxCtrl<T>::setElements(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues)
     {
         m_pComboBox->clear();
@@ -312,13 +318,29 @@ namespace AzToolsFramework
         const auto oldValue = instance;
         instance = genericGUI->value();
         InvokePostChangeNotify(index, genericGUI, oldValue, node);
+        if (index == 0)
+        {
+            // Reset override in case it is set to "- Multiple selected -"
+            genericGUI->m_pComboBox->SetHeaderOverride("");
+        }
     }
 
     template<typename T>
-    bool GenericComboBoxHandler<T>::ReadValuesIntoGUI(size_t, ComboBoxCtrl* GUI, const typename GenericComboBoxHandler::property_t& instance, AzToolsFramework::InstanceDataNode*)
+    bool GenericComboBoxHandler<T>::ReadValuesIntoGUI(size_t idx, ComboBoxCtrl* GUI, const typename GenericComboBoxHandler::property_t& instance, AzToolsFramework::InstanceDataNode*)
     {
         auto genericGUI = azrtti_cast<GenericComboBoxCtrl<T>*>(GUI);
-        genericGUI->setValue(instance);
+        if (idx == 0)
+        {
+            // store the value from the first entity so we can test other selected entities value
+            m_firstEntityValue = instance;
+            genericGUI->setValue(instance);
+            genericGUI->m_pComboBox->SetHeaderOverride("");
+        }
+        else if (instance != m_firstEntityValue) // if this value is not the same as the first entity's value set multiple
+        {
+            genericGUI->setInvalidValue();
+            genericGUI->m_pComboBox->SetHeaderOverride("- Multiple selected -");
+        }
         return true;
     }
 

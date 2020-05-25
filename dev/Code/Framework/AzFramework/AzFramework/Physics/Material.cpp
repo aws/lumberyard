@@ -551,7 +551,15 @@ namespace Physics
 
     const AZ::Data::Asset<Physics::MaterialLibraryAsset>& MaterialSelection::GetMaterialLibraryAsset() const
     {
-        return IsDefaultMaterialLibraryAsset() ? GetDefaultMaterialLibrary() : m_materialLibrary;
+        if (IsDefaultMaterialLibraryAsset())
+        {
+            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& defaultMaterialLibrary
+                = GetDefaultMaterialLibrary();
+
+            return defaultMaterialLibrary;
+        }
+
+        return m_materialLibrary;
     }
 
     bool MaterialSelection::IsDefaultMaterialLibraryAsset() const

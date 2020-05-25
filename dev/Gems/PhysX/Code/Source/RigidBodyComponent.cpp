@@ -25,6 +25,8 @@
 
 namespace PhysX
 {
+
+
     void RigidBodyComponent::Reflect(AZ::ReflectContext* context)
     {
         RigidBody::Reflect(context);
@@ -237,6 +239,10 @@ namespace PhysX
         {
             m_rigidBody->SetKinematicTarget(world);
         }
+        else if (!IsPhysicsEnabled())
+        {
+            m_rigidBodyTransformNeedsUpdateOnPhysReEnable = true;
+        }
     }
 
     void RigidBodyComponent::CreatePhysics()
@@ -280,6 +286,11 @@ namespace PhysX
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+        if (m_rigidBodyTransformNeedsUpdateOnPhysReEnable)
+        {
+            m_rigidBody->SetTransform(transform);
+            m_rigidBodyTransformNeedsUpdateOnPhysReEnable = false;
+        }
 
         AZ::Quaternion rotation = AZ::Quaternion::CreateIdentity();
         AZ::TransformBus::EventResult(rotation, GetEntityId(), &AZ::TransformInterface::GetWorldRotationQuaternion);

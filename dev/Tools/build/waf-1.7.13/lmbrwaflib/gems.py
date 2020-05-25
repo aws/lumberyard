@@ -8,16 +8,22 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# System Imports
+import glob
 import os
 import re
 import uuid
-import glob
-import utils
-from ConfigParser import RawConfigParser
-from waflib.Configure import conf, ConfigurationContext
+from configparser import RawConfigParser
+
+# waflib imports
 from waflib import Errors, Logs
-import cry_utils
+from waflib.Configure import conf, ConfigurationContext
 from waflib.TaskGen import feature, before_method, after_method
+
+# lmbrwaflib imports
+from lmbrwaflib import utils
+from lmbrwaflib import cry_utils
 
 
 GEMS_UUID_KEY = "Uuid"
@@ -66,7 +72,7 @@ def _create_field_reader(ctx, obj, parse_context):
                 val = int(val_str)
             except ValueError as err:
                 ctx.cry_error('Failed to parse {} field with value {} in {}: {}'.format(
-                    field_name, val, parse_context, err.message))
+                    field_name, val, parse_context, err))
             return val
 
         def uuid(self, field_name = GEMS_UUID_KEY):
@@ -79,7 +85,7 @@ def _create_field_reader(ctx, obj, parse_context):
                 id = uuid.UUID(hex=id_str)
             except ValueError as err:
                 ctx.cry_error('Failed to parse {} field with value {} in {}: {}.'.format(
-                    field_name, id_str, parse_context, err.message))
+                    field_name, id_str, parse_context, err))
             return id
 
         def version(self, field_name = GEMS_VERSION_KEY):
@@ -214,45 +220,73 @@ def DefineGem(ctx, *k, **kw):
     manager.current_gem = gem
 
     # Generate list of resolved dependencies
-    dependency_objects = []
-    for dep_id in gem.dependencies:
-        dep = manager.get_gem_by_spec(dep_id)
-        if not dep:
-            unmet_name = find_gem_name_by_id(ctx, dep_id)
-            if unmet_name is None:
-                ctx.cry_error('Gem {}({}) has an unmet dependency with ID {} (Unable to locate in disk).'.format(gem.id, gem.name, dep_id))
-            else:
-                ctx.cry_error('Gem {}({}) has an unmet dependency with ID {}({}). Please use the Project Configurator to correct this.'.format(gem.id, gem.name, dep_id, unmet_name))
+    def get_dependency_objects(gem):
+        dependency_objects = []
+        for dep_id in gem.dependencies:
+            dep = manager.get_gem_by_spec(dep_id)
+            if not dep:
+                unmet_name = find_gem_name_by_id(ctx, dep_id)
+                if unmet_name is None:
+                    ctx.cry_error('Gem {}({}) has an unmet dependency with ID {} (Unable to locate in disk).'.format(gem.id, gem.name, dep_id))
+                else:
+                    ctx.cry_error('Gem {}({}) has an unmet dependency with ID {}({}). Please use the Project Configurator to correct this.'.format(gem.id, gem.name, dep_id, unmet_name))
 
-            continue
-        dependency_objects.append(dep)
+                continue
+            dependency_objects.append(dep)
+        return dependency_objects
 
     # Applies dependencies to args list
-    def apply_dependencies(args):
-        for dep in dependency_objects:
-            dep_include = dep.get_include_path()
-            if os.path.exists(dep_include):
-                cry_utils.append_to_unique_list(args['includes'], dep_include)
-                
-            # If the dependent Gem has a PAL 'Platform' subfolder in the includes, then assume it will have platform specific folders that were
-            # meant to be exported to any other dependent gem
-            dep_platform_base_dir = os.path.join(dep_include, 'Platform')
-            if os.path.exists(dep_platform_base_dir):
-                # Go through all of the possible platform names to build and determine if they exist. Ideally, if there is a subfolder
-                # in your Gems's Code/Include called 'Platform', and it has sub directories that match the platform names, then it is
-                # meant to be exported, otherwise it would be in the Gem's 'Code/Source'
-                target_platforms = ctx.get_all_target_platforms(False)
-                for target_platform in target_platforms:
-                    platform_folder = target_platform.attributes.get('platform_folder', None)
-                    if not platform_folder:
-                        continue
-                    directory = os.path.join(dep_platform_base_dir, platform_folder)
-                    if os.path.isdir(directory):
-                        cry_utils.append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform), []),directory)
+    def apply_dependencies(gem, args):
+        # Used to prevent a Gem being added multiple times
+        found_gems = dict()
+        # Used to prevent circular dependencies
+        stack = []
 
-            for module in dep.modules:
-                if module.requires_linking(ctx):
-                    cry_utils.append_to_unique_list(args['use'], module.target_name)
+        # Applies dependencies to args list
+        def apply_dependencies_impl(gem, args):
+            for dep in get_dependency_objects(gem):
+                # Check for cyclic dependency
+                if dep.id in stack:
+                    names = [found_gems[id].name for id in stack] + [dep.name]
+                    ctx.cry_error('Gem {}({}) has circular dependency: {}'.format(gem.name, gem.id, ' -> '.join(names)))
+
+                # Skip already processed Gems
+                if dep.id in found_gems:
+                    continue
+
+                found_gems[dep.id] = dep
+                stack.append(dep.id)
+
+                # Recursively apply dependencies
+                apply_dependencies_impl(dep, args)
+
+                stack.pop()
+
+                dep_include = dep.get_include_path()
+                if os.path.exists(dep_include):
+                    cry_utils.append_to_unique_list(args['includes'], dep_include)
+                
+                # If the dependent Gem has a PAL 'Platform' subfolder in the includes, then assume it will have platform specific folders that were
+                # meant to be exported to any other dependent gem
+                dep_platform_base_dir = os.path.join(dep_include, 'Platform')
+                if os.path.exists(dep_platform_base_dir):
+                    # Go through all of the possible platform names to build and determine if they exist. Ideally, if there is a subfolder
+                    # in your Gems's Code/Include called 'Platform', and it has sub directories that match the platform names, then it is
+                    # meant to be exported, otherwise it would be in the Gem's 'Code/Source'
+                    target_platforms = ctx.get_all_target_platforms(False)
+                    for target_platform in target_platforms:
+                        platform_folder = target_platform.attributes.get('platform_folder', None)
+                        if not platform_folder:
+                            continue
+                        directory = os.path.join(dep_platform_base_dir, platform_folder)
+                        if os.path.isdir(directory):
+                            cry_utils.append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform), []),directory)
+
+                for module in dep.modules:
+                    if module.requires_linking(ctx):
+                        cry_utils.append_to_unique_list(args['use'], module.target_name)
+
+        apply_dependencies_impl(gem, args)
 
     # Iterate over each module and setup build
     for module in gem.modules:
@@ -344,7 +378,7 @@ def DefineGem(ctx, *k, **kw):
                     default_settings[field] = parent_value
 
         # Apply defaults to the project
-        for key, value in default_settings.iteritems():
+        for key, value in default_settings.items():
             if key not in module_kw:
                 module_kw[key] = value
 
@@ -356,6 +390,9 @@ def DefineGem(ctx, *k, **kw):
             cry_utils.append_unique_kw_entry(module_kw, 'features', ['qt5'])
             cry_utils.append_unique_kw_entry(module_kw, 'use', ['AzToolsFramework', 'AzQtComponents'])
             cry_utils.append_unique_kw_entry(module_kw, 'uselib', ['QT5CORE', 'QT5QUICK', 'QT5GUI', 'QT5WIDGETS'])
+
+        elif module.type == Gem.Module.Type.GameModule:
+            module_kw['project_local'] = True
 
         # If the Gem is a game gem, we may need to apply enabled gems for all of the enabled game projects so it will build
         if gem.is_game_gem and module.type != Gem.Module.Type.Builder:
@@ -411,9 +448,9 @@ def DefineGem(ctx, *k, **kw):
         if len(gem.local_uselibs) > 0:
             cry_utils.append_unique_kw_entry(module_kw, 'uselib', gem.local_uselibs)
 
-        # Link the auto-registration symbols so that Flow Node registration will work
+        # Legacy registration of AzFramework (previously also added CryAction_AutoFlowNode, might be possible to remove)
         if module.type in [Gem.Module.Type.GameModule, Gem.Module.Type.EditorModule]:
-            cry_utils.append_unique_kw_entry(module_kw, 'use', ['CryAction_AutoFlowNode', 'AzFramework'])
+            cry_utils.append_unique_kw_entry(module_kw, 'use', ['AzFramework'])
 
         cry_utils.append_unique_kw_entry(module_kw, 'features', ['link_running_program'])
 
@@ -455,7 +492,7 @@ def DefineGem(ctx, *k, **kw):
         if export_include_node:
             module_kw['export_includes'] = [export_include_node.abspath()] + module_kw['export_includes']
 
-        apply_dependencies(module_kw)
+        apply_dependencies(gem, module_kw)
 
         # Save the build settings so we can access them later
         module.kw = module_kw
@@ -596,6 +633,7 @@ class Gem(object):
         self.ctx = ctx
         self.games_enabled_in = []
         self.editor_targets = []
+        self.additional_targets = []
         self.modules = []
         self.is_legacy_igem = False
         self.is_game_gem = False
@@ -616,6 +654,7 @@ class Gem(object):
         self.version = reader.version()
         self.id = reader.uuid()
         self.editor_targets = reader.field_opt('EditorTargets', [])
+        self.additional_targets = reader.field_opt('AdditionalTargets', [])
         self.is_legacy_igem = reader.field_opt('IsLegacyIGem', False)
         self.export_uselibs = self.ctx.get_export_internal_3rd_party_lib(self.name)
 
@@ -636,7 +675,7 @@ class Gem(object):
             gem_3p_base_node = self.ctx.engine_node.make_node(self.path).find_node('3rdParty')
         else:
             gem_3p_base_node = self.ctx.path.make_node(self.path).find_node('3rdParty')
-        if gem_3p_base_node:
+        if gem_3p_base_node and not reader.field_opt('DisableGemAutoUselib', False):
             gem_3p_base_search_pattern = os.path.join(gem_3p_base_node.abspath(), '*.json')
             gem_3p_config_files = glob.glob(gem_3p_base_search_pattern)
             for gem_3p_config_file in gem_3p_config_files:
@@ -674,7 +713,7 @@ class Gem(object):
                     module.name = module_reader.field_opt('Name', None)
                     found_default_module = True
                 else:
-                    self.ctx.cry_error('Gem.json file\'s "Modules" list can only contain one module without a name.')
+                    self.ctx.cry_error('Gem.json file\'s "Modules" list can only contain one GameModule.')
             else:
                 module.name = module_reader.field_req('Name')
 
@@ -803,7 +842,7 @@ class GemManager(object):
         :ptype path tuple
         :rtype : Gem
         """
-        if spec.count < 1:
+        if len(spec) < 1:
             return None
 
         check_funs = [
@@ -897,7 +936,7 @@ class GemManager(object):
                 Logs.debug('gems: Gem not found in cache, attempting to load from disk: ({}, {}, {})'.format(gem_id,
                                                                                                              version,
                                                                                                              path))
-                gem = self.load_gem_from_disk(gem_id, version, path, gems_list_context_msg)																											 
+                gem = self.load_gem_from_disk(gem_id, version, path, gems_list_context_msg)
 
             if not gem:
                 self.ctx.cry_error('Failed to load from path "{}"'.format(path))
@@ -913,26 +952,30 @@ class GemManager(object):
         and build a list of all enabled gems so that those are built.
         To debug gems output during build, use --zones=gems in your command line
         """
+        this_path = self.ctx.get_launch_node()
 
+        search_paths = [
+            this_path.abspath()
+        ]
+        if not self.ctx.is_engine_local():
+            search_paths.append(self.ctx.engine_path)
 
-        this_path = self.ctx.path
-
-        cry_utils.append_to_unique_list(self.search_paths, os.path.normpath(this_path.abspath()))
+        for path in search_paths:
+            cry_utils.append_to_unique_list(self.search_paths, os.path.normpath(path))
 
         # Parse Gems search path
         config = RawConfigParser()
-        if config.read(this_path.make_node('SetupAssistantUserPreferences.ini').abspath()):
-            if config.has_section(GEMS_FOLDER) and config.has_option(GEMS_FOLDER, 'SearchPaths\\size'):
-                # Parse QSettings style array (i.e. read 'size' attribute, then 1-based-idx\Path)
-                array_len = config.getint(GEMS_FOLDER, 'SearchPaths\\size');
+        if config.read(self.ctx.get_engine_node().make_node('SetupAssistantUserPreferences.ini').abspath()):
+            if config.has_section(GEMS_FOLDER) and config.has_option(GEMS_FOLDER, 'SearchPaths/size'):
+                # Parse a modified QSettings-style ini array (i.e. read 'size' attribute, then 1-based-idx/Path)
+                # The modification is that QSettings version will have single backslashes in the arrays, but we have
+                # changed it to single forward slashes.
+                array_len = config.getint(GEMS_FOLDER, 'SearchPaths/size');
                 for i in range(0, array_len):
-                    new_path = config.get(GEMS_FOLDER, 'SearchPaths\\{}\\Path'.format(i + 1))
+                    new_path = config.get(GEMS_FOLDER, 'SearchPaths/{}/Path'.format(i + 1))
                     new_path = os.path.normpath(new_path)
                     Logs.debug('gems: Adding search path {}'.format(new_path))
                     cry_utils.append_to_unique_list(self.search_paths, os.path.normpath(new_path))
-
-        if not self.ctx.is_engine_local():
-            cry_utils.append_to_unique_list(self.search_paths,os.path.realpath(self.ctx.engine_path))
 
         # Load all the gems under the Gems folder to search for required gems
         self.required_gems = self.ctx.load_required_gems()
@@ -1002,6 +1045,10 @@ class GemManager(object):
             for editor_target in gem.editor_targets:
                 Logs.debug('gems: adding editor target of gem %s - %s to spec %s' % (gem.name, editor_target, spec_name))
                 spec_list.append(editor_target)
+        if gem.additional_targets:
+            for additional_target in gem.additional_targets:
+                Logs.debug('gems: adding additional target of gem %s - %s to spec %s' % (gem.name, additional_target, spec_name))
+                spec_list.append(additional_target)
 
     def add_to_specs(self):
 
@@ -1014,8 +1061,7 @@ class GemManager(object):
         # Create Gems spec
         if not 'gems' in self.ctx.loaded_specs_dict:
             self.ctx.loaded_specs_dict['gems'] = dict(description="Configuration to build all Gems.",
-                                                      visual_studio_name='Gems',
-                                                      modules=['CryAction', 'CryAction_AutoFlowNode'])
+                                                      visual_studio_name='Gems')
 
         # If there are enabled game projects, then specifically add the gems to each current spec that the gem is
         # enabled for

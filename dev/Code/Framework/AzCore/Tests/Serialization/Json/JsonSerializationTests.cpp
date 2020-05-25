@@ -53,6 +53,7 @@ namespace JsonSerializationTests
         struct Inherited
         {
             AZ_RTTI(Inherited, "{682089DB-9794-4590-87A4-9AF70BD1C202}");
+            virtual ~Inherited() = default;
         };
     }
 
@@ -845,6 +846,27 @@ namespace JsonSerializationTests
         EXPECT_EQ(azrtti_typeid<Vector3>(), output);
     }
 
+    // The plain string is ran through the Uuid Serializer, which doesn't recognize it as a valid uuid format,
+    // but as a type id it's still valid. A bug caused this to be reported by the Uuid Serializer as an error, but
+    // didn't prevent the type id from working. This test is added to make sure that the bug doesn't regress and
+    // that the error from Uuid Serializer isn't reported when deserializing a type id.
+    TEST_F(JsonSerializationTests, LoadTypeId_FromNameString_UuidSerializerDoesNotReportUnsupported)
+    {
+        using namespace AZ;
+        using namespace AZ::JsonSerializationResult;
+
+        m_deserializationSettings.m_reporting = [](AZStd::string_view,
+            JsonSerializationResult::ResultCode result, AZStd::string_view)->ResultCode
+        {
+            EXPECT_NE(Outcomes::Unsupported, result.GetOutcome());
+            return result;
+        };
+
+        Uuid output;
+        JsonSerialization::LoadTypeId(output, m_jsonDocument->SetString("Vector3"),
+            nullptr, AZStd::string_view{}, m_deserializationSettings);
+    }
+
     TEST_F(JsonSerializationTests, LoadTypeId_UnknownName_FailToLoad)
     {
         using namespace AZ;
@@ -970,6 +992,62 @@ namespace JsonSerializationTests
 
         EXPECT_EQ(Processing::Halted, result.GetProcessing());
         EXPECT_EQ(Outcomes::Unknown, result.GetOutcome());
+    }
+
+    struct TestSettingsA
+    {
+        AZ_TYPE_INFO(TestSettingsA, "{7A4A4D3E-6ACC-4F9F-8AB3-BAE44CE9E1EA}");
+        int32_t m_number = 0;
+        TestSettingsA(int32_t number) : m_number(number) {}
+    };
+
+    struct TestSettingsB
+    {
+        AZ_TYPE_INFO(TestSettingsB, "{C65E748D-CFAA-4E5A-A764-D2030FEBE823}");
+        AZStd::string m_message;
+        TestSettingsB(const AZStd::string& message) : m_message(message) {}
+    };
+
+    TEST_F(JsonSerializationTests, TestJsonSerializationMetadata)
+    {
+        AZ::JsonSerializationMetadata metadata;
+
+        EXPECT_FALSE(metadata.Find<TestSettingsA>());
+        EXPECT_FALSE(metadata.Find<TestSettingsB>());
+
+        EXPECT_TRUE(metadata.Add(TestSettingsA(7)));
+        EXPECT_TRUE(metadata.Find<TestSettingsA>());
+        EXPECT_FALSE(metadata.Find<TestSettingsB>());
+
+        EXPECT_TRUE(metadata.Add(TestSettingsB(AZStd::string("hello"))));
+        EXPECT_TRUE(metadata.Find<TestSettingsA>());
+        EXPECT_TRUE(metadata.Find<TestSettingsB>());
+
+        EXPECT_EQ(metadata.Find<TestSettingsA>()->m_number, 7);
+        EXPECT_EQ(metadata.Find<TestSettingsB>()->m_message, AZStd::string("hello"));
+
+        // Can't add something that already exists
+        EXPECT_FALSE(metadata.Add(TestSettingsA{2}));
+        EXPECT_EQ(metadata.Find<TestSettingsA>()->m_number, 7);
+    }
+
+    TEST_F(JsonSerializationTests, TestJsonSerializationMetadata_MovingData)
+    {
+        {
+            AZ::JsonSerializationMetadata metadata;
+            AZStd::string value{"hello"};
+            metadata.Add(value);
+            EXPECT_TRUE(value == "hello"); // Data should be preserved
+            EXPECT_TRUE(*metadata.Find<AZStd::string>() == "hello");
+        }
+
+        {
+            AZ::JsonSerializationMetadata metadata;
+            AZStd::string value{"hello"};
+            metadata.Add(AZStd::move(value));
+            EXPECT_TRUE(value == ""); // Data should be moved
+            EXPECT_TRUE(*metadata.Find<AZStd::string>() == "hello");
+        }
     }
 } // namespace JsonSerializationTests
 

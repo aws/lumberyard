@@ -17,6 +17,7 @@
 #include "IGemManager.h"
 
 #include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <QDataStream>
 #include <QDebug>
@@ -559,9 +560,6 @@ AmazonToolbar ToolbarManager::GetObjectToolbar() const
     }
 
     t.AddAction(ID_OBJECTMODIFY_VERTEXSNAPPING, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDIT_PHYS_RESET, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDIT_PHYS_GET, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDIT_PHYS_SIMULATE, ORIGINAL_TOOLBAR_VERSION);
 
     return t;
 }
@@ -577,7 +575,10 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
-        t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+        if (gEnv->pRenderer->GetRenderType() != eRT_Other)
+        {
+            t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+        }
     }
 
     t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
@@ -590,7 +591,6 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     {
         t.AddAction(ID_OPEN_EMOTIONFX_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     }
-    t.AddAction(ID_OPEN_FLOWGRAPH, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
 
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
@@ -601,16 +601,21 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
 
 #ifdef LY_TERRAIN_EDITOR
-    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled() && gEnv->pRenderer->GetRenderType() != eRT_Other)
     {
         t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     }
 #endif // #ifdef LY_TERRAIN_EDITOR
 
-    t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
+
+    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
+    {
+        t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_OPEN_DATABASE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_UICANVASEDITOR, ORIGINAL_TOOLBAR_VERSION);
 
@@ -627,7 +632,6 @@ AmazonToolbar ToolbarManager::GetSubstanceToolbar() const
 AmazonToolbar ToolbarManager::GetMiscToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Misc", QObject::tr("Misc Toolbar"));
-    t.AddAction(ID_GAMEP1_AUTOGEN, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_ASSET_BROWSER, ORIGINAL_TOOLBAR_VERSION);
     return t;
 }

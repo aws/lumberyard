@@ -55,9 +55,8 @@ enum EVertexFormat : uint8
     eVF_P2F_C4B_T2F_F4B, // UI
     eVF_P3F_C4B,// Auxiliary geometry
 
-#ifdef POPCORNFX_PARTICLES
-    // PopcornFX - Base
-    eVF_P3F_C4F_T2F,
+
+    eVF_P3F_C4F_T2F,  //numbering for tracking the new vertex formats and for comparison with testing 23
     eVF_P3F_C4F_T2F_T3F,
     eVF_P3F_C4F_T2F_T3F_T3F,
     eVF_P3F_C4F_T2F_T1F,
@@ -67,7 +66,7 @@ enum EVertexFormat : uint8
     eVF_P3F_C4F_T4F_T2F_T3F,
     eVF_P3F_C4F_T4F_T2F_T3F_T3F,
     eVF_P3F_C4F_T4F_T2F_T1F,
-    eVF_P3F_C4F_T4F_T2F_T1F_T3F,
+    eVF_P3F_C4F_T4F_T2F_T1F_T3F,  //30
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F,
     eVF_P3F_C4F_T2F_T2F_T1F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F,
@@ -75,28 +74,28 @@ enum EVertexFormat : uint8
     eVF_P3F_C4F_T2F_T2F_T1F_T1F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F,
-    // PopcornFX - Input0
+    eVF_P4F_T2F_C4F_T4F_T4F,  //35
     eVF_P3F_C4F_T2F_T4F,
     eVF_P3F_C4F_T2F_T3F_T4F,
     eVF_P3F_C4F_T2F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T1F_T4F,
     eVF_P3F_C4F_T2F_T1F_T3F_T4F,
     eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F,
-    eVF_P3F_C4F_T4F_T2F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T4F,  //40
     eVF_P3F_C4F_T4F_T2F_T3F_T4F,
     eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T4F,
-    eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F,  //45
     eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F,
-    // PopcornFX - Input0 Input1
+    eVF_P4F_T2F_C4F_T4F_T4F_T4F,
     eVF_P3F_C4F_T2F_T4F_T4F,
-    eVF_P3F_C4F_T2F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T2F_T3F_T4F_T4F,  //50
     eVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T1F_T4F_T4F,
     eVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F,
@@ -104,16 +103,16 @@ enum EVertexFormat : uint8
     eVF_P3F_C4F_T4F_T2F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F,
-    eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F,  //55
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F,
-    eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F,  //60
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F,
-#endif
+    eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F,
 
     eVF_Max,
 };
@@ -405,578 +404,602 @@ struct SVF_C4B_T2S
     Vec2f16 st;
 };
 
-#ifdef POPCORNFX_PARTICLES
-// PopcornFX - Base
 struct SVF_P3F_C4F_T2F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
+    Vec2 st;
 };
 
 struct SVF_P3F_C4F_T2F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
+    Vec2 st0;
+    Vec3 st1;
 };
 
 struct SVF_P3F_C4F_T2F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T1F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
+    Vec2 st;
+    float z;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T4F_T2F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
+    Vec4 st0;
+    Vec2 st1;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+};
+struct SVF_P4F_T2F_C4F_T4F_T4F
+{
+    Vec4 xyzw;
+    Vec2 st0;
+    Vec4 color;
+    Vec4 st1;
+    Vec4 st2;
 };
 
-// PopcornFX - Input0
 struct SVF_P3F_C4F_T2F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec4 input0;
+    Vec2 st0;
+    Vec4 st1;
 };
 
 struct SVF_P3F_C4F_T2F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
-    Vec4 input0;
+    Vec2 st0;
+    Vec3 st1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec4 input0;
+    Vec2 st0;
+    float z;
+    Vec4 st1;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
-// PopcornFX - Input0 Input1
+struct SVF_P4F_T2F_C4F_T4F_T4F_T4F
+{
+    Vec4 xyzw;
+    Vec2 st0;
+    Vec4 color;
+    Vec4 st1;
+    Vec4 st2;
+    Vec4 st3;
+};
+
 struct SVF_P3F_C4F_T2F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec4 st1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec3 st1;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    float z;
+    Vec4 st1;
+    Vec4 st2;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec4 uvScaleAndOffset;
-    Vec2 uvFactors;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec4 st2;
+    Vec4 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F
 {
-    Vec3 position;
+    Vec3 xyz;
     Vec4 color;
-    Vec2 uv0;
-    Vec2 uv1;
-    float atlasID;
-    float alphaCursor;
-    Vec3 normal;
-    Vec3 tangent;
-    Vec4 input0;
-    Vec4 input1;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
-#endif
+struct SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F
+{
+    Vec4 xyzw;
+    Vec2 st0;
+    Vec4 color;
+    Vec4 st1;
+    Vec4 st2;
+    Vec4 st3;
+    Vec4 st4;
+};
+
 
 //=============================================================
 // Signed norm value packing [-1,+1]

@@ -29,7 +29,7 @@ def build(bld):
                                        'QT5GUI',
                                        'QT5WIDGETS'],
         features                    = ['qt5'],
-        includes                    = [ bld.ThirdPartyPath('boost'),
+        includes                    = [ '.',
                                         bld.Path('Code/CryEngine/CryCommon'),
                                         bld.Path('Code/Tools'),
                                         bld.Path('Code/Tools/RC/ResourceCompiler'),

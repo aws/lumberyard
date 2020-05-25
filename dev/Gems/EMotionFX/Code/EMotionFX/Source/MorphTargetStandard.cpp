@@ -40,10 +40,10 @@ namespace EMotionFX
 
 
     // extended constructor
-    MorphTargetStandard::MorphTargetStandard(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name, bool delPoseFromMem)
+    MorphTargetStandard::MorphTargetStandard(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name)
         : MorphTarget(name)
     {
-        InitFromPose(captureTransforms, captureMeshDeforms, neutralPose, targetPose, delPoseFromMem);
+        InitFromPose(captureTransforms, captureMeshDeforms, neutralPose, targetPose);
     }
 
 
@@ -62,9 +62,9 @@ namespace EMotionFX
 
 
     // extended create
-    MorphTargetStandard* MorphTargetStandard::Create(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name, bool delPoseFromMem)
+    MorphTargetStandard* MorphTargetStandard::Create(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, const char* name)
     {
-        return aznew MorphTargetStandard(captureTransforms, captureMeshDeforms, neutralPose, targetPose, name, delPoseFromMem);
+        return aznew MorphTargetStandard(captureTransforms, captureMeshDeforms, neutralPose, targetPose, name);
     }
 
 
@@ -95,7 +95,7 @@ namespace EMotionFX
 
 
     // initialize the morph target from a given actor pose
-    void MorphTargetStandard::InitFromPose(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose, bool delPoseFromMem)
+    void MorphTargetStandard::InitFromPose(bool captureTransforms, bool captureMeshDeforms, Actor* neutralPose, Actor* targetPose)
     {
         MCORE_ASSERT(neutralPose);
         MCORE_ASSERT(targetPose);
@@ -166,13 +166,11 @@ namespace EMotionFX
                         differentTopology = true;
                     }
                 }
+
                 if (differentTopology)
                 {
-                    AZ_Warning("EMotionFX", false, "The morph target's mesh ('%s') is not the same topology as the base mesh ('%s'). Is the triangulation different perhaps? Skipping morph target.", targetNode->GetName(), neutralNode->GetName());
-                    continue;
+                    AZ_Warning("EMotionFX", false, "The morph target's mesh ('%s') is not the same topology as the base mesh ('%s'). The vertex order changed. Morph target might not look correct.", targetNode->GetName(), neutralNode->GetName());
                 }
-
-                //--------------------------------------------------
 
                 // first calculate the neutral and target bounds
                 MCore::AABB neutralAABB;
@@ -439,12 +437,6 @@ namespace EMotionFX
             }
 
             //LogInfo("Num transforms = %d", mTransforms.GetLength());
-        }
-
-        // delete the target pose actor when wanted
-        if (delPoseFromMem)
-        {
-            targetPose->Destroy();
         }
     }
 

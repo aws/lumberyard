@@ -10,19 +10,18 @@
 #
 
 # python
-import json
-import urllib
-import urlparse
+import six
+from six.moves.urllib import parse
 
 # boto3
 import boto3
-import botocore.exceptions
 
-# ResoruceManagerCommon
+# ResourceManagerCommon
 from resource_manager_common import service_interface
 
 # CloudGemFramework Utils
 from cgf_utils import aws_utils
+
 
 class ServiceDirectory(object):
 
@@ -55,57 +54,58 @@ class ServiceDirectory(object):
             existing_keys.discard(interface_key)
 
         # delete all the interfaces that are no longer provided by the service
-        encoded_service_url = urllib.quote_plus(service_url)
+        encoded_service_url = parse.quote_plus(service_url)
         for existing_key in existing_keys:
             existing_interface_id, existing_encoded_interface_url = self.__parse_s3_interface_key_for_deployment(existing_key) if deployment_name else self.__parse_s3_interface_key_for_project(existing_key)
             if existing_encoded_interface_url.startswith(encoded_service_url):
                 self.__s3.delete_object(
-                    Bucket = self.__bucket_name,
-                    Key = existing_key
+                    Bucket=self.__bucket_name,
+                    Key=existing_key
                 )
-    def __delete_all_interfaces_under_interface_id(self, deployment_name, inteface_id):
-        if not inteface_id:
+
+    def __delete_all_interfaces_under_interface_id(self, deployment_name, interface_id):
+        if not interface_id:
             return
 
         if deployment_name:
-            prefix =  self.S3_INTERFACE_ID_PREFIX.format(
-                deployment_name = deployment_name,
-                interface_id = inteface_id
+            prefix = self.S3_INTERFACE_ID_PREFIX.format(
+                deployment_name=deployment_name,
+                interface_id=interface_id
             )
         else:
-            prefix =  self.S3_PROJECT_INTERFACE_ID_PREFIX.format(
-                interface_id = inteface_id
+            prefix = self.S3_PROJECT_INTERFACE_ID_PREFIX.format(
+                interface_id=interface_id
             )
 
         res = self.__s3.list_objects_v2(
-            Bucket = self.__bucket_name,
-            Prefix = prefix
+            Bucket=self.__bucket_name,
+            Prefix=prefix
         )
 
         interface_keys = [ content['Key'] for content in res.get('Contents', []) ]
 
         for existing_key in interface_keys:
             self.__s3.delete_object(
-                Bucket = self.__bucket_name,
-                Key = existing_key
+                Bucket=self.__bucket_name,
+                Key=existing_key
             )
 
     def __put_service_interface(self, deployment_name, service_url, interface):
 
         # validate interface id
         interface_id = interface.get('InterfaceId')
-        if not interface_id or not isinstance(interface_id, basestring):
+        if not (interface_id and isinstance(interface_id, six.string_types)):
             raise ValueError('Missing InterfaceId string property in {}.'.format(interface))
         self.__validate_interface_id(interface_id)
 
         # validate swagger
         interface_swagger = interface.get('InterfaceSwagger')
-        if not interface_swagger or not isinstance(interface_swagger, basestring):
+        if not interface_swagger or not isinstance(interface_swagger, six.string_types):
             raise ValueError('Missing InterfaceSwagger string property in {}.'.format(interface))
 
         # validate url
         interface_url = interface.get('InterfaceUrl')
-        if not interface_url or not isinstance(interface_url, basestring):
+        if not interface_url or not isinstance(interface_url, six.string_types):
             raise ValueError('Missing Swagger string property in {}.'.format(interface))
         if not interface_url.startswith(service_url):
             raise ValueError('The interface url {} is not relative to the service url {}.'.format(interface_url, service_url))
@@ -113,14 +113,14 @@ class ServiceDirectory(object):
         # write an object representing the interface to S3, it contains the swagger
         if deployment_name:
             interface_key = self.S3_INTERFACE_KEY.format(
-                deployment_name = deployment_name,
-                interface_id = interface_id,
-                interface_url = urllib.quote_plus(interface_url)
+                deployment_name=deployment_name,
+                interface_id=interface_id,
+                interface_url=parse.quote_plus(interface_url)
             )
         else:
             interface_key = self.S3_PROJECT_INTERFACE_KEY.format(
-                interface_id = interface_id,
-                interface_url = urllib.quote_plus(interface_url)
+                interface_id=interface_id,
+                interface_url=parse.quote_plus(interface_url)
             )
 
         self.__s3.put_object(
@@ -140,7 +140,7 @@ class ServiceDirectory(object):
 
         # find the keys that represent interfaces implemented by the service and read them
         interfaces = []
-        encoded_service_url = urllib.quote_plus(service_url)
+        encoded_service_url = parse.quote_plus(service_url)
         for key in keys:
             interface_id, encoded_interface_url = self.__parse_s3_interface_key_for_deployment(key) if deployment_name else self.__parse_s3_interface_key_for_project(key)
             if encoded_interface_url.startswith(encoded_service_url):
@@ -149,11 +149,11 @@ class ServiceDirectory(object):
                 interface = {
                     'InterfaceId': interface_id,
                     'InterfaceSwagger': interface_swagger,
-                    'InterfaceUrl': urllib.unquote_plus(encoded_interface_url)
+                    'InterfaceUrl': parse.unquote_plus(encoded_interface_url)
                 }
                 interfaces.append(interface)
 
-        # return the intefaces found
+        # return the interfaces found
         return interfaces
 
 
@@ -163,11 +163,11 @@ class ServiceDirectory(object):
         keys = self.__get_all_keys_for_deployment_or_project(deployment_name)
 
         # find the keys that represent interfaces implemented by the service and delete them
-        encoded_service_url = urllib.quote_plus(service_url)
+        encoded_service_url = parse.quote_plus(service_url)
         for key in keys:
             interface_id, encoded_interface_url = self.__parse_s3_interface_key_for_deployment(key) if deployment_name else self.__parse_s3_interface_key_for_project(key)
             if encoded_interface_url.startswith(encoded_service_url):
-                self.__s3.delete_object(Bucket = self.__bucket_name, Key = key)
+                self.__s3.delete_object(Bucket=self.__bucket_name, Key=key)
 
 
     def get_interface_services(self, deployment_name, interface_id):
@@ -194,15 +194,16 @@ class ServiceDirectory(object):
         # of those keys, find the ones where the minor version is compatible with the requested interface's version
         services = []
         for content in res.get('Contents', []):
-            canidate_interface_id, encoded_interface_url = self.__parse_s3_interface_key_for_deployment(content['Key']) if deployment_name else self.__parse_s3_interface_key_for_project(content['Key'])
-            canidate_gem_name, canidate_interface_name, canidate_interface_version = self.__parse_interface_id(canidate_interface_id)
-            if canidate_interface_version.is_compatible_with(target_interface_version):
-                res = self.__s3.get_object(Bucket = self.__bucket_name, Key = content['Key'])
+            candidate_interface_id, encoded_interface_url = \
+                self.__parse_s3_interface_key_for_deployment(content['Key']) if deployment_name else self.__parse_s3_interface_key_for_project(content['Key'])
+            candidate_gem_name, candidate_interface_name, candidate_interface_version = self.__parse_interface_id(candidate_interface_id)
+            if candidate_interface_version.is_compatible_with(target_interface_version):
+                res = self.__s3.get_object(Bucket=self.__bucket_name, Key=content['Key'])
                 interface_swagger = res['Body'].read()
                 services.append(
                     {
-                        'InterfaceId': canidate_interface_id,
-                        'InterfaceUrl': urllib.unquote_plus(encoded_interface_url),
+                        'InterfaceId': candidate_interface_id,
+                        'InterfaceUrl': parse.unquote_plus(encoded_interface_url),
                         'InterfaceSwagger': interface_swagger
                     }
                 )
@@ -210,31 +211,26 @@ class ServiceDirectory(object):
         # return the services found
         return services
 
-
     def __parse_s3_interface_key_for_deployment(self, key):
-        parts = key.split('/') # expecting an S3_INTERFACE_SWAGGER_KEY as defined above.
+        parts = key.split('/')  # expecting an S3_INTERFACE_SWAGGER_KEY as defined above.
         interface_id = parts[4]
         encoded_service_url = parts[6]
         return interface_id, encoded_service_url
 
-
     def __parse_s3_interface_key_for_project(self, key):
-        parts = key.split('/') # expecting an S3_INTERFACE_SWAGGER_KEY as defined above.
+        parts = key.split('/')  # expecting an S3_INTERFACE_SWAGGER_KEY as defined above.
         interface_id = parts[2]
         encoded_service_url = parts[4]
         return interface_id, encoded_service_url
-
 
     def __parse_interface_id(self, interface_id):
         try:
             return service_interface.parse_interface_id(interface_id)
         except Exception as e:
-            raise ValueError(e.message)
-
+            raise ValueError(str(e))
 
     def __validate_interface_id(self, interface_id):
         self.__parse_interface_id(interface_id)
-
 
     def __get_all_keys_for_deployment_or_project(self, deployment_name):
         if deployment_name:

@@ -2,7 +2,7 @@
     "name": "glew",
     "source": "@GEM@/External/GLEW/1.10.0",
     "description": "GLEW: The OpenGL Extension Wrangler Library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "lib_required": "True"

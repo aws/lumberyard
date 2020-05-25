@@ -9,6 +9,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
 
 #include <LyzardSDK/Base.h>
@@ -40,6 +41,7 @@ namespace Setup
         // Blocking version. Returns on error or finished.
         virtual Lyzard::StringOutcome DownloadSDK() = 0;
     };
+
     using SDKInstallationRequestBus = AZ::EBus<SDKInstallationRequest>;
 
     /**
@@ -64,6 +66,7 @@ namespace Setup
             bool shouldRequireOptionalSDKs,
             const AZStd::set<AZStd::string>& enabledTags) = 0;
     };
+
     using SetupRequestBus = AZ::EBus<SetupRequests>;
 
     /**
@@ -82,10 +85,12 @@ namespace Setup
 
         virtual ~SDKInstallationNotification() = default;
 
-        virtual void OnSDKDownloadDone(bool isSuccess) { };
-        virtual void OnSDKStateChanged(const Packages::PackageStates& sdkState) { };
-        virtual void OnSDKSetupComplete() { };
-        virtual void OnDownloadProgressUpdated(float downloadProgress) { };
+        virtual void OnSDKDownloadDone(bool isSuccess) {}
+        virtual void OnSDKStateChanged(const Packages::PackageStates& sdkState) {}
+        virtual void OnSDKSetupComplete() {}
+        virtual void OnDownloadProgressUpdated(float downloadProgress) {}
     };
+
     using SDKInstallationNotificationBus = AZ::EBus<SDKInstallationNotification>;
-}
+
+} // namespace Setup

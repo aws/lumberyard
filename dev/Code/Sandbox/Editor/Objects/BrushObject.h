@@ -22,6 +22,7 @@
 #include "Geometry/EdMesh.h"
 #include "StatObjBus.h"
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /*!
  *  CTagPoint is an object that represent named 3d position in world.
  *
@@ -30,6 +31,7 @@ class SANDBOX_API CBrushObject
     : public CBaseObject
     , private StatObjEventBus::Handler
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
     //////////////////////////////////////////////////////////////////////////
@@ -78,7 +80,7 @@ public:
     virtual IStatObj* GetIStatObj();
     int GetRenderFlags() const { return m_renderFlags; };
     IRenderNode* GetEngineNode() const { return m_pRenderNode; };
-    float GetRatioLod() const { return mv_ratioLOD; };
+    float GetRatioLod() const { return aznumeric_cast<float>(static_cast<int>(mv_ratioLOD)); };
     float GetViewDistanceMultiplier() const { return mv_viewDistanceMultiplier; };
     QString GetGeometryFile() { return mv_geometryFile; }
     void SetGeometryFile(const QString& geometryFile) { mv_geometryFile = geometryFile; }

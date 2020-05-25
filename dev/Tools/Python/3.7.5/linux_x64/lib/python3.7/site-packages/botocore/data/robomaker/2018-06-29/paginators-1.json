@@ -1,0 +1,46 @@
+{
+  "pagination": {
+    "ListDeploymentJobs": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "deploymentJobs"
+    },
+    "ListFleets": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "fleetDetails"
+    },
+    "ListRobotApplications": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "robotApplicationSummaries"
+    },
+    "ListRobots": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "robots"
+    },
+    "ListSimulationApplications": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "simulationApplicationSummaries"
+    },
+    "ListSimulationJobs": {
+      "input_token": "nextToken",
+      "limit_key": "maxResults",
+      "output_token": "nextToken",
+      "result_key": "simulationJobSummaries"
+    },
+    "ListSimulationJobBatches": {
+      "input_token": "nextToken",
+      "output_token": "nextToken",
+      "limit_key": "maxResults",
+      "result_key": "simulationJobBatchSummaries"
+    }
+  }
+}

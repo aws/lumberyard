@@ -312,7 +312,6 @@ void CPersistentDebug::PostUpdateTags(float frameTime, SObj& obj)
                 (1 == m_pETHideBehaviour->GetIVal() && iterList->params.tagContext.compareNoCase("behaviour") == 0) ||
                 (1 == m_pETHideReadability->GetIVal() && iterList->params.tagContext.compareNoCase("readability") == 0) ||
                 (1 == m_pETHideAIDebug->GetIVal() && iterList->params.tagContext.compareNoCase("aidebug") == 0) ||
-                (1 == m_pETHideFlowgraph->GetIVal() && iterList->params.tagContext.compareNoCase("flowgraph") == 0) ||
                 (1 == m_pETHideScriptBind->GetIVal() && iterList->params.tagContext.compareNoCase("scriptbind") == 0))
             {
                 continue;

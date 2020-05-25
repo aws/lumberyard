@@ -35,6 +35,7 @@ namespace AzToolsFramework
 class QComponentLevelEntityEditorInspectorWindow
     : public QMainWindow
     , public AzToolsFramework::SliceMetadataEntityContextNotificationBus::Handler
+    , private IEditorNotifyListener
 {
     Q_OBJECT
 
@@ -61,9 +62,13 @@ public:
 private:
     void OnMetadataEntityAdded(AZ::EntityId /*entityId*/) override;
 
-    void SetRootMetadataEntity();
+    void RefreshPropertyEditor();
 
     AZ::EntityId GetRootMetaDataEntityId() const;
+
+    //////////////////////////////////////////////////////////////////////////
+    // IEditorEventListener
+    void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
     AzToolsFramework::EntityPropertyEditor* m_propertyEditor;
 };

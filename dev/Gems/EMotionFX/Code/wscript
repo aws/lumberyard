@@ -78,11 +78,11 @@ def build(bld):
                                        'EMotionFX/CommandSystem/commandsystem.waf_files',
                                        'EMotionFX/Exporters/ExporterLib/exporterlib.waf_files'
                                       ],
+        test_all_file_list          = ['emotionfx_shared_tests.waf_files',],
         use                         = ['AzFramework'],
         win_features                = ['crcfix'],
-        includes                    = [bld.ThirdPartyPath('boost'),
-                                       bld.Path('Code/CryEngine/CryCommon'),
-                                       './Include',
+        #msvc_cxxflags               = msvc_cxx_flags,
+        includes                    = ['./Include',
                                        './Source',
                                        './',
                                        bld.Path('Gems/LmbrCentral/Code/include'),        # Not the right way, use_required_gems should be used, but can't because of an issue (LY-51626).
@@ -112,9 +112,7 @@ def build(bld):
         features                    = ['emfx_copyfiles'],
         win_features                = ['crcfix'],
         #msvc_cxxflags               = msvc_cxx_flags,
-        includes                    = [bld.ThirdPartyPath('boost'),
-                                       bld.Path('Code/CryEngine/CryCommon'),
-                                       './Include',
+        includes                    = ['./Include',
                                        './Source',
                                        './',
                                        bld.Path('Code/CryEngine/CryCommon')
@@ -166,9 +164,8 @@ def build(bld):
                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                'GLEW'
                               ],
-            includes        = [bld.ThirdPartyPath('boost'),
-                               bld.Path('Code/CryEngine/CryCommon'),
-                               './Include',
+            test_all_uselib = ['QT5TEST',],
+            includes        = ['./Include',
                                './Source',
                                './EMotionFX/Tools',
                                './EMotionFX/Pipeline',

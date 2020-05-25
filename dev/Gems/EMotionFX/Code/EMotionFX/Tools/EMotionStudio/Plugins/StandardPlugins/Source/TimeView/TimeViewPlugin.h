@@ -114,7 +114,7 @@ namespace EMStudio
         double CalcFitScale(double minScale = 1.0, double maxScale = 100.0) const;
         void MakeTimeVisible(double timeValue, double offsetFactor = 0.95, bool animate = true);
         bool GetIsTimeVisible(double timeValue) const;
-        float GetTimeScale() const                  { return mTimeScale; }
+        float GetTimeScale() const                  { return aznumeric_cast<float>(mTimeScale); }
 
         void RenderElementTimeHandles(QPainter& painter, uint32 dataWindowHeight, const QPen& pen);
         void DisableAllToolTips();

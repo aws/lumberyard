@@ -46,9 +46,8 @@ namespace ScriptCanvasEditor
             CanvasWidget(QWidget* parent = nullptr);
             ~CanvasWidget() override;
 
-            void ShowScene(const AZ::EntityId& sceneId);
+            void ShowScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
             const GraphCanvas::ViewId& GetViewId() const;
-            void SetGraphId(const AZ::EntityId& graphId) { m_graphId = graphId; }
 
         protected:
 
@@ -61,7 +60,6 @@ namespace ScriptCanvasEditor
             void SetupGraphicsView();
             
             AZ::Data::AssetId m_assetId;
-            AZ::EntityId m_graphId;
 
             AZStd::unique_ptr<Ui::CanvasWidget> ui;
 

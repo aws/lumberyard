@@ -184,24 +184,10 @@ struct ILocalizationManager
     //   true if localization was successful, false otherwise
     virtual bool LocalizeString_ch(const char* sString, string& outLocalizedString, bool bEnglish = false) override { return false; }
 
-    // Function to be deprecated and replaced by LocalizeString_ch to support eBus interface.
-    // Use LocalizeString_ch instead.
-    AZ_DEPRECATED(virtual bool LocalizeString(const char* sString, string& outLocalizedString, bool bEnglish = false), "Deprecated. Use LocalizeString_ch instead.") 
-    {
-        return LocalizeString_ch(sString, outLocalizedString, bEnglish);
-    }
-
     // Summary:
     //   Same as LocalizeString( const char* sString, string& outLocalizedString, bool bEnglish=false )
     //   but at the moment this is faster.
     virtual bool LocalizeString_s(const string& sString, string& outLocalizedString, bool bEnglish = false) override { return false; }
-
-    // Function to be deprecated and replaced by LocalizeString_s to support eBus interface.
-    // Use LocalizeString_s instead.
-    AZ_DEPRECATED(virtual bool LocalizeString(const string& sString, string& outLocalizedString, bool bEnglish = false), "Deprecated. Use LocalizeString_s instead.") 
-    { 
-        return LocalizeString_s(sString, outLocalizedString, bEnglish);
-    }
 
     // Summary:
     virtual void LocalizeAndSubstituteInternal(AZStd::string& locString, const AZStd::vector<AZStd::string>& keys, const AZStd::vector<AZStd::string>& values) override {}
@@ -288,13 +274,6 @@ struct ILocalizationManager
     //      outString - This is first and this is second.
     virtual void FormatStringMessage_List(string& outString, const string& sString, const char** sParams, int nParams) override {}
     virtual void FormatStringMessage(string& outString, const string& sString, const char* param1, const char* param2 = 0, const char* param3 = 0, const char* param4 = 0) override {}
-
-    // Function to be deprecated and replaced by FormatStringMessage_List to support eBus interface.
-    // Use FormatStringMessage_List instead.
-    AZ_DEPRECATED(virtual void FormatStringMessage(string& outString, const string& sString, const char** sParams, int nParams), "Deprecated. Use FormatStringMessage_List instead.") 
-    {
-        FormatStringMessage_List(outString, sString, sParams, nParams);
-    }
 
     virtual void LocalizeTime(time_t t, bool bMakeLocalTime, bool bShowSeconds, string& outTimeString) override {}
     virtual void LocalizeDate(time_t t, bool bMakeLocalTime, bool bShort, bool bIncludeWeekday, string& outDateString) override {}

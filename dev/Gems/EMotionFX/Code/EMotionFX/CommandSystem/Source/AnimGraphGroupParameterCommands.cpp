@@ -312,6 +312,12 @@ namespace CommandSystem
                     });
         }
 
+        if (animGraph->FindParameterByName(valueString))
+        {
+            outResult = AZStd::string::format("There is already a parameter with the name '%s', please use a unique name.", valueString.c_str());
+            return false;
+        }
+
         // add new group parameter to the anim graph
         EMotionFX::Parameter* groupParameter = EMotionFX::ParameterFactory::Create(azrtti_typeid<EMotionFX::GroupParameter>());
         groupParameter->SetName(valueString);

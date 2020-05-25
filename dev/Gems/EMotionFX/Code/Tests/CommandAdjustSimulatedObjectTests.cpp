@@ -32,10 +32,12 @@
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/SimulatedObjectSetup.h>
+#include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <Tests/Printers.h>
+#include <Tests/Matchers.h>
 
 namespace CommandAdjustSimulatedObjectTests
 {
@@ -55,7 +57,6 @@ namespace CommandAdjustSimulatedObjectTests
         using ::EMotionFX::AnimGraphConnectionId;
         using ::EMotionFX::AnimGraphNodeId;
         using ::EMotionFX::AnimGraphObject;
-        using ::EMotionFX::AnimGraphTransitionCondition;
         using ::EMotionFX::BlendTreeConnection;
         using ::EMotionFX::ValueParameter;
         using ::EMotionFX::CommandAllocator;
@@ -87,6 +88,7 @@ namespace EMotionFX
 #include <Tests/Mocks/GroupParameter.h>
 #include <Tests/Mocks/Actor.h>
 #include <Tests/Mocks/ActorManager.h>
+#include <Tests/Mocks/AnimGraphTransitionCondition.h>
 #include <Tests/Mocks/AnimGraph.h>
 #include <Tests/Mocks/AnimGraphInstance.h>
 #include <Tests/Mocks/AnimGraphManager.h>
@@ -126,11 +128,6 @@ namespace EMotionFX
         , public ::testing::WithParamInterface<::testing::tuple<bool, bool, CommandAdjustSimulatedObjectTestsParam>>
     {
     public:
-        void SetUp() override
-        {
-            UnitTest::AllocatorsTestFixture::SetUp();
-        }
-
         static std::string buildCommandLineFromTestParam(const CommandAdjustSimulatedObjectTestsParam& param)
         {
             std::string string;
@@ -188,6 +185,8 @@ namespace EMotionFX
 
         EXPECT_CALL(actor, GetSimulatedObjectSetup())
             .WillRepeatedly(ReturnRef(simulatedObjectSetup));
+        EXPECT_CALL(actor, GetDirtyFlag())
+            .WillOnce(Return(false));
 
         EXPECT_CALL(*simulatedObjectSetup, GetSimulatedObject(0))
             .WillRepeatedly(Return(&simulatedObject));
@@ -208,10 +207,19 @@ namespace EMotionFX
 
         if (doExecuteOnly)
         {
+            EXPECT_CALL(actor, SetDirtyFlag(true));
+
             testParams.setExecuteExpectations(&simulatedObject);
         }
         else
         {
+            {
+                testing::InSequence sequence;
+                EXPECT_CALL(actor, SetDirtyFlag(true))
+                    .RetiresOnSaturation();
+                EXPECT_CALL(actor, SetDirtyFlag(false))
+                    .RetiresOnSaturation();
+            }
             testParams.setUndoExpectations(&simulatedObject);
         }
 
@@ -249,20 +257,6 @@ namespace EMotionFX
         {
             EXPECT_TRUE(command.Undo(parameters, outResult)) << outResult.c_str();
         }
-    }
-
-    inline testing::PolymorphicMatcher<testing::internal::StrEqualityMatcher<AZStd::string> >
-    StrEq(const AZStd::string& str)
-    {
-        return ::testing::MakePolymorphicMatcher(testing::internal::StrEqualityMatcher<AZStd::string>(
-          str, true, true));
-    }
-
-    MATCHER(StrEq, "")
-    {
-        const auto& lhs = testing::get<0>(arg);
-        const auto& rhs = testing::get<1>(arg);
-        return ::testing::ExplainMatchResult(StrEq(AZStd::string(rhs.data(), rhs.size())), lhs, result_listener);
     }
 
     INSTANTIATE_TEST_CASE_P(TestCommandAdjustSimulatedObject, CommandAdjustSimulatedObjectTestsFixture,
@@ -533,6 +527,8 @@ namespace EMotionFX
 
         EXPECT_CALL(actor, GetSimulatedObjectSetup())
             .WillRepeatedly(ReturnRef(simulatedObjectSetup));
+        EXPECT_CALL(actor, GetDirtyFlag())
+            .WillOnce(Return(false));
 
         EXPECT_CALL(*simulatedObjectSetup, GetSimulatedObject(0))
             .WillRepeatedly(Return(&simulatedObject));
@@ -550,10 +546,18 @@ namespace EMotionFX
 
         if (doExecuteOnly)
         {
+            EXPECT_CALL(actor, SetDirtyFlag(true));
             testParams.setExecuteExpectations(&simulatedJoint);
         }
         else
         {
+            {
+                testing::InSequence sequence;
+                EXPECT_CALL(actor, SetDirtyFlag(true))
+                    .RetiresOnSaturation();
+                EXPECT_CALL(actor, SetDirtyFlag(false))
+                    .RetiresOnSaturation();
+            }
             testParams.setUndoExpectations(&simulatedJoint);
         }
 

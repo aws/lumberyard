@@ -756,6 +756,11 @@ namespace EMotionFX
         AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnSyncVisualObject, this);
     }
 
+    const AZStd::vector<BlendNParamWeight>& BlendTreeBlendNNode::GetParamWeights()
+    {
+        return m_paramWeights;
+    }
+
     const char* BlendTreeBlendNNode::GetPoseInputPortName(AZ::u32 portId)
     {
         const char* name = "";

@@ -618,11 +618,13 @@ namespace AZ
             }
             reservePointer = targetPointer;
 
+            const TypeId& underlyingTypeId = context->GetUnderlyingTypeId(sourceNode->m_classElement->m_typeId);
+
             if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
             {
                 const SerializeContext::ClassData* patchClassData = context->FindClassData(patchDataTypeId);
                 AZ::IRttiHelper* patchRtti = patchClassData ? patchClassData->m_azRtti : nullptr;
-                bool canCastPatchTypeToSourceType = sourceNode->m_classElement->m_typeId == patchDataTypeId;
+                bool canCastPatchTypeToSourceType = sourceNode->m_classElement->m_typeId == patchDataTypeId || underlyingTypeId == patchDataTypeId;
                 canCastPatchTypeToSourceType = canCastPatchTypeToSourceType || (patchRtti && patchRtti->IsTypeOf(sourceNode->m_classElement->m_typeId));
                 if (!canCastPatchTypeToSourceType)
                 {
@@ -630,8 +632,7 @@ namespace AZ
 
                     if (!deprecatedWithNoConverter)
                     {
-                        AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s is not of the same type or derived from source element with Name: '%s' and TypeId: %s\n"
-                            "This is likely due to adding a TypeChange FieldConverter to a DataContainer, but not the container element types",
+                        AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s is not of the same type or derived from source element with Name: '%s' and TypeId: %s",
                             patchDataTypeId.ToString<AZStd::string>().data(),
                             sourceNode->m_classElement->m_name,
                             sourceNode->m_classElement->m_typeId.ToString<AZStd::string>().data());
@@ -645,10 +646,9 @@ namespace AZ
             }
             else
             {
-                if (sourceNode->m_classElement->m_typeId != patchDataTypeId)
+                if (sourceNode->m_classElement->m_typeId != patchDataTypeId && patchDataTypeId != underlyingTypeId)
                 {
-                    AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s does not match the source element with Name: '%s' and TypeId: %s\n"
-                        "This is likely due to adding a TypeChange FieldConverter to a DataContainer, but not the container element types",
+                    AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s does not match the source element with Name: '%s' and TypeId: %s",
                         patchDataTypeId.ToString<AZStd::string>().data(),
                         sourceNode->m_classElement->m_name,
                         sourceNode->m_classElement->m_typeId.ToString<AZStd::string>().data());
@@ -1023,7 +1023,12 @@ namespace AZ
 
             if (parentPointer && parentClassData->m_container)
             {
-                bool failedToLoad = (*reinterpret_cast<void**>(reservePointer)) == nullptr;
+                bool failedToLoad = false;
+                if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
+                {
+                    failedToLoad = (*reinterpret_cast<void**>(reservePointer)) == nullptr;
+                }
+
                 if (addedElementToContainer && failedToLoad)
                 {
                     // since we added an element before we knew whether it would deserialize or not, we have to remove it here.

@@ -26,6 +26,7 @@ namespace EMStudio
 {
     // forward declarations
     class GraphNode;
+    class NodeGraph;
 
 #define WILDCARDTRANSITION_SIZE 20
 
@@ -39,7 +40,7 @@ namespace EMStudio
             TYPE_ID = 0x00000001
         };
 
-        NodeConnection(const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr);
+        NodeConnection(NodeGraph* parentGraph, const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr);
         virtual ~NodeConnection();
 
         const QModelIndex& GetModelIndex() const { return m_modelIndex; }
@@ -60,8 +61,8 @@ namespace EMStudio
         QRect CalcCollapsedSourceRect() const;
         QRect CalcCollapsedTargetRect() const;
 
-        virtual void SetIsSelected(bool selected)                   { mIsSelected = selected; }
-        MCORE_INLINE bool GetIsSelected() const                     { return mIsSelected; }
+        bool GetIsSelected() const;
+
         MCORE_INLINE bool GetIsVisible()                            { return mIsVisible; }
 
         MCORE_INLINE uint32 GetInputPortNr() const                  { return mPortNr; }
@@ -109,6 +110,7 @@ namespace EMStudio
 
 
     protected:
+        NodeGraph*          m_parentGraph = nullptr;
         QPersistentModelIndex m_modelIndex;
         QRect               mRect;
         QRect               mFinalRect;
@@ -118,7 +120,6 @@ namespace EMStudio
         QPainterPath        mPainterPath;
         uint32              mPortNr;            // input port where this is connected to
         uint32              mSourcePortNr;      // source output port number
-        bool                mIsSelected;        // is this connection selected?
         bool                mIsVisible;         // is this connection visible?
         bool                mIsProcessed;       // is this connection processed?
         bool                mIsDisabled;

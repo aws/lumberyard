@@ -8,6 +8,8 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+from six import iteritems
+from six import string_types
 
 class OperationListBuilder(object):
     '''Simplifies the building of a patch operation list for use with API Gateway.
@@ -18,7 +20,7 @@ class OperationListBuilder(object):
     OP_REPLACE = 'replace'
     OP_REMOVE  = 'remove'
 
-    VALUE_TYPES = (basestring, int, bool)
+    VALUE_TYPES = (string_types, int, bool)
 
     def __init__(self):
         self.__list = []
@@ -41,7 +43,7 @@ class OperationListBuilder(object):
 
     def diff(self, path, old, new):
 
-        for key, new_value in new.iteritems():
+        for key, new_value in iteritems(new):
             if key not in old:
                 if isinstance(new_value, dict):
                     # new dict
@@ -67,7 +69,7 @@ class OperationListBuilder(object):
                     if old_value != new_value:
                         self.replace(path + key, new_value)
 
-        for key, old_value in old.iteritems():
+        for key, old_value in iteritems(old):
             if key not in new:
                 if isinstance(old_value, dict):
                     self.diff(path + key + '/', old_value, {})

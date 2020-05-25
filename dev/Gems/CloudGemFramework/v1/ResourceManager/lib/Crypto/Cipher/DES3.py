@@ -19,115 +19,169 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ===================================================================
-"""Triple DES symmetric cipher
+"""
+Module's constants for the modes of operation supported with Triple DES:
 
-`Triple DES`__ (or TDES or TDEA or 3DES) is a symmetric block cipher standardized by NIST_.
-It has a fixed data block size of 8 bytes. Its keys are 128 (*Option 1*) or 192
-bits (*Option 2*) long.
-However, 1 out of 8 bits is used for redundancy and do not contribute to
-security. The effective key length is respectively 112 or 168 bits.
-
-TDES consists of the concatenation of 3 simple `DES` ciphers.
-
-The plaintext is first DES encrypted with *K1*, then decrypted with *K2*,
-and finally encrypted again with *K3*.  The ciphertext is decrypted in the reverse manner.
-
-The 192 bit key is a bundle of three 64 bit independent subkeys: *K1*, *K2*, and *K3*.
-
-The 128 bit key is split into *K1* and *K2*, whereas *K1=K3*.
-
-It is important that all subkeys are different, otherwise TDES would degrade to
-single `DES`.
-
-TDES is cryptographically secure, even though it is neither as secure nor as fast
-as `AES`.
-
-As an example, encryption can be done as follows:
-
-    >>> from Crypto.Cipher import DES
-    >>> from Crypto import Random
-    >>> from Crypto.Util import Counter
-    >>>
-    >>> key = b'-8B key-'
-    >>> nonce = Random.new().read(DES.block_size/2)
-    >>> ctr = Counter.new(DES.block_size*8/2, prefix=nonce)
-    >>> cipher = DES.new(key, DES.MODE_CTR, counter=ctr)
-    >>> plaintext = b'We are no longer the knights who say ni!'
-    >>> msg = nonce + cipher.encrypt(plaintext)
-
-.. __: http://en.wikipedia.org/wiki/Triple_DES
-.. _NIST: http://csrc.nist.gov/publications/nistpubs/800-67/SP800-67.pdf
-
-:undocumented: __revision__, __package__
+:var MODE_ECB: :ref:`Electronic Code Book (ECB) <ecb_mode>`
+:var MODE_CBC: :ref:`Cipher-Block Chaining (CBC) <cbc_mode>`
+:var MODE_CFB: :ref:`Cipher FeedBack (CFB) <cfb_mode>`
+:var MODE_OFB: :ref:`Output FeedBack (OFB) <ofb_mode>`
+:var MODE_CTR: :ref:`CounTer Mode (CTR) <ctr_mode>`
+:var MODE_OPENPGP:  :ref:`OpenPGP Mode <openpgp_mode>`
+:var MODE_EAX: :ref:`EAX Mode <eax_mode>`
 """
 
-__revision__ = "$Id$"
+import sys
 
-from Crypto.Cipher import blockalgo
-from Crypto.Cipher import _DES3
+from Crypto.Cipher import _create_cipher
+from Crypto.Util.py3compat import byte_string, bchr, bord, bstr
+from Crypto.Util._raw_api import (load_pycryptodome_raw_lib,
+                                  VoidPointer, SmartPointer,
+                                  c_size_t)
 
-class DES3Cipher(blockalgo.BlockAlgo):
-    """TDES cipher object"""
+_raw_des3_lib = load_pycryptodome_raw_lib(
+                    "Crypto.Cipher._raw_des3",
+                    """
+                    int DES3_start_operation(const uint8_t key[],
+                                             size_t key_len,
+                                             void **pResult);
+                    int DES3_encrypt(const void *state,
+                                     const uint8_t *in,
+                                     uint8_t *out,
+                                     size_t data_len);
+                    int DES3_decrypt(const void *state,
+                                     const uint8_t *in,
+                                     uint8_t *out,
+                                     size_t data_len);
+                    int DES3_stop_operation(void *state);
+                    """)
 
-    def __init__(self, key, *args, **kwargs):
-        """Initialize a TDES cipher object
-        
-        See also `new()` at the module level."""
-        blockalgo.BlockAlgo.__init__(self, _DES3, key, *args, **kwargs)
 
-def new(key, *args, **kwargs):
-    """Create a new TDES cipher
+def adjust_key_parity(key_in):
+    """Set the parity bits in a TDES key.
 
-    :Parameters:
-      key : byte string
-        The secret key to use in the symmetric cipher.
-        It must be 16 or 24 bytes long. The parity bits will be ignored.
-    :Keywords:
-      mode : a *MODE_** constant
-        The chaining mode to use for encryption or decryption.
-        Default is `MODE_ECB`.
-      IV : byte string
-        The initialization vector to use for encryption or decryption.
-        
-        It is ignored for `MODE_ECB` and `MODE_CTR`.
+    :param key_in: the TDES key whose bits need to be adjusted
+    :type key_in: byte string
 
-        For `MODE_OPENPGP`, IV must be `block_size` bytes long for encryption
-        and `block_size` +2 bytes for decryption (in the latter case, it is
-        actually the *encrypted* IV which was prefixed to the ciphertext).
-        It is mandatory.
-       
-        For all other modes, it must be `block_size` bytes longs. It is optional and
-        when not present it will be given a default value of all zeroes.
-      counter : callable
-        (*Only* `MODE_CTR`). A stateful function that returns the next
-        *counter block*, which is a byte string of `block_size` bytes.
-        For better performance, use `Crypto.Util.Counter`.
-      segment_size : integer
-        (*Only* `MODE_CFB`).The number of bits the plaintext and ciphertext
-        are segmented in.
-        It must be a multiple of 8. If 0 or not specified, it will be assumed to be 8.
+    :returns: a copy of ``key_in``, with the parity bits correctly set
+    :rtype: byte string
 
-    :Attention: it is important that all 8 byte subkeys are different,
-      otherwise TDES would degrade to single `DES`.
-    :Return: an `DES3Cipher` object
+    :raises ValueError: if the TDES key is not 16 or 24 bytes long
+    :raises ValueError: if the TDES key degenerates into Single DES
     """
-    return DES3Cipher(key, *args, **kwargs)
 
-#: Electronic Code Book (ECB). See `blockalgo.MODE_ECB`.
+    def parity_byte(key_byte):
+        parity = 1
+        for i in range(1, 8):
+            parity ^= (key_byte >> i) & 1
+        return (key_byte & 0xFE) | parity
+
+    if len(key_in) not in key_size:
+        raise ValueError("Not a valid TDES key")
+
+    key_out = b"".join([ bchr(parity_byte(bord(x))) for x in key_in ])
+
+    if key_out[:8] == key_out[8:16] or key_out[-16:-8] == key_out[-8:]:
+        raise ValueError("Triple DES key degenerates to single DES")
+
+    return key_out
+
+
+def _create_base_cipher(dict_parameters):
+    """This method instantiates and returns a handle to a low-level base cipher.
+    It will absorb named parameters in the process."""
+
+    try:
+        key_in = dict_parameters.pop("key")
+    except KeyError:
+        raise TypeError("Missing 'key' parameter")
+
+    key = adjust_key_parity(bstr(key_in))
+
+    start_operation = _raw_des3_lib.DES3_start_operation
+    stop_operation = _raw_des3_lib.DES3_stop_operation
+
+    cipher = VoidPointer()
+    result = start_operation(key,
+                             c_size_t(len(key)),
+                             cipher.address_of())
+    if result:
+        raise ValueError("Error %X while instantiating the TDES cipher"
+                         % result)
+    return SmartPointer(cipher.get(), stop_operation)
+
+
+def new(key, mode, *args, **kwargs):
+    """Create a new Triple DES cipher.
+
+    :param key:
+        The secret key to use in the symmetric cipher.
+        It must be 8 byte long. The parity bits will be ignored.
+    :type key: bytes/bytearray/memoryview
+
+    :param mode:
+        The chaining mode to use for encryption or decryption.
+    :type mode: One of the supported ``MODE_*`` constants
+
+    :Keyword Arguments:
+        *   **iv** (*bytes*, *bytearray*, *memoryview*) --
+            (Only applicable for ``MODE_CBC``, ``MODE_CFB``, ``MODE_OFB``,
+            and ``MODE_OPENPGP`` modes).
+
+            The initialization vector to use for encryption or decryption.
+
+            For ``MODE_CBC``, ``MODE_CFB``, and ``MODE_OFB`` it must be 8 bytes long.
+
+            For ``MODE_OPENPGP`` mode only,
+            it must be 8 bytes long for encryption
+            and 10 bytes for decryption (in the latter case, it is
+            actually the *encrypted* IV which was prefixed to the ciphertext).
+
+            If not provided, a random byte string is generated (you must then
+            read its value with the :attr:`iv` attribute).
+
+        *   **nonce** (*bytes*, *bytearray*, *memoryview*) --
+            (Only applicable for ``MODE_EAX`` and ``MODE_CTR``).
+
+            A value that must never be reused for any other encryption done
+            with this key.
+
+            For ``MODE_EAX`` there are no
+            restrictions on its length (recommended: **16** bytes).
+
+            For ``MODE_CTR``, its length must be in the range **[0..7]**.
+
+            If not provided for ``MODE_EAX``, a random byte string is generated (you
+            can read it back via the ``nonce`` attribute).
+
+        *   **segment_size** (*integer*) --
+            (Only ``MODE_CFB``).The number of **bits** the plaintext and ciphertext
+            are segmented in. It must be a multiple of 8.
+            If not specified, it will be assumed to be 8.
+
+        *   **mac_len** : (*integer*) --
+            (Only ``MODE_EAX``)
+            Length of the authentication tag, in bytes.
+            It must be no longer than 8 (default).
+
+        *   **initial_value** : (*integer*) --
+            (Only ``MODE_CTR``). The initial value for the counter within
+            the counter block. By default it is **0**.
+
+    :Return: a Triple DES object, of the applicable mode.
+    """
+
+    return _create_cipher(sys.modules[__name__], key, mode, *args, **kwargs)
+
 MODE_ECB = 1
-#: Cipher-Block Chaining (CBC). See `blockalgo.MODE_CBC`.
 MODE_CBC = 2
-#: Cipher FeedBack (CFB). See `blockalgo.MODE_CFB`.
 MODE_CFB = 3
-#: This mode should not be used.
-MODE_PGP = 4
-#: Output FeedBack (OFB). See `blockalgo.MODE_OFB`.
 MODE_OFB = 5
-#: CounTer Mode (CTR). See `blockalgo.MODE_CTR`.
 MODE_CTR = 6
-#: OpenPGP Mode. See `blockalgo.MODE_OPENPGP`.
 MODE_OPENPGP = 7
-#: Size of a data block (in bytes)
+MODE_EAX = 9
+
+# Size of a data block (in bytes)
 block_size = 8
-#: Size of a key (in bytes)
-key_size = ( 16, 24 )
+# Size of a key (in bytes)
+key_size = (16, 24)

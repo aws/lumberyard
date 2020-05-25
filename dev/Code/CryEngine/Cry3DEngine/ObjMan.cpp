@@ -19,12 +19,6 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-#include "terrain_sector.h"
-#include "terrain.h"
-#endif
-
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "IndexedMesh.h"
@@ -34,6 +28,8 @@
 #include <IResourceManager.h>
 #include "DecalRenderNode.h"
 #include <cctype>
+#include <Terrain/ITerrainNode.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include <StatObjBus.h>
 #include <Vegetation/StaticVegetationBus.h>
@@ -167,11 +163,7 @@ void CObjManager::UnloadObjects(bool bDeleteAll)
     //If this collection is not cleared on unload then character materials will
     //leak and most likely crash the engine across level loads.
     stl::free_container(m_collectedMaterials);
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
     stl::free_container(m_lstTmpCastingNodes);
-#endif
-
     stl::free_container(m_decalsToPrecreate);
     stl::free_container(m_tmpAreas0);
     stl::free_container(m_tmpAreas1);
@@ -1388,21 +1380,18 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
             Get3DEngine()->GetObjectTree()->FillDepthCubemapRenderList(cubemapAABB, passInfo, objectsList);
         }
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        if (GetTerrain() != nullptr && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface)
+        if (passInfo.RenderTerrain())
         {
-            PodArray<CTerrainNode*> terrainNodes;
-            GetTerrain()->IntersectWithBox(cubemapAABB, &terrainNodes);
-
+            PodArray<ITerrainNode*> terrainNodes;
+            LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::IntersectWithBox, cubemapAABB, &terrainNodes);
             // make list of entities
             for (int s = 0; s < terrainNodes.Count(); s++)
             {
-                CTerrainNode* pNode = terrainNodes[s];
+                ITerrainNode* pNode = terrainNodes[s];
 
                 objectsList->Add(pNode);
             }
         }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

@@ -34,7 +34,6 @@ namespace Physics
 
         CollisionLayer(AZ::u8 index = Default.GetIndex());
         CollisionLayer(const AZStd::string& layerName);
-        virtual ~CollisionLayer() = default;
 
         AZ::u8 GetIndex() const;
         void SetIndex(AZ::u8 index);
@@ -62,10 +61,9 @@ namespace Physics
 
         CollisionGroup(AZ::u64 mask = All.GetMask());
         CollisionGroup(const AZStd::string& groupName);
-        virtual ~CollisionGroup() = default;
 
-        void SetLayer(const CollisionLayer& layer, bool set);
-        bool IsSet(const CollisionLayer& layer) const;
+        void SetLayer(CollisionLayer layer, bool set);
+        bool IsSet(CollisionLayer layer) const;
         AZ::u64 GetMask() const;
 
     private:
@@ -82,11 +80,10 @@ namespace Physics
         static void Reflect(AZ::ReflectContext* context);
 
         CollisionLayers() = default;
-        virtual ~CollisionLayers() = default;
 
-        Physics::CollisionLayer GetLayer(const AZStd::string& name);
-        bool TryGetLayer(const AZStd::string& name, Physics::CollisionLayer& layer);
-        AZStd::string GetName(const Physics::CollisionLayer& layer) const;
+        Physics::CollisionLayer GetLayer(const AZStd::string& name) const;
+        bool TryGetLayer(const AZStd::string& name, CollisionLayer& layer) const;
+        const AZStd::string& GetName(CollisionLayer layer) const;
         const AZStd::array<AZStd::string, s_maxCollisionLayers>& GetNames() const;
         void SetName(Physics::CollisionLayer layer, const AZStd::string& layerName);
         void SetName(AZ::u64 layerIndex, const AZStd::string& layerName);
@@ -97,13 +94,13 @@ namespace Physics
 
     /// Overloads for collision layers and groups. This lets you write code like this:
     /// CollisionGroup group = CollisionLayer(0) | CollisionLayer(1) | CollisionLayer(2).
-    CollisionGroup operator|(const CollisionLayer& layer1, const CollisionLayer& layer2);
-    CollisionGroup operator|(const CollisionGroup& group, const CollisionLayer& layer);
+    CollisionGroup operator|(CollisionLayer layer1, CollisionLayer layer2);
+    CollisionGroup operator|(CollisionGroup group, CollisionLayer layer);
 
     /// Collision groups can be defined and edited in the PhysXConfiguration window. 
     /// The idea is that collision groups are authored there, and then assigned to components via the
     /// edit context by reflecting Physics::CollisionGroups::Id, or alternatively can be retrieved by
-    /// name from the PhysXConfiguration.
+    /// name from the CollisionConfiguration.
     class CollisionGroups
     {
     public:
@@ -142,9 +139,8 @@ namespace Physics
         };
 
         CollisionGroups() = default;
-        virtual ~CollisionGroups() = default;
 
-        Id CreateGroup(const AZStd::string& name, const CollisionGroup& group, Id id = Id::Create(), bool readOnly = false);
+        Id CreateGroup(const AZStd::string& name, CollisionGroup group, Id id = Id::Create(), bool readOnly = false);
         void DeleteGroup(Id id);
         void SetGroupName(Id id, const AZStd::string& groupName);
         void SetLayer(Id id, CollisionLayer layer, bool enabled);
@@ -157,5 +153,21 @@ namespace Physics
 
     private:
         AZStd::vector<Preset> m_groups;
+    };
+
+    /// Collision configuration is a convenience storage class for /ref CollisionLayers and /ref CollisionGroups,
+    /// as they are frequently used together. It can be retrieved/mutated through
+    /// CollisionRequests::GetConfiguration/CollisionRequests::SetConfiguration.
+    class CollisionConfiguration
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(CollisionConfiguration, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(CollisionConfiguration, "{84059477-BF6E-4421-9AC7-A0A3B27DEA40}");
+        static void Reflect(AZ::ReflectContext* context);
+
+        CollisionConfiguration() = default;
+        
+        CollisionLayers m_collisionLayers; ///< Collision layers.
+        CollisionGroups m_collisionGroups; ///< Collision groups.
     };
 }

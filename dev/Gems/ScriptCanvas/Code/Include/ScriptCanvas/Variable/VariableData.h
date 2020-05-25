@@ -14,7 +14,7 @@
 
 #include <AzCore/std/containers/unordered_map.h>
 
-#include <ScriptCanvas/Variable/VariableDatum.h>
+#include <ScriptCanvas/Variable/GraphVariable.h>
 
 namespace ScriptCanvas
 {
@@ -26,22 +26,33 @@ namespace ScriptCanvas
         AZ_CLASS_ALLOCATOR(VariableData, AZ::SystemAllocator, 0);
         static void Reflect(AZ::ReflectContext* context);
 
+        enum Version : AZ::s32
+        {
+            InitialVersion = 0,
+            UUID_To_Variable,
+            VariableDatumSimplification,
+
+            // Should always be last
+            Current
+        };        
+
         VariableData() = default;
         VariableData(const VariableData&) = default;
         VariableData& operator=(const VariableData&) = default;
         VariableData(VariableData&&);
         VariableData& operator=(VariableData&&);
 
-        AZ_INLINE AZStd::unordered_map<VariableId, VariableNameValuePair>& GetVariables() { return m_variableMap; }
-        AZ_INLINE const AZStd::unordered_map<VariableId, VariableNameValuePair>& GetVariables() const { return m_variableMap; }
+        AZ_INLINE GraphVariableMapping& GetVariables() { return m_variableMap; }
+        AZ_INLINE const GraphVariableMapping& GetVariables() const { return m_variableMap; }
 
-        AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view varName, const VariableDatum& varDatum);
+        AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view varName, const GraphVariable& graphVariable);
 
-        // returns VariableDatum* if found otherwise a nullptr is returned
-        VariableDatum* FindVariable(AZStd::string_view variableName);
-        VariableNameValuePair* FindVariable(VariableId variableId);
-        const VariableDatum* FindVariable(AZStd::string_view variableName) const { return const_cast<VariableData*>(this)->FindVariable(variableName); }
-        const VariableNameValuePair* FindVariable(VariableId variableId) const { return const_cast<VariableData*>(this)->FindVariable(variableId); }
+        // returns GraphVariable* if found otherwise a nullptr is returned
+        GraphVariable* FindVariable(AZStd::string_view variableName);
+        GraphVariable* FindVariable(VariableId variableId);
+
+        const GraphVariable* FindVariable(AZStd::string_view variableName) const { return const_cast<VariableData*>(this)->FindVariable(variableName); }
+        const GraphVariable* FindVariable(VariableId variableId) const { return const_cast<VariableData*>(this)->FindVariable(variableId); }
 
         void Clear();
 
@@ -54,15 +65,29 @@ namespace ScriptCanvas
         bool RenameVariable(const VariableId& variableId, AZStd::string_view newVarName);
 
     private:
-        AZStd::unordered_map<VariableId, VariableNameValuePair> m_variableMap;
+        GraphVariableMapping m_variableMap;
     };
 
     struct EditableVariableConfiguration
     {
+    private:
+        enum Version : AZ::s32             
+        {
+            InitialVersion,
+            VariableDatumSimplification,
+
+            // Should always be last
+            Current
+        };
+
+    public:
         AZ_TYPE_INFO(EditableVariableConfiguration, "{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}");
         AZ_CLASS_ALLOCATOR(EditableVariableConfiguration, AZ::SystemAllocator, 0);
+
+        static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode);
         static void Reflect(AZ::ReflectContext* context);
-        VariableNameValuePair m_varNameValuePair;
+
+        GraphVariable m_graphVariable;
         Datum m_defaultValue;
     };
 
@@ -84,11 +109,12 @@ namespace ScriptCanvas
 
         // Adds variable with the supplied name and VariableDatum
         // The VariableId is retrieved from the VariableDatum
-        AZ::Outcome<void, AZStd::string> AddVariable(AZStd::string_view varName, const VariableDatum& varDatum);
+        AZ::Outcome<void, AZStd::string> AddVariable(AZStd::string_view varName, const GraphVariable& varDatum);
 
         // returns the pointer to the specified variable in m_variables. Returns nullptr if not found.
         EditableVariableConfiguration* FindVariable(AZStd::string_view variableName);
         EditableVariableConfiguration* FindVariable(VariableId variableId);
+
         const EditableVariableConfiguration* FindVariable(AZStd::string_view variableName) const { return const_cast<EditableVariableData*>(this)->FindVariable(variableName); }
         const EditableVariableConfiguration* FindVariable(VariableId variableId) const { return const_cast<EditableVariableData*>(this)->FindVariable(variableId); }
 

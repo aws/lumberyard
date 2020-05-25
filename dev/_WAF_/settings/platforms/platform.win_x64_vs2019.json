@@ -1,0 +1,119 @@
+{
+    "platform"      : "win_x64_vs2019",
+    "display_name"  : "x64 vs2019",
+    "hosts"         : "win32",
+    "aliases"       : "msvc,win",
+    "has_server"    : true,
+    "has_tests"     : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules"       : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_msvc",
+        "platforms/compile_settings_windows",
+        "platforms/platform_impl_win_x64",
+        "platforms/platform_impl_win_x64_vs2019",
+        "platforms/platform_settings_win_x64_vs2019"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.msvc.json",
+        "common.windows.json",
+        "common.win_msvc.json"
+    ],
+
+    "attributes"    : {
+        "is_windows"            : true,
+        "default_folder_name"   : "Bin64vc142",
+        "legacy_platform_name"  : "win64_vs2019",
+        "compiler"              : "vc142",
+        "msvs": {
+            "msvs_ver"          : "16",
+            "prefix"            : "win",
+            "compat_toolsets"   : ["v142", "v141"],
+            "toolset_name"      : "x64",
+            "format_ver"        : "12.00",
+            "vs_name"           : "Visual Studio 2019",
+            "vs_solution_key"   : "vs2019_solution_name",
+            "command"           : "msvs_2019"
+        },
+        "sa_capability": {
+            "key"               : "vc142",
+            "description"       : "Visual Studio 2019"
+        },
+        "qt_supported"          : true,
+        "qt_platform_dir"       : "msvc2017_64",
+        "qtga_subfolders"       : [
+            "win32/vc140/qtga.dll",
+            "win32/vc140/qtgad.dll",
+            "win32/vc140/qtgad.pdb"
+        ],
+        "binary_compatible_platforms": [
+            "win_x64_vs2015",
+            "win_x64_vs2017"
+        ]
+    },
+
+    "settings"      : {
+        "Visual Studio 2019 Options" :
+        [
+            {
+                "long_form"         : "--win-vs2019-vswhere-args",
+                "attribute"         : "win_vs2019_vswhere_args",
+                "default_value"     : "-version [16.2.29230.47,17.0)",
+                "description"       : "The arguments to pass to vswhere when locating vs2019 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
+            },
+            {
+                "long_form"         : "--win-vs2019-winkit",
+                "attribute"         : "win_vs2019_winkit",
+                "default_value"     : "",
+                "description"       : "The windows kit that vs2019 builds windows targets against"
+            },
+            {
+                "long_form"         : "--win-vs2019-vcvarsall-args",
+                "attribute"         : "win_vs2019_vcvarsall_args",
+                "default_value"     : "",
+                "description"       : "Additional arguments to pass to vcvarsall.bat"
+            },
+            {
+                "long_form"         : "--vs2019-solution-name",
+                "attribute"         : "vs2019_solution_name",
+                "default_value"     : "LumberyardSDK_vs2019",
+                "description"       : "The name of the generated VS2019 solution"
+            },
+            {
+                "long_form"         : "--generate-vs2019-projects-automatically",
+                "attribute"         : "generate_vs2019_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate Visual Studio 2019 Projects/Solutions during every configure"
+            }
+        ]
+    },
+    "env"           : {
+        "DEFINES": [
+            "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING",
+            "_ENABLE_EXTENDED_ALIGNED_STORAGE"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "/FS",       # Fix for issue writing to pdb files
+            "/std:c++17",
+            "/Zc:__cplusplus",
+            "/experimental:external", # Turns on "external" headers feature for MSVC compilers
+            "/external:W0", # Set warning level in external headers to 0. This is used to suppress warnings 3rdParty libraries which uses the "system_includes" option in their json configuration
+            "/wd4193" # Temporary workaround for the /experiment:external feature generating warning C4193: #pragma warning(pop): no matching '#pragma warning(push)'
+                       # This issue will be fixed in Visual Studio 2019 16.4.0
+        ]
+    },
+    "env/performance": {
+        "?enable_link_time_optimization?:ARFLAGS": [
+            "/LTCG"
+        ]
+    },
+    "env/release": {
+        "?enable_link_time_optimization?:ARFLAGS": [
+            "/LTCG"
+        ]
+    }
+}

@@ -21,27 +21,9 @@ namespace ScriptEvents
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<ScriptEventReferencesComponent, AZ::Component>()
-                    ->Version(0)
-                    ->Field("m_scriptEventAssets", &ScriptEventReferencesComponent::m_scriptEventAssets)
-                    ;
-
-                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
-                {
-                    editContext->Class<ScriptEventReferencesComponent>("Script Event References", "This component provides a common point to reference Script Event assets to ensure they are all loaded and registered when needed.")
-                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ScriptEventAssetReference.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/ScriptEventAssetReference.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<ScriptEvents::ScriptEventsAsset>::Uuid())
-                        ->DataElement(0, &ScriptEventReferencesComponent::m_scriptEventAssets, "Script Events", "")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                        ->Attribute("EditButton", "Editor/Icons/Assets/ScriptEvent")
-                        ->Attribute("EditDescription", "Open in Asset Editor")
-                        ;
-                }
+                // The Script Event References component is no longer necessary, as all Script Event assets
+                // will be properly loaded as needed.
+                serializeContext->ClassDeprecate("ScriptEventReferencesComponent", "{D0F440AC-32D4-49EC-8B93-860B188266A6}");
             }
         }
 

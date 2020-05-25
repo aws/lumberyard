@@ -12,8 +12,6 @@
 
 #pragma once
 
-#ifdef AZ_TESTS_ENABLED
-
 #include <AzTest/AzTest.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Math/Vector3.h>
@@ -46,23 +44,16 @@ namespace Physics
         int m_warningCount;
     };
 
-    /// Class to contain tests which any implementation of the AzFramework::Physics API should pass
-    /// Each gem which implements the common physics API can run the generic API tests by:
-    /// - including this header file and the appropriate .inl files.
-    /// - deriving from AZ::Test::ITestEnvironment and extending the environment functions to set up the gem system component etc.
-    /// - implementing the helper functions required for the tests using gem specific components etc.
-    /// - adding a AZ_UNIT_TEST_HOOK with the derived environment class
-    class GenericPhysicsInterfaceTest
-        : public ::testing::Test
-        , protected Physics::DefaultWorldBus::Handler
+    class GenericPhysicsFixture
+        : protected Physics::DefaultWorldBus::Handler
     {
     public:
         // Helper functions for setting up test worlds using API only
         // These can be implemented here as they should not require any gem specific functions
         AZStd::shared_ptr<Physics::World> CreateTestWorld();
 
-        void SetUp() override;
-        void TearDown() override;
+        void SetUpInternal();
+        void TearDownInternal();
 
         // Helper functions for setting up entities used in tests
         // These need to be implemented in the gem as they may require gem specific components etc.
@@ -78,9 +69,41 @@ namespace Physics
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
     };
 
+    /// Class to contain tests which any implementation of the AzFramework::Physics API should pass
+    /// Each gem which implements the common physics API can run the generic API tests by:
+    /// - including this header file and the appropriate .inl files.
+    /// - deriving from AZ::Test::ITestEnvironment and extending the environment functions to set up the gem system component etc.
+    /// - implementing the helper functions required for the tests using gem specific components etc.
+    /// - adding a AZ_UNIT_TEST_HOOK with the derived environment class
+    class GenericPhysicsInterfaceTest
+        : protected GenericPhysicsFixture
+        , public testing::Test
+    {
+    public:
+        void SetUp() override
+        {
+            SetUpInternal();
+        }
+        void TearDown() override
+        {
+            TearDownInternal();
+        }
+    };
+
+
+
     class PhysicsComponentBusTest
         : public GenericPhysicsInterfaceTest
     {
+        void SetUp() override
+        {
+            GenericPhysicsInterfaceTest::SetUp();
+        }
+
+        void TearDown() override
+        {
+            GenericPhysicsInterfaceTest::TearDown();
+        }
     };
 
     // helper functions
@@ -92,8 +115,7 @@ namespace Physics
     AZStd::shared_ptr<RigidBody> AddCapsuleToWorld(World* world, const AZ::Vector3& position);
 
     void UpdateWorld(World* world, float timeStep, AZ::u32 numSteps);
+    void UpdateWorldSplitSim(World* world, float timeStep, AZ::u32 numSteps);
     void UpdateDefaultWorld(AZ::u32 numSteps, float timeStep = WorldConfiguration::s_defaultFixedTimeStep);
     float GetPositionElement(AZ::Entity* entity, int element);
 } // namespace Physics
-
-#endif // AZ_TESTS_ENABLED

@@ -23,6 +23,7 @@
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
+#include <AzToolsFramework/UI/Slice/SlicePushWidget.hxx>
 
 namespace UnitTest
 {
@@ -537,6 +538,59 @@ namespace UnitTest
 
             AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::Bus::Events::EndUndoBatch);
         }
+
+        RemoveAllSlices();
+    }
+
+    class SlicePushWidgetTest : public SlicePushCyclicDependencyTest {};
+
+    TEST_F(SlicePushWidgetTest, SlicePushWidget_CalculateLevelReferences_ReferenceCountCorrect)
+    {
+        // Create an entities and make it a slice.
+        AZ::Entity* entity0 = aznew AZ::Entity("TestEntity0");
+        entity0->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        AZ::Data::AssetId sliceAssetIdChild = SaveAsSlice(entity0);
+
+        // Instantiate 5 copies.
+        AZ::SliceComponent::EntityList slice0EntitiesA = InstantiateSlice(sliceAssetIdChild);
+        AZ::SliceComponent::EntityList slice0EntitiesB = InstantiateSlice(sliceAssetIdChild);
+        AZ::SliceComponent::EntityList slice0EntitiesC = InstantiateSlice(sliceAssetIdChild);
+        AZ::SliceComponent::EntityList slice0EntitiesD = InstantiateSlice(sliceAssetIdChild);
+        AZ::SliceComponent::EntityList slice0EntitiesE = InstantiateSlice(sliceAssetIdChild);
+
+        // Make an entity to parent the slice instances
+        AZ::Entity* parent0 = aznew AZ::Entity("TestParent0");
+        parent0->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        parent0->Init();
+        parent0->Activate();
+
+        AZ::TransformBus::Event(slice0EntitiesA[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent0->GetId());
+        AZ::TransformBus::Event(slice0EntitiesB[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent0->GetId());
+        AZ::TransformBus::Event(slice0EntitiesC[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent0->GetId());
+        AZ::TransformBus::Event(slice0EntitiesD[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent0->GetId());
+        AZ::TransformBus::Event(slice0EntitiesE[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent0->GetId());
+        
+        // Save parent as a slice.
+        AZ::Data::AssetId sliceAssetIdParent = SaveAsSlice(parent0);
+        AZ::SliceComponent::EntityList slice2EntitiesA = InstantiateSlice(sliceAssetIdParent);
+
+        // Make another parent entity and add a sixth instance of the child slice.
+         AZ::Entity* parent1 = aznew AZ::Entity("TestParent1");
+        parent1->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        parent1->Init();
+        parent1->Activate();
+
+        AZ::SliceComponent::EntityList slice0EntitiesF = InstantiateSlice(sliceAssetIdChild);
+        AZ::TransformBus::Event(slice0EntitiesF[0]->GetId(), &AZ::TransformBus::Events::SetParent, parent1->GetId());
+
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(rootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+
+        size_t parentSliceCount = AzToolsFramework::SlicePushWidget::CalculateReferenceCount(sliceAssetIdParent, rootSlice);
+        size_t childSliceCount = AzToolsFramework::SlicePushWidget::CalculateReferenceCount(sliceAssetIdChild, rootSlice);
+
+        EXPECT_EQ(parentSliceCount, 1);
+        EXPECT_EQ(childSliceCount, 6);
 
         RemoveAllSlices();
     }

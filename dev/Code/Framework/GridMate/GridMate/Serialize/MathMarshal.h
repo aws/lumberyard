@@ -24,35 +24,35 @@
 namespace GridMate
 {
     /**
-	* Vector2 Marshaler uses 8 bytes.
-	*/
-	template<>
-	class Marshaler<AZ::Vector2>
-	{
-	public:
+    * Vector2 Marshaler uses 8 bytes.
+    */
+    template<>
+    class Marshaler<AZ::Vector2>
+    {
+    public:
         AZ_TYPE_INFO_LEGACY( Marshaler, "{CF906A15-B46E-4468-9C7C-EC5F5A544F78}", AZ::Vector2 );
 
-		typedef AZ::Vector2 DataType;
+        typedef AZ::Vector2 DataType;
 
-		static const AZStd::size_t MarshalSize = sizeof(float) * 2;
+        static constexpr AZStd::size_t MarshalSize = sizeof(float) * 2;
 
-		void Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const
-		{
-			Marshaler<float> marshaler;
-			marshaler.Marshal(wb, vec.GetX());
-			marshaler.Marshal(wb, vec.GetY());
-		}
-		void Unmarshal(AZ::Vector2& vec, ReadBuffer& rb) const
-		{
-			float x, y;
-			Marshaler<float> marshaler;
-			marshaler.Unmarshal(x, rb);
-			marshaler.Unmarshal(y, rb);
-			vec.Set(x, y);
-		}
-	};
-	
-	/**
+        void Marshal(WriteBuffer& wb, const AZ::Vector2& vec) const
+        {
+            Marshaler<float> marshaler;
+            marshaler.Marshal(wb, vec.GetX());
+            marshaler.Marshal(wb, vec.GetY());
+        }
+        void Unmarshal(AZ::Vector2& vec, ReadBuffer& rb) const
+        {
+            float x, y;
+            Marshaler<float> marshaler;
+            marshaler.Unmarshal(x, rb);
+            marshaler.Unmarshal(y, rb);
+            vec.Set(x, y);
+        }
+    };
+    
+    /**
     * Vector3 Marshaler uses 12 bytes.
     */
     template<>
@@ -63,7 +63,7 @@ namespace GridMate
 
         typedef AZ::Vector3 DataType;
 
-        static const AZStd::size_t MarshalSize = sizeof(float) * 3;
+        static constexpr AZStd::size_t MarshalSize = sizeof(float) * 3;
 
         void Marshal(WriteBuffer& wb, const AZ::Vector3& vec) const
         {
@@ -84,6 +84,36 @@ namespace GridMate
     };
 
     /**
+    * Vector4 Marshaler uses 16 bytes.
+    */
+    template<>
+    class Marshaler<AZ::Vector4>
+    {
+    public:
+        typedef AZ::Vector4 DataType;
+
+        static constexpr AZStd::size_t MarshalSize = sizeof(float) * 4;
+
+        void Marshal(WriteBuffer& wb, const AZ::Vector4& vec) const
+        {
+            Marshaler<float> marshaler;
+            marshaler.Marshal(wb, vec.GetX());
+            marshaler.Marshal(wb, vec.GetY());
+            marshaler.Marshal(wb, vec.GetZ());
+            marshaler.Marshal(wb, vec.GetW());
+        }
+        void Unmarshal(AZ::Vector4& vec, ReadBuffer& rb) const
+        {
+            float x, y, z, w;
+            Marshaler<float> marshaler;
+            marshaler.Unmarshal(x, rb);
+            marshaler.Unmarshal(y, rb);
+            marshaler.Unmarshal(z, rb);
+            marshaler.Unmarshal(w, rb);
+            vec.Set(x, y, z, w);
+        }
+    };
+    /**
     * Color Marshaler uses 16 bytes.
     */
     template<>
@@ -94,7 +124,7 @@ namespace GridMate
 
         typedef AZ::Color DataType;
 
-        static const AZStd::size_t MarshalSize = sizeof(float) * 4;
+        static constexpr AZStd::size_t MarshalSize = sizeof(float) * 4;
 
         void Marshal(WriteBuffer& wb, const AZ::Color& color) const
         {
@@ -127,7 +157,7 @@ namespace GridMate
 
         typedef AZ::Quaternion DataType;
 
-        static const AZStd::size_t MarshalSize = sizeof(float) * 4;
+        static constexpr AZStd::size_t MarshalSize = sizeof(float) * 4;
 
         void Marshal(WriteBuffer& wb, const AZ::Quaternion& quat) const
         {
@@ -160,7 +190,7 @@ namespace GridMate
 
         typedef AZ::Transform DataType;
 
-        static const AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 4;
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 4;
 
         void Marshal(WriteBuffer& wb, const AZ::Transform& value) const
         {
@@ -193,7 +223,7 @@ namespace GridMate
 
         typedef AZ::Matrix3x3 DataType;
 
-        static const AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 3;
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector3>::MarshalSize * 3;
 
         void Marshal(WriteBuffer& wb, const AZ::Matrix3x3& value) const
         {
@@ -210,6 +240,37 @@ namespace GridMate
             marshaler.Unmarshal(y, rb);
             marshaler.Unmarshal(z, rb);
             value.SetBasis(x, y, z);
+        }
+    };
+
+    /**
+    * Matrix4x4 Marshaler
+    */
+    template<>
+    class Marshaler<AZ::Matrix4x4>
+    {
+    public:
+        typedef AZ::Matrix4x4 DataType;
+
+        static constexpr AZStd::size_t MarshalSize = Marshaler<AZ::Vector4>::MarshalSize * 4;
+
+        void Marshal(WriteBuffer& wb, const AZ::Matrix4x4& value) const
+        {
+            Marshaler<AZ::Vector4> marshaler;
+            marshaler.Marshal(wb, value.GetBasisX());
+            marshaler.Marshal(wb, value.GetBasisY());
+            marshaler.Marshal(wb, value.GetBasisZ());
+            marshaler.Marshal(wb, value.GetColumn(3));
+        }
+        void Unmarshal(AZ::Matrix4x4& value, ReadBuffer& rb) const
+        {
+            Marshaler<AZ::Vector4> marshaler;
+            AZ::Vector4 x, y, z, pos;
+            marshaler.Unmarshal(x, rb);
+            marshaler.Unmarshal(y, rb);
+            marshaler.Unmarshal(z, rb);
+            marshaler.Unmarshal(pos, rb);
+            value.SetBasisAndPosition(x, y, z, pos);
         }
     };
 }

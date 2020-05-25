@@ -168,29 +168,30 @@ namespace AzToolsFramework
 
         bool RootAssetBrowserEntry::RemoveFile(const AZ::s64& fileId) const
         {
-            const auto itFile = EntryCache::GetInstance()->m_fileIdMap.find(fileId);
-            if (itFile == EntryCache::GetInstance()->m_fileIdMap.end())
+            auto fileIdNodeHandle = EntryCache::GetInstance()->m_fileIdMap.extract(fileId);
+            if (fileIdNodeHandle.empty())
             {
-                // file may have previously been removed if it's parent folder was deleted
-                // the order of messages received from AP is not always guranteed,
+                // file may have previously been removed if its parent folder was deleted
+                // the order of messages received from AP is not always guaranteed,
                 // so if we receive "remove folder" before "remove file" then this file would no longer exist in cache
                 return true;
             }
 
-            auto* source = azrtti_cast<SourceAssetBrowserEntry*>(itFile->second);
+            AssetBrowserEntry* entryToRemove = fileIdNodeHandle.mapped();
+            AZStd::string fullPath = entryToRemove->GetFullPath();
+            auto* source = azrtti_cast<SourceAssetBrowserEntry*>(entryToRemove);
             if (source && source->m_sourceId != -1)
             {
                 RemoveSource(source->m_sourceUuid);
             }
 
-            if (auto parent = itFile->second->GetParent())
+            if (auto parent = entryToRemove->GetParent())
             {
-                parent->RemoveChild(itFile->second);
+                parent->RemoveChild(entryToRemove);
             }
-            AZStd::string fullPath = itFile->second->GetFullPath();
+
             AzFramework::StringFunc::Path::Normalize(fullPath);
             EntryCache::GetInstance()->m_absolutePathToFileId.erase(fullPath);
-            EntryCache::GetInstance()->m_fileIdMap.erase(fileId);
             return true;
         }
 

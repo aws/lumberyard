@@ -39,6 +39,7 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/algorithm.h>
 
+#include <LyShine/Bus/UiCursorBus.h>
 //#define DEFENCE_CVAR_HASH_LOGGING
 
 static inline void AssertName(const char* szName)
@@ -1024,18 +1025,11 @@ void    CXConsole::ShowConsole(bool show, const int iRequestScrollMax)
 
     if (show && !m_bConsoleActive)
     {
-        AzFramework::InputSystemCursorRequestBus::EventResult(m_previousSystemCursorState,
-                                                              AzFramework::InputDeviceMouse::Id,
-                                                              &AzFramework::InputSystemCursorRequests::GetSystemCursorState);
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                        AzFramework::SystemCursorState::UnconstrainedAndVisible);
+      UiCursorBus::Broadcast(&UiCursorBus::Events::IncrementVisibleCounter);
     }
     else if (!show && m_bConsoleActive)
     {
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                        m_previousSystemCursorState);
+        UiCursorBus::Broadcast(&UiCursorBus::Events::DecrementVisibleCounter);
     }
 
     SetStatus(show);
@@ -1334,6 +1328,12 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
             Copy();
 
             // Consume keyboard events if the console is active, which it will be if we get here
+            return true;
+        }
+        else if (channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericV &&
+            modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny))
+        {
+            Paste();
             return true;
         }
     }
@@ -2266,7 +2266,7 @@ void CXConsole::ExecuteString(const char* command, const bool bSilentMode, const
         m_deferredExecution = oldDeferredExecution;
     }
     else
-    {        
+    {
         m_deferredCommands.push_back(SDeferredCommand(str.c_str(), bSilentMode));
     }
 }
@@ -2430,7 +2430,7 @@ void CXConsole::ExecuteStringInternal(const char* command, const bool bFromConso
                     m_blockCounter++;
                 }
 
-                {   
+                {
                     sTemp = sLineCommand;
                 }
                 ExecuteCommand((itrCmd->second), sTemp);
@@ -3426,7 +3426,7 @@ void CXConsole::AddCommandToHistory(const char* szCommand)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::Copy()
 {
-#ifdef WIN32
+#ifdef AZ_PLATFORM_WINDOWS
     if (m_sInputBuffer.empty())
     {
         return;
@@ -3453,7 +3453,42 @@ void CXConsole::Copy()
     }
 
     return;
-#endif //WIN32
+#endif //AZ_PLATFORM_WINDOWS
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CXConsole::Paste()
+{
+#if defined(AZ_PLATFORM_WINDOWS)
+    if (OpenClipboard(NULL) != 0)
+    {
+        wstring data;
+        const HANDLE wideData = GetClipboardData(CF_UNICODETEXT);
+        if (wideData)
+        {
+            const LPCWSTR pWideData = (LPCWSTR)GlobalLock(wideData);
+            if (pWideData)
+            {
+                // Note: This conversion is just to make sure we discard malicious or malformed data
+                Unicode::ConvertSafe<Unicode::eErrorRecovery_Discard>(data, pWideData);
+                GlobalUnlock(wideData);
+            }
+        }
+        CloseClipboard();
+
+        for (Unicode::CIterator<wstring::const_iterator> it(data.begin(), data.end()); it != data.end(); ++it)
+        {
+            const uint32 cp = *it;
+            if (cp != '\r')
+            {
+                // Convert UCS code-point into UTF-8 string
+                char utf8_buf[5];
+                Unicode::Convert(utf8_buf, cp);
+                AddInputUTF8(utf8_buf);
+            }
+        }
+    }
+#endif //AZ_PLATFORM_WINDOWS
 }
 
 
@@ -4059,7 +4094,7 @@ void CXConsole::ExecuteRegisteredCommand(IConsoleCmdArgs* args)
         AZ_Error("console", false, "Command %s not found in the command registry", commandIdentifier);
         return;
     }
-    
+
     AZStd::vector<AZStd::string_view> input;
     input.reserve(args->GetArgCount());
     for (int i = 0; i < args->GetArgCount(); ++i)
@@ -4146,6 +4181,3 @@ void CXConsole::RemoveConsoleVarSink(IConsoleVarSink* pSink)
 {
     m_consoleVarSinks.remove(pSink);
 }
-
-
-

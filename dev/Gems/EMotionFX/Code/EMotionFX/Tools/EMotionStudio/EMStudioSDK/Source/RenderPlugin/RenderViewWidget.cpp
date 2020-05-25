@@ -80,7 +80,7 @@ namespace EMStudio
         CreateEntry(viewMenu, "Solid",                  "Solid.png",            RENDER_SOLID);
         CreateEntry(viewMenu, "Wireframe",              "Wireframe.png",        RENDER_WIREFRAME);
         viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Texturing",              "Texturing.png",        RENDER_TEXTURING);
+        CreateEntry(viewMenu, "Texturing",              "Texturing.png",        RENDER_TEXTURING, false);
         CreateEntry(viewMenu, "Lighting",               "Lighting.png",         RENDER_LIGHTING);
         CreateEntry(viewMenu, "Shadows",                "Shadows.png",          RENDER_SHADOWS, false);
         CreateEntry(viewMenu, "Backface Culling",       "BackfaceCulling.png",  RENDER_BACKFACECULLING);
@@ -90,8 +90,8 @@ namespace EMStudio
         CreateEntry(viewMenu, "Tangents",               "Tangents.png",         RENDER_TANGENTS);
         viewMenu->addSeparator();
         CreateEntry(viewMenu, "Actor Bounding Boxes",   "BoundingBoxes.png",    RENDER_AABB);
-        CreateEntry(viewMenu, "Node OBBs",              "OBBs.png",             RENDER_OBB);
-        CreateEntry(viewMenu, "Collision Meshes",       "CollisionMeshes.png",  RENDER_COLLISIONMESHES);
+        CreateEntry(viewMenu, "Node OBBs",              "OBBs.png",             RENDER_OBB, false);
+        CreateEntry(viewMenu, "Collision Meshes",       "CollisionMeshes.png",  RENDER_COLLISIONMESHES, false);
         CreateEntry(viewMenu, "Ragdoll Colliders",      QIcon(":/EMotionFX/RagdollCollider_Orange.png"), true,      RENDER_RAGDOLL_COLLIDERS);
         CreateEntry(viewMenu, "Ragdoll Joint Limits",   QIcon(":/EMotionFX/RagdollJointLimit_Orange.png"), true,    RENDER_RAGDOLL_JOINTLIMITS);
         CreateEntry(viewMenu, "Hit Detection Colliders",QIcon(":/EMotionFX/HitDetection_Blue.png"), true,           RENDER_HITDETECTION_COLLIDERS);
@@ -148,7 +148,7 @@ namespace EMStudio
         SetRenderFlag(RENDER_WIREFRAME, false);
 
         SetRenderFlag(RENDER_LIGHTING, true);
-        SetRenderFlag(RENDER_TEXTURING, true);
+        SetRenderFlag(RENDER_TEXTURING, false);
         SetRenderFlag(RENDER_SHADOWS, true);
 
         SetRenderFlag(RENDER_VERTEXNORMALS, false);
@@ -343,6 +343,11 @@ namespace EMStudio
             const bool isEnabled = settings->value(name, mActions[i]->isChecked()).toBool();
             SetRenderFlag((ERenderFlag)i, isEnabled);
         }
+
+        // Override some settings as we removed those from the menu.
+        SetRenderFlag(RENDER_OBB, false);
+        SetRenderFlag(RENDER_COLLISIONMESHES, false);
+        SetRenderFlag(RENDER_TEXTURING, false);
 
         RenderWidget::CameraMode cameraMode = (RenderWidget::CameraMode)settings->value("CameraMode", (int32)mRenderWidget->GetCameraMode()).toInt();
         mRenderWidget->SwitchCamera(cameraMode);

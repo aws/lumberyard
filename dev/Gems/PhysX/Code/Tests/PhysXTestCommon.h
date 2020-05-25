@@ -13,17 +13,13 @@
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
-#include <AzCore/Component/TransformBus.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
 #include <AzFramework/Physics/Material.h>
-#include <AzFramework/Physics/Shape.h>
-#include <AzFramework/Components/TransformComponent.h>
 
 #include <PhysX/HeightFieldAsset.h>
 #include <BoxColliderComponent.h>
-#include <RigidBodyComponent.h>
 
 namespace PhysX
 {

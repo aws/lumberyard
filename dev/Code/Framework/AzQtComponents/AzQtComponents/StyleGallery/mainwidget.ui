@@ -574,13 +574,13 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="AzQtComponents::StyledSpinBox" name="spinBoxRight">
                 <property name="minimum">
-                 <double>-50.000000000000000</double>
+                 <number>-50</number>
                 </property>
                 <property name="maximum">
-                 <double>100.000000000000000</double>
+                 <number>100</number>
                 </property>
                 <property name="value">
-                 <double>50.000000000000000</double>
+                 <number>50</number>
                 </property>
                </widget>
               </item>

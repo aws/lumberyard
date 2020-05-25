@@ -91,7 +91,7 @@ namespace NvCloth
 
         // Implementation of the assert handler interface directing nvcloth asserts to Lumberyard assertion system.
         class AzClothAssertHandler
-            : public physx::PxAssertHandler
+            : public nv::cloth::PxAssertHandler
         {
         public:
             void operator()(const char* exp, const char* file, int line, bool& ignore) override

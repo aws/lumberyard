@@ -80,11 +80,13 @@ namespace EMStudio
         m_commandCallbacks.emplace_back(new CommandDidAdjustConnectionCallback(*this));
         CommandSystem::GetCommandManager()->RegisterCommandCallback(CommandSystem::CommandAnimGraphAdjustTransition::s_commandName, m_commandCallbacks.back());
 
-        m_commandCallbacks.emplace_back(new CommandDidAddConditionCallback(*this));
+        // Transition conditions.
+        m_commandCallbacks.emplace_back(new CommandDidAddRemoveConditionCallback(*this));
         CommandSystem::GetCommandManager()->RegisterCommandCallback(CommandSystem::CommandAddTransitionCondition::s_commandName, m_commandCallbacks.back());
-
-        m_commandCallbacks.emplace_back(new CommandDidRemoveConditionCallback(*this));
+        m_commandCallbacks.emplace_back(new CommandDidAddRemoveConditionCallback(*this));
         CommandSystem::GetCommandManager()->RegisterCommandCallback(CommandSystem::CommandRemoveTransitionCondition::s_commandName, m_commandCallbacks.back());
+        m_commandCallbacks.emplace_back(new CommandDidAdjustConditionCallback(*this));
+        CommandSystem::GetCommandManager()->RegisterCommandCallback(CommandSystem::CommandAdjustTransitionCondition::s_commandName, m_commandCallbacks.back());
 
         m_commandCallbacks.emplace_back(new CommandDidEditActionCallback(*this));
         CommandSystem::GetCommandManager()->RegisterCommandCallback(CommandSystem::CommandAnimGraphAddTransitionAction::s_commandName, m_commandCallbacks.back());
@@ -378,7 +380,7 @@ namespace EMStudio
                     QPixmap pixmap(QSize(12, 8));
                     QColor nodeColor;
                     nodeColor.setRgbF(node->GetVisualColor().GetR(), node->GetVisualColor().GetG(), node->GetVisualColor().GetB(), 1.0f);
-                    nodeColor.darker(30);
+                    nodeColor = nodeColor.darker(130);
                     pixmap.fill(nodeColor);
                     return pixmap;
                 }
@@ -434,7 +436,7 @@ namespace EMStudio
         return QVariant();
     }
 
-    void AnimGraphModel::Focus(const QModelIndex& focusIndex)
+    void AnimGraphModel::Focus(const QModelIndex& focusIndex, bool forceEmitFocusChangeEvent)
     {
         QModelIndex newFocusIndex = focusIndex;
 
@@ -443,7 +445,15 @@ namespace EMStudio
         {
             newFocusIndex = newFocusIndex.sibling(newFocusIndex.row(), 0);
         }
-        if (newFocusIndex != m_focus)
+
+        // Do not focus on an item when there is a pending deletion happening, because when that happen there is a desync between the anim graph
+        // and the model. The focus will be decided later based on the deleted item.
+        if (focusIndex != QModelIndex() && !m_pendingToDeleteIndices.empty())
+        {
+            return;
+        }
+
+        if (forceEmitFocusChangeEvent || newFocusIndex != m_focus)
         {
             QModelIndex parentFocus = newFocusIndex;
             if (parentFocus.isValid())
@@ -660,6 +670,13 @@ namespace EMStudio
 
     EMotionFX::AnimGraph* AnimGraphModel::GetFocusedAnimGraph() const
     {
+        if (AZStd::find(m_pendingToDeleteIndices.begin(), m_pendingToDeleteIndices.end(), m_focus) != m_pendingToDeleteIndices.end())
+        {
+            // Calling this function when focused item is being deleted is unsafe, as the underlying model item could be deleted.
+            // When this happens, we treat it like focusing on an empty graph.
+            return nullptr;
+        }
+
         const QModelIndex focusModelIndex = GetFocus();
         const AnimGraphModel::ModelItemType itemType = focusModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
         const EMotionFX::AnimGraphNode* node = focusModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
@@ -672,6 +689,21 @@ namespace EMStudio
         return node->GetAnimGraph();
     }
 
+    EMotionFX::AnimGraph* AnimGraphModel::FindRootAnimGraph(const QModelIndex& modelIndex) const
+    {
+        if (modelIndex.isValid() && modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<ModelItemType>() == ItemTypeForClass<EMotionFX::AnimGraphNode>::itemType)
+        {
+            QModelIndex parentIndex = modelIndex;
+            while (parentIndex.parent().isValid())
+            {
+                parentIndex = parentIndex.parent();
+            }
+            EMotionFX::AnimGraphNode* rootNode = parentIndex.data(RoleForClass<EMotionFX::AnimGraphNode>::role).value<EMotionFX::AnimGraphNode*>();
+            return rootNode->GetAnimGraph();
+        }
+        return nullptr;
+    }
+
     bool AnimGraphModel::CheckAnySelectedNodeBelongsToReferenceGraph() const
     {
         QModelIndexList selectedIndexes = m_selectionModel.selectedRows();
@@ -682,14 +714,9 @@ namespace EMStudio
                 EMotionFX::AnimGraphNode* animGraphNode = modelIndex.data(RoleForClass<EMotionFX::AnimGraphNode>::role).value<EMotionFX::AnimGraphNode*>();
 
                 // find the root item, check if the root node and the selected node points to the same anim graph.
-                QModelIndex& parentIndex = modelIndex;
-                while (parentIndex.parent().isValid())
-                {
-                    parentIndex = parentIndex.parent();
-                }
-                EMotionFX::AnimGraphNode* rootNode = parentIndex.data(RoleForClass<EMotionFX::AnimGraphNode>::role).value<EMotionFX::AnimGraphNode*>();
+                const EMotionFX::AnimGraph* rootAnimGraph = FindRootAnimGraph(modelIndex);
                 
-                if (animGraphNode->GetAnimGraph() != rootNode->GetAnimGraph())
+                if (animGraphNode->GetAnimGraph() != rootAnimGraph)
                 {
                     return true;
                 }
@@ -1261,16 +1288,11 @@ namespace EMStudio
             }
         }
 
-        // Care must be taken when removing items from the model. In general,
-        // this model does not behave the way that Qt expects. The preferred
-        // way is to call beginRemoveRows() _before_ the underlying objects are
-        // destroyed. The model does not currently guarantee that. By the time
-        // that RemovePending() is called, the AnimGraphObjects that the model
-        // uses internally have already been destroyed. So anything that may
-        // change the current selection (which will re-query the model for
-        // data) has to be done before RemovePending() is called. So, we clear
-        // the focus item whenever we're about to remove items.
-        Focus();
+        // Send the signal to UI that we will delete the model index.
+        // Note: This is a custom signal. We have to rely on an earlier custom signal (instead of the standard rowsAboutToBeRemoved signal),
+        // because by the time beginRemoveRows called in RemovePending(), the underlying item already been deleted.
+        const QModelIndex parentModelIndex = modelIndex.parent();
+        AboutToBeRemovedSignal(parentModelIndex, modelIndex.row(), modelIndex.row());
     }
 
     void AnimGraphModel::RemovePending()
@@ -1310,7 +1332,10 @@ namespace EMStudio
         }
         m_pendingToEditIndices.clear();
 
-        Focus(m_pendingFocus);
+        // If the pending focus is invalid, we need to force emit the focusChanged event, because the UI will likely need to reset.
+        const bool forceEmit = !m_pendingFocus.isValid();
+        Focus(m_pendingFocus, forceEmit);
+
         m_pendingFocus = QPersistentModelIndex();
     }
 

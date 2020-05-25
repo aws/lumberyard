@@ -39,6 +39,15 @@ class _TypeMetaclass(ABCMeta):
     and hashing), then looking it up in the _typecache registry.
     """
 
+    def __init__(cls, name, bases, orig_vars):
+        # __init__ is hooked to mark whether a Type class being defined is a
+        # Numba internal type (one which is defined somewhere under the `numba`
+        # module) or an external type (one which is defined elsewhere, for
+        # example a user defined type).
+        super(_TypeMetaclass, cls).__init__(name, bases, orig_vars)
+        root = (cls.__module__.split('.'))[0]
+        cls._is_internal = root == "numba"
+
     def _intern(cls, inst):
         # Try to intern the created instance
         wr = weakref.ref(inst, _on_type_disposal)
@@ -81,6 +90,8 @@ class Type(object):
     """
 
     mutable = False
+    # Rather the type is reflected at the python<->nopython boundary
+    reflected = False
 
     def __init__(self, name):
         self.name = name
@@ -88,7 +99,7 @@ class Type(object):
     @property
     def key(self):
         """
-        A property used for __eq__, __ne__ and __hash__.  Can be overriden
+        A property used for __eq__, __ne__ and __hash__.  Can be overridden
         in subclasses.
         """
         return self.name
@@ -205,6 +216,12 @@ class Type(object):
         raise NotImplementedError
 
 
+    @property
+    def is_internal(self):
+        """ Returns True if this class is an internally defined Numba type by
+        virtue of the module in which it is instantiated, False else."""
+        return self._is_internal
+
 # XXX we should distinguish between Dummy (no meaningful
 # representation, e.g. None or a builtin function) and Opaque (has a
 # meaningful representation, e.g. ExternalFunctionPointer)
@@ -258,12 +275,6 @@ class Callable(Type):
         """
         Returns a tuple of (list of signatures, parameterized)
         """
-
-    def get_call_type_with_literals(self, context, args, kws, literals):
-        """Simliar to .get_call_type() but with extra argument for literals.
-        Default implementation ignores literals and forwards to .get_call_type().
-        """
-        return self.get_call_type(context, args, kws)
 
 
 class DTypeSpec(Type):
@@ -354,7 +365,7 @@ class ArrayCompatible(Type):
     exposing an __array__ method).
     Derived classes should implement the *as_array* attribute.
     """
-    # If overriden by a subclass, it should also implement typing
+    # If overridden by a subclass, it should also implement typing
     # for '__array_wrap__' with arguments (input, formal result).
     array_priority = 0.0
 
@@ -378,3 +389,68 @@ class ArrayCompatible(Type):
     @cached_property
     def dtype(self):
         return self.as_array.dtype
+
+
+class Literal(Type):
+    """Base class for Literal types.
+    Literal types contain the original Python value in the type.
+
+    A literal type should always be constructed from the `literal(val)`
+    function.
+    """
+
+    # *ctor_map* is a dictionary mapping Python types to Literal subclasses
+    # for constructing a numba type for a given Python type.
+    # It is used in `literal(val)` function.
+    # To add new Literal subclass, register a new mapping to this dict.
+    ctor_map = {}
+
+    # *_literal_type_cache* is used to cache the numba type of the given value.
+    _literal_type_cache = None
+
+    def __init__(self, value):
+        if type(self) is Literal:
+            raise TypeError(
+                "Cannot be constructed directly. "
+                "Use `numba.types.literal(value)` instead",
+            )
+        self._literal_init(value)
+        fmt = "Literal[{}]({})"
+        super(Literal, self).__init__(fmt.format(type(value).__name__, value))
+
+    def _literal_init(self, value):
+        self._literal_value = value
+        # We want to support constants of non-hashable values, therefore
+        # fall back on the value's id() if necessary.
+        try:
+            hash(value)
+        except TypeError:
+            self._key = id(value)
+        else:
+            self._key = value
+
+    @property
+    def literal_value(self):
+        return self._literal_value
+
+    @property
+    def literal_type(self):
+        if self._literal_type_cache is None:
+            from numba import typing
+            ctx = typing.Context()
+            res = ctx.resolve_value_type(self.literal_value)
+            self._literal_type_cache = res
+
+        return self._literal_type_cache
+
+
+
+class TypeRef(Dummy):
+    """Reference to a type.
+
+    Used when a type is passed as a value.
+    """
+    def __init__(self, instance_type):
+        self.instance_type = instance_type
+        super(TypeRef, self).__init__('typeref[{}]'.format(self.instance_type))
+

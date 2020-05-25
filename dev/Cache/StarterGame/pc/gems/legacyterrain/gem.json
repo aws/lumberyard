@@ -1,0 +1,29 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ],
+    "GemFormatVersion": 4,
+    "Uuid": "c87f9fc3e7054f3482311da444e84456",
+    "Name": "LegacyTerrain",
+    "DisplayName": "Legacy Terrain",
+    "Version": "0.1.0",
+    "Summary": "Components and utiities for the legacy terrain system",
+    "Tags": ["Terrain"],
+    "IconPath": "LegacyTerrain.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        },
+        {
+            "Name": "Editor",
+            "Type": "EditorModule",
+            "Extends": "GameModule"
+        }
+    ]
+}

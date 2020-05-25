@@ -28,6 +28,7 @@ namespace RoadsAndRivers
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::SplineAttributeNotificationBus::Handler::BusConnect(GetEntityId());
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         m_river.Activate(GetEntityId());
     }
@@ -36,6 +37,7 @@ namespace RoadsAndRivers
     {
         Base::Deactivate();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
         LmbrCentral::SplineAttributeNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
@@ -77,25 +79,32 @@ namespace RoadsAndRivers
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                      ->ClassElement(AZ::Edit::ClassElements::Group, "Terrain Editing") 
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        // LY-93850: This attribute doesn't currently work at the class level, so it's also added to every data element beneath this
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &EditorRiverComponent::m_terrainBorderWidth, "Border width", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &EditorRiverComponent::m_embankment, "Embankment height", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &EditorRiverComponent::m_riverBedDepth, "Depth of the river bed", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &EditorRiverComponent::m_riverBedWidthOffset, "River bed width offset", "How narrower or wider is river bed comparing to the width of the river")
                             ->Attribute(AZ::Edit::Attributes::Min, &EditorRiverComponent::GetMinBorderWidthForTools)
                             ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                         ->DataElement(AZ::Edit::UIHandlers::Button, &EditorRiverComponent::m_heightMapButton, "", "")
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorRiverComponent::HeightmapButtonClicked)
                             ->Attribute(AZ::Edit::Attributes::ButtonText, "Carve River Bed")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorRiverComponent::GetVisibilityProperty)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Vegetation Editing")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &EditorRiverComponent::m_eraseVegetationWidth, "Erase width", "Distance from road edge to erase vegetation within. Negative values mean vegetation to be left inside the object")
@@ -129,6 +138,23 @@ namespace RoadsAndRivers
     {
         required.push_back(AZ_CRC("SplineService"));
         required.push_back(AZ_CRC("TransformService"));
+    }
+
+    AZ::Crc32 EditorRiverComponent::GetVisibilityProperty() const
+    {
+        return EditorUtils::TerrainExists() ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+    void EditorRiverComponent::OnTerrainDataCreateEnd()
+    {
+        // When terrain is created, we need to potentially enable our terrain modification choices
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+    }
+
+    void EditorRiverComponent::OnTerrainDataDestroyBegin()
+    {
+        // When terrain is destroyed, we need to potentially disable our terrain modification choices
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
     }
 
     void EditorRiverComponent::BuildGameEntity(AZ::Entity* gameEntity)

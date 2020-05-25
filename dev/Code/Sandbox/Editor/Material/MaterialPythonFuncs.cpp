@@ -15,7 +15,6 @@
 
 #include "StdAfx.h"
 #include "Material/MaterialManager.h"
-#include "Util/BoostPythonHelpers.h"
 #include "ShaderEnum.h"
 
 #include "MaterialPythonFuncs.h"
@@ -73,26 +72,6 @@ namespace
     void PyMaterialSetCurrentFromObject()
     {
         GetIEditor()->GetMaterialManager()->Command_SelectFromObject();
-    }
-
-    std::vector<std::string> PyLegacyGetSubMaterial(const char* pMaterialPath)
-    {
-        QString materialPath = pMaterialPath;
-        CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(pMaterialPath, false);
-        if (!pMaterial)
-        {
-            throw std::runtime_error("Invalid multi material.");
-        }
-
-        std::vector<std::string> result;
-        for (int i = 0; i < pMaterial->GetSubMaterialCount(); i++)
-        {
-            if (pMaterial->GetSubMaterial(i))
-            {
-                result.push_back((materialPath + "\\" + pMaterial->GetSubMaterial(i)->GetName()).toUtf8().data());
-            }
-        }
-        return result;
     }
 
     AZStd::vector<AZStd::string> PyGetSubMaterial(const char* pMaterialPath)
@@ -772,8 +751,47 @@ namespace
     }
 
     //////////////////////////////////////////////////////////////////////////
+    template <typename T>
+    bool IsAnyValidRange(const AZStd::any& value, const T& low, const T& high, const QString& invalidTypeMessage, const QString& invalidValueMessage)
+    {
+        static_assert(AZStd::is_arithmetic<T>::value, "This function only works with numbers.");
 
-    bool ValidateProperty(CMaterial* pMaterial, const std::deque<QString>& splittedPropertyPathParam, const SPyWrappedProperty& value)
+        if (!value.is<T>())
+        {
+            throw std::runtime_error(invalidTypeMessage.toUtf8().data());
+        }
+
+        T valueData;
+        AZStd::any_numeric_cast(&value, valueData);
+        if (valueData < low || valueData > high)
+        {
+            throw std::runtime_error(invalidValueMessage.toUtf8().data());
+        }
+        return true;
+    }
+
+    template <>
+    bool IsAnyValidRange(const AZStd::any& value, const AZ::Color& low, const AZ::Color& high, const QString& invalidTypeMessage, const QString& invalidValueMessage)
+    {
+        if (!value.is<AZ::Color>())
+        {
+            throw std::runtime_error(invalidTypeMessage.toUtf8().data());
+        }
+
+        const AZ::Color* valueData = AZStd::any_cast<const AZ::Color>(&value);
+        if (!valueData)
+        {
+            throw std::runtime_error(invalidValueMessage.toUtf8().data());
+        }
+
+        if (valueData->IsLessThan(low) || valueData->IsGreaterThan(high))
+        {
+            throw std::runtime_error(invalidValueMessage.toUtf8().data());
+        }
+        return true;
+    }
+
+    bool ValidateProperty(CMaterial* pMaterial, const std::deque<QString>& splittedPropertyPathParam, const AZStd::any& value)
     {
         std::deque<QString> splittedPropertyPath = splittedPropertyPathParam;
         std::deque<QString> splittedPropertyPathSubCategory = splittedPropertyPathParam;
@@ -786,7 +804,6 @@ namespace
         QString errorMsgInvalidValue = QString("Invalid value for property \"") + propertyName + "\"";
         QString errorMsgInvalidDataType = QString("Invalid data type for property \"") + propertyName + "\"";
         QString errorMsgInvalidPropertyPath = QString("Invalid property path");
-
 
         const int iMinColorValue = 0;
         const int iMaxColorValue = 255;
@@ -874,44 +891,28 @@ namespace
             if (propertyName == "Opacity" || propertyName == "AlphaTest" || propertyName == "Glow Amount")
             {
                 // int: 0 < x < 100
-                if (value.type != SPyWrappedProperty::eType_Int)
+                if (!value.is<AZ::s64>())
                 {
                     throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
-                if (value.property.intValue < 0 || value.property.intValue > 100)
+                AZ::s64 valueData;
+                AZStd::any_numeric_cast(&value, valueData);
+                if (valueData < 0 || valueData > 100)
                 {
                     throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
                 }
                 return true;
             }
-            else if (propertyName == "Glossiness")
+            else if (propertyName == "Smoothness" || propertyName == "Glossiness")
             {
                 // int: 0 < x < 255
-                if (value.type != SPyWrappedProperty::eType_Int)
-                {
-                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
-                }
-
-                if (value.property.intValue < iMinColorValue || value.property.intValue > iMaxColorValue)
-                {
-                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
-                }
-                return true;
+                return IsAnyValidRange<AZ::s64>(value, 0, 255, errorMsgInvalidDataType, errorMsgInvalidValue);
             }
             else if (propertyName == "Specular Level")
             {
                 // float: 0.0 < x < 4.0
-                if (value.type != SPyWrappedProperty::eType_Float)
-                {
-                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
-                }
-
-                if (value.property.floatValue < 0.0f || value.property.floatValue > 4.0f)
-                {
-                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
-                }
-                return true;
+                return IsAnyValidRange<double>(value, 0.0, 4.0, errorMsgInvalidDataType, errorMsgInvalidValue);
             }
             else if (
                 propertyName == "TileU" ||
@@ -942,38 +943,22 @@ namespace
                 propertyName == "Frequency")
             {
                 // float: 0.0 < x < 100.0
-                if (value.type != SPyWrappedProperty::eType_Float)
-                {
-                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
-                }
-
-                if (value.property.floatValue < 0.0f || value.property.floatValue > 100.0f)
-                {
-                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
-                }
-                return true;
+                return IsAnyValidRange<double>(value, 0.0, 100.0, errorMsgInvalidDataType, errorMsgInvalidValue);
+            }
+            else if (propertyName == "Voxel Coverage")
+            {
+                // float: 0.0 < x < 1.0
+                return IsAnyValidRange<double>(value, 0.0, 1.0, errorMsgInvalidDataType, errorMsgInvalidValue);
+            }
+            else if (propertyName == "Emissive Intensity")
+            {
+                // float: 0.0 < x < 200.0
+                return IsAnyValidRange<double>(value, 0.0, 200.0, errorMsgInvalidDataType, errorMsgInvalidValue);
             }
             else if (propertyName == "Diffuse Color" || propertyName == "Specular Color" || propertyName == "Emissive Color")
             {
                 // intVector(RGB): 0 < x < 255
-                if (value.type != SPyWrappedProperty::eType_Color)
-                {
-                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
-                }
-
-                if (value.property.colorValue.r < iMinColorValue || value.property.colorValue.r > iMaxColorValue)
-                {
-                    throw std::runtime_error((errorMsgInvalidValue + " (red)").toUtf8().data());
-                }
-                else if (value.property.colorValue.g < iMinColorValue || value.property.colorValue.g > iMaxColorValue)
-                {
-                    throw std::runtime_error((errorMsgInvalidValue + " (green)").toUtf8().data());
-                }
-                else if (value.property.colorValue.b < iMinColorValue || value.property.colorValue.b > iMaxColorValue)
-                {
-                    throw std::runtime_error((errorMsgInvalidValue + " (blue)").toUtf8().data());
-                }
-                return true;
+                return IsAnyValidRange<AZ::Color>(value, AZ::Color::CreateZero(), AZ::Color::CreateOne(), errorMsgInvalidDataType, errorMsgInvalidValue);
             }
             else if (
                 propertyName == "Link to Material" ||
@@ -997,7 +982,7 @@ namespace
                 propertyName == "TypeV")
             {
                 // string
-                if (value.type != SPyWrappedProperty::eType_String)
+                if (!value.is<AZStd::string_view>())
                 {
                     throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
@@ -1027,7 +1012,7 @@ namespace
                 propertyName == "No Draw")
             {
                 // bool
-                if (value.type != SPyWrappedProperty::eType_Bool)
+                if (!value.is<bool>())
                 {
                     throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
@@ -1036,7 +1021,7 @@ namespace
             else if (propertyName == "Shader" || propertyName == "Shader1" || propertyName == "Shader2" || propertyName == "Shader3")
             {
                 // string && valid shader
-                if (value.type != SPyWrappedProperty::eType_String)
+                if (!value.is<AZStd::string_view>())
                 {
                     throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
@@ -1049,7 +1034,7 @@ namespace
                 pShaderEnum->EnumShaders();
                 for (int i = 0; i < pShaderEnum->GetShaderCount(); i++)
                 {
-                    if (pShaderEnum->GetShader(i) == value.stringValue)
+                    if (pShaderEnum->GetShader(i) == AZStd::any_cast<AZStd::string_view>(value).data())
                     {
                         return true;
                     }
@@ -1058,7 +1043,7 @@ namespace
             else if (propertyName == "Noise Scale")
             {
                 // FloatVec: undefined < x < undefined
-                if (value.type != SPyWrappedProperty::eType_Vec3)
+                if (!value.is<AZ::Vector3>())
                 {
                     throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
@@ -1075,12 +1060,13 @@ namespace
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
                         // float: valid range (from script)
-                        if (value.type != SPyWrappedProperty::eType_Float)
+                        float floatValue;
+                        if (!AZStd::any_numeric_cast<float>(&value, floatValue))
                         {
                             throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                         }
                         std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script.c_str());
-                        if (value.property.floatValue < range["UIMin"] ||  value.property.floatValue > range["UIMax"])
+                        if (floatValue < range["UIMin"] || floatValue > range["UIMax"])
                         {
                             QString errorMsg;
                             errorMsg = QStringLiteral("Invalid value for shader param \"%1\" (min: %2, max: %3)").arg(propertyName).arg(range["UIMin"]).arg(range["UIMax"]);
@@ -1090,25 +1076,7 @@ namespace
                     }
                     else if (shaderParams[i].m_Type == eType_FCOLOR)
                     {
-                        // intVector(RGB): 0 < x < 255
-                        if (value.type != SPyWrappedProperty::eType_Color)
-                        {
-                            throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
-                        }
-
-                        if (value.property.colorValue.r < iMinColorValue || value.property.colorValue.r > iMaxColorValue)
-                        {
-                            throw std::runtime_error((errorMsgInvalidValue + " (red)").toUtf8().data());
-                        }
-                        else if (value.property.colorValue.g < iMinColorValue || value.property.colorValue.g > iMaxColorValue)
-                        {
-                            throw std::runtime_error((errorMsgInvalidValue + " (green)").toUtf8().data());
-                        }
-                        else if (value.property.colorValue.b < iMinColorValue || value.property.colorValue.b > iMaxColorValue)
-                        {
-                            throw std::runtime_error((errorMsgInvalidValue + " (blue)").toUtf8().data());
-                        }
-                        return true;
+                        return IsAnyValidRange<AZ::Color>(value, AZ::Color::CreateZero(), AZ::Color::CreateOne(), errorMsgInvalidDataType, errorMsgInvalidValue);
                     }
                 }
             }
@@ -1119,7 +1087,7 @@ namespace
             {
                 if (propertyName == pMaterial->GetShaderGenParamsVars()->GetVariable(i)->GetHumanName())
                 {
-                    if (value.type != SPyWrappedProperty::eType_Bool)
+                    if (!value.is<bool>())
                     {
                         throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                     }
@@ -1135,8 +1103,15 @@ namespace
     }
 
     //////////////////////////////////////////////////////////////////////////
+    template <typename T>
+    T PyFetchNumericType(const AZStd::any& value)
+    {
+        T numericValue;
+        AZStd::any_numeric_cast(&value, numericValue);
+        return numericValue;
+    }
 
-    SPyWrappedProperty PyLegacyGetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    AZStd::any PyGetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
     {
         CMaterial* pMaterial = TryLoadingMaterial(pPathAndMaterialName);
         std::deque<QString> splittedPropertyPath = PreparePropertyPath(pPathAndPropertyName);
@@ -1146,8 +1121,7 @@ namespace
         QString subSubCategoryName = "None";
         QString propertyName = splittedPropertyPath.back();
         QString errorMsgInvalidPropertyPath = "Invalid property path.";
-        SPyWrappedProperty value;
-
+        
         if (splittedPropertyPathCategory.size() == 3)
         {
             splittedPropertyPathCategory.pop_back();
@@ -1166,17 +1140,16 @@ namespace
         {
             if (propertyName == "Shader")
             {
-                value.type = SPyWrappedProperty::eType_String;
-                value.stringValue = pMaterial->GetShaderName();
+                return AZStd::make_any<AZStd::string>(pMaterial->GetShaderName().toUtf8().data());
             }
             else if (propertyName == "Surface Type")
             {
-                value.type = SPyWrappedProperty::eType_String;
-                value.stringValue = pMaterial->GetSurfaceTypeName();
-                if (value.stringValue.startsWith("mat_"))
+                QString stringValue = pMaterial->GetSurfaceTypeName();
+                if (stringValue.startsWith("mat_"))
                 {
-                    value.stringValue.remove(0, 4);
+                    stringValue.remove(0, 4);
                 }
+                return AZStd::make_any<AZStd::string>(stringValue.toLatin1().data());
             }
             else
             {
@@ -1188,20 +1161,17 @@ namespace
         {
             if (propertyName == "Opacity")
             {
-                value.type = SPyWrappedProperty::eType_Int;
-                value.property.floatValue = pMaterial->GetShaderResources().m_LMaterial.m_Opacity;
-                value.property.intValue = value.property.floatValue * 100.0f;
+                AZ::s64 intValue = aznumeric_cast<AZ::s64>(pMaterial->GetShaderResources().m_LMaterial.m_Opacity * 100.0f);
+                return AZStd::make_any<AZ::s64>(intValue);
             }
             else if (propertyName == "AlphaTest")
             {
-                value.type = SPyWrappedProperty::eType_Int;
-                value.property.floatValue = pMaterial->GetShaderResources().m_AlphaRef;
-                value.property.intValue = value.property.floatValue * 100.0f;
+                AZ::s64 intValue = aznumeric_cast<AZ::s64>(pMaterial->GetShaderResources().m_AlphaRef * 100.0f);
+                return AZStd::make_any<AZ::s64>(intValue);
             }
             else if (propertyName == "Additive")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_ADDITIVE;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_ADDITIVE);
             }
             else
             {
@@ -1213,51 +1183,39 @@ namespace
         {
             if (propertyName == "Diffuse Color")
             {
-                value.type = SPyWrappedProperty::eType_Color;
                 QColor col = ColorLinearToGamma(ColorF(
-                            pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.r,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.g,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.b));
-                value.property.colorValue.r = col.red();
-                value.property.colorValue.g = col.green();
-                value.property.colorValue.b = col.blue();
+                    pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.r,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.g,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Diffuse.b));
+                return AZStd::make_any<AZ::Color>(col.red(), col.green(), col.blue(), 1.0f);
             }
             else if (propertyName == "Specular Color")
             {
-                value.type = SPyWrappedProperty::eType_Color;
                 QColor col = ColorLinearToGamma(ColorF(
-                            pMaterial->GetShaderResources().m_LMaterial.m_Specular.r / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Specular.g / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Specular.b / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a));
-                value.property.colorValue.r = col.red();
-                value.property.colorValue.g = col.green();
-                value.property.colorValue.b = col.green();
+                    pMaterial->GetShaderResources().m_LMaterial.m_Specular.r / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Specular.g / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Specular.b / pMaterial->GetShaderResources().m_LMaterial.m_Specular.a));
+                return AZStd::make_any<AZ::Color>(col.red(), col.green(), col.blue(), 1.0f);
             }
             else if (propertyName == "Glossiness")
             {
-                value.type = SPyWrappedProperty::eType_Float;
-                value.property.floatValue = pMaterial->GetShaderResources().m_LMaterial.m_Smoothness;
+                return AZStd::make_any<float>(pMaterial->GetShaderResources().m_LMaterial.m_Smoothness);
             }
             else if (propertyName == "Specular Level")
             {
-                value.type = SPyWrappedProperty::eType_Float;
-                value.property.floatValue = pMaterial->GetShaderResources().m_LMaterial.m_Specular.a;
+                return AZStd::make_any<float>(pMaterial->GetShaderResources().m_LMaterial.m_Specular.a);
             }
             else if (propertyName == "Emissive Color")
             {
-                value.type = SPyWrappedProperty::eType_Color;
                 QColor col = ColorLinearToGamma(ColorF(
-                            pMaterial->GetShaderResources().m_LMaterial.m_Emittance.r,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Emittance.g,
-                            pMaterial->GetShaderResources().m_LMaterial.m_Emittance.b));
-                value.property.colorValue.r = col.red();
-                value.property.colorValue.g = col.green();
-                value.property.colorValue.b = col.blue();
+                    pMaterial->GetShaderResources().m_LMaterial.m_Emittance.r,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Emittance.g,
+                    pMaterial->GetShaderResources().m_LMaterial.m_Emittance.b));
+                return AZStd::make_any<AZ::Color>(col.red(), col.green(), col.blue(), 1.0f);
             }
             else if (propertyName == "Emissive Intensity")
             {
-                value.type = SPyWrappedProperty::eType_Float;
-                value.property.floatValue = pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a;
+                return AZStd::make_any<float>(pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a);
             }
             else
             {
@@ -1269,93 +1227,75 @@ namespace
         {
             if (propertyName == "Allow layer activation")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->LayerActivationAllowed();
+                return AZStd::make_any<bool>(pMaterial->LayerActivationAllowed());
             }
             else if (propertyName == "2 Sided")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_2SIDED;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_2SIDED);
             }
-            else if (propertyName ==  "No Shadow")
+            else if (propertyName == "No Shadow")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_NOSHADOW;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_NOSHADOW);
             }
             else if (propertyName == "Use Scattering")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_SCATTER;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_SCATTER);
             }
             else if (propertyName == "Hide After Breaking")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_HIDEONBREAK;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_HIDEONBREAK);
             }
             else if (propertyName == "Fog Volume Shading Quality High")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH);
             }
             else if (propertyName == "Blend Terrain Color")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_BLEND_TERRAIN;
+                return AZStd::make_any<bool>(pMaterial->GetFlags() & MTL_FLAG_BLEND_TERRAIN);
             }
             else if (propertyName == "Voxel Coverage")
             {
-                value.type = SPyWrappedProperty::eType_Float;
-                value.property.floatValue = (float)pMaterial->GetShaderResources().m_VoxelCoverage / 255.0f;
+                return AZStd::make_any<float>(aznumeric_cast<float>(pMaterial->GetShaderResources().m_VoxelCoverage) / 255.0f);
             }
             else if (propertyName == "Link to Material")
             {
-                value.type = SPyWrappedProperty::eType_String;
-                value.stringValue = pMaterial->GetMatInfo()->GetMaterialLinkName();
+                return AZStd::make_any<AZStd::string>(pMaterial->GetMatInfo()->GetMaterialLinkName());
             }
             else if (propertyName == "Propagate Material Settings")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_MATERIAL_SETTINGS;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_MATERIAL_SETTINGS);
             }
             else if (propertyName == "Propagate Opacity Settings")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_OPACITY;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_OPACITY);
             }
             else if (propertyName == "Propagate Lighting Settings")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_LIGHTING;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_LIGHTING);
             }
             else if (propertyName == "Propagate Advanced Settings")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_ADVANCED;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_ADVANCED);
             }
             else if (propertyName == "Propagate Texture Maps")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_TEXTURES;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_TEXTURES);
             }
             else if (propertyName == "Propagate Shader Params")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_SHADER_PARAMS;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_SHADER_PARAMS);
             }
             else if (propertyName == "Propagate Shader Generation")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_SHADER_GEN;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_SHADER_GEN);
             }
             else if (propertyName == "Propagate Vertex Deformation")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_VERTEX_DEF;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_VERTEX_DEF);
             }
             else if (propertyName == "Propagate Layer Presets")
             {
-                value.type = SPyWrappedProperty::eType_Bool;
-                value.property.boolValue = pMaterial->GetPropagationFlags() & MTL_PROPAGATE_LAYER_PRESETS;
+                return AZStd::make_any<bool>(pMaterial->GetPropagationFlags() & MTL_PROPAGATE_LAYER_PRESETS);
             }
             else
             {
@@ -1365,50 +1305,44 @@ namespace
         // ########## Texture Maps ##########
         else if (categoryName == "Texture Maps")
         {
-            SInputShaderResources&      shaderResources = pMaterial->GetShaderResources();
+            SInputShaderResources& shaderResources = pMaterial->GetShaderResources();
             // ########## Texture Maps / [name] ##########
             if (splittedPropertyPath.size() == 2)
             {
-                value.type = SPyWrappedProperty::eType_String;
-
-                uint16          nSlot = (uint16)TryConvertingCStringToEEfResTextures(propertyName);
+                uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(propertyName));
                 SEfResTexture*  pTextureRes = shaderResources.GetTextureResource(nSlot);
                 if (!pTextureRes || pTextureRes->m_Name.empty())
                 {
                     AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty texture slot [%d] (or missing name) for material %s",
                         nSlot, pMaterial->GetName().toStdString().c_str());
-                    value.stringValue = "";
+                    return AZStd::any();
                 }
                 else
                 {
-                    value.stringValue = pTextureRes->m_Name.c_str();
+                    return AZStd::make_any<AZStd::string>(pTextureRes->m_Name);
                 }
             }
             // ########## Texture Maps / [TexType | Filter | IsProjectedTexGen | TexGenType ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
-                SEfResTexture*      pTextureRes = shaderResources.GetTextureResource(TryConvertingCStringToEEfResTextures(subCategoryName));
+                SEfResTexture* pTextureRes = shaderResources.GetTextureResource(TryConvertingCStringToEEfResTextures(subCategoryName));
                 if (pTextureRes)
                 {
                     if (propertyName == "TexType")
                     {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingETEX_TypeToCString(pTextureRes->m_Sampler.m_eTexType);
+                        return AZStd::make_any<AZStd::string>(TryConvertingETEX_TypeToCString(pTextureRes->m_Sampler.m_eTexType).toLatin1().data());
                     }
                     else if (propertyName == "Filter")
                     {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingTexFilterToCString(pTextureRes->m_Filter);
+                        return AZStd::make_any<AZStd::string>(TryConvertingTexFilterToCString(pTextureRes->m_Filter).toLatin1().data());
                     }
                     else if (propertyName == "IsProjectedTexGen")
                     {
-                        value.type = SPyWrappedProperty::eType_Bool;
-                        value.property.boolValue = pTextureRes->AddModificator()->m_bTexGenProjected;
+                        return AZStd::make_any<bool>(pTextureRes->AddModificator()->m_bTexGenProjected);
                     }
                     else if (propertyName == "TexGenType")
                     {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingETexGenTypeToCString(pTextureRes->AddModificator()->m_eTGType);
+                        return AZStd::make_any<AZStd::string>(TryConvertingETexGenTypeToCString(pTextureRes->AddModificator()->m_eTGType).toLatin1().data());
                     }
                     else
                     {
@@ -1417,7 +1351,7 @@ namespace
                 }
                 else
                 {
-                    uint16      nSlot = (uint16) TryConvertingCStringToEEfResTextures(subCategoryName);
+                    uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(subCategoryName));
                     AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty 'subCategoryName' texture slot [%d] for material %s",
                         nSlot, pMaterial->GetName().toStdString().c_str());
                 }
@@ -1432,48 +1366,39 @@ namespace
                     {
                         if (propertyName == "IsTileU")
                         {
-                            value.type = SPyWrappedProperty::eType_Bool;
-                            value.property.boolValue = pTextureRes->m_bUTile;
+                            return AZStd::make_any<bool>(pTextureRes->m_bUTile);
                         }
                         else if (propertyName == "IsTileV")
                         {
-                            value.type = SPyWrappedProperty::eType_Bool;
-                            value.property.boolValue = pTextureRes->m_bVTile;
+                            return AZStd::make_any<bool>(pTextureRes->m_bVTile);
                         }
                         else if (propertyName == "TileU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_Tiling[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Tiling[0]);
                         }
                         else if (propertyName == "TileV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_Tiling[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Tiling[1]);
                         }
                         else if (propertyName == "OffsetU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_Offs[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Offs[0]);
                         }
                         else if (propertyName == "OffsetV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_Offs[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Offs[1]);
                         }
                         else if (propertyName == "RotateU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[0]);
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Rot[0]);
                         }
                         else if (propertyName == "RotateV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[1]);
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Rot[1]);
                         }
                         else if (propertyName == "RotateW")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_Rot[2]);
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_Rot[2]);
                         }
                         else
                         {
@@ -1484,33 +1409,27 @@ namespace
                     {
                         if (propertyName == "Type")
                         {
-                            value.type = SPyWrappedProperty::eType_String;
-                            value.stringValue = TryConvertingETexModRotateTypeToCString(pTextureRes->AddModificator()->m_eRotType);
+                            return AZStd::make_any<AZStd::string>(TryConvertingETexModRotateTypeToCString(pTextureRes->AddModificator()->m_eRotType).toLatin1().data());
                         }
                         else if (propertyName == "Rate")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscRate[2]);
+                            return AZStd::make_any<float>(Word2Degr(pTextureRes->AddModificator()->m_RotOscRate[2]));
                         }
                         else if (propertyName == "Phase")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscPhase[2]);
+                            return AZStd::make_any<float>(Word2Degr(pTextureRes->AddModificator()->m_RotOscPhase[2]));
                         }
                         else if (propertyName == "Amplitude")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = Word2Degr(pTextureRes->AddModificator()->m_RotOscAmplitude[2]);
+                            return AZStd::make_any<float>(Word2Degr(pTextureRes->AddModificator()->m_RotOscAmplitude[2]));
                         }
                         else if (propertyName == "CenterU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_RotOscCenter[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_RotOscCenter[0]);
                         }
                         else if (propertyName == "CenterV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_RotOscCenter[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_RotOscCenter[1]);
                         }
                         else
                         {
@@ -1521,43 +1440,36 @@ namespace
                     {
                         if (propertyName == "TypeU")
                         {
-                            value.type = SPyWrappedProperty::eType_String;
-                            value.stringValue = TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[0]);
+                            return AZStd::make_any<AZStd::string>(TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[0]).toLatin1().data());
                         }
                         else if (propertyName == "TypeV")
                         {
-                            value.type = SPyWrappedProperty::eType_String;
-                            value.stringValue = TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[1]);
+                            return AZStd::make_any<AZStd::string>(TryConvertingETexModMoveTypeToCString(pTextureRes->AddModificator()->m_eMoveType[1]).toLatin1().data());
                         }
                         else if (propertyName == "RateU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscRate[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscRate[0]);
+
                         }
                         else if (propertyName == "RateV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscRate[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscRate[1]);
                         }
                         else if (propertyName == "PhaseU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscPhase[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscPhase[0]);
                         }
                         else if (propertyName == "PhaseV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscPhase[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscPhase[1]);
                         }
                         else if (propertyName == "AmplitudeU")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscAmplitude[0];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscAmplitude[0]);
                         }
                         else if (propertyName == "AmplitudeV")
                         {
-                            value.type = SPyWrappedProperty::eType_Float;
-                            value.property.floatValue = pTextureRes->AddModificator()->m_OscAmplitude[1];
+                            return AZStd::make_any<float>(pTextureRes->AddModificator()->m_OscAmplitude[1]);
                         }
                         else
                         {
@@ -1571,7 +1483,7 @@ namespace
                 }
                 else
                 {
-                    uint16      nSlot = (uint16)TryConvertingCStringToEEfResTextures(subSubCategoryName);
+                    uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(subSubCategoryName));
                     AZ_Warning("ShadersSystem", false, "PyGetProperty - Error: empty 'subSubCategoryName' texture slot [%d] for material %s",
                         nSlot, pMaterial->GetName().toStdString().c_str());
                 }
@@ -1585,7 +1497,6 @@ namespace
         else if (categoryName == "Shader Params")
         {
             DynArray<SShaderParam>& shaderParams = pMaterial->GetShaderResources().m_ShaderParams;
-            bool isPropertyFound(false);
 
             for (int i = 0; i < shaderParams.size(); i++)
             {
@@ -1593,51 +1504,37 @@ namespace
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = shaderParams[i].m_Value.m_Float;
-                        isPropertyFound = true;
-                        break;
+                        return AZStd::make_any<float>(shaderParams[i].m_Value.m_Float);
                     }
                     else if (shaderParams[i].m_Type == eType_FCOLOR)
                     {
-                        value.type = SPyWrappedProperty::eType_Color;
                         QColor col = ColorLinearToGamma(ColorF(
-                                    shaderParams[i].m_Value.m_Vector[0],
-                                    shaderParams[i].m_Value.m_Vector[1],
-                                    shaderParams[i].m_Value.m_Vector[2]));
-                        value.property.colorValue.r = col.red();
-                        value.property.colorValue.g = col.green();
-                        value.property.colorValue.b = col.blue();
-                        isPropertyFound = true;
-                        break;
+                            shaderParams[i].m_Value.m_Vector[0],
+                            shaderParams[i].m_Value.m_Vector[1],
+                            shaderParams[i].m_Value.m_Vector[2]));
+                        return AZStd::make_any<AZ::Color>(col.red(), col.green(), col.blue(), 1.0f);
                     }
                 }
             }
 
-            if (!isPropertyFound)
-            {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader param.").toUtf8().data());
-            }
+            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader param.").toUtf8().data());
         }
         // ########## Shader Generation Params ##########
         else if (categoryName == "Shader Generation Params")
         {
-            value.type = SPyWrappedProperty::eType_Bool;
-            bool isPropertyFound(false);
             for (int i = 0; i < pMaterial->GetShaderGenParamsVars()->GetNumVariables(); i++)
             {
                 if (propertyName == pMaterial->GetShaderGenParamsVars()->GetVariable(i)->GetHumanName())
                 {
-                    isPropertyFound = true;
-                    pMaterial->GetShaderGenParamsVars()->GetVariable(i)->Get(value.property.boolValue);
-                    break;
+                    // get the current Boolean value for this shader variable and return so that the std::runtime_error() will not throw to indicate failure
+                    bool boolValue = false;
+                    pMaterial->GetShaderGenParamsVars()->GetVariable(i)->Get(boolValue);
+                    return AZStd::make_any<bool>(boolValue);
                 }
             }
 
-            if (!isPropertyFound)
-            {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader generation param.").toUtf8().data());
-            }
+            // not matching property was found, so throw a std::runtime_error() to indcate an error
+            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader generation param.").toUtf8().data());
         }
         // ########## Vertex Deformation ##########
         else if (categoryName == "Vertex Deformation")
@@ -1647,20 +1544,18 @@ namespace
             {
                 if (propertyName == "Type")
                 {
-                    value.type = SPyWrappedProperty::eType_String;
-                    value.stringValue = TryConvertingEDeformTypeToCString(pMaterial->GetShaderResources().m_DeformInfo.m_eType);
+                    return AZStd::make_any<AZStd::string>(TryConvertingEDeformTypeToCString(pMaterial->GetShaderResources().m_DeformInfo.m_eType).toLatin1().data());
                 }
                 else if (propertyName == "Wave Length X")
                 {
-                    value.type = SPyWrappedProperty::eType_Float;
-                    value.property.floatValue = pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX;
+                    return AZStd::make_any<float>(pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX);
                 }
                 else if (propertyName == "Noise Scale")
                 {
-                    value.type = SPyWrappedProperty::eType_Vec3;
-                    value.property.vecValue.x = pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[0];
-                    value.property.vecValue.y = pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[1];
-                    value.property.vecValue.z = pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[2];
+                    return AZStd::make_any<AZ::Vector3>(
+                        pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[0],
+                        pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[1],
+                        pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[2]);
                 }
                 else
                 {
@@ -1680,28 +1575,23 @@ namespace
 
                     if (propertyName == "Type")
                     {
-                        value.type = SPyWrappedProperty::eType_String;
-                        value.stringValue = TryConvertingEWaveFormToCString(currentWaveForm.m_eWFType);
+                        return AZStd::make_any<AZStd::string>(TryConvertingEWaveFormToCString(currentWaveForm.m_eWFType).toLatin1().data());
                     }
                     else if (propertyName == "Level")
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentWaveForm.m_Level;
+                        return AZStd::make_any<float>(currentWaveForm.m_Level);
                     }
                     else if (propertyName == "Amplitude")
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentWaveForm.m_Amp;
+                        return AZStd::make_any<float>(currentWaveForm.m_Amp);
                     }
                     else if (propertyName == "Phase")
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentWaveForm.m_Phase;
+                        return AZStd::make_any<float>(currentWaveForm.m_Phase);
                     }
                     else if (propertyName == "Frequency")
                     {
-                        value.type = SPyWrappedProperty::eType_Float;
-                        value.property.floatValue = currentWaveForm.m_Freq;
+                        return AZStd::make_any<float>(currentWaveForm.m_Freq);
                     }
                     else
                     {
@@ -1721,11 +1611,9 @@ namespace
         // ########## Layer Presets ##########
         else if (categoryName == "Layer Presets")
         {
-            // names are "Shader1", "Shader2" and "Shader3", bacause all have the name "Shader" in material editor
+            // names are "Shader1", "Shader2" and "Shader3", because all have the name "Shader" in material editor
             if (splittedPropertyPath.size() == 2)
             {
-                value.type = SPyWrappedProperty::eType_String;
-
                 int shaderNumber = -1;
                 if (propertyName == "Shader1")
                 {
@@ -1744,14 +1632,12 @@ namespace
                     throw std::runtime_error("Invalid shader.");
                 }
 
-                value.stringValue = pMaterial->GetMtlLayerResources()[shaderNumber].m_shaderName;
+                return AZStd::make_any<AZStd::string>(pMaterial->GetMtlLayerResources()[shaderNumber].m_shaderName.toLatin1().data());
             }
             else if (splittedPropertyPath.size() == 3)
             {
                 if (propertyName == "No Draw")
                 {
-                    value.type = SPyWrappedProperty::eType_Bool;
-
                     int shaderNumber = -1;
                     if (subCategoryName == "Shader1")
                     {
@@ -1769,215 +1655,16 @@ namespace
                     {
                         throw std::runtime_error("Invalid shader.");
                     }
-                    value.property.boolValue = pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW;
+                    return AZStd::make_any<bool>(pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW);
                 }
             }
-            else
-            {
-                throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
-            }
-        }
-        else
-        {
-            throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
         }
 
-        return value;
+        throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
+        return AZStd::any();
     }
 
-    bool PyGetPropertyAsBool(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Bool:
-            return result.property.boolValue;
-        case SPyWrappedProperty::eType_Float:
-        case SPyWrappedProperty::eType_Int:
-        case SPyWrappedProperty::eType_Color:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        case SPyWrappedProperty::eType_Vec3:
-        case SPyWrappedProperty::eType_Vec4:
-        default:
-            AZ_Warning("PyGetPropertyAsBool", false, "Type mismatch while getting property '%s' of material '%s' as a bool.", pPathAndPropertyName, pPathAndPropertyName);
-            return bool();
-        }
-    }
-
-    AZ::Color PyGetPropertyAsColor(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Color:
-            return AZ::Color(
-                result.property.colorValue.r,
-                result.property.colorValue.g,
-                result.property.colorValue.b,
-                1.0f
-            );
-        case SPyWrappedProperty::eType_Bool:
-        case SPyWrappedProperty::eType_Float:
-        case SPyWrappedProperty::eType_Int:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        case SPyWrappedProperty::eType_Vec3:
-        case SPyWrappedProperty::eType_Vec4:
-        default:
-            AZ_Warning("PyGetPropertyAsColor", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Color.", pPathAndPropertyName, pPathAndPropertyName);
-            return AZ::Color();
-        }
-    }
-
-    float PyGetPropertyAsFloat(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Float:
-            return result.property.floatValue;
-        case SPyWrappedProperty::eType_Int:
-            return static_cast<float>(result.property.intValue);
-        case SPyWrappedProperty::eType_Bool:
-        case SPyWrappedProperty::eType_Color:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        case SPyWrappedProperty::eType_Vec3:
-        case SPyWrappedProperty::eType_Vec4:
-        default:
-            AZ_Warning("PyGetPropertyAsFloat", false, "Type mismatch while getting property '%s' of material '%s' as a float.", pPathAndPropertyName, pPathAndPropertyName);
-            return float();
-        }
-    }
-
-    int PyGetPropertyAsInt(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Float:
-            return static_cast<int>(result.property.floatValue);
-        case SPyWrappedProperty::eType_Int:
-            return result.property.intValue;
-        case SPyWrappedProperty::eType_Bool:
-        case SPyWrappedProperty::eType_Color:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        case SPyWrappedProperty::eType_Vec3:
-        case SPyWrappedProperty::eType_Vec4:
-        default:
-            AZ_Warning("PyGetPropertyAsInt", false, "Type mismatch while getting property '%s' of material '%s' as an int.", pPathAndPropertyName, pPathAndPropertyName);
-            return int();
-        }
-    }
-
-    AZStd::string PyGetPropertyAsString(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-            case SPyWrappedProperty::eType_Bool:
-                return AZStd::to_string(result.property.boolValue);
-            case SPyWrappedProperty::eType_Color:
-                return "rgb(" +
-                    AZStd::to_string(result.property.colorValue.r) + ", " +
-                    AZStd::to_string(result.property.colorValue.g) + ", " +
-                    AZStd::to_string(result.property.colorValue.b) +
-                    ")";
-            case SPyWrappedProperty::eType_Float:
-                return AZStd::to_string(result.property.floatValue);
-            case SPyWrappedProperty::eType_Int:
-                return AZStd::to_string(result.property.intValue);
-            case SPyWrappedProperty::eType_String:
-                return AZStd::string(result.stringValue.toUtf8().data());
-            case SPyWrappedProperty::eType_Time:
-                return AZStd::to_string(result.property.timeValue.hour) + ":" + AZStd::to_string(result.property.timeValue.hour);
-            case SPyWrappedProperty::eType_Vec3:
-                return "vec3(" +
-                    AZStd::to_string(result.property.vecValue.x) + ", " +
-                    AZStd::to_string(result.property.vecValue.y) + ", " +
-                    AZStd::to_string(result.property.vecValue.z) +
-                    ")";
-            case SPyWrappedProperty::eType_Vec4:
-                return "vec4(" +
-                    AZStd::to_string(result.property.vecValue.x) + ", " +
-                    AZStd::to_string(result.property.vecValue.y) + ", " +
-                    AZStd::to_string(result.property.vecValue.z) + ", " +
-                    AZStd::to_string(result.property.vecValue.w) +
-                    ")";
-            default:
-            {
-                AZ_Warning("PyGetPropertyAsString", false, "Type mismatch while getting property '%s' of material '%s' as an AZStd::Vector3.", pPathAndPropertyName, pPathAndPropertyName);
-                break;
-            }
-        }
-        return AZStd::string();
-    }
-
-    AZ::Vector3 PyGetPropertyAsVector3(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Vec3:
-        case SPyWrappedProperty::eType_Vec4:
-            return AZ::Vector3(
-                result.property.vecValue.x,
-                result.property.vecValue.y,
-                result.property.vecValue.z
-            );
-        case SPyWrappedProperty::eType_Bool:
-        case SPyWrappedProperty::eType_Color:
-        case SPyWrappedProperty::eType_Float:
-        case SPyWrappedProperty::eType_Int:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        default:
-            AZ_Warning("PyGetPropertyAsVector3", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Vector3.", pPathAndPropertyName, pPathAndPropertyName);
-            return AZ::Vector3();
-        }
-    }
-
-    AZ::Vector4 PyGetPropertyAsVector4(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
-    {
-        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
-
-        switch (result.type)
-        {
-        case SPyWrappedProperty::eType_Vec3:
-            return AZ::Vector4(
-                result.property.vecValue.x,
-                result.property.vecValue.y,
-                result.property.vecValue.z,
-                0.0f
-            );
-        case SPyWrappedProperty::eType_Vec4:
-            return AZ::Vector4(
-                result.property.vecValue.x,
-                result.property.vecValue.y,
-                result.property.vecValue.z,
-                result.property.vecValue.w
-            );
-        case SPyWrappedProperty::eType_Bool:
-        case SPyWrappedProperty::eType_Color:
-        case SPyWrappedProperty::eType_Float:
-        case SPyWrappedProperty::eType_Int:
-        case SPyWrappedProperty::eType_String:
-        case SPyWrappedProperty::eType_Time:
-        default:
-            AZ_Warning("PyGetPropertyAsVector4", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Vector4.", pPathAndPropertyName, pPathAndPropertyName);
-            return AZ::Vector4();
-        }
-    }
-
-    void PyLegacySetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName, const SPyWrappedProperty& value)
+    void PySetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName, const AZStd::any& value)
     {
         CMaterial* pMaterial = TryLoadingMaterial(pPathAndMaterialName);
         std::deque<QString> splittedPropertyPath = PreparePropertyPath(pPathAndPropertyName);
@@ -2015,7 +1702,7 @@ namespace
         {
             if (propertyName == "Shader")
             {
-                pMaterial->SetShaderName(value.stringValue);
+                pMaterial->SetShaderName(AZStd::any_cast<AZStd::string_view>(value).data());
             }
             else if (propertyName == "Surface Type")
             {
@@ -2032,7 +1719,7 @@ namespace
                         {
                             surfaceName.remove(0, 4);
                         }
-                        if (surfaceName == value.stringValue)
+                        if (surfaceName == AZStd::any_cast<AZStd::string_view>(value).data())
                         {
                             isSurfaceExist = true;
                             pMaterial->SetSurfaceTypeName(realSurfacename);
@@ -2055,15 +1742,15 @@ namespace
         {
             if (propertyName == "Opacity")
             {
-                pMaterial->GetShaderResources().m_LMaterial.m_Opacity = static_cast<float>(value.property.intValue) / 100.0f;
+                pMaterial->GetShaderResources().m_LMaterial.m_Opacity = PyFetchNumericType<float>(value) / 100.0f;
             }
             else if (propertyName == "AlphaTest")
             {
-                pMaterial->GetShaderResources().m_AlphaRef =  static_cast<float>(value.property.intValue) / 100.0f;
+                pMaterial->GetShaderResources().m_AlphaRef = PyFetchNumericType<float>(value) / 100.0f;
             }
             else if (propertyName == "Additive")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_ADDITIVE, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_ADDITIVE, PyFetchNumericType<bool>(value));
             }
         }
         // ########## Lighting Settings ##########
@@ -2071,13 +1758,13 @@ namespace
         {
             if (propertyName == "Diffuse Color")
             {
-                ColorB color(value.property.colorValue.r, value.property.colorValue.g, value.property.colorValue.b);
-                pMaterial->GetShaderResources().m_LMaterial.m_Diffuse = ColorGammaToLinear(QColor(color.r, color.g, color.b));
+                const AZ::Color* color = AZStd::any_cast<AZ::Color>(&value);
+                pMaterial->GetShaderResources().m_LMaterial.m_Diffuse = ColorGammaToLinear(QColor(color->GetR8(), color->GetG8(), color->GetB8()));
             }
             else if (propertyName == "Specular Color")
             {
-                ColorB color(value.property.colorValue.r, value.property.colorValue.g, value.property.colorValue.b);
-                ColorF colorFloat = ColorGammaToLinear(QColor(color.r, color.g, color.b));
+                const AZ::Color* color = AZStd::any_cast<AZ::Color>(&value);
+                ColorF colorFloat = ColorGammaToLinear(QColor(color->GetR8(), color->GetG8(), color->GetB8()));
                 colorFloat.a = pMaterial->GetShaderResources().m_LMaterial.m_Specular.a;
                 colorFloat.r *= colorFloat.a;
                 colorFloat.g *= colorFloat.a;
@@ -2086,32 +1773,28 @@ namespace
             }
             else if (propertyName == "Glossiness" || propertyName == "Smoothness")
             {
-                pMaterial->GetShaderResources().m_LMaterial.m_Smoothness = static_cast<float>(value.property.intValue);
+                pMaterial->GetShaderResources().m_LMaterial.m_Smoothness = PyFetchNumericType<float>(value);
             }
             else if (propertyName == "Specular Level")
             {
-                float tempFloat = pMaterial->GetShaderResources().m_LMaterial.m_Specular.a;
-                float tempFloat2 = value.property.floatValue;
-
-
+                const float localVariableAlpha = PyFetchNumericType<float>(value);
                 ColorF colorFloat = pMaterial->GetShaderResources().m_LMaterial.m_Specular;
-                colorFloat.a = value.property.floatValue;
-                colorFloat.r *= colorFloat.a;
-                colorFloat.g *= colorFloat.a;
-                colorFloat.b *= colorFloat.a;
+                colorFloat.r *= localVariableAlpha;
+                colorFloat.g *= localVariableAlpha;
+                colorFloat.b *= localVariableAlpha;
                 colorFloat.a = 1.0f;
                 pMaterial->GetShaderResources().m_LMaterial.m_Specular = colorFloat;
             }
             else if (propertyName == "Emissive Color")
             {
-                ColorB color(value.property.colorValue.r, value.property.colorValue.g, value.property.colorValue.b);
+                const AZ::Color* color = AZStd::any_cast<AZ::Color>(&value);
                 float emissiveIntensity = pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a;
-                pMaterial->GetShaderResources().m_LMaterial.m_Emittance = ColorGammaToLinear(QColor(color.r, color.g, color.b));
+                pMaterial->GetShaderResources().m_LMaterial.m_Emittance = ColorGammaToLinear(QColor(color->GetR8(), color->GetG8(), color->GetB8()));
                 pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a = emissiveIntensity;
             }
             else if (propertyName == "Emissive Intensity")
             {
-                pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a = value.property.floatValue;
+                pMaterial->GetShaderResources().m_LMaterial.m_Emittance.a = PyFetchNumericType<float>(value);
             }
         }
         // ########## Advanced ##########
@@ -2119,226 +1802,227 @@ namespace
         {
             if (propertyName == "Allow layer activation")
             {
-                pMaterial->SetLayerActivation(value.property.boolValue);
+                pMaterial->SetLayerActivation(PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "2 Sided")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_2SIDED, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_2SIDED, PyFetchNumericType<bool>(value));
             }
-            else if (propertyName ==  "No Shadow")
+            else if (propertyName == "No Shadow")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_NOSHADOW, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_NOSHADOW, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Use Scattering")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_SCATTER, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_SCATTER, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Hide After Breaking")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Fog Volume Shading Quality High")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Blend Terrain Color")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_BLEND_TERRAIN, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_BLEND_TERRAIN, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Voxel Coverage")
             {
-                pMaterial->GetShaderResources().m_VoxelCoverage = static_cast<uint8>(value.property.floatValue * 255.0f);
+                pMaterial->GetShaderResources().m_VoxelCoverage = aznumeric_cast<uint8>(PyFetchNumericType<float>(value) * 255.0f);
             }
             else if (propertyName == "Link to Material")
             {
-                pMaterial->GetMatInfo()->SetMaterialLinkName(value.stringValue.toUtf8().data());
+                pMaterial->GetMatInfo()->SetMaterialLinkName(AZStd::any_cast<AZStd::string_view>(value).data());
             }
             else if (propertyName == "Propagate Material Settings")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_MATERIAL_SETTINGS, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_MATERIAL_SETTINGS, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Opacity Settings")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_OPACITY, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_OPACITY, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Lighting Settings")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_LIGHTING, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_LIGHTING, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Advanced Settings")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_ADVANCED, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_ADVANCED, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Texture Maps")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_TEXTURES, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_TEXTURES, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Shader Params")
             {
-                if (value.property.boolValue == true)
+                if (PyFetchNumericType<bool>(value))
                 {
                     SetPropagationFlag(pMaterial, MTL_PROPAGATE_MATERIAL_SETTINGS, true);
                 }
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_SHADER_PARAMS, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_SHADER_PARAMS, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Shader Generation")
             {
-                if (value.property.boolValue == true)
+                if (PyFetchNumericType<bool>(value))
                 {
                     SetPropagationFlag(pMaterial, MTL_PROPAGATE_MATERIAL_SETTINGS, true);
                 }
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_SHADER_GEN, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_SHADER_GEN, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Vertex Deformation")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_VERTEX_DEF, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_VERTEX_DEF, PyFetchNumericType<bool>(value));
             }
             else if (propertyName == "Propagate Layer Presets")
             {
-                SetPropagationFlag(pMaterial, MTL_PROPAGATE_LAYER_PRESETS, value.property.boolValue);
+                SetPropagationFlag(pMaterial, MTL_PROPAGATE_LAYER_PRESETS, PyFetchNumericType<bool>(value));
             }
         }
         // ########## Texture Maps ##########
         else if (categoryName == "Texture Maps")
         {
             // ########## Texture Maps / [name] ##########
-            SInputShaderResources&      shaderResources = pMaterial->GetShaderResources();
+            SInputShaderResources& shaderResources = pMaterial->GetShaderResources();
             if (splittedPropertyPath.size() == 2)
             {
-                uint16      nSlot = TryConvertingCStringToEEfResTextures(propertyName);
-                if (value.stringValue.length() == 0)
+                uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(propertyName));
+                auto stringValue = AZStd::any_cast<AZStd::string_view>(value);
+                if (stringValue.empty())
                 {
                     AZ_Warning("ShadersSystem", false, "PySetProperty - Error: empty texture [%d] name for material %s",
                         nSlot, pMaterial->GetName().toStdString().c_str());
                 }
                 // notice that the following is an insertion operation if the index did not exist in the map
-                shaderResources.m_TexturesResourcesMap[nSlot].m_Name = value.stringValue.toUtf8().data();
+                shaderResources.m_TexturesResourcesMap[nSlot].m_Name = stringValue.data();
             }
             // ########## Texture Maps / [TexType | Filter | IsProjectedTexGen | TexGenType ] ##########
             else if (splittedPropertyPath.size() == 3)
             {
-                uint16              nSlot = TryConvertingCStringToEEfResTextures(subCategoryName);
+                uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(subCategoryName));
                 // notice that each of the following will add the texture slot if did not exist yet
                 if (propertyName == "TexType")
                 {
-                    shaderResources.m_TexturesResourcesMap[nSlot].m_Sampler.m_eTexType = TryConvertingCStringToETEX_Type(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].m_Sampler.m_eTexType = TryConvertingCStringToETEX_Type(AZStd::any_cast<AZStd::string_view>(value));
                 }
                 else if (propertyName == "Filter")
                 {
-                    shaderResources.m_TexturesResourcesMap[nSlot].m_Filter = TryConvertingCStringToTexFilter(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].m_Filter = TryConvertingCStringToTexFilter(AZStd::any_cast<AZStd::string_view>(value));
                 }
                 else if (propertyName == "IsProjectedTexGen")
                 {
-                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_bTexGenProjected = value.property.boolValue;
+                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_bTexGenProjected = PyFetchNumericType<bool>(value);
                 }
                 else if (propertyName == "TexGenType")
                 {
-                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eTGType = TryConvertingCStringToETexGenType(value.stringValue);
+                    shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eTGType = TryConvertingCStringToETexGenType(AZStd::any_cast<AZStd::string_view>(value));
                 }
             }
             // ########## Texture Maps / [Tiling | Rotator | Oscillator] ##########
             else if (splittedPropertyPath.size() == 4)
             {
-                uint16              nSlot = TryConvertingCStringToEEfResTextures(subSubCategoryName);
+                uint16 nSlot = aznumeric_cast<uint16>(TryConvertingCStringToEEfResTextures(subSubCategoryName));
                 if (subCategoryName == "Tiling")
                 {
                     if (propertyName == "IsTileU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].m_bUTile = value.property.boolValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].m_bUTile = PyFetchNumericType<bool>(value);
                     }
                     else if (propertyName == "IsTileV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].m_bVTile = value.property.boolValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].m_bVTile = PyFetchNumericType<bool>(value);
                     }
                     else if (propertyName == "TileU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "TileV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Tiling[1] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "OffsetU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "OffsetV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Offs[1] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "RotateU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[0] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[0] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                     else if (propertyName == "RotateV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[1] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[1] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                     else if (propertyName == "RotateW")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_Rot[2] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                 }
                 else if (subCategoryName == "Rotator")
                 {
                     if (propertyName == "Type")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eRotType = TryConvertingCStringToETexModRotateType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eRotType = TryConvertingCStringToETexModRotateType(AZStd::any_cast<AZStd::string_view>(value));
                     }
                     else if (propertyName == "Rate")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscRate[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscRate[2] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                     else if (propertyName == "Phase")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscPhase[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscPhase[2] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                     else if (propertyName == "Amplitude")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscAmplitude[2] = Degr2Word(value.property.floatValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscAmplitude[2] = Degr2Word(PyFetchNumericType<float>(value));
                     }
                     else if (propertyName == "CenterU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "CenterV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_RotOscCenter[1] = PyFetchNumericType<float>(value);
                     }
                 }
                 else if (subCategoryName == "Oscillator")
                 {
                     if (propertyName == "TypeU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[0] = TryConvertingCStringToETexModMoveType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[0] = TryConvertingCStringToETexModMoveType(AZStd::any_cast<AZStd::string_view>(value));
                     }
                     else if (propertyName == "TypeV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[1] = TryConvertingCStringToETexModMoveType(value.stringValue);
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_eMoveType[1] = TryConvertingCStringToETexModMoveType(AZStd::any_cast<AZStd::string_view>(value));
                     }
                     else if (propertyName == "RateU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "RateV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscRate[1] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "PhaseU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "PhaseV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscPhase[1] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "AmplitudeU")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[0] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[0] = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "AmplitudeV")
                     {
-                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[1] = value.property.floatValue;
+                        shaderResources.m_TexturesResourcesMap[nSlot].AddModificator()->m_OscAmplitude[1] = PyFetchNumericType<float>(value);
                     }
                 }
             }
@@ -2354,18 +2038,13 @@ namespace
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
-                        shaderParams[i].m_Value.m_Float = value.property.floatValue;
+                        shaderParams[i].m_Value.m_Float = PyFetchNumericType<float>(value);
                         break;
                     }
                     else if (shaderParams[i].m_Type == eType_FCOLOR)
                     {
-                        ColorF colorLinear = ColorGammaToLinear(
-                                QColor(
-                                    (uint8)value.property.colorValue.r,
-                                    (uint8)value.property.colorValue.g,
-                                    (uint8)value.property.colorValue.b
-                                    ));
-
+                        const AZ::Color* color = AZStd::any_cast<AZ::Color>(&value);
+                        ColorF colorLinear = ColorGammaToLinear(QColor(color->GetR8(), color->GetG8(), color->GetB8()));
                         shaderParams[i].m_Value.m_Vector[0] = colorLinear.r;
                         shaderParams[i].m_Value.m_Vector[1] = colorLinear.g;
                         shaderParams[i].m_Value.m_Vector[2] = colorLinear.b;
@@ -2386,7 +2065,7 @@ namespace
                 if (propertyName == pMaterial->GetShaderGenParamsVars()->GetVariable(i)->GetHumanName())
                 {
                     CVarBlock* shaderGenBlock = pMaterial->GetShaderGenParamsVars();
-                    shaderGenBlock->GetVariable(i)->Set(value.property.boolValue);
+                    shaderGenBlock->GetVariable(i)->Set(PyFetchNumericType<bool>(value));
                     pMaterial->SetShaderGenParamsVars(shaderGenBlock);
                     break;
                 }
@@ -2395,22 +2074,23 @@ namespace
         // ########## Vertex Deformation ##########
         else if (categoryName == "Vertex Deformation")
         {
-            // ########## Vertex Deformation / [ Type | Wave Length X | Wave Length Y | Wave Length Z | Wave Length W | Noise Scale ] ##########
+            // ########## Vertex Deformation / [ Type | Wave Length X | Noise Scale ] ##########
             if (splittedPropertyPath.size() == 2)
             {
                 if (propertyName == "Type")
                 {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_eType = TryConvertingCStringToEDeformType(value.stringValue);
+                    pMaterial->GetShaderResources().m_DeformInfo.m_eType = TryConvertingCStringToEDeformType(AZStd::any_cast<AZStd::string_view>(value));
                 }
                 else if (propertyName == "Wave Length X")
                 {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX = value.property.floatValue;
+                    pMaterial->GetShaderResources().m_DeformInfo.m_fDividerX = PyFetchNumericType<float>(value);
                 }
                 else if (propertyName == "Noise Scale")
                 {
-                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[0] = value.property.vecValue.x;
-                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[1] = value.property.vecValue.y;
-                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[2] = value.property.vecValue.z;
+                    const AZ::Vector3* vecValue = AZStd::any_cast<AZ::Vector3>(&value);
+                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[0] = vecValue->GetX();
+                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[1] = vecValue->GetY();
+                    pMaterial->GetShaderResources().m_DeformInfo.m_vNoiseScale[2] = vecValue->GetZ();
                 }
             }
             // ########## Vertex Deformation / [ Wave X ] ##########
@@ -2422,23 +2102,23 @@ namespace
 
                     if (propertyName == "Type")
                     {
-                        currentWaveForm.m_eWFType = TryConvertingCStringToEWaveForm(value.stringValue);
+                        currentWaveForm.m_eWFType = TryConvertingCStringToEWaveForm(AZStd::any_cast<AZStd::string_view>(value));
                     }
                     else if (propertyName == "Level")
                     {
-                        currentWaveForm.m_Level = value.property.floatValue;
+                        currentWaveForm.m_Level = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "Amplitude")
                     {
-                        currentWaveForm.m_Amp = value.property.floatValue;
+                        currentWaveForm.m_Amp = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "Phase")
                     {
-                        currentWaveForm.m_Phase = value.property.floatValue;
+                        currentWaveForm.m_Phase = PyFetchNumericType<float>(value);
                     }
                     else if (propertyName == "Frequency")
                     {
-                        currentWaveForm.m_Freq = value.property.floatValue;
+                        currentWaveForm.m_Freq = PyFetchNumericType<float>(value);
                     }
                 }
             }
@@ -2446,7 +2126,7 @@ namespace
         // ########## Layer Presets ##########
         else if (categoryName == "Layer Presets")
         {
-            // names are "Shader1", "Shader2" and "Shader3", bacause all have the name "Shader" in material editor
+            // names are "Shader1", "Shader2" and "Shader3", because all have the name "Shader" in material editor
             if (splittedPropertyPath.size() == 2)
             {
                 int shaderNumber = -1;
@@ -2463,7 +2143,7 @@ namespace
                     shaderNumber = 2;
                 }
 
-                pMaterial->GetMtlLayerResources()[shaderNumber].m_shaderName = value.stringValue;
+                pMaterial->GetMtlLayerResources()[shaderNumber].m_shaderName = AZStd::any_cast<AZStd::string_view>(value).data();
             }
             else if (splittedPropertyPath.size() == 3)
             {
@@ -2483,11 +2163,11 @@ namespace
                         shaderNumber = 2;
                     }
 
-                    if (pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW && value.property.boolValue == false)
+                    if (pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW && PyFetchNumericType<bool>(value) == false)
                     {
                         pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags = pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags - MTL_LAYER_USAGE_NODRAW;
                     }
-                    else if (!(pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW) && value.property.boolValue == true)
+                    else if (!(pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags & MTL_LAYER_USAGE_NODRAW) && PyFetchNumericType<bool>(value) == true)
                     {
                         pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags = pMaterial->GetMtlLayerResources()[shaderNumber].m_nFlags | MTL_LAYER_USAGE_NODRAW;
                     }
@@ -2498,76 +2178,6 @@ namespace
         pMaterial->Update();
         pMaterial->Save();
         GetIEditor()->GetMaterialManager()->OnUpdateProperties(pMaterial, true);
-    }
-
-    void PySetPropertyFromBool(const char* pPathAndMaterialName, const char* pPathAndPropertyName, bool value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Bool;
-        valueWrapper.property.boolValue = value;
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromColor(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Color value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Color;
-        valueWrapper.property.colorValue.r = value.GetR();
-        valueWrapper.property.colorValue.g = value.GetG();
-        valueWrapper.property.colorValue.b = value.GetB();
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromFloat(const char* pPathAndMaterialName, const char* pPathAndPropertyName, float value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Float;
-        valueWrapper.property.floatValue = value;
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromInt(const char* pPathAndMaterialName, const char* pPathAndPropertyName, int value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Int;
-        valueWrapper.property.intValue = value;
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromString(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZStd::string value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_String;
-        valueWrapper.stringValue = value.data();
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromVector3(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Vector3 value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Vec3;
-        valueWrapper.property.vecValue.x = value.GetX();
-        valueWrapper.property.vecValue.y = value.GetY();
-        valueWrapper.property.vecValue.z = value.GetZ();
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
-    }
-
-    void PySetPropertyFromVector4(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Vector4 value)
-    {
-        SPyWrappedProperty valueWrapper;
-        valueWrapper.type = SPyWrappedProperty::eType_Vec4;
-        valueWrapper.property.vecValue.x = value.GetX();
-        valueWrapper.property.vecValue.y = value.GetY();
-        valueWrapper.property.vecValue.z = value.GetZ();
-        valueWrapper.property.vecValue.w = value.GetW();
-
-        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
     }
 }
 
@@ -2591,63 +2201,8 @@ namespace AzToolsFramework
             addLegacyMaterial(behaviorContext->Method("merge_selection", PyMaterialMergeSelection, nullptr, "Merges the selected materials."));
             addLegacyMaterial(behaviorContext->Method("delete_current", PyMaterialDeleteCurrent, nullptr, "Deletes the current material."));
             addLegacyMaterial(behaviorContext->Method("get_submaterial", PyGetSubMaterial, nullptr, "Gets sub materials of a material."));
-            //addLegacyMaterial(behaviorContext->Method("get_property", PyGetProperty, nullptr, "Gets a property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_bool", PyGetPropertyAsBool, nullptr, "Gets a bool property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_color", PyGetPropertyAsColor, nullptr, "Gets a color property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_float", PyGetPropertyAsFloat, nullptr, "Gets a float property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_int", PyGetPropertyAsInt, nullptr, "Gets an int property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_string", PyGetPropertyAsString, nullptr, "Gets a string property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_vector3", PyGetPropertyAsVector3, nullptr, "Gets a vector3 property of a material."));
-            addLegacyMaterial(behaviorContext->Method("get_property_as_vector4", PyGetPropertyAsVector4, nullptr, "Gets a vector4 property of a material."));
-            //addLegacyMaterial(behaviorContext->Method("set_property", PySetProperty, nullptr, "Sets a property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_bool", PySetPropertyFromBool, nullptr, "Sets a bool property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_color", PySetPropertyFromColor, nullptr, "Sets a color property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_float", PySetPropertyFromFloat, nullptr, "Sets a float property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_int", PySetPropertyFromInt, nullptr, "Sets an int property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_string", PySetPropertyFromString, nullptr, "Sets a string property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_vector3", PySetPropertyFromVector3, nullptr, "Sets a vector3 property of a material."));
-            addLegacyMaterial(behaviorContext->Method("set_property_from_vector4", PySetPropertyFromVector4, nullptr, "Sets a vector4 property of a material."));
-
+            addLegacyMaterial(behaviorContext->Method("get_property", PyGetProperty, nullptr, "Gets a property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property", PySetProperty, nullptr, "Sets a property of a material."));
         }
     }
 }
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialCreate, material, create,
-    "Creates a material.",
-    "material.create()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialCreateMulti, material, create_multi,
-    "Creates a multi-material.",
-    "material.create_multi()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialConvertToMulti, material, convert_to_multi,
-    "Converts the selected material to a multi-material.",
-    "material.convert_to_multi()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialDuplicateCurrent, material, duplicate_current,
-    "Duplicates the current material.",
-    "material.duplicate_current()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialMergeSelection, material, merge_selection,
-    "Merges the selected materials.",
-    "material.merge_selection()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialDeleteCurrent, material, delete_current,
-    "Deletes the current material.",
-    "material.delete_current()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialAssignCurrentToSelection, material, assign_current_to_selection,
-    "Assigns the current material to the selection.",
-    "material.assign_current_to_selection()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialResetSelection, material, reset_selection,
-    "Resets the materials of the selection.",
-    "material.reset_selection()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialSelectObjectsWithCurrent, material, select_objects_with_current,
-    "Selects the objects which have the current material.",
-    "material.select_objects_with_current()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialSetCurrentFromObject, material, set_current_from_object,
-    "Sets the current material to the material of a selected object.",
-    "material.set_current_from_object()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetSubMaterial, material, get_submaterial,
-    "Gets sub materials of an material.",
-    "material.get_submaterial()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetProperty, material, get_property,
-    "Gets a property of a material.",
-    "material.get_property(str materialPath/materialName, str propertyPath/propertyName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacySetProperty, material, set_property,
-    "Sets a property of a material.",
-    "material.set_property(str materialPath/materialName, str propertyPath/propertyName, [ str | (int, int, int) | (float, float, float) | int | float | bool ] value)");

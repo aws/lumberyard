@@ -127,6 +127,74 @@ namespace AzFramework
         virtual void ResetState() = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Simulate a raw input event. Please use with caution; it's designed primarily for testing
+        //! purposes, and could result in strange behaviour if called while the user is interacting
+        //! physically with any input device that happens to be updating the same input channel(s),
+        //! or if used to simulate input of an input channel whose value is derived from the value
+        //! of a different input channel (eg. the InputDeviceGamepad::ThumbStickDirection::* input
+        //! channel values are derived from their respective InputDeviceGamepad::ThumbStickAxis2D).
+        //!
+        //! If used, it is the responsibility of the caller to reset the input channel back to it's
+        //! original idle state, otherwise it may be left in a state of being permanently 'active'.
+        //!
+        //! \param[in] rawValue The raw input value to simulate. Analog input channels will use the
+        //! value directly, digital input channels treat 0.0f as 'off' and all other values as 'on'.
+        virtual void SimulateRawInput(float /*rawValue*/) {}
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Simulate a raw input event. Please use with caution; it's designed primarily for testing
+        //! purposes, and could result in strange behaviour if called while the user is interacting
+        //! physically with any input device that happens to be updating the same input channel(s),
+        //! or if used to simulate input of an input channel whose value is derived from the value
+        //! of a different input channel (eg. the InputDeviceGamepad::ThumbStickDirection::* input
+        //! channel values are derived from their respective InputDeviceGamepad::ThumbStickAxis2D).
+        //!
+        //! If used, it is the responsibility of the caller to reset the input channel back to it's
+        //! original idle state, otherwise it may be left in a state of being permanently 'active'.
+        //!
+        //! \param[in] rawValueX The raw x-axis input value to simulate.
+        //! \param[in] rawValueY The raw y-axis input value to simulate.
+        virtual void SimulateRawInput2D(float /*rawValueX*/,
+                                        float /*rawValueY*/) {}
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Simulate a raw input event. Please use with caution; it's designed primarily for testing
+        //! purposes, and could result in strange behaviour if called while the user is interacting
+        //! physically with any input device that happens to be updating the same input channel(s),
+        //! or if used to simulate input of an input channel whose value is derived from the value
+        //! of a different input channel (eg. the InputDeviceGamepad::ThumbStickDirection::* input
+        //! channel values are derived from their respective InputDeviceGamepad::ThumbStickAxis2D).
+        //!
+        //! If used, it is the responsibility of the caller to reset the input channel back to it's
+        //! original idle state, otherwise it may be left in a state of being permanently 'active'.
+        //!
+        //! \param[in] rawValueX The raw x-axis input value to simulate.
+        //! \param[in] rawValueY The raw y-axis input value to simulate.
+        //! \param[in] rawValueZ The raw z-axis input value to simulate.
+        virtual void SimulateRawInput3D(float /*rawValueX*/,
+                                        float /*rawValueY*/,
+                                        float /*rawValueZ*/) {}
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Simulate a raw input event. Please use with caution; it's designed primarily for testing
+        //! purposes, and could result in strange behaviour if called while the user is interacting
+        //! physically with any input device that happens to be updating the same input channel(s),
+        //! or if used to simulate input of an input channel whose value is derived from the value
+        //! of a different input channel (eg. the InputDeviceGamepad::ThumbStickDirection::* input
+        //! channel values are derived from their respective InputDeviceGamepad::ThumbStickAxis2D).
+        //!
+        //! If used, it is the responsibility of the caller to reset the input channel back to it's
+        //! original idle state, otherwise it may be left in a state of being permanently 'active'.
+        //!
+        //! \param[in] rawValue The raw input value to simulate. Analog input channels will use the
+        //! value directly, digital input channels treat 0.0f as 'off' and all other values as 'on'.
+        //! \param[in] normalizedX The normalized x position of the simulated raw input event.
+        //! \param[in] normalizedY The normalized y position of the simulated raw input event.
+        virtual void SimulateRawInputWithPosition2D(float /*rawValue*/,
+                                                    float /*normalizedX*/,
+                                                    float /*normalizedY*/) {}
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
         virtual ~InputChannelRequests() = default;
     };

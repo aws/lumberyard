@@ -167,7 +167,9 @@ def key_exists(key, bucket_name):
 
 
 def generate_key(tts_info):
-    return hashlib.md5("{}-{}".format(tts_info["voice"], tts_info["message"])).hexdigest()
+    key = "{}-{}".format(tts_info["voice"], tts_info["message"])
+    # Unicode-objects must be encoded before hashing with Python 3
+    return hashlib.md5(key.encode('utf-8')).hexdigest()
 
 
 def generate_presigned_url(key):

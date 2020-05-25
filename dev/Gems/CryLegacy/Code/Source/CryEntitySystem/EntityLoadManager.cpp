@@ -25,7 +25,6 @@
 #include <Components/IComponentArea.h>
 #include <Components/IComponentRope.h>
 #include <Components/IComponentClipVolume.h>
-#include <Components/IComponentFlowGraph.h>
 #include "Components/IComponentSerialization.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -39,7 +38,6 @@ CEntityLoadManager::CEntityLoadManager(CEntitySystem* pEntitySystem)
 CEntityLoadManager::~CEntityLoadManager()
 {
     stl::free_container(m_queuedAttachments);
-    stl::free_container(m_queuedFlowgraphs);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -850,14 +848,6 @@ bool CEntityLoadManager::CreateEntity(SEntityLoadParams& loadParams, EntityId& o
                 }
             }
 
-            // check for a flow graph
-            // only store them for later serialization as the FG proxy relies
-            // on all EntityGUIDs already loaded
-            if (entityNode->findChild("FlowGraph"))
-            {
-                AddQueuedFlowgraph(pSpawnedEntity, entityNode);
-            }
-
             // Load entity links.
             XmlNodeRef linksNode = entityNode->findChild("EntityLinks");
             if (linksNode)
@@ -930,10 +920,8 @@ bool CEntityLoadManager::CreateEntity(SEntityLoadParams& loadParams, EntityId& o
 void CEntityLoadManager::PrepareBatchCreation(int nSize)
 {
     m_queuedAttachments.clear();
-    m_queuedFlowgraphs.clear();
 
     m_queuedAttachments.reserve(nSize);
-    m_queuedFlowgraphs.reserve(nSize);
     m_guidToId.clear();
 }
 
@@ -952,16 +940,6 @@ void CEntityLoadManager::AddQueuedAttachment(EntityId nParent, EntityGUID nParen
     entityAttachment.target = target;
 
     m_queuedAttachments.push_back(entityAttachment);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CEntityLoadManager::AddQueuedFlowgraph(IEntity* pEntity, XmlNodeRef& pNode)
-{
-    SQueuedFlowGraph f;
-    f.pEntity = pEntity;
-    f.pNode = pNode;
-
-    m_queuedFlowgraphs.push_back(f);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1009,27 +987,6 @@ void CEntityLoadManager::OnBatchCreationCompleted()
         }
     }
     m_queuedAttachments.clear();
-
-    // Load flowgraphs
-    TQueuedFlowgraphs::iterator itQueuedFlowgraph = m_queuedFlowgraphs.begin();
-    TQueuedFlowgraphs::iterator itQueuedFlowgraphEnd = m_queuedFlowgraphs.end();
-    for (; itQueuedFlowgraph != itQueuedFlowgraphEnd; ++itQueuedFlowgraph)
-    {
-        SQueuedFlowGraph& f = *itQueuedFlowgraph;
-
-        if (f.pEntity)
-        {
-            IComponentPtr component = f.pEntity->GetOrCreateComponent<IComponentFlowGraph>();
-            if (component)
-            {
-                if (IComponentSerializationPtr serializationComponent = f.pEntity->GetComponent<IComponentSerialization>())
-                {
-                    serializationComponent->SerializeXML(f.pNode, true);
-                }
-            }
-        }
-    }
-    m_queuedFlowgraphs.clear();
 
     // Load entity links
     TQueuedFlowgraphs::iterator itQueuedEntityLink = m_queuedEntityLinks.begin();

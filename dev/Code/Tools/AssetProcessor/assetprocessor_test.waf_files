@@ -42,10 +42,12 @@
             "native/tests/FileProcessor/FileProcessorTests.cpp",
             "native/tests/FileStateCache/FileStateCacheTests.h",
             "native/tests/FileStateCache/FileStateCacheTests.cpp",
-            "native/tests/MissingDependencyScannerTests.cpp"
+            "native/tests/MissingDependencyScannerTests.cpp",
+            "native/tests/SourceFileRelocatorTests.cpp",
+            "native/tests/AssetProcessorMessagesTests.cpp"
+
         ],
-        "unittests":
-        [
+        "unittests": [
             "native/unittests/AssetProcessingStateDataUnitTests.cpp",
             "native/unittests/AssetProcessingStateDataUnitTests.h",
             "native/unittests/AssetProcessorManagerUnitTests.cpp",
@@ -54,6 +56,8 @@
             "native/unittests/AssetProcessorServerUnitTests.h",
             "native/unittests/AssetScannerUnitTests.cpp",
             "native/unittests/AssetScannerUnitTests.h",
+            "native/unittests/ConnectionUnitTests.cpp",
+            "native/unittests/ConnectionUnitTests.h",
             "native/unittests/ConnectionManagerUnitTests.cpp",
             "native/unittests/ConnectionManagerUnitTests.h",
             "native/unittests/FileWatcherUnitTests.cpp",

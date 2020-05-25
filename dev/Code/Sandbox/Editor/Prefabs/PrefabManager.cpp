@@ -24,8 +24,6 @@
 
 #include "Objects/PrefabObject.h"
 
-#include "PrefabEvents.h"
-
 #define PREFABS_LIBS_PATH "Prefabs/"
 
 //////////////////////////////////////////////////////////////////////////
@@ -173,28 +171,17 @@ void CUndoAddObjectsToPrefab::Redo()
 // CPrefabManager implementation.
 //////////////////////////////////////////////////////////////////////////
 CPrefabManager::CPrefabManager()
-    : m_pPrefabEvents(NULL)
 {
     m_bUniqNameMap = true;
     m_pLevelLibrary = (CBaseLibrary*)AddLibrary("Level", true);
 
-    m_pPrefabEvents = new CPrefabEvents();
-
     m_skipPrefabUpdate = false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-CPrefabManager::~CPrefabManager()
-{
-    SAFE_DELETE(m_pPrefabEvents);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CPrefabManager::ClearAll()
 {
     CBaseLibraryManager::ClearAll();
-
-    m_pPrefabEvents->RemoveAllEventData();
 
     m_pLevelLibrary = (CBaseLibrary*)AddLibrary("Level", true);
 }

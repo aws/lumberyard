@@ -34,4 +34,9 @@ namespace PhysX
     /// The type ID of editor component PhysX::EditorForceRegionComponent.
     ///
     static const AZ::TypeId EditorForceRegionComponentTypeId("{AAD18665-8EBC-4CAF-8491-524F054463BC}");
+
+    ///
+    /// The type ID of runtime component PhysX::StaticRigidBodyComponent.
+    ///
+    static const AZ::TypeId StaticRigidBodyComponentTypeId("{A2CCCD3D-FB31-4D65-8DCD-2CD7E1D09538}");
 }

@@ -365,12 +365,18 @@ bool StringHelpers::ContainsIgnoreCase(const wstring& str, const wstring& patter
     const size_t n = str.length() - patternLength + 1;
     for (size_t i = 0; i < n; ++i)
     {
+        bool match = true;
         for (size_t j = 0; j < patternLength; ++j)
         {
             if (towlower(str[i + j]) != towlower(pattern[j]))
             {
-                return false;
+                match = false;
+                break;
             }
+        }
+        if (match)
+        {
+            return true;
         }
     }
     return false;

@@ -222,7 +222,10 @@ namespace NvCloth
 
             UpdateSimulation(deltaTime);
 
-            RetrieveSimulationResults();
+            if (!RetrieveSimulationResults())
+            {
+                RestoreSimulation();
+            }
 
             auto& renderParticles = GetRenderParticles();
             renderParticles = m_simParticles;
@@ -490,6 +493,7 @@ namespace NvCloth
             meshDesc.points = ToBoundedData(m_clothInitialParticles.data(), sizeof(SimParticleType), m_clothInitialParticles.size());
             meshDesc.invMasses = ToBoundedData(&clothInitialInvMasses->front().w, sizeof(SimParticleType), clothInitialInvMasses->size());
             meshDesc.triangles = ToBoundedData(m_clothInitialIndices.data(), sizeof(SimIndexType) * 3, m_clothInitialIndices.size() / 3);
+            meshDesc.flags = (sizeof(SimIndexType) == 2) ? nv::cloth::MeshFlag::e16_BIT_INDICES : 0;
 
             // Gravity used to cook the fabric. 
             // It's important that the gravity vector used for cooking is in the same space as the mesh.
@@ -693,7 +697,7 @@ namespace NvCloth
 
             // Update cloth copy now that the anchor particles have been skinned
             nv::cloth::MappedRange<physx::PxVec4> particles = m_cloth->getCurrentParticles();
-            memcpy(particles.begin(), m_simParticles.data(), m_simParticles.size() * sizeof(SimParticleType));
+            memcpy(&particles[0], m_simParticles.data(), m_simParticles.size() * sizeof(SimParticleType));
         }
     }
 
@@ -710,26 +714,70 @@ namespace NvCloth
         }
     }
 
-    void ClothComponent::RetrieveSimulationResults()
+    bool ClothComponent::RetrieveSimulationResults()
     {
-        // Store vertex data so we can update the renderable copy faster during the callback
-        const nv::cloth::Cloth* cloth = m_cloth.get(); // Use a const pointer to call the read-only version of getCurrentParticles()
-        const nv::cloth::MappedRange<const SimParticleType>& particles = cloth->getCurrentParticles();
+        const nv::cloth::Cloth* clothConst = m_cloth.get(); // Use a const pointer to call the read-only version of getCurrentParticles()
+        const nv::cloth::MappedRange<const SimParticleType> particles = clothConst->getCurrentParticles();
 
-        // NOTE: using type MappedRange<const SimParticleType> is important to call the read-only version of cloth->getCurrentParticles(),
+        // NOTE: using type MappedRange<const SimParticleType> is important to call the read-only version of getCurrentParticles(),
         // otherwise when MappedRange gets out of scope it will wake up the cloth to account for the possibility that particles were changed.
 
-        AZ_Assert(m_simParticles.size() == particles.size(), "Mismatch in number of cloth particles. Expected: %d Updated: %d", m_simParticles.size(), particles.size());
+        bool validCloth =
+            AZStd::all_of(particles.begin(), particles.end(), [](const SimParticleType& particle)
+                {
+                    return particle.isFinite();
+                })
+            &&
+            // On some platforms when cloth simulation gets corrupted it puts all particles' position to (0,0,0)
+            AZStd::any_of(particles.begin(), particles.end(), [](const SimParticleType& particle)
+                {
+                    return particle.x != 0.0f || particle.y != 0.0f || particle.z != 0.0f;
+                });
 
-        // Leave the simulation particles in their last good position if
-        // the simulation has gone wrong and it has stopped providing finite vertices.
-        for (size_t i = 0; i < m_simParticles.size(); ++i)
+        if (validCloth)
         {
-            if (particles[i].isFinite())
-            {
-                m_simParticles[i] = particles[i];
-            }
+            AZ_Assert(m_simParticles.size() == particles.size(),
+                "Mismatch in number of cloth particles. Expected: %d Updated: %d", m_simParticles.size(), particles.size());
+
+            memcpy(m_simParticles.data(), &particles[0], particles.size() * sizeof(SimParticleType));
+
+            m_numInvalidSimulations = 0;
         }
+
+        return validCloth;
+    }
+
+    void ClothComponent::RestoreSimulation()
+    {
+        const AZ::u32 maxAttemptsToRestoreCloth = 15;
+
+        if (m_numInvalidSimulations <= maxAttemptsToRestoreCloth)
+        {
+            // Leave the simulation particles in their last good position if
+            // the simulation has gone wrong and it has stopped providing valid vertices.
+
+            const nv::cloth::Cloth* clothConst = m_cloth.get(); // Use a const pointer to call the read-only version of getPreviousParticles()
+            const nv::cloth::MappedRange<const SimParticleType> previousParticles = clothConst->getPreviousParticles();
+            nv::cloth::MappedRange<SimParticleType> currentParticles = m_cloth->getCurrentParticles();
+
+            memcpy(&currentParticles[0], &previousParticles[0], previousParticles.size() * sizeof(SimParticleType));
+        }
+        else
+        {
+            // Reset simulation particles to their initial position if after a number of
+            // attempts cloth has not been restored to a stable state.
+
+            nv::cloth::MappedRange<SimParticleType> previousParticles = m_cloth->getPreviousParticles();
+            nv::cloth::MappedRange<SimParticleType> currentParticles = m_cloth->getCurrentParticles();
+
+            memcpy(&previousParticles[0], m_clothInitialParticles.data(), m_clothInitialParticles.size() * sizeof(SimParticleType));
+            memcpy(&currentParticles[0], m_clothInitialParticles.data(), m_clothInitialParticles.size() * sizeof(SimParticleType));
+        }
+
+        m_cloth->clearInertia();
+        m_cloth->clearInterpolation();
+
+        m_numInvalidSimulations++;
     }
 
     void ClothComponent::BlendSkinningAnimation()

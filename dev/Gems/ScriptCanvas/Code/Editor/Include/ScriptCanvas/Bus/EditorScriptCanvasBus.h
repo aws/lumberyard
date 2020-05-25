@@ -43,7 +43,7 @@ namespace ScriptCanvasEditor
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
 
 
         //! Sets the name of the ScriptCanvas Graph.
@@ -90,7 +90,7 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         //! Gets the GraphId for the EditorScriptCanvasComponent on the given entity.
-        virtual AZ::EntityId GetGraphId() const = 0;
+        virtual ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const = 0;
     };
 
     using EditorContextMenuRequestBus = AZ::EBus<EditorContextMenuRequests>;
@@ -124,7 +124,9 @@ namespace ScriptCanvasEditor
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
+
+        //ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const = 0;
 
         virtual void CreateGraphCanvasScene() = 0;
         virtual void ClearGraphCanvasScene() = 0;
@@ -151,6 +153,9 @@ namespace ScriptCanvasEditor
 
         virtual void RemoveUnusedVariables() = 0;
 
+        virtual bool ConvertVariableNodeToReference(const GraphCanvas::NodeId& nodeId) = 0;
+        virtual bool ConvertReferenceToVariableNode(const GraphCanvas::Endpoint& endpoint) = 0;
+
         virtual void QueueVersionUpdate(const AZ::EntityId& graphCanvasNodeId) = 0;
     };
     
@@ -161,7 +166,7 @@ namespace ScriptCanvasEditor
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
 
         virtual void OnGraphCanvasSceneDisplayed() {};
     };

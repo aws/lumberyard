@@ -91,9 +91,9 @@ void AssetEditorWindow::closeEvent(QCloseEvent* event)
     }
 }
 
-void AssetEditorWindow::OnAssetSaveFailed(const AZStd::string& error) const
+void AssetEditorWindow::OnAssetSaveFailed(const AZStd::string& error)
 {
-    QMessageBox::warning(nullptr, tr("Unable to Save Asset"),
+    QMessageBox::warning(this, tr("Unable to Save Asset"),
         tr(error.c_str()), QMessageBox::Ok, QMessageBox::Ok);
 }
 

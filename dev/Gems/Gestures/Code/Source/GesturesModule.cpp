@@ -18,7 +18,6 @@
 #include "GesturesSystemComponent.h"
 
 #include <IGem.h>
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 namespace Gestures
 {
@@ -46,18 +45,6 @@ namespace Gestures
             return AZ::ComponentTypeList{
                 azrtti_typeid<GesturesSystemComponent>(),
             };
-        }
-
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
-        {
-            switch (event)
-            {
-            case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            {
-                RegisterExternalFlowNodes();
-            }
-            break;
-            }
         }
     };
 }

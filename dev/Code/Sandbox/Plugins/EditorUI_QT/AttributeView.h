@@ -17,7 +17,6 @@
 
 #include "AttributeItem.h"
 
-#include <QtWidgets/QtWidgets>
 #include <QVBoxLayout>
 #include <Util/smartptr.h>
 
@@ -215,8 +214,10 @@ private:
     void SetEnabledFromPath(QString path, bool enable);
     void RecurseSetProperty(QString prop, QString value, CAttributeItem::AttributeList start);
     bool PanelExist(QString name);
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::function<void()> callback_gradient_editor_start;
     std::function<void(bool)> m_callbackEmitterEnableToggled;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     void CorrectLayout(QByteArray& data);
 
@@ -241,6 +242,7 @@ private:
 private:
     CAttributeViewConfig m_config;
     CAttributeViewConfig m_defaultConfig;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QVector<CAttributeViewConfig*> m_importedConfigs;
     QMap<QString, IVariable*> m_configVariableMap;
     QMap<QString, bool> m_variableIgnoreMap;
@@ -274,6 +276,7 @@ private:
     RefreshCallback m_refreshCallback;
 
     QVector<TSmartPtr<IVariable>> m_variableCopyList;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     QByteArray m_originalLayout;
     CVarBlock* m_lastVarBlock;

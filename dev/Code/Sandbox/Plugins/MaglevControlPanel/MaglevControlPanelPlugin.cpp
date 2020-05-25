@@ -11,6 +11,7 @@
 */
 #include "stdafx.h"
 #include <MaglevControlPanelPlugin.h>
+#include <AWSResourceManager.h>
 
 #include <InitializeCloudCanvasProject.h>
 #include <QtViewPaneManager.h>
@@ -30,8 +31,9 @@ const char* TAG = "MaglevControlPanelPlugin";
 
 MaglevControlPanelPlugin::MaglevControlPanelPlugin(IEditor* editor)
     : m_pluginSettings(QSettings::IniFormat, QSettings::UserScope, "Amazon", "Lumberyard")
-    , m_awsResourceManager(editor)
 {
+    m_awsResourceManager = AZStd::make_shared<AWSResourceManager>(editor);
+
     //Load our previously selected profile name and init the credentials provider
     auto profileName = m_pluginSettings.value(ProfileSelector::SELECTED_PROFILE_KEY, "default").toString().toStdString();
 
@@ -42,11 +44,11 @@ MaglevControlPanelPlugin::MaglevControlPanelPlugin(IEditor* editor)
     qRegisterMetaType<AwsResultWrapper>("AwsResultWrapper");
 
     QtViewOptions opt;
-    opt.isDeletable = true; 
-    opt.canHaveMultipleInstances = false; 
+    opt.isDeletable = true;
+    opt.canHaveMultipleInstances = false;
     opt.showInMenu = true;
     opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    
+
     RegisterQtViewPane<ResourceManagementView>(editor, ResourceManagementView::GetWindowTitle(), LyViewPane::CategoryCloudCanvas, opt);
 
     WinWidget::RegisterWinWidget<InitializeCloudCanvasProject>();
@@ -68,10 +70,10 @@ void MaglevControlPanelPlugin::OnEditorNotify(EEditorNotifyEvent aEventId)
     switch (aEventId)
     {
     case eNotify_OnInit:
-        m_awsResourceManager.OnInit();
+        m_awsResourceManager->OnInit();
         break;
     case eNotify_OnBeginGameMode:
-        m_awsResourceManager.OnBeginGameMode();
+        m_awsResourceManager->OnBeginGameMode();
         break;
     }
 }

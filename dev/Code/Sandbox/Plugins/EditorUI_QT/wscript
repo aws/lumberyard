@@ -47,8 +47,9 @@ def build(bld):
         defines             = ['EDITOR_COMMON_IMPORTS'],
         darwin_uselib       = ['QT5MACEXTRAS'],
         darwin_enable_rtti  = True,
-    
+
         clang_cxxflags      = ['-Wno-char-subscripts', '-Wno-enum-compare-switch'],
+        msvc_cxxflags       = ['/wd4251'],
         linux_rpath         = ['$ORIGIN/qtlibs/lib'],
 
         # Testing

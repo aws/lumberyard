@@ -14,9 +14,8 @@
 def build(bld):
     bld.DefineGem(
         # General
-        includes                = [ bld.ThirdPartyPath('boost'),
-                                    bld.Path('Code/CryEngine/CryCommon'),
-                                    bld.Path('Code/CryEngine/CryAction')
+        includes                = [ '.',
+                                    bld.Path('Code/CryEngine/CryCommon')
                                   ],
         use                     = ['AzGameFramework'],
 

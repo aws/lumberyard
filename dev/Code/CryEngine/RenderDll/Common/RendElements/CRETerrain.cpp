@@ -21,6 +21,7 @@
 #include "TerrainUtils/CDLOD/CDLODQuadTree.h"
 #include "TerrainUtils/TerrainTextureCache.h"
 #include "TerrainUtils/TerrainRenderingParameters.h"
+#include "TerrainUtils/Debug/TerrainProfiler.h"
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <MathConversion.h>
@@ -99,12 +100,20 @@ namespace Terrain
         m_quadTree = AZStd::make_unique<CDLODQuadTree>();
         m_terrainTextureQuadTree = AZStd::make_unique<CDLODQuadTree>();
 
+#if !defined(_RELEASE) && defined(AZ_STATISTICAL_PROFILING_ENABLED)
+        m_terrainProfiler = new Debug::TerrainProfiler(gEnv->pConsole);
+#endif
+
         // Connect to RenderNotification bus
         AZ::RenderThreadEventsBus::Handler::BusConnect();
     }
 
     CRETerrain::~CRETerrain()
     {
+#if !defined(_RELEASE) && defined(AZ_STATISTICAL_PROFILING_ENABLED)
+        delete m_terrainProfiler;
+#endif
+
         // Disconnect from RenderNotification bus
         AZ::RenderThreadEventsBus::Handler::BusDisconnect();
     }
@@ -163,6 +172,8 @@ namespace Terrain
         // no, no, seriously I ONLY want to do this once a frame
         if (gRenDev->m_nCurFSStackLevel == 0 && lastUpdateFrame != gRenDev->m_nFrameSwapID)
         {
+            TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::Terrain, Debug::StatisticMfPrepare);
+
             lastUpdateFrame = gRenDev->m_nFrameSwapID;
 
             // Clamp settings
@@ -265,6 +276,26 @@ namespace Terrain
             return true;
         }
 
+#if defined(AZ_STATISTICAL_PROFILING_ENABLED)
+        //mfDraw is called several times per frame based on r_graphicsQuality:
+        //    For high quality
+        //        1st time is under FX_RenderForwardOpaque.
+        //        2nd to 9th time (8 times) under EF_PrepareAllDepthMaps because the Camera Frustum is divided
+        //        into 8 smaller frustums.
+        //        10th time is under FX_ProcessZPassRenderLists.
+        //    For low quality:
+        //        1st time is under FX_RenderForwardOpaque.
+        //        2nd to 5th times (4 times) under EF_PrepareAllDepthMaps because the Camera Frustum is divided
+        //        into 4 smaller frustums.
+        //        6th time is under FX_ProcessZPassRenderLists.
+        //This variable is set to true for the last time this method is called within a frame, so we can accurately
+        //collect the number of camera-visible terrain tiles. This is important because as mentioned above this method
+        //is called several times and the count of visible tiles is not always the camera-visible tiles. It is guaranteed that during
+        //the last call of this method within the current frame the visible tiles refer to the camera-visible tiles which
+        //is what we need to capture.
+        bool isLastDrawInFrame = false;
+#endif
+
         // Make sure we only try to render data that's been prepared this frame.
         // (This guards against corruption that can be caused by spawning / despawning terrain mid-frame)
         if (!m_dataPrepared)
@@ -292,6 +323,8 @@ namespace Terrain
 
         LODSelection* lodSelection = nullptr;
         {
+            TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::Terrain, Debug::StatisticMfDrawNodeGather);
+
             PROFILE_LABEL_SCOPE("TERRAIN NODE GATHER");
             // Gathering terrain nodes
 
@@ -345,6 +378,11 @@ namespace Terrain
             if (!isReflectionPass
                 && !isShadowPass)
             {
+#if defined(AZ_STATISTICAL_PROFILING_ENABLED)
+                isLastDrawInFrame = true;
+                TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::Terrain, Debug::StatisticMfDrawGatherTextureTiles);
+#endif
+
                 const float terrainTextureViewDistance = pTerrainParams->m_terrainTextureCompositeViewDistance;
 
                 // Texture streaming quad tree selection setup
@@ -399,6 +437,9 @@ namespace Terrain
 
                 // Terrain texture requests based on culling results
                 m_terrainTextureCache->RequestTerrainTextureTiles(cdlodSelection);
+#if !defined(_RELEASE) && defined(AZ_STATISTICAL_PROFILING_ENABLED)
+                m_terrainProfiler->SetVisibleTextureTilesCount(cdlodSelection.GetSelectionCount());
+#endif
             }
 
             LODSelection::LODSelectionDesc terrainMeshSelectionDesc;
@@ -429,9 +470,18 @@ namespace Terrain
                 // Terrain heightmap data requests based on lod selection results
                 m_terrainTextureCache->RequestTerrainDataTiles(*lodSelection);
             }
+
+#if !defined(_RELEASE) && defined(AZ_STATISTICAL_PROFILING_ENABLED)
+            if (isLastDrawInFrame)
+            {
+                m_terrainProfiler->SetVisibleDataTilesCount(cdlodSelection.GetSelectionCount());
+            }
+#endif
         }
 
         {
+            TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::Terrain, Debug::StatisticMfDrawTerrainDraw);
+
             PROFILE_LABEL_SCOPE("TERRAIN DRAW");
 
             gRenDev->SetCullMode(R_CULL_BACK);
@@ -528,6 +578,7 @@ namespace Terrain
                 gRenDev->FX_SetState(prevState);
             }
         }
+
         return true;
     }
 
@@ -853,4 +904,4 @@ namespace Terrain
     }
 }
 
-#endif
+#endif //#ifdef LY_TERRAIN_RUNTIME

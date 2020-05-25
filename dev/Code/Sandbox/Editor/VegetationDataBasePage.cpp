@@ -232,6 +232,7 @@ void CVegetationDataBasePage::OnClear()
         else
         {
             CVegetationTool* pTool = new CVegetationTool;
+            pTool->AddRef();
             pTool->Clear();
             pTool->Release();
         }
@@ -252,6 +253,7 @@ void CVegetationDataBasePage::OnBnClickedScale()
     else
     {
         CVegetationTool* pTempTool = new CVegetationTool;
+        pTempTool->AddRef();
         pTempTool->ScaleObjects();
         pTempTool->Release();
     }

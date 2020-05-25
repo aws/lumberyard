@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/std/any.h>
 
 using namespace AZ;
 
@@ -3281,5 +3282,52 @@ namespace UnitTest
                 m_serializeContext->DisableRemoveReflection();
             }
         }
+
+        struct ObjectWithAnyAndBool
+        {
+            AZ_CLASS_ALLOCATOR(ObjectWithAnyAndBool, SystemAllocator, 0);
+            AZ_TYPE_INFO(ObjectWithAnyAndBool, "{266FD5C6-39AE-482F-99B7-DA2A1AFE1EA9}");
+
+            static void Reflect(AZ::ReflectContext* reflectContext)
+            {
+                if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
+                {
+                    serializeContext->Class<ObjectWithAnyAndBool>()
+                        ->Version(1)
+                        ->Field("AnyValue", &ObjectWithAnyAndBool::m_any)
+                        ->Field("BoolValue", &ObjectWithAnyAndBool::m_bool);
+                }
+            }
+
+            AZStd::any m_any;
+            bool m_bool;
+        };
+
+        TEST_F(PatchingTest, DataPatchingObjectWithAnyPreservesAnyData)
+        {
+            ObjectWithAnyAndBool::Reflect(m_serializeContext.get());
+
+            ObjectWithAnyAndBool firstObject;
+            firstObject.m_any = AZStd::make_any<bool>(false);
+            firstObject.m_bool = false;
+
+            ObjectWithAnyAndBool secondObject;
+            secondObject.m_any = AZStd::make_any<bool>(false);
+            secondObject.m_bool = true;
+
+            DataPatch testPatch;
+            testPatch.Create(&firstObject, &secondObject, {}, {}, m_serializeContext.get());
+
+            ObjectWithAnyAndBool* finalObject = testPatch.Apply(&firstObject, m_serializeContext.get());
+
+            ASSERT_FALSE(finalObject->m_any.empty());
+
+            delete finalObject;
+
+            m_serializeContext->EnableRemoveReflection();
+            ObjectWithAnyAndBool::Reflect(m_serializeContext.get());
+            m_serializeContext->DisableRemoveReflection();
+        }
+
     }
 }

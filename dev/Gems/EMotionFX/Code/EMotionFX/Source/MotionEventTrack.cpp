@@ -192,6 +192,10 @@ namespace EMotionFX
     template <typename Functor>
     void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops) const
     {
+        const float duration = motionInstance->GetDuration();
+        startTime = AZ::GetClamp(startTime, 0.0f, duration);
+        endTime = AZ::GetClamp(endTime, 0.0f, duration);
+
         const bool playForward = (motionInstance->GetPlayMode() == PLAYMODE_FORWARD);
         if (handleLoops)
         {
@@ -276,7 +280,7 @@ namespace EMotionFX
             }
             else // Playing backward.
             {
-                AZ_Assert(startTime > endTime, "Expecting start time to be larger than then end time in backward mode.");
+                AZ_Assert(startTime >= endTime, "Expecting start time to be larger than then end time in backward mode.");
                 for (auto i = m_events.crbegin(); i != m_events.crend(); ++i)
                 {
                     const EMotionFX::MotionEvent& event = *i;

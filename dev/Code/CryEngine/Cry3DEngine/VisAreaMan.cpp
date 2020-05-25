@@ -17,10 +17,7 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-#include "terrain_sector.h"
 #include "3dEngine.h"
-#include "3dEngine.h"
-#include "terrain.h"
 #include "ILMSerializationManager.h"
 #include "TimeOfDay.h"
 #include "AABBSV.h"
@@ -1052,9 +1049,6 @@ void CVisAreaManager::UpdateVisArea(CVisArea* pArea, const Vec3* pPoints, int nC
     }
 
     UpdateConnections();
-
-    // disable terrain culling for tunnels
-    pArea->UpdateOcclusionFlagInTerrain();
 
     delete m_pAABBTree;
     m_pAABBTree = NULL;

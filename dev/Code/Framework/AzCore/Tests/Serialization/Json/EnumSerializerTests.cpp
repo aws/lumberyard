@@ -305,6 +305,7 @@ namespace JsonSerializationTests
         };
     };
 
+    // Json Enum Load Tests
     TEST_F(JsonEnumSerializerTests, Load_Int_ReturnsSuccess)
     {
         using namespace AZ::JsonSerializationResult;
@@ -712,6 +713,46 @@ namespace JsonSerializationTests
         EXPECT_EQ(expectedResult, convertedValue);
     }
 
+    TEST_F(JsonEnumSerializerTests, Load_StringWithEnumOption_DoesNotSendReturnCodeUnsupportToReportingFunction)
+    {
+        using namespace AZ::JsonSerializationResult;
+        using EnumType = ScopedEnumFlagsS16;
+        auto scopedReflector = [this]
+        {
+            this->m_serializeContext->Enum<EnumType>()
+                ->Value("Flags0", EnumType::ScopedFlag0)
+                ->Value("Flags1", EnumType::ScopedFlag1)
+                ->Value("Flags2", EnumType::ScopedFlag2)
+                ->Value("Flags3", EnumType::ScopedFlag3)
+                ;
+        };
+        ScopedTestJsonReflector scopedJsonReflector(*this, AZStd::move(scopedReflector));
+        AZ::BaseJsonSerializer* enumJsonSerializer{ m_jsonRegistrationContext->GetSerializerForSerializerType(azrtti_typeid<AZ::JsonEnumSerializer>()) };
+        ASSERT_NE(nullptr, enumJsonSerializer);
+
+        rapidjson::Value testValue("Flags3");
+
+        // Clone the m_deserializationSettings and add a custom reporting callback
+        AZ::JsonDeserializerSettings testDeserializerSettings = m_deserializationSettings;
+        testDeserializerSettings.m_reporting = [this](AZStd::string_view message, AZ::JsonSerializationResult::ResultCode resultCode, AZStd::string_view path)
+        {
+            if (resultCode.GetOutcome() == Outcomes::Unsupported && m_path == path)
+            {
+                ADD_FAILURE() << "EnumSerializer LoadString() internal function should not report Outcomes::Unsupported for this test";
+            }
+
+            return resultCode;
+        };
+        EnumType convertedValue{};
+        Result loadResult = enumJsonSerializer->Load(&convertedValue, azrtti_typeid<decltype(convertedValue)>(),
+            testValue, m_path, testDeserializerSettings);
+        ResultCode resultCode = loadResult.GetResultCode();
+
+        EXPECT_EQ(Outcomes::Success, resultCode.GetOutcome());
+        EXPECT_EQ(EnumType::ScopedFlag3, convertedValue);
+    }
+
+    // Json Enum Store Test
     TEST_F(JsonEnumSerializerTests, Store_EnumWithSingleOption_ValueIsStored)
     {
         using namespace AZ::JsonSerializationResult;

@@ -24,8 +24,10 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction AddBookmarkMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction AddBookmarkMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::ClearSelection);
 
         AZ::Entity* bookmarkEntity = nullptr;

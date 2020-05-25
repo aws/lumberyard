@@ -229,7 +229,7 @@ void StairProfileTool::CreateCandidates()
         BrushFloat fFullRise = std::abs(vEndPoint[nElement] - vStartPoint[nElement]);
         BrushFloat fFullLength = (vEndPoint - vStartPoint).GetLength();
 
-        nStepNumber = fFullRise / fStepRise;
+        nStepNumber = aznumeric_cast<int>(fFullRise / fStepRise);
         vShrinkedEndPoint = vStartPoint + ((vEndPoint - vStartPoint).GetNormalized() * ((fStepRise * fFullLength) / fFullRise)) * nStepNumber;
     }
 

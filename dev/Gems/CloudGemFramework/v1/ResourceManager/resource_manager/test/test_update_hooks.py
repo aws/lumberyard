@@ -10,9 +10,8 @@
 #
 # $Revision$
 
-import unittest
+
 import os
-import uuid
 
 import resource_manager.uploader
 
@@ -46,37 +45,37 @@ import os
 
 def upload_resource_group_content_pre(hook_module, resource_group_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_resource_group_content_pre_calls.txt')
-    print '>>>>>>>>>>> upload_resource_group_pre_content', file_path
+    print('>>>>>>>>>>> upload_resource_group_pre_content', file_path)
     with open(file_path, 'a') as f:
         f.write(resource_group_uploader.key + ',' + resource_group_uploader.resource_group_name + ',' + resource_group_uploader.deployment_uploader.deployment_name + '\\n')
 
 def upload_resource_group_content_post(hook_module, resource_group_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_resource_group_content_post_calls.txt')
-    print '>>>>>>>>>>> upload_resource_group_post_content', file_path
+    print('>>>>>>>>>>> upload_resource_group_post_content', file_path)
     with open(file_path, 'a') as f:
         f.write(resource_group_uploader.key + ',' + resource_group_uploader.resource_group_name + ',' + resource_group_uploader.deployment_uploader.deployment_name + '\\n')
     
 def upload_deployment_content_pre(hook_module, deployment_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_deployment_content_pre_calls.txt')
-    print '>>>>>>>>>>> upload_deployment_pre_content', file_path
+    print('>>>>>>>>>>> upload_deployment_pre_content', file_path)
     with open(file_path, 'a') as f:
         f.write(deployment_uploader.key + ',' + deployment_uploader.deployment_name + '\\n')
 
 def upload_deployment_content_post(hook_module, deployment_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_deployment_content_post_calls.txt')
-    print '>>>>>>>>>>> upload_deployment_post_content', file_path
+    print('>>>>>>>>>>> upload_deployment_post_content', file_path)
     with open(file_path, 'a') as f:
         f.write(deployment_uploader.key + ',' + deployment_uploader.deployment_name + '\\n')
 
 def upload_project_content_pre(hook_module, project_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_project_content_pre_calls.txt')
-    print '>>>>>>>>>>> upload_project_pre_content', file_path
+    print('>>>>>>>>>>> upload_project_pre_content', file_path)
     with open(file_path, 'a') as f:
         f.write(project_uploader.key + ',' + '\\n')
     
 def upload_project_content_post(hook_module, project_uploader):
     file_path = os.path.join(os.path.dirname(__file__), 'upload_project_content_post_calls.txt')
-    print '>>>>>>>>>>> upload_project_post_content', file_path
+    print('>>>>>>>>>>> upload_project_post_content', file_path)
     with open(file_path, 'a') as f:
         f.write(project_uploader.key + ',' + '\\n')
 
@@ -94,7 +93,7 @@ def upload_project_content_post(hook_module, project_uploader):
         with open(file_path, 'w') as f:
             f.write(self.UPLOADER_CODE)
 
-        print '>>>>>>>>>>> created uploader', file_path
+        print('>>>>>>>>>>> created uploader {}'.format(file_path))
 
         uploader_call_file_paths.append(os.path.join(plugin_path, 'upload_resource_group_content_pre_calls.txt'))
         uploader_call_file_paths.append(os.path.join(plugin_path, 'upload_resource_group_content_post_calls.txt'))
@@ -132,7 +131,7 @@ import os
 
 def log_resource_group_hook_call(base_name, hook, deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     file_path = os.path.join(os.path.dirname(__file__), base_name + '_{HOOK_NAME}_' + resource_group_name + '.txt')
-    print '>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}_' + resource_group_name, file_path
+    print('>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}_' + resource_group_name, file_path)
     with open(file_path, 'a') as f:
         f.write(hook.context.config.root_directory_path + ',' + resource_group_uploader.key + ',' + resource_group_name + ',' + deployment_name + '\\n')
 
@@ -150,7 +149,7 @@ def after_resource_group_updated(hook,  deployment_name, resource_group_name, re
 
 def log_project_hook_call(base_name, hook, project_uploader, **kwargs):
     file_path = os.path.join(os.path.dirname(__file__), base_name + '_{HOOK_NAME}.txt')
-    print '>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}', file_path
+    print('>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}', file_path)
     with open(file_path, 'a') as f:
         f.write(hook.context.config.root_directory_path + ',' + project_uploader.key + '\\n')
     
@@ -173,7 +172,7 @@ def after_project_updated(hook, project_uploader, **kwargs):
         with open(file_path, 'w') as f:
             f.write(self.UPDATE_CODE.format(HOOK_NAME=hook_name))
 
-        print '>>>>>>>>>>> created update hook', hook_name, file_path
+        print('>>>>>>>>>>> created update hook {} {}'.format(hook_name, file_path))
 
         update_call_file_paths.append(os.path.join(plugin_path, 'before_this_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_RESOURCE_GROUP_NAME_1)))
         update_call_file_paths.append(os.path.join(plugin_path, 'after_this_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_RESOURCE_GROUP_NAME_1)))
@@ -195,7 +194,7 @@ def after_project_updated(hook, project_uploader, **kwargs):
         for list in expected_lists:
             expected_list.extend(list)
 
-        print '>>> checking for', expected_list
+        print('>>> checking for {}'.format(expected_list))
 
         global update_call_file_paths
         for file_path in update_call_file_paths:

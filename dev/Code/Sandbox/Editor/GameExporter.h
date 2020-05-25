@@ -73,7 +73,7 @@ public:
 
     bool Export(unsigned int flags = 0, EEndian eExportEndian = GetPlatformEndian(), const char* subdirectory = 0);
     void ExportBrushes(const QString& path);
-    bool ExportSurfaceTexture(CPakFile& levelPakFile, const char* szFilePathNamefloat, float fLeft = 0.0f, float fTop = 0.0f, float fWidth = 1.0f, float fHeight = 1.0f);
+    bool ExportTerrainMacroTexture();
 
     bool OpenLevelPack(SLevelPakHelper& lphelper, bool bCryPak = false);
     bool CloseLevelPack(SLevelPakHelper& lphelper, bool bCryPak = false);
@@ -96,7 +96,6 @@ private:
     void ExportLevelShaderCache(const QString& path);
     void ExportMaterials(XmlNodeRef& levelDataNode, const QString& path);
     void ExportPrefabs(XmlNodeRef& levelDataNode, const QString& path);
-    void ExportGameTokens(XmlNodeRef& levelDataNode, const QString& path);
     void ExportGameData(const QString& path);
     void ExportFileList(const QString& path, const QString& levelName);
 
@@ -119,5 +118,16 @@ private:
 
     static CGameExporter* m_pCurrentExporter;
 };
+
+// Helper to setup terrain info.
+template<typename Func>
+void SetupTerrainInfo(const size_t octreeCompiledDataSize, Func&& setupTerrainFn)
+{
+    // only setup the terrain if we know space has been allocated for the octree
+    if (octreeCompiledDataSize > 0)
+    {
+        setupTerrainFn(octreeCompiledDataSize);
+    }
+}
 
 #endif // CRYINCLUDE_EDITOR_GAMEEXPORTER_H

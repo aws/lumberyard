@@ -15,6 +15,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QHeaderView>
 #include <QPainter>
@@ -263,9 +264,8 @@ namespace AzQtComponents
     TableViewModel* TableView::getTableViewModel() const
     {
         QAbstractItemModel* m = model();
-        QSortFilterProxyModel* p = nullptr;
 
-        while ((p = qobject_cast<QSortFilterProxyModel*>(m)))
+        while (QSortFilterProxyModel* p = qobject_cast<QSortFilterProxyModel*>(m))
         {
             m = p->sourceModel();
         }
@@ -276,10 +276,9 @@ namespace AzQtComponents
     QModelIndex TableView::mapToTableViewModel(QModelIndex unmappedIndex) const
     {
         QAbstractItemModel* m = model();
-        QSortFilterProxyModel* p = nullptr;
 
         QModelIndex mappedIndex;
-        while ((p = qobject_cast<QSortFilterProxyModel*>(m)))
+        while (QSortFilterProxyModel* p = qobject_cast<QSortFilterProxyModel*>(m))
         {
             mappedIndex = p->mapToSource(unmappedIndex);
             m = p->sourceModel();
@@ -517,7 +516,7 @@ namespace AzQtComponents
             {
                 line.setLineWidth(lineWidth - (styleMargin * 2));
                 line.setPosition(QPointF(0, 0));
-                lineHeight = line.height();
+                lineHeight = aznumeric_cast<int>(line.height());
             }
             textLayout.endLayout();
         }
@@ -553,7 +552,7 @@ namespace AzQtComponents
 
         // Otherwise, take the unexpanded margin, driven by the stylesheet, into account
         // with the calculated height.
-        return (fullSize.height() + (unexpandedMargin * 2));
+        return aznumeric_cast<int>(fullSize.height() + (unexpandedMargin * 2));
     }
 
     bool TableViewItemDelegate::isSelected(const QModelIndex& unmappedIndex) const

@@ -249,7 +249,7 @@ namespace AZStd
 
         inline unsigned long to_ulong() const
         {   // convert bitset to unsigned long
-            AZ_STATIC_ASSERT((sizeof (unsigned long) % sizeof (word_t) == 0), "unsigned long and word_t have uncompatible sizes");
+            static_assert((sizeof (unsigned long) % sizeof (word_t) == 0), "unsigned long and word_t have uncompatible sizes");
 
             int wpos = NumWords;
             for (; (int)(sizeof (unsigned long) / sizeof (word_t)) <= wpos; --wpos)
@@ -266,7 +266,7 @@ namespace AZStd
 
         inline AZ::u64 to_ullong() const
         {   // convert bitset to AZ::u64
-            AZ_STATIC_ASSERT((sizeof(AZ::u64) % sizeof(word_t) == 0), "AZ::u64 and word_t have incompatible sizes");
+            static_assert((sizeof(AZ::u64) % sizeof(word_t) == 0), "AZ::u64 and word_t have incompatible sizes");
 
             int wpos = NumWords;
             for (; static_cast<int>(sizeof(AZ::u64) / sizeof(word_t)) <= wpos; --wpos)

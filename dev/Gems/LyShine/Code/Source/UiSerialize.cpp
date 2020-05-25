@@ -188,6 +188,198 @@ namespace UiSerialize
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetAnchorLeft(UiTransform2dInterface::Anchors* anchor, float left)
+    {
+        if (anchor)
+        {
+            anchor->m_left = left;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set left on null anchor.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetAnchorTop(UiTransform2dInterface::Anchors* anchor, float top)
+    {
+        if (anchor)
+        {
+            anchor->m_top = top;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set top on null anchor.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetAnchorRight(UiTransform2dInterface::Anchors* anchor, float right)
+    {
+        if (anchor)
+        {
+            anchor->m_right = right;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set right on null anchor.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetAnchorBottom(UiTransform2dInterface::Anchors* anchor, float bottom)
+    {
+        if (anchor)
+        {
+            anchor->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set bottom on null anchor.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetAnchors(UiTransform2dInterface::Anchors* anchor, float left, float top, float right, float bottom)
+    {
+        if (anchor)
+        {
+            anchor->m_left = left;
+            anchor->m_top = top;
+            anchor->m_right = right;
+            anchor->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set values on null anchor.")
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetOffsetLeft(UiTransform2dInterface::Offsets* offset, float left)
+    {
+        if (offset)
+        {
+            offset->m_left = left;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set left on null offset.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetOffsetTop(UiTransform2dInterface::Offsets* offset, float top)
+    {
+        if (offset)
+        {
+            offset->m_top = top;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set top on null offset.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetOffsetRight(UiTransform2dInterface::Offsets* offset, float right)
+    {
+        if (offset)
+        {
+            offset->m_right = right;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set right on null offset.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetOffsetBottom(UiTransform2dInterface::Offsets* offset, float bottom)
+    {
+        if (offset)
+        {
+            offset->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set bottom on null offset.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetOffsets(UiTransform2dInterface::Offsets* offset, float left, float top, float right, float bottom)
+    {
+        if (offset)
+        {
+            offset->m_left = left;
+            offset->m_top = top;
+            offset->m_right = right;
+            offset->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set values on null offset.")
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetPaddingLeft(UiLayoutInterface::Padding* padding, int left)
+    {
+        if (padding)
+        {
+            padding->m_left = left;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set left on null padding.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetPaddingTop(UiLayoutInterface::Padding* padding, int top)
+    {
+        if (padding)
+        {
+            padding->m_top = top;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set top on null padding.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetPaddingRight(UiLayoutInterface::Padding* padding, int right)
+    {
+        if (padding)
+        {
+            padding->m_right = right;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set right on null padding.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetPaddingBottom(UiLayoutInterface::Padding* padding, int bottom)
+    {
+        if (padding)
+        {
+            padding->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set bottom on null padding.")
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetPadding(UiLayoutInterface::Padding* padding, int left, int top, int right, int bottom)
+    {
+        if (padding)
+        {
+            padding->m_left = left;
+            padding->m_top = top;
+            padding->m_right = right;
+            padding->m_bottom = bottom;
+        }
+        else
+        {
+            AZ_ErrorOnce("Script Canvas", false, "UI Script tried to set values on null padding.")
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     void ReflectUiTypes(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -251,17 +443,11 @@ namespace UiSerialize
                     ->Property("top", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_top))
                     ->Property("right", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_right))
                     ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_bottom))
-                    ->Method("SetLeft", [](UiTransform2dInterface::Anchors* thisPtr, float left) { thisPtr->m_left = left; })
-                    ->Method("SetTop", [](UiTransform2dInterface::Anchors* thisPtr, float top) { thisPtr->m_top = top; })
-                    ->Method("SetRight", [](UiTransform2dInterface::Anchors* thisPtr, float right) { thisPtr->m_right = right; })
-                    ->Method("SetBottom", [](UiTransform2dInterface::Anchors* thisPtr, float bottom) { thisPtr->m_bottom = bottom; })
-                    ->Method("SetAnchors", [](UiTransform2dInterface::Anchors* thisPtr, float left, float top, float right, float bottom)
-                    {
-                        thisPtr->m_left = left;
-                        thisPtr->m_top = top;
-                        thisPtr->m_right = right;
-                        thisPtr->m_bottom = bottom;
-                    });
+                    ->Method("SetLeft", SetAnchorLeft)
+                    ->Method("SetTop", SetAnchorTop)
+                    ->Method("SetRight", SetAnchorRight)
+                    ->Method("SetBottom", SetAnchorBottom)
+                    ->Method("SetAnchors", SetAnchors);
             }
         }
 
@@ -311,17 +497,11 @@ namespace UiSerialize
                     ->Property("top", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_top))
                     ->Property("right", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_right))
                     ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_bottom))
-                    ->Method("SetLeft", [](UiTransform2dInterface::Offsets* thisPtr, float left) { thisPtr->m_left = left; })
-                    ->Method("SetTop", [](UiTransform2dInterface::Offsets* thisPtr, float top) { thisPtr->m_top = top; })
-                    ->Method("SetRight", [](UiTransform2dInterface::Offsets* thisPtr, float right) { thisPtr->m_right = right; })
-                    ->Method("SetBottom", [](UiTransform2dInterface::Offsets* thisPtr, float bottom) { thisPtr->m_bottom = bottom; })
-                    ->Method("SetOffsets", [](UiTransform2dInterface::Offsets* thisPtr, float left, float top, float right, float bottom)
-                    {
-                        thisPtr->m_left = left;
-                        thisPtr->m_top = top;
-                        thisPtr->m_right = right;
-                        thisPtr->m_bottom = bottom;
-                    });
+                    ->Method("SetLeft", SetOffsetLeft)
+                    ->Method("SetTop", SetOffsetTop)
+                    ->Method("SetRight", SetOffsetRight)
+                    ->Method("SetBottom", SetOffsetBottom)
+                    ->Method("SetOffsets", SetOffsets);
             }
         }
 
@@ -344,17 +524,11 @@ namespace UiSerialize
                     ->Property("right", BehaviorValueProperty(&UiLayoutInterface::Padding::m_right))
                     ->Property("top", BehaviorValueProperty(&UiLayoutInterface::Padding::m_top))
                     ->Property("bottom", BehaviorValueProperty(&UiLayoutInterface::Padding::m_bottom))
-                    ->Method("SetLeft", [](UiLayoutInterface::Padding* thisPtr, int left) { thisPtr->m_left = left; })
-                    ->Method("SetTop", [](UiLayoutInterface::Padding* thisPtr, int top) { thisPtr->m_top = top; })
-                    ->Method("SetRight", [](UiLayoutInterface::Padding* thisPtr, int right) { thisPtr->m_right = right; })
-                    ->Method("SetBottom", [](UiLayoutInterface::Padding* thisPtr, int bottom) { thisPtr->m_bottom = bottom; })
-                    ->Method("SetPadding", [](UiLayoutInterface::Padding* thisPtr, int left, int top, int right, int bottom)
-                    {
-                        thisPtr->m_left = left;
-                        thisPtr->m_top = top;
-                        thisPtr->m_right = right;
-                        thisPtr->m_bottom = bottom;
-                    });
+                    ->Method("SetLeft", SetPaddingLeft)
+                    ->Method("SetTop", SetPaddingTop)
+                    ->Method("SetRight", SetPaddingRight)
+                    ->Method("SetBottom", SetPaddingBottom)
+                    ->Method("SetPadding", SetPadding);
             }
         }
 

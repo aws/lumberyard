@@ -37,10 +37,7 @@ def build(bld):
 
     bld.DefineGem(
         uselib          = ['AWS_CPP_SDK_CORE'],
-        includes        = ['.',
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/CryEngine/CrySystem')
                           ],
         file_list   = file_list,
@@ -50,8 +47,12 @@ def build(bld):
         win_lib    = ['gdi32','crypt32','ws2_32'],
 
         use = ['CloudCanvasCommon.StaticLibrary'],
+        test_all_use   = ['AzTestShared'],
 
         restricted_script = 'update_restricted_parameters',
+
+        # Testing
+        test_all_file_list  = ['cloudgemdynamiccontent_tests.waf_files'],
     )
 
     bld.recurse(SUBFOLDERS)

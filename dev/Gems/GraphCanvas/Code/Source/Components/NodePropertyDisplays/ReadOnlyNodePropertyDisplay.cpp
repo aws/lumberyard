@@ -22,10 +22,9 @@ namespace GraphCanvas
     ////////////////////////////////
 
     ReadOnlyNodePropertyDisplay::ReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface)
-        : m_dataInterface(dataInterface)
+        : NodePropertyDisplay(dataInterface)
+        , m_dataInterface(dataInterface)
     {
-        m_dataInterface->RegisterDisplay(this);
-        
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
     }
@@ -65,5 +64,12 @@ namespace GraphCanvas
     QGraphicsLayoutItem* ReadOnlyNodePropertyDisplay::GetEditableGraphicsLayoutItem()
 {
         return m_displayLabel;
-    }    
+    }
+
+    void ReadOnlyNodePropertyDisplay::OnDragDropStateStateChanged(const DragDropState& dragState)
+    {
+        Styling::StyleHelper& styleHelper = m_displayLabel->GetStyleHelper();
+        UpdateStyleForDragDrop(dragState, styleHelper);
+        m_displayLabel->update();
+    }
 }

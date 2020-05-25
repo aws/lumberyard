@@ -5,6 +5,9 @@
         "Lib/Tests/test_TerrainModifyPythonBindings.cpp",
         "Lib/Tests/test_TerrainPythonBindings.cpp",
         "Lib/Tests/test_TerrainLayerPythonBindings.cpp",
+        "Lib/Tests/test_TerrainPainterPythonBindings.cpp",
+        "Lib/Tests/test_TerrainHoleToolPythonBindings.cpp",
+        "Lib/Tests/test_TerrainTexturePythonBindings.cpp",
         "Terrain/Tests/test_Terrain.cpp"
       ]
     }

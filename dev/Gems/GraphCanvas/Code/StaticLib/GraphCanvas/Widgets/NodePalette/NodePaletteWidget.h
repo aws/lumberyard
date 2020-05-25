@@ -140,6 +140,7 @@ namespace GraphCanvas
         void ClearFilter();
 
         void OnIndexDoubleClicked(const QModelIndex& index);
+        void OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
 
         // Will try and spawn the item specified by the QCompleter
         void TrySpawnItem();

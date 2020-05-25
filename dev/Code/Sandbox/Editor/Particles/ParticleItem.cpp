@@ -104,49 +104,24 @@ void CParticleItem::Serialize(SerializeContext& ctx, const ParticleParams* defau
     // If we dont do this we will get extra unwanted items in our library when we next load from the file.
     //
     // to remove any "folder" items from the library we go through and look for any items without the isParticle identifier ...
-    if (IsParticleItem)
+    XmlNodeRef node = ctx.node;
+    if (ctx.bLoading)
     {
-        XmlNodeRef node = ctx.node;
-        if (ctx.bLoading)
+        if (!ctx.bIgnoreChilds)
         {
-            if (!ctx.bIgnoreChilds)
-            {
-                ClearChilds();
-            }
-
-            m_pEffect->Serialize(node, true, !ctx.bIgnoreChilds, defaultParams);
-
-            if (!ctx.bIgnoreChilds)
-            {
-                AddAllChildren();
-            }
+            ClearChilds();
         }
-        else
+
+        m_pEffect->Serialize(node, true, !ctx.bIgnoreChilds, defaultParams);
+
+        if (!ctx.bIgnoreChilds)
         {
-            m_pEffect->Serialize(node, false, !ctx.bIgnoreChilds, defaultParams);
+            AddAllChildren();
         }
     }
     else
     {
-        XmlNodeRef node = ctx.node;
-        if (ctx.bLoading)
-        {
-            if (!ctx.bIgnoreChilds)
-            {
-                ClearChilds();
-            }
-
-            m_pEffect->Serialize(node, true, !ctx.bIgnoreChilds, defaultParams);
-
-            if (!ctx.bIgnoreChilds)
-            {
-                AddAllChildren();
-            }
-        }
-        else
-        {
-            m_pEffect->Serialize(node, false, !ctx.bIgnoreChilds, defaultParams);
-        }
+        m_pEffect->Serialize(node, false, !ctx.bIgnoreChilds, defaultParams);
     }
     m_bModified = false;
 }

@@ -170,6 +170,7 @@ namespace EMotionFX
         virtual bool GetCanBeInsideStateMachineOnly() const     { return false; }
         virtual bool GetCanBeInsideChildStateMachineOnly() const{ return false; }
         virtual bool GetNeedsNetTimeSync() const                { return false; }
+        virtual bool GetCanBeEntryNode() const                  { return true; }
         virtual AZ::Color GetVisualColor() const                { return AZ::Color(0.28f, 0.24f, 0.93f, 1.0f); }
         virtual AZ::Color GetHasChildIndicatorColor() const     { return AZ::Color(1.0f, 1.0f, 0, 1.0f); }
 
@@ -190,6 +191,26 @@ namespace EMotionFX
         void PerformTopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         void PerformUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         void PerformPostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
+
+        /**
+         * Inform a node that PostUpdate will not be called for the current evaluation cycle
+         *
+         * Some node types allocate data in Update and expect to release that
+         * data in PostUpdate. However, PostUpdate is not always called (like
+         * when transitioning out of a node). This method allows the node to
+         * perform the necessary cleanup.
+         */
+        virtual void SkipPostUpdate(AnimGraphInstance* animGraphInstance) {}
+
+        /**
+         * Inform a node that Output will not be called for the current evaluation cycle
+         *
+         * Some node types allocate data in Update and expect to release that
+         * data in Output. However, Output is not always called (like when a
+         * character is not visible). This method allows the node to perform
+         * the necessary cleanup.
+         */
+        virtual void SkipOutput(AnimGraphInstance* animGraphInstance) {}
 
         MCORE_INLINE float GetDuration(AnimGraphInstance* animGraphInstance) const                 { return FindUniqueNodeData(animGraphInstance)->GetDuration(); }
         virtual void SetCurrentPlayTime(AnimGraphInstance* animGraphInstance, float timeInSeconds) { FindUniqueNodeData(animGraphInstance)->SetCurrentPlayTime(timeInSeconds); }

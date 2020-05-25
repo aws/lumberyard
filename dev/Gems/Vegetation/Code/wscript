@@ -13,11 +13,11 @@
 
 def build(bld):
     bld.DefineGem(
-        includes          = ['.',
-                             bld.ThirdPartyPath('boost'),
-                             bld.Path('Code/CryEngine/CryCommon'),
-                             'Include'],
-        win_features      = ['crcfix'],    
+        includes          = [ '.', 
+                              'Include', 
+                              bld.Path('Code/CryEngine/CryCommon')
+                            ],
+        win_features      = ['crcfix'],
         use_required_gems = True,
         debug_defines = ['VEG_PROFILE_ENABLED'],
         debug_test_defines = ['VEG_PROFILE_ENABLED'],
@@ -35,8 +35,6 @@ def build(bld):
                            ],
             defines     = ['VEGETATION_EDITOR'],
             includes    = ['.', 
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
                            'Include',
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),

@@ -437,6 +437,7 @@ namespace AzFramework
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProcessId, AZ::OSString(processID)));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_Platform, AZ::OSString(m_assetPlatform.c_str())));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_BranchIndentifier, AZ::OSString(m_branchToken.c_str())));
+            engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProjectName, AZ::OSString(m_projectName.c_str())));
             
             if (m_connectThread.m_join)
             {
@@ -458,9 +459,10 @@ namespace AzFramework
             }
 
             bool isBranchIdentifierMatch = AzFramework::StringFunc::Equal(apInfo.m_negotiationInfoMap[NegotiationInfo_BranchIndentifier].c_str(), m_branchToken.c_str());
+            bool isProjectMatch = AzFramework::StringFunc::Equal(apInfo.m_negotiationInfoMap[NegotiationInfo_ProjectName].c_str(), m_projectName.c_str());
             bool isIdentifierMatch = apInfo.m_identifier == "ASSETPROCESSOR" ? true : false;
 
-            if ((isIdentifierMatch && isBranchIdentifierMatch) || (m_unitTesting && apInfo.m_identifier == "GAME"))
+            if ((isIdentifierMatch && isBranchIdentifierMatch && isProjectMatch) || (m_unitTesting && apInfo.m_identifier == "GAME"))
             {
                 DebugMessage("AssetProcessorConnection::NegotiateWithServer - negotiation with %s succeeded.", apInfo.m_identifier.c_str());
             }
@@ -491,6 +493,7 @@ namespace AzFramework
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProcessId, AZ::OSString(processID)));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_Platform, AZ::OSString(m_assetPlatform.c_str())));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_BranchIndentifier, AZ::OSString(m_branchToken.c_str())));
+            engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProjectName, AZ::OSString(m_projectName.c_str())));
 
             DebugMessage("AssetProcessorConnection::NegotiateWithClient - Waiting for negotiation.");
 
@@ -540,10 +543,12 @@ namespace AzFramework
             }
 
             bool isBranchIdentifierMatch = AzFramework::StringFunc::Equal(apInfo.m_negotiationInfoMap[NegotiationInfo_BranchIndentifier].c_str(), m_branchToken.c_str());
+            bool isProjectMatch = AzFramework::StringFunc::Equal(apInfo.m_negotiationInfoMap[NegotiationInfo_ProjectName].c_str(), m_projectName.c_str());
 
             DebugMessage("AssetProcessorConnection::NegotiateWithClient - Branch token (us) %s vs Branch token (server) %s", m_branchToken.c_str(), apInfo.m_negotiationInfoMap[NegotiationInfo_BranchIndentifier].c_str());
+            DebugMessage("AssetProcessorConnection::NegotiateWithClient - Project Name (us) %s vs Project Name (server) %s", m_projectName.c_str(), apInfo.m_negotiationInfoMap[NegotiationInfo_ProjectName].c_str());
 
-            if (!isBranchIdentifierMatch)
+            if (!isBranchIdentifierMatch || !isProjectMatch)
             {
                 AssetSystem::SendRequestToConnection(engineInfo, this); // we are sending the request so that assetprocessor can show the dialog for branch mismatch
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));    //Sleeping to make sure that the message get delivered to AP before socket get disconnected
@@ -552,6 +557,7 @@ namespace AzFramework
                 EBUS_EVENT(AssetSystemConnectionNotificationsBus, NegotiationFailed);
                 return false;
             }
+
             bool isIdentifierMatch = apInfo.m_identifier == "ASSETPROCESSOR" ? true : false;
 
             if (isIdentifierMatch || (m_unitTesting && apInfo.m_identifier == "GAME"))
@@ -644,11 +650,14 @@ namespace AzFramework
             StartThread(m_disconnectThread);
         }
                
-        void AssetProcessorConnection::Configure(const char* branchToken, const char* platform, const char* identifier)
+        void AssetProcessorConnection::Configure(const char* branchToken, const char* platform, const char* identifier, const char* projectName)
         {
             m_branchToken = branchToken;
             m_assetPlatform = platform;
             m_identifier = identifier;
+            m_projectName = projectName;
+
+            AZ_Error("AssetProcessorConnection", projectName && strlen(projectName) > 0, "projectName should not be empty");
         }
 
         bool AssetProcessorConnection::Listen(AZ::u16 port)

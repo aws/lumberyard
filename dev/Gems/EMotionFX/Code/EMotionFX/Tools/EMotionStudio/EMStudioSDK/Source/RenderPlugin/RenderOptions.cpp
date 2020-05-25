@@ -419,139 +419,189 @@ namespace EMStudio
             return;
         }
 
-        editContext->Class<RenderOptions>("Render plugin properties", "")
+        editContext->Class<RenderOptions>("Render plugin properties", "Render window properties")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridUnitSize, "Grid unit size", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridUnitSize, "Grid unit size",
+                "Render a grid line every X units.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGridUnitSizeChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
             ->Attribute(AZ::Edit::Attributes::Max, 10000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsScale, "Vertex normals scale", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsScale, "Vertex normals scale",
+                "Scale factor for vertex normals.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnVertexNormalsScaleChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
             ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsScale, "Face normals scale", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsScale, "Face normals scale",
+                "Scale factor for face normals.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsScaleChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
             ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsScale, "Tangents & bitangents scale", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsScale, "Tangents & bitangents scale",
+                "Scale factor for tangents and bitangents.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsScaleChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
             ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeOrientationScale, "Node orientation scale", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeOrientationScale, "Joint transform scale",
+                "Scale factor for joint transform visualizations.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeOrientationScaleChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
             ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_scaleBonesOnLength, "Scale bones on length", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_scaleBonesOnLength, "Scale joint transforms on length",
+                "Scale joint transforms based on the length of the bone. The longer the bone, the bigger the joint transform visualization.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnScaleBonesOnLengthChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nearClipPlaneDistance, "Near clip plane distance", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nearClipPlaneDistance, "Near clip plane distance",
+                "Polygons closer to the camera will not be shown.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNearClipPlaneDistanceChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
             ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_farClipPlaneDistance, "Far clip plane distance", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_farClipPlaneDistance, "Far clip plane distance",
+                "Polygons further away will not be shown.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFarClipPlaneDistanceChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 100000.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_FOV, "Field of view", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_FOV, "Field of view",
+                "Angle in degrees of the field of view.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFOVChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 170.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightIntensity, "Main light intensity", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightIntensity, "Main light intensity",
+                "Intensity of the main light.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightIntensityChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleA, "Main light angle A", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleA, "Main light angle A",
+                "Angle in degrees of the main light.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightAngleAChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleB, "Main light angle B", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainLightAngleB, "Main light angle B",
+                "Angle in degrees of the main light.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainLightAngleBChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_specularIntensity, "Specular intensity", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_specularIntensity, "Specular intensity",
+                "Specular intensity.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSpecularIntensityChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 3.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimIntensity, "Rim intensity", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimIntensity, "Rim intensity",
+                "Rim light intensity.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimIntensityChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 3.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimWidth, "Rim width", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimWidth, "Rim width",
+                "Rim light width.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimWidthChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
             ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimAngle, "Rim angle", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimAngle, "Rim angle",
+                "Rim light angle.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimAngleChangedCallback)
             ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_showFPS, "Show FPS", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_showFPS, "Show FPS",
+                "Show anim graph rendering statistics like render time and average frames per second.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnShowFPSChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightGroundColor, "Ground light color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightGroundColor, "Ground light color",
+                "Ground light color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLightGroundColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightSkyColor, "Sky light color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lightSkyColor, "Sky light color",
+                "Sky light color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLightSkyColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimColor, "Rim light color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_rimColor, "Rim light color",
+                "Rim light color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRimColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_backgroundColor, "Background color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_backgroundColor, "Background color",
+                "Background color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBackgroundColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientSourceColor, "Gradient background top color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientSourceColor, "Gradient background top color",
+                "Gradient background top color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGradientSourceColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientTargetColor, "Gradient background bottom color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gradientTargetColor, "Gradient background bottom color",
+                "Gradient background bottom color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGradientTargetColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_wireframeColor, "Wireframe color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_wireframeColor, "Wireframe color",
+                "Color for rendering the character mesh in wireframe mode.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnWireframeColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshColor, "Collision mesh color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshColor, "Collision mesh color",
+                "Collision mesh color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnCollisionMeshColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsColor, "Vertex normals color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_vertexNormalsColor, "Vertex normals color",
+                "Vertex normals color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnVertexNormalsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsColor, "Face normals color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_faceNormalsColor, "Face normals color",
+                "Face normals color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnFaceNormalsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsColor, "Tangents color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_tangentsColor, "Tangents color",
+                "Tangents color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTangentsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mirroredBitangentsColor, "Mirrored bitangents color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mirroredBitangentsColor, "Mirrored bitangents color",
+                "Mirrored bitangents color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMirroredBitangentsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_bitangentsColor, "Bitangents color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_bitangentsColor, "Bitangents color",
+                "Bitangents color")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnBitangentsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeAABBColor, "Node based AABB color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeAABBColor, "Joint based AABB color",
+                "Color for the runtime-updated AABB calculated based on the skeletal pose.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeAABBColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_staticAABBColor, "Static based AABB color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_staticAABBColor, "Static based AABB color",
+                "Color for the pre-calculated, static AABB.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnStaticAABBColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_meshAABBColor, "Mesh based AABB color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_meshAABBColor, "Mesh based AABB color",
+                "Color for the runtime-updated AABB calculated based on the deformed meshes.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMeshAABBColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshAABBColor, "CollisionMesh based AABB color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_collisionMeshAABBColor, "CollisionMesh based AABB color",
+                "Color for the runtime-updated AABB calculated based on the deformed collision meshes.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnCollisionMeshAABBColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_OBBsColor, "Node OOB color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_OBBsColor, "Joint OBB color",
+                "Color used for the pre-calculated joint oriented bounding boxes.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnOBBsColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lineSkeletonColor, "Line based skeleton color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_lineSkeletonColor, "Line based skeleton color",
+                "Line-based skeleton color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnLineSkeletonColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_skeletonColor, "Solid skeleton color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_skeletonColor, "Solid skeleton color",
+                "Solid skeleton color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSkeletonColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectionColor, "Selection gizmo color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectionColor, "Selection gizmo color",
+                "Selection gizmo color")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectionColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedObjectColor, "Selected object color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedObjectColor, "Selected object color",
+                "Selection gizmo color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedObjectColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeNameColor, "Node name color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nodeNameColor, "Joint name color",
+                "Joint name text color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNodeNameColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridColor, "Grid color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_gridColor, "Grid color",
+                "Grid color. The grid is tiled and every fifth line uses this color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnGridColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainAxisColor, "Grid main axis color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_mainAxisColor, "Grid main axis color",
+                "Grid main axis color. (Lines going through the origin)")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnMainAxisColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_subStepColor, "Grid substep color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_subStepColor, "Grid substep color",
+                "Grid substep color. The inner four lines within a tile use this color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSubStepColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_trajectoryArrowInnerColor, "Trajectory path color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_trajectoryArrowInnerColor, "Trajectory path color",
+                "Color of the trajectory path the characters creates when using motion extraction.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTrajectoryArrowInnerColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_hitDetectionColliderColor, "Hit detection collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_hitDetectionColliderColor, "Hit detection collider color",
+                "Hit detection collider color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnHitDetectionColliderColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedHitDetectionColliderColor, "Selected hit detection collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedHitDetectionColliderColor, "Selected hit detection collider color",
+                "Selected hit detection collider color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedHitDetectionColliderColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_ragdollColliderColor, "Ragdoll collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_ragdollColliderColor, "Ragdoll collider color",
+                "Ragdoll collider color.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRagdollColliderColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedRagdollColliderColor, "Selected ragdoll collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedRagdollColliderColor, "Selected ragdoll collider color",
+                "Selected ragdoll collider color")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedRagdollColliderColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_clothColliderColor, "Cloth collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_clothColliderColor, "Cloth collider color",
+                "Cloth collider color")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnClothColliderColorChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedClothColliderColor, "Selected cloth collider color", "")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedClothColliderColor, "Selected cloth collider color",
+                "Selected cloth collider color")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedClothColliderColorChangedCallback)
             ;
     }

@@ -182,21 +182,22 @@ namespace AZ
 
             void ManifestWidgetPage::AfterPropertyModified(AzToolsFramework::InstanceDataNode* node)
             {
-                if (node && node->GetParent())
+                if (node)
                 {
-                    AzToolsFramework::InstanceDataNode* owner = node->GetParent();
-                    const AZ::SerializeContext::ClassData* data = owner->GetClassMetadata();
-                    if (data && data->m_azRtti)
+                    while (node = node->GetParent())
                     {
-                        const DataTypes::IManifestObject* cast = data->m_azRtti->Cast<DataTypes::IManifestObject>(owner->FirstInstance());
-                        if (cast)
+                        if (const AZ::SerializeContext::ClassData* data = node->GetClassMetadata(); data && data->m_azRtti)
                         {
-                            AZ_Assert(AZStd::find_if(m_objects.begin(), m_objects.end(), 
-                                [cast](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
-                                {
-                                    return object.get() == cast;
-                                }) != m_objects.end(), "ManifestWidgetPage detected an update of a field it doesn't own.");
-                            EmitObjectChanged(cast);
+                            if (const DataTypes::IManifestObject* cast = data->m_azRtti->Cast<DataTypes::IManifestObject>(node->FirstInstance()); cast)
+                            {
+                                AZ_Assert(AZStd::find_if(m_objects.begin(), m_objects.end(), 
+                                    [cast](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
+                                    {
+                                        return object.get() == cast;
+                                    }) != m_objects.end(), "ManifestWidgetPage detected an update of a field it doesn't own.");
+                                EmitObjectChanged(cast);
+                                break;
+                            }
                         }
                     }
                 }

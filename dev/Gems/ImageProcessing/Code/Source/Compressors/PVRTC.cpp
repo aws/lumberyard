@@ -12,8 +12,9 @@
 
 #include <ImageProcessing_precompiled.h>
 #include <ImageProcessing_Traits_Platform.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/PixelFormatInfo.h>
+#include <Processing/ImageFlags.h>
 #include <Compressors/PVRTC.h>
 
 #if AZ_TRAIT_IMAGEPROCESSING_PVRTEXLIB_USE_WINDLL_IMPORT

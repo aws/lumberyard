@@ -346,7 +346,7 @@ bool ClipVolumeObject::HitTest(HitContext& hc)
                     }
 
                     // Push vertex slightly in front of near plane
-                    float t = (hc.camera->GetNearPlane() + 1e-5 - e0.w) / (e1.w - e0.w);
+                    float t = aznumeric_cast<float>((hc.camera->GetNearPlane() + 1e-5 - e0.w) / (e1.w - e0.w));
                     e0 += (e1 - e0) * t;
                 }
 
@@ -360,8 +360,8 @@ bool ClipVolumeObject::HitTest(HitContext& hc)
                 if (closestDistance < minDist)
                 {
                     // unproject to world space. NOTE: CCamera::Unproject uses clip space coordinate system (no y-flip)
-                    Vec3 v0 = Vec3((edgeClipSpace.start.x * 0.5 + 0.5) * viewportWidth, (edgeClipSpace.start.y * 0.5 + 0.5) * viewportHeight, edgeClipSpace.start.z);
-                    Vec3 v1 = Vec3((edgeClipSpace.end.x   * 0.5 + 0.5) * viewportWidth, (edgeClipSpace.end.y   * 0.5 + 0.5) * viewportHeight, edgeClipSpace.end.z);
+                    Vec3 v0 = Vec3(aznumeric_cast<float>((edgeClipSpace.start.x * 0.5 + 0.5) * viewportWidth), aznumeric_cast<float>((edgeClipSpace.start.y * 0.5 + 0.5) * viewportHeight), edgeClipSpace.start.z);
+                    Vec3 v1 = Vec3(aznumeric_cast<float>((edgeClipSpace.end.x   * 0.5 + 0.5) * viewportWidth), aznumeric_cast<float>((edgeClipSpace.end.y   * 0.5 + 0.5) * viewportHeight), edgeClipSpace.end.z);
 
                     hc.camera->Unproject(Vec3::CreateLerp(v0, v1, t), vHitPos);
                     bHit = true;

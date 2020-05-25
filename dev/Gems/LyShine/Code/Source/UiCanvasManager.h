@@ -11,25 +11,13 @@
 */
 #pragma once
 
-#include <IGameFramework.h>
-
-#include <AzCore/Component/Component.h>
-#include <AzCore/Component/EntityBus.h>
 #include <AzCore/RTTI/TypeInfo.h>
-
 #include <LyShine/Bus/UiCanvasManagerBus.h>
-
 #include <LyShine/Bus/UiCanvasBus.h>
-#include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiAnimationBus.h>
 #include <LyShine/UiEntityContext.h>
-#include <LyShine/UiComponentTypes.h>
-
-#include "UiElementComponent.h"
-#include "UiSerialize.h"
-#include "Animation/UiAnimationSystem.h"
-
 #include <IFont.h>
+
+class UiCanvasComponent;
 
 namespace AZ
 {
@@ -61,7 +49,7 @@ public: // member functions
     AZ::EntityId CreateCanvas() override;
     AZ::EntityId LoadCanvas(const AZStd::string& canvasPathname) override;
     void UnloadCanvas(AZ::EntityId canvasEntityId) override;
-    AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& canvasPathname) override;
+    AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& canvasPathname, bool loadIfNotFound = false) override;
     CanvasEntityList GetLoadedCanvases() override;
     void SetLocalUserIdInputFilterForAllCanvases(AzFramework::LocalUserId localUserId) override;
     // ~UiCanvasManagerBus

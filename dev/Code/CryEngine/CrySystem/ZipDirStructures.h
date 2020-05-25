@@ -47,6 +47,14 @@
 
 struct z_stream_s;
 
+namespace AZ
+{
+    namespace IO
+    {
+        class FileIOBase;
+    }
+}
+
 namespace ZipDir
 {
     struct FileEntry;
@@ -62,6 +70,7 @@ namespace ZipDir
         int64 m_nCursor;
         const char* m_szFilename;
         ICustomMemoryBlock* m_pInMemoryData;
+        AZ::IO::FileIOBase* m_fileIOBase = nullptr;
 
 
         CZipFile()
@@ -90,6 +99,7 @@ namespace ZipDir
             swap(m_nCursor, other.m_nCursor);
             swap(m_szFilename, other.m_szFilename);
             swap(m_pInMemoryData, other.m_pInMemoryData);
+            m_fileIOBase = other.m_fileIOBase;
         }
 
         bool IsInMemory() const { return m_pInMemoryData != 0; }

@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/AnimGraphReferenceNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 
+#include <AzCore/Serialization/ObjectStream.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 namespace EMotionFX
@@ -98,7 +99,8 @@ namespace EMotionFX
         {
             AZ_UNUSED(sourceFile);
 
-            AZStd::unique_ptr<AnimGraph> animGraph(GetImporter().LoadAnimGraph(fullPath));
+            AZ::ObjectStream::FilterDescriptor loadFilter = AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+            AZStd::unique_ptr<AnimGraph> animGraph(GetImporter().LoadAnimGraph(fullPath, nullptr, loadFilter));
 
             if (!animGraph)
             {

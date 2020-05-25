@@ -186,6 +186,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::Deactivate()
     {
+        AZ::Data::AssetBus::Handler::BusDisconnect();
         CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
         RenderBoundsRequestBus::Handler::BusDisconnect();

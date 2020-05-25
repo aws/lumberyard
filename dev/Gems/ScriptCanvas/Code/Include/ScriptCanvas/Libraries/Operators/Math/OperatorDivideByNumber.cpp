@@ -100,7 +100,7 @@ namespace ScriptCanvas
                     return;
                 }
 
-                const Datum* operand = GetInput(m_operandId);
+                const Datum* operand = FindDatum(m_operandId);
 
                 if (operand == nullptr)
                 {

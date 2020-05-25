@@ -284,7 +284,7 @@ namespace LUAEditor
 
     void LUASyntaxHighlighter::StateMachine::SetSaveState(QTBlockState state)
     {
-        AZ_STATIC_ASSERT(static_cast<int>(ParserStates::NumStates) <= 8, "We are only using 3 bits for state in lua parser currently");
+        static_assert(static_cast<int>(ParserStates::NumStates) <= 8, "We are only using 3 bits for state in lua parser currently");
 
         Reset();
         if (!state.m_blockState.m_uninitialized)

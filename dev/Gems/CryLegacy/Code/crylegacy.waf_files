@@ -13,16 +13,6 @@
             "Source/CryAction/PlayerProfiles/PlayerProfileManager.cpp",
             "Source/CryAction/PlayerProfiles/PlayerProfileManager.h"
         ],
-        "Source/CryAction/FlowSystem/Nodes":
-        [
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeAIAction.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeAI.cpp"
-        ],
-        "Source/CryAISystem/Scripting":
-        [
-            "Source/CryAISystem/ScriptBind_AI.cpp",
-            "Source/CryAISystem/ScriptBind_AI.h"
-        ],
         "Source/CryAISystem/Helpers/Debug":
         [
             "Source/CryAISystem/AIRecorder.cpp"
@@ -183,7 +173,6 @@
             "Source/CryAction/Network/DebugBreakage.h",
             "Source/CryAction/Network/SerializeBits.h",
             "Source/CryAction/ActionGame.cpp",
-            "Source/CryAction/ScriptBind_Action.cpp",
             "Source/CryAction/AIFaceManager.cpp",
             "Source/CryAction/CallbackTimer.cpp",
             "Source/CryAction/CryAction.cpp",
@@ -199,7 +188,6 @@
             "Source/CryAction/CryActionPhysicQueues.h",
             "Source/CryAction/DevMode.h",
             "Source/CryAction/resource.h",
-            "Source/CryAction/ScriptBind_Action.h",
             "Source/CryAction/TimeOfDayScheduler.h",
             "Source/CryAction/RuntimeAreas.h",
             "Source/CryAction/RuntimeAreas.cpp"
@@ -334,13 +322,6 @@
             "Source/CryAction/CooperativeAnimationManager/CooperativeAnimation.h",
             "Source/CryAction/CooperativeAnimationManager/CooperativeAnimationManager.h"
         ],
-        "Source/CryAction/CustomActions":
-        [
-            "Source/CryAction/CustomActions/CustomAction.cpp",
-            "Source/CryAction/CustomActions/CustomActionManager.cpp",
-            "Source/CryAction/CustomActions/CustomAction.h",
-            "Source/CryAction/CustomActions/CustomActionManager.h"
-        ],
         "Source/CryAction/AIFiles":
         [
             "Source/CryAction/AIDebugRenderer.cpp",
@@ -357,14 +338,6 @@
             "Source/CryAction/AI/CommunicationHandler.h",
             "Source/CryAction/AI/BehaviorTreeNodes_Action.h",
             "Source/CryAction/AI/BehaviorTreeNodes_Action.cpp"
-        ],
-        "Source/CryAction/FeatureTests":
-        [
-            "Source/CryAction/FeatureTests/FeatureTestNode.cpp",
-            "Source/CryAction/FeatureTests/FeatureTests.cpp",
-            "Source/CryAction/FeatureTests/FeatureTests.h",
-            "Source/CryAction/FeatureTests/ScreenshotCompareNode.cpp",
-            "Source/CryAction/FeatureTests/ScreenshotNode.cpp"
         ],
         "Source/CryAction/ForceFeedbackSystem":
         [
@@ -415,216 +388,6 @@
             "Source/CryAction/Graphics/ColorGradientManager.h",
             "Source/CryAction/Graphics/ScreenFader.h",
             "Source/CryAction/Graphics/ScreenFader.cpp"
-        ]
-    },
-    "CryAction_flow_base_uber.cpp":
-    {
-        "Source/CryAction/FlowSystem":
-        [
-            "Source/CryAction/FlowSystem/FlowData.cpp",
-            "Source/CryAction/FlowSystem/FlowGraph.cpp",
-            "Source/CryAction/FlowSystem/FlowGraphDebugger.cpp",
-            "Source/CryAction/FlowSystem/FlowSerialize.cpp",
-            "Source/CryAction/FlowSystem/FlowSystem.cpp",
-            "Source/CryAction/FlowSystem/FlowSystemCVars.cpp",
-            "Source/CryAction/FlowSystem/FlowGraphDebugger.h",
-            "Source/CryAction/FlowSystem/FlowData.h",
-            "Source/CryAction/FlowSystem/FlowGraph.h",
-            "Source/CryAction/FlowSystem/FlowSerialize.h",
-            "Source/CryAction/FlowSystem/FlowSystem.h",
-            "Source/CryAction/FlowSystem/FlowSystemCVars.h",
-            "Source/CryAction/FlowSystem/FlowInitManager.h",
-            "Source/CryAction/FlowSystem/FlowInitManager.cpp"
-        ],
-        "Source/CryAction/FlowSystem/Modules":
-        [
-            "Source/CryAction/FlowSystem/Modules/FlowModuleNodes.cpp",
-            "Source/CryAction/FlowSystem/Modules/Module.cpp",
-            "Source/CryAction/FlowSystem/Modules/ModuleManager.cpp",
-            "Source/CryAction/FlowSystem/Modules/FlowModuleNodes.h",
-            "Source/CryAction/FlowSystem/Modules/Module.h",
-            "Source/CryAction/FlowSystem/Modules/ModuleManager.h"
-        ],
-        "Source/CryAction/FlowSystem/Inspectors":
-        [
-            "Source/CryAction/FlowSystem/Inspectors/FlowFilters.cpp",
-            "Source/CryAction/FlowSystem/Inspectors/FlowInspectorDefault.cpp",
-            "Source/CryAction/FlowSystem/Inspectors/FlowFilters.h",
-            "Source/CryAction/FlowSystem/Inspectors/FlowInspectorDefault.h"
-        ],
-        "Source/CryAction/FlowSystem/Nodes":
-        [
-            "Source/CryAction/FlowSystem/Nodes/FlowVRNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/AngularInterpolatorNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ColorGradientNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ColorGradientNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComputeLightingNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/EntitiesInRangeNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowCVarsNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowPlatformNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowCameraNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowCompositeNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowConditionNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDelayNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDynamicResponseVariable.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDynamicResponseSignal.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowEngineEffectsNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowEngineNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowEntityNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowEnvironmentNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowGameNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowHUDNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowInputNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowInterpolNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowInventoryNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowLogInput.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowLogNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowLogicNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMathNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMissionNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMotionSensorInfoNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMovieNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodesAIActionSequence.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNode_ColliderMode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNoiseNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowPhysicsNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowPlotNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowSaveGameNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowScriptedNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowStartNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowStopNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowStatsNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowStringNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowTimeNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowTrackEventNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowWeaponNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/GameTokenNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/IndexerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/LinearInterpolatorNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/MultiplexerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/OwnerAngularInterpolatorNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/OwnerLinearInterpolatorNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/PlayCGANode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/PlaySequenceNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowExecuteStringNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeStereoparameters.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowAudioPreloadData.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowAudioRtpcNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowAudioSwitchNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowAudioTriggerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowAttachmentNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowCustomActionNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNaturalPointNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/AnimationEventListenerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowPrefabNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMouseInfo.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeAIHelicopter.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowCustomActionNodes.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowPrefabNodes.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowCompositeNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowDelayNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowEntityNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowLogNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeAIAction.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowNodeStereoparameters.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowNoiseNodes.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowScriptedNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowStartNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowTimeNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowTrackEventNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowMannequinNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowMaterialNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowBaseXmlNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowBaseXmlNode.h",
-            "Source/CryAction/FlowSystem/Nodes/FlowClipCaptureNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowContainerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDebugNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDebug2dNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowEntityIterator.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowOnlineStatsNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowXmlDataNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowXmlFileNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowXmlNavNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowDialogNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowTouchInfoNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowTouchVirtualThumbstickNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FadeNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNode_GetUsername.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowNode_GetUsername.h"
-        ]
-    },
-    "CryAction_flow_nodes_uber.cpp":
-    {
-        "Source/CryAction/FlowSystem/Nodes/Ui":
-        [
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiButtonNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiCanvasNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiCheckboxNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiDynamicLayoutNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiDynamicScrollBoxNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiElementNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiFaderNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiImageNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiInteractableNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiLayoutColumnNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiLayoutGridNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiLayoutRowNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiMaskNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiScrollBarNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiScrollBoxNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiScrollerNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUISequenceNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiSliderNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiTextInputNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiTextNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/FlowUiTransformNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/UiFlow.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Ui/UiFlow.h"
-        ],
-        "Source/CryAction/FlowSystem/Nodes/Vehicle":
-        [
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleAttachment.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleBase.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleDamage.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleHorn.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleLights.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleMoveActionMult.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleMovement.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehiclePassenger.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleSeat.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleTurret.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleHandbrake.cpp",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleAttachment.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleBase.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleDamage.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleHandbrake.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleLights.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleMoveActionMult.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleMovement.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehiclePassenger.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleSeat.h",
-            "Source/CryAction/FlowSystem/Nodes/Vehicle/FlowVehicleTurret.h"
-        ],
-        "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes":
-        [
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/ComponentAreaTriggerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/ComponentAreaTriggerNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GameplayEventHandlerNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GameplayEventHandlerNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/LightComponentSwitchNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/LightComponentSwitchNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/ParticleSystemComponentSwitchNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/ParticleSystemComponentSwitchNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/AudioComponentOneShotNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/AudioComponentOneShotNodes.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GetComponentEntityPositionNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GetComponentEntityPositionNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GetComponentEntityRotationNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/GetComponentEntityRotationNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/SetComponentEntityPositionNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/SetComponentEntityPositionNode.h",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/SetComponentEntityRotationNode.cpp",
-            "Source/CryAction/FlowSystem/Nodes/ComponentEntityNodes/SetComponentEntityRotationNode.h"
         ]
     },
     "CryAction_vehicle_uber.cpp":
@@ -879,15 +642,6 @@
             "Source/CryAction/GameRulesSystem.cpp",
             "Source/CryAction/GameRulesSystem.h"
         ],
-        "Source/CryAction/GameTokens":
-        [
-            "Source/CryAction/GameTokens/GameTokenSystem.cpp",
-            "Source/CryAction/GameTokens/GameToken.cpp",
-            "Source/CryAction/GameTokens/GameToken.h",
-            "Source/CryAction/GameTokens/GameTokenSystem.h",
-            "Source/CryAction/GameTokens/ScriptBind_GameToken.h",
-            "Source/CryAction/GameTokens/ScriptBind_GameToken.cpp"
-        ],
         "Source/CryAction/GameplayRecorder":
         [
             "Source/CryAction/GameplayRecorder/GameplayRecorder.cpp",
@@ -934,8 +688,6 @@
             "Source/CryAction/MaterialEffects/IMFXEffect.h",
             "Source/CryAction/MaterialEffects/MFXDecalEffect.cpp",
             "Source/CryAction/MaterialEffects/MFXDecalEffect.h",
-            "Source/CryAction/MaterialEffects/MFXFlowGraphEffect.cpp",
-            "Source/CryAction/MaterialEffects/MFXFlowGraphEffect.h",
             "Source/CryAction/MaterialEffects/MFXForceFeedbackFX.cpp",
             "Source/CryAction/MaterialEffects/MFXForceFeedbackFX.h",
             "Source/CryAction/MaterialEffects/MFXParticleEffect.cpp",
@@ -949,9 +701,6 @@
         ],
         "Source/CryAction/MaterialEffects/Subcomponents":
         [
-            "Source/CryAction/MaterialEffects/MaterialFGManager.cpp",
-            "Source/CryAction/MaterialEffects/MaterialFGManager.h",
-            "Source/CryAction/MaterialEffects/MaterialHUDFXNodes.cpp",
             "Source/CryAction/MaterialEffects/ScriptBind_MaterialEffects.cpp",
             "Source/CryAction/MaterialEffects/ScriptBind_MaterialEffects.h",
             "Source/CryAction/MaterialEffects/MFXLibrary.cpp",
@@ -1134,11 +883,6 @@
         [
             "Source/CryAISystem/SmartObjects.cpp",
             "Source/CryAISystem/SmartObjects.h"
-        ],
-        "Source/CryAISystem/Actions":
-        [
-            "Source/CryAISystem/AIActions.cpp",
-            "Source/CryAISystem/AIActions.h"
         ],
         "Source/CryAISystem/Deprecated":
         [
@@ -1333,21 +1077,6 @@
             "Source/CryAISystem/GameSpecific/GoalOp_G02.cpp",
             "Source/CryAISystem/GameSpecific/GoalOp_G04.h",
             "Source/CryAISystem/GameSpecific/GoalOp_G04.cpp"
-        ],
-        "Source/CryAISystem/Sequence":
-        [
-            "Source/CryAISystem/Sequence/Sequence.cpp",
-            "Source/CryAISystem/Sequence/SequenceFlowNodes.cpp",
-            "Source/CryAISystem/Sequence/SequenceManager.cpp",
-            "Source/CryAISystem/Sequence/Sequence.h",
-            "Source/CryAISystem/Sequence/SequenceAgent.h",
-            "Source/CryAISystem/Sequence/SequenceFlowNodes.h",
-            "Source/CryAISystem/Sequence/SequenceManager.h"
-        ],
-        "Source/CryAISystem/FlowNodes":
-        [
-            "Source/CryAISystem/FlowNodes/AIFlowBaseNode.cpp",
-            "Source/CryAISystem/FlowNodes/AIFlowBaseNode.h"
         ],
         "Source/CryAISystem/BehaviorTree":
         [
@@ -1859,10 +1588,6 @@
         "Source/CryEntitySystem/Components/Area": [
             "Source/CryEntitySystem/Components/ComponentArea.cpp",
             "Source/CryEntitySystem/Components/ComponentArea.h"
-        ],
-        "Source/CryEntitySystem/Components/FlowGraph": [
-            "Source/CryEntitySystem/Components/ComponentFlowGraph.cpp",
-            "Source/CryEntitySystem/Components/ComponentFlowGraph.h"
         ],
         "Source/CryEntitySystem/Components/Substitution": [
             "Source/CryEntitySystem/Components/ComponentSubstitution.cpp",

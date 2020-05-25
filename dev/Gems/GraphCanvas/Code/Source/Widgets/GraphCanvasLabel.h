@@ -15,7 +15,9 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/string/string.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QGraphicsWidget>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Styling/StyleHelper.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
@@ -32,7 +34,8 @@ namespace GraphCanvas
         enum class WrapMode
         {
             MaximumWidth,
-            BoundingWidth
+            BoundingWidth,
+            ResizeToContent
         };
 
         GraphCanvasLabel(QGraphicsItem* parent = nullptr);
@@ -41,12 +44,13 @@ namespace GraphCanvas
         void SetFontColor(const QColor& color);
         void ClearFontColor();
 
-        bool HasFontColorOverride() const;
-        const QColor& GetFontColorOverride() const;
+        void SetBorderColorOverride(const QBrush& borderOverride);
+        const QBrush& GetBorderColorOverride() const;
+        void ClearBorderColorOverride();
 
         void SetLabel(const AZStd::string& label, const AZStd::string& translationContext = AZStd::string(), const AZStd::string& translationKey = AZStd::string());
         void SetLabel(const TranslationKeyedString& value);
-        AZStd::string GetLabel() const { return AZStd::string(m_labelText.toStdString().c_str()); }
+        AZStd::string GetLabel() const { return AZStd::string(m_labelText.toStdString().c_str()); }        
 
         void SetSceneStyle(const AZ::EntityId& sceneId, const char* style);
         void SetStyle(const AZ::EntityId& entityId, const char* styleElement);
@@ -69,9 +73,12 @@ namespace GraphCanvas
         Styling::StyleHelper& GetStyleHelper();
         const Styling::StyleHelper& GetStyleHelper() const;
 
-        void UpdateDisplayText();
+        void UpdateDisplayText();        
 
     protected:
+
+        void UpdateDesiredBounds();
+
         // QGraphicsItem
         bool event(QEvent* qEvent) override;
         void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
@@ -81,9 +88,7 @@ namespace GraphCanvas
         QSizeF sizeHint(Qt::SizeHint which, const QSizeF& constraint = QSizeF()) const override;
         ////
 
-    private:
-        
-        void UpdateDesiredBounds();
+    private:        
 
         Qt::Alignment   m_defaultAlignment;
         bool m_elide;
@@ -107,6 +112,9 @@ namespace GraphCanvas
         QRectF m_desiredBounds;
 
         WrapMode m_wrapMode;
+
+        bool                 m_hasBorderOverride;
+        QBrush               m_borderColorOverride;
 
         Styling::StyleHelper m_styleHelper;
     };

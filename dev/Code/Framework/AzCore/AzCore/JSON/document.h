@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_RAPIDJSON_DOCUMENT
-#define AZCORE_RAPIDJSON_DOCUMENT
+
+#pragma once
 
 #include <AzCore/JSON/rapidjson.h>
 
@@ -19,13 +19,9 @@
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
 #endif
 
-// Make sure rapidjson/include folder is available. Currently 3rdParty\rapidjson\rapidjson-1.0.2\
+// Make sure rapidjson/include folder is available. Currently 3rdParty\rapidjson\rapidjson-1.1.0\include
 
-// rapidjson GenericMemberIterator class inherits from std::iterator which as of C++17 has been deprecated https://github.com/Tencent/rapidjson/issues/1131
-// Therefore RAPIDJSON_NOMEMBERITERATORCLASS is being defined to have rapidjson fallback to a non std::iterator implementation
-#define RAPIDJSON_NOMEMBERITERATORCLASS
 #include <rapidjson/document.h>
-#undef RAPIDJSON_NOMEMBERITERATORCLASS
 
 #if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
 #pragma clang diagnostic pop
@@ -37,5 +33,3 @@ inline bool IsValidMember(const rapidjson::Value& val, const char* key, bool (ra
     return val.IsObject() && val.HasMember(key) && (val[key].*func)();
 }
 #define RAPIDJSON_IS_VALID_MEMBER(node, key, isTypeFuncPtr) (IsValidMember(node, key, &rapidjson::Value::isTypeFuncPtr))
-
-#endif // AZCORE_RAPIDJSON_DOCUMENT

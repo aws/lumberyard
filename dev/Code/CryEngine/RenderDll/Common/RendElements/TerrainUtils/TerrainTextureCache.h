@@ -23,6 +23,7 @@
 #include "TerrainCompositer.h"
 
 #include <Terrain/Bus/TerrainRendererBus.h>
+#include <Terrain/Bus/HeightmapDataBus.h>
 
 namespace Terrain
 {
@@ -33,6 +34,7 @@ namespace Terrain
     class TerrainTextureCache
         : public CRETerrainContext
         , public TerrainRendererRequestBus::Handler
+        , public HeightmapDataNotificationBus::Handler
     {
     public:
         static const int s_PhysicalTextureSlotStart = 14;
@@ -87,9 +89,12 @@ namespace Terrain
 
         ///////////////////////////////////////////////////
         // CRETerrainContext Impl
-        void SetPSConstant(ConstantNames name, float x, float y, float z, float w) override;
         void OnTractVersionUpdate() override;
-        void OnHeightMapVersionUpdate() override;
+        ///////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////
+        // HeightmapDataNotificationBus interface implementation
+        void OnTerrainHeightDataChanged(const AZ::Aabb& dirtyRegion) override;
         ///////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////
@@ -101,6 +106,21 @@ namespace Terrain
         void RequestTerrainTextureTiles(const LODSelection& selection);
 
     private:
+
+        // height map data requests
+        void QueueHeightmapDataRequest(const HeightmapDataRequestInfo& heightmapDataRequest);
+
+        // height map texture update
+        AZ::u32 PackHeightAndNormalAsUint(float height, AZ::Vector3 normal, float maxHeight);
+        void ProcessHeightmapDataRequests(int numRequestsToHandle);
+
+        // Queue of ready heightmap requests to push back to the renderer
+        AZStd::queue<HeightmapDataRequestInfo> m_readyHeightmapRequestsQueue;
+        AZStd::mutex m_readyHeightmapRequestsMutex;
+        AZStd::unique_ptr<AZ::u32[]> m_workBuffer;
+        AZ::u32 m_workBufferSize = 0;
+
+
         AZStd::unique_ptr<VirtualTexture> m_heightMapVirtualTexturePtr;
         int m_heightMapVirtualTextureSamplerStateId;
 

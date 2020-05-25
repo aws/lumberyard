@@ -6,7 +6,7 @@
         "lib_names": [],
         "shared_names": []
     },
-    "includes": [],
+    "system_includes": [],
     "defines": [],
     "lib_required": "False"
 }

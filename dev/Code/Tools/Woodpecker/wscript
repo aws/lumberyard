@@ -45,6 +45,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251' # Setting W4 overrides the External header level of /external:W0 for Qt headers
         ],
         win_lib                 = [ 'shell32' ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
@@ -96,6 +97,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251' # Setting W4 overrides the External header level of /external:W0 for Qt headers
             ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
                                     'AWS_CPP_SDK_COGNITO_IDENTITY',

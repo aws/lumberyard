@@ -57,10 +57,9 @@ namespace EMotionFX
             AnimGraphFixture::ConstructGraph();
             m_param = GetParam();
 
-            // Create the blend tree.
-            m_blendTree = aznew BlendTree();
-            m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
-            m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
+            m_blendTreeAnimGraph = AnimGraphFactory::Create<OneBlendTreeNodeAnimGraph>();
+            m_rootStateMachine = m_blendTreeAnimGraph->GetRootStateMachine();
+            m_blendTree = m_blendTreeAnimGraph->GetBlendTreeNode();
 
             AddParameter<FloatSliderParameter>("FloatParam", 0.0f);
             AddParameter<BoolParameter>("BoolParam", false);
@@ -95,6 +94,8 @@ namespace EMotionFX
             blend2Node->AddConnection(bindPoseNode, AnimGraphBindPoseNode::PORTID_OUTPUT_POSE, BlendTreeBlend2Node::INPUTPORT_POSE_B);
             blend2Node->AddConnection(m_floatMath1Node, BlendTreeFloatMath1Node::OUTPUTPORT_RESULT, BlendTreeBlend2Node::INPUTPORT_WEIGHT);
             finalNode->AddConnection(blend2Node, BlendTreeBlend2Node::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+
+            m_blendTreeAnimGraph->InitAfterLoading();
         }
 
         template <class paramType, class inputType>
@@ -139,7 +140,15 @@ namespace EMotionFX
             m_floatMath1Node->RemoveConnection(connection);
         }
 
+        void SetUp() override
+        {
+            AnimGraphFixture::SetUp();
+            m_animGraphInstance->Destroy();
+            m_animGraphInstance = m_blendTreeAnimGraph->GetAnimGraphInstance(m_actorInstance, m_motionSet);
+        }
+
     protected:
+        AZStd::unique_ptr<OneBlendTreeNodeAnimGraph> m_blendTreeAnimGraph;
         BlendTree* m_blendTree = nullptr;
         BlendTreeFloatMath1Node* m_floatMath1Node = nullptr;
         BlendTreeFloatMath1NodeTestData m_param;
@@ -161,7 +170,7 @@ namespace EMotionFX
             ParameterType* parameter = aznew ParameterType();
             parameter->SetName(name);
             parameter->SetDefaultValue(defaultValue);
-            m_animGraph->AddParameter(parameter);
+            m_blendTreeAnimGraph->AddParameter(parameter);
         }
 
         float CalculateMathFunctionOutput(BlendTreeFloatMath1Node::EMathFunction mathFunction, float input)

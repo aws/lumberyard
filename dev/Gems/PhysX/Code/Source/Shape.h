@@ -36,6 +36,7 @@ namespace PhysX
 
         Shape(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& configuration);
         Shape(physx::PxShape* nativeShape);
+        virtual ~Shape();
 
         Shape(Shape&& shape);
         Shape& operator=(Shape&& shape);
@@ -66,9 +67,14 @@ namespace PhysX
 
         bool IsTrigger() const;
 
+        void AttachedToActor(void* actor) override;
+        void DetachedFromActor() override;
+
     private:
         void BindMaterialsWithPxShape();
         void ExtractMaterialsFromPxShape();
+        physx::PxScene* GetScene() const;
+        void ReleasePxShape(physx::PxShape* shape);
 
         using PxShapeUniquePtr = AZStd::unique_ptr<physx::PxShape, AZStd::function<void(physx::PxShape*)>>;
         Shape() = default;
@@ -78,5 +84,6 @@ namespace PhysX
         Physics::CollisionLayer m_collisionLayer;
         Physics::CollisionGroup m_collisionGroup;
         AZ::Crc32 m_tag;
+        physx::PxActor* m_attachedActor = nullptr;
     };
 }

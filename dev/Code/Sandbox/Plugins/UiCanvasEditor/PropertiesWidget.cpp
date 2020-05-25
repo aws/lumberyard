@@ -128,7 +128,7 @@ void PropertiesWidget::SetScrollValue(float scrollValue)
 {
     if (m_propertiesContainer->verticalScrollBar())
     {
-        m_propertiesContainer->verticalScrollBar()->setValue(scrollValue);
+        m_propertiesContainer->verticalScrollBar()->setValue(aznumeric_cast<int>(scrollValue));
     }
 }
 

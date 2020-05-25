@@ -42,10 +42,10 @@ enum { TEXT_VALUE_SPACING = 3 };
 QColor interpolateColor(const QColor& a, const QColor& b, float k)
 {
 	float mk = 1.0f - k;
-	return QColor(a.red() * mk  + b.red() * k,
-								a.green() * mk + b.green() * k,
-								a.blue() * mk + b.blue() * k,
-								a.alpha() * mk + b.alpha() * k);
+	return QColor(aznumeric_cast<int>(a.red() * mk  + b.red() * k),
+								aznumeric_cast<int>(a.green() * mk + b.green() * k),
+								aznumeric_cast<int>(a.blue() * mk + b.blue() * k),
+								aznumeric_cast<int>(a.alpha() * mk + b.alpha() * k));
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ int PropertyRow::childIndex(const PropertyRow* row) const
 	YASLI_ASSERT(row);
 	Rows::const_iterator it = std::find(children_.begin(), children_.end(), row);
 	YASLI_ESCAPE(it != children_.end(), return -1);
-	return std::distance(children_.begin(), it);
+	return aznumeric_cast<int>(std::distance(children_.begin(), it));
 }
 
 bool PropertyRow::isChildOf(const PropertyRow* row) const
@@ -857,10 +857,10 @@ void PropertyRow::calculateMinimalSize(const QPropertyTree* tree, int posX, int 
 	if (parent() != 0){
 		if (parent()->parent() == 0) {
 			if (!tree->treeStyle().doNotIndentSecondLevel)
-				childrenLeft += tree->treeStyle().firstLevelIndent * tree->_defaultRowHeight();
+				childrenLeft = aznumeric_cast<int>(childrenLeft + tree->treeStyle().firstLevelIndent * tree->_defaultRowHeight());
 		}
 		else
-			childrenLeft += tree->treeStyle().levelIndent * tree->_defaultRowHeight();
+			childrenLeft = aznumeric_cast<int>(childrenLeft + tree->treeStyle().levelIndent * tree->_defaultRowHeight());
 	}
 
 	int checkBoxChildren = 0;
@@ -963,7 +963,7 @@ void PropertyRow::calculateMinimalSize(const QPropertyTree* tree, int posX, int 
 	validatorsHeight_ = 0;
 	if (!pulledUp() && !pulledBefore() && (validatorCount_ != 0 || hasPulled_)) {
 		QFontMetrics fm(tree->font());
-		int padding = 0.1f * tree->_defaultRowHeight();
+		int padding = aznumeric_cast<int>(0.1f * tree->_defaultRowHeight());
 		auto calculateValidatorHeight = [&](PropertyRow* row) {
 			const ValidatorEntry* entries = tree->_validatorBlock()->GetEntry(row->validatorIndex_, row->validatorCount_);
 			if (entries) {
@@ -1381,7 +1381,7 @@ void PropertyRow::drawRow(QPainter& painter, const QPropertyTree* tree, int inde
 	{
 		QRect totalRect = validatorRect(tree);
 		QFontMetrics fm(tree->font());
-		const int padding = tree->_defaultRowHeight() * 0.1f;
+		const int padding = aznumeric_cast<int>(tree->_defaultRowHeight() * 0.1f);
 		int offset = padding;
 		auto drawFunc = [&](PropertyRow* row) {
 			if (const ValidatorEntry* validatorEntries = tree->_validatorBlock()->GetEntry(row->validatorIndex_, row->validatorCount_)) {

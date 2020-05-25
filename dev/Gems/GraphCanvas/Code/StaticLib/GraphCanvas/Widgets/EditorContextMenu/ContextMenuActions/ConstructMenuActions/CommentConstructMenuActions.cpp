@@ -30,8 +30,10 @@ namespace GraphCanvas
     {
     }
 
-    ContextMenuAction::SceneReaction AddCommentMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction AddCommentMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::ClearSelection);
 
         AZ::Entity* graphCanvasEntity = nullptr;

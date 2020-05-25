@@ -33,15 +33,35 @@ namespace AzToolsFramework
         {
             m_showColumn.insert(AssetBrowserModel::m_column);
             m_collator.setNumericMode(true);
+            AssetBrowserComponentNotificationBus::Handler::BusConnect();
         }
 
-        AssetBrowserFilterModel::~AssetBrowserFilterModel() = default;
+        AssetBrowserFilterModel::~AssetBrowserFilterModel()
+        {
+            AssetBrowserComponentNotificationBus::Handler::BusDisconnect();
+        }
 
         void AssetBrowserFilterModel::SetFilter(FilterConstType filter)
         {
             connect(filter.data(), &AssetBrowserEntryFilter::updatedSignal, this, &AssetBrowserFilterModel::filterUpdatedSlot);
             m_filter = filter;
-            invalidateFilter();
+            m_invalidateFilter = true;
+            // asset browser entries are not guaranteed to have populated when the filter is set, delay filtering until they are
+            bool isAssetBrowserComponentReady = false;
+            AssetBrowserComponentRequestBus::BroadcastResult(isAssetBrowserComponentReady, &AssetBrowserComponentRequests::AreEntriesReady);
+            if (isAssetBrowserComponentReady)
+            {
+                OnAssetBrowserComponentReady();
+            }
+        }
+
+        void AssetBrowserFilterModel::OnAssetBrowserComponentReady()
+        {
+            if (m_invalidateFilter)
+            {
+                invalidateFilter();
+                m_invalidateFilter = false;
+            }
         }
 
         bool AssetBrowserFilterModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const

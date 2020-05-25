@@ -421,6 +421,13 @@ namespace AZ
 
         bool LocalFileIO::ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize)
         {
+            if (resolvedPath == nullptr || resolvedPathSize == 0)
+            {
+                return false;
+            }
+
+            resolvedPath[0] = '\0';
+
             if (path == nullptr)
             {
                 return false;

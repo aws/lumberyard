@@ -486,7 +486,7 @@ const char* CLoadingProfilerSystem::GetLoadingProfilerCallstack()
     return &szStack[0];
 }
 
-void CLoadingProfilerSystem::FillProfilersList(std::vector<SLoadingProfilerInfo>& profilers)
+void CLoadingProfilerSystem::FillProfilersList(AZStd::vector<SLoadingProfilerInfo>& profilers)
 {
     UpdateSelfStatistics(m_pRoot[m_iActiveRoot]);
 

@@ -1008,7 +1008,7 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
     m_bStreamed = true;
 
     // base range after normalization, fe. [0,1] for 8bit images, or [0,2^15] for RGBE/HDR data
-    if ((m_eTFSrc == eTF_R9G9B9E5) || (m_eTFSrc == eTF_BC6UH) || (m_eTFSrc == eTF_BC6UH))
+    if ((m_eTFSrc == eTF_R9G9B9E5) || (m_eTFSrc == eTF_BC6UH) || (m_eTFSrc == eTF_BC6SH))
     {
         m_cMinColor /= m_cMaxColor.a;
         m_cMaxColor /= m_cMaxColor.a;

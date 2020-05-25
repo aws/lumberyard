@@ -23,4 +23,4 @@ namespace EMotionFX
     public:
         void focusInEvent(QFocusEvent* event) override;
     };
-}
+} // namespace EMotionFX

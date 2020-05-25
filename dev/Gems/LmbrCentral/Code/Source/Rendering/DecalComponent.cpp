@@ -11,7 +11,7 @@
 */
 #include "LmbrCentral_precompiled.h"
 #include "DecalComponent.h"
-#include "MaterialOwnerRequestBusHandlerImpl.h"
+#include <LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <MathConversion.h>
 #include <I3DEngine.h>

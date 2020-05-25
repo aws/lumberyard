@@ -11,14 +11,16 @@
 # $Revision: #1 $
 
 import os
+import warnings
 
 import resource_manager.util
 
-import lmbr_aws_test_support
-import mock_specification
+from . import lmbr_aws_test_support
+from . import mock_specification
 from resource_manager.test import base_stack_test
-import resource_manager_common.constant as  c
-import test_constant
+import resource_manager_common.constant as c
+from . import test_constant
+
 
 class IntegrationTest_CloudGemFramework_ResourceManager_ProjectResourceHooks(base_stack_test.BaseStackTestCase):
     
@@ -26,7 +28,11 @@ class IntegrationTest_CloudGemFramework_ResourceManager_ProjectResourceHooks(bas
     TEST_GEM_PROJECT_RESOURCE_TYPE = 'AWS::S3::Bucket'
     TEST_PROJECT_NAME = lmbr_aws_test_support.unique_name()
 
-    def setUp(self):        
+    def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.set_resource_group_name(lmbr_aws_test_support.unique_name('prh'))
         self.prepare_test_environment(temp_file_suffix = type(self).__name__)
         self.register_for_shared_resources()

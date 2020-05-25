@@ -14,7 +14,7 @@
 #include "MaterialBrowserSearchFilters.h"
 #include "MaterialBrowserFilterModel.h"
 #include "Material.h"
-#include "ITerrain.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 SubMaterialSearchFilter::SubMaterialSearchFilter(const MaterialBrowserFilterModel* filterModel)
     : m_filterModel(filterModel)
@@ -100,12 +100,8 @@ void LevelMaterialSearchFilter::CacheLoadedMaterials()
     {
         renderNode->GetMaterials(materials);
     }
-
-    if (GetIEditor()->Get3DEngine()->GetITerrain())
-    {
-        GetIEditor()->Get3DEngine()->GetITerrain()->GetMaterials(materials);
-    }
-
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::GetTerrainMaterials, materials);
+    
     for (size_t i = 0; i < materials.size(); ++i)
     {
         if (materials[i])

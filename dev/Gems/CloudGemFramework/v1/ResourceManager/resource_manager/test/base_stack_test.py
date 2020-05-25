@@ -10,23 +10,24 @@
 #
 # $Revision: #1 $
 
-import lmbr_aws_test_support
+from . import lmbr_aws_test_support
+
 
 class BaseStackTestCase(lmbr_aws_test_support.lmbr_aws_TestCase):
     
     def setup_base_stack(self):
-        proj_stack_created =  not self.has_project_stack()
-        self.runtest(self.base_create_project_stack)
+        proj_stack_created = not self.has_project_stack()
+        self.runtest(self.base_create_project_stack, name='base_create_project_stack')
 
         deploy_stack_created = not self.has_deployment_stack()
-        self.runtest(self.base_create_deployment_stack)
+        self.runtest(self.base_create_deployment_stack, name='base_create_deployment_stack')
 
         return proj_stack_created, deploy_stack_created
 
     def teardown_base_stack(self):
         self.unregister_for_shared_resources()
-        self.runtest(self.base_delete_deployment_stack)
-        self.runtest(self.base_delete_project_stack)
+        self.runtest(self.base_delete_deployment_stack, name='base_delete_deployment_stack')
+        self.runtest(self.base_delete_project_stack, name='base_delete_project_stack')
 
     def base_create_project_stack(self):
         self.save_context_to_disk()
@@ -46,9 +47,3 @@ class BaseStackTestCase(lmbr_aws_test_support.lmbr_aws_TestCase):
         
     def base_delete_project_stack(self):
         self.wait_for_project(self.project_transitions.delete)
-
-
-
-
-
- 

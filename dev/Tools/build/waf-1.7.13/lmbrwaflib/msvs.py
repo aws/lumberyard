@@ -74,23 +74,34 @@ ASSUMPTIONS:
 * each project is a vcxproj file, therefore the project uuid needs only to be a hash of the absolute path
 """
 
-import os, re, sys, errno, datetime, time, subprocess
+# System Imports
+import datetime
+import os
+import re
+import sys
+import time
 import uuid  # requires python 2.5
-from waflib.Build import BuildContext
-from waflib import Utils, TaskGen, Logs, Task, Context, Node, Options, Errors
-from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
-from cry_utils import append_to_unique_list, split_comma_delimited_string
-from utils import is_value_true
+
 try:
-    import _winreg
+    import winreg
     WINREG_SUPPORTED = True
 except ImportError:
     WINREG_SUPPORTED = False
     pass
 
+# waflib imports
+from waflib.Build import BuildContext
+from waflib import Utils, TaskGen, Logs, Task, Context, Node, Options, Errors
+from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
+from waflib.ConfigSet import ConfigSet
 
-from lumberyard_modules import apply_project_settings_for_input
-import msvc_helper, cry_utils
+# lmbrwaflib imports
+from lmbrwaflib import cry_utils
+from lmbrwaflib import msvc_helper
+from lmbrwaflib import settings_manager
+from lmbrwaflib.cry_utils import append_to_unique_list, split_comma_delimited_string
+from lmbrwaflib.lumberyard_modules import apply_project_settings_for_input
+
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl|*.hxx)'
 
@@ -108,6 +119,11 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 		<ProjectGuid>{${project.uuid}}</ProjectGuid>
 		<Keyword>MakefileProj</Keyword>
 		<ProjectName>${project.name}</ProjectName>
+		${if hasattr(project, 'vs_globals')}
+		    ${for vs_prop, vs_global in list(project.vs_globals.items())}
+		        <${vs_prop}>${vs_global}</${vs_prop}>
+			${endfor}
+		${endif}
 	</PropertyGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 	${for b in project.build_properties}
@@ -160,7 +176,7 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}</OutDir>
 				${endif}
 			%s
-            ${endif}
+			${endif}
 		</PropertyGroup>
 	${endfor}
 	${for b in project.build_properties}
@@ -178,7 +194,7 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 		${endfor}
 	</ItemGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-	<Import Project="$(MSBuildProjectDirectory)\..\..\_WAF_\msbuild\waf_build.targets" />
+	<Import Project='${b.build_targets_path}' />
 	<ImportGroup Label="ExtensionTargets" />
 </Project>
 '''
@@ -268,10 +284,12 @@ PROPERTY_SHEET_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 	${for b in project.build_properties}	
 		${if getattr(b, 'output_file_name', None)}
 			<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'">
-				<WAF_TargetFile>${xml:b.output_file}</WAF_TargetFile>
+				<WAF_ExProjectTool>${xml:b.is_external_project_tool}</WAF_ExProjectTool>
+				<WAF_TargetFile>${xml:b.ld_target_path}</WAF_TargetFile>
 				<TargetPath Condition="'$(WAF_TargetFile)' != ''">$(WAF_TargetFile)</TargetPath>
-				<LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
+				<LocalDebuggerCommand>${xml:b.ld_target_command}</LocalDebuggerCommand>
 				<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(BinDir)/AzTestRunner</LocalDebuggerCommand>
+				<LocalDebuggerCommandArguments Condition="$(WAF_ExProjectTool.Equals('True'))">${xml:b.ld_target_arguments}</LocalDebuggerCommandArguments>
 				<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">"${xml:b.output_file}" AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
 				<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
 			</PropertyGroup>
@@ -341,28 +359,9 @@ COMPILE_TEMPLATE = '''def f(project):
 		return value.replace("&", "&amp;").replace('"', "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;")
 
 	%s
-
-	#f = open('cmd.txt', 'w')
-	#f.write(str(lst))
-	#f.close()
+	
 	return ''.join(lst)
 '''
-
-
-SUPPORTED_MSVS_VALUE_TABLE = {
-    "15": {
-        "name": "Visual Studio 2017",
-        "formatver": "12.00",
-        "vsver": "15",
-        "defaultPlatformToolSet": "v141",
-#        "platforms": [
-#            "win_x64_vs2017",
-#            "xenia_vs2017",
-#            "provo_vs2017"
-#        ],
-        "product_name": "2017"
-    }
-}
 
 
 class VS_Configuration(object):
@@ -395,25 +394,6 @@ def convert_vs_platform_to_waf_platform(self, vs_platform):
 
 
 @conf
-def convert_vs_platform_to_prefix(self, vs_platform):
-    waf_platform = self.convert_vs_platform_to_waf_platform(vs_platform)
-    try:
-        waf_platform_attributes = self.waf_platform_to_attributes[waf_platform]
-        return waf_platform_attributes['prefix']
-    except KeyError:
-        raise Errors.WafError("Unable to find prefix for vs platform '{}'".format(vs_platform))
-
-
-@conf
-def get_compatible_toolsets_for_platform(self, waf_platform):
-    try:
-        waf_platform_attributes = self.waf_platform_to_attributes[waf_platform]
-        return waf_platform_attributes.get('compat_toolsets', [])
-    except KeyError:
-        raise Errors.WafError("Unable to find toolset for vs platform '{}'".format(waf_platform))
-
-
-@conf
 def is_valid_spec(ctx, spec_name):
     """ Check if the spec should be included when generating visual studio projects """
     if ctx.options.specs_to_include_in_project_generation == '':
@@ -430,80 +410,6 @@ def is_valid_spec(ctx, spec_name):
 def convert_waf_spec_to_vs_spec(self, spec_name):
     """ Helper to get the Visual Studio Spec name from a WAF spec name """
     return self.spec_visual_studio_name(spec_name)
-
-
-def get_msbuild_root(toolset_version):
-    """
-    Get the MSBuild root installed folder path from the registry
-    """
-
-    reg_key = 'SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\{}.0'.format(toolset_version)
-    msbuild_root_regkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, reg_key, 0, _winreg.KEY_READ)
-    (root_path, type) = _winreg.QueryValueEx(msbuild_root_regkey, 'MSBuildToolsRoot')
-    return root_path.encode('utf-8')
-
-
-def find_vswhere():
-    vs_path = os.environ['ProgramFiles(x86)']
-    vswhere_exe = os.path.join(vs_path, 'Microsoft Visual Studio\\Installer\\vswhere.exe')
-    if not os.path.isfile(vswhere_exe):
-        vswhere_exe = ''
-    return vswhere_exe
-
-
-def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOptions):
-    """
-    Check the cpp tools for a platform based on the presence of a platform specific 'Platform.props' folder
-    """
-
-    try:
-        if toolsetVer == '15':
-            vswhere_exe = find_vswhere()
-            if vswhere_exe == '':
-                return False
-
-            vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
-            vs2017vswhereOptionsBuildTools.append('-products')
-            vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
-
-            installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
-            if not installation_path:
-                installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildTools)
-
-            if not installation_path:
-                try:
-                    version_arg_index = vs2017vswhereOptions.index('-version')
-                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
-                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-                    
-                    # We could not find a min version of vs2017 based on the vswhere args (vs2017vswhereOptions) for vswhere, so try to find any version of 2017
-                    vs2017vswhereOptions = ['-version', '[15.0,16.0)']
-                    vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
-                    vs2017vswhereOptionsBuildTools.append('-products')
-                    vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
-                    
-                    installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
-                    if not installation_path:
-                        installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildTools)
-                except ValueError:
-                    pass
-
-            installation_path = installation_path[:len(installation_path)-2]
-            Logs.info_once('[INFO] Using Visual Studio version installed at: {}'.format(installation_path))
-            build_root = os.path.join(installation_path, 'MSBuild', toolsetVer+'.0')
-            props_file = os.path.join(build_root, 'Microsoft.common.props')
-            return os.path.exists(props_file)
-        else:
-            platform_root_dir = os.path.join(get_msbuild_root(toolsetVer),
-                                             'Microsoft.Cpp','v4.0','V{}0'.format(toolsetVer),
-                                             'Platforms',
-                                             platform_tool_name)
-            platform_props_file = os.path.join(platform_root_dir,'Platform.props')
-            return os.path.exists(platform_props_file)
-    except Exception as err:
-        Logs.warn("[WARN] Unable to determine toolset path for platform vetting : {}".format(err.message))
-        return True
-
 
 reg_act = re.compile(r"(?P<backslash>\\)|(?P<dollar>\$\$)|(?P<subst>\$\{(?P<code>[^}]*?)\})", re.M)
 
@@ -554,7 +460,6 @@ def compile_template(line):
         elif f.startswith('xml:'):
             app('lst.append(xml_escape(%s))' % f[4:])
         else:
-            #app('lst.append((%s) or "cannot find %s")' % (f, f))
             app('lst.append(%s)' % f)
 
     if extr:
@@ -562,13 +467,15 @@ def compile_template(line):
             app("lst.append(%r)" % params[-1])
 
     fun = COMPILE_TEMPLATE % "\n\t".join(buf)
-    #print(fun)
+
     return Task.funex(fun)
+
 
 def rm_blank_lines(txt):
     txt = "\r\n".join([line for line in txt.splitlines() if line.strip() != ''])
     txt += '\r\n'
     return txt
+
 
 BOM = '\xef\xbb\xbf'
 try:
@@ -579,8 +486,8 @@ except:
 
 def stealth_write(self, data, flags='wb'):
     try:
-        x = unicode
-    except:
+        unicode
+    except NameError:
         data = data.encode('utf-8') # python 3
     else:
         data = data.decode(sys.getfilesystemencoding(), 'replace')
@@ -597,11 +504,16 @@ def stealth_write(self, data, flags='wb'):
         self.write(data, flags=flags)
     else:
         Logs.debug('msvs: skipping %s' % self.abspath())
+
+
 Node.Node.stealth_write = stealth_write
 
 re_quote = re.compile("[^a-zA-Z0-9-.]")
+
+
 def quote(s):
     return re_quote.sub("_", s)
+
 
 def xml_escape(value):
     return value.replace("&", "&amp;").replace('"', "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;")
@@ -655,14 +567,17 @@ def diff(node, fromnode):
     lst.reverse()
     return tuple(lst)
 
+
 class build_property(object):
     pass
+
 
 class vsnode(object):
     """
     Abstract class representing visual studio elements
     We assume that all visual studio nodes have a uuid and a parent
     """
+
     def __init__(self, ctx):
         self.ctx = ctx # msvs context
         self.name = '' # string, mandatory
@@ -694,11 +609,13 @@ class vsnode(object):
         """
         return make_uuid(val)
 
+
 class vsnode_vsdir(vsnode):
     """
     Nodes representing visual studio folders (which do not match the filesystem tree!)
     """
     VS_GUID_SOLUTIONFOLDER = "2150E333-8FDC-42A3-9474-1A3956D46DE8"
+
     def __init__(self, ctx, uuid, name, vspath=''):
         vsnode.__init__(self, ctx)
         self.title = self.name = name
@@ -707,6 +624,7 @@ class vsnode_vsdir(vsnode):
 
     def ptype(self):
         return self.VS_GUID_SOLUTIONFOLDER
+
 
 def _get_filter_name(project_filter_dict, file_name):
     """ Helper function to get a correct project filter """
@@ -742,6 +660,7 @@ class vsnode_project(vsnode):
         self.source = [] # list of node objects
         self.build_properties = [] # list of properties (nmake commands, output dir, etc)
 
+        self.compat_toolsets = ctx.compat_toolsets
         self.defaultPlatformToolSet = ctx.defaultPlatformToolSet
         self.msvs_version = ctx.msvs_version
 
@@ -750,19 +669,31 @@ class vsnode_project(vsnode):
 
     def get_platform_toolset(self, vs_platform):
 
-        waf_platform = self.ctx.convert_vs_platform_to_waf_platform(vs_platform)
-        compat_toolsets = self.ctx.get_compatible_toolsets_for_platform(waf_platform)
+        platform = self.get_platform_for_toolset_name(vs_platform)
+        if platform:
+            compat_toolsets = platform.attributes['msvs']['compat_toolsets']
 
-        for compat_toolset in compat_toolsets:
-            if compat_toolset == self.defaultPlatformToolSet:
-                return compat_toolset
+            for compat_toolset in compat_toolsets:
+                if compat_toolset in self.compat_toolsets:
+                    return compat_toolset
+
         # If we reach this point, that means that the toolset for platform specified in the vs platform dictionary
         # cannot be supported by the current VS ide.  It should not reach this point because the project should
         # be filter out, but log a warning anyways and continue
-        Logs.warn('Invalid platform error for vs platform {}:  Platform not found, defaulting to {}'.format(vs_platform, self.defaultPlatformToolSet))
+        Logs.warn('Invalid platform error for vs platform {}:  Platform not found, defaulting to {}'.format(vs_platform,
+                                                                                                            self.defaultPlatformToolSet))
         return self.defaultPlatformToolSet
 
-
+    def get_platform_for_toolset_name(self, toolset_name):
+        for platform in self.ctx.toolset_map[toolset_name]:
+            # Filter out platform toolsets that don't match the msvs generator msvs_version value
+            msvs_version_list = platform.attributes['msvs']['msvs_ver']
+            if not msvs_version_list:
+                continue
+            msvs_version_list = [msvs_version_list] if isinstance(msvs_version_list, str) else msvs_version_list
+            if self.msvs_version in msvs_version_list:
+                return platform
+        return None
 
     def dirs(self):
         """
@@ -778,7 +709,6 @@ class vsnode_project(vsnode):
             seperator_pos = x.rfind('\\')
             if seperator_pos != -1:
                 add(x[:seperator_pos])
-
 
         for source in self.source:
             add( _get_filter_name(self.project_filter, source.abspath()) )
@@ -824,15 +754,20 @@ class vsnode_project(vsnode):
 
         for vs_configuration in self.ctx.configurations:
 
-            for vs_platform in self.ctx.platforms:
+            for platform in list(self.ctx.platform_map.values()):
+
+                toolset_name = platform.attributes['msvs']['toolset_name']
+
+                if not self.get_platform_for_toolset_name(toolset_name):
+                    continue
 
                 x = build_property()
                 x.outdir = ''
                 x.bindir = ''
                 x.configuration = vs_configuration
                 x.configuration_name = str(vs_configuration)
-                x.platform = vs_platform
-                
+                x.platform = toolset_name
+
                 active_projects = self.ctx.get_enabled_game_project_list()
                 if len(active_projects) != 1:
                     x.game_project = ''
@@ -841,8 +776,8 @@ class vsnode_project(vsnode):
 
                 x.preprocessor_definitions = ''
                 x.includes_search_path = ''
+                x.build_targets_path = self.ctx.get_engine_node().make_node(['_WAF_', 'msbuild', 'waf_build.targets']).abspath()
 
-                # can specify "deploy_dir" too
                 ret.append(x)
         self.build_properties = ret
 
@@ -858,15 +793,34 @@ class vsnode_project(vsnode):
     def get_build_command(self, props):
 
         params = self.get_build_params(props)
-        bld_command = ' build_{}_{}'.format(self.ctx.convert_vs_platform_to_waf_platform(props.platform),
-                                            props.configuration.waf_configuration)
+
+        platform = self.get_platform_for_toolset_name(props.platform)
+        if not platform:
+            Logs.error('[ERROR] build command: Toolset name {} does not have a msvs_ver entry which matches the value of {}.'.format(props.platform, self.msvs_version))
+            return None
+
+        waf_platform = platform.platform
+        waf_configuration = props.configuration.waf_configuration
+
+        bld_command = ' build_{}_{}'.format(waf_platform, waf_configuration)
+
         return '{} {} {}'.format(params[0], bld_command, params[1])
 
     def get_clean_command(self, props):
 
         params = self.get_build_params(props)
-        clean_command = ' clean_{}_{}'.format(self.ctx.convert_vs_platform_to_waf_platform(props.platform),
-                                              props.configuration.waf_configuration)
+
+        platform = self.get_platform_for_toolset_name(props.platform)
+        if not platform:
+            Logs.error('[ERROR] clean command: Toolset name {} does not have a msvs_ver entry which matches the value of {}.'.format(props.platform, self.msvs_version))
+            return None
+
+        waf_platform = platform.platform
+
+        waf_configuration = props.configuration.waf_configuration
+
+        clean_command = ' clean_{}_{}'.format(waf_platform, waf_configuration)
+
         return '{} {} {}'.format(params[0], clean_command, params[1])
 
     def get_output_folder(self, platform, configuration):
@@ -882,10 +836,19 @@ class vsnode_project(vsnode):
     def get_rebuild_command(self, props):
 
         params = self.get_build_params(props)
-        clean_command = ' clean_{}_{}'.format(self.ctx.convert_vs_platform_to_waf_platform(props.platform),
-                                              props.configuration.waf_configuration)
-        bld_command = ' build_{}_{}'.format(self.ctx.convert_vs_platform_to_waf_platform(props.platform),
-                                            props.configuration.waf_configuration)
+
+        platform = self.get_platform_for_toolset_name(props.platform)
+        if not platform:
+            Logs.error('[ERROR] rebuild command: Toolset name {} does not have a msvs_ver entry which matches the value of {}.'.format(props.platform, self.msvs_version))
+            return None
+
+        waf_platform = platform.platform
+
+        waf_configuration = props.configuration.waf_configuration
+
+        clean_command = ' clean_{}_{}'.format(waf_platform, waf_configuration)
+        bld_command = ' build_{}_{}'.format(waf_platform, waf_configuration)
+
         return '{} {} {} {}'.format(params[0], clean_command, bld_command, params[1])
 
     def get_filter_name(self, node):
@@ -911,11 +874,13 @@ class vsnode_alias(vsnode_project):
         self.output_file = ''
         self.project_filter = {}
 
+
 class vsnode_build_all(vsnode_alias):
     """
     Fake target used to emulate the behaviour of "make all" (starting one process by target is slow)
     This is the only alias enabled by default
     """
+
     def __init__(self, ctx, node, name='_WAF_'):
         vsnode_alias.__init__(self, ctx, node, name)
         self.is_active = True
@@ -938,21 +903,40 @@ class vsnode_build_all(vsnode_alias):
             x.target_config = ''
 
             current_spec_name = x.configuration.vs_spec
-            waf_platform = self.ctx.convert_vs_platform_to_waf_platform(x.platform)
+
+            # If the toolset map list doesn't contain a platform which matches this node msvs_version, it is skipped
+            platform = self.get_platform_for_toolset_name(x.platform)
+            if not platform:
+                continue
+
+            waf_platform = platform.platform
             waf_configuration = x.configuration.waf_configuration
 
             x.target_spec = current_spec_name
             x.target_config = waf_platform + '_' + waf_configuration
 
         # Collect WAF files
-        waf_data_dir            = self.ctx.root.make_node(Context.launch_dir).make_node('_WAF_')
-        waf_source_dir          = self.ctx.engine_node.make_node('Tools/build/waf-1.7.13')
+        search_roots = self.ctx._get_settings_search_roots()
 
-        waf_config_files        = waf_data_dir.ant_glob('**/*', maxdepth=0)
-        waf_spec_files          = waf_data_dir.make_node('specs').ant_glob('**/*')
+        config_files = list()
+        spec_files = dict()
+        for root in search_roots:
+            waf_config_dir = root.make_node('_WAF_')
+            if os.path.exists(waf_config_dir.abspath()):
+                config_file_nodes = waf_config_dir.ant_glob('**/*.json', maxdepth=1, excl=['3rdParty', 'msbuild', 'specs', 'settings', '*.options'])
+                config_files.extend(config_file_nodes)
 
-        waf_scripts             = waf_source_dir.make_node('waflib').ant_glob('**/*.py')
-        waf_lumberyard_scripts  = waf_source_dir.make_node('lmbrwaflib').ant_glob('**/*.py')
+                spec_dir = waf_config_dir.make_node('specs')
+                if os.path.exists(spec_dir.abspath()):
+                    spec_file_nodes = spec_dir.ant_glob('*.json')
+                    spec_files.update({ node.name : node for node in spec_file_nodes })
+
+        waf_config_files = config_files + [ search_roots[-1].make_node(['_WAF_', 'user_settings.options']) ] # index '-1' is guaranteed to be launch dir (project)
+        waf_spec_files = list(spec_files.values())
+
+        waf_source_dir = self.ctx.engine_node.make_node('Tools/build/waf-1.7.13')
+        waf_scripts = waf_source_dir.make_node('waflib').ant_glob('**/*.py')
+        waf_lumberyard_scripts = waf_source_dir.make_node('lmbrwaflib').ant_glob('**/*.py')
 
         # Remove files found in lmbrwaflib from waf scripts
         tmp = []
@@ -973,7 +957,7 @@ class vsnode_build_all(vsnode_alias):
 
         for file in waf_scripts:
             filter_name = 'Scripts'
-            subdir = os.path.dirname( file.path_from( waf_source_dir.make_node('waflib') ) )
+            subdir = os.path.dirname(file.path_from(waf_source_dir.make_node('waflib')))
             if subdir != '':
                 filter_name += '/' + subdir
             self.project_filter[file.abspath()] = filter_name
@@ -986,13 +970,14 @@ class vsnode_build_all(vsnode_alias):
         # without a cpp file, VS wont compile this project
         dummy_node = self.ctx.get_bintemp_folder_node().make_node('__waf_compile_dummy__.cpp')
         self.project_filter[dummy_node.abspath()] = 'DummyCompileNode'
-        self.source += [ dummy_node ]
+        self.source += [dummy_node]
 
 
 class vsnode_install_all(vsnode_alias):
     """
     Fake target used to emulate the behaviour of "make install"
     """
+
     def __init__(self, ctx, node, name='install_all_projects'):
         vsnode_alias.__init__(self, ctx, node, name)
 
@@ -1005,13 +990,15 @@ class vsnode_install_all(vsnode_alias):
     def get_rebuild_command(self, props):
         return "%s clean build install %s" % self.get_build_params(props)
 
+
 class vsnode_project_view(vsnode_alias):
     """
     Fake target used to emulate a file system view
     """
+
     def __init__(self, ctx, node, name='project_view'):
         vsnode_alias.__init__(self, ctx, node, name)
-        self.tg = self.ctx() # fake one, cannot remove
+        self.tg = self.ctx()  # fake one, cannot remove
         self.exclude_files = Node.exclude_regs + '''
 waf-1.7.*
 waf3-1.7.*/**
@@ -1037,11 +1024,13 @@ waf3-1.7.*/**
     def get_rebuild_command(self, props):
         return self.get_build_command(props)
 
+
 class vsnode_target(vsnode_project):
     """
     Visual studio project representing a targets (programs, libraries, etc) and bound
     to a task generator
     """
+
     def __init__(self, ctx, tg):
         """
         A project is more or less equivalent to a file/folder
@@ -1051,13 +1040,14 @@ class vsnode_target(vsnode_project):
         self.ctx = ctx
         vsnode_project.__init__(self, ctx, node)
         self.name = quote(tg.name)
-        self.tg     = tg  # task generator
+        self.tg = tg  # task generator
         if getattr(tg, 'need_deploy', None):
             if not isinstance(tg.need_deploy, list):
-                self.is_deploy = [ tg.need_deploy ]
+                self.is_deploy = [tg.need_deploy]
             else:
                 self.is_deploy = tg.need_deploy
         self.project_filter = self.tg.project_filter
+        self.engine_external = not ctx.is_engine_local()
 
     def get_build_params(self, props):
         """
@@ -1126,25 +1116,25 @@ class vsnode_target(vsnode_project):
         settings_dict = self.ConvertToDict(settings)
 
         if not settings_dict:
-            print ("WAF_ERROR: Unsupported type '%s' for 'settings' variable encountered." % type(settings))
+            print(("WAF_ERROR: Unsupported type '%s' for 'settings' variable encountered." % type(settings)))
             return
 
         # add non platform specific settings
         try:
-            if isinstance(settings_dict[name],list):
+            if isinstance(settings_dict[name], list):
                 result += settings_dict[name]
             else:
-              result += [settings_dict[name]]
+                result += [settings_dict[name]]
         except:
             pass
 
         # add per configuration flags
         configuration_specific_name = (target_configuration + '_' + name)
         try:
-            if isinstance(settings_dict[configuration_specific_name],list):
+            if isinstance(settings_dict[configuration_specific_name], list):
                 result += settings_dict[configuration_specific_name]
             else:
-              result += [settings_dict[configuration_specific_name]]
+                result += [settings_dict[configuration_specific_name]]
         except:
             pass
 
@@ -1152,7 +1142,7 @@ class vsnode_target(vsnode_project):
         for platform in platforms:
             platform_specific_name = (platform + '_' + name)
             try:
-                if isinstance(settings_dict[platform_specific_name],list):
+                if isinstance(settings_dict[platform_specific_name], list):
                     result += settings_dict[platform_specific_name]
                 else:
                     result += [settings_dict[platform_specific_name]]
@@ -1163,7 +1153,7 @@ class vsnode_target(vsnode_project):
         for platform in platforms:
             platform_configuration_specific_name = (platform + '_' + target_configuration + '_' + name)
             try:
-                if isinstance(settings_dict[platform_configuration_specific_name],list):
+                if isinstance(settings_dict[platform_configuration_specific_name], list):
                     result += settings_dict[platform_configuration_specific_name]
                 else:
                     result += [settings_dict[platform_configuration_specific_name]]
@@ -1172,7 +1162,6 @@ class vsnode_target(vsnode_project):
 
         return result
 
-
     def get_platform_settings_from_project_settings(self, base_project_path, config_details, names):
 
         filter_names = names + ['project_settings']
@@ -1180,7 +1169,7 @@ class vsnode_target(vsnode_project):
         def _convert_tg_to_kw_dict():
             result = {}
 
-            for key, value in self.tg.__dict__.items():
+            for key, value in list(self.tg.__dict__.items()):
                 if key in filter_names:
                     result[key] = value
             return result
@@ -1189,7 +1178,7 @@ class vsnode_target(vsnode_project):
 
         additional_alias = {
             'TARGET': self.name,
-            'OUTPUT_FILENAME': getattr(self.tg, 'output_file_name',self.name)
+            'OUTPUT_FILENAME': getattr(self.tg, 'output_file_name', self.name)
         }
 
         apply_project_settings_for_input(ctx=self.ctx,
@@ -1198,11 +1187,9 @@ class vsnode_target(vsnode_project):
                                          kw=result_dict,
                                          additional_aliases=additional_alias,
                                          local_settings_base_path=base_project_path,
-                                         filter_keywords = filter_names)
+                                         filter_keywords=filter_names)
 
         return result_dict
-
-
 
     # Method to recurse a taskgen item's use dependencies and build up a unique include_list for include paths
     def recurse_use_includes_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, uselib_cache):
@@ -1223,7 +1210,7 @@ class vsnode_target(vsnode_project):
             visited_nodes.add(tg.name)
 
             # Make sure that a list of strings is provided as the export includes
-            check_export_includes = Utils.to_list(getattr(tg,'export_includes',[]))
+            check_export_includes = Utils.to_list(getattr(tg, 'export_includes', []))
 
             # Make sure the export includes is not empty before processing
             if check_export_includes:
@@ -1245,7 +1232,7 @@ class vsnode_target(vsnode_project):
                         append_to_unique_list(defines_list, export_define)
 
             # Perform additional includes and defines analysis on uselibs
-            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list, uselib_cache)
+            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list,uselib_cache)
 
             # Recurse into the 'use' for this taskgen if possible
             if not hasattr(tg, 'use') or len(tg.use) == 0:
@@ -1269,7 +1256,48 @@ class vsnode_target(vsnode_project):
         :param defines_list:    The defines list to populate
         :param uselib_cache:    uselib cache to maintain to prevent unnecessary processing
         """
-        tg_uselibs = getattr(cur_tg, 'uselib', [])
+        
+        # Build up the  possible 'uselibs' based on the different possible variations of the kw name
+        # based on platforms, test_ aliases, etc. for windows hosts.
+        
+        cached_uselib_names_key = 'uselib_name_combos_{}_{}'.format(waf_platform, waf_configuration)
+        uselib_names = getattr(self, cached_uselib_names_key, None)
+        if not uselib_names:
+            uselib_names = ['uselib',
+                            '{}_uselib'.format(waf_platform)]
+    
+            is_platform_windows = self.ctx.is_windows_platform(waf_platform)
+            
+            is_test_configuration = waf_configuration.endswith('_test')
+            
+            if is_platform_windows:
+                uselib_names.extend(['win_uselib'])
+            if is_test_configuration:
+                # This is a test configuration. Correct the '_test' suffix of the configuration name
+                # to its original form since the 'test_' aliases are all prefixes
+                test_stripped_waf_configuration = waf_configuration[:len(waf_configuration) - 5]
+                
+                # Apply the possible 'test_' uselibs
+                uselib_names.extend(['test_uselib',
+                                     'test_all_uselib',
+                                     'test_{}_uselib'.format(test_stripped_waf_configuration),
+                                     'test_{}_uselib'.format(waf_platform),
+                                     'test_{}_{}_uselib'.format(waf_platform, test_stripped_waf_configuration)])
+                if is_platform_windows:
+                    # If this is a windows platform, also apply the possible 'win' alias for test configurations
+                    uselib_names.extend(['test_win_uselib',
+                                         'test_win_{}_uselib'.format(test_stripped_waf_configuration)])
+            else:
+                # This is not a test configuration
+                uselib_names.extend(['{}_{}_uselib'.format(waf_platform, waf_configuration)])
+                if is_platform_windows:
+                    # If this is a windows platform, also apply the possible 'win' alias
+                    uselib_names.extend(['win_{}_uselib'.format(waf_configuration)])
+            setattr(self, cached_uselib_names_key, uselib_names)
+
+        tg_uselibs = []
+        for uselib_name in uselib_names:
+            tg_uselibs.extend(getattr(cur_tg, uselib_name, []))
 
         for tg_uselib in tg_uselibs:
 
@@ -1289,16 +1317,23 @@ class vsnode_target(vsnode_project):
                 platform_config_env = self.ctx.all_envs[platform_config_key]
 
                 # Lookup the includes
-                platform_config_uselib_includes_value = None
+                platform_config_uselib_includes_value = []
                 includes_variable_name = 'INCLUDES_{}'.format(tg_uselib)
                 includes_variable_name_debug = 'INCLUDES_{}D'.format(tg_uselib)
+                system_includes_variable_name = 'SYSTEM_INCLUDES_{}'.format(tg_uselib)
+                system_includes_variable_name_debug = 'SYSTEM_INCLUDES_{}D'.format(tg_uselib)
 
                 if includes_variable_name in platform_config_env:
                     platform_config_uselib_includes_value = platform_config_env[includes_variable_name]
                 elif includes_variable_name_debug in platform_config_env:
                     platform_config_uselib_includes_value = platform_config_env[includes_variable_name_debug]
+                
+                if system_includes_variable_name in platform_config_env:
+                    platform_config_uselib_includes_value += platform_config_env[system_includes_variable_name]
+                elif system_includes_variable_name_debug in platform_config_env:
+                    platform_config_uselib_includes_value += platform_config_env[system_includes_variable_name_debug]
 
-                if platform_config_uselib_includes_value is not None:
+                if platform_config_uselib_includes_value:
                     append_to_unique_list(include_list, platform_config_uselib_includes_value)
 
                 # Lookup the defines
@@ -1339,11 +1374,22 @@ class vsnode_target(vsnode_project):
             x.target_spec = ''
             x.target_config = ''
 
-            if not hasattr(self.tg ,'link_task') and 'create_static_library' not in self.tg.features:
+            x.is_external_project_tool = str(False)
+            x.ld_target_path = ''
+            x.ld_target_command = ''
+            x.ld_target_arguments = ''
+
+            if not hasattr(self.tg, 'link_task') and 'create_static_library' not in self.tg.features:
                 continue
 
             current_spec_name = x.configuration.waf_spec
-            waf_platform = self.ctx.convert_vs_platform_to_waf_platform(x.platform)
+
+            # If the toolset map list doesn't contain a platform which matches this node msvs_version, it is skipped
+            platform = self.get_platform_for_toolset_name(x.platform)
+            if not platform:
+                continue
+
+            waf_platform = platform.platform
             waf_configuration = x.configuration.waf_configuration
             spec_modules = self.ctx.spec_modules(current_spec_name)
             waf_platform_config_key = waf_platform + '_' + waf_configuration
@@ -1358,7 +1404,7 @@ class vsnode_target(vsnode_project):
                 include_project = False
             elif waf_configuration not in module_configurations:
                 include_project = False
-            elif waf_platform_config_key not in  self.ctx.all_envs:
+            elif waf_platform_config_key not in self.ctx.all_envs:
                 include_project = False
             else:
                 target_name = self.tg.target
@@ -1383,20 +1429,24 @@ class vsnode_target(vsnode_project):
                 x.cxx_flags = ''
                 x.link_flags = ''
                 x.target_spec = ''
+
+                x.is_external_project_tool = str(False)
+                x.ld_target_path = ''
+                x.ld_target_command = ''
+                x.ld_target_arguments = ''
                 continue
 
             current_env = self.ctx.all_envs[waf_platform_config_key]
             msvc_helper.verify_options_common(current_env)
-            x.c_flags = " ".join(current_env['CFLAGS']) # convert list to space separated string
-            x.cxx_flags = " ".join(current_env['CXXFLAGS']) # convert list to space separated string
-            x.link_flags = " ".join(current_env['LINKFLAGS']) # convert list to space separated string
+            x.c_flags = " ".join(current_env['CFLAGS'])  # convert list to space separated string
+            x.cxx_flags = " ".join(current_env['CXXFLAGS'])  # convert list to space separated string
+            x.link_flags = " ".join(current_env['LINKFLAGS'])  # convert list to space separated string
 
             x.target_spec = current_spec_name
             x.target_config = waf_platform + '_' + waf_configuration
 
             # Get the details of the platform+configuration for the current vs build configuration
-            platform_details = self.ctx.get_target_platform_detail(waf_platform)
-            config_details = platform_details.get_configuration(waf_configuration)
+            config_details = platform.get_configuration(waf_configuration)
 
             # If there is a new style project settings attribute, use the mechanism to extract from that data instead
             # of querying for platform+configuration built keywords
@@ -1409,11 +1459,10 @@ class vsnode_target(vsnode_project):
             else:
                 project_settings = None
 
-
             has_link_task = False
 
             # For VS projects with a single game project target
-            if hasattr(self.tg, 'link_task'): # no link task implies special static modules which are static libraries
+            if hasattr(self.tg, 'link_task'):  # no link task implies special static modules which are static libraries
                 link_task_pattern_name = self.tg.link_task.__class__.__name__ + '_PATTERN'
                 has_link_task = True
             else:
@@ -1427,9 +1476,9 @@ class vsnode_target(vsnode_project):
                 output_file_name = project_settings['output_file_name']
             else:
                 # Legacy
-                if waf_configuration.startswith('debug') and hasattr(self.tg,'debug_output_file_name'):
+                if waf_configuration.startswith('debug') and hasattr(self.tg, 'debug_output_file_name'):
                     output_file_name = self.tg.debug_output_file_name
-                elif not waf_configuration.startswith('debug') and hasattr(self.tg,'ndebug_output_file_name'):
+                elif not waf_configuration.startswith('debug') and hasattr(self.tg, 'ndebug_output_file_name'):
                     output_file_name = self.tg.ndebug_output_file_name
                 else:
                     output_file_name = self.tg.output_file_name
@@ -1444,7 +1493,7 @@ class vsnode_target(vsnode_project):
             x.outdir = x.output_path
             x.bindir = os.path.join(self.tg.bld.path.abspath(), self.tg.bld.get_output_target_folder(waf_platform, waf_configuration))
             x.assembly_name = output_file_name
-            x.output_type = os.path.splitext(x.output_file)[1][1:] # e.g. ".dll" to "dll"
+            x.output_type = os.path.splitext(x.output_file)[1][1:]  # e.g. ".dll" to "dll"
 
             if not has_link_task:
                 # Project with no outputs (static lib or pile of objects)
@@ -1455,29 +1504,29 @@ class vsnode_target(vsnode_project):
                 x.output_file_name = output_file_name
 
             # Collect all defines for this configuration
-            define_list =  list(current_env['DEFINES'])
+            define_list = list(current_env['DEFINES'])
 
             if project_settings:
-                define_list += project_settings.get('defines',[])
+                define_list += project_settings.get('defines', [])
             else:
                 # Legacy
-                define_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'defines', self.tg )
+                define_list += self.GetPlatformSettings(waf_platform, waf_configuration, 'defines', self.tg)
 
             include_list = list(current_env['INCLUDES'])
             if project_settings:
-                include_list +=project_settings.get('includes', [])
+                include_list += project_settings.get('includes', [])
             else:
                 # Legacy
-                include_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'includes', self.tg )
+                include_list += self.GetPlatformSettings(waf_platform, waf_configuration, 'includes', self.tg)
 
             # make sure we only have absolute path for intellisense
             # If we don't have a absolute path, assume a relative one, hence prefix the path with the taskgen path and comvert it into an absolute one
             for i in range(len(include_list)):
-                if (isinstance(include_list[i], Node.Node)): # convert nodes to abs paths
+                if (isinstance(include_list[i], Node.Node)):  # convert nodes to abs paths
                     include_list[i] = include_list[i].abspath()
                 else:
-                    if not os.path.isabs( include_list[i] ):
-                        include_list[i] = os.path.abspath( self.tg.path.abspath() + '/' + include_list[i] )
+                    if not os.path.isabs(include_list[i]):
+                        include_list[i] = os.path.abspath(self.tg.path.abspath() + '/' + include_list[i])
 
             # Do a depth-first recursion into the use dependencies to collect any additional include paths
             uselib_include_cache = {}
@@ -1491,7 +1540,7 @@ class vsnode_target(vsnode_project):
             # specific header files will be generated
             platform_configuration = waf_platform + '_' + waf_configuration;
             replace_project_generator_prefix = self.ctx.bldnode.make_node(platform_configuration).abspath()
-            include_list = [ p.replace(project_generator_prefix, replace_project_generator_prefix) for p in include_list]
+            include_list = [p.replace(project_generator_prefix, replace_project_generator_prefix) for p in include_list]
             replace_bintemp_to_target = self.ctx.bldnode.make_node(platform_configuration).abspath()
             include_list = [p.replace(bintemp_prefix, replace_bintemp_to_target) for p in include_list]
 
@@ -1506,6 +1555,28 @@ class vsnode_target(vsnode_project):
 
             x.includes_search_path = ';'.join(include_list)
             x.preprocessor_definitions = ';'.join(define_list)
+
+            x.ld_target_command = "$(TargetPath)"
+            x.ld_target_arguments = ''
+            x.ld_target_path = x.output_file
+
+            if x.target_config.endswith('_test') and x.output_file.endswith('.dll'):
+                x.ld_target_command = '$(OutDir)AzTestRunner'
+                x.ld_target_arguments = "{} AzRunUnitTests --pause-on-completion --gtest_break_on_failure".format(x.output_file)
+
+            elif self.engine_external and hasattr(self.tg, 'tool_launcher_target'):
+                tool_launcher_target = getattr(self.tg, 'tool_launcher_target', None)
+                if tool_launcher_target is not None:
+                    if isinstance(tool_launcher_target, list):
+                        tool_launcher_target = tool_launcher_target[0]
+
+                    target_executable = "{}.exe".format(tool_launcher_target)
+                    # Tool Launcher targets will exist in the corresponding engine's outdir folder
+                    target_executable_full_path = os.path.join(self.tg.bld.engine_path, os.path.basename(x.output_path), target_executable)
+                    x.ld_target_path = target_executable_full_path
+                    x.ld_target_arguments = '--app-root "{}"'.format(self.tg.bld.path.abspath())
+                    x.is_external_project_tool = str(True)
+
 
     def get_output_folder_node(self, waf_configuration, waf_platform):
         # Handle projects that have a custom output folder
@@ -1545,77 +1616,97 @@ def get_enabled_specs(ctx):
     return enabled_specs
 
 
+class msvs_legacy(BuildContext):
+    """
+    Command to handle the legacy 'msvs' command to inject the current msvs_<vs version> command(s) based on
+    the platform's availability
+    """
+    
+    after = ['gen_spec_use_map_file']
+    cmd = 'msvs'
+    is_project_generator = True
+    
+    def execute(self):
+        
+        # Check all the msvc related platforms
+        msvc_target_platforms = self.get_platform_aliases('msvc')
+        
+        for msvc_target_platform_name in msvc_target_platforms:
+            
+            
+            msvc_target_platform = self.get_platform_settings(msvc_target_platform_name)
+            msvs_table = msvc_target_platform.attributes.get('msvs')
+            if not msvs_table:
+                # Skip platforms without a 'msvs' attribute
+                continue
+            msvs_command = msvs_table.get('command')
+            if not msvs_command:
+                # Skip platforms that don't define an msvs 'command'
+                continue
+            try:
+                # Check if the platform is enabled or not before appending the msvs command for it
+                enable_setting_key = 'enable_{}'.format(msvc_target_platform_name)
+                if self.is_option_true(enable_setting_key):
+                    Options.commands.append(msvs_command)
+            except:
+                pass
+
 class msvs_generator(BuildContext):
     """
     Generates a Visual Studio solution
     """
     after = ['gen_spec_use_map_file']
-    after = ['gen_spec_use_map_file']
 
-    '''generates a visual studio solution'''
-    cmd = 'msvs'
+    is_project_generator = True
+    cmd = 'legacy_msvs'
     fun = 'build'
 
-    '''Map of waf platforms to its msvs version'''
-    waf_platform_to_attributes = {}
-    '''Set of detected msvs support from all the supported target platforms'''
-    supported_msvs_ver = {}
-    '''Map of VS platforms to WAF platforms'''
-    vs_platform_to_waf_platform = {}
-    '''List of vs platforms to use to generate the solution'''
-    platforms = None
-    '''List of configurations to use to generate the solution'''
-    configurations = None
+    def init(self, vs_name, msvs_version, format_ver, msvs_ver, compat_toolsets, vs_solution_name, vs_installation_path):
 
-    def init(self, msvs_version):
-
-        if msvs_version not in SUPPORTED_MSVS_VALUE_TABLE:
-            raise Errors.WafError("msvs_version '{}' is not supported. Supported values are : {}".format(msvs_version,
-                                                                                                         ','.join(
-                                                                                                             SUPPORTED_MSVS_VALUE_TABLE.keys())))
-
-        enabled_specs = self.get_enabled_specs()
-
-        # Determine if there are any platforms that we are restricted to based on the current specs
-        restricted_platforms = self.get_restricted_platforms(enabled_specs)
-
-        # Initialize the platform maps based on the any restri
-        self.initialize_platform_maps(msvs_version, restricted_platforms)
-
-        selected_msvs_version_platform = SUPPORTED_MSVS_VALUE_TABLE[msvs_version]
-
-        Logs.info('[INFO] Generating {} solution.'.format(selected_msvs_version_platform['name']))
-        self.formatver = selected_msvs_version_platform['formatver']
-        self.vsver = selected_msvs_version_platform['vsver']
-        self.defaultPlatformToolSet = selected_msvs_version_platform['defaultPlatformToolSet']
+        # Initialize the VS platform's msvs values
         self.msvs_version = msvs_version
+        self.formatver = format_ver
+        self.vsver = msvs_ver
+        self.compat_toolsets = compat_toolsets
+        self.defaultPlatformToolSet = compat_toolsets[0] if isinstance(compat_toolsets, list) else ''
+        self.solution_name = vs_solution_name
+        self.dep_proj_folder = '{}.depproj'.format(os.path.join(self.options.visual_studio_solution_folder,os.path.splitext(vs_solution_name)[0]))
+
+        # Track the installation path to visual studio
+        self.vs_installation_path = vs_installation_path
+
+        # Collect the list of specs that are enabled for this solution
+        self.specs_for_solution = self.get_specs_for_solution()
+
+        # Convert -p <spec> to --specs-to-include-in-project-generation=<spec> --visual-studio-solution-name=<spec name> --enabled-game-projects=<spec game projects>
+        if self.options.project_spec and self.options.project_spec != 'all':
+            spec = self.options.project_spec
+            solution_name = '{}_{}.sln'.format(self.spec_visual_studio_name(spec).replace(' ', ''), self.vs_name)
+            self.specs_for_solution = [spec]
+            self.solution_name = solution_name
+            self.dep_proj_folder = '{}.depproj'.format(os.path.join(self.options.visual_studio_solution_folder, os.path.splitext(self.solution_name)[0]))
+
+        restricted_platforms = self.get_restricted_platforms_from_spec_list(self.specs_for_solution)
+
+        self.platform_map, self.toolset_map = self.get_compatible_platform_to_toolset_maps(msvs_ver, restricted_platforms)
+
+        Logs.info('[INFO] Generating {} solution.'.format(vs_name))
 
         # default project is used to sort one project to the top of the projects list.  That will cause it to become
         # the default startup project if its not overridden in the .suo file
         self.default_project = self.options.default_project
 
-        # Convert -p <spec> to --specs-to-include-in-project-generation=<spec> --visual-studio-solution-name=<spec name> --enabled-game-projects=<spec game projects>
-        if self.options.project_spec and self.options.project_spec != 'all':
-            spec = self.options.project_spec
-            solution_name = self.spec_visual_studio_name(spec).replace(' ', '')
-            self.options.specs_to_include_in_project_generation = spec
-            self.options.visual_studio_solution_name = solution_name
-
-        # Populate the 'platforms' attributes (vs platforms)
-        self.platforms = self.get_enabled_vs_platforms()
-
         # Populate the 'configurations' attributes
-        self.configurations = self.get_enabled_vs_configurations(self.platforms, enabled_specs)
+        self.configurations = self.get_enabled_vs_configurations(platforms_list=list(self.platform_map.values()),
+                                                                 enabled_specs=self.specs_for_solution)
 
         if not getattr(self, 'all_projects', None):
             self.all_projects = []
         if not getattr(self, 'project_extension', None):
             self.project_extension = '.vcxproj'
         if not getattr(self, 'projects_dir', None):
-            self.projects_dir = self.srcnode.make_node(self.get_solution_dep_proj_folder_name(self.msvs_version))
+            self.projects_dir = self.srcnode.make_node(self.dep_proj_folder)
             self.projects_dir.mkdir()
-        if not getattr(self, 'solution_name', None):
-            self.solution_name = self.get_solution_name(self.msvs_version)
         # bind the classes to the object, so that subclass can provide custom generators
         if not getattr(self, 'vsnode_vsdir', None):
             self.vsnode_vsdir = vsnode_vsdir
@@ -1630,54 +1721,64 @@ class msvs_generator(BuildContext):
 
         self.waf_project = None
 
+        self.vs_globals = {}
+        # Retrieve vsglobal msbuild Properties per platform
+        for platform in self.platform_map:
+            platform_env = self.all_envs.get(platform, ConfigSet())
+            if 'VS_GLOBALS' in platform_env:
+                self.vs_globals.update(platform_env['VS_GLOBALS'])
+
         return True
 
-    def initialize_platform_maps(self, msvs_version, restricted_platforms):
+    def get_compatible_platform_to_toolset_maps(self, msvs_version, restricted_platforms):
         """
-        Initialize some platform maps based on the current enabled target platforms
+
+        :param msvs_version:
+        :param platform_toolset:
+        :return:
         """
-        self.waf_platform_to_attributes = {}
-        self.vs_platform_to_waf_platform = {}
+        # Go through the list of enabled platforms and track which ones 'compatible' toolsets apply to the current toolset
+        compatible_platforms_map = {}
+        ms_toolset_to_platform_map = {}
 
-        if msvs_version not in SUPPORTED_MSVS_VALUE_TABLE:
-            raise Errors.WafError("Invalid msvs version {}. Supported values are : {}".format(msvs_version,','.join(SUPPORTED_MSVS_VALUE_TABLE.keys())))
+        enabled_platforms = self.get_all_target_platforms()
+        for enabled_platform in enabled_platforms:
 
-        vs2017_vs_where_options = [option.strip() for option in self.options.win_vs2017_vswhere_args.split()]
-
-        all_supported_platforms = self.get_enabled_target_platforms()
-        matched_msvs_version = False
-        for supported_platform in all_supported_platforms:
-
-            if restricted_platforms and supported_platform.name() not in restricted_platforms:
-                # Skip any platform that is not in a potential restricted platform list
+            # Is this an msvs compatible platform at all?
+            msvs_attributes = enabled_platform.attributes.get('msvs', None)
+            if not msvs_attributes:
                 continue
 
-            if 'msvs' in supported_platform.attributes:
-                msvs_attributes = supported_platform.attributes['msvs']
-                try:
-                    supported_msvs_versions = msvs_attributes['msvs_ver']
-                    if not isinstance(supported_msvs_versions, list):
-                        supported_msvs_versions = [supported_msvs_versions]
+            if restricted_platforms:
+                # If there is a platform restriction, then check if the platforms name or any of its aliases
+                # conform to the list of restricted platforms
+                if enabled_platform.platform not in restricted_platforms and \
+                        enabled_platform.aliases.intersection(restricted_platforms):
+                    continue
 
-                    if msvs_version not in supported_msvs_versions:
-                        continue
+            # Get this platform's toolset name
+            platform_toolset_name = msvs_attributes.get('toolset_name', None)
+            if not platform_toolset_name:
+                continue
 
-                    msvs_toolset_name = msvs_attributes['toolset_name']
-                    if not check_cpp_platform_tools(msvs_version, msvs_toolset_name, vs2017_vs_where_options):
-                        Logs.warn("[WARN] Skipping platform '{}' because it is not installed "
-                                  "properly for this version of visual studio".format(supported_platform.name()))
-                        continue
+            toolset_properties_file = self.get_msbuild_toolset_properties_file_path(msvs_version, platform_toolset_name)
+            if not os.path.isfile(toolset_properties_file):
+                continue
 
-                    matched_msvs_version = True
+            compatible_platforms_map[enabled_platform.platform] = enabled_platform
+            if platform_toolset_name not in ms_toolset_to_platform_map:
+                ms_toolset_to_platform_map[platform_toolset_name] = []
+            ms_toolset_to_platform_map[platform_toolset_name].append(enabled_platform)
 
-                    self.waf_platform_to_attributes[supported_platform.name()] = msvs_attributes
-                    self.vs_platform_to_waf_platform[msvs_toolset_name] = supported_platform.name()
-                except KeyError as err:
-                    raise Errors.WafError(
-                        "Invalid platform-specific attribute for platform '{}': {}".format(supported_platform.name(),str(err)))
-        if not matched_msvs_version:
-            product_name = SUPPORTED_MSVS_VALUE_TABLE[msvs_version]["name"]
-            raise Errors.WafError("Unable to generate solution for '{}'. Make sure it is installed and enabled in Setup Assistant".format(product_name))
+        return compatible_platforms_map, ms_toolset_to_platform_map
+
+    def get_msbuild_toolset_properties_file_path(self, toolset_version, toolset_name):
+
+        ms_build_root = self.get_msbuild_root(toolset_version)
+        platform_root_dir = os.path.join(ms_build_root, 'Microsoft.Cpp', 'v4.0', 'V{}0'.format(toolset_version),
+                                         'Platforms', toolset_name)
+        platform_props_file = os.path.join(platform_root_dir, 'Platform.props')
+        return platform_props_file
 
     def is_allowed_spec(self, spec_name):
         """
@@ -1692,17 +1793,19 @@ class msvs_generator(BuildContext):
             return True
         return False
 
-    def get_restricted_platforms(self, enabled_specs):
+    def get_specs_for_solution(self):
+        enabled_specs = self.get_enabled_specs()
+        specs_for_solution = [spec for spec in enabled_specs if self.is_allowed_spec(spec)]
+        return specs_for_solution
+
+    def get_restricted_platforms_from_spec_list(self, spec_list):
         """
         Inspect any specified spec and see if there are any platform restrictions.
         :return: Set of any platform restrictions
         """
-        # Collect the allowed specs
-        valid_specs = [spec for spec in self.loaded_specs() if self.is_allowed_spec(spec)]
-
         # Collect all the restricted platforms from the spec (if any)
         restricted_platforms_set = set()
-        for spec in enabled_specs:
+        for spec in spec_list:
             restricted_platforms_for_spec = self.preprocess_target_platforms(self.spec_platforms(spec))
             for restricted_platform in restricted_platforms_for_spec:
                 restricted_platforms_set.add(restricted_platform)
@@ -1716,23 +1819,22 @@ class msvs_generator(BuildContext):
         """
         # Populate the 'platforms' attributes (vs platforms)
         vs_platforms = []
-        for waf_platform, msvs_attributes in self.waf_platform_to_attributes.items():
+        for waf_platform, msvs_attributes in list(self.waf_platform_to_attributes.items()):
             vs_platforms.append(msvs_attributes['toolset_name'])
         return vs_platforms
 
-    def get_enabled_vs_configurations(self, vs_platforms, enabled_specs):
+    def get_enabled_vs_configurations(self, platforms_list, enabled_specs):
         """
         Base on the enabled specs, build up a list of all the configurations
         """
         # Go through each of platforms and collect the common configurations
         platform_configurations_set = set()
-        for vs_platform in vs_platforms:
-            platform_details = self.get_target_platform_detail(self.vs_platform_to_waf_platform[vs_platform])
-            platform_config_details = platform_details.get_configuration_details()
+        for platform in platforms_list:
+            platform_config_details = platform.get_configuration_details()
             for platform_config_detail in platform_config_details:
-                platform_configurations_set.add( (platform_config_detail.config_name(), platform_config_detail) )
+                platform_configurations_set.add((platform_config_detail.config_name(), platform_config_detail))
         platform_configurations_list = list(platform_configurations_set)
-        platform_configurations_list.sort()
+        platform_configurations_list.sort(key=lambda plat: plat[0])
 
         vs_configurations = set()
 
@@ -1761,7 +1863,6 @@ class msvs_generator(BuildContext):
         return list(sorted(vs_configurations))
 
     def execute(self):
-
         """
         Entry point
         """
@@ -1769,18 +1870,41 @@ class msvs_generator(BuildContext):
         if not self.all_envs:
             self.load_envs()
 
+        self.env['PLATFORM'] = 'project_generator'
+        self.env['CONFIGURATION'] = 'project_generator'
+
         self.load_user_settings()
-        Logs.info("[WAF] Executing 'msvs' in '%s'" % (self.variant_dir))
+
+        Logs.info("[WAF] Executing '%s' in '%s'" % (self.cmd, self.variant_dir))
         self.recurse([self.run_dir])
 
         # user initialization
         try:
-            # Validate the set msvs_version is a valid one
-            msvs_version = self.options.msvs_version
-            if not msvs_version:
-                raise Errors.WafError('msvs_version is blank or not set')
+            platform_settings = settings_manager.LUMBERYARD_SETTINGS.get_platform_settings(self.platform_name)
+            msvs_settings_dict = platform_settings.attributes.get('msvs')
+            format_ver = msvs_settings_dict.get('format_ver')
+            msvs_ver = msvs_settings_dict.get('msvs_ver')
+            compat_toolsets = msvs_settings_dict.get('compat_toolsets')
+            vs_name = msvs_settings_dict.get('vs_name')
+            vs_solution_name = '{}.sln'.format(getattr(self.options, self.vs_solution_name_options_attribute, 'LumberyardSDK'))
 
-            self.init(msvs_version)
+            if self.platform_name not in self.all_envs:
+                raise Errors.WafError("Unable to locate environment for '{}'. Make sure to run lmbr_waf configure.".format(self.platform_name))
+
+            platform_env = self.all_envs[self.platform_name]
+            vs_installation_path = platform_env['VS_INSTALLATION_PATH']
+            if not vs_installation_path:
+                raise Errors.WafError(
+                    "Unable to determine the visual studio installation path for '{}'. Make sure to run lmbr_waf configure.".format(
+                        self.platform_name))
+
+            self.init(vs_name=vs_name,
+                      msvs_version=str(self.msvs_version),
+                      format_ver=format_ver,
+                      msvs_ver=msvs_ver,
+                      compat_toolsets=compat_toolsets,
+                      vs_solution_name=vs_solution_name,
+                      vs_installation_path=vs_installation_path)
 
             # two phases for creating the solution
             self.collect_projects()  # add project objects into "self.all_projects"
@@ -1839,19 +1963,25 @@ class msvs_generator(BuildContext):
         if not solution_name:
             solution_name = getattr(Context.g_module, Context.APPNAME, 'project') + '.sln'
         if os.path.isabs(solution_name):
-            self.solution_node = self.root.make_node(solution_name)
+            self.solution_node = self.root.make_node([self.options.visual_studio_solution_folder, solution_name])
         else:
-            self.solution_node = self.srcnode.make_node(solution_name)
+            self.solution_node = self.srcnode.make_node([self.options.visual_studio_solution_folder, solution_name])
         return self.solution_node
 
     def project_configurations(self):
         """
-        Helper that returns all the pairs (config,platform)
+        Helper that returns all the pairs (config,toolset_name (for the platform)
         """
         ret = []
         for c in self.configurations:
-            for p in self.platforms:
-                ret.append((str(c), p))
+            for platform_name, platform_def in list(self.platform_map.items()):
+                msvs_dict = platform_def.attributes.get('msvs', None)
+                if not msvs_dict:
+                    raise Errors.WafError("Platform settings for '{}' is missing the required 'msvs' attribute to configure msvs projects.".format(platform_name))
+                toolset_name = msvs_dict.get('toolset_name', None)
+                if not toolset_name:
+                    raise Errors.WafError("Platform settings for '{}' is missing the required 'toolset_name' in its 'msvs' attribute to configure msvs projects.".format(platform_name))
+                ret.append((str(c), toolset_name))
         return ret
 
     def collect_targets(self):
@@ -1862,18 +1992,15 @@ class msvs_generator(BuildContext):
         # we will iterate over every platform and configuration permutation
         # and add any that match the current "live" set to the project.
 
-        spec_string_list = getattr(self.options,'specs_to_include_in_project_generation','').strip()
-        allowed_specs = [] if len(spec_string_list)==0 else spec_string_list.replace(' ', '').split(',')
         qualified_taskgens = []
         unqualified_taskgens = []
-
 
         # Collect all the relevant task gens into a processing list
         taskgen_list = []
         target_to_taskgen = {}
         for group in self.groups:
             for task_gen in group:
-                if isinstance(task_gen, TaskGen.task_gen) and hasattr(task_gen,'project_filter'):
+                if isinstance(task_gen, TaskGen.task_gen) and hasattr(task_gen, 'project_filter'):
                     taskgen_list.append(task_gen)
                     target_to_taskgen[task_gen.target] = task_gen
 
@@ -1892,7 +2019,7 @@ class msvs_generator(BuildContext):
             skip_module = True
 
             # Check against the spec/platform/configuration standard rules
-            for spec_name in allowed_specs:
+            for spec_name in self.specs_for_solution:
                 skip_module = not self.check_against_platform_config_rules(module_platforms, spec_name, target)
                 if not skip_module:
                     break
@@ -1934,30 +2061,34 @@ class msvs_generator(BuildContext):
             p = self.vsnode_target(self, taskgen)
             p.collect_source()  # delegate this processing
             p.collect_properties()
+            p.vs_globals = self.vs_globals
             self.all_projects.append(p)
 
     def check_against_enabled_game_projects(self, target):
 
         # Check the project settings....
         for project in self.get_enabled_game_project_list():
-            for vs_platform in self.platforms:
-                platform_prefix = convert_vs_platform_to_prefix(self, vs_platform)
+            for platform in list(self.platform_map.values()):
+                if 'msvs' not in platform.attributes:
+                    assert False, 'msvs missing from {}'.format(platform.platform)
+                platform_prefix = platform.attributes['msvs']['prefix']
                 if target in self.project_and_platform_modules(project, platform_prefix):
                     return True
+
         return False
 
     def check_against_platform_config_rules(self, module_platforms, spec_name, target):
 
-        for vs_platform in self.platforms:
+        for platform in list(self.platform_map.values()):
 
-            waf_platform = convert_vs_platform_to_waf_platform(self, vs_platform)
+            platform_name = platform.platform
 
             # The module must support the platform
-            if waf_platform not in module_platforms:
+            if platform_name not in module_platforms:
                 continue
 
             # Get any configuration restrictions for the current platform
-            module_configurations = self.get_module_configurations(target, waf_platform)
+            module_configurations = self.get_module_configurations(target, platform_name)
 
             # Go through each of the possible configurations to make sure that this module qualifies
             for vs_configuration in self.configurations:
@@ -1969,7 +2100,7 @@ class msvs_generator(BuildContext):
                     continue
 
                 # The module must exist in the spec
-                all_spec_modules = self.spec_modules(spec_name, waf_platform, waf_configuration)
+                all_spec_modules = self.spec_modules(spec_name, platform_name, waf_configuration)
 
                 if target in all_spec_modules:
                     return True
@@ -1991,7 +2122,7 @@ class msvs_generator(BuildContext):
             for use_keyword in use_related_keywords:
                 append_to_unique_list(taskgen_uses, getattr(taskgen, use_keyword, []))
 
-            for  taskgen_use in taskgen_uses:
+            for taskgen_use in taskgen_uses:
                 module_uses.append(taskgen_use)
                 if taskgen_use in target_to_taskgen:
                     module_uses += _recurse_find_module_use(target_to_taskgen[taskgen_use], target_to_taskgen, visited)
@@ -2010,6 +2141,7 @@ class msvs_generator(BuildContext):
         node_project = base.make_node('_WAF_' + self.project_extension) # Node.
         p_build = self.vsnode_build_all(self, node_project)
         p_build.collect_properties()
+        p_build.vs_globals = self.vs_globals
         self.all_projects.append(p_build)
         self.waf_project = p_build
 
@@ -2096,17 +2228,3 @@ def options(ctx):
     BuildContext.execute = override_build_state
 
 
-@conf_event(after_methods=['update_valid_configurations_file'],
-            after_events=['inject_generate_uber_command', 'inject_generate_module_def_command'])
-def inject_msvs_command(conf):
-    """
-    Make sure the msvs command is injected into the configuration context
-    """
-    if not isinstance(conf, ConfigurationContext):
-        return
-    if not Utils.unversioned_sys_platform() == 'win32':
-        return
-    if not conf.is_option_true('generate_vs_projects_automatically'):
-        return
-
-    Options.commands.append('msvs')

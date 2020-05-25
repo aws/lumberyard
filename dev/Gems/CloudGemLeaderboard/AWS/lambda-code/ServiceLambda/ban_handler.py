@@ -82,7 +82,7 @@ def is_player_banned(user):
         "CloudGemPlayerAccount_banplayer_1_0_0")
     if interface_url:
         return check_player_account_gem_for_ban(interface_url, user)
-    __init_globals
+    __init_globals()
     player_ban = __get_player_ban(user)
     if not player_ban:
         return False

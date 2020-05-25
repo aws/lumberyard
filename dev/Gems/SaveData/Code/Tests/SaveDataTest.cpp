@@ -85,7 +85,7 @@ public:
 const AZ::u64 testSaveDataSize = 9;
 const char* testSaveDataName = "TestSaveData";
 
-const AzFramework::LocalUserId testSaveDataUser = AZ_SAVEDATA_TEST_USER_ID;
+const AzFramework::LocalUserId testSaveDataUser = AZ_TRAIT_SAVEDATA_TEST_USER_ID;
 
 char testSaveData[testSaveDataSize] = {'a', 'b', 'c', '1', '2', '3', 'x', 'y', 'z'};
 

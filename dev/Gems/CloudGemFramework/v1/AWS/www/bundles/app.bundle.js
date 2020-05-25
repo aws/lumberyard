@@ -11043,7 +11043,7 @@ System.register("dist/app/shared/class/environment.class.js", [], function (expo
             exports_1("metricAdminIndex", metricAdminIndex = 3);
             exports_1("isTest", isTest = false);
             exports_1("isProd", isProd = true);
-            exports_1("metricWhiteListedCloudGem", metricWhiteListedCloudGem = ["CloudGemAWSScriptBehaviors", "CloudGemComputeFarm", "CloudGemDefectReporter", "CloudGemDynamicContent", "CloudGemFramework", "CloudGemInGameSurvey", "CloudGemLeaderboard", "CloudGemLoadTest", "CloudGemMessageOfTheDay", "CloudGemMetric", "CloudGemPlayerAccount", "CloudGemPlayerStorage", "CloudGemReferral", "CloudGemRewards", "CloudGemSpeechRecognition", "CloudGemTextToSpeech", "CloudGemWebCommunicator"]);
+            exports_1("metricWhiteListedCloudGem", metricWhiteListedCloudGem = ["CloudGemAWSScriptBehaviors", "CloudGemComputeFarm", "CloudGemDefectReporter", "CloudGemDynamicContent", "CloudGemFramework", "CloudGemInGameSurvey", "CloudGemLeaderboard", "CloudGemMessageOfTheDay", "CloudGemMetric", "CloudGemPlayerAccount", "CloudGemPlayerStorage", "CloudGemReferral", "CloudGemRewards", "CloudGemSpeechRecognition", "CloudGemTextToSpeech", "CloudGemWebCommunicator"]);
         }
     };
 });

@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/StatusBar.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QPainter>
 #include <QSettings>
@@ -64,7 +65,7 @@ bool StatusBar::drawPanelStatusBar(const Style* style, const QStyleOption* optio
     painter->setBrush(Qt::NoBrush);
 
     auto line = QLine(option->rect.topLeft(), option->rect.topRight());
-    const auto offset = config.borderWidth * 0.5;
+    const int offset = aznumeric_cast<int>(config.borderWidth * 0.5);
     line.translate(0, offset);
     painter->drawLine(line);
 

@@ -53,12 +53,10 @@ namespace UnitTest
             rhs.m_state = State::StolenFrom;
         }
 
-#ifdef AZ_HAS_INITIALIZERS_LIST
         KnowThyself(std::initializer_list<int> lastBecomesId)
             : m_state(State::InitializerListConstructor)
             , m_id(*(lastBecomesId.end() - 1))
         {}
-#endif // AZ_HAS_INITIALIZERS_LIST
 
         KnowThyself& operator=(const KnowThyself& rhs)
         {

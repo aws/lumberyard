@@ -16,6 +16,9 @@
 #include <AzCore/Debug/ProfileModuleInit.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/Environment.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/Console/Console.h>
+#include <AzCore/Console/ConsoleFunctor.h>
 
 namespace AZ
 {
@@ -105,7 +108,12 @@ namespace AZ
 #else
 #   define AZ_DECLARE_MODULE_CLASS(MODULE_NAME, MODULE_CLASSNAME)                                \
     AZ_DECLARE_MODULE_INITIALIZATION                                                             \
-    extern "C" AZ_DLL_EXPORT AZ::Module * CreateModuleClass() { return aznew MODULE_CLASSNAME; } \
+    extern "C" AZ_DLL_EXPORT AZ::Module * CreateModuleClass()                                    \
+    {                                                                                            \
+        AZ::ConsoleFunctorBase*& deferredHead = AZ::ConsoleFunctorBase::GetDeferredHead();       \
+        AZ::Interface<AZ::IConsole>::Get()->LinkDeferredFunctors(deferredHead);                  \
+        return aznew MODULE_CLASSNAME;                                                           \
+    }                                                                                            \
     extern "C" AZ_DLL_EXPORT void DestroyModuleClass(AZ::Module * module) { delete module; }
 #endif
 

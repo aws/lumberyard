@@ -63,7 +63,7 @@ namespace GradientSignal
     public:
         AZ_CLASS_ALLOCATOR(EditorGradientPreviewUpdateJob, AZ::ThreadPoolAllocator, 0);
 
-        using SampleFilterFunc = AZStd::function<float(float)>;
+        using SampleFilterFunc = AZStd::function<float(float, const GradientSampleParams&)>;
 
         EditorGradientPreviewUpdateJob(AZ::JobContext* context = nullptr) :
             Job(false, context)
@@ -320,7 +320,7 @@ namespace GradientSignal
 
                         if (m_filterFunc)
                         {
-                            sample = m_filterFunc(sample);
+                            sample = m_filterFunc(sample, sampleParams);
                         }
 
                         buffer[((m_centeringOffsetY + y) * imageBytesPerLine) + (m_centeringOffsetX + x)] = static_cast<AZ::u8>(sample * 255);
@@ -378,7 +378,7 @@ namespace GradientSignal
         , private AZ::TickBus::Handler
     {
     public:
-        using SampleFilterFunc = AZStd::function<float(float)>;
+        using SampleFilterFunc = AZStd::function<float(float, const GradientSampleParams&)>;
 
         EditorGradientPreviewRenderer()
             : QObject()

@@ -196,7 +196,7 @@ namespace UnitTest
             , m_result(result)
         {
         }
-        virtual void Process()
+        void Process() override
         {
             Vector3 sum = Vector3::CreateZero();
             for (unsigned int i = 0; i < m_size; ++i)
@@ -290,7 +290,7 @@ namespace UnitTest
             , m_result(result)
         {
         }
-        void Process()
+        void Process() override
         {
             *m_result = m_value1 + m_value2;
         }
@@ -311,7 +311,7 @@ namespace UnitTest
             , m_result(result)
         {
         }
-        void Process()
+        void Process() override
         {
             AZStd::sys_time_t tStart = AZStd::GetTimeNowMicroSecond();
 
@@ -381,7 +381,7 @@ namespace UnitTest
             , m_result(result)
         {
         }
-        void Process()
+        void Process() override
         {
             AZStd::sys_time_t tStart = AZStd::GetTimeNowMicroSecond();
 
@@ -449,7 +449,7 @@ namespace UnitTest
             , m_size2(size2)
         {
         }
-        void Process()
+        void Process() override
         {
             //merge
             int pos1 = 0;
@@ -503,7 +503,7 @@ namespace UnitTest
             , m_size(size)
         {
         }
-        void Process()
+        void Process() override
         {
             unsigned int size1 = m_size / 2;
             unsigned int size2 = m_size - size1;
@@ -592,7 +592,7 @@ namespace UnitTest
             , m_right(right)
         {
         }
-        void Process()
+        void Process() override
         {
             if (m_right <= m_left)
             {

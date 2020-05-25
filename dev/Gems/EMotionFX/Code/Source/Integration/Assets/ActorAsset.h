@@ -12,12 +12,14 @@
 
 #pragma once
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 
 #include <Integration/Assets/AssetCommon.h>
 #include <Integration/Rendering/RenderActor.h>
+#include <EMotionFX/Source/AutoRegisteredActor.h>
 
 
 namespace EMotionFX
@@ -45,19 +47,18 @@ namespace EMotionFX
             AZ_RTTI(ActorAsset, "{F67CC648-EA51-464C-9F5D-4A9CE41A7F86}", EMotionFXAsset)
             AZ_CLASS_ALLOCATOR_DECL
 
-            ActorAsset();
-            ~ActorAsset() override;
-
             using MaterialList = AZStd::vector<AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset> >;
 
-            typedef EMotionFXPtr<EMotionFX::ActorInstance> ActorInstancePtr;
+            using ActorInstancePtr = EMotionFXPtr<EMotionFX::ActorInstance>;
             ActorInstancePtr CreateInstance(AZ::Entity* entity);
 
-            EMotionFXPtr<EMotionFX::Actor> GetActor() const { return m_emfxActor; }
+            Actor* GetActor() const { return m_emfxActor.get(); }
             RenderActor* GetRenderActor() const { return m_renderActor.get(); }
 
+            void SetData(AZStd::shared_ptr<Actor> actor);
+
         private:
-            EMotionFXPtr<EMotionFX::Actor> m_emfxActor; ///< Pointer to shared EMotionFX actor
+            AutoRegisteredActor m_emfxActor; ///< Pointer to shared EMotionFX actor
             AZStd::unique_ptr<RenderActor> m_renderActor;
         };
 

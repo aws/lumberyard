@@ -523,5 +523,8 @@
     <None Include="CryFX\HDRPostProcessDolby.cfi">
       <Filter>CryFX\PostProcess</Filter>
     </None>
+    <None Include="CryFX\Video.cfx">
+      <Filter>CryFX\Misc</Filter>
+    </None>
   </ItemGroup>
 </Project>

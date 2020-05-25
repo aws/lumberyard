@@ -20,7 +20,7 @@
 
 namespace ScriptCanvas
 {
-    AZ::Outcome<void, AZStd::string> MatchContracts(Slot& firstSlot, Slot& secondSlot)
+    AZ::Outcome<void, AZStd::string> MatchContracts(const Slot& firstSlot, const Slot& secondSlot)
     {
         AZ::Outcome<void, AZStd::string> outcome = AZ::Success();
 
@@ -90,6 +90,7 @@ namespace ScriptCanvas
     {
         Slot* sourceSlot{};
         NodeRequestBus::EventResult(sourceSlot, sourceEndpoint.GetNodeId(), &NodeRequests::GetSlot, sourceEndpoint.GetSlotId());
+
         Slot* targetSlot{};
         NodeRequestBus::EventResult(targetSlot, targetEndpoint.GetNodeId(), &NodeRequests::GetSlot, targetEndpoint.GetSlotId());
 
@@ -103,29 +104,33 @@ namespace ScriptCanvas
             return AZ::Failure(AZStd::string("Target slot does not exist."));
         }
 
-        if (sourceSlot->IsData())
+        return ValidateConnection((*sourceSlot), (*targetSlot));
+    }
+
+    AZ::Outcome<void, AZStd::string> Connection::ValidateConnection(const Slot& sourceSlot, const Slot& targetSlot)
+    {
+        if (sourceSlot.IsData())
         {
-            auto typeMatchCheck = sourceSlot->IsTypeMatchFor((*targetSlot));
+            auto typeMatchCheck = sourceSlot.IsTypeMatchFor(targetSlot);
             if (!typeMatchCheck)
             {
                 return typeMatchCheck;
             }
         }
 
-        auto connectionSourceToTarget = MatchContracts(*sourceSlot, *targetSlot);
+        auto connectionSourceToTarget = MatchContracts(sourceSlot, targetSlot);
         if (!connectionSourceToTarget.IsSuccess())
         {
             return connectionSourceToTarget;
         }
 
-        auto connectionTargetToSource = MatchContracts(*targetSlot, *sourceSlot);
+        auto connectionTargetToSource = MatchContracts(targetSlot, sourceSlot);
         if (!connectionTargetToSource.IsSuccess())
         {
             return connectionTargetToSource;
         }
 
         return AZ::Success();
-
     }
 
     bool Connection::ContainsEndpoint(const Endpoint& endpoint)

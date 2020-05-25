@@ -32,7 +32,7 @@ namespace ScriptCanvasEditor
         ~CreateEBusSenderMimeEvent() = default;
 
     protected:
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
         
     private:
 
@@ -86,7 +86,7 @@ namespace ScriptCanvasEditor
         ~CreateEBusHandlerMimeEvent() = default;
 
     protected:
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId) const override;
 
     private:
         AZStd::string m_busName;
@@ -115,6 +115,11 @@ namespace ScriptCanvasEditor
         bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
 
         NodeIdPair CreateEventNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) const;
+
+    protected:
+
+        NodeIdPair ExecuteEventImpl(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId);
+        void ConfigureEvent(AZStd::string_view busNane, AZStd::string_view eventName, const ScriptCanvas::EBusEventId& eventId);
 
     private:
         AZStd::string m_busName;

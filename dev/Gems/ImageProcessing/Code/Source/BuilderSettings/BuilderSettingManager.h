@@ -16,7 +16,7 @@
 #include <BuilderSettings/BuilderSettings.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/base.h>
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 
 class QSettings;
 class QString;

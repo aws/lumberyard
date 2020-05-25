@@ -109,7 +109,7 @@ class eclipse(Build.BuildContext):
 				cdt_mk + '.enableCleanBuild': 'true',
 				cdt_mk + '.enableFullBuild': 'true',
 				}
-		for k, v in dictionaries.items():
+		for k, v in list(dictionaries.items()):
 			self.addDictionary(doc, arguments, k, v)
 
 		natures = self.add(doc, projectDescription, 'natures')
@@ -303,6 +303,6 @@ class eclipse(Build.BuildContext):
 		return el
 
 	def setAttributes(self, node, attrs):
-		for k, v in attrs.items():
+		for k, v in list(attrs.items()):
 			node.setAttribute(k, v)
 

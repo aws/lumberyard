@@ -29,9 +29,22 @@ public: // types
         OffsetFromElement
     };
 
+    enum class TriggerMode
+    {
+        OnHover,
+        OnPress,
+        OnClick
+    };
+
 public: // member functions
 
     virtual ~UiTooltipDisplayInterface() {}
+
+    //! Get the way the tooltip is triggered to display
+    virtual TriggerMode GetTriggerMode() = 0;
+
+    //! Set the way the tooltip is triggered to display
+    virtual void SetTriggerMode(TriggerMode triggerMode) = 0;
 
     //! Get whether the tooltip display element will be auto positioned
     virtual bool GetAutoPosition() = 0;
@@ -94,3 +107,20 @@ public: // static member data
 };
 
 typedef AZ::EBus<UiTooltipDisplayInterface> UiTooltipDisplayBus;
+
+//! Interface class that listeners need to implement to be notified of tooltip display events
+class UiTooltipDisplayNotifications
+    : public AZ::ComponentBus
+{
+public: // member functions
+
+    virtual ~UiTooltipDisplayNotifications() {}
+
+    //! Called on tooltip display state changes
+    virtual void OnShowing() {};
+    virtual void OnShown() {};
+    virtual void OnHiding() {};
+    virtual void OnHidden() {};
+};
+
+typedef AZ::EBus<UiTooltipDisplayNotifications> UiTooltipDisplayNotificationBus;

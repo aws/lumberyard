@@ -23,11 +23,11 @@ namespace ScriptCanvas
     class DatumNotifications : public AZ::EBusTraits
     {
     public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
         
-        virtual void OnDatumChanged(const Datum*) = 0;
+        virtual void OnDatumEdited(const Datum* datum) = 0;
     };
     
     using DatumNotificationBus = AZ::EBus<DatumNotifications>;

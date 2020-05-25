@@ -38,6 +38,7 @@ namespace LmbrCentral
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
+            provided.push_back(AZ_CRC("AreaLightShapeService", 0x68ea78dc));
         }
 
         // EditorComponentBase
@@ -51,7 +52,8 @@ namespace LmbrCentral
             const AzFramework::ViewportInfo& viewportInfo,
             AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        void ConfigurationChanged();
+        AZ::Crc32 ConfigurationChanged();
+        void ClampHeight();
         void GenerateVertices();
 
         CapsuleShape m_capsuleShape; ///< Stores underlying capsule representation for this component.

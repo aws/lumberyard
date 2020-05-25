@@ -10,19 +10,23 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-import ConfigParser
-from waflib.Configure import conf, deprecated
 
-from settings_manager import LUMBERYARD_SETTINGS
-import waflib.Logs as waf_logs
-
-from Tkinter import *
-import Tkinter as tk
-import ttk
-import tkSimpleDialog
-import tkMessageBox
+# System Imports
+import tkinter as tk
+import tkinter.ttk
+import tkinter.simpledialog
+import tkinter.messagebox
 import threading
 import logging
+from tkinter import *
+
+# waflib imports
+from waflib.Configure import conf, deprecated
+import waflib.Logs as waf_logs
+
+# lmbrwaflib imports
+from lmbrwaflib.settings_manager import LUMBERYARD_SETTINGS
+
 
 ###############################################################################
 def _verify_option(waf_ctx, category_name, option_name, new_value):
@@ -50,7 +54,7 @@ def _create_option_widget(waf_ctx, category_name, option_name, value, default_de
         return UiOption_EntryBox(waf_ctx, category_name, option_name, value, default_description, default_value, target_content_area, fn_on_value_changed)  
     
 ###############################################################################     
-class ForceValidationDialog(tkSimpleDialog.Dialog):
+class ForceValidationDialog(tkinter.simpledialog.Dialog):
     def __init__(self, waf_ctx, parent_window, category_name, option_name, value, default_description, default_value, fn_on_value_changed = None):
         self.waf_ctx = waf_ctx
         self.category_name = category_name
@@ -60,7 +64,7 @@ class ForceValidationDialog(tkSimpleDialog.Dialog):
         self.default_description = default_description
         self.option_widget = None
         self.fn_on_value_changed = fn_on_value_changed
-        tkSimpleDialog.Dialog.__init__(self, parent_window) # No super because calls is python old style class type
+        tkinter.simpledialog.Dialog.__init__(self, parent_window) # No super because calls is python old style class type
                 
     def body(self, content_area):       
         self.option_widget = _create_option_widget(self.waf_ctx, self.category_name, self.option_name, self.value, self.default_description, self.default_value, content_area, self.fn_on_value_changed)
@@ -91,10 +95,10 @@ class UiOption_Base(object):
         self.error_text = StringVar()       
         self.fn_on_value_changed = fn_on_value_changed
         
-        self.content_area = ttk.Frame(target_content_area)
+        self.content_area = tkinter.ttk.Frame(target_content_area)
         self.content_area.pack(fill=tk.BOTH)
         
-        info_frame = ttk.Frame(self.content_area)
+        info_frame = tkinter.ttk.Frame(self.content_area)
         info_frame.pack(fill=tk.X)
         
         # Create option widget
@@ -111,7 +115,7 @@ class UiOption_Base(object):
         self.lbl_error.pack(fill=tk.X)
         self.lbl_error.pack_forget()
         
-        ttk.Separator(self.content_area, orient=HORIZONTAL).pack(side=tk.BOTTOM, fill=tk.BOTH)
+        tkinter.ttk.Separator(self.content_area, orient=HORIZONTAL).pack(side=tk.BOTTOM, fill=tk.BOTH)
         
         # Call verification function once to ensure value is valid (except it is empty)
         # we won't write to the config as the prev_value == value
@@ -187,7 +191,7 @@ class UiOption_CheckBox(UiOption_Base):
         super(UiOption_CheckBox, self).__init__(waf_ctx, category_name, option_name, value, description, default_value, target_content_area, fn_on_value_changed)
         
     def create_input_widget(self, target_content_area):
-        self.input_widget = ttk.Checkbutton(target_content_area, variable=self.ttk_checkbox_value, command=self.on_clicked, onvalue="True", offvalue="False")
+        self.input_widget = tkinter.ttk.Checkbutton(target_content_area, variable=self.ttk_checkbox_value, command=self.on_clicked, onvalue="True", offvalue="False")
         self.input_widget.bind("<ButtonRelease-3>", lambda event: self.set_default_value()) # bind right-click -> default value
         self.input_widget.pack(side=tk.RIGHT)
         
@@ -218,7 +222,7 @@ class UiOption_CheckBoxList(UiOption_Base):
         super(UiOption_CheckBoxList, self).__init__(waf_ctx, category_name, option_name, value, description, default_value, target_content_area, fn_on_value_changed)       
         
     def create_input_widget(self, target_content_area): 
-        self.options_container = ttk.Labelframe(target_content_area)
+        self.options_container = tkinter.ttk.Labelframe(target_content_area)
         self.options_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10)
         
         value_list = self.prev_valid_value.split(',')
@@ -231,10 +235,10 @@ class UiOption_CheckBoxList(UiOption_Base):
                     ttk_checkbox_value.set(option_name)
                     break
 
-            frame = ttk.Frame(self.options_container)
+            frame = tkinter.ttk.Frame(self.options_container)
             frame.pack(fill=tk.X)
         
-            checkbox = ttk.Checkbutton(frame, variable=ttk_checkbox_value, onvalue=self.item_values[index], offvalue="")
+            checkbox = tkinter.ttk.Checkbutton(frame, variable=ttk_checkbox_value, onvalue=self.item_values[index], offvalue="")
             checkbox.config(command=self.on_clicked)
             checkbox.bind("<ButtonRelease-3>", lambda event: self.set_default_value()) # bind right-click -> default value
             checkbox.pack(side=LEFT)
@@ -250,7 +254,7 @@ class UiOption_CheckBoxList(UiOption_Base):
                 
     def get_value(self):
         values = []
-        for (key, value) in self.checkbox_value_list.iteritems():
+        for (key, value) in self.checkbox_value_list.items():
             checkbox_value = value.get()
             if checkbox_value:
                 values.append(checkbox_value)
@@ -264,7 +268,7 @@ class UiOption_CheckBoxList(UiOption_Base):
             return
             
         values = new_value.split(',')       
-        for (key, value) in self.checkbox_value_list.iteritems():
+        for (key, value) in self.checkbox_value_list.items():
             if key in values:
                 value = 'True'
             else:
@@ -286,13 +290,13 @@ class UiOption_RadioButtonList(UiOption_Base):
         super(UiOption_RadioButtonList, self).__init__(waf_ctx, category_name, option_name, value, description, default_value, target_content_area, fn_on_value_changed)        
         
     def create_input_widget(self, target_content_area): 
-        self.options_container = ttk.Labelframe(target_content_area)
+        self.options_container = tkinter.ttk.Labelframe(target_content_area)
         self.options_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10)
         
         for index, option_name in enumerate(self.item_names):   
-            frame = ttk.Frame(self.options_container)
+            frame = tkinter.ttk.Frame(self.options_container)
             frame.pack(fill=tk.X)
-            radiobutton = ttk.Radiobutton(frame, text=option_name, variable=self.ttk_radio_button_value, command=self.on_clicked, value=self.item_values[index])
+            radiobutton = tkinter.ttk.Radiobutton(frame, text=option_name, variable=self.ttk_radio_button_value, command=self.on_clicked, value=self.item_values[index])
             radiobutton.bind("<ButtonRelease-3>", lambda event: self.set_default_value()) # bind right-click -> default value
             radiobutton.pack(side=LEFT)
         
@@ -362,7 +366,7 @@ class UiOption_EntryBox(UiOption_Base):
         super(UiOption_EntryBox, self).__init__(waf_ctx, category_name, option_name, value, description, default_value, target_content_area, fn_on_value_changed)
         
     def create_input_widget(self, target_content_area):     
-        self.input_widget = ttk.Entry(target_content_area, textvariable=self.entry_var, width=45)
+        self.input_widget = tkinter.ttk.Entry(target_content_area, textvariable=self.entry_var, width=45)
         self.input_widget.icursor(tk.END)
         self.input_widget.bind("<ButtonRelease-3>", lambda event: self.set_default_value()) # bind right-click -> default value
         self.input_widget.pack(side=tk.RIGHT)
@@ -417,7 +421,7 @@ class UiCategory_Base(object):
                     self.options_list.append(attribute)
         
         # Add new tab
-        self.outer_frame = ttk.Frame(self.parent.tab_widget)
+        self.outer_frame = tkinter.ttk.Frame(self.parent.tab_widget)
         self.outer_frame.pack(expand=tk.YES, fill= tk.BOTH)
         
         scroll_x = Scrollbar(self.outer_frame, orient=HORIZONTAL)
@@ -529,8 +533,8 @@ class UiCategory_P4(UiCategory_Base):
         group_box = self.group_boxes.get(group_box_name, None)
         
         if not group_box:
-            group_box = ttk.Frame(self.content_area)    
-            group_box = ttk.Labelframe(self.content_area, text=group_box_name )         
+            group_box = tkinter.ttk.Frame(self.content_area)    
+            group_box = tkinter.ttk.Labelframe(self.content_area, text=group_box_name )         
             group_box.pack(anchor=tk.W, fill=tk.BOTH)                       
             self.group_boxes[group_box_name] = group_box
             
@@ -738,7 +742,7 @@ class GuiTask_GetOption(IGuiTask):
         self.root = root
         self.parent = parent
         
-        self.inner_topframe = ttk.Frame(content_area)
+        self.inner_topframe = tkinter.ttk.Frame(content_area)
         self.inner_topframe.pack(fill=tk.BOTH, expand=TRUE)
         
         # Option widget
@@ -749,10 +753,10 @@ class GuiTask_GetOption(IGuiTask):
         
         # Button box        
         box = tk.Frame(self.inner_topframe)
-        w = ttk.Button(box, text="Confirm", width=10, command=self.ok, default=ACTIVE)
+        w = tkinter.ttk.Button(box, text="Confirm", width=10, command=self.ok, default=ACTIVE)
         w.pack(side=LEFT, padx=5, pady=5)       
         
-        w = ttk.Button(box, text="Exit", width=10, command=self.parent.cancel)
+        w = tkinter.ttk.Button(box, text="Exit", width=10, command=self.parent.cancel)
         w.pack(side=LEFT, padx=5, pady=5)
         
         # Bind "Enter" and "Escape" key
@@ -775,7 +779,7 @@ class GuiTask_GetOption(IGuiTask):
         return self.option_widget.get_value()
 
     def cancel_task(self):
-        if not tkMessageBox.askyesno('Exit WAF', 'All changes will be lost.\n\nReally quit?'):
+        if not tkinter.messagebox.askyesno('Exit WAF', 'All changes will be lost.\n\nReally quit?'):
             return False
             
         self.parent.signal_task_finished(self)
@@ -799,7 +803,7 @@ class GuiTask_AskYesNo(IGuiTask):
         super(GuiTask_AskYesNo, self).create_gui(root, parent, content_area)
         self.parent = parent
         
-        self.result = tkMessageBox.askyesno('', self.question)
+        self.result = tkinter.messagebox.askyesno('', self.question)
         self.parent.signal_task_finished(self)      
         
     def destroy_gui(self):
@@ -822,7 +826,7 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         self.parent = parent
                 
         # Create inner frame
-        self.content_area = ttk.Frame(content_area, padding="3 3 5 5", borderwidth=3, relief="sunken")
+        self.content_area = tkinter.ttk.Frame(content_area, padding="3 3 5 5", borderwidth=3, relief="sunken")
         self.content_area.pack(fill=tk.BOTH)
         
         # Button box            
@@ -832,8 +836,8 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         w.pack(side=LEFT, padx=5, pady=5)           
         
         # Create tab widget
-        self.inner_frame = ttk.Frame(self.content_area)
-        self.tab_widget = ttk.Notebook(self.inner_frame)
+        self.inner_frame = tkinter.ttk.Frame(self.content_area)
+        self.tab_widget = tkinter.ttk.Notebook(self.inner_frame)
         self.tab_widget.pack(fill=tk.X, padx=5, pady=5)
         
         # Load WAF Options categories 
@@ -843,12 +847,12 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         box.pack()
         
     def cancel_task(self):
-        if tkMessageBox.askyesno('Exit WAF', 'Save changes?'):
+        if tkinter.messagebox.askyesno('Exit WAF', 'Save changes?'):
             (retVal, error) = self.validate_categories()
             if retVal:
                 self.waf_ctx.save_user_settings()
             else:
-                if not tkMessageBox.askyesno('Error on save WAF', 'Unable to save.\n\n%s\n\nExit without saving?' % error):
+                if not tkinter.messagebox.askyesno('Error on save WAF', 'Unable to save.\n\n%s\n\nExit without saving?' % error):
                     return False
 
         self.parent.signal_task_finished(self)
@@ -861,7 +865,7 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         return None
         
     def validate_categories(self):
-        for key, value in self.categories.iteritems():
+        for key, value in self.categories.items():
             (retVal, error) = value.validate_category()
             if not retVal:
                 return False, error
@@ -963,7 +967,7 @@ class ThreadedGuiMenu(threading.Thread):
         self.root.protocol("WM_DELETE_WINDOW", self.cancel)
         
         # Layout
-        self.topframe = ttk.Frame(self.root)
+        self.topframe = tkinter.ttk.Frame(self.root)
         self.topframe.pack(side=TOP, anchor=tk.NW, fill=tk.BOTH, expand=TRUE)
                                     
         # Add handlers      
@@ -980,7 +984,7 @@ class ThreadedGuiMenu(threading.Thread):
         self.root = None
         
     def create_console(self):
-        self.bottomframe = ttk.Frame(self.root, padding="3 3 3 3", borderwidth=2, relief="sunken")
+        self.bottomframe = tkinter.ttk.Frame(self.root, padding="3 3 3 3", borderwidth=2, relief="sunken")
         self.bottomframe.pack(side=BOTTOM, anchor=tk.NW, fill=tk.BOTH, expand=TRUE)
         
         self.console = AnsiColorConsole(self.bottomframe)
@@ -1032,7 +1036,7 @@ class ThreadedGuiMenu(threading.Thread):
                 if not 'please press any key to continue' in msg.lower():
                     self.console.write(msg)
                 else:
-                    tkMessageBox.showerror("Error", "WAF encountered an internal error.\n\nWAF GUI is closing.")        
+                    tkinter.messagebox.showerror("Error", "WAF encountered an internal error.\n\nWAF GUI is closing.")        
                     self.cancel()
                 
             self.msg_queue = []         

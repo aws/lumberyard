@@ -21,9 +21,9 @@ namespace AZ
             template<typename Class, typename ContextType>
             void CallProcessorBinder::BindToCall(ProcessingResult(Class::*Func)(ContextType& context) const, TypeMatch typeMatch)
             {
-                AZ_STATIC_ASSERT((AZStd::is_base_of<CallProcessorBinder, Class>::value), 
+                static_assert((AZStd::is_base_of<CallProcessorBinder, Class>::value), 
                     "CallProcessorBinder can only bind to classes derived from it.");
-                AZ_STATIC_ASSERT((AZStd::is_base_of<ICallContext, ContextType>::value), 
+                static_assert((AZStd::is_base_of<ICallContext, ContextType>::value), 
                     "Only arguments derived from ICallContext are accepted by CallProcessorBinder");
 
                 if (typeMatch == TypeMatch::Exact)
@@ -41,9 +41,9 @@ namespace AZ
             template<typename Class, typename ContextType>
             void CallProcessorBinder::BindToCall(ProcessingResult(Class::*Func)(ContextType& context), TypeMatch typeMatch)
             {
-                AZ_STATIC_ASSERT((AZStd::is_base_of<CallProcessorBinder, Class>::value),
+                static_assert((AZStd::is_base_of<CallProcessorBinder, Class>::value),
                     "CallProcessorBinder can only bind to classes derived from it.");
-                AZ_STATIC_ASSERT((AZStd::is_base_of<ICallContext, ContextType>::value),
+                static_assert((AZStd::is_base_of<ICallContext, ContextType>::value),
                     "Only arguments derived from ICallContext are accepted by CallProcessorBinder");
 
                 if (typeMatch == TypeMatch::Exact)

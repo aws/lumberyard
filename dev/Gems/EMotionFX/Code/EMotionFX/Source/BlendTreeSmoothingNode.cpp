@@ -24,13 +24,8 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-    const float BlendTreeSmoothingNode::s_targetReachedRelativeTolerance = 0.01f;
-
     BlendTreeSmoothingNode::BlendTreeSmoothingNode()
         : AnimGraphNode()
-        , m_interpolationSpeed(0.75f)
-        , m_startValue(0.0f)
-        , m_useStartValue(false)
     {
         // create the input ports
         InitInputPorts(1);
@@ -103,8 +98,8 @@ namespace EMotionFX
         const float sourceValue = uniqueData->mCurrentValue;
         const float interpolationSpeed = m_interpolationSpeed * uniqueData->mFrameDeltaTime * 10.0f;
         const float interpolationResult = (interpolationSpeed < 0.99999f) ? MCore::LinearInterpolate<float>(sourceValue, destValue, interpolationSpeed) : destValue;
-        // If the percentage error is 1%, or less, snap to the destination value
-        if (AZ::IsClose((interpolationResult - destValue) / destValue, 0.0f, s_targetReachedRelativeTolerance))
+        // If the interpolation result is close to the dest value within the tolerance, snap to the destination value.
+        if (AZ::IsClose((interpolationResult - destValue), 0.0f, m_snapTolerance))
         {
             uniqueData->mCurrentValue = destValue;
         }
@@ -201,10 +196,11 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendTreeSmoothingNode, AnimGraphNode>()
-            ->Version(1)
+            ->Version(2)
             ->Field("interpolationSpeed", &BlendTreeSmoothingNode::m_interpolationSpeed)
             ->Field("useStartValue", &BlendTreeSmoothingNode::m_useStartValue)
             ->Field("startValue", &BlendTreeSmoothingNode::m_startValue)
+            ->Field("snapTolerance", &BlendTreeSmoothingNode::m_snapTolerance)
         ;
 
 
@@ -216,17 +212,20 @@ namespace EMotionFX
 
         editContext->Class<BlendTreeSmoothingNode>("Smoothing", "Smoothing attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::Slider, &BlendTreeSmoothingNode::m_interpolationSpeed, "Interpolation Speed", "Specifies how fast the output value moves towards the input value. Higher values make it move faster.")
-            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeSmoothingNode::m_useStartValue, "Use Start Value", "Enable this to use the start value, otherwise the first input value will be used as start value.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeSmoothingNode::m_startValue, "Start Value", "When the blend tree gets activated the smoothing node will start interpolating from this value.")
-            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeSmoothingNode::GetStartValueVisibility)
-            ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
-            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeSmoothingNode::GetStartValueVisibility)
+                ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeSmoothingNode::m_snapTolerance, "Snap Tolerance", "If the current value is within the tolerance from the destination value, the smoothing node output will snap to the destination value.")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
         ;
     }
 } // namespace EMotionFX

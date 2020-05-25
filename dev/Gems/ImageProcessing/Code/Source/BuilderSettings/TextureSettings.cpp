@@ -79,7 +79,6 @@ namespace ImageProcessing
         }
         else if ("mipgentype" == key) // Example: mipgentype=box
         {
-            // Note: value names are cross-referenced from 's_filterFunctionNames' in dev\Code\Tools\RC\ResourceCompilerImage\Filtering\FIR-Windows.cpp
             if ("box" == value || "average" == value)
             {
                 textureSettingOut.m_mipGenType = MipGenType::box;
@@ -454,11 +453,14 @@ namespace ImageProcessing
         MultiplatformTextureSettings settings;
         PlatformNameList platformsList = BuilderSettingManager::Instance()->GetPlatformList();
         AZ::Uuid suggestedPreset = BuilderSettingManager::Instance()->GetSuggestedPreset(imageFilepath);
-        for (PlatformName& platform : platformsList)
+        if (!suggestedPreset.IsNull())
         {
-            TextureSettings textureSettings;
-            textureSettings.ApplyPreset(suggestedPreset);
-            settings.insert(AZStd::pair<PlatformName, TextureSettings>(platform, textureSettings));
+            for (PlatformName& platform : platformsList)
+            {
+                TextureSettings textureSettings;
+                textureSettings.ApplyPreset(suggestedPreset);
+                settings.insert(AZStd::pair<PlatformName, TextureSettings>(platform, textureSettings));
+            }
         }
         return settings;
     }

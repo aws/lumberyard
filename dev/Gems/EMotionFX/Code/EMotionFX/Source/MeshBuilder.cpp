@@ -619,8 +619,6 @@ namespace EMotionFX
                     skinningLayer->AddInfluence(v, influence.mNodeNr, influence.mWeight, 0);
                 }
             }
-
-            skinningLayer->OptimizeMemoryUsage(); // TODO: make this optional?
         }
 
         return result;

@@ -24,17 +24,17 @@ def handler(event, context):
     access_stack = stack_manager.get_stack_info(access_stack_arn)
 
     if not access_stack.resources:
-        print 'Skipping setting CloudCanvasIdentityPool: access stack not found.'
+        print('Skipping setting CloudCanvasIdentityPool: access stack not found.')
     else:
         pool = access_stack.resources.get_by_logical_id('PlayerAccessIdentityPool', 'Custom::CognitoIdentityPool', optional = True)
         custom_auth_flow_lambda = __get_resource(access_stack, event['ResourceProperties'].get('GemName', ''), 'CustomAuthFlowLambda', 'AWS::Lambda::Function')
 
         if not pool:
-            print 'Skipping setting CloudCanvasIdentityPool: PlayerAccessIdentityPool not found.'
+            print('Skipping setting CloudCanvasIdentityPool: PlayerAccessIdentityPool not found.')
         elif not custom_auth_flow_lambda:
-            print 'Skipping setting CloudCanvasIdentityPool: CustomAuthFlowLambda not found.'
+            print('Skipping setting CloudCanvasIdentityPool: CustomAuthFlowLambda not found.')
         else:
-            print 'Adding setting CloudCanvasIdentityPool = {}'.format(pool.physical_id)
+            print('Adding setting CloudCanvasIdentityPool = {}'.format(pool.physical_id))
 
             cloud_canvas_identity_pool_mapping = {'CloudCanvasIdentityPool' : pool.physical_id}
             __add_environment_variables(custom_auth_flow_lambda.physical_id, cloud_canvas_identity_pool_mapping)
@@ -43,9 +43,9 @@ def handler(event, context):
 
 def __get_resource(stack, gem_name, resource_name, resource_type):
     if not stack.deployment:
-        print 'Skipping setting CloudCanvasIdentityPool: deployment stack not found.'
+        print('Skipping setting CloudCanvasIdentityPool: deployment stack not found.')
     elif not stack.deployment.resource_groups:
-        print 'Skipping setting CloudCanvasIdentityPool: deployment stack resource groups not found.'
+        print('Skipping setting CloudCanvasIdentityPool: deployment stack resource groups not found.')
     else:
         for resource_group in stack.deployment.resource_groups:
             if resource_group.resource_group_name != gem_name:

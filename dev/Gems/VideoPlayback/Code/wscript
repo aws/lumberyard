@@ -16,9 +16,7 @@ def build(bld):
     
         # Add custom build options here
         includes    = ['.',
-                       bld.ThirdPartyPath('boost'),
-                       bld.Path('Code/CryEngine/CryCommon'),
-                       bld.Path('Code/CryEngine/CryAction')],
+                       bld.Path('Code/CryEngine/CryCommon')],
         
         # Platform Roots
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],

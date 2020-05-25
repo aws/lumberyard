@@ -116,7 +116,7 @@ bool CCharacterKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
                     AZ::EntityId azEntityId = parentNode->GetAzEntityId();
                     if (azEntityId.IsValid())
                     {
-                        AZ_STATIC_ASSERT(sizeof(AZ::EntityId) <= sizeof(AZ::u64), "Can't pack AZ::EntityId into a AZ::u64 in CCharacterKeyUIControls::OnKeySelectionChange.");
+                        static_assert(sizeof(AZ::EntityId) <= sizeof(AZ::u64), "Can't pack AZ::EntityId into a AZ::u64 in CCharacterKeyUIControls::OnKeySelectionChange.");
                         mv_animation->SetUserData(static_cast<AZ::u64>(azEntityId));
                     }
                 }

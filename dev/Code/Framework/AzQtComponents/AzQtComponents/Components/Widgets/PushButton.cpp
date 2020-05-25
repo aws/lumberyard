@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QStyleFactory>
 
@@ -172,7 +173,7 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
         border = config.focusedBorder;
     }
 
-    float radius = isSmallIconButton ? config.smallIcon.frame.radius : config.defaultFrame.radius;
+    float radius = aznumeric_cast<float>(isSmallIconButton ? config.smallIcon.frame.radius : config.defaultFrame.radius);
     drawFilledFrame(painter, r, gradientStartColor, gradientEndColor, border, radius);
 
     if (buttonOption->features & QStyleOptionButton::HasMenu)
@@ -513,7 +514,7 @@ void PushButton::drawSmallIconFrame(const Style* style, const QStyleOption* opti
 
     selectColors(option, config.secondary, isDisabled, gradientStartColor, gradientEndColor);
 
-    float radius = config.smallIcon.frame.radius;
+    float radius = aznumeric_cast<float>(config.smallIcon.frame.radius);
     drawFilledFrame(painter, frame, gradientStartColor, gradientEndColor, border, radius);
 }
 
@@ -536,8 +537,8 @@ static QRect defaultArrowRect()
 
 static QPixmap initializeDownArrowPixmap(const QColor& arrowColor, Qt::ArrowType type = Qt::DownArrow, const QRect& rect = defaultArrowRect())
 {
-    const int arrowWidth = QStyleHelper::dpiScaled(14);
-    const int arrowHeight = QStyleHelper::dpiScaled(8);
+    const int arrowWidth = aznumeric_cast<int>(QStyleHelper::dpiScaled(14));
+    const int arrowHeight = aznumeric_cast<int>(QStyleHelper::dpiScaled(8));
 
     const int arrowMax = qMin(arrowHeight, arrowWidth);
     const int rectMax = qMin(rect.height(), rect.width());

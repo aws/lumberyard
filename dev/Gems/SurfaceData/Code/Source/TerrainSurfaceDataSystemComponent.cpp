@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Math/MathUtils.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <MathConversion.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <SurfaceData/SurfaceTag.h>
@@ -103,30 +104,32 @@ namespace SurfaceData
 
     void TerrainSurfaceDataSystemComponent::Activate()
     {
+        m_providerHandle = InvalidSurfaceDataRegistryHandle;
         m_system = GetISystem();
         CrySystemEventBus::Handler::BusConnect();
         AZ::HeightmapUpdateNotificationBus::Handler::BusConnect();
 
-        SurfaceDataRegistryEntry registryEntry;
-        registryEntry.m_entityId = GetEntityId();
-        registryEntry.m_bounds = GetSurfaceAabb();
-        registryEntry.m_tags = GetSurfaceTags();
-
-        m_providerHandle = InvalidSurfaceDataRegistryHandle;
-        SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
-
-        SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+        UpdateTerrainData(AZ::Aabb::CreateNull());
     }
 
     void TerrainSurfaceDataSystemComponent::Deactivate()
     {
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
-        m_providerHandle = InvalidSurfaceDataRegistryHandle;
+        if (m_providerHandle != InvalidSurfaceDataRegistryHandle)
+        {
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+        }
 
         SurfaceDataProviderRequestBus::Handler::BusDisconnect();
         AZ::HeightmapUpdateNotificationBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
         m_system = nullptr;
+
+        // Clear the cached terrain bounds data
+        {
+            m_terrainBounds = AZ::Aabb::CreateNull();
+            m_terrainBoundsIsValid = false;
+        }
     }
 
     bool TerrainSurfaceDataSystemComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -161,27 +164,35 @@ namespace SurfaceData
 
     void TerrainSurfaceDataSystemComponent::GetSurfacePoints(const AZ::Vector3& inPosition, SurfacePointList& surfacePointList) const
     {
-        auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
-        if (engine && engine->GetShowTerrainSurface() && engine->GetTerrainAabb().Contains(inPosition))
+        if (m_terrainBoundsIsValid)
         {
-            const Vec3 positionLy = AZVec3ToLYVec3(inPosition);
-            const float x = inPosition.GetX();
-            const float y = inPosition.GetY();
-            const float terrainHeight = engine->GetTerrainElevation(x, y);
+            auto enumerationCallback = [&](AzFramework::Terrain::TerrainDataRequests* terrain) -> bool
+            {
+                if (terrain->GetTerrainAabb().Contains(inPosition))
+                {
+                    bool isTerrainValidAtPoint = false;
+                    const float terrainHeight = terrain->GetHeight(inPosition, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, &isTerrainValidAtPoint);
+                    const bool isHole = !isTerrainValidAtPoint;
 
-            SurfacePoint point;
-            point.m_entityId = GetEntityId();
-            point.m_position = AZ::Vector3(x, y, terrainHeight);
-            point.m_normal = LYVec3ToAZVec3(engine->GetTerrainSurfaceNormal(positionLy));
-            AddMaxValueForMasks(point.m_masks, engine->GetTerrainHole(int(x), int(y)) ? Constants::s_terrainHoleTagCrc : Constants::s_terrainTagCrc, 1.0f);
-            surfacePointList.push_back(point);
+                    SurfacePoint point;
+                    point.m_entityId = GetEntityId();
+                    point.m_position = AZ::Vector3(inPosition.GetX(), inPosition.GetY(), terrainHeight);
+                    point.m_normal = terrain->GetNormal(inPosition);
+                    const AZ::Crc32 terrainTag = isHole ? Constants::s_terrainHoleTagCrc : Constants::s_terrainTagCrc;
+                    AddMaxValueForMasks(point.m_masks, terrainTag, 1.0f);
+                    surfacePointList.push_back(point);
+                }
+                // Only one handler should exist.
+                return false;
+            };
+            AzFramework::Terrain::TerrainDataRequestBus::EnumerateHandlers(enumerationCallback);
         }
     }
 
     AZ::Aabb TerrainSurfaceDataSystemComponent::GetSurfaceAabb() const
     {
-        auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
-        return engine && engine->GetShowTerrainSurface() ? engine->GetTerrainAabb() : AZ::Aabb::CreateNull();
+        auto terrain = AzFramework::Terrain::TerrainDataRequestBus::FindFirstHandler();
+        return terrain ? terrain->GetTerrainAabb() : AZ::Aabb::CreateNull();
     }
 
     SurfaceTagVector TerrainSurfaceDataSystemComponent::GetSurfaceTags() const
@@ -192,12 +203,66 @@ namespace SurfaceData
         return tags;
     }
 
-    void TerrainSurfaceDataSystemComponent::HeightmapModified(const AZ::Aabb& bounds)
+    void TerrainSurfaceDataSystemComponent::UpdateTerrainData(const AZ::Aabb& dirtyRegion)
     {
+        bool terrainValidBeforeUpdate = m_terrainBoundsIsValid;
+        bool terrainValidAfterUpdate = false;
+        AZ::Aabb terrainBoundsBeforeUpdate = m_terrainBounds;
+
         SurfaceDataRegistryEntry registryEntry;
         registryEntry.m_entityId = GetEntityId();
         registryEntry.m_bounds = GetSurfaceAabb();
         registryEntry.m_tags = GetSurfaceTags();
-        SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry, bounds);
+
+        m_terrainBounds = registryEntry.m_bounds;
+        m_terrainBoundsIsValid = m_terrainBounds.IsValid();
+
+        terrainValidAfterUpdate = m_terrainBoundsIsValid;
+
+        if (terrainValidBeforeUpdate && terrainValidAfterUpdate)
+        {
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+
+            // Our terrain was valid before and after, it just changed in some way.  If we have a valid dirty region passed in
+            // then it's possible that the heightmap has been modified in the Editor.  Otherwise, just notify that the entire
+            // terrain has changed in some way.
+            if (dirtyRegion.IsValid())
+            {
+                SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::RefreshSurfaceData, dirtyRegion);
+            }
+            else
+            {
+                SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UpdateSurfaceDataProvider, m_providerHandle, registryEntry);
+            }
+        }
+        else if (!terrainValidBeforeUpdate && terrainValidAfterUpdate)
+        {
+            // Our terrain has become valid, so register as a provider and save off the registry handles
+            AZ_Assert((m_providerHandle == InvalidSurfaceDataRegistryHandle), "Surface Provider data handle is initialized before our terrain became valid");
+            SurfaceDataSystemRequestBus::BroadcastResult(m_providerHandle, &SurfaceDataSystemRequestBus::Events::RegisterSurfaceDataProvider, registryEntry);
+
+            // Start listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataProviderRequestBus::Handler::BusConnect(m_providerHandle);
+        }
+        else if (terrainValidBeforeUpdate && !terrainValidAfterUpdate)
+        {
+            // Our terrain has stopped being valid, so unregister and stop listening for surface data events
+            AZ_Assert((m_providerHandle != InvalidSurfaceDataRegistryHandle), "Invalid surface data handle");
+            SurfaceDataSystemRequestBus::Broadcast(&SurfaceDataSystemRequestBus::Events::UnregisterSurfaceDataProvider, m_providerHandle);
+            m_providerHandle = InvalidSurfaceDataRegistryHandle;
+
+            SurfaceDataProviderRequestBus::Handler::BusDisconnect();
+        }
+        else
+        {
+            // We didn't have a valid terrain before or after running this, so do nothing.
+        }
+
+    }
+
+    void TerrainSurfaceDataSystemComponent::HeightmapModified(const AZ::Aabb& bounds)
+    {
+        UpdateTerrainData(bounds);
     }
 }

@@ -23,7 +23,7 @@ namespace DeployTool
     class RealDeviceFarmClient : public IDeviceFarmClient
     {
     public:
-        RealDeviceFarmClient(const Aws::Auth::AWSCredentials& credentials, const Aws::Client::ClientConfiguration& clientConfiguration = Aws::Client::ClientConfiguration());
+        RealDeviceFarmClient(const Aws::Auth::AWSCredentials& credentials, const Aws::Client::ClientConfiguration& clientConfiguration = GetDefaultAwsClientConfiguration());
         virtual ~RealDeviceFarmClient();
 
         void CreateDevicePoolAsync(
@@ -87,6 +87,7 @@ namespace DeployTool
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context = nullptr) override;
 
     private:
+        static Aws::Client::ClientConfiguration GetDefaultAwsClientConfiguration();
         // The Aws Device Farm Client
         std::shared_ptr<Aws::DeviceFarm::DeviceFarmClient> mDeviceFarmClient;
     };

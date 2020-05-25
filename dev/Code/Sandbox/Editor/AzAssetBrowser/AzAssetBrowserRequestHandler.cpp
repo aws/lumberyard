@@ -358,7 +358,6 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         {
             AzToolsFramework::SliceUtilities::CreateSliceAssetContextMenu(menu, fullFilePath);
 
-            const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productEntry = products[0];
             // SliceUtilities is in AZToolsFramework and can't open viewports, so add the relationship view open command here.
             if (!products.empty())
             {
@@ -538,26 +537,6 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
                 }
             });
     }
-#if defined(AZ_PLATFORM_WINDOWS)
-    else if (assetGroup.compare("Texture", Qt::CaseInsensitive) == 0)
-    {
-        // Open the texture in RC editor
-        // note that as a special case, DDS files cannot be "opened" with RC editor as they are just copied as-is into the cache.
-        if (!AZStd::wildcard_match("*.dds", fullSourceFileName))
-        {
-            openers.push_back(
-            {
-                "Lumberyard_Resource_Compiler",
-                "Open in Resource Compiler...",
-                QIcon(),
-            [](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
-                {
-                    gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
-                }
-            });
-        }
-    }
-#endif //  AZ_PLATFORM_WINDOWS
 
     if (!openers.empty())
     {

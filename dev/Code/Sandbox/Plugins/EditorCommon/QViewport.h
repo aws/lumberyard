@@ -62,11 +62,15 @@ enum class CameraControlMode
 
 
 class QViewportConsumer;
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
 class EDITOR_COMMON_API QViewport
     : public QWidget
     , public AzFramework::WindowRequestBus::Handler
 {
     Q_OBJECT
+AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
 
     enum StartupMode {
@@ -158,10 +162,9 @@ private:
     void UpdateCameraControlMode(QMouseEvent* ev);
 
     struct SPreviousContext;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::vector<SPreviousContext> m_previousContexts;
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     std::unique_ptr<CCamera> m_camera;
-    AZ_POP_DISABLE_WARNING
     QElapsedTimer* m_frameTimer;
     QTimer* m_timer;
     int m_width;
@@ -189,7 +192,7 @@ private:
     std::unique_ptr<SViewportSettings> m_settings;
     std::unique_ptr<SViewportState> m_state;
     std::vector<QViewportConsumer*> m_consumers;
-
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     HWND m_lastHwnd = 0;
     bool m_resizeWindowEvent = false;
 };

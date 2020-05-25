@@ -29,27 +29,18 @@ namespace ScriptCanvas
                 template <typename ResultType, typename OperatorFunctor>
                 static void Evaluate(OperatorFunctor&& operatorFunctor, const OperatorBase::OperatorOperands& operands, Datum& result)
                 {
+                    // At this point we know that the operands have been checked and we have at least 2.
+                    // So we can just convert it to the value directly.
                     OperatorBase::OperatorOperands::const_iterator operandIter = operands.begin();
 
-                    ResultType resultType;
-
-                    while (operandIter != operands.end())
-                    {
-                        const ResultType* type = (*operandIter)->GetAs<ResultType>();
-
-                        if (type)
-                        {
-                            resultType = (*type);
-                            break;
-                        }
-                    }
+                    ResultType resultType = (*(*operandIter)->GetAs<ResultType>());
 
                     for (++operandIter; operandIter != operands.end(); ++operandIter)
                     {
                         resultType = AZStd::invoke(operatorFunctor, resultType, (*(*operandIter)));
                     }
 
-                    result = Datum(resultType);
+                    result.Set<ResultType>(resultType);
                 }
             }
 
@@ -106,10 +97,8 @@ namespace ScriptCanvas
                 
                 void OnConfigured() override;
                 void OnInit() override;
-
-                bool IsNodeExtendable() const override;
-                int GetNumberOfExtensions() const override;
-                ExtendableSlotConfiguration GetExtensionConfiguration(int extensionIndex) const override;
+                void OnActivate() override;                
+                void ConfigureVisualExtensions() override;
 
                 SlotId HandleExtension(AZ::Crc32 extensionId) override;
 
@@ -119,7 +108,7 @@ namespace ScriptCanvas
                 void Evaluate(const ArithmeticOperands&, Datum&);
 
                 virtual void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result);
-                virtual void InitializeDatum(Datum* datum, const Data::Type& dataType);
+                virtual void InitializeSlot(const SlotId& slotId, const Data::Type& dataType);
                 virtual void InvokeOperator();
 
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", ""));
@@ -138,9 +127,13 @@ namespace ScriptCanvas
                 // the specific arithmetic operation.
                 //
                 // Used at run time to try to avoid invoking extra operator calls for no-op operations
-                AZStd::vector< SlotId > m_applicableInputSlots;
+                bool                    m_scrapedInputs = false;
+                AZStd::vector< const Datum* > m_applicableInputs;
 
-                SlotId m_outputSlot;
+                Datum m_result;
+
+                Slot* m_resultSlot;
+                SlotId m_outSlot;
             };
             
             // Deprecated class. Only here for version conversion. Do not use.

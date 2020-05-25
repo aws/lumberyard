@@ -16,6 +16,7 @@
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/CommandSystem/Source/ParameterMixins.h>
@@ -27,6 +28,7 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinJointName, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAnimGraphId, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinTransitionId, EMotionFX::CommandAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinConditionIndex, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAnimGraphNodeId, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAttributesString, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinSerializedContents, EMotionFX::CommandAllocator, 0)
@@ -35,6 +37,7 @@ namespace EMotionFX
     const char* ParameterMixinJointName::s_jointNameParameterName = "jointName";
     const char* ParameterMixinAnimGraphId::s_parameterName = "animGraphId";
     const char* ParameterMixinTransitionId::s_parameterName = "transitionId";
+    const char* ParameterMixinConditionIndex::s_parameterName = "conditionIndex";
     const char* ParameterMixinAnimGraphNodeId::s_parameterName = "nodeId";
     const char* ParameterMixinAttributesString::s_parameterName = "attributesString";
     const char* ParameterMixinSerializedContents::s_parameterName = "contents";
@@ -165,9 +168,8 @@ namespace EMotionFX
         return true;
     }
 
-    AnimGraph* ParameterMixinAnimGraphId::GetAnimGraph(MCore::Command* command, AZStd::string& outResult) const
+    AnimGraph* ParameterMixinAnimGraphId::GetAnimGraph(AZStd::string& outResult) const
     {
-        AZ_UNUSED(command);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(m_animGraphId);
         if (!animGraph)
         {
@@ -188,7 +190,7 @@ namespace EMotionFX
             return;
         }
 
-        serializeContext->Class<ParameterMixinTransitionId>()
+        serializeContext->Class<ParameterMixinTransitionId, ParameterMixinAnimGraphId>()
             ->Version(1)
             ->Field("transitionId", &ParameterMixinTransitionId::m_transitionId)
             ;
@@ -196,6 +198,8 @@ namespace EMotionFX
 
     void ParameterMixinTransitionId::InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired)
     {
+        ParameterMixinAnimGraphId::InitSyntax(syntax);
+
         const char* description = "The id of the transition.";
         if (isParameterRequired)
         {
@@ -209,6 +213,8 @@ namespace EMotionFX
 
     bool ParameterMixinTransitionId::SetCommandParameters(const MCore::CommandLine& parameters)
     {
+        ParameterMixinAnimGraphId::SetCommandParameters(parameters);
+
         if (parameters.CheckIfHasParameter(s_parameterName))
         {
             AZStd::string transitionIdParameter;
@@ -224,9 +230,8 @@ namespace EMotionFX
         return true;
     }
 
-    AnimGraphStateTransition* ParameterMixinTransitionId::GetTransition(const AnimGraph* animGraph, const MCore::Command* command, AZStd::string& outResult) const
+    AnimGraphStateTransition* ParameterMixinTransitionId::GetTransition(const AnimGraph* animGraph, AZStd::string& outResult) const
     {
-        AZ_UNUSED(command);
         if (!animGraph)
         {
             outResult = "Cannot get transition. Anim graph is invalid.";
@@ -247,6 +252,93 @@ namespace EMotionFX
         }
 
         return result;
+    }
+
+    AnimGraphStateTransition* ParameterMixinTransitionId::GetTransition(AZStd::string& outResult) const
+    {
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
+        if (!animGraph)
+        {
+            return nullptr;
+        }
+
+        return GetTransition(animGraph, outResult);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ParameterMixinConditionIndex::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<ParameterMixinConditionIndex, ParameterMixinTransitionId>()
+            ->Version(1)
+            ->Field("conditionIndex", &ParameterMixinConditionIndex::m_conditionIndex)
+            ;
+    }
+
+    void ParameterMixinConditionIndex::InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired)
+    {
+        ParameterMixinTransitionId::InitSyntax(syntax);
+
+        const char* description = "The index of the transition condition.";
+        if (isParameterRequired)
+        {
+            syntax.AddRequiredParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING);
+        }
+        else
+        {
+            syntax.AddParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        }
+    }
+
+    bool ParameterMixinConditionIndex::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        ParameterMixinTransitionId::SetCommandParameters(parameters);
+
+        if (parameters.CheckIfHasParameter(s_parameterName))
+        {
+            const AZ::u32 conditionIndex = parameters.GetValueAsInt(s_parameterName, MCORE_INVALIDINDEX32);
+            if (conditionIndex != MCORE_INVALIDINDEX32)
+            {
+                m_conditionIndex = static_cast<size_t>(conditionIndex);
+            }
+        }
+
+        return true;
+    }
+
+    AnimGraphTransitionCondition* ParameterMixinConditionIndex::GetCondition(const AnimGraph* animGraph, const AnimGraphStateTransition* transition, AZStd::string& outResult) const
+    {
+        if (!m_conditionIndex.has_value())
+        {
+            outResult = "Cannot get transition condition. Condition index is not set.";
+            return nullptr;
+        }
+
+        const size_t numConditions = transition->GetNumConditions();
+        if (m_conditionIndex.value() >= numConditions)
+        {
+            outResult = AZStd::string::format("Cannot get transition condition at index %d. The transition only has %d conditions and the index is out of range.", m_conditionIndex.value(), numConditions);
+            return nullptr;
+        }
+
+        return transition->GetCondition(m_conditionIndex.value());
+    }
+
+    AnimGraphTransitionCondition* ParameterMixinConditionIndex::GetCondition(AZStd::string& outResult) const
+    {
+        AnimGraphStateTransition* transition = GetTransition(outResult);
+        if (!transition)
+        {
+            return nullptr;
+        }
+
+        return GetCondition(transition->GetAnimGraph(), transition, outResult);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

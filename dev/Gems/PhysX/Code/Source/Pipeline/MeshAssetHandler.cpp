@@ -131,16 +131,28 @@ namespace PhysX
 
         bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
+            bool result = false;
+
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
             if (fileIO)
             {
-                AZ::IO::FileIOStream stream(assetPath, AZ::IO::OpenMode::ModeRead);
-                if (stream.IsOpen())
+                AZ::IO::HandleType hFile = AZ::IO::InvalidHandle;
+                if (fileIO->Open(assetPath, AZ::IO::OpenMode::ModeRead, hFile))
                 {
-                    return LoadAssetData(asset, &stream, assetLoadFilterCB);
+                    AZ::u64 size = 0;
+                    if (fileIO->Size(hFile, size))
+                    {
+                        AZStd::vector<char> bytes(size);
+                        if (fileIO->Read(hFile, bytes.data(), bytes.size(), true))
+                        {
+                            AZ::IO::MemoryStream stream(bytes.data(), bytes.size());
+                            result = LoadAssetData(asset, &stream, assetLoadFilterCB);
+                        }
+                    }
+                    fileIO->Close(hFile);
                 }
             }
-            return false;
+            return result;
         }
 
         void MeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
@@ -157,6 +169,7 @@ namespace PhysX
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
+                AssetColliderConfiguration::Reflect(context);
                 serializeContext->ClassDeprecate("MeshAssetCookedData", "{82955F2F-4DA1-4AEF-ACEF-0AE16BA20EF4}");
 
                 serializeContext->Class<MeshAssetData>()

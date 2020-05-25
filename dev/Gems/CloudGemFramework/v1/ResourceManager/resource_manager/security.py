@@ -9,16 +9,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #9 $
-
-from errors import HandledError
-
+import json
 import collections
+import six
+import time
 
+from .errors import HandledError
+from cgf_utils import aws_iam_role
+from cgf_utils import custom_resource_utils
+
+
+DEFAULT_PATCH_IDENTIFIER = '032020'    # Identifies current default patch to apply
 
 def add_cli_commands(subparsers, add_common_args):
     __add_role_cli_commands(subparsers, add_common_args)
     __add_role_mapping_cli_commands(subparsers, add_common_args)
     __add_permission_cli_commands(subparsers, add_common_args)
+
+    __add_project_patcher(subparsers, add_common_args)
 
 
 def __add_role_cli_commands(subparsers, add_common_args):
@@ -128,7 +136,7 @@ def __add_permission_cli_commands(subparsers, add_common_args):
     subparser.add_argument('--role', required=True, metavar='ABSTRACT-ROLE-NAME', help='Identifies the roles from which permissions are removed.')
     subparser.add_argument('--action', required=False, nargs='+', metavar='ACTION', help='The action that is removed. May be specified more than once.')
     subparser.add_argument('--suffix', required=False, nargs='+', metavar='SUFFIX',
-                           help='A string appended to the rresourceARN, which is removed. May be specified more than once.')
+                           help='A string appended to the resourceARN, which is removed. May be specified more than once.')
     add_common_args(subparser)
     subparser.set_defaults(func=remove_permission)
 
@@ -143,6 +151,23 @@ def __add_permission_cli_commands(subparsers, add_common_args):
                            help='Lists metadata for the specified abstract role. The default is to list metadata for all abstract roles.')
     add_common_args(subparser)
     subparser.set_defaults(func=list_permissions)
+
+
+def __add_project_patcher(subparsers, add_common_args):
+    parser = subparsers.add_parser('patcher',
+                                   help='Patch deployed project resources based on best security practices. Recommend running backup before patching project and deployment')
+    subparsers = parser.add_subparsers(dest='subparser_name')
+
+    # security patch
+    subparser = subparsers.add_parser('patch', help='Patch deployed resources following best security practices.')
+    subparser.add_argument('--deployment', metavar='DEPLOYMENT', required=False,
+                           help='The name of the deployment to update. If deployment name is none, defaults to patching project stack')
+    subparser.add_argument('--silent-patch', default=False, required=False, action='store_true', help='Run the command silently without output.')
+    subparser.add_argument('--dryrun', default=False, required=False, action='store_true', help='Run the command without modifying stacks.')
+    subparser.add_argument('--identifier', required=False, metavar='IDENTIFIER',
+                           help='Identifies which patch identifier to apply. Defaults to 0302019.')
+    add_common_args(subparser)
+    subparser.set_defaults(func=run_project_patcher)
 
 
 DEFAULT_ACCESS_CONTROL_RESOURCE_DEFINITION = {
@@ -210,7 +235,7 @@ def ensure_no_access_control(template, resource):
     if isinstance(dependencies, list) and resource in dependencies:
         dependencies.remove(resource)
         changed = True
-    elif isinstance(dependencies, basestring) and resource == dependencies:
+    elif isinstance(dependencies, six.string_types) and resource == dependencies:
         access_control['DependsOn'] = []
         changed = True
 
@@ -318,7 +343,7 @@ def list_roles(context, args):
 def __list_roles_in_template(template, scope):
     role_list = []
 
-    for resource, definition in template.get('Resources', {}).iteritems():
+    for resource, definition in six.iteritems(template.get('Resources', {})):
         if definition.get('Type') == 'AWS::IAM::Role':
             role_list.append(
                 {
@@ -421,7 +446,7 @@ def list_role_mappings(context, args):
 
 def __list_role_mappings_in_template(template, scope):
     result = []
-    for resource_name, resource_definition in template.get('Resources', {}).iteritems():
+    for resource_name, resource_definition in six.iteritems(template.get('Resources', {})):
         if resource_definition.get('Type') == 'AWS::IAM::Role':
             role_mappings = resource_definition.get('Metadata', {}).get('CloudCanvas', {}).get('RoleMappings', [])
             if not isinstance(role_mappings, list):
@@ -693,7 +718,7 @@ def list_permissions(context, args):
 
 def __list_permissions_for_resource_group(permissions_list, resource_group, resource_filter, role_filter):
     resources = resource_group.template.get('Resources', {})
-    for resource_name, resource_definition in resources.iteritems():
+    for resource_name, resource_definition in six.iteritems(resources):
         if resource_filter and resource_name != resource_filter:
             continue
         __list_permissions_for_resource(permissions_list, resource_group.name, resource_name, resource_definition, role_filter)
@@ -738,3 +763,244 @@ def __list_permissions_for_resource(permissions_list, resource_group_name, resou
                 'Suffixes': suffixes
             }
         )
+
+
+def __output_message(message, should_log=True):
+    if should_log:
+        print(message)
+
+
+def run_project_patcher(context, args):
+    """patcher patch [--silent-patch True|False --dryrun True|False --identifier "identifier"]"""
+    dry_run = args.dryrun
+    deployment_name = args.deployment
+    should_log = not args.silent_patch
+    identifier = args.identifier
+    __output_message("Running lmbr patcher. Called with args: {}".format(args), should_log)
+    run_project_patcher_internal(context, identifier, dry_run, should_log=should_log, deployment_name=deployment_name)
+
+
+def run_project_patcher_internal(context, identifier, dry_run, should_log, deployment_name=None):
+    """Internal call point for post project update"""
+    # Patch project stack if it exists
+    if identifier is None:
+        # Select default patch
+        identifier = DEFAULT_PATCH_IDENTIFIER
+
+    if identifier == DEFAULT_PATCH_IDENTIFIER:
+        __run_032020_project_patch(context, dry_run, should_log, deployment_name)
+    else:
+        __output_message("No patch selected", should_log)
+
+
+def __run_032020_project_patch(context, dry_run, should_log, deployment_name=None):
+    # Need a project stack to do any work
+    if context.config.local_project_settings.project_stack_exists():
+        region = context.config.project_region
+
+        if deployment_name is None:
+            project_identity_pools, project_user_pools = IdentityPoolUtils.list_cognito_pools_in_template(
+                context.config.project_template_aggregator.effective_template)
+            __patch_cloudcanvas_related_identity_roles(context, context.config.project_stack_id, region, project_identity_pools, dry_run, should_log)
+
+        # Patch nominated deployment stack
+        else:
+            deployment_identity_pools, deployment_user_pools = \
+                IdentityPoolUtils.list_cognito_pools_in_template(context.config.deployment_access_template_aggregator.effective_template)
+            __patch_cloudcanvas_related_identity_roles(context, context.config.get_deployment_access_stack_id(deployment_name), region,
+                                                       deployment_identity_pools, dry_run, should_log)
+
+            # It can take up a while for the updated role policy to be propagated
+            # Boto3 doesn't provide a waiter to check whether the policy has taken effect and APIs can retrieve the updated policy immediately
+            # Sleep for 60s here for propagating the DENY->ALLOW flip
+            time.sleep(60)
+    else:
+        __output_message("No active project found. Nothing todo", should_log)
+
+
+def __patch_cloudcanvas_related_identity_roles(context, stack_id, region, identity_pools, dry_run, should_log):
+    """
+    Patches any role associated with a custom CognitoIdentityPool to ensure roles correctly federates from Cognito
+    :param context: The current context object
+    :param stack_id: The stack id the pool is in
+    :param region: The region the stack is in
+    :param identity_pools: The identity pools to find and patch roles for
+    :return:
+    """
+    identity_client = context.aws.client("cognito-identity", region=region)
+    iam_client = context.aws.client("iam", region=region)
+
+    for pool_rec in identity_pools:
+        pool_name = pool_rec.get('Name')
+        pool_definition = pool_rec.get('Definition')
+        __output_message("Fixing Cognito federated access for identity_pool: {}".format(pool_name), should_log)
+        identity_pool_id = custom_resource_utils.get_embedded_physical_id(context.stack.get_physical_resource_id(stack_id, pool_name))
+
+        # Get roles that are associated with identity pool. Roles that have secondary association with the pool, mostly expected to be CloudGemPortal roles
+        metadata = pool_definition.get('Metadata', {})
+        cc_metadata = metadata.get('CloudCanvas', {})
+        role_metadata = cc_metadata.get('AdditionalAssumableRoles', [])
+
+        # Get directly managed role names
+        roles = IdentityPoolUtils.get_identity_pool_roles(identity_pool_id, identity_client)
+
+        # Combine with roles managed / associated via metadata (secondary roles for user pools etc)
+        for role_name in role_metadata:
+            iam_role_name = context.stack.get_physical_resource_id(stack_id, role_name, optional=False, expected_type='AWS::IAM::Role')
+            roles.append(iam_role_name)
+
+        for role_name in roles:
+            context.view.updating_role(role_name)
+            role = aws_iam_role.IAMRole.factory(role_name, iam_client)
+            __output_message("Checking assume role policies on IAM role: {}".format(role.arn), should_log)
+            new_policy, update = IdentityPoolUtils.add_pool_to_assume_role_policy(identity_pool_id, role.assume_role_policy)
+            if update:
+                if should_log:
+                    __output_message("{}Updating role policy to: {}".format("[DRY-RUN]: " if dry_run else "", new_policy), should_log)
+                if not dry_run:
+                    role.update_trust_policy(json.dumps(new_policy), iam_client)
+                else:
+                    __output_message("Role policy does not require update", should_log)
+
+
+class IdentityPoolUtils:
+    # IAM Principal used by Cognito Identity
+    COGNITO_IDENTITY_PRINCIPAL = 'cognito-identity.amazonaws.com'
+    # Cognito Aud key to be used in relation with STS IAM conditions
+    COGNITO_AUD_CONDITION_KEY = 'cognito-identity.amazonaws.com:aud'
+
+    """A collection of tools to help secure CloudCanvas IdentityPools"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_identity_pool_roles(identity_pool_id, cognito_client):
+        roles = []
+        _response = cognito_client.get_identity_pool_roles(IdentityPoolId=identity_pool_id)
+        _roles = _response.get('Roles', {})
+        authenticated_role = _roles.get('authenticated', None)
+        if authenticated_role:
+            roles.append(aws_iam_role.IAMRole.role_name_from_arn_without_path(authenticated_role))
+
+        unauthenticated_role = _roles.get('unauthenticated', None)
+        if unauthenticated_role:
+            roles.append(aws_iam_role.IAMRole.role_name_from_arn_without_path(unauthenticated_role))
+        return roles
+
+    @staticmethod
+    def find_existing_pool_ids_references_in_assume_role_policy(policy_document):
+        # Find if an existing condition exists in policy statement for the identity_pool_id
+        # See https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html
+        # {
+        #  "Effect": "Allow",
+        #  "Principal": {
+        #    "Federated": "cognito-identity.amazonaws.com"
+        #  },
+        #  "Action": "sts:AssumeRoleWithWebIdentity",
+        #  "Condition": {
+        #    "StringEquals": {
+        #      "cognito-identity.amazonaws.com:aud": [
+        #        "us-east-1:8c7a6958-4382-4a99-895c-1b326351ec5b",
+        #        "us-east-1:8c7a6958-4382-4a99-895c-1b326351ec12",
+        #        "us-east-1:8c7a6958-4382-4a99-895c-1b326351ec13"
+        #      ]
+        #    },
+        #    "ForAnyValue:StringLike": {
+        #      "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        #    }
+        #  }
+        # }"
+
+        existing_pool_ids = []
+        cognito_federation_statement = None
+        cognito_aud_condition = None
+
+        statements = policy_document.get("Statement", [])
+        for statement in statements:
+            if statement.get('Action') != "sts:AssumeRoleWithWebIdentity":
+                continue
+
+            principal = statement.get("Principal", {})
+            if "Federated" in principal:
+                service = principal['Federated']
+                if service == IdentityPoolUtils.COGNITO_IDENTITY_PRINCIPAL:
+                    cognito_federation_statement = statement
+                    conditions = statement.get('Condition', {})
+                    for condition in six.iteritems(conditions):
+                        if 'StringEquals' in condition:
+                            cognito_aud_condition = conditions['StringEquals']
+                            cognito_identity_aud = cognito_aud_condition.get(IdentityPoolUtils.COGNITO_AUD_CONDITION_KEY, '')
+                            if len(cognito_identity_aud) > 0:
+                                existing_pool_ids = cognito_identity_aud
+                                break
+        return existing_pool_ids, cognito_federation_statement, cognito_aud_condition
+
+    @staticmethod
+    def add_pool_to_assume_role_policy(identity_pool_id, policy_document):
+        """
+        Add an identity pool to an AssumeRolePolicy statement
+        - Only adds the pool if the role federates to Cognito identities via  AssumeRoleWithWebIdentity
+        - Ensures that the pool identity is only added if its not in the standard aud condition
+
+        :param identity_pool_id: The pool_id to add
+        :param policy_document: Policy document to update
+        :return: The new document, boolean to see if it requires update
+        """
+        existing_pool_ids, cognito_federation_statement, cognito_aud_condition = \
+            IdentityPoolUtils.find_existing_pool_ids_references_in_assume_role_policy(policy_document)
+
+        update = False
+
+        # Is there a Cognito federation statement?
+        if cognito_federation_statement:
+            permission = cognito_federation_statement.get('Effect')
+
+            # Enable Cognito role permissions that may have been denied during project update
+            # Assumes all roles should be active (either attached to pool or in AdditionalAssumableRoles)
+            if permission == 'Deny':
+                cognito_federation_statement['Effect'] = 'Allow'
+                update = True
+
+            # No existing aud statement, so add one
+            if cognito_aud_condition is None:
+                new_condition = IdentityPoolUtils.generate_cognito_identity_condition_statement(identity_pool_id)
+                if cognito_federation_statement.get('Condition') is None:
+                    cognito_federation_statement['Condition'] = {}
+                cognito_federation_statement.get('Condition')['StringEquals'] = new_condition
+                update = True
+            # Else check to see if pool_id is not in Condition
+            elif identity_pool_id not in existing_pool_ids:
+                new_ids = [identity_pool_id]
+                # See if we have an array or a string in condition
+                if type(existing_pool_ids) is list:
+                    new_ids.extend(existing_pool_ids)
+                else:
+                    new_ids.append(existing_pool_ids)
+
+                cognito_aud_condition[IdentityPoolUtils.COGNITO_AUD_CONDITION_KEY] = new_ids
+                update = True
+
+        return policy_document, update
+
+    @staticmethod
+    def generate_cognito_identity_condition_statement(identity_pool_id):
+        """Make a new Cognito aud dictionary"""
+        return {
+            IdentityPoolUtils.COGNITO_AUD_CONDITION_KEY: [
+                identity_pool_id
+            ]
+        }
+
+    @staticmethod
+    def list_cognito_pools_in_template(template):
+        identity_pool_mappings = []
+        user_pool_mappings = []
+
+        for resource, definition in six.iteritems(template.get('Resources', {})):
+            if definition.get('Type') == 'Custom::CognitoIdentityPool':
+                identity_pool_mappings.append({'Name': resource, 'Definition': definition})
+            elif definition.get('Type') == 'Custom::CognitoUserPool':
+                user_pool_mappings.append({'Name': resource, 'Definition': definition})
+
+        return identity_pool_mappings, user_pool_mappings

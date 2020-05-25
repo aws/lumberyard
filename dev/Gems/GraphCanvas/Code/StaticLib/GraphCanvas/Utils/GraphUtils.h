@@ -142,6 +142,8 @@ namespace GraphCanvas
 
         AZStd::unordered_set< ConnectionId > m_createdConnections;
         CreationType m_connectionType = CreationType::FullyConnected;
+
+        bool m_createModelConnections = false;
     };    
 
     struct AlignConfig;
@@ -173,6 +175,28 @@ namespace GraphCanvas
         bool m_allowOpportunisticConnections = false;
         OpportunisticSpliceResult m_opportunisticSpliceResult;
     };    
+
+    struct NodeDetachConfig
+    {
+        NodeDetachConfig() = default;
+
+        NodeDetachConfig(const NodeId& nodeId)
+            : m_nodeId(nodeId)
+        {
+        }
+
+        NodeId                           m_nodeId;
+
+        ListingType                      m_listingType = ListingType::BlackList;
+        AZStd::unordered_set< SlotType > m_typeListing;
+    };
+
+    struct HideSlotConfig
+    {
+        TypeListingConfiguration<SlotGroup>         m_slotGroupListing;
+        TypeListingConfiguration<ConnectionType>    m_connectionTypeListing;
+        TypeListingConfiguration<SlotType>          m_slotTypeListing;
+    };
 
     class GraphUtils
     {
@@ -237,7 +261,7 @@ namespace GraphCanvas
         static bool SpliceNodeOntoConnection(const NodeId& node, const ConnectionId& connectionId, ConnectionSpliceConfig& spliceConfiguration);
         static bool SpliceSubGraphOntoConnection(const GraphSubGraph& subGraph, const ConnectionId& connectionId);
 
-        static void DetachNodeAndStitchConnections(const NodeId& node);
+        static void DetachNodeAndStitchConnections(const NodeDetachConfig& nodeDetatchConfig);
         static void DetachSubGraphAndStitchConnections(const GraphSubGraph& subGraph);
 
         static bool CreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode, CreateConnectionsBetweenConfig& creationConfig);
@@ -255,6 +279,8 @@ namespace GraphCanvas
         static AZStd::unordered_set<NodeId> FindTerminalForNodeChain(const AZStd::vector<AZ::EntityId>& nodeIds, ConnectionType searchDirection);
 
         static void SetNodesEnabledState(const AZStd::unordered_set<NodeId>& nodeIds, RootGraphicsItemEnabledState enabledState);
+
+        static bool CanHideEndpoint(const Endpoint& endpoint, const HideSlotConfig& slotConfig);
 
     private:
         static ConnectionId CreateUnknownConnection(const GraphId& graphId, const Endpoint& firstEndpoint, const Endpoint& secondEndpoint);

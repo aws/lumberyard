@@ -810,7 +810,7 @@ namespace CD
                 else if (resultDistance == eResultDistance_Middle)
                 {
                     BrushVec3 edgeVector(edge.m_v[1] - edge.m_v[0]);
-                    outNearestPos = edge.m_v[0] + (edgeVector.Dot(vertex - edge.m_v[0]) / edgeVector.Dot(edgeVector)) * edgeVector;
+                    outNearestPos = edge.m_v[0] + aznumeric_cast<float>(edgeVector.Dot(vertex - edge.m_v[0]) / edgeVector.Dot(edgeVector)) * edgeVector;
                 }
             }
         }
@@ -3220,8 +3220,8 @@ namespace CD
             }
         }
 
-        m_Vertices[nVertexIndex] = SVertex(nextEdge.m_v[0] + fDeltaToNextEdge * (nextEdge.m_v[1] - nextEdge.m_v[0]).GetNormalized());
-        BrushVec3 newVertex = prevEdge.m_v[1] + fDeltaToPrevEdge * (prevEdge.m_v[0] - prevEdge.m_v[1]).GetNormalized();
+        m_Vertices[nVertexIndex] = SVertex(nextEdge.m_v[0] + aznumeric_cast<float>(fDeltaToNextEdge) * (nextEdge.m_v[1] - nextEdge.m_v[0]).GetNormalized());
+        BrushVec3 newVertex = prevEdge.m_v[1] + aznumeric_cast<float>(fDeltaToPrevEdge) * (prevEdge.m_v[0] - prevEdge.m_v[1]).GetNormalized();
         AddVertex(newVertex);
 
         return true;
@@ -3271,8 +3271,8 @@ namespace CD
         float shortestEdgeSpeed0 = std::tan(std::acos(prevDir.Dot(shortestLine.m_Normal)));
         float shortestEdgeSpeed1 = std::tan(std::acos(nextDir.Dot(-shortestLine.m_Normal)));
 
-        float prevSpeed = 1 / shortestEdgeDir.Dot(-prevLine.m_Normal);
-        float nextSpeed = 1 / shortestEdgeDir.Dot(nextLine.m_Normal);
+        float prevSpeed = aznumeric_cast<float>(1 / shortestEdgeDir.Dot(-prevLine.m_Normal));
+        float nextSpeed = aznumeric_cast<float>(1 / shortestEdgeDir.Dot(nextLine.m_Normal));
 
         fOutShortestScale = -(fShortestLength) / (prevSpeed + nextSpeed - shortestEdgeSpeed0 - shortestEdgeSpeed1) + kDesignerEpsilon * 100.0f;
 

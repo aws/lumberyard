@@ -41,10 +41,10 @@ namespace GraphCanvas
         return "Align";
     }
     
-    ContextMenuAction::SceneReaction AlignSelectionMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction AlignSelectionMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        EditorId editorId;
-        SceneRequestBus::EventResult(editorId, graphId, &SceneRequests::GetEditorId);
+        const GraphId& graphId = GetGraphId();
+        EditorId editorId = GetEditorId();       
 
         AlignConfig alignConfig;
 

@@ -53,6 +53,10 @@ namespace AzToolsFramework
             
             bool IsValid() const;
 
+            void SetTitle(const QString& title);
+
+            QString GetTitle() const;
+
             static AssetSelectionModel AssetTypeSelection(const AZ::Data::AssetType& assetType, bool multiselect = false);
             static AssetSelectionModel AssetTypeSelection(const char* assetTypeName, bool multiselect = false);
             static AssetSelectionModel AssetTypesSelection(const AZStd::vector<AZ::Data::AssetType>& assetTypes, bool multiselect = false);
@@ -60,14 +64,16 @@ namespace AzToolsFramework
             static AssetSelectionModel EverythingSelection(bool multiselect = false);
 
         private:
-            bool m_multiselect;     
+            bool m_multiselect;
 
             // some entries like folder should always be displayed, but not always selectable, thus 2 separate filters
-            FilterConstType m_selectionFilter;            
+            FilterConstType m_selectionFilter;
             FilterConstType m_displayFilter;
             
             AZStd::vector<AZ::Data::AssetId> m_selectedAssetIds;
             AZStd::vector<const AssetBrowserEntry*> m_results;
+
+            QString m_title;
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

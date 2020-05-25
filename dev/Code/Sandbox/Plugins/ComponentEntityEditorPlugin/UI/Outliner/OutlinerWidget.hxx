@@ -126,6 +126,17 @@ private:
     void DoMoveEntityUp();
     void DoMoveEntityDown();
     void GoToEntitiesInViewport();
+
+    void DoSelectSliceRootAboveSelection();
+    void DoSelectSliceRootBelowSelection();
+    void DoSelectTopSliceRoot();
+    void DoSelectBottomSliceRoot();
+
+    void DoSelectSliceRootNextToSelection(bool above);
+    void DoSelectEdgeSliceRoot(bool top);
+
+    void SetIndexAsCurrentAndSelected(const QModelIndex& index);
+
     void SetupActions();
     void SelectSliceRoot();
 
@@ -138,6 +149,11 @@ private:
     QAction* m_actionToMoveEntityUp;
     QAction* m_actionToMoveEntityDown;
     QAction* m_actionGoToEntitiesInViewport;
+
+    QAction* m_actionToSelectSliceRootAboveSelection;
+    QAction* m_actionToSelectSliceRootBelowSelection;
+    QAction* m_actionToSelectTopSliceRoot;
+    QAction* m_actionToSelectBottomSliceRoot;
 
     void OnTreeItemClicked(const QModelIndex &index);
     void OnTreeItemExpanded(const QModelIndex &index);

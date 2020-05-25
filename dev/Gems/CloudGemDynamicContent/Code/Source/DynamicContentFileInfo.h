@@ -117,7 +117,9 @@ namespace CloudCanvas
             void SetFileSize(uint64_t fileSize) { m_fileSize = fileSize; }
 
             AZStd::string GetRequestURL() const { return m_requestURL; }
+            AZ::u64 GetUrlCreationTimestamp() const { return m_urlCreationTimestamp; }
             void SetRequestURL(const AZStd::string& requestURL) { m_requestURL = requestURL; }
+            void SetUrlCreationTimestamp(const AZ::u64 urlCreationTimestamp) { m_urlCreationTimestamp = urlCreationTimestamp; }
             static const char* GetStatusString(FileStatus requestStatus);
 
             void SetResultData(const CloudGemDynamicContent::ServiceAPI::FileRequestResult& resultData);
@@ -137,6 +139,7 @@ namespace CloudCanvas
             AZStd::string m_outputDir;
             AZStd::string m_isManifest;
             AZStd::string m_requestURL;
+            AZ::u64 m_urlCreationTimestamp;
 
             // Full resolved path
             AZStd::string m_localFileName;

@@ -35,13 +35,14 @@ namespace Woodpecker
 
     protected:
 
-        virtual void ReflectSerializeDeprecated();
         virtual void RegisterCoreComponents();
         virtual void CreateSystemComponents();
         virtual void CreateApplicationComponents();
         virtual void OnApplicationEntityActivated();
 
     private:
+        AZStd::string GetStoragePath() const;
+        
         bool LaunchDiscoveryService();
 
         // AZ::UserSettingsFileLocatorBus::Handler

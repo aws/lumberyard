@@ -26,11 +26,6 @@ namespace GraphCanvas
     {
         setToolTip("Removes all of the unused elements from the active graph");
     }
-    
-    void RemoveUnusedElementsMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
-    {
-        setEnabled(true);
-    }
 
     bool RemoveUnusedElementsMenuAction::IsInSubMenu() const
     {
@@ -42,8 +37,10 @@ namespace GraphCanvas
         return "Remove Unused";
     }
 
-    ContextMenuAction::SceneReaction RemoveUnusedElementsMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction RemoveUnusedElementsMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::RemoveUnusedElements);
         return SceneReaction::PostUndo;
     }
@@ -58,11 +55,6 @@ namespace GraphCanvas
         setToolTip("Removes all of the unused nodes from the active graph");
     }
 
-    void RemoveUnusedNodesMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
-    {
-        setEnabled(true);
-    }
-
     bool RemoveUnusedNodesMenuAction::IsInSubMenu() const
     {
         return true;
@@ -73,8 +65,10 @@ namespace GraphCanvas
         return "Remove Unused";
     }
 
-    ContextMenuAction::SceneReaction RemoveUnusedNodesMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
+    ContextMenuAction::SceneReaction RemoveUnusedNodesMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
+        const GraphId& graphId = GetGraphId();
+
         SceneRequestBus::Event(graphId, &SceneRequests::RemoveUnusedNodes);
         return SceneReaction::PostUndo;
     }

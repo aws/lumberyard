@@ -29,7 +29,7 @@ import uuid
 def dispatch(event, context):
     try:
         user_status = event.get('request', {}).get('userAttributes', {}).get('cognito:user_status', None)
-        print 'Request Type: {}, Username: {}, Pool: {}, User Status: {}'.format(event['triggerSource'], event['userName'], event['userPoolId'], user_status)
+        print('Request Type: {}, Username: {}, Pool: {}, User Status: {}'.format(event['triggerSource'], event['userName'], event['userPoolId'], user_status))
         if event['triggerSource'] == 'DefineAuthChallenge_Authentication':
             define_auth_challenge(event)
         elif event['triggerSource'] == 'CreateAuthChallenge_Authentication':
@@ -38,7 +38,7 @@ def dispatch(event, context):
             verify_auth_challenge_response(event)
         else:
             raise RuntimeError('Unsupported event type {}'.format(event['triggerSource']))
-        print 'Response: {}'.format(event['response'])
+        print('Response: {}'.format(event['response']))
         return event
     except errors.ClientError:
         raise
@@ -56,13 +56,13 @@ def define_auth_challenge(event):
                 # The user has successfully completed the challenge.
                 # This response tells Cognito that the whole auth flow has succeeded.
                 event['response']['issueTokens'] = True
-                print 'Challenge {} complete, issuing tokens.'.format(challenge['challengeMetadata'])
+                print('Challenge {} complete, issuing tokens.'.format(challenge['challengeMetadata']))
                 return
             else:
                 # The user has failed the challenge.
                 # This response tells Cognito that the whole auth flow has failed.
                 event['response']['failAuthentication'] = True
-                print 'Challenge {} failed, aborting the auth flow.'.format(challenge['challengeMetadata'])
+                print('Challenge {} failed, aborting the auth flow.'.format(challenge['challengeMetadata']))
                 return
     # The user has not answered the challenge yet.
     # This response tells Cognito to send a custom challenge to the user.
@@ -86,7 +86,7 @@ def create_auth_challenge(event):
 # creates or updates the account's username mapping.
 def verify_auth_challenge_response(event):
     if 'privateChallengeParameters' not in event['request'] or 'type' not in event['request']['privateChallengeParameters']:
-        print 'The request is missing privateChallengeParameters.type'
+        print('The request is missing privateChallengeParameters.type')
         event['response']['answerCorrect'] = False
         return
 
@@ -99,18 +99,18 @@ def verify_auth_challenge_response(event):
         try:
             answer = json.loads(event['request']['challengeAnswer'])
         except ValueError as e:
-            print 'Unable to parse the answer for ForceChangePassword as json'
+            print('Unable to parse the answer for ForceChangePassword as json')
             event['response']['answerCorrect'] = False
             return
 
         password = answer.get('password')
         new_password = answer.get('newPassword')
         if password == None or new_password == None:
-            print 'The answer for the ForceChangePassword challenge is missing the password or newPassword.'
+            print('The answer for the ForceChangePassword challenge is missing the password or newPassword.')
             event['response']['answerCorrect'] = False
             return
     else:
-        print 'Unsupported challenge type: {}'.format(challenge_type)
+        print('Unsupported challenge type: {}'.format(challenge_type))
         event['response']['answerCorrect'] = False
         return
 
@@ -126,7 +126,7 @@ def verify_auth_challenge_response(event):
 
     if 'AuthenticationResult' not in idpResponse:
         if 'ChallengeName' in idpResponse:
-            print 'The response from AdminInitiateAuth contained a {} challenge.'.format(idpResponse.get('ChallengeName'))
+            print('The response from AdminInitiateAuth contained a {} challenge.'.format(idpResponse.get('ChallengeName')))
 
         if idpResponse.get('ChallengeName') == 'NEW_PASSWORD_REQUIRED':
             idpResponse = account_utils.get_user_pool_client().admin_respond_to_auth_challenge(
@@ -142,17 +142,17 @@ def verify_auth_challenge_response(event):
 
             if 'AuthenticationResult' not in idpResponse:
                 if 'ChallengeName' in idpResponse:
-                    print 'The response from AdminInitiateAuth contained a {} challenge.'.format(idpResponse.get('ChallengeName'))
-                print 'Authentication failed: the response from AdminInitiateAuth did not contain AuthenticationResult'
+                    print('The response from AdminInitiateAuth contained a {} challenge.'.format(idpResponse.get('ChallengeName')))
+                print('Authentication failed: the response from AdminInitiateAuth did not contain AuthenticationResult')
                 event['response']['answerCorrect'] = False
                 return
         else:
-            print 'Authentication failed: the response from AdminInitiateAuth did not contain AuthenticationResult'
+            print('Authentication failed: the response from AdminInitiateAuth did not contain AuthenticationResult')
             event['response']['answerCorrect'] = False
             return
 
     if 'IdToken' not in idpResponse['AuthenticationResult']:
-        print 'The response from AdminInitiateAuth did not contain an IdToken'
+        print('The response from AdminInitiateAuth did not contain an IdToken')
         event['response']['answerCorrect'] = False
         return
 
@@ -166,7 +166,7 @@ def verify_auth_challenge_response(event):
     )
 
     if 'IdentityId' not in idResponse:
-        print 'The response from GetId did not contain an IdentityId'
+        print('The response from GetId did not contain an IdentityId')
         event['response']['answerCorrect'] = False
         return
 

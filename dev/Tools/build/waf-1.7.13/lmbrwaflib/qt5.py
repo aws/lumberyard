@@ -64,6 +64,12 @@ A few options (--qt{dir,bin,...}) and environment variables
 tool path selection, etc; please read the source for more info.
 
 """
+# System Imports
+import os
+import re
+import shutil
+import stat
+import sys
 
 try:
     from xml.sax import make_parser
@@ -74,20 +80,18 @@ except ImportError:
 else:
     has_xml = True
 
-import os, sys, re, time, shutil, stat
-from waflib.Tools import cxx
-from waflib import Task, Utils, Options, Errors, Context
+# waflib imports
+from waflib import Context, Errors, Logs, Options, Task, Utils
 from waflib.TaskGen import feature, after_method, extension, before_method
 from waflib.Configure import conf
 from waflib.Tools import c_preproc
-from waflib import Logs
-from generate_uber_files import UBER_HEADER_COMMENT
-import copy_tasks
-from collections import defaultdict
-from threading import Lock
-from sets import Set
-import lmbr_setup_tools
-import lumberyard
+
+# lmbrwaflib imports
+from lmbrwaflib import copy_tasks
+from lmbrwaflib import lmbr_setup_tools
+from lmbrwaflib import lumberyard
+from lmbrwaflib.generate_uber_files import UBER_HEADER_COMMENT
+
 
 MOC_H = ['.h', '.hpp', '.hxx', '.hh']
 """
@@ -264,6 +268,10 @@ class qxx(Task.classes['cxx']):
             self.add_moc_tasks()
             # At this point, the moc task should be done, recycle and try the status check again
             self.moc_done = 1
+            try:
+                del self.cache_sig
+            except:
+                pass
             return Task.Task.runnable_status(self)
 
         return status
@@ -914,7 +922,7 @@ bin_cache = {}
 # maintain a cache set of platforms that don't have Qt
 # so that we don't needlessly search multiple times, and
 # so that the user doesn't get numerous warnings of the same thing
-QT_SDK_MISSING = Set()
+QT_SDK_MISSING = set()
 
 
 @conf
@@ -1107,7 +1115,7 @@ def find_qt5_binaries(self, platform):
 
         for f in lst:
             try:
-                ret = self.find_program(f, path_list=paths, silent_output=True)
+                ret = self.find_program(f, path_list=paths, silent_output=True, var=var)
             except self.errors.ConfigurationError:
                 pass
             else:
@@ -1463,12 +1471,12 @@ def qtlib_bootstrap(self, platform, configuration):
                 if os.path.exists(dst):
                     os.chmod(dst, stat.S_IWRITE)
             except Exception as err:
-                Logs.warn('[WARN] Unable to make target file {} writable {}'.format(dst, err.message))
+                Logs.warn('[WARN] Unable to make target file {} writable {}'.format(dst, err))
 
             try:
                 shutil.copy2(src, dst)
             except Exception as err:
-                Logs.warn('[WARN] Unable to copy {} to {}: {}'.format(src, dst, err.message))
+                Logs.warn('[WARN] Unable to copy {} to {}: {}'.format(src, dst, err))
 
             return 1
         else:
@@ -1490,16 +1498,16 @@ def qtlib_bootstrap(self, platform, configuration):
         # Used to track number of files copied by this function
         num_files_copied = 0
 
-        # Create the qtlibs subfolder
-        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
-        if not os.path.exists(dst_qtlib):
-            os.makedirs(dst_qtlib)
-
         # If qt fails to configure, the folder copies below will give meaningless errors.
         # Test for this condition and error out here
         if not ctx.env.QT_LIB_DIR:
             Logs.warn('unable to find QT')
             return num_files_copied
+
+        # Create the qtlibs subfolder
+        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
+        if not os.path.exists(dst_qtlib):
+            os.makedirs(dst_qtlib)
 
         # Copy the libs for qtlibs
         lib_pattern = patterns

@@ -123,7 +123,7 @@ public:
     AZCG_Field(AzField::Serialize(false))
     int m_excludedData;
 
-    AZCG_Field(AzField::Edit())
+    AZCG_Field(AzField::Edit(), AzField::Serialize())
     Enums::LazyEnum m_lazyEnum;
 };
 

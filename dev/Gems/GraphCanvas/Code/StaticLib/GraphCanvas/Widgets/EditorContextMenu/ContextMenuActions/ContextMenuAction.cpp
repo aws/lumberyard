@@ -11,6 +11,8 @@
 */
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
 
+#include <GraphCanvas/Components/SceneBus.h>
+
 namespace GraphCanvas
 {
     //////////////////////
@@ -21,12 +23,12 @@ namespace GraphCanvas
     {
     }
 
-    void ContextMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
+    void ContextMenuAction::SetTarget(const GraphId& graphId, const AZ::EntityId& targetId)
     {
-        AZ_UNUSED(graphId);
-        AZ_UNUSED(targetId);
+        m_graphId = graphId;
+        m_targetId = targetId;
 
-        setEnabled(true);
+        RefreshAction();
     }
 
     bool ContextMenuAction::IsInSubMenu() const
@@ -37,6 +39,37 @@ namespace GraphCanvas
     AZStd::string ContextMenuAction::GetSubMenuPath() const
     {
         return "";
+    }
+
+    const AZ::EntityId& ContextMenuAction::GetTargetId() const
+    {
+        return m_targetId;
+    }
+
+    const GraphId& ContextMenuAction::GetGraphId() const
+    {
+        return m_graphId;
+    }
+
+    EditorId ContextMenuAction::GetEditorId() const
+    {
+        EditorId editorId;
+        SceneRequestBus::EventResult(editorId, GetGraphId(), &SceneRequests::GetEditorId);
+
+        return editorId;
+    }
+
+    void ContextMenuAction::RefreshAction()
+    {
+        RefreshAction(m_graphId, m_targetId);
+    }
+
+    void ContextMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
+    {
+        AZ_UNUSED(graphId);
+        AZ_UNUSED(targetId);
+
+        setEnabled(true);
     }
 
 #include <StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.moc>

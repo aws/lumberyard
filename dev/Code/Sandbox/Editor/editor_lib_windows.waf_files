@@ -1,0 +1,7 @@
+{
+    "auto": {
+      "Core": [
+        "EditorLoadDependencies_Windows.cpp"
+      ]
+    }
+}

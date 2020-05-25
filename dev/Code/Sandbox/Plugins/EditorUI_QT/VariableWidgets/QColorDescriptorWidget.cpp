@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "QColorDescriptorWidget.h"
 
 #ifdef EDITOR_QT_UI_EXPORTS
@@ -372,11 +372,11 @@ void QColorDescriptorWidget::OnColorChanged()
 
 void QColorDescriptorWidget::OnHueSliderChange()
 {
-    int offset = hueRanges[hueRangeComboBox.currentIndex()].min;
-    int currentHue = (offset + hueSlider.value()) % 360;
-    int h, s, l, a;
-    currentColor.getHsl(&h, &s, &l, &a);
-    currentColor.setHsl(currentHue, s, l, a);
+    const int offset = hueRanges[hueRangeComboBox.currentIndex()].min;
+    const qreal currentHue = (offset + hueSlider.value()) % 360;
+    qreal h, s, l, a;
+    currentColor.getHslF(&h, &s, &l, &a);
+    currentColor.setHslF(currentHue, s, l, a);
     if ((bool)m_hueChangedCallback)
     {
         m_hueChangedCallback(currentHue);

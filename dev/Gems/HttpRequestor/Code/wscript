@@ -30,10 +30,6 @@ def build(bld):
         uselib      = ['AWS_CPP_SDK_CORE'],
         
         file_list   = file_list,
-
-        includes    = ['.',
-                       bld.ThirdPartyPath('boost'),
-                       bld.Path('Code/CryEngine/CryCommon')],
-
+        linux_rpath = ['$ORIGIN'],
         win_x64_clang_cxxflags = ['-frtti'],
     )

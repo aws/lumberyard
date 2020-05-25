@@ -115,24 +115,23 @@ namespace ScriptCanvasEditor
         AZ::EntityId DisplayScriptCanvasNode(const AZ::EntityId& graphCanvasGraphId, const ScriptCanvas::Node* node);
 
         // Specific create methods which will also handle displaying the node.
-        NodeIdPair CreateNode(const AZ::Uuid& classData, AZ::EntityId scriptCanvasGraphId, const StyleConfiguration& styleConfiguration);
-        NodeIdPair CreateEntityNode(const AZ::EntityId& sourceId, AZ::EntityId scriptCanvasGraphId);
-        NodeIdPair CreateObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, AZ::EntityId scriptCanvasGraphId);
-        NodeIdPair CreateEbusWrapperNode(const AZStd::string& busName, const AZ::EntityId& scriptCanvasGraphId);
+        NodeIdPair CreateNode(const AZ::Uuid& classData, const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const StyleConfiguration& styleConfiguration);
+        NodeIdPair CreateEntityNode(const AZ::EntityId& sourceId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        NodeIdPair CreateObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        NodeIdPair CreateEbusWrapperNode(const AZStd::string& busName, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         
         // Script Events
         AZ::EntityId DisplayScriptEventNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Data::AssetId assetId, const ScriptEvents::Method& methodDefinition);
-        NodeIdPair CreateScriptEventReceiverNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Data::AssetId& assetId);
-        NodeIdPair CreateScriptEventSenderNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);
+        NodeIdPair CreateScriptEventReceiverNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId);
+        NodeIdPair CreateScriptEventSenderNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);
 
-        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
-        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
+        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
 
         // SlotGroup will control how elements are grouped.
         // Invalid will cause the slots to put themselves into whatever category they belong to by default.
         AZ::EntityId DisplayScriptCanvasSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::Slot& slot, GraphCanvas::SlotGroup group = GraphCanvas::SlotGroups::Invalid);
-        AZ::EntityId DisplayScriptCanvasPropertySlot(const AZ::EntityId& graphCanvasNodeId, const AZ::Crc32& propertyId, const GraphCanvas::SlotConfiguration& slotConfiguration);
-        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::ExtendableSlotConfiguration& extenderConfiguration);
+        AZ::EntityId DisplayVisualExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::VisualExtensionSlotConfiguration& extenderConfiguration);
 
         void CopySlotTranslationKeyedNamesToDatums(AZ::EntityId graphCanvasNodeId);
     }

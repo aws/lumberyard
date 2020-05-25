@@ -127,9 +127,11 @@ class CCoverSurfaceManager;
 class QWidget;
 
 //////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API CAIManager
     : public IEditorNotifyListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CAIManager();
     ~CAIManager();
@@ -150,17 +152,12 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //! Smart Objects States and Actions enumeration
     void GetSmartObjectStates(QStringList& values) const;
-    void GetSmartObjectActions(QStringList& values) const;
     void AddSmartObjectState(const char* sState);
 
     // Enumerate all AI characters.
 
     //////////////////////////////////////////////////////////////////////////
     void ReloadScripts();
-    void ReloadActionGraphs();
-    void SaveActionGraphs();
-    void SaveAndReloadActionGraphs();
-    bool NewAction(QString& filename, QWidget* container);
 
     const MapTemplates& GetMapTemplates() const { return m_mapTemplates; }
     const char* GetSmartObjectTemplateName(int index) const { return nullptr; }
@@ -207,9 +204,6 @@ public:
 private:
     void EnumAnchorActions();
     void RandomizeAIVariations();
-
-    void LoadActionGraphs();
-    void FreeActionGraphs();
 
     void FreeTemplates();
     bool ReloadTemplates();

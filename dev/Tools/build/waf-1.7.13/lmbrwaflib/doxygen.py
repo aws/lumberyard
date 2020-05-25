@@ -12,9 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import os
+
+# waflib imports
 from waflib import Logs, Utils, Errors, Build
 from waflib.Context import BOTH
-import os
+
 
 warned_about_missing_doxygen = False
         

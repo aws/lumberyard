@@ -21,6 +21,7 @@
 #include <Cry_Vector3.h>
 #include "AIDebugDrawHelpers.h"
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 
 static float g_drawOffset = 0.1f;
@@ -558,7 +559,10 @@ float GetDebugDrawZ(const Vec3& pt, bool useTerrain)
             return -gAIEnv.CVars.DebugDrawOffset;
         }
         I3DEngine* pEngine = gEnv->p3DEngine;
-        float terrainZ = pEngine->GetTerrainElevation(pt.x, pt.y);
+        float terrainZ = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainZ
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , pt.x, pt.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
         float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : pEngine->GetWaterLevel(&pt);
         return max(terrainZ, waterZ) + gAIEnv.CVars.DebugDrawOffset;
     }

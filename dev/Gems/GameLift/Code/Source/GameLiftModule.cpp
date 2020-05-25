@@ -13,14 +13,13 @@
 
 #include <platform_impl.h>
 #include "GameLiftModule.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <GridMate/NetworkGridMate.h>
 #include <GameLift/Session/GameLiftClientSession.h>
 #include <GameLift/Session/GameLiftClientService.h>
 #include <GameLift/Session/GameLiftServerSession.h>
 #include <GameLift/Session/GameLiftServerService.h>
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 #include <AWSNativeSDKInit/AWSNativeSDKInit.h>
 #endif
 
@@ -33,7 +32,7 @@ namespace GameLift
     void GameLiftModule::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams)
     {
         CryHooksModule::OnCrySystemInitialized(system, systemInitParams);
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         AWSNativeSDKInit::InitializationManager::InitAwsApi();
 #endif
         // Can't interact with GridMate until CrySystem is fully initialized.
@@ -46,15 +45,15 @@ namespace GameLift
         GameLiftRequestBus::Handler::BusDisconnect();
 
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         StopClientService();
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
         StopServerService();
 #endif
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         AWSNativeSDKInit::InitializationManager::Shutdown();
 #endif
 
@@ -63,7 +62,7 @@ namespace GameLift
 
     bool GameLiftModule::IsGameLiftServer() const
     {
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
         return m_serverService != nullptr;
 #else
         return false;
@@ -74,10 +73,6 @@ namespace GameLift
     {
         switch (event)
         {
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            RegisterExternalFlowNodes();
-            break;
-
         case ESYSTEM_EVENT_GAME_POST_INIT:
             break;
 
@@ -88,16 +83,16 @@ namespace GameLift
 
     GameLiftModule::GameLiftModule()
     {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         m_clientService = nullptr;
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
         m_serverService = nullptr;
 #endif
     }
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
     GridMate::GameLiftClientService* GameLiftModule::StartClientService(const GridMate::GameLiftClientServiceDesc& desc)
     {
         GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();
@@ -139,7 +134,7 @@ namespace GameLift
     }
 #endif // BUILD_GAMELIFT_CLIENT
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
     GridMate::GameLiftServerService* GameLiftModule::StartServerService(const GridMate::GameLiftServerServiceDesc& desc)
     {
         GridMate::IGridMate* gridMate = gEnv->pNetwork->GetGridMate();

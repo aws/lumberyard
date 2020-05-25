@@ -57,7 +57,7 @@ namespace UnitTest
         AZ_RTTI(EmptyAssetTypeWithId, "{C0A5DE6F-590F-4DF0-86D6-9498D4C762D8}", AssetData);
 
         EmptyAssetTypeWithId() { ++s_alive; }
-        ~EmptyAssetTypeWithId() { --s_alive; }
+        ~EmptyAssetTypeWithId() override { --s_alive; }
 
         static int s_alive;
     };
@@ -77,7 +77,7 @@ namespace UnitTest
         explicit MyAssetType(const AZ::Data::AssetId& assetId, const AZ::Data::AssetData::AssetStatus assetStatus = AZ::Data::AssetData::AssetStatus::NotLoaded)
             : AssetData(assetId, assetStatus)
             , m_data(nullptr) {}
-        ~MyAssetType()
+        ~MyAssetType() override
         {
             if (m_data)
             {
@@ -101,6 +101,14 @@ namespace UnitTest
         AssetPtr CreateAsset(const AssetId& id, const AssetType& type) override
         {
             (void)id;
+            if (m_delayInCreateAsset && m_delayMsMax > 0)
+            {
+                const size_t msMax = m_delayMsMax;
+                const size_t msMin = AZ::GetMin<size_t>(m_delayMsMin, m_delayMsMax);
+                const size_t msWait = msMax == msMin ? msMax : (msMin + size_t(rand()) % (msMax - msMin));
+
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(msWait));
+            }
             EXPECT_TRUE(type == AzTypeInfo<MyAssetType>::Uuid() || type == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
             if (type == AzTypeInfo<MyAssetType>::Uuid())
             {
@@ -123,7 +131,7 @@ namespace UnitTest
             stream->Read(assetDataSize, myAsset->m_data);
             myAsset->m_data[assetDataSize] = 0;
 
-            if (m_delayMsMax > 0)
+            if (m_delayInLoadAssetData && m_delayMsMax > 0)
             {
                 const size_t msMax = m_delayMsMax;
                 const size_t msMin = AZ::GetMin<size_t>(m_delayMsMin, m_delayMsMax);
@@ -158,7 +166,7 @@ namespace UnitTest
         * Find the stream the asset can be loaded from.
         * \param id - asset id
         */
-        virtual AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
+        AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
         {
             EXPECT_TRUE(type == AzTypeInfo<MyAssetType>::Uuid());
             AssetStreamInfo info;
@@ -188,7 +196,7 @@ namespace UnitTest
             return info;
         }
 
-        virtual AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& type) override
+        AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& type) override
         {
             EXPECT_TRUE(type == AzTypeInfo<MyAssetType>::Uuid());
             AssetStreamInfo info;
@@ -231,6 +239,8 @@ namespace UnitTest
 
         size_t m_delayMsMin = 0;
         size_t m_delayMsMax = 0;
+        bool m_delayInCreateAsset = true;
+        bool m_delayInLoadAssetData = true;
 
         //////////////////////////////////////////////////////////////////////////
     };
@@ -311,7 +321,7 @@ namespace UnitTest
         {
         }
 
-        virtual void OnAssetReady(Asset<AssetData> asset) override
+        void OnAssetReady(Asset<AssetData> asset) override
         {
             EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
             AZStd::string expectedData = AZStd::string::format("Asset<id=%s, type=%s>", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
@@ -323,33 +333,33 @@ namespace UnitTest
             m_ready++;
         }
 
-        virtual void OnAssetMoved(Asset<AssetData> asset, void* oldDataPointer) override
+        void OnAssetMoved(Asset<AssetData> asset, void* oldDataPointer) override
         {
             (void)oldDataPointer;
             EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
             m_moved++;
         }
 
-        virtual void OnAssetReloaded(Asset<AssetData> asset) override
+        void OnAssetReloaded(Asset<AssetData> asset) override
         {
             EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
             m_reloaded++;
         }
 
-        virtual void OnAssetSaved(Asset<AssetData> asset, bool isSuccessful) override
+        void OnAssetSaved(Asset<AssetData> asset, bool isSuccessful) override
         {
             EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
             EXPECT_TRUE(isSuccessful);
             m_saved++;
         }
 
-        virtual void OnAssetUnloaded(const AssetId assetId, const AssetType assetType) override
+        void OnAssetUnloaded(const AssetId assetId, const AssetType assetType) override
         {
             EXPECT_TRUE(assetId == m_assetId && assetType == m_assetType);
             m_unloaded++;
         }
 
-        virtual void OnAssetError(Asset<AssetData> asset) override
+        void OnAssetError(Asset<AssetData> asset) override
         {
             EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
             m_error++;
@@ -1038,7 +1048,7 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
             //////////////////////////////////////////////////////////////////////////
             // AssetCatalog
-            virtual AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& /*type*/) override
+            AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& /*type*/) override
             {
                 AssetStreamInfo info;
                 info.m_dataOffset = 0;
@@ -1083,7 +1093,7 @@ namespace UnitTest
                 return info;
             }
 
-            virtual AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& /*type*/) override
+            AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& /*type*/) override
             {
                 AssetStreamInfo info;
                 info.m_dataOffset = 0;
@@ -1575,7 +1585,7 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
             //////////////////////////////////////////////////////////////////////////
             // AssetCatalog
-            virtual AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& /*type*/) override
+            AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& /*type*/) override
             {
                 AssetStreamInfo info;
                 info.m_dataOffset = 0;
@@ -1620,7 +1630,7 @@ namespace UnitTest
                 return info;
             }
 
-            virtual AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& /*type*/) override
+            AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& /*type*/) override
             {
                 AssetStreamInfo info;
                 info.m_dataOffset = 0;
@@ -2161,6 +2171,198 @@ namespace UnitTest
     TEST_F(AssetJobsMultithreadedTest, ParallelDeepAssetReferences)
     {
         ParallelDeepAssetReferences();
+    }
+
+    class AssetManagerShutdownTest
+        : public AllocatorsFixture
+    {
+        IO::FileIOBase* m_prevFileIO{nullptr};
+
+        TestFileIOBase m_fileIO;
+
+        void WriteAssetToDisk(const AZStd::string& assetName, const AZStd::string& assetIdGuid)
+        {
+            AZStd::string assetFileName = GetTestFolderPath() + assetName;
+            IO::FileIOStream stream(assetFileName.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText | AZ::IO::OpenMode::ModeCreatePath);
+            AZ::Data::AssetId assetId(Uuid(assetIdGuid.c_str()), 0);
+            AZStd::string output = AZStd::string::format("Asset<id=%s, type=%s>", assetId.ToString<AZStd::string>().c_str(), AzTypeInfo<MyAssetType>::Uuid().ToString<AZStd::string>().c_str());
+            stream.Write(output.size(), output.c_str());
+        }
+
+    protected:
+        MyAssetHandlerAndCatalog* m_assetHandlerAndCatalog;
+        bool m_leakExpected = false;
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            m_prevFileIO = IO::FileIOBase::GetInstance();
+            IO::FileIOBase::SetInstance(&m_fileIO);
+            IO::Streamer::Descriptor streamerDesc;
+            IO::Streamer::Create(streamerDesc);
+
+            // create the database
+            AssetManager::Descriptor desc;
+            desc.m_maxWorkerThreads = 2;
+            AssetManager::Create(desc);
+
+            // create and register an asset handler
+            m_assetHandlerAndCatalog = aznew MyAssetHandlerAndCatalog;
+            m_assetHandlerAndCatalog->SetArtificialDelayMilliseconds(10, 10);
+            AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
+            AssetManager::Instance().RegisterCatalog(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
+
+
+            WriteAssetToDisk("MyAsset1.txt", MYASSET1_ID);
+            WriteAssetToDisk("MyAsset2.txt", MYASSET2_ID);
+            WriteAssetToDisk("MyAsset3.txt", MYASSET3_ID);
+            WriteAssetToDisk("MyAsset4.txt", MYASSET4_ID);
+            WriteAssetToDisk("MyAsset5.txt", MYASSET5_ID);
+            WriteAssetToDisk("MyAsset6.txt", MYASSET6_ID);
+           
+            m_leakExpected = false;
+        }
+
+        void TearDown() override
+        {
+            if (IO::Streamer::IsReady())
+            {
+                IO::Streamer::Destroy();
+            }
+            AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+
+            int totalNumOfAssets = 6;
+            for (int idx = 1; idx <= totalNumOfAssets; idx++)
+            {
+                AZStd::string assetFullPath = AZStd::string::format("%sMyAsset%d.txt", GetTestFolderPath().c_str(), idx);
+                if (fileIO->Exists(assetFullPath.c_str()))
+                {
+                    fileIO->Remove(assetFullPath.c_str());
+                }
+            }
+
+            IO::FileIOBase::SetInstance(m_prevFileIO);
+            AllocatorInstance<ThreadPoolAllocator>::Destroy();
+            AllocatorInstance<PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+
+            if (m_leakExpected)
+            {
+                AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+            }
+        }
+
+        void SetLeakExpected()
+        {
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            m_leakExpected = true;
+        }
+    };
+
+    TEST_F(AssetManagerShutdownTest, AssetManagerShutdown_AsyncJobsInQueue_OK)
+    {
+        {
+            Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            Asset<MyAssetType> asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
+            Asset<MyAssetType> asset3 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET3_ID));
+            Asset<MyAssetType> asset4 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET4_ID));
+            Asset<MyAssetType> asset5 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET5_ID));
+            Asset<MyAssetType> asset6 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET6_ID));
+        }
+
+        // destroy asset manager
+        AssetManager::Destroy();
+
+    }
+
+    TEST_F(AssetManagerShutdownTest, AssetManagerShutdown_AsyncJobsInQueueWithDelay_OK)
+    {
+        m_assetHandlerAndCatalog->m_delayInCreateAsset = false;
+
+        {
+            Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            Asset<MyAssetType> asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
+            Asset<MyAssetType> asset3 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET3_ID));
+            Asset<MyAssetType> asset4 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET4_ID));
+            Asset<MyAssetType> asset5 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET5_ID));
+            Asset<MyAssetType> asset6 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET6_ID));
+        }
+
+        // this should ensure that some jobs are actually running, while some are in queue
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
+
+        // destroy asset manager
+        AssetManager::Destroy();
+
+    }
+
+    TEST_F(AssetManagerShutdownTest, AssetManagerShutdown_UnregisteringHandler_WhileJobsFlight_OK)
+    {
+
+        m_assetHandlerAndCatalog->m_delayInCreateAsset = false;
+        {
+            Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            Asset<MyAssetType> asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
+            Asset<MyAssetType> asset3 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET3_ID));
+            Asset<MyAssetType> asset4 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET4_ID));
+            Asset<MyAssetType> asset5 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET5_ID));
+            Asset<MyAssetType> asset6 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET6_ID));
+        }
+
+        // this should ensure that some jobs are actually running, while some are in queue
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
+
+        AssetManager::Instance().PrepareShutDown();
+
+        AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
+        AssetManager::Instance().UnregisterCatalog(m_assetHandlerAndCatalog);
+
+        // we have to manually delete the handler since we have already unregistered the handler
+        delete m_assetHandlerAndCatalog;
+
+        // destroy asset manager
+        AssetManager::Destroy();
+
+    }
+
+    TEST_F(AssetManagerShutdownTest, AssetManagerShutdown_UnregisteringHandler_WhileJobsFlight_Assert)
+    {      
+        m_assetHandlerAndCatalog->m_delayInCreateAsset = false;
+        {
+            Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            Asset<MyAssetType> asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
+            Asset<MyAssetType> asset3 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET3_ID));
+            Asset<MyAssetType> asset4 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET4_ID));
+            Asset<MyAssetType> asset5 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET5_ID));
+            Asset<MyAssetType> asset6 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET6_ID));
+
+            // this should ensure that some jobs are actually running, while some are in queue
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
+
+            AssetManager::Instance().PrepareShutDown();
+            // we are unregistering the handler that has still not destroyed all of its active assets
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+            AssetManager::Instance().UnregisterCatalog(m_assetHandlerAndCatalog);
+            AZ_TEST_START_TRACE_SUPPRESSION;
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(6); // all the above assets ref count will go to zero here but we have already unregistered the handler  
+
+        // we have to manually delete the handler since we have already unregistered the handler
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        delete m_assetHandlerAndCatalog;
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1); // active asset count for this handler is still non zero
+
+        // destroy asset manager
+        AssetManager::Destroy();
+
+        SetLeakExpected();
     }
 }
 

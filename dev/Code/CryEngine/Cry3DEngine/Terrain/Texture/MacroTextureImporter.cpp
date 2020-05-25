@@ -11,8 +11,12 @@
 */
 
 #include "StdAfx.h"
+
+#include <ITerrain.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+
 #include "MacroTextureImporter.h"
-#include "ITerrain.h"
+
 
 namespace MacroTextureImporter
 {
@@ -20,7 +24,7 @@ namespace MacroTextureImporter
 MacroTexture::UniquePtr Import(const char* filepath, uint32 maxElementCountPerPool)
 {
 
-    MacroTextureConfiguration configuration;
+    LegacyTerrain::MacroTextureConfiguration configuration;
     bool success = ReadMacroTextureFile(filepath, configuration);
 
     if (!success)
@@ -45,7 +49,7 @@ MacroTexture::UniquePtr Import(const char* filepath, uint32 maxElementCountPerPo
 
 }
 
-bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration)
+bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration)
 {
     configuration.filePath = filepath;
 
@@ -65,7 +69,7 @@ bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& confi
     {
         if (!cryPak.FRead(&commonHeader, 1, scopedHandle, false))
         {
-            Cry3DEngineBase::FileWarning(0, filepath, "Error opening terrain texture file: header not found (file is broken)");
+            AZ_Warning("LegacyTerrain", false, "Error opening terrain texture file: %s. Header not found (file is broken)", filepath);
             return false;
         }
 
@@ -75,13 +79,13 @@ bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& confi
 
         if (strcmp(commonHeader.signature, "CRY"))
         {
-            Cry3DEngineBase::FileWarning(0, filepath, "Error opening terrain texture file: invalid signature");
+            AZ_Warning("LegacyTerrain", false, "Error opening terrain texture file: %s. Invalid signature", filepath);
             return false;
         }
 
         if (commonHeader.version != FILEVERSION_TERRAIN_TEXTURE_FILE)
         {
-            Cry3DEngineBase::FileWarning(0, filepath, "Error opening terrain texture file: version incompatible (you might need to regenerate the surface texture)");
+            AZ_Warning("LegacyTerrain", false, "Error opening terrain texture file: %s. Version incompatible (you might need to regenerate the surface texture)", filepath);
             return false;
         }
     }
@@ -101,15 +105,15 @@ bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& confi
         cryPak.FRead(&layerHeader, 1, scopedHandle, bSwapEndian);
         if (layerHeader.eTexFormat != 0xFF)
         {
-            Cry3DEngineBase::PrintMessage("  MacroTexture Tiles: Format: %s, Pixel Dimensions: (%dx%d), Bytes: %d",
-                Cry3DEngineBase::GetRenderer()->GetTextureFormatName(layerHeader.eTexFormat),
+            AZ_Printf("LegacyTerrain", "MacroTexture Tiles: Format: %s, Pixel Dimensions: (%dx%d), Bytes: %d",
+                LegacyTerrainBase::GetRenderer()->GetTextureFormatName(layerHeader.eTexFormat),
                 layerHeader.SectorSizeInPixels,
                 layerHeader.SectorSizeInPixels,
                 layerHeader.SectorSizeInBytes);
         }
         else
         {
-            Cry3DEngineBase::FileWarning(0, filepath, "  MacroTexture Layer: FAILED TO LOAD. Please regenerate the terrain texture.");
+            AZ_Warning("LegacyTerrain", false, "MacroTexture Layer: %s. FAILED TO LOAD. Please regenerate the terrain texture.", filepath);
         }
 
         configuration.texureFormat = layerHeader.eTexFormat;
@@ -140,7 +144,7 @@ bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& confi
         indexBlockSize = size * sizeof(uint16) + sizeof(uint16);
         cryPak.FRead(configuration.indexBlocks.data(), size, scopedHandle, bSwapEndian);
 
-        Cry3DEngineBase::PrintMessage("  Texture Index Count: %d", size);
+        AZ_Printf("LegacyTerrain", "Texture Index Count: %d", size);
     }
 
     configuration.sectorStartDataOffset =

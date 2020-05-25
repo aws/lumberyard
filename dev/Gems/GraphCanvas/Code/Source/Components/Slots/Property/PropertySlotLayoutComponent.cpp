@@ -29,7 +29,7 @@ namespace GraphCanvas
     ///////////////////////
     // PropertySlotLayout
     ///////////////////////
-	
+
     PropertySlotLayout::PropertySlotLayout(PropertySlotLayoutComponent& owner)
         : m_connectionType(ConnectionType::CT_Invalid)
         , m_owner(owner)
@@ -154,7 +154,7 @@ namespace GraphCanvas
             if (nodePropertyDisplay)
             {
                 nodePropertyDisplay->SetNodeId(nodeId);
-                nodePropertyDisplay->SetId(m_owner.GetEntityId());
+                nodePropertyDisplay->SetSlotId(m_owner.GetEntityId());
 
                 m_nodePropertyDisplay->SetNodePropertyDisplay(nodePropertyDisplay);
                 

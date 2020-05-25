@@ -16,6 +16,7 @@
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 #include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
+#include <Source/Utils.h>
 
 namespace PhysX
 {
@@ -42,9 +43,7 @@ namespace PhysX
     void ShapeColliderComponent::UpdateScaleForShapeConfigs()
     {
         // all currently supported shape types scale uniformly based on the largest element of the non-uniform scale
-        AZ::Vector3 nonUniformScale = AZ::Vector3::CreateOne();
-        AZ::TransformBus::EventResult(nonUniformScale, GetEntityId(), &AZ::TransformBus::Events::GetLocalScale);
-        AZ::Vector3 uniformScale = AZ::Vector3(nonUniformScale.GetMaxElement());
+        const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
 
         for (auto& shapeConfigPair : m_shapeConfigList)
         {

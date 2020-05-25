@@ -12,7 +12,8 @@
 from __future__ import print_function
 
 import tts
-import urllib
+from six.moves.urllib.request import urlretrieve
+from six import iteritems
 import boto3
 import zipfile
 import json
@@ -84,7 +85,7 @@ def create_zip_file(tts_info_list, name, UUID):
     character_custom_mapping = 'Character'
     line_custom_mapping = 'Line'
     custom_mappings = tts.get_custom_mappings()
-    for key, value in custom_mappings.items():
+    for key, value in iteritems(custom_mappings):
         if value == 'character':
             character_custom_mapping = key
         elif value == 'line':
@@ -145,7 +146,7 @@ def __add_to_zip(key, url, zip_file_name):
     zf = zipfile.ZipFile(zip_file_name, 'a')
     try:
         if not key.rstrip('/') in zf.namelist():
-            urllib.urlretrieve(url, '/tmp/' + key)
+            urlretrieve(url, '/tmp/' + key)
             zf.write('/tmp/' + key, key)
     except:
         error_message = 'Could not add {} to the zip file {}.'.format(key, zip_file_name)

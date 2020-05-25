@@ -89,7 +89,7 @@ namespace UnitTest
             });
         }
 
-        ~StaticModule()
+        ~StaticModule() override
         {
             ModuleTestRequestBus::Handler::BusDisconnect();
             s_loaded = false;
@@ -336,7 +336,7 @@ namespace UnitTest
             return false;
         }
 
-        ~PrintFCollector()
+        ~PrintFCollector() override
         {
             BusDisconnect();
         }

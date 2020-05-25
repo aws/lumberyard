@@ -84,13 +84,13 @@ namespace MetricsEventData
             { eNotify_OnMissionChange, "OnMissionChange" },
             { eNotify_OnBeginLoad, "OnBeginLoad" },
             { eNotify_OnEndLoad, "OnEndLoad" },
+            { eNotify_OnBeginCreate, "OnBeginCreate" },
+            { eNotify_OnEndCreate, "OnEndCreate" },
             { eNotify_OnExportToGame, "OnExportToGame" },
             { eNotify_OnEditModeChange, "OnEditModeChange" },
             { eNotify_OnEditToolChange, "OnEditToolChange" },
             { eNotify_OnBeginGameMode, "OnBeginGameMode" },
             { eNotify_OnEndGameMode, "OnEndGameMode" },
-            { eNotify_OnEnableFlowSystemUpdate, "OnEnableFlowSystemUpdate" },
-            { eNotify_OnDisableFlowSystemUpdate, "OnDisableFlowSystemUpdate" },
             { eNotify_OnSelectionChange, "OnSelectionChange" },
             { eNotify_OnPlaySequence, "OnPlaySequence" },
             { eNotify_OnStopSequence, "OnStopSequence" },
@@ -145,6 +145,7 @@ namespace LyEditorMetrics
             {
                 ec->Class<LyEditorMetricsSystemComponent>("LyEditorMetrics", "Optionally send Lumberyard usage data to Amazon so that we can create a better user experience.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ;
             }

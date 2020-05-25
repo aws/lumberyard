@@ -1,0 +1,18 @@
+{
+    "description"           : "Configuration to build non-essential GFXPrefabLab suite",
+    "visual_studio_name"    : "Viewers",
+    "comment"               : "Viewers Application for testing RPI",
+    "disable_game_projects" : true,
+    "platforms" : ["win", "darwin"],
+    "configurations" : ["debug","profile", "release", "debug_test", "profile_test"],
+
+    "modules" :
+    [
+        "RHI",
+        "RHI.Private.DX12",
+        "RHI.Private.Metal",
+        "RHI.Private.Vulkan",
+        "RPI",
+        "BaseViewer"
+    ]
+}

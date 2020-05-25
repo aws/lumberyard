@@ -70,6 +70,13 @@ namespace ScriptCanvas
         void ReconfigureDatumTo(Datum&& object);
         void ReconfigureDatumTo(const Datum& object);
 
+        void DeepCopyDatum(const Datum& object);
+
+        const AZStd::any& ToAny() const
+        {
+            return m_storage;
+        }
+
         /// If t_Value is a ScriptCanvas value type, regardless of pointer/reference, this will create datum with a copy of that
         /// value. That is, Datum<AZ::Vector3>(source), Datum<AZ::Vector3&>(source), Datum<AZ::Vector3*>(&source), will all produce
         /// a copy of source. If t_Value is a ScriptCanvas reference type, passing in a pointer or reference will created a datum
@@ -204,16 +211,14 @@ namespace ScriptCanvas
         {
             static const t_Value* Help(Datum& datum)
             {
-                AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::GetAsHelper<t_Value, false>");
+                static_assert(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::GetAsHelper<t_Value, false>");
                 if (datum.m_type.GetType() == Data::eType::BehaviorContextObject)
                 {
                     return (*AZStd::any_cast<BehaviorContextObjectPtr>(&datum.m_storage))->CastConst<t_Value>();
                 }
                 else
                 {
-                    return datum.m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()))
-                        ? AZStd::any_cast<const t_Value>(&datum.m_storage)
-                        : nullptr;
+                    return AZStd::any_cast<const t_Value>(&datum.m_storage);
                 }
             }
         };
@@ -252,8 +257,10 @@ namespace ScriptCanvas
         eOriginality m_originality = eOriginality::Copy;
         // storage for the datum, regardless of ScriptCanvas::Data::Type
         AZStd::any m_storage;
+
         // This contains the editor label for m_storage.
         AZStd::string m_datumLabel;
+
         // This contains the editor visibility for m_storage.
         AZ::Crc32 m_visibility{ AZ::Edit::PropertyVisibility::ShowChildrenOnly };
         // storage for implicit conversions, when needed
@@ -264,6 +271,7 @@ namespace ScriptCanvas
         mutable void* m_pointer = nullptr;
         // the ScriptCanvas type of the object
         Data::Type m_type;
+
         // The notificationId to send change notifications to.
         AZ::EntityId m_notificationId;
 
@@ -285,6 +293,8 @@ namespace ScriptCanvas
         bool InitializeBehaviorContextParameter(const AZ::BehaviorParameter& parameterDesc, eOriginality originality, const void* source);
 
         bool InitializeAABB(const void* source);
+
+        bool InitializeAssetId(const void* source);
 
         bool InitializeBehaviorContextObject(eOriginality originality, const void* source);
 
@@ -328,7 +338,7 @@ namespace ScriptCanvas
 
         void* ModValueAddress() const;
 
-        void OnDatumChanged();
+        void OnDatumEdited();
 
         void OnReadBegin();
 
@@ -392,7 +402,7 @@ namespace ScriptCanvas
         {\
             AZ_FORCE_INLINE static const NUMERIC_TYPE* Help(Datum& datum)\
             {\
-                AZ_STATIC_ASSERT(!AZStd::is_pointer<NUMERIC_TYPE>::value, "no pointer types in the Datum::GetAsHelper<" #NUMERIC_TYPE ">");\
+                static_assert(!AZStd::is_pointer<NUMERIC_TYPE>::value, "no pointer types in the Datum::GetAsHelper<" #NUMERIC_TYPE ">");\
                 void* numberStorage(const_cast<void*>(reinterpret_cast<const void*>(&datum.m_conversionStorage)));\
                 return datum.IS_A(Data::Type::Number()) && datum.ToBehaviorContextNumber(numberStorage, AZ::AzTypeInfo<NUMERIC_TYPE>::Uuid())\
                     ? reinterpret_cast<const NUMERIC_TYPE*>(numberStorage)\
@@ -413,7 +423,7 @@ namespace ScriptCanvas
     DATUM_GET_NUMBER_SPECIALIZE(AZ::u64);
     DATUM_GET_NUMBER_SPECIALIZE(float);
     // only requred if the ScriptCanvas::NumberType changes from double, see set specialization below
-    // DATUM_GET_NUMBER_SPECIALIZE(double); 
+    //DATUM_GET_NUMBER_SPECIALIZE(double); 
     DATUM_GET_NUMBER_SPECIALIZE(AZ::VectorFloat);
 
     const void* Datum::GetAsDanger() const
@@ -424,7 +434,7 @@ namespace ScriptCanvas
     template<typename t_Value>
     bool Datum::IS_A() const
     {
-        AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Is, please");
+        static_assert(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Is, please");
         return m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()));
     }
 
@@ -478,7 +488,7 @@ namespace ScriptCanvas
     template<typename t_Value>
     bool Datum::Set(const t_Value& value)
     {
-        AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Set, please");
+        static_assert(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Set, please");
         InitializeOverloadedStorage(Data::FromAZType(azrtti_typeid<t_Value>()), eOriginality::Copy);
         AZ_Error("Script Canvas", !IS_A(Data::Type::Number()) || azrtti_typeid<t_Value>() == azrtti_typeid<Data::NumberType>(), "Set on number types must be specialized!");
 
@@ -487,7 +497,6 @@ namespace ScriptCanvas
             if (Data::IsValueType(m_type))
             {
                 m_storage = value;
-                OnDatumChanged();
                 return true;
             }
             else
@@ -503,12 +512,7 @@ namespace ScriptCanvas
     template<>\
     AZ_INLINE bool Datum::Set(const NUMERIC_TYPE& value)\
     {\
-        if (FromBehaviorContextNumber(&value, azrtti_typeid<NUMERIC_TYPE>()))\
-        {\
-            OnDatumChanged();\
-            return true;\
-        }\
-        return false;\
+        return FromBehaviorContextNumber(&value, azrtti_typeid<NUMERIC_TYPE>());\
     }
 
     DATUM_SET_NUMBER_SPECIALIZE(char);
@@ -524,7 +528,7 @@ namespace ScriptCanvas
     DATUM_SET_NUMBER_SPECIALIZE(AZ::u64);
     DATUM_SET_NUMBER_SPECIALIZE(float);
     // only requried if the ScriptCanvas::NumberType changes from double, see get specialization above
-    // DATUM_SET_NUMBER_SPECIALIZE(double);
+    //DATUM_SET_NUMBER_SPECIALIZE(double);
     DATUM_SET_NUMBER_SPECIALIZE(AZ::VectorFloat);
 
     // vectors are the most convertible objects, so more get/set specialization is necessary
@@ -534,7 +538,6 @@ namespace ScriptCanvas
     {\
         if (FromBehaviorContext(&value, azrtti_typeid<VECTOR_TYPE>()))\
         {\
-            OnDatumChanged();\
             return true;\
         }\
         return false;\

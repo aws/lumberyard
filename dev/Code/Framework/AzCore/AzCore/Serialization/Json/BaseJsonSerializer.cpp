@@ -65,6 +65,51 @@ namespace AZ
             JsonSerializer::Store(output, allocator, object, defaultObject, typeId, path, settings);
     }
 
+    JsonSerializationResult::ResultCode BaseJsonSerializer::ContinueLoadingFromJsonObjectField(void* object, const Uuid& typeId, const rapidjson::Value& value,
+        rapidjson::Value::StringRefType memberName, StackedString& path, const JsonDeserializerSettings& settings, Flags flags)
+    {
+        if (value.IsObject())
+        {
+            auto iter = value.FindMember(memberName);
+            if (iter != value.MemberEnd())
+            {
+                ScopedStackedString subPath{path, memberName.s};
+                return ContinueLoading(object, typeId, iter->value, subPath, settings, flags);
+            }
+            else
+            {
+                return JsonSerializationResult::ResultCode::Default(JsonSerializationResult::Tasks::ReadField);
+            }
+        }
+        else
+        {
+            return JsonSerializationResult::Result(settings, "Value is not an object", JsonSerializationResult::Tasks::ReadField, JsonSerializationResult::Outcomes::Unsupported, path);
+        }
+    }
+
+    JsonSerializationResult::ResultCode BaseJsonSerializer::ContinueStoringToJsonObjectField(rapidjson::Value& output, rapidjson::Value::StringRefType newMemberName,
+        rapidjson::Document::AllocatorType& allocator, const void* object, const void* defaultObject,
+        const Uuid& typeId, StackedString& path, const JsonSerializerSettings& settings, Flags flags)
+    {
+        if (!output.IsObject())
+        {
+            if (!output.IsNull())
+            {
+                return JsonSerializationResult::Result(settings, "Value is not an object", JsonSerializationResult::Tasks::WriteValue, JsonSerializationResult::Outcomes::Unavailable, path);
+            }
+
+            output.SetObject();
+        }
+
+        rapidjson::Value newValue;
+        JsonSerializationResult::ResultCode result = ContinueStoring(newValue, allocator, object, defaultObject, typeId, path, settings, flags);
+        if (!newValue.IsNull() && result.GetOutcome() != JsonSerializationResult::Outcomes::DefaultsUsed)
+        {
+            output.AddMember(newMemberName, newValue, allocator);
+        }
+        return result;
+    }
+
     bool BaseJsonSerializer::IsExplicitDefault(const rapidjson::Value& value)
     {
         return JsonDeserializer::IsExplicitDefault(value);

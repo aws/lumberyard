@@ -60,9 +60,9 @@ namespace EMStudio
             return;
         }
 
-        int32 animEndPixel  = mPlugin->TimeToPixel(animationLength);
-        int32 clipStartPixel = mPlugin->TimeToPixel(clipStartTime);
-        int32 clipEndPixel  = mPlugin->TimeToPixel(clipEndTime);
+        int32 animEndPixel  = aznumeric_cast<int32>(mPlugin->TimeToPixel(animationLength));
+        int32 clipStartPixel = aznumeric_cast<int32>(mPlugin->TimeToPixel(clipStartTime));
+        int32 clipEndPixel  = aznumeric_cast<int32>(mPlugin->TimeToPixel(clipEndTime));
 
         // fill the background
         uint32 height = GetHeight();

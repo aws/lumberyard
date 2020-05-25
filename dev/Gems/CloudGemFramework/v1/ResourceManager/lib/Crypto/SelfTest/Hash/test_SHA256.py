@@ -24,8 +24,6 @@
 
 """Self-test suite for Crypto.Hash.SHA256"""
 
-__revision__ = "$Id$"
-
 import unittest
 from Crypto.Util.py3compat import *
 
@@ -36,13 +34,13 @@ class LargeSHA256Test(unittest.TestCase):
         zeros = bchr(0x00) * (1024*1024)
 
         h = SHA256.new(zeros)
-        for i in xrange(511):
+        for i in range(511):
             h.update(zeros)
 
         # This test vector is from PyCrypto's old testdata.py file.
         self.assertEqual('9acca8e8c22201155389f65abbf6bc9723edc7384ead80503839f49dcc56d767', h.hexdigest()) # 512 MiB
 
-        for i in xrange(8):
+        for i in range(8):
             h.update(zeros)
 
         # This test vector is from PyCrypto's old testdata.py file.
@@ -78,10 +76,10 @@ def get_tests(config={}):
     ]
 
     from Crypto.Hash import SHA256
-    from common import make_hash_tests
+    from .common import make_hash_tests
     tests = make_hash_tests(SHA256, "SHA256", test_data,
         digest_size=32,
-        oid="\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01")
+        oid="2.16.840.1.101.3.4.2.1")
 
     if config.get('slow_tests'):
         tests += [LargeSHA256Test()]

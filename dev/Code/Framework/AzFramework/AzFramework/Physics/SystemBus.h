@@ -129,6 +129,7 @@ namespace Physics
     class System
     {
     public:
+        // Required for AZ::Interface
         AZ_TYPE_INFO(System, "{35965894-BFBC-437C-A4FB-E22F3DB09ACF}")
 
         System() = default;
@@ -137,6 +138,14 @@ namespace Physics
         // AZ::Interface requires these to be deleted.
         System(System&&) = delete;
         System& operator=(System&&) = delete;
+
+        //////////////////////////////////////////////////////////////////////////
+        //// General Physics
+
+        /// Gets the current default world configuration.
+        virtual const WorldConfiguration& GetDefaultWorldConfiguration() = 0;
+        /// Sets the current default world configuration.
+        virtual void SetDefaultWorldConfiguration(const WorldConfiguration& worldConfiguration) = 0;
 
         /// Creates a physical world with default settings.
         /// @param id World ID.
@@ -150,9 +159,40 @@ namespace Physics
         virtual AZStd::unique_ptr<RigidBodyStatic> CreateStaticRigidBody(const WorldBodyConfiguration& configuration) = 0;
         virtual AZStd::unique_ptr<RigidBody> CreateRigidBody(const RigidBodyConfiguration& configuration) = 0;
         virtual AZStd::shared_ptr<Shape> CreateShape(const ColliderConfiguration& colliderConfiguration, const ShapeConfiguration& configuration) = 0;
+
+        /// Adds an appropriate collider component to the entity based on the provided shape configuration.
+        /// @param entity Entity where the component should be added to.
+        /// @param colliderConfiguration Configuration of the collider.
+        /// @param shapeConfiguration Configuration of the shape of the collider.
+        /// @param addEditorComponents Tells whether to add the Editor version of the collider component or the Game one.
+        virtual void AddColliderComponentToEntity(AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) = 0;
+
+        /// Releases the mesh object created by the physics backend.
+        /// @param nativeMeshObject Pointer to the mesh object.
+        virtual void ReleaseNativeMeshObject(void* nativeMeshObject) = 0;
+
+        //////////////////////////////////////////////////////////////////////////
+        //// Physics Materials
+
         virtual AZStd::shared_ptr<Material> CreateMaterial(const Physics::MaterialConfiguration& materialConfiguration) = 0;
         virtual AZStd::shared_ptr<Material> GetDefaultMaterial() = 0;
         virtual AZStd::vector<AZStd::shared_ptr<Material>> CreateMaterialsFromLibrary(const Physics::MaterialSelection& materialSelection) = 0;
+
+        /// Loads the project wide material library asset
+        virtual bool LoadDefaultMaterialLibrary() = 0;
+        /// Gets the current default material library
+        virtual const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() = 0;
+        /// Sets the current default material library.
+        virtual void SetDefaultMaterialLibrary(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& worldConfiguration) = 0;
+
+        /// Updates the collider material selection from the physics asset or sets it to default if there's no asset provided.
+        /// @param shapeConfiguration The shape information
+        /// @param colliderConfiguration The collider information
+        virtual bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
+            Physics::ColliderConfiguration& colliderConfiguration) = 0;
+
+        //////////////////////////////////////////////////////////////////////////
+        //// Joints
 
         virtual AZStd::vector<AZ::TypeId> GetSupportedJointTypes() = 0;
         virtual AZStd::shared_ptr<JointLimitConfiguration> CreateJointLimitConfiguration(AZ::TypeId jointType) = 0;
@@ -181,18 +221,6 @@ namespace Physics
             AZStd::vector<AZ::Vector3>& lineBufferOut,
             AZStd::vector<bool>& lineValidityBufferOut) = 0;
 
-        /// Loads the project wide material library asset
-        virtual bool LoadDefaultMaterialLibrary() = 0;
-
-        /// Gets the current default material library
-        virtual const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() = 0;
-
-        /// Updates the collider material selection from the physics asset or sets it to default if there's no asset provided.
-        /// @param shapeConfiguration The shape information
-        /// @param colliderConfiguration The collider information
-        virtual bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
-            Physics::ColliderConfiguration& colliderConfiguration) = 0;
-
         /// Computes parameters such as joint limit local rotations to give the desired initial joint limit orientation.
         /// @param jointLimitTypeId The type ID used to identify the particular kind of joint limit configuration to be created.
         /// @param parentWorldRotation The rotation in world space of the parent world body associated with the joint.
@@ -208,9 +236,42 @@ namespace Physics
             const AZ::Vector3& axis,
             const AZStd::vector<AZ::Quaternion>& exampleLocalRotations) = 0;
 
-        /// Releases the mesh object created by the physics backend.
-        /// @param nativeMeshObject Pointer to the mesh object.
-        virtual void ReleaseNativeMeshObject(void* nativeMeshObject) = 0;
+        //////////////////////////////////////////////////////////////////////////
+        //// Cooking
+
+        /// Cooks a convex mesh and writes it to a file.
+        /// @param filePath Path to the output file.
+        /// @param vertices Pointer to beginning of vertex data.
+        /// @param vertexCount Number of vertices in the mesh.
+        /// @return Succeeded cooking.
+        virtual bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) = 0;
+
+        /// Cooks a convex mesh to a memory buffer.
+        /// @param vertices Pointer to beginning of vertex data.
+        /// @param vertexCount Number of vertices in the mesh.
+        /// @param result The resulting memory buffer.
+        /// @return Succeeded cooking.
+        virtual bool CookConvexMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount, AZStd::vector<AZ::u8>& result) = 0;
+
+        /// Cooks a triangular mesh and writes it to a file.
+        /// @param filePath Path to the output file.
+        /// @param vertices Pointer to beginning of vertex data.
+        /// @param vertexCount Number of vertices in the mesh.
+        /// @param indices Pointer to beginning of index data.
+        /// @param indexCount Number of indices in the mesh.
+        /// @return Succeeded cooking.
+        virtual bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount) = 0;
+
+        /// Cook a triangular mesh to a memory buffer.
+        /// @param vertices Pointer to beginning of vertex data.
+        /// @param vertexCount Number of vertices in the mesh.
+        /// @param indices Pointer to beginning of index data.
+        /// @param indexCount Number of indices in the mesh.
+        /// @param result The resulting memory buffer.
+        /// @return Succeeded cooking.
+        virtual bool CookTriangleMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount, AZStd::vector<AZ::u8>& result) = 0;
     };
 
     using SystemRequests = System;
@@ -266,9 +327,7 @@ namespace Physics
     public:
         virtual ~SystemNotifications() {}
 
-        AZ_DEPRECATED(virtual void OnPrePhysicsUpdate(float /*fixedDeltaTime*/, World*), "Use WorldNotificationBus instead") {};
-        AZ_DEPRECATED(virtual void OnPostPhysicsUpdate(float /*fixedDeltaTime*/, World*), "Use WorldNotificationBus instead") {};
-
+        virtual void OnWorldCreated(World* /*world*/) {};
         virtual void OnPreWorldDestroy(World* /*world*/) {};
     };
 

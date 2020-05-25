@@ -58,7 +58,7 @@ namespace AZStd
         template <class T>
         struct check_complete_type<T>
         {
-            AZ_STATIC_ASSERT((sizeof(T) > 0), "Type must be complete.");
+            static_assert((sizeof(T) > 0), "Type must be complete.");
         };
 
         template <class T>

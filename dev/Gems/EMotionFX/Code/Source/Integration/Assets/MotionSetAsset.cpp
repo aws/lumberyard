@@ -75,6 +75,11 @@ namespace EMotionFX
         {
         }
 
+        MotionSetAsset::~MotionSetAsset()
+        {
+            AZ::Data::AssetBus::MultiHandler::BusDisconnect();
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void MotionSetAsset::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {

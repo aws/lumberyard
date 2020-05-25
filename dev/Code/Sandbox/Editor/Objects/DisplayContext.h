@@ -72,7 +72,9 @@ struct SANDBOX_API DisplayContext
     IIconManager* pIconManager;
     I3DEngine* engine;
     CCamera*    camera;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     AABB    box;    // Bounding box of volume that need to be repainted.
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     int flags;
 
     //! Ctor.
@@ -202,12 +204,15 @@ struct SANDBOX_API DisplayContext
     void DrawWireSphere(const Vec3& pos, float radius);
     void DrawWireSphere(const Vec3& pos, const Vec3 radius);
 
+    void DrawWireDisk(const Vec3& pos, const Vec3& dir, float radius);
+
     void PushMatrix(const Matrix34& tm);
     void PopMatrix();
     const Matrix34& GetMatrix();
 
     // Draw special 3D objects.
     void DrawBall(const Vec3& pos, float radius, bool drawShaded = true);
+    void DrawDisk(const Vec3& pos, const Vec3& dir, float radius);
 
     //! Draws 3d arrow.
     void DrawArrow(const Vec3& src, const Vec3& trg, float fHeadScale = 1, bool b2SidedArrow = false);
@@ -269,6 +274,7 @@ private:
 
     void InternalDrawLine(const Vec3& v0, const ColorB& colV0, const Vec3& v1, const ColorB& colV1);
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     ColorB m_color4b;
     uint32 m_renderState;
     float m_thickness;
@@ -288,6 +294,7 @@ private:
         float color[4];
     };
     std::vector<STextureLabel> m_textureLabels;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_DISPLAYCONTEXT_H

@@ -31,6 +31,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Multiplexer,
                     ScriptCanvas_Node::Uuid("{2FE432CB-9969-4273-BE04-DEF949C288F0}")
                     ScriptCanvas_Node::Description("Selects one of the [In#] inputs using [Index] and sends it to [Out]")
+                    ScriptCanvas_Node::Deprecated("This node has been deprecated.")
                 );
 
             public:

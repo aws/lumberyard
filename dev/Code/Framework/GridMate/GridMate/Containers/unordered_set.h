@@ -17,24 +17,11 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class Key, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key>, class Allocator = SysContAlloc>
     using unordered_set = AZStd::unordered_set<Key, Hasher, EqualKey, Allocator>;
 
     template<class Key, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key>, class Allocator = SysContAlloc>
     using unordered_multiset = AZStd::unordered_multiset<Key, Hasher, EqualKey, Allocator>;
-#else
-    template<class Key, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key> >
-    struct unordered_set
-        : public AZStd::unordered_set<Key, Hasher, EqualKey, SysContAlloc>
-    {
-    };
-    template<class Key, class Hasher = AZStd::hash<Key>, class EqualKey = AZStd::equal_to<Key> >
-    struct unordered_multiset
-        : public AZStd::unordered_multiset<Key, Hasher, EqualKey, SysContAlloc>
-    {
-    };
-#endif
 }
 
 #endif // GM_CONTAINERS_UNORDERED_SET_H

@@ -119,7 +119,7 @@ namespace GraphCanvas
                 fakeMenu.SetIsToolBarMenu(true);
 
                 AddCommentPresetMenuAction menuAction(&fakeMenu, presetBucket->GetDefaultPreset());
-                menuAction.RefreshAction(m_activeGraphId, AZ::EntityId());
+                menuAction.SetTarget(m_activeGraphId, AZ::EntityId());
 
                 OnPresetActionTriggered(&menuAction);
             }
@@ -139,7 +139,7 @@ namespace GraphCanvas
                 fakeMenu.SetIsToolBarMenu(true);
 
                 AddNodeGroupPresetMenuAction menuAction(&fakeMenu, presetBucket->GetDefaultPreset());
-                menuAction.RefreshAction(m_activeGraphId, AZ::EntityId());
+                menuAction.SetTarget(m_activeGraphId, AZ::EntityId());
 
                 OnPresetActionTriggered(&menuAction);
             }

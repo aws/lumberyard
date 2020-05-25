@@ -9,15 +9,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 from cgf_utils import custom_resource_response
-from cgf_utils import properties
 from cgf_utils import aws_utils
+from cgf_utils import aws_sts
+
 from resource_manager_common import stack_info
 from iot_policy_shared import detach_policy_principals
 import web_communicator_iot
-import boto3
-import json
 
 iot_client = web_communicator_iot.get_iot_client()
+
 
 def handler(event, context):
 
@@ -41,9 +41,9 @@ def handler(event, context):
         _create_iot_cgp_policy(physical_resource_id, stack)
 
     return custom_resource_response.success_response({}, physical_resource_id)
-    
-def _delete_iot_cgp_policy(physical_resource_id):
 
+
+def _delete_iot_cgp_policy(physical_resource_id):
     try:
         find_policy_response = iot_client.get_policy(policyName=physical_resource_id)
     except Exception as e:
@@ -56,20 +56,22 @@ def _delete_iot_cgp_policy(physical_resource_id):
 
     return response
 
-def _update_iot_cgp_policy(physical_resource_id, stack):
 
+def _update_iot_cgp_policy(physical_resource_id, stack):
     # delete the existing policy rather than increment versions - there's a 5 version limit and we don't
     # currently use old versions for anything
     _delete_iot_cgp_policy(physical_resource_id)
 
     _create_iot_cgp_policy(physical_resource_id, stack)
 
-def _create_iot_cgp_policy(physical_resource_id, stack):
 
+def _create_iot_cgp_policy(physical_resource_id, stack):
     iot_client.create_policy(policyName=physical_resource_id, policyDocument=_get_cgp_listener_policy(stack))
 
+
 def _get_cgp_listener_policy(stack):
-    account_id = aws_utils.ClientWrapper(boto3.client('sts')).get_caller_identity()['Account']
+    sts_client = aws_sts.AWSSTSUtils(stack.region).client()
+    account_id = aws_utils.ClientWrapper(sts_client).get_caller_identity()['Account']
 
     iot_client_resource = "arn:aws:iot:{}:{}:client/${{cognito-identity.amazonaws.com:sub}}".format(stack.region, account_id)
     policy_doc = '''{

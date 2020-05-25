@@ -18,7 +18,6 @@
 #include "MFXParticleEffect.h"
 #include "MFXAudioEffect.h"
 #include "MFXDecalEffect.h"
-#include "MFXFlowGraphEffect.h"
 #include "MFXForceFeedbackFX.h"
 
 #include "GameXmlParamReader.h"
@@ -42,10 +41,6 @@ namespace MaterialEffectsUtils
         else if (!azstricmp("Decal", effectType))
         {
             return new CMFXDecalEffect();
-        }
-        else if (!azstricmp("FlowGraph", effectType))
-        {
-            return new CMFXFlowGraphEffect();
         }
         else if (!azstricmp("ForceFeedback", effectType))
         {

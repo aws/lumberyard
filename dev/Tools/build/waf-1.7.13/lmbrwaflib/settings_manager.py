@@ -9,22 +9,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib import Errors, Logs, Utils
-from waflib.Configure import conf, ConfigurationContext
-from waflib.Build import BuildContext
-from waflib.Utils import unversioned_sys_platform
-
-from cry_utils import append_to_unique_list, read_game_name_from_bootstrap
-from msvc_helper import find_valid_wsdk_version
-
-import utils
+# System Imports
+import configparser
 import copy
+import hashlib
 import glob
 import os
 import re
 import sys
-import hashlib
-import ConfigParser
+
+# lmbrwaflib imports
+from waflib import Errors, Logs, Utils
+from waflib.Build import BuildContext
+from waflib.Configure import conf, ConfigurationContext
+from waflib.Utils import unversioned_sys_platform
+
+# waflib imports
+from cry_utils import append_to_unique_list, read_game_name_from_bootstrap
+from msvc_helper import find_valid_wsdk_version
+import utils
 
 
 # Map of default callbacks
@@ -161,7 +164,7 @@ def process_env_dict_values(source_env_dict, configuration, processed_env_values
     :param processed_env_values_dict:   The result env key dictionary to update based on the current configuration
     """
     processed_env_target = processed_env_values_dict.setdefault(configuration, {})
-    for raw_key, values in source_env_dict.items():
+    for raw_key, values in list(source_env_dict.items()):
         # Check for any conditional marker in the key
         conditional_index = raw_key.find(':')
         optional_conditional_name = raw_key[:conditional_index] if conditional_index >= 0 else ''
@@ -184,7 +187,7 @@ def process_env_dict(source_env_dict, processed_env_dict):
     :param source_env_dict:     The source dictionary that contains the 'env*' to evaluate
     :param processed_env_dict:  The target dictionary of configurations -> env dictionary
     """
-    for check_key, env_dict in source_env_dict.items():
+    for check_key, env_dict in list(source_env_dict.items()):
         if check_key == 'env':
             configuration = '_'
         elif check_key.startswith('env/'):
@@ -204,7 +207,7 @@ def merge_attributes_group(settings_include_file, source_attributes_dict, merge_
     :param merge_attributes_dict:           The attributes dictionary to merge into
     """
     
-    for source_attr_key, source_attr_value in source_attributes_dict.items():
+    for source_attr_key, source_attr_value in list(source_attributes_dict.items()):
         
         if source_attr_key not in merge_attributes_dict:
             # New attribute, just set the value in the  merged dictionary and continue
@@ -262,45 +265,10 @@ def merge_settings_group(settings_include_file, merge_settings_dict, setting_gro
             del attribute_to_settings_value_dict[existing_settings_attribute]
 
     # Add the remaining settings from the attribute to settings map
-    for remaining_settings_dict in attribute_to_settings_value_dict.values():
+    for remaining_settings_dict in list(attribute_to_settings_value_dict.values()):
         settings_group.append(remaining_settings_dict)
 
 
-def read_bootstrap_overrides_from_settings_file(engine_user_settings_options_file):
-    """
-    Get the two possible bootstrap overrides (bootstrap_tool_param, bootstrap_third_party_override) from a user_settings.option file
-
-    :param engine_user_settings_options_file:   The absolute path of the user_settings.options file
-    :return: tuple of (bootstrap_tool_param, bootstrap_third_party_override) if set
-    """
-    
-    # For external projects, the attributes set in the engine's user_settings.options based on the configuration set by
-    # setup assistant must be always overwritten since we can't run setup assistant for an external game project
-    
-    if not os.path.exists(engine_user_settings_options_file):
-        raise Errors.WafError(
-            "Unable to locate the engine's settings file. Make sure that the engine at '{} 'is properly configured first".format(
-                engine_user_settings_options_file))
-    
-    override_bootstrap_tool_param = None
-    override_bootstrap_third_party_override = None
-    
-    engine_user_settings_reader = ConfigParser.ConfigParser()
-    engine_user_settings_reader.read(engine_user_settings_options_file)
-    try:
-        override_bootstrap_tool_param = engine_user_settings_reader.get('Misc Options', 'bootstrap_tool_param')
-    except ConfigParser.NoSectionError as e:
-        raise Errors.WafError(
-            "The engine's user_settings.options as '{}' file is corrupt: {}".format(engine_user_settings_options_file,
-                                                                                    e))
-    except ConfigParser.NoOptionError:
-        pass
-    try:
-        override_bootstrap_third_party_override = engine_user_settings_reader.get('Misc Options',
-                                                                                  'bootstrap_third_party_override')
-    except ConfigParser.NoOptionError:
-        pass
-    return override_bootstrap_tool_param, override_bootstrap_third_party_override
 
 
 def process_settings_include_file(settings_include_file, processed_env_dict, processed_settings_dict, processed_attributes_dict, processed_files=[]):
@@ -341,13 +309,13 @@ def process_settings_include_file(settings_include_file, processed_env_dict, pro
                                           processed_files=processed_files + [settings_include_file])
             
     # Second, process all the env* keys
-    for check_key, check_value in settings_include_dict.items():
+    for check_key, check_value in list(settings_include_dict.items()):
         if check_key=='env' or check_key.startswith('env/'):
             process_env_dict(settings_include_dict, processed_env_dict)
             
     # Merge in any 'settings' entry
     settings_dict = settings_include_dict.get('settings', {})
-    for additional_setting_group, additional_settings_value in settings_dict.items():
+    for additional_setting_group, additional_settings_value in list(settings_dict.items()):
         merge_settings_group(settings_include_file=settings_include_file,
                              merge_settings_dict=processed_settings_dict,
                              setting_group_name=additional_setting_group,
@@ -411,7 +379,7 @@ class PlatformSettings(object):
 
         # Merge in the current 'settings' over any that were processed from the include settings file
         platform_settings_dict = platform_settings.get("settings", {})
-        for platform_setting_group, platform_settings_value in platform_settings_dict.items():
+        for platform_setting_group, platform_settings_value in list(platform_settings_dict.items()):
             merge_settings_group(settings_include_file=platform_setting_file,
                                  merge_settings_dict=self.settings,
                                  setting_group_name=platform_setting_group,
@@ -561,45 +529,35 @@ class Settings(object):
 
         # Initialize and load the user_settings (if it exists). It will always exist in the current root's _WAF_
         # folder
-        self.override_settings = ConfigParser.ConfigParser()
+        self.override_settings = configparser.ConfigParser()
         self.user_settings_path = os.path.join(os.getcwd(), '_WAF_', 'user_settings.options')
         if os.path.exists(self.user_settings_path):
             self.override_settings.read(self.user_settings_path)
+
+        override_settings_map = None
             
         if is_external_engine:
-            # For external projects, the 'enabled_game_projects' can only be the same as the value in bootstrap.cfg
-            override_enabled_game = read_game_name_from_bootstrap(os.path.join(os.getcwd(), 'bootstrap.cfg'))
-
             # For external projects, the attributes set in the engine's user_settings.options based on the configuration set by
             # setup assistant must be always overwritten since we can't run setup assistant for an external game project
             engine_user_settings_options_file = os.path.join(engine_root_abs, '_WAF_', 'user_settings.options')
-            override_bootstrap_tool_param, override_bootstrap_third_party_override = read_bootstrap_overrides_from_settings_file(engine_user_settings_options_file)
-            if not override_bootstrap_tool_param:
-                raise Errors.WafError("Unable to determine this project's capabilities. Make sure that the engine at '{} 'is properly configured first".format(engine_root_abs))
-        else:
-            override_bootstrap_tool_param = None
-            override_enabled_game = None
-            override_bootstrap_third_party_override = None
+            override_settings_map = self.read_bootstrap_overrides_from_settings_file(engine_user_settings_options_file)
+
+            # For external projects, the 'enabled_game_projects' can only be the same as the value in bootstrap.cfg
+            override_enabled_game = read_game_name_from_bootstrap(os.path.join(os.getcwd(), 'bootstrap.cfg'))
+            override_settings_map['enabled_game_projects'] = override_enabled_game
 
         # Initialize the settings maps and update the settings override (comments) with the current default values
-        self.update_settings_map(override_enabled_projects=override_enabled_game,
-                                 override_bootstrap_tool_param=override_bootstrap_tool_param,
-                                 override_bootstrap_third_party_override=override_bootstrap_third_party_override)
+        self.update_settings_map(override_value_map=override_settings_map)
 
         # Load the configuration settings from _WAF_/settings/build_configurations.json
         build_settings_file = os.path.join(extra_settings_path, 'build_configurations.json')
         self.initialize_configurations(build_settings_file)
 
         # Update the settings map again with any value found in the configuration
-        self.update_settings_map(override_enabled_projects=override_enabled_game,
-                                 override_bootstrap_tool_param=override_bootstrap_tool_param,
-                                 override_bootstrap_third_party_override=override_bootstrap_third_party_override)
+        self.update_settings_map(override_value_map=override_settings_map)
         
         self.update_settings_file(apply_from_command_line=False,
-                                  override_enabled_projects=override_enabled_game,
-                                  override_bootstrap_tool_param=override_bootstrap_tool_param,
-                                  override_bootstrap_third_party_override=override_bootstrap_third_party_override)
-        
+                                  override_value_map=override_settings_map)
 
     def create_config(self):
         """
@@ -607,9 +565,9 @@ class Settings(object):
         :return: Config parser object set to the current settings values
         """
 
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
 
-        for section, section_values in self.default_settings.items():
+        for section, section_values in list(self.default_settings.items()):
             if not config.has_section(section):
                 config.add_section(section)
 
@@ -651,6 +609,8 @@ class Settings(object):
                 self.apply_platform_settings_to_default_options(platform_setting)
                 
                 self.apply_platform_folder_settings(platform_setting)
+
+                self.apply_platform_enabled_settings(platform_setting)
 
                 self.platform_settings_map[platform_setting.platform] = platform_setting
                 
@@ -767,7 +727,7 @@ class Settings(object):
         if not env_node:
             return None
         processed_subnodes = {}
-        for node_name, node_dict in env_node.items():
+        for node_name, node_dict in list(env_node.items()):
 
             if not isinstance(node_dict, dict):
                 raise Errors.WafError("Invalid type found in the base 'env' node for the build configuration file for item '{}'. It must be a dictionary.".format(node_name))
@@ -775,7 +735,7 @@ class Settings(object):
             concrete_attributes = {}
             pending_attributes = {}
 
-            for env_attribute_name, env_attribute_list in node_dict.items():
+            for env_attribute_name, env_attribute_list in list(node_dict.items()):
 
                 if not isinstance(env_attribute_list, list):
                     raise Errors.WafError(
@@ -796,7 +756,7 @@ class Settings(object):
                     # No more pending attributes to update
                     break
 
-                pending_attribute_key = pending_attributes.keys()[0]
+                pending_attribute_key = list(pending_attributes.keys())[0]
                 pending_attribute_values = pending_attributes.pop(pending_attribute_key)
 
                 processed_list = []
@@ -861,7 +821,7 @@ class Settings(object):
 
         # First pass build up the base configuration
         base_configurations = set()
-        for key, value_dict in configurations_node.items():
+        for key, value_dict in list(configurations_node.items()):
 
             base_configuration = value_dict.get('base', None)
             if not base_configuration:
@@ -883,7 +843,7 @@ class Settings(object):
                 except KeyError as e:
                     raise Errors.WafError("Invalid key while looking up Configuration values: {}".format(str(e)))
 
-        for key, value_dict in configurations_node.items():
+        for key, value_dict in list(configurations_node.items()):
             if key not in base_configurations:
 
                 # Locate the base configuration
@@ -906,11 +866,11 @@ class Settings(object):
                                        has_server_configs=has_server_configs,
                                        default_folder_ext=value_dict.get('default_output_ext', default_folder_ext))
 
-        for config_key in self.build_configuration_map.keys():
+        for config_key in list(self.build_configuration_map.keys()):
             Logs.debug('settings: Initialized Build Configuration: {}'.format(config_key))
-        for alias_name, alias_values in self.build_configuration_alias_map.items():
+        for alias_name, alias_values in list(self.build_configuration_alias_map.items()):
             Logs.debug('settings: Build Configuration alias {}: {}'.format(alias_name,','.join(alias_values)))
-            
+
     @staticmethod
     def apply_optional_override(long_form, short_form, arguments):
         
@@ -954,7 +914,7 @@ class Settings(object):
             arg_index += 1
         return override_value
 
-    def update_settings_map(self, override_enabled_projects=None, override_bootstrap_tool_param=None, override_bootstrap_third_party_override=None):
+    def update_settings_map(self, override_value_map=None):
         """
         Update the attribute -> settings map. There are potentially three sources of the value for each attribute:
             1. The default_value set in default_settings.json (or any default value callback result)
@@ -968,7 +928,7 @@ class Settings(object):
         self.settings_map.clear()
         self.runtime_override_attributes.clear()
 
-        for section_key, section_settings in self.default_settings.items():
+        for section_key, section_settings in list(self.default_settings.items()):
 
             for section_setting in section_settings:
 
@@ -997,12 +957,9 @@ class Settings(object):
                 value = apply_optional_callback(value, attribute)
 
                 # If there are any of the external project related overrides that are passed in, apply it here
-                if override_enabled_projects and attribute == 'enabled_game_projects':
-                    value = override_enabled_projects
-                elif override_bootstrap_tool_param and attribute == 'bootstrap_tool_param':
-                    value = override_bootstrap_tool_param
-                elif override_bootstrap_third_party_override and attribute == 'bootstrap_third_party_override':
-                    value = override_bootstrap_third_party_override
+                if override_value_map:
+                    if attribute in override_value_map:
+                        value = override_value_map[attribute]
 
                 # Next Highest Priority is the override value in user_settings.json
                 if self.override_settings.has_option(section_key, attribute):
@@ -1023,7 +980,7 @@ class Settings(object):
 
                 self.settings_map[attribute] = value
 
-    def update_settings_file(self, apply_from_command_line, override_enabled_projects=None, override_bootstrap_tool_param=None, override_bootstrap_third_party_override=None):
+    def update_settings_file(self, apply_from_command_line, override_value_map=None):
         """
         Update the user_settings.options if there is a change in any precomputed hash.  If there was any change to the
         default settings or user settings, then the user_settings.options wil be updated
@@ -1053,7 +1010,7 @@ class Settings(object):
             user_settings_content += "; Otherwise the values will be read from default_settings.json.\n\n"
 
             # Load default settings
-            for settings_group, settings_list in default_settings.items():
+            for settings_group, settings_list in list(default_settings.items()):
                 user_settings_content += '\n[{}]\n\n'.format(settings_group)
 
                 # Iterate over all options in this group
@@ -1068,13 +1025,11 @@ class Settings(object):
                         override_value = override_settings.get(settings_group, option_name)
                     else:
                         override_value = None
-                        
-                    if override_enabled_projects and option_name == 'enabled_game_projects':
-                        override_value = override_enabled_projects
-                    elif override_bootstrap_tool_param and option_name == 'bootstrap_tool_param':
-                        override_value = override_bootstrap_tool_param
-                    elif override_bootstrap_third_party_override and option_name == 'bootstrap_third_party_override':
-                        override_value = override_bootstrap_third_party_override
+
+                    # If there are any of the external project related overrides that are passed in, apply it here
+                    if override_value_map:
+                        if option_name in override_value_map:
+                            override_value = override_value_map[option_name]
 
                     has_existing_override = (override_value != default_value and not last_hash)
                     if override_value and (has_existing_override or last_hash):
@@ -1083,7 +1038,7 @@ class Settings(object):
                         user_settings_content += ';{} = {}\n'.format(option_name, default_value)
 
             digest = hashlib.md5()
-            digest.update(user_settings_content)
+            digest.update(user_settings_content.encode('utf-8'))
             hash_result = digest.hexdigest()
 
             return user_settings_content, hash_result
@@ -1126,7 +1081,7 @@ class Settings(object):
         Apply the settings that this object manages to a context's options
         :param options: The options to apply to
         """
-        for attribute, value in self.settings_map.items():
+        for attribute, value in list(self.settings_map.items()):
             setattr(options, attribute, value)
 
     def apply_to_settings_context(self, ctx):
@@ -1134,7 +1089,7 @@ class Settings(object):
         Apply all the possible values from the default_settings as arguments to the options context
         :param ctx:     The options context to apply to
         """
-        for settings_group, settings_list in self.default_settings.items():
+        for settings_group, settings_list in list(self.default_settings.items()):
             group = ctx.add_option_group(settings_group)
 
             # Iterate over all options in this group
@@ -1168,7 +1123,7 @@ class Settings(object):
         Function to support legacy operations that need the list of sections in the default_settings file
         :return: Copy of the list of sections
         """
-        default_sections = self.default_settings.keys()[:]
+        default_sections = list(self.default_settings.keys())[:]
         return default_sections
 
     def get_default_options(self):
@@ -1188,7 +1143,7 @@ class Settings(object):
         :return:
         """
 
-        for settings_group, settings_list in self.default_settings.items():
+        for settings_group, settings_list in list(self.default_settings.items()):
             if settings_group == section_name:
                 for settings in settings_list:
                     if settings[SETTING_KEY_ATTRIBUTE] == setting_name:
@@ -1211,19 +1166,19 @@ class Settings(object):
         """
         Get the list of all the platform settings instances
         """
-        return self.platform_settings_map.values()
+        return list(self.platform_settings_map.values())
 
     def get_all_platform_names(self):
         """
         Get the list of all the platform settings instances
         """
-        return self.platform_settings_map.keys()
+        return list(self.platform_settings_map.keys())
 
     def get_build_configuration_settings(self):
         """
         Get the list of all ConfigurationDetails settings instances
         """
-        return self.build_configuration_map.values()
+        return list(self.build_configuration_map.values())
 
     def get_build_configuration_setting(self, configuration):
         """
@@ -1242,7 +1197,7 @@ class Settings(object):
         """
         try:
             # If the alias is actually a valid configuration name, then return it
-            if alias in self.all_build_configuration_names.keys():
+            if alias in list(self.all_build_configuration_names.keys()):
                 return [alias]
             # If the alias is in the alias list, return it
             return self.build_configuration_alias_map[alias]
@@ -1295,13 +1250,13 @@ class Settings(object):
         """
         Return all of the configuration names
         """
-        return self.all_build_configuration_names.keys()
+        return list(self.all_build_configuration_names.keys())
 
     def get_configuration_aliases(self):
         """
         Return all of the configuration aliases
         """
-        return self.build_configuration_alias_map.keys()
+        return list(self.build_configuration_alias_map.keys())
 
     def apply_platform_settings_to_default_options(self, platform):
         """
@@ -1316,7 +1271,7 @@ class Settings(object):
         
         try:
             # Iterate through each definition in the settings dictionary
-            for section_name, section_dict_list in platform.settings.items():
+            for section_name, section_dict_list in list(platform.settings.items()):
                 
                 if not isinstance(section_dict_list, list):
                     raise Errors.WafError("The settings dictionary must be a dictionary of section names (string) to list of dictionaries for the attributes.")
@@ -1445,6 +1400,117 @@ class Settings(object):
         }
         self.default_settings[build_config_group].append(platform_folder_settings)
 
+    def apply_platform_enabled_settings(self, platform):
+
+        build_config_group = 'Platforms'
+        if build_config_group not in self.default_settings:
+            self.default_settings[build_config_group] = []
+
+        platform_name = platform.platform
+
+        long_form_platform_name = platform.attributes.get('legacy_platform_name', platform_name).replace('_', '-')
+
+        default_value = 'True' if platform.enabled else 'False'
+
+        platform_folder_settings = {
+            SETTING_KEY_LONG_FORM: '--enable-{}'.format(long_form_platform_name),
+            SETTING_KEY_ATTRIBUTE: 'enable_{}'.format(platform_name),
+            SETTING_KEY_DEFAULT_VALUE: default_value,
+            SETTING_KEY_DESCRIPTION: 'Enable or Disable platform {}.'.format(platform_name)
+        }
+        self.default_settings[build_config_group].append(platform_folder_settings)
+
+    def is_platform_enabled(self, platform):
+        try:
+            if platform in self.platform_settings_map and not self.platform_settings_map[platform].enabled:
+                return False
+
+            platform_enabled = self.is_platform_enable_key_set(platform)
+            if platform_enabled:
+                # If the platform is marked enabled, do an additional check to see if the platform is dependent on
+                # another platform to determine if its enabled/disabled
+                dependent_platform_enabled = self.is_dependent_platform_enabled(platform)
+                if dependent_platform_enabled != platform_enabled:
+                    dependent_platform_name = self.platform_settings_map[platform].attributes.get('dependent_platform')
+                    Logs.debug("settings_manager: Disabling platform '{}' due to its dependent platform '{}' "
+                               "being disabled".format(platform, dependent_platform_name))
+                return dependent_platform_enabled
+            return platform_enabled
+        except Errors.WafError:
+            return False
+
+    def is_platform_enable_key_set(self, platform):
+        """
+        Lookup the settings value of enable_<platform> and return a bool result of it
+        :param platform: Platform Name to lookup enable_<platform> value
+        :return: true if the enable_<platform> key is set to True
+        """
+        try:
+            enabled_target_platform_config_key = 'enable_{}'.format(platform)
+            platform_enabled = utils.is_value_true(self.get_settings_value(enabled_target_platform_config_key))
+            return platform_enabled
+        except Errors.WafError:
+            return False
+
+    def is_dependent_platform_enabled(self, platform):
+        """
+        Lookup the  dependent platform of the supplied platform and return whether it is enabled
+        :param platform: Platform Name to use to lookup the dependent platform
+        :return: true if the dependent platform is enabled
+        """
+        # if a platform does not have the 'dependent_platform' key as part of its options
+        # then it has an empty dependent platform set in which case True is returned
+        dependent_platform_name = self.platform_settings_map[platform].attributes.get('dependent_platform')
+        if not dependent_platform_name:
+            return True
+
+        try:
+            dependent_platform = self.platform_settings_map.get(dependent_platform_name)
+            if dependent_platform:
+                # Dependent platforms cannot have dependent platforms on their own, we only support one level
+                if dependent_platform.attributes.get('dependent_platform'):
+                    raise Errors.WafError("Platform '{}' is declared a dependency of platform '{}', and cannot "
+                                          "have a dependent platform itself '{}'".format(dependent_platform_name,
+                                                                                         platform,
+                                                                                         dependent_platform.attributes.get('dependent_platform')))
+                return self.is_platform_enable_key_set(dependent_platform_name)
+        except Errors.WafError:
+            pass
+        return False
+
+    def read_bootstrap_overrides_from_settings_file(self, engine_user_settings_options_file):
+        """
+        Get the two possible bootstrap overrides (bootstrap_tool_param, bootstrap_third_party_override) from a user_settings.option file
+
+        :param engine_user_settings_options_file:   The absolute path of the user_settings.options file
+        :return: tuple of (bootstrap_tool_param, bootstrap_third_party_override) if set
+        """
+        if not os.path.exists(engine_user_settings_options_file):
+            raise Errors.WafError(
+                "Unable to locate the engine's settings file. Make sure that the engine at '{} 'is properly configured first".format(
+                    engine_user_settings_options_file))
+
+        engine_user_settings_reader = configparser.ConfigParser()
+        engine_user_settings_reader.read(engine_user_settings_options_file)
+
+        override_settings_map = {}
+
+        override_key_map = {'Misc Options': ['bootstrap_tool_param',
+                                             'bootstrap_third_party_override'],
+                            'Platforms': ['enable_{}'.format(platform_name) for platform_name in list(self.platform_settings_map.keys())]}
+
+        for source_key_section, source_keys in list(override_key_map.items()):
+            for source_key in source_keys:
+                try:
+                    source_value = engine_user_settings_reader.get(source_key_section, source_key)
+                except configparser.NoSectionError as e:
+                    raise Errors.WafError("The engine's user_settings.options as '{}' file is corrupt: {}".format(engine_user_settings_options_file,e))
+                except configparser.NoOptionError:
+                    continue
+                override_settings_map[source_key] = source_value
+
+        return override_settings_map
+
 
 
 LUMBERYARD_SETTINGS = Settings()
@@ -1497,6 +1563,121 @@ def get_platform_aliases(_, alias):
     return LUMBERYARD_SETTINGS.get_platforms_for_alias(alias)
 
 
+@conf
+def update_bootstrap_tool_param(ctx):
+    """
+    Update the bootstrap_tool_param setting in user_settings.options with the platform
+    availability settings from the enable_<platform> settings.
+    
+    :param ctx: Context
+    """
+    
+    all_platform_settings = LUMBERYARD_SETTINGS.get_all_platform_settings()
+    
+    # Track the eligible platform's capabilities in 2 different collections based on them being enabled or not
+    enabled_platform_capability_set = set()
+    disabled_platform_capability_set = set()
+    
+    for platform_settings in all_platform_settings:
+        
+        if not platform_settings.enabled:
+            # If the platform is permanently disabled, then setup assistant will not affect it
+            continue
+            
+        sa_capabilities = platform_settings.attributes.get('sa_capability')
+        dependent_platform = platform_settings.attributes.get('dependent_platform')
+        if not sa_capabilities:
+            # Platform is not affected by setup assistant, so skip
+            continue
+        if dependent_platform:
+            # If this platform has a dependent platform, then its not a primary capability, so skip
+            continue
+
+        if not isinstance(sa_capabilities, list):
+            sa_capabilities = [sa_capabilities]
+
+        for sa_capability in sa_capabilities:
+            capability_key = sa_capability.get('key')
+            # Place each capability name for the platform in either the enabled or disabled collection
+            if LUMBERYARD_SETTINGS.is_platform_enabled(platform_settings.platform):
+                enabled_platform_capability_set.add(capability_key)
+            else:
+                disabled_platform_capability_set.add(capability_key)
+
+    
+    # Filter out the current capabilities and add to the 'filtered' selection capabilities that
+    # are not explicitly disabled
+
+    # Perform set difference of the enabled capability from the disabled capabilities
+    # If a capability is in the enabled set then it cannot be in the disabled set
+    disabled_platform_capability_set = disabled_platform_capability_set - enabled_platform_capability_set
+    filtered_capabilities = set()
+    current_parsed_capabilities = ctx.get_enabled_capabilities()
+    if current_parsed_capabilities:
+        for capability in current_parsed_capabilities:
+            if capability not in disabled_platform_capability_set:
+                filtered_capabilities.add(capability)
+
+    # Sort the capabilities just in case to keep a consistent order for better determinism
+    sorted_capabilites = list(filtered_capabilities)
+    sorted_capabilites.sort(reverse=True)
+    
+    # Scrub out all of the '--enable-capability <capability>' from the current bootstrap_tool_param line so we can re-inject the
+    # validated capabilities
+    ctx.parsed_capabilities = sorted_capabilites
+    bootstrap_tool_param = ctx.options.bootstrap_tool_param
+
+    params = re.sub(r'(--enablecapability\s+\w*)', '', bootstrap_tool_param).split()
+    if params and params[-1] == '--enablecapability':
+        params.remove('--enablecapability')
+    # If there exists a '--none' in the param line, make sure that the capabilities are inject right after it
+    insert_index = 0 if '--none' not in params else params.index('--none') + 1
+    for enabled_platform_capability in sorted_capabilites:
+        params.insert(insert_index, enabled_platform_capability)
+        params.insert(insert_index, '--enablecapability')
+    new_bootstrap_tool_param = ' '.join(params)
+    
+    # Update the settings and the options
+    ctx.options.bootstrap_tool_param = new_bootstrap_tool_param
+    LUMBERYARD_SETTINGS.set_settings_value('bootstrap_tool_param', new_bootstrap_tool_param)
+
+    # If there was a change, then update the user_settings.options file
+    if bootstrap_tool_param != new_bootstrap_tool_param:
+        LUMBERYARD_SETTINGS.update_settings_file(apply_from_command_line=False,
+                                                 override_value_map={'bootstrap_tool_param': new_bootstrap_tool_param})
+
+
+@conf
+def enable_target_platform(ctx, platform_name, update_user_settings_file=True):
+    """
+    Enable a target platform
+    :param ctx:                         Context
+    :param platform_name:               Name of the platform to enable
+    :param update_user_settings_file:   Option to update the user_settings.options file after this update
+    """
+    enable_platform_key = 'enable_{}'.format(platform_name)
+    LUMBERYARD_SETTINGS.set_settings_value(enable_platform_key, 'True')
+
+    if update_user_settings_file:
+        LUMBERYARD_SETTINGS.update_settings_file(apply_from_command_line=False,
+                                                 override_value_map={enable_platform_key: 'True'})
+
+
+@conf
+def disable_target_platform(ctx, platform_name, update_user_settings_file=True):
+    """
+    Disable a target platform
+    :param ctx:                         Context
+    :param platform_name:               Name of the platform to disable
+    :param update_user_settings_file:   Option to update the user_settings.options file after this update
+    """
+    enable_platform_key = 'enable_{}'.format(platform_name)
+    LUMBERYARD_SETTINGS.set_settings_value(enable_platform_key, 'False')
+
+    if update_user_settings_file:
+        LUMBERYARD_SETTINGS.update_settings_file(apply_from_command_line=False,
+                                                 override_value_map={enable_platform_key: 'False'})
+
 
 PLATFORM_ONLY_ALIASES = {}
 
@@ -1510,7 +1691,7 @@ def platform_to_platform_alias(self, platform):
     if not PLATFORM_ONLY_ALIASES:
         non_platform_alias_names = {'all', 'msvc', 'clang'}
         PLATFORM_ONLY_ALIASES = {
-            alias : platforms for alias, platforms in LUMBERYARD_SETTINGS.platform_alias_map.iteritems() if alias not in non_platform_alias_names
+            alias : platforms for alias, platforms in LUMBERYARD_SETTINGS.platform_alias_map.items() if alias not in non_platform_alias_names
         }
 
     for alias in PLATFORM_ONLY_ALIASES:
@@ -1569,7 +1750,7 @@ def report_settings_overrides(ctx):
     if ctx.is_option_true('internal_dont_check_recursive_execution'):
         return
 
-    for attribute, default_value in LUMBERYARD_SETTINGS.default_settings_map.items():
+    for attribute, default_value in list(LUMBERYARD_SETTINGS.default_settings_map.items()):
         
         # Skip any attributes that were blacklisted
         if attribute in SUPPRESS_REPORT_SETTINGS_OVERRIDES:

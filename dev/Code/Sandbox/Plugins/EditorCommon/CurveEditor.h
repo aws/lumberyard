@@ -209,6 +209,8 @@ protected:
 
     void UpdateTangents();
     SCurveEditorContent* m_pContent;
+
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::unique_ptr<SMouseHandler> m_pMouseHandler;
 
     ECurveEditorCurveType m_curveType;
@@ -227,4 +229,5 @@ protected:
     int m_optOutFlags;
 public:
     QList<CCurveEditorControl*> m_pControlKeys;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };

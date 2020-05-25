@@ -9,7 +9,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+
+# waflib imports
 from waflib.Configure import conf
+
 
 LMBR_SETUP_QT_FILTERS = {
     "win": {
@@ -205,10 +208,10 @@ LMBR_SETUP_QT_FILTERS = {
 def get_lmbr_setup_tools_output_folder(ctx, platform_override=None, configuration_override=None):
     curr_platform, curr_configuration = ctx.get_platform_and_configuration()
 
-    if platform_override is not None and isinstance(platform_override, basestring):
+    if platform_override is not None and isinstance(platform_override, str):
         curr_platform = platform_override
 
-    if configuration_override is not None and isinstance(configuration_override, basestring):
+    if configuration_override is not None and isinstance(configuration_override, str):
         curr_configuration = configuration_override
 
     output_folder_platform      = ""

@@ -12,7 +12,7 @@
 
 #include "Libraries.h"
 
-#include <Libraries/Core/Core.h>
+#include <Libraries/Core/CoreNodes.h>
 #include <Libraries/Logic/Logic.h>
 #include <Libraries/Math/Math.h>
 #include <Libraries/Comparison/Comparison.h>

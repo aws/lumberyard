@@ -13,7 +13,7 @@
 import os
 import zipfile
 
-from errors import HandledError
+from .errors import HandledError
 
 from resource_manager_common import constant
 
@@ -48,7 +48,7 @@ class LambdaCodePackageValidator(object):
     def upload(self, uploader):
         if not self.local_zip_path:
             raise HandledError("A local zip was not found for {}".format(self.function_name))
-        print "uploading {}".format(self.local_zip_path)
+        print("uploading {}".format(self.local_zip_path))
         return uploader.upload_file(UPLOADED_FILE_FORMAT.format(self.function_name), self.local_zip_path)["key"]
 
 
@@ -73,13 +73,16 @@ class JavaCodePackageValidator(LambdaCodePackageValidator):
             self.local_zip_path = jar_path
             return True
         else:
-            print("WARNING: Unable to find expected lambda jar file at {}".format(jar_path))
-
-        # Eclipse using maven spits it out as <project>-SNAPSHOT.jar no reason not to support this
-        jar_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '-SNAPSHOT.jar ')
-        if os.path.exists(jar_path):
-            self.local_zip_path = jar_path
-            return True
+            # Eclipse using maven spits it out as <project>-SNAPSHOT.jar no reason not to support this
+            jar_snapshot_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME,
+                                    self.function_name + '-SNAPSHOT.jar')
+            print(jar_path)
+            if os.path.exists(jar_snapshot_path):
+                self.local_zip_path = jar_snapshot_path
+                return True
+            else:
+                print("WARNING: Unable to find expected lambda jar file at {} or {}".format(
+                    jar_path, jar_snapshot_path))
 
         zip_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.zip')
 

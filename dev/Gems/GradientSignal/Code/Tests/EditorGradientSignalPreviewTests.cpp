@@ -72,7 +72,7 @@ namespace UnitTest
             // we can easily validate the order in which the gradient values were requested to test the interlacing
             // functionality.
             bool constrainToShape = false;
-            AZ::Aabb previewBounds = AZ::Aabb::CreateFromMinMax(AZ::Vector3(0.0f), AZ::Vector3(imageBoundsX, imageBoundsY, 0.0f));
+            AZ::Aabb previewBounds = AZ::Aabb::CreateFromMinMax(AZ::Vector3(0.0f), AZ::Vector3(aznumeric_cast<float>(imageBoundsX), aznumeric_cast<float>(imageBoundsY), 0.0f));
 
             // Fill in our mock gradient data with values that go from 0.0f in the upper left corner down to 1.0f in the bottom right.
             AZStd::vector<float> inputData(imageBoundsX * imageBoundsY);

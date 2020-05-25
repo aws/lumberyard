@@ -10,16 +10,21 @@
 #
 ########################################################################################
 
+from waflib import Logs
+
 def build(bld):
-    bld.DefineGem(
-        pch         = "",
-        disable_pch = True,
-        uselib      = ['RAD_TELEMETRY'],
-        includes    = [bld.Path('Code/CryEngine/CryCommon')
-                      ],
-        export_internal_3rd_party_libs = True,
-        export_includes = [bld.Path('Gems/RADTelemetry/External/Include')],
-        debug_export_defines = ['AZ_PROFILE_TELEMETRY'],
-        profile_export_defines =['AZ_PROFILE_TELEMETRY'],
-        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
-    )
+    if bld.path.find_resource('../External/Include/rad_tm.h'):
+        bld.DefineGem(
+            pch         = "",
+            disable_pch = True,
+            uselib      = ['RAD_TELEMETRY'],
+            includes    = [bld.Path('Code/CryEngine/CryCommon')
+                          ],
+            export_internal_3rd_party_libs = True,
+            export_includes = [bld.Path('Gems/RADTelemetry/External/Include')],
+            debug_export_defines = ['AZ_PROFILE_TELEMETRY'],
+            profile_export_defines =['AZ_PROFILE_TELEMETRY'],
+            platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
+        )
+    else:
+        Logs.warn("[WARNING] rad_tm.h not found in Gems/RadTelemetry/External/Include/rad_tm.h, building without RADTelemetry, If the RADTelemetry gem is enabled for the game project, the game will fail to load.")

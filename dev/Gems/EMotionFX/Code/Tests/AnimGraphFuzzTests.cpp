@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include "AnimGraphFixture.h"
 
 namespace EMotionFX
@@ -92,7 +93,7 @@ namespace EMotionFX
         m_animGraph->GetRootStateMachine()->SetId(9347464774972852905u);
         AZStd::string charBuffer;
         AZ::IO::ByteContainerStream<AZStd::string > charStream(&charBuffer);
-        AZ::Utils::SaveObjectToStream(charStream, AZ::ObjectStream::ST_XML, m_animGraph, GetSerializeContext());
+        AZ::Utils::SaveObjectToStream(charStream, AZ::ObjectStream::ST_XML, m_animGraph.get(), GetSerializeContext());
 
         const Seed seed = GetParam();
         AZ::SimpleLcgRandom random(seed);
@@ -132,6 +133,5 @@ namespace EMotionFX
         AnimGraphFuzzTest,
         ::testing::ValuesIn(randomSeeds),
         ::testing::PrintToStringParamName()
-    );
-
+        );
 } //end namespace EMotionFX

@@ -16,8 +16,8 @@
 #include <AzCore/RTTI/AttributeReader.h>
 
 using namespace ScriptCanvasTests;
-using namespace ScriptCanvas;
- 
+using namespace ScriptCanvas; 
+
 TEST_F(ScriptCanvasTestFixture, FillWithOrdinals)
 {
     RunUnitTestGraph("LY_SC_UnitTest_FillWithOrdinals");
@@ -67,5 +67,3 @@ TEST_F(ScriptCanvasTestFixture, SetContainerNum)
 {
     RunUnitTestGraph("LY_SC_UnitTest_SetContainerNum");
 }
-
-

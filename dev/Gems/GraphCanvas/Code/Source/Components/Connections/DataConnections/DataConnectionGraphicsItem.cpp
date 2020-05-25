@@ -207,12 +207,12 @@ namespace GraphCanvas
         // Leave the color alone if we don't have a valid connection. Other logic deals with its coloring then.
         if (slotId.IsValid())
         {
-            DataSlotType dataType = DataSlotType::Unknown;
-            DataSlotRequestBus::EventResult(dataType, slotId, &DataSlotRequests::GetDataSlotType);
+            DataValueType valueType = DataValueType::Unknown;
+            DataSlotRequestBus::EventResult(valueType, slotId, &DataSlotRequests::GetDataValueType);
 
             const Styling::StyleHelper* stylingHelper = nullptr;
             
-            if (dataType == DataSlotType::Container)
+            if (valueType == DataValueType::Container)
             {
                 size_t typeCount = 0;
                 DataSlotRequestBus::EventResult(typeCount, slotId, &DataSlotRequests::GetContainedTypesCount);

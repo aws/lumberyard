@@ -275,7 +275,7 @@ void CanvasSizeToolbarSection::LineEditWidthEditingFinished()
         if (m_isChangeUndoable)
         {
             // Check if the size is now set to one of the presets
-            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(newWidth, m_canvasSizePresets[customSizeIndex].height));
+            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(aznumeric_cast<float>(newWidth), aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].height)));
             if (presetIndex != customSizeIndex)
             {
                 // Change combo box index which will trigger an OnComboBoxIndexChanged event and add an undoable command
@@ -286,8 +286,8 @@ void CanvasSizeToolbarSection::LineEditWidthEditingFinished()
                 // Add an undoable command to update the custom canvas size
                 CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
                     m_editorWindow->GetCanvasSizeToolbarSection(),
-                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, m_canvasSizePresets[customSizeIndex].height),
-                    AZ::Vector2(newWidth, m_canvasSizePresets[customSizeIndex].height), false);
+                    AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].width), aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].height)),
+                    AZ::Vector2(aznumeric_cast<float>(newWidth), aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].height)), false);
             }
         }
         else
@@ -319,7 +319,7 @@ void CanvasSizeToolbarSection::LineEditHeightEditingFinished()
         if (m_isChangeUndoable)
         {
             // Check if the size is now set to one of the presets
-            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, newHeight));
+            int presetIndex = GetPresetIndexFromSize(AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].width), aznumeric_cast<float>(newHeight)));
             if (presetIndex != customSizeIndex)
             {
                 // Change combo box index which will trigger an OnComboBoxIndexChanged event and add an undoable command
@@ -330,8 +330,8 @@ void CanvasSizeToolbarSection::LineEditHeightEditingFinished()
                 // Add an undoable command to update the custom canvas size
                 CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
                     m_editorWindow->GetCanvasSizeToolbarSection(),
-                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, m_canvasSizePresets[customSizeIndex].height),
-                    AZ::Vector2(m_canvasSizePresets[customSizeIndex].width, newHeight), false);
+                    AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].width), aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].height)),
+                    AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[customSizeIndex].width), aznumeric_cast<float>(newHeight)), false);
             }
         }
         else
@@ -466,7 +466,7 @@ int CanvasSizeToolbarSection::GetPresetIndexFromSize(AZ::Vector2 size)
     if (matchingResolution != m_canvasSizePresets.end())
     {
         // Resolution matches one of our presets, so select it
-        matchingIndex = matchingResolution - m_canvasSizePresets.begin();
+        matchingIndex = aznumeric_cast<int>(matchingResolution - m_canvasSizePresets.begin());
     }
 
     return matchingIndex;
@@ -511,7 +511,7 @@ void ReferenceCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex()
     int comboIndex = m_combobox->currentIndex();
 
     // This is the low level function called by the undoable command (via SetIndex etc)
-    AZ::Vector2 canvasSize(m_canvasSizePresets[comboIndex].width, m_canvasSizePresets[comboIndex].height);
+    AZ::Vector2 canvasSize(aznumeric_cast<float>(m_canvasSizePresets[comboIndex].width), aznumeric_cast<float>(m_canvasSizePresets[comboIndex].height));
 
     // set the canvas size on the canvas entity being edited
     EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetCanvasSize, canvasSize);
@@ -528,8 +528,8 @@ void ReferenceCanvasSizeToolbarSection::OnComboBoxIndexChanged(int index)
 
         CommandCanvasSize::Push(m_editorWindow->GetActiveStack(),
             m_editorWindow->GetCanvasSizeToolbarSection(),
-            AZ::Vector2(m_canvasSizePresets[prevIndex].width, m_canvasSizePresets[prevIndex].height),
-            AZ::Vector2(m_canvasSizePresets[index].width, m_canvasSizePresets[index].height), true);
+            AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[prevIndex].width), aznumeric_cast<float>(m_canvasSizePresets[prevIndex].height)),
+            AZ::Vector2(aznumeric_cast<float>(m_canvasSizePresets[index].width), aznumeric_cast<float>(m_canvasSizePresets[index].height)), true);
     }
     else
     {
@@ -556,7 +556,7 @@ void PreviewCanvasSizeToolbarSection::SetCanvasSizeByComboBoxIndex()
 {
     int comboIndex = m_combobox->currentIndex();
 
-    AZ::Vector2 canvasSize(m_canvasSizePresets[comboIndex].width, m_canvasSizePresets[comboIndex].height);
+    AZ::Vector2 canvasSize(aznumeric_cast<float>(m_canvasSizePresets[comboIndex].width), aznumeric_cast<float>(m_canvasSizePresets[comboIndex].height));
 
     // tell the EditorWindow what size we want to preview the canvas at
     m_editorWindow->SetPreviewCanvasSize(canvasSize);

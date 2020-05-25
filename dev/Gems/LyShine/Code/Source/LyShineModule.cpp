@@ -15,6 +15,7 @@
 
 #include "LyShineModule.h"
 #include "LyShineSystemComponent.h"
+#include "LyShineLoadScreen.h"
 
 #include "UiCanvasComponent.h"
 #include "UiElementComponent.h"
@@ -106,6 +107,9 @@ namespace LyShine
                 // Builder
                 LyShineBuilder::LyShineBuilderComponent::CreateDescriptor(),
     #endif
+    #if AZ_LOADSCREENCOMPONENT_ENABLED
+                LyShineLoadScreenComponent::CreateDescriptor(),
+    #endif
             });
 
         // This is so the metrics system knows which component LyShine is registering
@@ -119,6 +123,9 @@ namespace LyShine
     {
         return AZ::ComponentTypeList{
                    azrtti_typeid<LyShineSystemComponent>(),
+    #if AZ_LOADSCREENCOMPONENT_ENABLED
+                   azrtti_typeid<LyShineLoadScreenComponent>(),
+    #endif
         };
     }
 }

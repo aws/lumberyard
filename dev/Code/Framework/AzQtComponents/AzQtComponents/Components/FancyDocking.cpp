@@ -18,6 +18,7 @@
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -65,11 +66,6 @@ namespace AzQtComponents
         case Qt::RightDockWidgetArea:
             return Qt::Horizontal;
         }
-    }
-
-    static bool isWin10()
-    {
-        return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
     }
 
     /**
@@ -311,11 +307,11 @@ namespace AzQtComponents
 
         // Count the number of visible dock widgets for our main window
         const QList<QDockWidget*> list = mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly);
-        int count = std::count_if(list.cbegin(), list.cend(), [](QDockWidget* dockWidget) {
+        ptrdiff_t count = std::count_if(list.cbegin(), list.cend(), [](QDockWidget* dockWidget) {
             return dockWidget->isVisible();
         });
 
-        return count;
+        return aznumeric_cast<int>(count);
     }
 
     /**
@@ -675,12 +671,12 @@ namespace AzQtComponents
         int dropZoneWidth = g_FancyDockingConstants.dropZoneSizeInPixels;
         if (dockWidth < g_FancyDockingConstants.minDockSizeBeforeDropZoneScalingInPixels)
         {
-            dropZoneWidth = dockWidth * g_FancyDockingConstants.dropZoneScaleFactor;
+            dropZoneWidth = aznumeric_cast<int>(dockWidth * g_FancyDockingConstants.dropZoneScaleFactor);
         }
         int dropZoneHeight = g_FancyDockingConstants.dropZoneSizeInPixels;
         if (dockHeight < g_FancyDockingConstants.minDockSizeBeforeDropZoneScalingInPixels)
         {
-            dropZoneHeight = dockHeight * g_FancyDockingConstants.dropZoneScaleFactor;
+            dropZoneHeight = aznumeric_cast<int>(dockHeight * g_FancyDockingConstants.dropZoneScaleFactor);
         }
 
         // Calculate the inner corners to be used when constructing the drop zone polygons
@@ -709,7 +705,7 @@ namespace AzQtComponents
         int innerDropZoneWidth = m_dropZoneState.innerDropZoneRect().width();
         int innerDropZoneHeight = m_dropZoneState.innerDropZoneRect().height();
         int centerDropZoneDiameter = (innerDropZoneWidth < innerDropZoneHeight) ? innerDropZoneWidth : innerDropZoneHeight;
-        centerDropZoneDiameter *= g_FancyDockingConstants.centerTabDropZoneScale;
+        centerDropZoneDiameter = aznumeric_cast<int>(centerDropZoneDiameter * g_FancyDockingConstants.centerTabDropZoneScale);
 
         // Setup our center tab drop zone
         const QSize centerDropZoneSize(centerDropZoneDiameter, centerDropZoneDiameter);
@@ -2301,17 +2297,14 @@ namespace AzQtComponents
             case QEvent::ShortcutOverride:
                 if (m_dropZoneState.dragging())
                 {
-                    // Cancel the dragging state when the Escape key is pressed
+                    // Cancel the dragging state when any key but Ctrl is pressed
                     QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-                    if (keyEvent->key() == Qt::Key_Escape)
+                    if (keyEvent->key() != Qt::Key_Control)
                     {
                         clearDraggingState();
                     }
-                    else
-                    {
-                        // modifier keys can affect things, so do a redraw
-                        RepaintFloatingIndicators();
-                    }
+                    // always do a redraw
+                    RepaintFloatingIndicators();
                 }
                 break;
             case QEvent::KeyRelease:

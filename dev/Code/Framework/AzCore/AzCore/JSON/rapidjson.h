@@ -9,21 +9,38 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_RAPIDJSON
-#define AZCORE_RAPIDJSON
+
+#pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
 
 // Skip the error as we are including the recommended way.
 #define RAPIDJSON_SKIP_AZCORE_ERROR
 
-#define RAPIDJSON_ASSERT(x) AZ_Assert(x, "Assert[rapidjson]: " #x)
-#define RAPIDJSON_STATIC_ASSERT(x) AZ_STATIC_ASSERT(x, "Assert[rapidjson]: " #x)
+#if defined(AZ_ENABLE_TRACING)
+#   define RAPIDJSON_ASSERT(x) AZ_Assert(x, "Assert[rapidjson]: " #x)
+#else
+#   define RAPIDJSON_ASSERT(x) (void)(0)
+#endif
+#define RAPIDJSON_STATIC_ASSERT(x) static_assert(x, "Assert[rapidjson]: " #x)
 #define RAPIDJSON_HAS_CXX11_TYPETRAITS 1
 #define RAPIDJSON_HAS_CXX11_RVALUE_REFS 1
 
-#define RAPIDJSON_NEW(x)  aznew x
-#define RAPIDJSON_DELETE(x) delete x
+namespace rapidjson_ly_internal
+{
+    template<typename T>
+    void Delete(T* instance)
+    {
+        if (instance)
+        {
+            instance->~T();
+            azfree(instance, AZ::SystemAllocator);
+        }
+    }
+}
+
+#define RAPIDJSON_NEW(x)  new(azmalloc(sizeof(x), alignof(x), AZ::SystemAllocator, "RapidJSON")) x
+#define RAPIDJSON_DELETE(x) rapidjson_ly_internal::Delete(x)
 #define RAPIDJSON_MALLOC(_size) AZ::AllocatorInstance<AZ::SystemAllocator>::Get().Allocate(_size, 16, 0, "RapidJson", __FILE__, __LINE__, 0)
 #define RAPIDJSON_REALLOC(_ptr, _newSize) _ptr ? AZ::AllocatorInstance<AZ::SystemAllocator>::Get().ReAllocate(_ptr, _newSize, 16) : RAPIDJSON_MALLOC(_newSize)
 #define RAPIDJSON_FREE(_ptr) if (_ptr) { AZ::AllocatorInstance<AZ::SystemAllocator>::Get().DeAllocate(_ptr, 0, 0); }
@@ -37,7 +54,7 @@
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
 #endif
 
-// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
+// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.1.0\include
 #include <rapidjson/rapidjson.h>
 
 #if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
@@ -46,5 +63,3 @@
 
 // Allow our existing code to continue use "rapidjson::"
 #define rapidjson RAPIDJSON_NAMESPACE
-
-#endif // AZCORE_RAPIDJSON

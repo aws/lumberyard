@@ -59,6 +59,11 @@ namespace GraphCanvas
 
         setZValue(m_configuration.m_zValue);
     }
+
+    ParticleGraphicsItem::~ParticleGraphicsItem()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+    }
     
     void ParticleGraphicsItem::OnTick(float deltaTime, AZ::ScriptTimePoint timePoint)
     {
@@ -93,14 +98,17 @@ namespace GraphCanvas
             m_elapsedDuration = m_configuration.m_lifespan.count() * 0.001f;
 
             AZ::TickBus::Handler::BusDisconnect();
-
-            QTimer::singleShot(0, [this]()
-            {                
-                QGraphicsScene* graphicsScene = this->scene();
-                graphicsScene->removeItem(this);
-                delete this;
-            });
+            AZ::SystemTickBus::Handler::BusConnect();
         }
+    }
+
+    void ParticleGraphicsItem::OnSystemTick()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+
+        QGraphicsScene* graphicsScene = this->scene();
+        graphicsScene->removeItem(this);
+        delete this;
     }
     
     QRectF ParticleGraphicsItem::boundingRect() const

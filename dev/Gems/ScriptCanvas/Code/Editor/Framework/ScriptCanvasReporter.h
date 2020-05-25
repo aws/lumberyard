@@ -48,7 +48,7 @@ namespace ScriptCanvasEditor
     {
     public:
         Reporter();
-        Reporter(const AZ::EntityId& graphID, const AZ::EntityId& entityID);
+        Reporter(const ScriptCanvasId& graphID, const AZ::EntityId& entityID);
         ~Reporter();
 
         void FinishReport();
@@ -59,7 +59,7 @@ namespace ScriptCanvasEditor
 
         const AZStd::vector<Report>& GetFailure() const;
 
-        const AZ::EntityId& GetGraphId() const;
+        const ScriptCanvasId& GetScriptCanvasId() const;
             
         const AZStd::vector<Report>& GetSuccess() const;
                         
@@ -77,7 +77,7 @@ namespace ScriptCanvasEditor
             
         void Reset();
 
-        void SetGraph(const AZ::EntityId& graphID, const AZ::EntityId& entityID);
+        void SetGraph(const ScriptCanvasId& graphID, const AZ::EntityId& entityID);
 
         // Bus::Handler
             
@@ -115,7 +115,7 @@ namespace ScriptCanvasEditor
         bool m_graphIsComplete = false;
         bool m_graphIsErrorFree = false;
         bool m_isReportFinished = false;
-        AZ::EntityId m_graphId;
+        ScriptCanvasId m_scriptCanvasId;
         AZ::EntityId m_entityId;
         AZStd::vector<Report> m_checkpoints;
         AZStd::vector<Report> m_failures;

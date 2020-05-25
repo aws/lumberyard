@@ -8,15 +8,14 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# System Imports
 import os
 import json
 
-from waflib.Build import BuildContext
+# waflib imports
 from waflib import Context, TaskGen, Logs
-from waflib.Task import Task
-from waflib.Configure import conf
-
-import lumberyard_sdks
+from waflib.Build import BuildContext
 
 
 #############################################################################
@@ -24,6 +23,7 @@ class dependency_file_generator(BuildContext):
     ''' Util class for the Integration Toolkit.  Will generate a JSON for a module inside of BinTemp/module_dependencies containing the waf_files, wscript, and code files required to build the module '''
     cmd = 'generate_module_dependency_files'
     fun = 'build'
+    is_project_generator = True
 
 
 def get_module_dependency_folder(ctx):

@@ -128,7 +128,7 @@ namespace AZ
             // used during load to skip the rest of the element including any subelements
             void SkipElement();
 
-            bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData);
+            bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData) override;
             bool WriteElement(const void* elemPtr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
             bool CloseElement();
 
@@ -177,7 +177,7 @@ namespace AZ
                 const SerializeContext::ClassData* dataElementClassData, void* parentClassPtr);
 
             /// finalizes the stream after the user is done submitting his writes
-            virtual bool Finalize();
+            bool Finalize() override;
 
             /// Returns true if we will keep the element class, otherwise false
             bool ConvertOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass);
@@ -921,6 +921,7 @@ namespace AZ
                     // serialized.
                     if (!storageElement.m_classContainer && *reinterpret_cast<void**>(storageElement.m_reserveAddress))
                     {
+                        // Tip: If you crash here, it might be a pointer that isn't initialized to null
                         classFactory->Destroy(*reinterpret_cast<void**>(storageElement.m_reserveAddress));
                     }
 

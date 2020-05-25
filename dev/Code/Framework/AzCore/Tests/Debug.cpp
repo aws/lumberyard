@@ -157,6 +157,8 @@ namespace UnitTest
             AZ_VerifyWarning("Test", result = true, "Expression should execute even in release!");
             AZ_TEST_ASSERT(result == true);
             (void)result;
+
+            BusDisconnect();
         }
     };
 

@@ -167,6 +167,22 @@ namespace Vegetation
 
         SpawnerRequestBus::Handler::BusDisconnect();
 
+        OnUnregisterArea();
+    }
+
+    void SpawnerComponent::OnRegisterArea()
+    {
+        // Every time our area becomes valid and registered, make sure we clear our
+        // temporary descriptor caches.  These should only contain valid data during
+        // PrepareToClaim / Claim, but it doesn't hurt to ensure they're cleared.
+        ClearSelectableDescriptors();
+    }
+
+    void SpawnerComponent::OnUnregisterArea()
+    {
+        // Every time our area becomes invalid and unregistered, make sure we destroy
+        // all instances that this component spawned.  Also clear our temporary descriptor
+        // caches just to keep things tidy.
         ClearSelectableDescriptors();
         DestroyAllInstances();
     }

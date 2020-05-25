@@ -1125,7 +1125,7 @@ namespace AZ {
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext*) {}
+            void Reflect(SerializeContext*) override {}
 
             NullFactory m_factory;
             SerializeContext::ClassData m_classData;
@@ -1148,7 +1148,7 @@ namespace AZ {
         : public GenericClass
     {
         AZ_RTTI(GenericChild, "{086E933D-F3F9-41EA-9AA9-BA80D3DCF90A}", GenericClass);
-        virtual ~GenericChild() {}
+        ~GenericChild() override {}
     };
     template<>
     struct SerializeGenericTypeInfo<GenericChild>
@@ -1189,7 +1189,7 @@ namespace AZ {
                 return TYPEINFO_Uuid();
             }
 
-            void Reflect(SerializeContext*);
+            void Reflect(SerializeContext*) override;
 
             NullFactory m_factory;
             SerializeContext::ClassData m_classData;
@@ -2616,7 +2616,7 @@ namespace UnitTest
                     m_data.m_ptr = &m_ptrData;
                 }
 
-                virtual void FillOverlayData(DataOverlayTarget* dest, const DataOverlayToken& dataToken)
+                void FillOverlayData(DataOverlayTarget* dest, const DataOverlayToken& dataToken) override
                 {
                     if (*reinterpret_cast<const u32*>(dataToken.m_dataUri.data()) == GetIntToken())
                     {
@@ -2650,12 +2650,12 @@ namespace UnitTest
                 DataOverlayInstanceEnumeratorExample(InstanceType type)
                     : m_type(type) {}
 
-                ~DataOverlayInstanceEnumeratorExample()
+                ~DataOverlayInstanceEnumeratorExample() override
                 {
                     BusDisconnect();
                 }
 
-                virtual DataOverlayInfo GetOverlayInfo()
+                DataOverlayInfo GetOverlayInfo() override
                 {
                     DataOverlayInfo info;
                     info.m_providerId = DataOverlayProviderExample::GetProviderId();

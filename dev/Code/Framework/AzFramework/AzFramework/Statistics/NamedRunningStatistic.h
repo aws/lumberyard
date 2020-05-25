@@ -32,6 +32,16 @@ namespace AzFramework
             {
             }
 
+            void UpdateName(const AZStd::string& name)
+            {
+                m_name = name;
+            }
+
+            void UpdateUnits(const AZStd::string& units)
+            {
+                m_units = units;
+            }
+
             virtual ~NamedRunningStatistic() = default;
 
             const AZStd::string& GetName() const { return m_name; }

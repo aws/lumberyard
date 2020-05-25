@@ -296,16 +296,16 @@ namespace ScriptCanvasEditor
         m_validationResults.ClearResults();
     }
     
-    void GraphValidationModel::RunValidation(const AZ::EntityId& scriptCanvasGraphId)
+    void GraphValidationModel::RunValidation(const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
     {
         layoutAboutToBeChanged();
 
         m_validationResults.ClearResults();
         
-        if (scriptCanvasGraphId.IsValid())
+        if (scriptCanvasId.IsValid())
         {
             bool validated = false;
-            ScriptCanvas::StatusRequestBus::Event(scriptCanvasGraphId, &ScriptCanvas::StatusRequests::ValidateGraph, m_validationResults);
+            ScriptCanvas::StatusRequestBus::Event(scriptCanvasId, &ScriptCanvas::StatusRequests::ValidateGraph, m_validationResults);
         }
         
         layoutChanged();
@@ -620,13 +620,13 @@ namespace ScriptCanvasEditor
 
         ui->statusTableView->clearSelection();
 
-        GeneralRequestBus::BroadcastResult(m_scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        GeneralRequestBus::BroadcastResult(m_scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
         m_graphCanvasGraphId = graphCanvasGraphId;
 
-        ui->runValidation->setEnabled(m_scriptCanvasGraphId.IsValid());
+        ui->runValidation->setEnabled(m_scriptCanvasId.IsValid());
 
         // Lazy way of clearing out the results
-        m_model->RunValidation(AZ::EntityId());
+        m_model->RunValidation(ScriptCanvas::ScriptCanvasId());
         UpdateText();
     }
 
@@ -659,7 +659,7 @@ namespace ScriptCanvasEditor
     {
         ui->statusTableView->clearSelection();
 
-        m_model->RunValidation(m_scriptCanvasGraphId);
+        m_model->RunValidation(m_scriptCanvasId);
         ui->allFilter->click();
 
         UpdateText();
@@ -832,7 +832,7 @@ namespace ScriptCanvasEditor
             }
         }
 
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
 
         OnRunValidator();
     }
@@ -897,7 +897,7 @@ namespace ScriptCanvasEditor
             //EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::UpdateScriptEventVersion, scriptEventMismatchEvent->GetNodeId());
         }
 
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
 
     }
 
@@ -908,16 +908,16 @@ namespace ScriptCanvasEditor
             GraphCanvas::ScopedGraphUndoBlocker undoBlocker(m_graphCanvasGraphId);
 
             AZStd::vector<NodeIdPair> variableNodes;
-            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasGraphId, &EditorGraphRequests::GetVariableNodes, invalidVariableEvent->GetVariableId());
+            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasId, &EditorGraphRequests::GetVariableNodes, invalidVariableEvent->GetVariableId());
             for (auto& variableNode : variableNodes)
             {
                 GraphCanvas::GraphUtils::DetachNodeAndStitchConnections(variableNode.m_graphCanvasId);
             }
 
-            ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::RemoveVariable, invalidVariableEvent->GetVariableId());
+            ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::RemoveVariable, invalidVariableEvent->GetVariableId());
         }
 
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
 
     }
 
@@ -947,12 +947,12 @@ namespace ScriptCanvasEditor
                 return;
             }
 
-            const AZStd::string& varName = VariableDockWidget::FindDefaultVariableName(m_scriptCanvasGraphId);
+            const AZStd::string& varName = VariableDockWidget::FindDefaultVariableName(m_scriptCanvasId);
 
             ScriptCanvas::Datum datum(variableType, ScriptCanvas::Datum::eOriginality::Original);
 
             AZ::Outcome<ScriptCanvas::VariableId, AZStd::string> outcome = AZ::Failure(AZStd::string());
-            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, varName, datum);
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, varName, datum);
 
             if (outcome.IsSuccess())
             {
@@ -1032,12 +1032,12 @@ namespace ScriptCanvasEditor
                                 {
                                     QRectF sourceBoundingRect = sourceItem->sceneBoundingRect();
 
-                                    position.SetX(sourceBoundingRect.right() + gridStep.GetX());
-                                    position.SetY(sourceBoundingRect.top());
+                                    position.SetX(aznumeric_cast<float>(sourceBoundingRect.right() + gridStep.GetX()));
+                                    position.SetY(aznumeric_cast<float>(sourceBoundingRect.top()));
                                 }
                             }
 
-                            NodeIdPair createdNodePair = Nodes::CreateSetVariableNode(targetVariableId, m_scriptCanvasGraphId);
+                            NodeIdPair createdNodePair = Nodes::CreateSetVariableNode(targetVariableId, m_scriptCanvasId);
 
                             setVariableGraphCanvasId = createdNodePair.m_graphCanvasId;
                             GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, setVariableGraphCanvasId, position);
@@ -1060,7 +1060,7 @@ namespace ScriptCanvasEditor
                 }
                 else
                 {
-                    NodeIdPair setVariableNodeIdPair = Nodes::CreateSetVariableNode(targetVariableId, m_scriptCanvasGraphId);
+                    NodeIdPair setVariableNodeIdPair = Nodes::CreateSetVariableNode(targetVariableId, m_scriptCanvasId);
 
                     createdNodes.insert(setVariableNodeIdPair.m_graphCanvasId);
 
@@ -1073,7 +1073,7 @@ namespace ScriptCanvasEditor
                         sourceBoundingRect = graphicsItem->sceneBoundingRect();
                     }
 
-                    AZ::Vector2 position = AZ::Vector2(sourceBoundingRect.right() + gridStep.GetX(), sourceBoundingRect.top());
+                    AZ::Vector2 position = AZ::Vector2(aznumeric_cast<float>(sourceBoundingRect.right() + gridStep.GetX()), aznumeric_cast<float>(sourceBoundingRect.top()));
                     GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, setVariableNodeIdPair.m_graphCanvasId, position);
 
                     AZStd::vector< GraphCanvas::Endpoint> endpoints;
@@ -1094,7 +1094,7 @@ namespace ScriptCanvasEditor
 
             // Inserting the get into the execution flow
             {
-                NodeIdPair getVariableNodeIdPair = Nodes::CreateGetVariableNode(targetVariableId, m_scriptCanvasGraphId);
+                NodeIdPair getVariableNodeIdPair = Nodes::CreateGetVariableNode(targetVariableId, m_scriptCanvasId);
 
                 createdNodes.insert(getVariableNodeIdPair.m_graphCanvasId);
 
@@ -1107,14 +1107,14 @@ namespace ScriptCanvasEditor
                     targetBoundingRect = graphicsItem->sceneBoundingRect();
                 }
 
-                AZ::Vector2 position = AZ::Vector2(targetBoundingRect.left() - gridStep.GetX(), targetBoundingRect.top());
+                AZ::Vector2 position = AZ::Vector2(aznumeric_cast<float>(targetBoundingRect.left() - gridStep.GetX()), aznumeric_cast<float>(targetBoundingRect.top()));
 
                 QGraphicsItem* newGraphicsItem = nullptr;
                 GraphCanvas::SceneMemberUIRequestBus::EventResult(newGraphicsItem, getVariableNodeIdPair.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::GetRootGraphicsItem);
 
                 if (newGraphicsItem)
                 {
-                    position.SetX(position.GetX() - newGraphicsItem->sceneBoundingRect().width());
+                    position.SetX(aznumeric_cast<float>(position.GetX() - newGraphicsItem->sceneBoundingRect().width()));
                 }
 
                 GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, getVariableNodeIdPair.m_graphCanvasId, position);
@@ -1163,7 +1163,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::Delete, deletedMemberIds);
         }
 
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
 
         GraphCanvas::NodeNudgingController nudgingController;
         nudgingController.SetGraphId(m_graphCanvasGraphId);
@@ -1213,7 +1213,7 @@ namespace ScriptCanvasEditor
             const ScriptCanvas::InvalidVariableTypeEvent* invalidTypeEvent = static_cast<const ScriptCanvas::InvalidVariableTypeEvent*>(validationEvent);
             
             AZStd::vector<NodeIdPair> variableNodes;
-            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasGraphId, &EditorGraphRequests::GetVariableNodes, invalidTypeEvent->GetVariableId());
+            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasId, &EditorGraphRequests::GetVariableNodes, invalidTypeEvent->GetVariableId());
 
             for (auto& variable : variableNodes)
             {

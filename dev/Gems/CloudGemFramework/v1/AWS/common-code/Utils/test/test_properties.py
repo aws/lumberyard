@@ -9,11 +9,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-
 import unittest
-import mock
 
 from cgf_utils import properties
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_properties_TestString(unittest.TestCase):
 

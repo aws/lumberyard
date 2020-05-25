@@ -25,6 +25,9 @@
 #include <QImageReader>
 #include <QDirIterator>
 #include <GradientSignalSystemComponent.h>
+#include <GradientSignal/GradientImageConversion.h>
+#include <ImageProcessing/ImageObject.h>
+#include <ImageProcessing/ImageProcessingBus.h>
 
 namespace GradientSignal
 {
@@ -60,6 +63,7 @@ namespace GradientSignal
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.jpeg", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.tga", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.gif", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+        builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.bt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
 
         builderDescriptor.m_busId = EditorImageBuilderWorker::GetUUID();
         builderDescriptor.m_createJobFunction = AZStd::bind(&EditorImageBuilderWorker::CreateJobs, &m_imageBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -193,21 +197,25 @@ namespace GradientSignal
         // Do conversion and get exported file's path
         AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Performing gradient image conversion job for %s\n", request.m_fullPath.data());
 
-        //try to open the image
-        QImage qimage(request.m_fullPath.data());
-        if (qimage.isNull())
+        auto imageAsset = LoadImageFromPath(request.m_fullPath);
+
+        if (!imageAsset)
         {
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed gradient image conversion job for %s.\nFailed loading source image %s.\n", request.m_fullPath.data(), request.m_fullPath.data());
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             return;
         }
 
-        //convert to compatible pixel format
-        QImage::Format format = qimage.format();
-        if (qimage.format() != QImage::Format_Grayscale8)
+        auto imageSettings = LoadImageSettingsFromPath(request.m_fullPath);
+
+        if (!imageSettings)
         {
-            qimage = qimage.convertToFormat(QImage::Format_Grayscale8);
+            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed gradient image conversion job for %s.\nFailed loading source image %s.\n", request.m_fullPath.data(), request.m_fullPath.data());
+            return;
         }
+
+        // ChannelMask is 8 bits, and the bits are assumed to be as follows: 0b0000ABGR
+        imageAsset = ConvertImage(*imageAsset, *imageSettings);
 
         //generate export file name
         QDir dir(request.m_tempDirPath.data());
@@ -223,24 +231,8 @@ namespace GradientSignal
         AzFramework::StringFunc::Path::Join(request.m_tempDirPath.data(), fileName.data(), outputPath, true, true, true);
         AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Output path for gradient image conversion: %s\n", outputPath.data());
 
-        //create a new image asset
-        ImageAsset imageAsset;
-        imageAsset.m_imageFormat = 0;
-        imageAsset.m_imageWidth = qimage.width();
-        imageAsset.m_imageHeight = qimage.height();
-        imageAsset.m_imageData = AZStd::vector<AZ::u8>(imageAsset.m_imageWidth * imageAsset.m_imageHeight, 0);
-
-        //copy image data
-        for (AZ::u32 y = 0; y < imageAsset.m_imageHeight; ++y)
-        {
-            for (AZ::u32 x = 0; x < imageAsset.m_imageWidth; ++x)
-            {
-                imageAsset.m_imageData[y * imageAsset.m_imageWidth + x] = qimage.pixelColor(x, y).red();
-            }
-        }
-
         //save asset
-        if (!AZ::Utils::SaveObjectToFile(outputPath, AZ::DataStream::ST_XML, &imageAsset))
+        if (!AZ::Utils::SaveObjectToFile(outputPath, AZ::DataStream::ST_XML, imageAsset.get()))
         {
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed gradient image conversion job for %s.\nFailed saving output file %s.\n", request.m_fullPath.data(), outputPath.data());
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
@@ -259,6 +251,57 @@ namespace GradientSignal
     AZ::Uuid EditorImageBuilderWorker::GetUUID()
     {
         return AZ::Uuid::CreateString("{7520DF20-16CA-4CF6-A6DB-D96759A09EE4}");
+    }
+
+    AZStd::unique_ptr<ImageAsset> EditorImageBuilderWorker::LoadImageFromPath(const AZStd::string& fullPath)
+    {
+        ImageProcessing::IImageObject* rawImage = nullptr;
+        ImageProcessing::ImageProcessingRequestBus::BroadcastResult(rawImage, &ImageProcessing::ImageProcessingRequests::LoadImage, 
+            fullPath);
+
+        if (!rawImage)
+        {
+            return {};
+        }
+
+        AZStd::unique_ptr<ImageProcessing::IImageObject> imageObject{rawImage};
+
+        //create a new image asset
+        auto imageAsset = AZStd::make_unique<ImageAsset>();
+
+        if (!imageAsset)
+        {
+            return {};
+        }
+        
+        imageAsset->m_imageWidth = imageObject->GetWidth(0);
+        imageAsset->m_imageHeight = imageObject->GetHeight(0);
+        imageAsset->m_imageFormat = imageObject->GetPixelFormat();
+
+        AZ::u8* mem = nullptr;
+        AZ::u32 pitch = 0;
+        AZ::u32 mipBufferSize = imageObject->GetMipBufSize(0);
+        imageObject->GetImagePointer(0, mem, pitch);
+
+        imageAsset->m_imageData = {mem, mem + mipBufferSize};
+
+        return imageAsset;
+    }
+
+    AZStd::unique_ptr<ImageSettings> EditorImageBuilderWorker::LoadImageSettingsFromPath(const AZStd::string& fullPath)
+    {
+        // Determine if a settings file has been provided
+        AZStd::string settingsPath = fullPath + "." + s_gradientImageSettingsExtension;
+        bool settingsExist = AZ::IO::SystemFile::Exists(settingsPath.data());
+
+        if (settingsExist)
+        {
+            return AZStd::unique_ptr<ImageSettings>{AZ::Utils::LoadObjectFromFile<ImageSettings>(settingsPath)};
+        }
+        else
+        {
+            return AZStd::make_unique<ImageSettings>();
+        }
     }
 
 } // namespace GradientSignal

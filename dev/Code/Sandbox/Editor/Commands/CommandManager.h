@@ -19,9 +19,11 @@
 #pragma once
 #include "Include/ICommandManager.h"
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 class SANDBOX_API CEditorCommandManager
     : public ICommandManager
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     enum
     {
@@ -71,12 +73,14 @@ protected:
 
     //! A full command name to an actual command mapping
     typedef std::map<string, SCommandTableEntry> CommandTable;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     CommandTable m_commands;
 
     //! A command ID to an actual UI command mapping
     //! This table will contain a subset of commands among all registered to the above table.
     typedef std::map<int, CCommand0*> UICommandTable;
     UICommandTable m_uiCommands;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     bool m_bWarnDuplicate;
 
     static int GenNewCommandId();

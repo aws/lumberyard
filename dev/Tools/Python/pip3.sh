@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -11,6 +13,7 @@
 #
 pushd $(dirname "$0")
 ./python3.sh -m pip "$@"
+PIP_EXIT=$?
 
 popd
-exit 0
+exit $PIP_EXIT

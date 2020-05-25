@@ -23,7 +23,7 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<PropertyTreeEditorComponent>();
+                serializeContext->Class<PropertyTreeEditorComponent, AZ::Component>();
             }
 
             if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -40,6 +40,8 @@ namespace AzToolsFramework
                         ->Attribute(AZ::Script::Attributes::Alias, "get_value")
                     ->Method("SetProperty", &PropertyTreeEditor::SetProperty, nullptr, "Sets a property value.")
                         ->Attribute(AZ::Script::Attributes::Alias, "set_value")
+                    ->Method("CompareProperty", &PropertyTreeEditor::CompareProperty, nullptr, "Compares a property value.")
+                        ->Attribute(AZ::Script::Attributes::Alias, "compare_value")
                     ;
             }
         }

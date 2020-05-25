@@ -37,6 +37,7 @@
 #include <IPostEffectGroup.h>
 
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -1744,9 +1745,13 @@ int CScriptBind_System::IsValidMapPos(IFunctionHandler* pH)
     Vec3 v(0, 0, 0);
     if (pH->GetParam(1, v))
     {
-        int nTerrainSize = m_p3DEngine->GetTerrainSize();
-        float fOut = (float)(nTerrainSize + 500);
-        if (v.x < -500 || v.y < -500 || v.z > 500 || v.x > fOut || v.y > fOut)
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        const int nTerrainSizeX = static_cast<int>(terrainAabb.GetWidth());
+        const int nTerrainSizeY = static_cast<int>(terrainAabb.GetHeight());
+        const float fOutX = (float)(nTerrainSizeX + 500);
+        const float fOutY = (float)(nTerrainSizeY + 500);
+        if (v.x < -500 || v.y < -500 || v.z > 500 || v.x > fOutX || v.y > fOutY)
         {
             bValid = false;
         }
@@ -1864,9 +1869,12 @@ int CScriptBind_System::GetTerrainElevation(IFunctionHandler* pH)
     SCRIPT_CHECK_PARAMETERS(1);
     Vec3 v3Pos;//,v3SysDir;
     pH->GetParam(1, v3Pos);
-    float   elevation;
 
-    elevation = m_p3DEngine->GetTerrainElevation(v3Pos.x, v3Pos.y);
+    float   elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , v3Pos.x, v3Pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
     return pH->EndFunction(elevation);
 }
 

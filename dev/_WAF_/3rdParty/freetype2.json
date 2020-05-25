@@ -2,7 +2,7 @@
     "name": "freetype2",
     "source": "@3P:freetype2@",
     "description": "FreeType2 is a freely available software library to render fonts",
-    "includes": [
+    "system_includes": [
         "dist/include"
     ],
     "defines": [],

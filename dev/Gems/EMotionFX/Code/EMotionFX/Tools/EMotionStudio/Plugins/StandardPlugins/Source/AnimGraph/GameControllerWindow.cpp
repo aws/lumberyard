@@ -161,8 +161,8 @@ namespace EMStudio
         connect(mPresetComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnPresetComboBox);
         connect(mAddPresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnAddPresetButton);
         connect(mRemovePresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnRemovePresetButton);
-        connect(mPresetNameLineEdit, &QLineEdit::editingFinished, this, &GameControllerWindow::OnPresetNameChanged);
         connect(mPresetNameLineEdit, &QLineEdit::textEdited, this, &GameControllerWindow::OnPresetNameEdited);
+        connect(mPresetNameLineEdit, &QLineEdit::returnPressed, this, &GameControllerWindow::OnPresetNameChanged);
 
         EMStudioManager::MakeTransparentButton(mAddPresetButton, "/Images/Icons/Plus.png", "Add a game controller preset");
         EMStudioManager::MakeTransparentButton(mRemovePresetButton, "/Images/Icons/Remove.png", "Remove a game controller preset");
@@ -580,16 +580,16 @@ namespace EMStudio
         deadZoneLayout->addWidget(mDeadZoneValueLabel);
         previewGridLayout->addLayout(deadZoneLayout, realTimePreviewLabelCounter + 1, 1);
 
-        mDeadZoneSlider->setValue(mGameController->GetDeadZone() * 100);
+        mDeadZoneSlider->setValue(aznumeric_cast<int>(mGameController->GetDeadZone() * 100));
         mString = AZStd::string::format("%.2f", mGameController->GetDeadZone());
         mDeadZoneValueLabel->setText(mString.c_str());
         connect(mDeadZoneSlider, &MysticQt::Slider::valueChanged, this, &GameControllerWindow::OnDeadZoneSliderChanged);
     #endif
 
         // start the timers
-        mInterfaceTimer.start(1000 / 20.0f, this);
+        mInterfaceTimer.start(1000 / 20, this);
         mInterfaceTimerID = mInterfaceTimer.timerId();
-        mGameControllerTimer.start(1000 / 100.0f, this);
+        mGameControllerTimer.start(1000 / 100, this);
         mGameControllerTimerID = mGameControllerTimer.timerId();
 
         // create the vertical layout for the parameter and the button setup
@@ -1388,7 +1388,7 @@ namespace EMStudio
 
                 case EMotionFX::AnimGraphGameControllerSettings::PARAMMODE_ZEROTOONE:
                 {
-                    const float normalizedValue = (value + 1.0) * 0.5f;
+                    const float normalizedValue = aznumeric_cast<float>((value + 1.0) * 0.5f);
                     value = normalizedValue;
 
                     if (settingsInfo->m_invert)
@@ -1401,7 +1401,7 @@ namespace EMStudio
 
                 case EMotionFX::AnimGraphGameControllerSettings::PARAMMODE_PARAMRANGE:
                 {
-                    float normalizedValue = (value + 1.0) * 0.5f;
+                    float normalizedValue = aznumeric_cast<float>((value + 1.0) * 0.5f);
                     if (settingsInfo->m_invert)
                     {
                         normalizedValue = 1.0f - normalizedValue;
@@ -1523,10 +1523,10 @@ namespace EMStudio
 
                 case EMotionFX::AnimGraphGameControllerSettings::PARAMMODE_ZEROTOONE:
                 {
-                    const float normalizedValueX = (value.GetX() + 1.0) * 0.5f;
+                    const float normalizedValueX = aznumeric_cast<float>((value.GetX() + 1.0) * 0.5f);
                     value.SetX(normalizedValueX);
 
-                    const float normalizedValueY = (value.GetY() + 1.0) * 0.5f;
+                    const float normalizedValueY = aznumeric_cast<float>((value.GetY() + 1.0) * 0.5f);
                     value.SetY(normalizedValueY);
 
                     if (settingsInfo->m_invert)
@@ -1540,8 +1540,8 @@ namespace EMStudio
 
                 case EMotionFX::AnimGraphGameControllerSettings::PARAMMODE_PARAMRANGE:
                 {
-                    float normalizedValueX = (value.GetX() + 1.0) * 0.5f;
-                    float normalizedValueY = (value.GetY() + 1.0) * 0.5f;
+                    float normalizedValueX = aznumeric_cast<float>((value.GetX() + 1.0) * 0.5f);
+                    float normalizedValueY = aznumeric_cast<float>((value.GetY() + 1.0) * 0.5f);
                     if (settingsInfo->m_invert)
                     {
                         normalizedValueX = 1.0f - normalizedValueX;

@@ -1,0 +1,10 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "Tests/AssetBuilderApplicationTests.cpp",
+            "Tests/AssetBuilderTestsMain.cpp"
+        ]
+    }
+}

@@ -42,6 +42,10 @@ namespace AzToolsFramework
                     ->Event("GetChildCount", &EditorEntityInfoRequests::GetChildCount)
                     ->Event("GetChildIndex", &EditorEntityInfoRequests::GetChildIndex)
                     ->Event("GetName", &EditorEntityInfoRequests::GetName)
+                    ->Event("IsLocked", &EditorEntityInfoRequests::IsLocked)
+                    ->Event("IsVisible", &EditorEntityInfoRequests::IsVisible)
+                    ->Event("IsHidden", &EditorEntityInfoRequests::IsHidden)
+                    ->Event("GetStartStatus", &EditorEntityInfoRequests::GetStartStatus)
                     ;
 
                 behaviorContext->EBus<EditorEntityAPIBus>("EditorEntityAPIBus")
@@ -49,7 +53,18 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Script::Attributes::Category, "Entity")
                     ->Attribute(AZ::Script::Attributes::Module, "editor")
                     ->Event("SetName", &EditorEntityAPIRequests::SetName)
+                    ->Event("SetParent", &EditorEntityAPIRequests::SetParent)
+                    ->Event("SetLockState", &EditorEntityAPIRequests::SetLockState)
+                    ->Event("SetVisibilityState", &EditorEntityAPIRequests::SetVisibilityState)
+                    ->Event("SetStartStatus", &EditorEntityAPIRequests::SetStartStatus)
                     ;
+
+                behaviorContext->EnumProperty<static_cast<int>(EditorEntityStartStatus::StartActive)>("EditorEntityStartStatus_StartActive")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
+                behaviorContext->EnumProperty<static_cast<int>(EditorEntityStartStatus::StartInactive)>("EditorEntityStartStatus_StartInactive")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
+                behaviorContext->EnumProperty<static_cast<int>(EditorEntityStartStatus::EditorOnly)>("EditorEntityStartStatus_EditorOnly")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
             }
         }
 

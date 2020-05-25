@@ -11,38 +11,10 @@
 ########################################################################################
 
 def build(bld):
-
-    # CryAction_AutoFlowNode is used to define the storage location for the symbols that
-    # are used in the automatic flow node registration system (see CAutoRegFlowNodeBase)
-    #
-    # These symbols must be present in every executable or shared object that uses the
-    # automatic registration pattern. Creating this modules independently of CryAction
-    # allows us to depend on it from multiple locations -- e.g. Gems --
-    # without pulling in a dependency on CryAction itself.
-    #
-    # (This works in all builds including monolithic)
-    bld.CryEngineStaticLibrary(
-        target          = 'CryAction_AutoFlowNode',
-        vs_filter       = 'CryEngine',
-        copyright_org   = 'Amazon-CryTek',
-        file_list       = 'Source/CryAction/cryaction_autoflownode.waf_files',
-        includes        = ['.',
-                           bld.ThirdPartyPath('boost'),
-                           bld.Path('Code/CryEngine/CryCommon'),
-                          ],
-        export_includes = 'Source/CryAction',
-        platforms       = ['all'],
-        configurations  = ['all'],
-        use             = ['AzCore'],
-    )
-
     kw = dict(
         # Add custom build options here
         defines             = ['USE_CRY_NEW_AND_DELETE'],
-        includes            = ['.',
-                               bld.ThirdPartyPath('boost'),
-                               bld.Path('Code/CryEngine/CryCommon'),
-                               bld.Path('Code/CryEngine/CryAction'),
+        includes            = [bld.Path('Code/CryEngine/CryCommon'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAction'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAISystem'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAnimation'),
@@ -50,10 +22,11 @@ def build(bld):
                                bld.Path('Gems/CryLegacy/Code/Source/CryScriptSystem'),
                                bld.Path('Code/CryEngine')],
 
-        use                 = ['CryAction_AutoFlowNode','AzFramework'],
+        use                 = ['AzFramework'],
 
         win_lib             = [ 'Ws2_32', 'Shell32', 'mswsock', 'gdi32', 'wininet', 'Ole32' ],
         win_linkflags       = '/NODEFAULTLIB:libcmt.lib',
+        win_uselib          = ['BOOSTPYTHON'],
 
         darwin_lib          = ['curl'],
         appletv_framework   = ['security'],

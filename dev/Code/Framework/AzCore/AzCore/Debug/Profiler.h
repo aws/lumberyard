@@ -60,6 +60,8 @@ namespace AZ
             AzFramework,
             AzToolsFramework,
             ScriptCanvas,
+            LegacyTerrain,
+            Terrain,
             // Add new major categories here (and add names to the parallel position in ProfileCategoryNames) - these categories are enabled by default
 
             FirstDetailedCategory,
@@ -114,6 +116,8 @@ namespace AZ
             "AzFramework",
             "AzToolsFramework",
             "ScriptCanvas",
+            "LegacyTerrain",
+            "Terrain",
 
             "RendererDetailed",
             "3DEngineDetailed",
@@ -130,7 +134,6 @@ namespace AZ
 #ifdef AZ_PROFILE_TELEMETRY
 #   include <RADTelemetry/ProfileTelemetry.h>
 #endif
-
 
 #if defined(AZ_PROFILER_MACRO_DISABLE) // by default we never disable the profiler registers as their overhead should be minimal, you can still do that for your code though.
 #   define AZ_PROFILE_TIMER(...)

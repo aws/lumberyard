@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include "SystemComponentFixture.h"
 
 #include <EMotionFX/Source/Actor.h>
@@ -33,13 +34,14 @@
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/Pose.h>
-#include <Integration/System/SystemCommon.h>
 #include <MCore/Source/ReflectionSerializer.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <Tests/Printers.h>
 #include <Tests/Matchers.h>
+#include <Tests/TestAssetCode/SimpleActors.h>
+#include <Tests/TestAssetCode/ActorFactory.h>
 
 namespace EMotionFX
 {
@@ -47,75 +49,6 @@ namespace EMotionFX
         : public SystemComponentFixture
     {
     public:
-        MorphTargetRuntimeFixture()
-            : SystemComponentFixture()
-            , m_points(
-                {
-                    AZ::Vector3(-1.0f, -1.0f, 0.0f),
-                    AZ::Vector3(1.0f, -1.0f, 0.0f),
-                    AZ::Vector3(-1.0f,  1.0f, 0.0f),
-
-                    AZ::Vector3(1.0f, -1.0f, 0.0f),
-                    AZ::Vector3(-1.0f,  1.0f, 0.0f),
-                    AZ::Vector3(1.0f,  1.0f, 0.0f)
-                })
-        {
-        }
-
-        Mesh* CreatePlane(uint32 nodeIndex) const
-        {
-            const uint32 vertCount = static_cast<uint32>(m_points.size());
-            const uint32 faceCount = vertCount / 3;
-
-            auto meshBuilder = Integration::EMotionFXPtr<MeshBuilder>::MakeFromNew(MeshBuilder::Create(nodeIndex, vertCount, false));
-
-            // Original vertex numbers
-            MeshBuilderVertexAttributeLayerUInt32* orgVtxLayer = MeshBuilderVertexAttributeLayerUInt32::Create(
-                    vertCount,
-                    EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS,
-                    false,
-                    false
-                    );
-            meshBuilder->AddLayer(orgVtxLayer);
-
-            // The positions layer
-            MeshBuilderVertexAttributeLayerVector3* posLayer = MeshBuilderVertexAttributeLayerVector3::Create(
-                    vertCount,
-                    EMotionFX::Mesh::ATTRIB_POSITIONS,
-                    false,
-                    true
-                    );
-            meshBuilder->AddLayer(posLayer);
-
-            // The normals layer
-            MeshBuilderVertexAttributeLayerVector3* normalsLayer = MeshBuilderVertexAttributeLayerVector3::Create(
-                    vertCount,
-                    EMotionFX::Mesh::ATTRIB_NORMALS,
-                    false,
-                    true
-                    );
-            meshBuilder->AddLayer(normalsLayer);
-
-            const int materialId = 0;
-            const AZ::Vector3 normalVector(0.0f, 0.0f, 1.0f);
-            for (uint32 faceNum = 0; faceNum < faceCount; ++faceNum)
-            {
-                meshBuilder->BeginPolygon(materialId);
-                for (uint32 vertexOfFace = 0; vertexOfFace < 3; ++vertexOfFace)
-                {
-                    uint32 vertexNum = faceNum * 3 + vertexOfFace;
-                    orgVtxLayer->SetCurrentVertexValue(&vertexNum);
-                    posLayer->SetCurrentVertexValue(&m_points[vertexNum]);
-                    normalsLayer->SetCurrentVertexValue(&normalVector);
-
-                    meshBuilder->AddPolygonVertex(vertexNum);
-                }
-                meshBuilder->EndPolygon();
-            }
-
-            return meshBuilder->ConvertToEMotionFXMesh();
-        }
-
         void ScaleMesh(Mesh* mesh)
         {
             const uint32 vertexCount = mesh->GetNumVertices();
@@ -138,25 +71,19 @@ namespace EMotionFX
         {
             SystemComponentFixture::SetUp();
 
-            m_actor = Integration::EMotionFXPtr<Actor>::MakeFromNew(Actor::Create("testActor"));
-            Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
-            rootNode->SetNodeIndex(0);
-            m_actor->AddNode(rootNode);
-
-            Mesh* mesh = CreatePlane(rootNode->GetNodeIndex());
-            m_actor->SetMesh(0, rootNode->GetNodeIndex(), mesh);
+            m_actor = ActorFactory::CreateAndInit<PlaneActor>("testActor");
 
             m_morphSetup = MorphSetup::Create();
             m_actor->SetMorphSetup(0, m_morphSetup);
 
-            Actor* morphActor = m_actor->Clone();
-            Mesh* morphMesh = morphActor->GetMesh(0, rootNode->GetNodeIndex());
+            AZStd::unique_ptr<Actor> morphActor = m_actor->Clone();
+            Mesh* morphMesh = morphActor->GetMesh(0, 0);
             ScaleMesh(morphMesh);
             MorphTargetStandard* morphTarget = MorphTargetStandard::Create(
                     /*captureTransforms=*/ false,
                     /*captureMeshDeforms=*/ true,
                     m_actor.get(),
-                    morphActor,
+                    morphActor.get(),
                     "morphTarget"
                     );
             m_morphSetup->AddMorphTarget(morphTarget);
@@ -166,7 +93,7 @@ namespace EMotionFX
             m_actor->ResizeTransformData();
             m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
-            m_animGraph.reset(aznew AnimGraph);
+            m_animGraph = AZStd::make_unique<AnimGraph>();
 
             AddParam("FloatParam", azrtti_typeid<EMotionFX::FloatSliderParameter>(), "0.0");
 
@@ -228,7 +155,7 @@ namespace EMotionFX
         // The members that are EMotionFXPtrs are the ones that are owned by
         // the test fixture. The others are created by the fixture but owned by
         // the EMotionFX runtime.
-        Integration::EMotionFXPtr<Actor> m_actor;
+        AZStd::unique_ptr<Actor> m_actor;
         MorphSetup* m_morphSetup = nullptr;
         AZStd::unique_ptr<AnimGraph> m_animGraph;
         AnimGraphStateMachine* m_stateMachine = nullptr;
@@ -236,7 +163,6 @@ namespace EMotionFX
         Integration::EMotionFXPtr<ActorInstance> m_actorInstance;
         AnimGraphInstance* m_animGraphInstance = nullptr;
         const float m_scaleFactor = 10.0f;
-        const AZStd::fixed_vector<AZ::Vector3, 6> m_points;
     };
 
     TEST_F(MorphTargetRuntimeFixture, TestMorphTargetMeshRuntime)
@@ -247,6 +173,15 @@ namespace EMotionFX
         const Mesh* mesh = m_actor->GetMesh(0, 0);
         const uint32 vertexCount = mesh->GetNumOrgVertices();
         const AZ::Vector3* positions = static_cast<AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+
+        const AZStd::vector<AZ::Vector3> neutralPoints = [vertexCount, &positions](){
+            AZStd::vector<AZ::Vector3> p;
+            for (uint32 vertexNum = 0; vertexNum < vertexCount; ++vertexNum)
+            {
+                p.emplace_back(positions[vertexNum]);
+            }
+            return p;
+        }();
         const AZStd::array<float, 4> weights {
             {0.0f, 0.5f, 1.0f, 0.0f}
         };
@@ -266,7 +201,7 @@ namespace EMotionFX
                 gotWeightedPoints.emplace_back(positions[vertexNum]);
             }
 
-            for (const AZ::Vector3& neutralPoint : m_points)
+            for (const AZ::Vector3& neutralPoint : neutralPoints)
             {
                 const AZ::Vector3 delta = (neutralPoint * m_scaleFactor) - neutralPoint;
                 expectedWeightedPoints.emplace_back(neutralPoint + delta * weight);
@@ -274,4 +209,4 @@ namespace EMotionFX
             EXPECT_THAT(gotWeightedPoints, ::testing::Pointwise(IsClose(), expectedWeightedPoints));
         }
     }
-}
+} // namespace EMotionFX

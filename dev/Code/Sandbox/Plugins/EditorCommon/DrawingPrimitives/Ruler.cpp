@@ -16,6 +16,7 @@
 
 #include <QPainter>
 #include <QPalette>
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace DrawingPrimitives
 {
@@ -59,14 +60,14 @@ namespace DrawingPrimitives
 
         const float startTimeRound = int(startTime / scaleStep) * scaleStep;
         const int startOffsetMod = int(startTime / scaleStep) % 10;
-        const int scaleOffsetPixels = (startTime - startTimeRound) * pixelsPerUnit;
+        const int scaleOffsetPixels = aznumeric_cast<int>((startTime - startTimeRound) * pixelsPerUnit);
 
-        const int startX = (float)(rulerRange.start - visibleRange.start) * pixelsPerUnit;
-        const int endX = startX + (numMarkers - 1) * scaleStepPixels - scaleOffsetPixels;
+        const int startX = aznumeric_cast<int>((rulerRange.start - visibleRange.start) * pixelsPerUnit);
+        const int endX = aznumeric_cast<int>(startX + (numMarkers - 1) * scaleStepPixels - scaleOffsetPixels);
 
         if (pScreenRulerRange)
         {
-            *pScreenRulerRange = Range(startX, endX);
+            *pScreenRulerRange = Range(aznumeric_cast<float>(startX), aznumeric_cast<float>(endX));
         }
 
         const int startLoop = std::max((int)((scaleOffsetPixels - startX) / scaleStepPixels) - 1, 0);
@@ -76,7 +77,7 @@ namespace DrawingPrimitives
         {
             STick tick;
 
-            const int x = startX + i * scaleStepPixels - scaleOffsetPixels;
+            const int x = aznumeric_cast<int>(startX + i * scaleStepPixels - scaleOffsetPixels);
             const float value = startTimeRound + i * scaleStep;
 
             tick.m_bTenth = (startOffsetMod + i) % 10 != 0;
@@ -92,10 +93,10 @@ namespace DrawingPrimitives
     QColor Interpolate(const QColor& a, const QColor& b, float k)
     {
         float mk = 1.0f - k;
-        return QColor(a.red() * mk  + b.red() * k,
-            a.green() * mk + b.green() * k,
-            a.blue() * mk + b.blue() * k,
-            a.alpha() * mk + b.alpha() * k);
+        return QColor(aznumeric_cast<int>(a.red() * mk  + b.red() * k),
+            aznumeric_cast<int>(a.green() * mk + b.green() * k),
+            aznumeric_cast<int>(a.blue() * mk + b.blue() * k),
+            aznumeric_cast<int>(a.alpha() * mk + b.alpha() * k));
     }
 
     void DrawTicks(const std::vector<STick>& ticks, QPainter& painter, const QPalette& palette, const STickOptions& options)
@@ -189,7 +190,7 @@ namespace DrawingPrimitives
         }
 
         painter.setPen(QPen(palette.color(QPalette::Dark)));
-        painter.drawLine(QPoint(options.m_rect.left() + screenRulerRange.start, 0), QPoint(options.m_rect.left() + screenRulerRange.start, options.m_rect.top() + height));
-        painter.drawLine(QPoint(options.m_rect.left() + screenRulerRange.end, 0), QPoint(options.m_rect.left() + screenRulerRange.end, options.m_rect.top() + height));
+        painter.drawLine(QPoint(aznumeric_cast<int>(options.m_rect.left() + screenRulerRange.start), 0), QPoint(aznumeric_cast<int>(options.m_rect.left() + screenRulerRange.start), options.m_rect.top() + height));
+        painter.drawLine(QPoint(aznumeric_cast<int>(options.m_rect.left() + screenRulerRange.end), 0), QPoint(aznumeric_cast<int>(options.m_rect.left() + screenRulerRange.end), options.m_rect.top() + height));
     }
 }

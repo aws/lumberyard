@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/functional.h>
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include "CommandManager.h"
@@ -23,9 +24,11 @@ namespace CommandSystem
 {
     // load the given anim graph
     MCORE_DEFINECOMMAND_START(CommandLoadAnimGraph, "Load a anim graph", true)
-public:
-    uint32              mOldAnimGraphID;
-    bool                mOldWorkspaceDirtyFlag;
+    public:
+        using RelocateFilenameFunction = AZStd::function<void(AZStd::string&)>;
+        RelocateFilenameFunction m_relocateFilenameFunction;
+        uint32 mOldAnimGraphID;
+        bool mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
 

@@ -11,30 +11,28 @@
 # $Revision: #17 $
 
 import os
-import json
-import shutil
-import unittest
-from copy import deepcopy
-from time import sleep
-
-from botocore.exceptions import ClientError
+import warnings
 
 import resource_manager_common.constant as  c
 
-import lmbr_aws_test_support
-import mock_specification
+from . import lmbr_aws_test_support
 from resource_manager.test import base_stack_test
-import test_constant
+from . import test_constant
 
-class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(base_stack_test.BaseStackTestCase):
 
-    def setUp(self):        
+class IntegrationTest_CloudGemFramework_ResourceManager_ResourceHandlerPlugins(base_stack_test.BaseStackTestCase):
+
+    def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.set_deployment_name(lmbr_aws_test_support.unique_name())
         self.set_resource_group_name(lmbr_aws_test_support.unique_name('rhp'))
         self.prepare_test_environment(type(self).__name__)
         self.register_for_shared_resources()
 
-    def test_ressource_handler_plugins_end_to_end(self):
+    def test_resource_handler_plugins_end_to_end(self):
         self.run_all_tests()
 
     def __120_create_project_stack(self):        
@@ -84,7 +82,7 @@ from cgf_utils import custom_resource_response
 
 def handler(event, context):
     data = { 'TestProperty': 'TestValue' }
-    physical_resource_id = 'TestPyhsicalResourceId'
+    physical_resource_id = 'TestPhysicalResourceId'
     return custom_resource_response.success_response(data, physical_resource_id)
 '''
 
@@ -131,7 +129,7 @@ def handler(event, context):
                         "Ref": "ConfigurationKey"
                     },
                     "FunctionName": "testCustomResource",
-                    "Runtime": "python2.7",
+                    "Runtime": "python3.7",
                     "ServiceToken": {
                         "Fn::GetAtt": [
                             "ProjectResourceHandler",

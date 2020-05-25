@@ -2,7 +2,7 @@
     "name": "openssl",
     "source": "@3P:OpenSSL@",
     "description": "OpenSSL Library",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "defines": ["OPENSSL_ENABLED"],

@@ -156,13 +156,13 @@ namespace EMStudio
         if (hasFocus())
         {
             painter.setPen(mPlugin->mPenCurTimeHelper);
-            painter.drawLine(mPlugin->mCurMouseX, 14, mPlugin->mCurMouseX, rect.bottom());
+            painter.drawLine(aznumeric_cast<int>(mPlugin->mCurMouseX), 14, aznumeric_cast<int>(mPlugin->mCurMouseX), rect.bottom());
         }
 
         // draw the current time marker
         float startHeight = 0.0f;
-        const float curTimeX = mPlugin->TimeToPixel(mPlugin->mCurTime);
-        painter.drawPixmap(curTimeX - (mTimeHandleTop.width() / 2) - 1, 0, mTimeHandleTop);
+        const float curTimeX = aznumeric_cast<float>(mPlugin->TimeToPixel(mPlugin->mCurTime));
+        painter.drawPixmap(aznumeric_cast<int>(curTimeX - (mTimeHandleTop.width() / 2) - 1), 0, mTimeHandleTop);
 
         painter.setPen(mPlugin->mPenCurTimeHandle);
         painter.drawLine(QPointF(curTimeX, startHeight), QPointF(curTimeX, rect.bottom()));
@@ -219,9 +219,9 @@ namespace EMStudio
             {
                 if (recorder.GetIsInPlayMode())
                 {
-                    recorder.SetCurrentPlayTime(mPlugin->GetCurrentTime());
+                    recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     recorder.SetAutoPlay(false);
-                    emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                    emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                 }
             }
             else
@@ -230,8 +230,9 @@ namespace EMStudio
                 if (motionInstances.size() == 1)
                 {
                     EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                    motionInstance->SetCurrentTime(mPlugin->GetCurrentTime(), false);
-                    emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                    motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()), false);
+                    motionInstance->SetPause(true);
+                    emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                 }
             }
 
@@ -266,12 +267,12 @@ namespace EMStudio
     void TrackDataHeaderWidget::DoMouseYMoveZoom(int32 deltaY, TimeViewPlugin* plugin)
     {
         // keep the scaling speed in range so that we're not scaling insanely fast
-        float movement = MCore::Min<float>(deltaY, 9.0f);
+        float movement = MCore::Min(aznumeric_cast<float>(deltaY), 9.0f);
         movement = MCore::Max<float>(movement, -9.0f);
 
         // scale relatively to the current scaling value, meaning when the range is bigger we scale faster than when viewing only a very small time range
         float timeScale = plugin->GetTimeScale();
-        timeScale *= 1.0f - 0.01 * movement;
+        timeScale *= 1.0f - 0.01f * movement;
 
         // set the new scaling value
         plugin->SetScale(timeScale);
@@ -326,7 +327,7 @@ namespace EMStudio
                     {
                         EMotionFX::MotionInstance* motionInstance = motionInstances[0];
                         motionInstance->SetPause(true);
-                        motionInstance->SetCurrentTime(mPlugin->GetCurrentTime());
+                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     }
                 }
                 else
@@ -336,12 +337,12 @@ namespace EMStudio
                         recorder.StartPlayBack();
                     }
 
-                    recorder.SetCurrentPlayTime(mPlugin->GetCurrentTime());
+                    recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     recorder.SetAutoPlay(false);
                 }
 
-                emit mPlugin->ManualTimeChangeStart(mPlugin->GetCurrentTime());
-                emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
             }
         }
 
@@ -460,7 +461,7 @@ namespace EMStudio
         if (motionInstances.size() == 1)
         {
             EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-            motionInstance->SetCurrentTime(dropTime, false);
+            motionInstance->SetCurrentTime(aznumeric_cast<float>(dropTime), false);
             motionInstance->Pause();
         }
 
@@ -505,9 +506,9 @@ namespace EMStudio
         QRect motionRect        = rect;
         QRect outOfRangeRect    = rect;
 
-        motionRect.setLeft(clipStartPixel);
-        motionRect.setRight(animEndPixel);
-        outOfRangeRect.setLeft(animEndPixel);
+        motionRect.setLeft(aznumeric_cast<int>(clipStartPixel));
+        motionRect.setRight(aznumeric_cast<int>(animEndPixel));
+        outOfRangeRect.setLeft(aznumeric_cast<int>(animEndPixel));
 
         painter.setPen(Qt::NoPen);
         if (hasFocus() == false)
@@ -593,7 +594,7 @@ namespace EMStudio
 
             //painter.setPen( mPenText );
             painter.setPen(QColor(175, 175, 175));
-            painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+            painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
         }
 
         // draw the seconds
@@ -633,15 +634,15 @@ namespace EMStudio
                     {
                         mTimeString = AZStd::string::format("%.2d:%.2d", seconds, milSecs); // will only do an allocation once, reuses the memory
 
-                        float alpha = (mPlugin->mTimeScale - 0.48f) / 1.0f;
+                        float alpha = aznumeric_cast<float>((mPlugin->mTimeScale - 0.48f) / 1.0f);
                         alpha *= 2;
                         if (alpha > 1.0f)
                         {
                             alpha = 1.0;
                         }
 
-                        painter.setPen(QColor(200, 200, 200, alpha * 255));
-                        painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+                        painter.setPen(QColor(200, 200, 200, aznumeric_cast<int>(alpha * 255)));
+                        painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
                     }
                 }
             }
@@ -691,15 +692,15 @@ namespace EMStudio
                     {
                         mTimeString = AZStd::string::format("%.2d:%.2d", seconds, milSecs); // will only do an allocation once, reuses the memory
 
-                        float alpha = (mPlugin->mTimeScale - 2.0f) / 2.0f;
+                        float alpha = aznumeric_cast<float>((mPlugin->mTimeScale - 2.0f) / 2.0f);
                         if (alpha > 1.0f)
                         {
                             alpha = 1.0;
                         }
 
                         //painter.setPen( mPenText );
-                        painter.setPen(QColor(175, 175, 175, alpha * 255));
-                        painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+                        painter.setPen(QColor(175, 175, 175, aznumeric_cast<int>(alpha * 255)));
+                        painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
                     }
                 }
             }
@@ -739,15 +740,15 @@ namespace EMStudio
 
                     if (mPlugin->mTimeScale >= 11.0f)
                     {
-                        float alpha = (mPlugin->mTimeScale - 11.0f) / 4.0f;
+                        float alpha = aznumeric_cast<float>((mPlugin->mTimeScale - 11.0f) / 4.0f);
                         if (alpha > 1.0f)
                         {
                             alpha = 1.0;
                         }
 
                         mTimeString = AZStd::string::format("%.2d:%.2d", seconds, milSecs); // will only do an allocation once, reuses the memory
-                        painter.setPen(QColor(110, 110, 110, alpha * 255));
-                        painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+                        painter.setPen(QColor(110, 110, 110, aznumeric_cast<int>(alpha * 255)));
+                        painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
                     }
                 }
             }
@@ -785,7 +786,7 @@ namespace EMStudio
 
                     if (mPlugin->mTimeScale >= 25.0f)
                     {
-                        float alpha = (mPlugin->mTimeScale - 25.0f) / 6.0f;
+                        float alpha = aznumeric_cast<float>((mPlugin->mTimeScale - 25.0f) / 6.0f);
                         if (alpha > 1.0f)
                         {
                             alpha = 1.0;
@@ -793,8 +794,8 @@ namespace EMStudio
 
                         mTimeString = AZStd::string::format("%.2d:%.2d", seconds, milSecs); // will only do an allocation once, reuses the memory
                         //painter.setPen( mPenText );
-                        painter.setPen(QColor(80, 80, 80, alpha * 255));
-                        painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+                        painter.setPen(QColor(80, 80, 80, aznumeric_cast<int>(alpha * 255)));
+                        painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
                     }
                 }
             }
@@ -830,7 +831,7 @@ namespace EMStudio
 
                     if (mPlugin->mTimeScale >= 65.0)
                     {
-                        float alpha = (mPlugin->mTimeScale - 65.0f) / 5.0f;
+                        float alpha = aznumeric_cast<float>((mPlugin->mTimeScale - 65.0f) / 5.0f);
                         if (alpha > 1.0f)
                         {
                             alpha = 1.0;
@@ -838,8 +839,8 @@ namespace EMStudio
 
                         mTimeString = AZStd::string::format("%.2d:%.2d", seconds, milSecs); // will only do an allocation once, reuses the memory
                         //painter.setPen( mPenText );
-                        painter.setPen(QColor(60, 60, 60, alpha * 255));
-                        painter.drawText(QRect(curX - 25, yOffset - 23, 52, 20), mTimeString.c_str(), options);
+                        painter.setPen(QColor(60, 60, 60, aznumeric_cast<int>(alpha * 255)));
+                        painter.drawText(QRect(aznumeric_cast<int>(curX - 25), aznumeric_cast<int>(yOffset - 23), 52, 20), mTimeString.c_str(), options);
                     }
                 }
             }

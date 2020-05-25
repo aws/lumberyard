@@ -23,6 +23,8 @@
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 
+#include <LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h>
+
 namespace EMotionFX
 {
     class Actor;
@@ -118,15 +120,14 @@ namespace EMotionFX
             // Helper class needed as we inherit a SetMaterial() function from the IRenderNode
             // as well as the MaterialOwnerRequestBus
             class MaterialOwner
-                : private LmbrCentral::MaterialOwnerRequestBus::Handler
+                : public LmbrCentral::MaterialOwnerRequestBusHandlerImpl
             {
             public:
                 AZ_CLASS_ALLOCATOR_DECL
 
                 MaterialOwner(CryRenderActorInstance* renderActorInstance, AZ::EntityId entityId);
                 ~MaterialOwner();
-
-                bool IsMaterialOwnerReady() override;
+                
                 void SetMaterial(_smart_ptr<IMaterial>) override;
                 _smart_ptr<IMaterial> GetMaterial() override;
 

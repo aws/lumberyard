@@ -49,7 +49,9 @@
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 
+#include <ScriptCanvas/Core/NodeBus.h>
 #include <ScriptCanvas/Data/DataRegistry.h>
+#include <ScriptCanvas/Execution/RuntimeBus.h>
 #include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 
 namespace ScriptCanvasEditor
@@ -62,12 +64,11 @@ namespace ScriptCanvasEditor
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
-        {
+        {            
             serializeContext->Class<VariablePropertiesComponent, GraphCanvas::GraphCanvasPropertyComponent>()
-                ->Version(0)
-                ->Field("VariableId", &VariablePropertiesComponent::m_variableId)
+                ->Version(1)
                 ->Field("VariableName", &VariablePropertiesComponent::m_variableName)
-                ->Field("VariableDatum", &VariablePropertiesComponent::m_variableDatum)
+                ->Field("VariableDatum", &VariablePropertiesComponent::m_variable)
                 ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -79,7 +80,7 @@ namespace ScriptCanvasEditor
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &VariablePropertiesComponent::GetTitle)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &VariablePropertiesComponent::m_variableName, "Name", "")
                         ->Attribute(AZ::Edit::Attributes::StringLineEditingCompleteNotify, &VariablePropertiesComponent::OnNameChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &VariablePropertiesComponent::m_variableDatum, "Datum", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VariablePropertiesComponent::m_variable, "Datum", "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
@@ -96,9 +97,8 @@ namespace ScriptCanvasEditor
     }
 
     VariablePropertiesComponent::VariablePropertiesComponent()
-        : m_variableId(ScriptCanvas::VariableId())
-        , m_variableName(AZStd::string())
-        , m_variableDatum(nullptr)
+        : m_variableName(AZStd::string())
+        , m_variable(nullptr)
         , m_componentTitle("Variable")
     {
     }
@@ -108,51 +108,44 @@ namespace ScriptCanvasEditor
         return m_componentTitle.c_str();
     }
 
-    void VariablePropertiesComponent::SetVariable(const ScriptCanvas::VariableId& variableId)
+    void VariablePropertiesComponent::SetVariable(ScriptCanvas::GraphVariable* variable)
     {
-        if (variableId.IsValid())
+        if (variable)
         {
-            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();            
 
-            m_variableId = variableId;
+            m_variable = variable;
             m_componentTitle.clear();
             m_variableName.clear();
-            m_variableDatum = nullptr;
 
-            ScriptCanvas::VariableRequestBus::EventResult(m_variableDatum, m_variableId, &ScriptCanvas::VariableRequests::GetVariableDatum);
-            if (m_variableDatum)
-            {
-                ScriptCanvas::VariableRequestBus::EventResult(m_variableName, m_variableId, &ScriptCanvas::VariableRequests::GetName);
+            m_variableName = m_variable->GetVariableName();
 
-                const AZStd::string variableTypeName = TranslationHelper::GetSafeTypeName(m_variableDatum->GetData().GetType());
-                m_variableDatum->GetData().SetLabel(variableTypeName);
-                m_componentTitle = AZStd::string::format("%s Variable", variableTypeName.data());
+            const AZStd::string variableTypeName = TranslationHelper::GetSafeTypeName(m_variable->GetDatum()->GetType());
+            m_variable->SetDisplayName(variableTypeName);
 
-                ScriptCanvas::VariableNotificationBus::Handler::BusConnect(m_variableId);
-            }
-            else
-            {
-                AZ_Error("Script Canvas", false, "Failed to find VariableDatum for valid variable id %s."
-                    " Most likely the variable was removed from the GraphVariableManagerComponent without sending the OnVariableRemoved Notification", variableId.ToString().data());
-            }
+            m_componentTitle = AZStd::string::format("%s Variable", variableTypeName.data());
+
+            ScriptCanvas::VariableNotificationBus::Handler::BusConnect(m_variable->GetGraphScopedId());
+
+            m_scriptCanvasGraphId = m_variable->GetGraphScopedId().m_scriptCanvasId;
         }
-    }
-
-    void VariablePropertiesComponent::SetScriptCanvasGraphId(AZ::EntityId scriptCanvasGraphId)
-    {
-        m_scriptCanvasGraphId = scriptCanvasGraphId;
     }
 
     void VariablePropertiesComponent::OnNameChanged()
     {
+        if (m_variable == nullptr)
+        {
+            return;
+        }
+
         ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
 
         AZ::Outcome<void, AZStd::string> outcome = AZ::Failure(AZStd::string());
-        AZStd::string_view oldVariableName;
-        ScriptCanvas::VariableRequestBus::EventResult(oldVariableName, m_variableId, &ScriptCanvas::VariableRequests::GetName);
+        AZStd::string_view oldVariableName = m_variable->GetVariableName();
+
         if (oldVariableName != m_variableName)
-        {
-            ScriptCanvas::VariableRequestBus::EventResult(outcome, m_variableId, &ScriptCanvas::VariableRequests::RenameVariable, m_variableName);
+        {            
+            ScriptCanvas::VariableRequestBus::EventResult(outcome, m_variable->GetGraphScopedId(), &ScriptCanvas::VariableRequests::RenameVariable, m_variableName);
 
             AZ_Warning("VariablePropertiesComponent", outcome.IsSuccess(), "Could not rename variable: %s", outcome.GetError().c_str());
             if (!outcome.IsSuccess())
@@ -167,15 +160,15 @@ namespace ScriptCanvasEditor
             }
         }
 
-        ScriptCanvas::VariableNotificationBus::Handler::BusConnect(m_variableId);
+        ScriptCanvas::VariableNotificationBus::Handler::BusConnect(m_variable->GetGraphScopedId());
     }
 
     void VariablePropertiesComponent::OnVariableRemoved()
     {
-        ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
-        m_variableId = ScriptCanvas::VariableId();
+        ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();        
+
         m_variableName = AZStd::string();
-        m_variableDatum = nullptr;
+        m_variable = nullptr;
     }
 
     void VariablePropertiesComponent::OnVariableValueChanged()
@@ -204,14 +197,14 @@ namespace ScriptCanvasEditor
     // VariablePanelContextMenu
     /////////////////////////////
 
-    VariablePanelContextMenu::VariablePanelContextMenu(VariableDockWidget* dockWidget, const AZ::EntityId& scriptCanvasGraphId, ScriptCanvas::VariableId varId)
+    VariablePanelContextMenu::VariablePanelContextMenu(VariableDockWidget* dockWidget, const ScriptCanvas::ScriptCanvasId& scriptCanvasId, ScriptCanvas::VariableId varId)
         : QMenu()
     {
         AZ::EntityId graphCanvasGraphId;
-        GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &GeneralRequests::GetGraphCanvasGraphId, scriptCanvasGraphId);
+        GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &GeneralRequests::GetGraphCanvasGraphId, scriptCanvasId);
 
         AZStd::string variableName;
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableName, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableName, varId);
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableName, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableName, varId);
 
         QAction* getAction = new QAction(QObject::tr("Get %1").arg(variableName.c_str()), this);
         getAction->setToolTip(QObject::tr("Adds a Get %1 variable node onto the active graph.").arg(variableName.c_str()));
@@ -259,7 +252,7 @@ namespace ScriptCanvasEditor
             &QAction::triggered,
             [dockWidget, varId](bool)
         {
-            GraphVariablesTableView::CopyVariableToClipboard(dockWidget->GetActiveScriptCanvasGraphId(), varId);
+            GraphVariablesTableView::CopyVariableToClipboard(dockWidget->GetActiveScriptCanvasId(), varId);
         });
 
         QAction* pasteAction = new QAction(QObject::tr("Paste").arg(variableName.c_str()), this);
@@ -272,7 +265,7 @@ namespace ScriptCanvasEditor
             &QAction::triggered,
             [dockWidget, varId](bool)
         {
-            GraphVariablesTableView::HandleVariablePaste(dockWidget->GetActiveScriptCanvasGraphId());
+            GraphVariablesTableView::HandleVariablePaste(dockWidget->GetActiveScriptCanvasId());
         });
 
         QAction* duplicateAction = new QAction(QObject::tr("Duplicate %1").arg(variableName.c_str()), this);
@@ -316,7 +309,7 @@ namespace ScriptCanvasEditor
         return AZStd::string::format("Variable %u", variableCounter);
     }
 
-    AZStd::string VariableDockWidget::FindDefaultVariableName(const AZ::EntityId& scriptCanvasGraphId)
+    AZStd::string VariableDockWidget::FindDefaultVariableName(const ScriptCanvas::ScriptCanvasId& scriptCanvasExecutionId)
     {
         bool nameAvailable = false;
         AZStd::string varName;
@@ -324,11 +317,11 @@ namespace ScriptCanvasEditor
         do
         {
             AZ::u32 varCounter = 0;
-            SceneCounterRequestBus::EventResult(varCounter, scriptCanvasGraphId, &SceneCounterRequests::GetNewVariableCounter);
+            SceneCounterRequestBus::EventResult(varCounter, scriptCanvasExecutionId, &SceneCounterRequests::GetNewVariableCounter);
 
             varName = ConstructDefaultVariableName(varCounter);
 
-            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, varName);
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, scriptCanvasExecutionId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, varName);
         } while (!nameAvailable);
 
         return varName;
@@ -393,14 +386,14 @@ namespace ScriptCanvasEditor
 
         m_graphCanvasGraphId = graphCanvasGraphId;
 
-        m_scriptCanvasGraphId.SetInvalid();
-        GeneralRequestBus::BroadcastResult(m_scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+        m_scriptCanvasId.SetInvalid();
+        GeneralRequestBus::BroadcastResult(m_scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
 
-        ui->graphVariables->SetActiveScene(m_scriptCanvasGraphId);
-        ui->variablePalette->SetActiveScene(m_scriptCanvasGraphId);
+        ui->graphVariables->SetActiveScene(m_scriptCanvasId);
+        ui->variablePalette->SetActiveScene(m_scriptCanvasId);
 
-        ui->addButton->setEnabled(m_scriptCanvasGraphId.IsValid());
-        ui->searchFilter->setEnabled(m_scriptCanvasGraphId.IsValid());
+        ui->addButton->setEnabled(m_scriptCanvasId.IsValid());
+        ui->searchFilter->setEnabled(m_scriptCanvasId.IsValid());
 
         ShowGraphVariables();
     }
@@ -420,9 +413,9 @@ namespace ScriptCanvasEditor
         }
     }
 
-    const AZ::EntityId& VariableDockWidget::GetActiveScriptCanvasGraphId() const
+    const ScriptCanvas::ScriptCanvasId& VariableDockWidget::GetActiveScriptCanvasId() const
     {
-        return m_scriptCanvasGraphId;
+        return m_scriptCanvasId;
     }
 
     bool VariableDockWidget::IsShowingVariablePalette() const
@@ -509,7 +502,7 @@ namespace ScriptCanvasEditor
 
     void VariableDockWidget::RefreshModel()
     {
-        ui->graphVariables->SetActiveScene(m_scriptCanvasGraphId);
+        ui->graphVariables->SetActiveScene(m_scriptCanvasId);
     }
 
     void VariableDockWidget::OnAddVariableButton()
@@ -560,7 +553,7 @@ namespace ScriptCanvasEditor
         {
             ScriptCanvas::VariableId varId = index.data(GraphVariablesModel::VarIdRole).value<ScriptCanvas::VariableId>();
 
-            VariablePanelContextMenu menu(this, m_scriptCanvasGraphId, varId);
+            VariablePanelContextMenu menu(this, m_scriptCanvasId, varId);
 
             menu.addSeparator();
             menu.addAction(cleanupAction);
@@ -605,28 +598,47 @@ namespace ScriptCanvasEditor
         if (!variableIds.empty())
         {
             GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::ClearSelection);
+
+            AZStd::vector<ScriptCanvas::VariableId> deselectedVariableIds;
+            for (auto pair : m_usedElements)
+            {
+                if (variableIds.count(pair.first) == 0)
+                {
+                    deselectedVariableIds.emplace_back(pair.first);
+                    m_unusedPool.emplace_back(pair.second);
+                }
+            }
+
+            for (auto variableId : deselectedVariableIds)
+            {
+                ReleaseComponent(variableId);
+            }
+        }
+        else
+        {
+            ResetPool();            
         }
 
         AZStd::vector<AZ::EntityId> selection;
 
+        ScriptCanvas::RuntimeRequests* runtimeRequests = ScriptCanvas::RuntimeRequestBus::FindFirstHandler(m_scriptCanvasId);
+
+        if (runtimeRequests == nullptr)
+        {
+            return;
+        }
+
         for (const ScriptCanvas::VariableId& varId : variableIds)
         {
-            if (m_propertyHelpersMap.count(varId) == 0)
-            {
-                m_propertyHelpersMap[varId] = AZStd::unique_ptr<AZ::Entity>(VariablePropertiesComponent::CreateVariablePropertiesEntity());
-                m_propertyHelpersMap[varId]->Init();
-                m_propertyHelpersMap[varId]->Activate();
-            }
-
-            VariablePropertiesComponent* propertiesComponent = AZ::EntityUtils::FindFirstDerivedComponent<VariablePropertiesComponent>(m_propertyHelpersMap[varId].get());
+            VariablePropertiesComponent* propertiesComponent = AllocateComponent(varId);
 
             if (propertiesComponent)
             {
-                propertiesComponent->SetVariable(varId);
-                propertiesComponent->SetScriptCanvasGraphId(m_scriptCanvasGraphId);
-            }
+                ScriptCanvas::GraphVariable* graphVariable = runtimeRequests->FindVariableById(varId);;
+                propertiesComponent->SetVariable(graphVariable);
 
-            selection.push_back(m_propertyHelpersMap[varId]->GetId());
+                selection.push_back(propertiesComponent->GetEntityId());
+            }
         }
 
         OnHighlightVariables(variableIds);
@@ -635,20 +647,20 @@ namespace ScriptCanvasEditor
 
     void VariableDockWidget::OnDuplicateVariable(const ScriptCanvas::VariableId& variableId)
     {
-        ScriptCanvas::VariableNameValuePair* valuePair = nullptr;
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(valuePair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
+        ScriptCanvas::GraphVariable* graphVariable = nullptr;
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(graphVariable, m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
 
-        if (valuePair == nullptr)
+        if (graphVariable == nullptr)
         {
             return;
         }
 
-        ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, (*valuePair));
+        ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, (*graphVariable));
     }
 
     void VariableDockWidget::OnCreateVariable(ScriptCanvas::Data::Type varType)
     {
-        AZStd::string varName = FindDefaultVariableName(m_scriptCanvasGraphId);
+        AZStd::string varName = FindDefaultVariableName(m_scriptCanvasId);
         OnCreateNamedVariable(varName, varType);
     }
 
@@ -658,10 +670,10 @@ namespace ScriptCanvasEditor
         ScriptCanvas::Datum datum(varType, ScriptCanvas::Datum::eOriginality::Original);
 
         AZ::Outcome<ScriptCanvas::VariableId, AZStd::string> outcome = AZ::Failure(AZStd::string());
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, variableName, datum);
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, variableName, datum);
 
         AZ_Warning("VariablePanel", outcome.IsSuccess(), "Could not create new variable: %s", outcome.GetError().c_str());
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
 
         // We already provide a naming hook for container types so we don't need to do re-force them into it.
         if (outcome.IsSuccess() && !ScriptCanvas::Data::IsContainerType(varType))
@@ -681,13 +693,12 @@ namespace ScriptCanvasEditor
         {
             if (CanDeleteVariable(variableId))
             {
-                ScriptCanvas::GraphVariableManagerRequestBus::EventResult(result, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::RemoveVariable, variableId);
+                ScriptCanvas::GraphVariableManagerRequestBus::EventResult(result, m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::RemoveVariable, variableId);
                 AZ_Warning("VariablePanel", result, "Could not delete Variable Id (%s).", variableId.ToString().data());
 
-                if (result && m_propertyHelpersMap.count(variableId) > 0)
+                if (result)
                 {
-                    m_propertyHelpersMap[variableId]->Deactivate();
-                    m_propertyHelpersMap.erase(variableId);
+                    ReleaseComponent(variableId);
                 }
             }
         }
@@ -697,41 +708,56 @@ namespace ScriptCanvasEditor
 
         if (result)
         {
-            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
         }
     }
 
     void VariableDockWidget::OnHighlightVariables(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds)
     {
-        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::HighlightVariables, variableIds);
+        EditorGraphRequestBus::Event(m_scriptCanvasId, &EditorGraphRequests::HighlightVariables, variableIds);
     }
 
     void VariableDockWidget::OnRemoveUnusedVariables()
     {
-        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::RemoveUnusedVariables);
+        EditorGraphRequestBus::Event(m_scriptCanvasId, &EditorGraphRequests::RemoveUnusedVariables);
     }
 
     bool VariableDockWidget::CanDeleteVariable(const ScriptCanvas::VariableId& variableId)
     {
         bool canDeleteVariable = false;
 
-        if (VariableGraphMemberRefCountRequestBus::FindFirstHandler(variableId) != nullptr)
+        AZStd::vector< NodeIdPair > nodeIds;
+        EditorGraphRequestBus::EventResult(nodeIds, m_scriptCanvasId, &EditorGraphRequests::GetVariableNodes, variableId);
+
+        if (!nodeIds.empty())
         {
             AZStd::string variableName;
-            ScriptCanvas::VariableRequestBus::EventResult(variableName, variableId, &ScriptCanvas::VariableRequests::GetName);
+            ScriptCanvas::VariableRequestBus::EventResult(variableName, ScriptCanvas::GraphScopedVariableId(m_scriptCanvasId, variableId), &ScriptCanvas::VariableRequests::GetName);
 
-            AZStd::unordered_set< AZ::EntityId > memberIds;
-            VariableGraphMemberRefCountRequestBus::EnumerateHandlersId(variableId, [&memberIds](VariableGraphMemberRefCountRequests* requests)
-            {
-                memberIds.insert(requests->GetGraphMemberId());
-                return true;
-            });
-
-            int result = QMessageBox::warning(this, QString("Delete %1 and References").arg(variableName.c_str()), QString("The variable \"%1\" has %2 active references.\nAre you sure you want to delete the variable and its references from the graph?").arg(variableName.c_str()).arg(memberIds.size()), QMessageBox::StandardButton::Yes, QMessageBox::StandardButton::Cancel);
+            int result = QMessageBox::warning(this, QString("Delete %1 and References").arg(variableName.c_str()), QString("The variable \"%1\" has %2 active references.\nAre you sure you want to delete the variable and its references from the graph?").arg(variableName.c_str()).arg(nodeIds.size()), QMessageBox::StandardButton::Yes, QMessageBox::StandardButton::Cancel);
 
             if (result == QMessageBox::StandardButton::Yes)
             {
                 canDeleteVariable = true;
+
+                AZStd::unordered_set< AZ::EntityId > memberIds;
+                memberIds.reserve(nodeIds.size());
+
+                AZStd::unordered_set< ScriptCanvas::VariableId > variableIds = { variableId };
+
+                for (auto memberPair : nodeIds)
+                {
+                    bool removedReferences = false;
+
+                    ScriptCanvas::NodeRequestBus::EventResult(removedReferences, memberPair.m_scriptCanvasId, &ScriptCanvas::NodeRequests::RemoveVariableReferences, variableIds);
+
+                    // If we didn't remove the references. Just delete the node.
+                    if (!removedReferences)
+                    {
+                        memberIds.insert(memberPair.m_graphCanvasId);
+                    }
+                }
+
                 GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::Delete, memberIds);
             }
         }
@@ -742,6 +768,67 @@ namespace ScriptCanvasEditor
 
         return canDeleteVariable;
     }
+
+    VariablePropertiesComponent* VariableDockWidget::AllocateComponent(const ScriptCanvas::VariableId& variableId)
+    {
+        auto elementIter = m_usedElements.find(variableId);
+
+        if (elementIter != m_usedElements.end())
+        {
+            return elementIter->second;
+        }
+
+        if (!m_unusedPool.empty())
+        {
+            VariablePropertiesComponent* component = m_unusedPool.back();
+            m_unusedPool.pop_back();
+
+            m_usedElements[variableId] = component;
+
+            return component;
+        }
+        else
+        {
+            m_propertyHelpers.emplace_back(AZStd::unique_ptr<AZ::Entity>(VariablePropertiesComponent::CreateVariablePropertiesEntity()));
+
+            AZ::Entity* entity = m_propertyHelpers.back().get();
+
+            entity->Init();
+            entity->Activate();
+
+            VariablePropertiesComponent* component = AZ::EntityUtils::FindFirstDerivedComponent<VariablePropertiesComponent>(entity);
+
+            if (component)
+            {
+                m_usedElements[variableId] = component;
+                return component;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void VariableDockWidget::ReleaseComponent(const ScriptCanvas::VariableId& variableId)
+    {
+        auto mapIter = m_usedElements.find(variableId);
+
+        if (mapIter != m_usedElements.end())
+        {
+            m_unusedPool.emplace_back(mapIter->second);
+            m_usedElements.erase(mapIter);
+        }
+    }
+
+    void VariableDockWidget::ResetPool()
+    {
+        for (auto pair : m_usedElements)
+        {
+            m_unusedPool.emplace_back(pair.second);
+        }
+
+        m_usedElements.clear();
+    }
+
 #include <Editor/View/Widgets/VariablePanel/VariableDockWidget.moc>
 }
 

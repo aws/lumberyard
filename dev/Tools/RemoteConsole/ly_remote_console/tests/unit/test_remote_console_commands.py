@@ -10,33 +10,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 test_ly_remote_console contains all the unit test for remote console tool.
 """
-
+try:  # Py2
+    import mock
+except ImportError:  # Py3
+    import unittest.mock as mock
 import pytest
+
 import ly_remote_console.remote_console_commands as remote_console
-import mock
 
 
 @pytest.mark.unit
 class TestScreenShot():
 
     @mock.patch('ly_remote_console.remote_console_commands.RemoteConsole')
-    @mock.patch('ly_remote_console.remote_console_commands.send_screenshot_command')
-    def test_InGameScreenshot_MockSendRequest_SendRequestCalled(self, mock_send_screenshot, mock_remote_console):
-        remote_console.in_game_screenshot(mock_remote_console,'test')
-        assert len(mock_send_screenshot.mock_calls) == 4
-
-    @mock.patch('ly_remote_console.remote_console_commands.RemoteConsole')
-    @mock.patch('ly_remote_console.remote_console_commands.send_screenshot_command')
+    @mock.patch('ly_remote_console.remote_console_commands.capture_screenshot_command')
     def test_CaptureScreenshot_MockSendRequest_SendRequestCalled(self, mock_send_screenshot, mock_remote_console):
         remote_console.capture_screenshot_command(mock_remote_console)
         assert len(mock_send_screenshot.mock_calls) == 1
+
 
     def test_SendScreenshotCommand_MockConsole_LineReadSuccess(self):
         mock_remote_console = mock.MagicMock()
         mock_remote_console.expect_log_line.return_value = lambda: True
 
         try:
-            remote_console.send_screenshot_command(mock_remote_console, 'foo_command', 'foo_line')
+            remote_console.send_command_and_expect_response(mock_remote_console, 'foo_command', 'foo_line')
         except AssertionError:
             assert False
 
@@ -45,7 +43,7 @@ class TestScreenShot():
         mock_remote_console.expect_log_line.return_value = lambda: False
 
         with pytest.raises(AssertionError):
-            remote_console.send_screenshot_command(mock_remote_console, 'foo_command', 'foo_line')
+            remote_console.send_command_and_expect_response(mock_remote_console, 'foo_command', 'foo_line')
 
 @pytest.mark.unit
 class TestRemoteConsole():
@@ -122,12 +120,12 @@ class TestRemoteConsole():
         rc_instance.on_display = mock.MagicMock()
         rc_instance.ready = mock.MagicMock()
         mock_evt_handler = mock.MagicMock()
-        msg = '2foo warning0'  # socket.recv returns string, not byte array. 2 is LOGMESSAGED
+        msg = b'2foo warning0'  # in python3 socket.recv returns byte array. 2 is LOGMESSAGED
 
-        rc_instance.handlers['foo warning'] = mock_evt_handler
+        rc_instance.handlers[b'foo warning'] = mock_evt_handler
         rc_instance._handle_message(msg)
 
-        rc_instance.on_display.assert_called_once_with('foo warning')
+        rc_instance.on_display.assert_called_once_with(b'foo warning')
         mock_evt_handler.set.assert_called_once()
         assert 'foo warning' not in rc_instance.handlers.keys()
         rc_instance.ready.set.assert_not_called()
@@ -138,7 +136,7 @@ class TestRemoteConsole():
         rc_instance = remote_console.RemoteConsole()
         rc_instance.on_display = mock.MagicMock()
         rc_instance.ready = mock.MagicMock()
-        msg = '60'  # socket.recv returns string, not byte array. 6 is AUTOCOMPLETELIST
+        msg = b'60'  # in python3 socket.recv returns byte array. 6 is AUTOCOMPLETELIST
 
         rc_instance._handle_message(msg)
 
@@ -151,7 +149,7 @@ class TestRemoteConsole():
         rc_instance = remote_console.RemoteConsole()
         rc_instance.on_display = mock.MagicMock()
         rc_instance.ready = mock.MagicMock()
-        msg = '70'  # socket.recv returns string, not byte array. 7 is AUTOCOMPLETELISTDONE
+        msg = b'70'  # in python3 socket.recv returns byte array. 7 is AUTOCOMPLETELISTDONE
 
         rc_instance._handle_message(msg)
 

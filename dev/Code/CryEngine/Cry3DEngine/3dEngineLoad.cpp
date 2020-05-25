@@ -17,7 +17,6 @@
 #include "StdAfx.h"
 
 #include "3dEngine.h"
-#include "terrain.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
 #include "Ocean.h"
@@ -43,7 +42,7 @@
 #include <IMaterialEffects.h>
 #include "ClipVolumeManager.h"
 #include "Environment/OceanEnvironmentBus.h"
-#include "TerrainProfiler.h"
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include <I3DEngine.h>
 #include <LoadScreenBus.h>
@@ -79,10 +78,7 @@ inline Vec3 StringToVector(const char* str)
 //////////////////////////////////////////////////////////////////////////
 void C3DEngine::LoadEmptyLevel()
 {
-#ifndef LY_TERRAIN_LEGACY_RUNTIME
-    //If the legacy terrain runtime doesn't exist this is the best place to initialize an empty octree.
     CreateOctree(0.0f);
-#endif
     LoadDefaultAssets();
 }
 
@@ -280,7 +276,30 @@ bool C3DEngine::LevelLoadingInProgress()
     return Cry3DEngineBase::m_bLevelLoadingInProgress;
 }
 
-bool C3DEngine::LoadCompiledTerrainForEditor()
+int C3DEngine::GetLegacyTerrainLevelData(AZ::IO::HandleType& fileHandle, STerrainInfo& terrainInfo
+                                         , bool& bSectorPalettes, EEndian& eEndian
+                                         , XmlNodeRef& surfaceTypesXmlNode)
+{
+    // Load LevelData.xml File.
+    XmlNodeRef xmlLevelData = GetSystem()->LoadXmlFromFile(GetLevelFilePath(LEVEL_DATA_FILE));
+
+    if (xmlLevelData == nullptr)
+    {
+        AZ_Error("LegacyTerrain", false, "C3DEngine::GetLegacyTerrainLevelData: xml level file '%s' not found (files missing?)", GetLevelFilePath(LEVEL_DATA_FILE)); // files missing ?
+        return false;
+    }
+
+    surfaceTypesXmlNode = xmlLevelData->findChild("SurfaceTypes");
+    return GetLegacyTerrainDataFromCompiledOctreeFile(fileHandle, terrainInfo, bSectorPalettes, eEndian);
+}
+
+int C3DEngine::GetLegacyTerrainLevelData(uint8*& octreeData, STerrainInfo& terrainInfo
+                                         , bool& bSectorPalettes, EEndian& eEndian)
+{
+    return GetLegacyTerrainDataFromOctreeBuffer(octreeData, terrainInfo, bSectorPalettes, eEndian);
+}
+
+bool C3DEngine::LoadCompiledOctreeForEditor()
 {
     // Load LevelData.xml File.
     XmlNodeRef xmlLevelData = GetSystem()->LoadXmlFromFile(GetLevelFilePath(LEVEL_DATA_FILE));
@@ -404,9 +423,6 @@ void C3DEngine::UnloadLevel()
         CryComment("done");
     }
 
-    //SAFE_DELETE(m_pObjManager);
-    // delete terrain
-
     // delete decal manager
     if (m_pDecalManager)
     {
@@ -414,15 +430,6 @@ void C3DEngine::UnloadLevel()
         SAFE_DELETE(m_pDecalManager);
         CryComment("done");
     }
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_pTerrain)
-    {
-        CryComment("Deleting Terrain");
-        SAFE_DELETE(m_pTerrain);
-        CryComment("done");
-    }
-#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
     if (m_pOcean)
     {
@@ -859,7 +866,6 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
 
     if (!LoadOctree(nodeRef, &pStatObjTable, &pMatTable, nSID))
     {
-        m_bShowTerrainSurface = false;
         Warning("Octree file (%s) not found or file version error, please try to re-export the level", COMPILED_OCTREE_FILE_NAME);
     }
 
@@ -903,9 +909,9 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     //Update loading screen and important tick functions
     SYNCHRONOUS_LOADING_TICK();
 
-    if (!m_bShowTerrainSurface)
+    if (!IsTerrainActive())
     {
-        gEnv->pPhysicalWorld->SetHeightfieldData(NULL);
+        gEnv->pPhysicalWorld->SetHeightfieldData(nullptr);
     }
 
     // init water if not initialized already (if no mission was found)
@@ -1024,29 +1030,13 @@ void C3DEngine::FreeFoliages()
 
 void C3DEngine::LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID)
 {
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (!m_pTerrain)
-    {
-        return;
-    }
-
-    m_pTerrain->LoadSurfaceTypesFromXML(pDoc);
-    m_pTerrain->UpdateSurfaceTypes();
-    m_pTerrain->InitHeightfieldPhysics();
-#endif
+    AZ_Warning("LegacyTerrain", false, "%s is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML instead");
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML, pDoc);
 }
 
 void C3DEngine::LoadMissionDataFromXMLNode(const char* szMissionName)
 {
     LOADING_TIME_PROFILE_SECTION;
-
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (!m_pTerrain)
-    {
-        Warning("Calling C3DEngine::LoadMissionDataFromXMLNode while level is not loaded");
-        return;
-    }
-#endif
 
     GetRenderer()->MakeMainContextActive();
 
@@ -1177,12 +1167,10 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
 
     float fTerrainDetailMaterialsViewDistRatio = (float)atof(GetXMLAttribText(pInputNode, "Terrain", "DetailLayersViewDistRatio", "1.0"));
 
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-    if (m_fTerrainDetailMaterialsViewDistRatio != fTerrainDetailMaterialsViewDistRatio && GetTerrain())
+    if (m_fTerrainDetailMaterialsViewDistRatio != fTerrainDetailMaterialsViewDistRatio)
     {
-        GetTerrain()->ResetTerrainVertBuffers();
+        LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::ResetTerrainVertBuffers);
     }
-#endif
 
     m_fTerrainDetailMaterialsViewDistRatio = fTerrainDetailMaterialsViewDistRatio;
 
@@ -1268,12 +1256,6 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
 
         pTimeOfDay->SetEnvironmentSettings(envTODInfo);
         pTimeOfDay->Update(true, true);
-    }
-
-
-    {
-        const char* pText = GetXMLAttribText(pInputNode, "EnvState", "ShowTerrainSurface", "true");
-        m_bShowTerrainSurface = !strcmp(pText, "true") || !strcmp(pText, "1");
     }
 
     {

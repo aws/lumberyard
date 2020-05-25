@@ -1,0 +1,12 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "system_appletv_ios.cfg",
+            "outFile": "system_appletv_ios.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        }
+    ],
+    "createDirectories": []
+}

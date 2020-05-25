@@ -24,8 +24,8 @@ namespace AzFramework
     {
         enum FileTagType: int 
         {
-            WhiteList = 0, 
-            BlackList
+            Include = 0, 
+            Exclude
         };
 
 
@@ -72,6 +72,7 @@ namespace AzFramework
             //////////////////////////////////////////////////////////////////////////
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
             using BusIdType = int; // Type is AzFramework::FileTag::FileTagType - Cast to int from enum not supported by vs2015 compiler
+            typedef AZStd::recursive_mutex MutexType;
             //////////////////////////////////////////////////////////////////////////
             ///! Loads the corresponding file for the tags type specified.
             ///! filePath param is optional and if not specified than the app root path for the application

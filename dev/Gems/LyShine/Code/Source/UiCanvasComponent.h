@@ -167,6 +167,7 @@ public: // member functions
     AZ::EntityId GetTooltipDisplayElement() override;
     void SetTooltipDisplayElement(AZ::EntityId entityId) override;
 
+    void ForceFocusInteractable(AZ::EntityId interactableId) override;
     void ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point) override;
     AZ::EntityId GetHoverInteractable() override;
     void ForceHoverInteractable(AZ::EntityId interactableId) override;
@@ -181,6 +182,7 @@ public: // member functions
 
     // UiAnimationInterface
     void StartSequence(const AZStd::string& sequenceName) override;
+    void PlaySequenceRange(const AZStd::string& sequenceName, float startTime, float endTime) override;
     void StopSequence(const AZStd::string& sequenceName) override;
     void AbortSequence(const AZStd::string& sequenceName) override;
     void PauseSequence(const AZStd::string& sequenceName) override;
@@ -190,6 +192,8 @@ public: // member functions
     void SetSequencePlayingSpeed(const AZStd::string& sequenceName, float speed) override;
     float GetSequencePlayingTime(const AZStd::string& sequenceName) override;
     bool IsSequencePlaying(const AZStd::string& sequenceName) override;
+    float GetSequenceLength(const AZStd::string& sequenceName) override;
+    void SetSequenceStopBehavior(IUiAnimationSystem::ESequenceStopBehavior stopBehavior) override;
     // ~UiAnimationInterface
 
     // UiInteractableActiveNotifications
@@ -259,6 +263,9 @@ public: // member functions
 
     void ScheduleElementForTransformRecompute(UiElementComponent* elementComponent);
     void UnscheduleElementForTransformRecompute(UiElementComponent* elementComponent);
+
+    //! Queue an element to be destroyed at end of frame
+    void ScheduleElementDestroy(AZ::EntityId entityId);
 
 #ifndef _RELEASE
     struct DebugInfoNumElements
@@ -362,7 +369,7 @@ private: // member functions
     void ClearActiveInteractable();
 
     //! Check if the hover interactable is set to auto-activate, and if so activate it
-    void CheckHoverInteractableAndAutoActivate(AZ::EntityId prevHoverInteractable = AZ::EntityId(), UiNavigationHelpers::Command command = UiNavigationHelpers::Command::Unknown);
+    void CheckHoverInteractableAndAutoActivate(AZ::EntityId prevHoverInteractable = AZ::EntityId(), UiNavigationHelpers::Command command = UiNavigationHelpers::Command::Unknown, bool forceAutoActivate = false);
 
     //! Check if the active interactable has a descendant interactable. If it does,
     //! make the descendant the hover interactable and clear the active interactable
@@ -427,6 +434,8 @@ private: // member functions
 
     //! Get any orphaned elements caused by old bugs
     void GetOrphanedElements(AZ::SliceComponent::EntityList& orphanedEntities);
+
+    void DestroyScheduledElements();
 
 private: // static member functions
 
@@ -579,6 +588,9 @@ private: // data
     //! We use an intrusive_slist to avoid any memory allocations and also to cheaply be able to tell if an element is already in list
     using ElementComponentSlist = AZStd::intrusive_slist<UiElementComponent, AZStd::slist_base_hook<UiElementComponent>>;
     ElementComponentSlist m_elementsNeedingTransformRecompute;
+
+    //! Holds elements that are queued up to be deleted at end of frame
+    AZStd::vector<AZ::EntityId> m_elementsScheduledForDestroy;
 
 private: // static data
 

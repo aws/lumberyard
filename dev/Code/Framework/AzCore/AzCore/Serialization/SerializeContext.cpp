@@ -158,7 +158,7 @@ namespace AZ
         }
 
         /// Convert text data to binary, to support loading old version formats. We must respect text version if the text->binary format has changed!
-        size_t  TextToData(const char* text, unsigned int textVersion, IO::GenericStream& stream, bool isDataBigEndian = false)
+        size_t  TextToData(const char* text, unsigned int textVersion, IO::GenericStream& stream, bool isDataBigEndian = false) override
         {
             AZ_Assert(textVersion == 0, "Unknown unsigned char, short, int version!");
             (void)textVersion;
@@ -1687,14 +1687,6 @@ namespace AZ
             return this; // we have already removed the class data.
         }
         m_classData->second.m_serializer = IDataSerializerPtr(&Serialize::StaticInstance<EmptySerializer>::s_instance, IDataSerializer::CreateNoDeleteDeleter());
-        return this;
-    }
-
-    //=========================================================================
-    // ClassBuilder::Serializer
-    //=========================================================================
-    SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::SerializerForEmptyClass()
-    {
         return this;
     }
 

@@ -12,9 +12,8 @@ REM
 REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
-pushd %~dp0%
-
 SETLOCAL
+pushd %~dp0%
 
 REM search for the engine root from the engine.json if possible
 IF NOT EXIST engine.json GOTO noSetupConfig
@@ -55,10 +54,10 @@ GOTO :FAILED
 
 :PYTHON_DIR_EXISTS
 
-SET PYTHON=%PYTHON_DIR%\python.cmd
+SET PYTHON=%PYTHON_DIR%\python3.cmd
 IF EXIST "%PYTHON%" GOTO PYTHON_EXISTS
 
-ECHO Could not find python.cmd in %PYTHON_DIR%
+ECHO Could not find python3.cmd in %PYTHON_DIR%
 GOTO :FAILED
 
 :PYTHON_EXISTS
@@ -67,10 +66,10 @@ SET AZ_SCAN_DIR=%CMD_DIR%\Code\Tools\AzTestScanner
 SET PYTHONPATH=%AZ_SCAN_DIR%
 
 call "%PYTHON%" -m aztest %*
-IF ERRORLEVEL 1 GOTO FAILED
+SET TEST_EXIT_CODE=%ERRORLEVEL%
 
 popd
-EXIT /b 0
+EXIT /b %TEST_EXIT_CODE%
 
 :FAILED
 popd

@@ -41,7 +41,7 @@ namespace ScriptCanvasEditor
         VariablePaletteTableView(QWidget* parent);
         ~VariablePaletteTableView();
 
-        void SetActiveScene(const AZ::EntityId& scriptCanvasGraphId);
+        void SetActiveScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
         
         void PopulateVariablePalette(const AZStd::unordered_set< AZ::Uuid >& objectTypes);
         void SetFilter(const QString& filter);

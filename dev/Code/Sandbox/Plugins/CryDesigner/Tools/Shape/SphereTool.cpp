@@ -61,7 +61,7 @@ void SphereTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
     {
         BrushVec2 vSpotPos2D = GetPlane().W2P(GetCurrentSpotPos());
 
-        m_SphereParameter.m_Radius = (vSpotPos2D - m_vCenterOnPlane).GetLength();
+        m_SphereParameter.m_Radius = aznumeric_cast<float>((vSpotPos2D - m_vCenterOnPlane).GetLength());
         const BrushFloat kSmallestRadius = 0.05f;
         if (m_SphereParameter.m_Radius < kSmallestRadius)
         {

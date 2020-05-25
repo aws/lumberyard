@@ -17,11 +17,8 @@ def build(bld):
         # Common
         #==============================
         includes    = [ '.',
-                        bld.ThirdPartyPath('boost'),
                         bld.Path('Code/CryEngine/CryCommon'),
                         'Include' ,
-                        bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Gems/LmbrCentral/Code/include')
                         ],
         
@@ -29,11 +26,8 @@ def build(bld):
             defines     = ['VISIBILITY_EDITOR', 'EDITOR_COMMON_IMPORTS'],
             use         = ['EditorCommon', 'EditorCore'],
             includes    = ['.',
-                           bld.ThirdPartyPath('boost'),
                            bld.Path('Code/CryEngine/CryCommon'),
                            'Include',
-                           bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Gems/LmbrCentral/Code/include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox'),

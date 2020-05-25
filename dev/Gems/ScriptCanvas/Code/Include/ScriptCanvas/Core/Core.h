@@ -112,6 +112,7 @@ namespace ScriptCanvas
     using NodeTypeIdentifier = AZStd::size_t;
     using EBusEventId = AZ::Crc32;
     using EBusBusId = AZ::Crc32;
+    using ScriptCanvasId = AZ::EntityId;
 }
 
 namespace AZStd
@@ -129,4 +130,4 @@ namespace AZStd
     };
 }
 
-#define SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT (1000)
+#define SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT (2000000)

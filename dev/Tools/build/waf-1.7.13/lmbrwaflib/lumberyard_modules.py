@@ -8,29 +8,33 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# System Imports
+import copy
+import os
+import re
+
+# waflib imports
 from waflib import Errors, Logs, Node
 from waflib.Configure import conf, ConfigurationContext
 
-from cry_utils import append_kw_entry, append_to_unique_list
-from cryengine_modules import build_stlib, \
-                              build_shlib,\
-                              build_program, \
-                              build_file_container, \
-                              BuildTaskGenerator, \
-                              RunTaskGenerator,\
-                              ApplyConfigOverwrite,\
-                              ApplyBuildOptionSettings,\
-                              LoadFileLists,\
-                              LoadAdditionalFileSettings,\
-                              is_third_party_uselib_configured,\
-                              clean_duplicates_in_list
-from settings_manager import LUMBERYARD_SETTINGS
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_kw_entry, append_to_unique_list
+from lmbrwaflib.cryengine_modules import build_stlib, \
+                                         build_shlib,\
+                                         build_program, \
+                                         build_file_container, \
+                                         BuildTaskGenerator, \
+                                         RunTaskGenerator,\
+                                         ApplyConfigOverwrite,\
+                                         ApplyBuildOptionSettings,\
+                                         LoadFileLists,\
+                                         LoadAdditionalFileSettings,\
+                                         is_third_party_uselib_configured,\
+                                         clean_duplicates_in_list
+from lmbrwaflib.settings_manager import LUMBERYARD_SETTINGS
+from lmbrwaflib import utils
 
-import utils
-
-import re
-import os
-import copy
 """
 The following 'KEYWORD_TYPES' represents reserved keywords for the build system and their expected type. Any keywords 
 that are not listed below will be treated as lists. 
@@ -151,7 +155,7 @@ def _collect_legacy_keywords():
 
     legacy_keywords = set()
     for legacy_modifier in legacy_modifiers:
-        for values in KEYWORD_TYPES.values():
+        for values in list(KEYWORD_TYPES.values()):
             for value in values:
                 legacy_keywords.add('{}_{}'.format(legacy_modifier, value))
         for value in SANITIZE_TO_LIST_KEYWORDS:
@@ -446,13 +450,13 @@ def track_file_list_changes(ctx, kw):
     kw['waf_file_entries'] = []
 
     # Collect all file list entries
-    for (key,value) in kw.items():
+    for (key,value) in list(kw.items()):
         if 'file_list' in key:
             files_to_track += _to_list(value)
         # Collect potential file lists from additional options
         if 'additional_settings' in key:
             for settings_container in kw['additional_settings']:
-                for (key2,value2) in settings_container.items():
+                for (key2,value2) in list(settings_container.items()):
                     if 'file_list' in key2:
                         files_to_track += _to_list(value2)
 
@@ -484,7 +488,7 @@ def verify_inputs(ctx, target, kw):
     is_build_platform_cmd = getattr(ctx, 'is_build_cmd', False)
     if is_build_platform_cmd:
         bintemp = os.path.normcase(ctx.bldnode.abspath())
-        for kw_check in kw.keys():
+        for kw_check in list(kw.keys()):
             for path_type in KEYWORD_TYPES['path']:
                 if not kw_check.endswith(path_type):
                     continue
@@ -680,7 +684,7 @@ def preprocess_config_aliases_keywords(ctx, kw, additional_aliases):
     :param additional_aliases:  Any additional aliases (dict) to use for processing
     :return:
     """
-    keys = kw.keys()
+    keys = list(kw.keys())
     for key in keys:
         if key not in KEYWORD_TYPES['ALIASABLE']:
             continue
@@ -775,7 +779,7 @@ def apply_default_keywords(ctx, target, kw):
     kw.setdefault('use', [])
     kw.setdefault('uselib', [])
 
-    for key, func in DEFAULT_KEYWORDS.items():
+    for key, func in list(DEFAULT_KEYWORDS.items()):
         func(ctx, target, kw, key)
 
 
@@ -875,7 +879,7 @@ class ProjectSettingsFile:
     def merge_kw_section(self, section_key, target, merge_kw):
         section = self.dict.get(section_key, {})
         if section:
-            for kw_key in section.keys():
+            for kw_key in list(section.keys()):
                 self.merge_kw_key(target, kw_key, section, merge_kw)
 
     def merge_kw_section_by_config_permutations(self, config_permutations, target, platform_name, configuration_name, merge_kw):
@@ -887,7 +891,7 @@ class ProjectSettingsFile:
     def merge_kw_dict(self, target, merge_kw, platform, configuration):
         
         # Process merging any include settings
-        for include_setting in self.included_settings.values():
+        for include_setting in list(self.included_settings.values()):
             include_setting.merge_kw_dict(target, merge_kw, platform, configuration)
             
         if platform:
@@ -990,7 +994,7 @@ def split_keywords_from_static_lib_definition_for_test(ctx, original_kw_dict):
     has_test_filelist = False
     
     # Split the values appropriately
-    for original_key, original_value in original_kw_dict.items():
+    for original_key, original_value in list(original_kw_dict.items()):
     
         check_test_keyword = 'test_{}'.format(original_key)
 

@@ -23,11 +23,13 @@
 class CBaseLibrary;
 
 //////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** Base class for all items contained in BaseLibraray.
 */
 class EDITOR_CORE_API CBaseLibraryItem
     : public TRefCountBase<IDataBaseItem>
 {
+    AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CBaseLibraryItem();
     ~CBaseLibraryItem();
@@ -95,8 +97,10 @@ protected:
     friend class CBaseLibraryManager;
     // Name of this prototype.
     QString m_name;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //! Reference to prototype library who contains this prototype.
     _smart_ptr<CBaseLibrary> m_library;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
     //! Every base library item have unique id.
     GUID m_guid;

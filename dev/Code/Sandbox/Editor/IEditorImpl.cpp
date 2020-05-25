@@ -30,13 +30,9 @@
 #include "DisplaySettings.h"
 #include "ShaderEnum.h"
 #include "KeyboardCustomizationSettings.h"
-#include "HyperGraph/FlowGraphManager.h"
 #include "Export/ExportManager.h"
-#include "HyperGraph/FlowGraphModuleManager.h"
-#include "HyperGraph/FlowGraphDebuggerEditor.h"
-#include "Material/MaterialFXGraphMan.h"
+#include "LevelIndependentFileMan.h"
 #include "EquipPackLib.h"
-#include "CustomActions/CustomActionsEditorManager.h"
 #include "AI/AIManager.h"
 #include "Undo/Undo.h"
 #include "Material/MaterialManager.h"
@@ -53,7 +49,6 @@
 #include "EntityPrototype.h"
 #include "Particles/ParticleManager.h"
 #include "Prefabs/PrefabManager.h"
-#include "GameTokens/GameTokenManager.h"
 #include "LensFlareEditor/LensFlareManager.h"
 #include "DataBaseDialog.h"
 #include "UIEnumsDatabase.h"
@@ -66,6 +61,7 @@
 #ifdef LY_TERRAIN_EDITOR
 #include "TerrainModifyTool.h"
 #endif //#ifdef LY_TERRAIN_EDITOR
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "RotateTool.h"
 #include "NullEditTool.h"
@@ -90,7 +86,6 @@
 #include <IEntitySystem.h>
 #include <IMovieSystem.h>
 #include <ISourceControl.h>
-#include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayerManager.h"
 #include "BackgroundTaskManager.h"
 #include "BackgroundScheduleManager.h"
@@ -128,6 +123,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 
 #include <Editor/AssetDatabase/AssetDatabaseLocationListener.h>
 #include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
@@ -224,10 +220,6 @@ CEditorImpl::CEditorImpl()
     , m_pPickTool(nullptr)
     , m_pAxisGizmo(nullptr)
     , m_pAIManager(nullptr)
-    , m_pCustomActionsManager(nullptr)
-    , m_pFlowGraphModuleManager(nullptr)
-    , m_pMatFxGraphManager(nullptr)
-    , m_pFlowGraphDebuggerEditor(nullptr)
     , m_pEquipPackLib(nullptr)
     , m_pGameEngine(nullptr)
     , m_pAnimationContext(nullptr)
@@ -239,14 +231,12 @@ CEditorImpl::CEditorImpl()
     , m_particleEditorUtils(nullptr)
     , m_pMusicManager(nullptr)
     , m_pPrefabManager(nullptr)
-    , m_pGameTokenManager(nullptr)
     , m_pLensFlareManager(nullptr)
     , m_pErrorReport(nullptr)
     , m_pFileNameResolver(nullptr)
     , m_pLasLoadedLevelErrorReport(nullptr)
     , m_pErrorsDlg(nullptr)
     , m_pSourceControl(nullptr)
-    , m_pFlowGraphManager(nullptr)
     , m_pSelectionTreeManager(nullptr)
     , m_pUIEnumsDatabase(nullptr)
     , m_pRuler(nullptr)
@@ -312,7 +302,6 @@ CEditorImpl::CEditorImpl()
     m_pIconManager = new CIconManager;
     m_pUndoManager = new CUndoManager;
     m_pAIManager = new CAIManager;
-    m_pCustomActionsManager = new CCustomActionsEditorManager;
     m_pEquipPackLib = new CEquipPackLib;
     m_pToolBoxManager = new CToolBoxManager;
     m_pMaterialManager = new CMaterialManager(regCtx);
@@ -322,15 +311,10 @@ CEditorImpl::CEditorImpl()
     m_pEntityManager = new CEntityPrototypeManager;
     m_particleManager = new CEditorParticleManager;
     m_pPrefabManager = new CPrefabManager;
-    m_pGameTokenManager = new CGameTokenManager;
-    m_pFlowGraphManager = new CFlowGraphManager;
 
     m_pImageUtil = new CImageUtil_impl();
     m_particleEditorUtils = CreateEditorParticleUtils();
     m_pLensFlareManager = new CLensFlareManager;
-    m_pFlowGraphModuleManager = new CEditorFlowGraphModuleManager;
-    m_pFlowGraphDebuggerEditor  = new CFlowGraphDebuggerEditor;
-    m_pMatFxGraphManager = new CMaterialFXGraphMan;
     m_pScriptEnv = new EditorScriptEnvironment();
     m_pResourceSelectorHost.reset(CreateResourceSelectorHost());
     m_pRuler = new CRuler;
@@ -513,16 +497,6 @@ CEditorImpl::~CEditorImpl()
     m_bExiting = true; // Can't save level after this point (while Crash)
     SAFE_DELETE(m_pScriptEnv);
     SAFE_RELEASE(m_pSourceControl);
-    SAFE_DELETE(m_pGameTokenManager);
-
-    SAFE_DELETE(m_pMatFxGraphManager);
-    SAFE_DELETE(m_pFlowGraphModuleManager);
-
-    if (m_pFlowGraphDebuggerEditor)
-    {
-        m_pFlowGraphDebuggerEditor->Shutdown();
-        SAFE_DELETE(m_pFlowGraphDebuggerEditor);
-    }
 
     SAFE_DELETE(m_particleManager)
     SAFE_DELETE(m_pEntityManager)
@@ -532,8 +506,7 @@ CEditorImpl::~CEditorImpl()
     SAFE_DELETE(m_pIconManager)
     SAFE_DELETE(m_pViewManager)
     SAFE_DELETE(m_pObjectManager) // relies on prefab manager
-    SAFE_DELETE(m_pPrefabManager); // relies on flowgraphmanager
-    SAFE_DELETE(m_pFlowGraphManager);
+    SAFE_DELETE(m_pPrefabManager);
     SAFE_DELETE(m_pVegetationMap);
 
 #ifdef LY_TERRAIN_EDITOR
@@ -543,7 +516,6 @@ CEditorImpl::~CEditorImpl()
     // AI should be destroyed after the object manager, as the objects may
     // refer to AI components.
     SAFE_DELETE(m_pAIManager)
-    SAFE_DELETE(m_pCustomActionsManager)
 
     // some plugins may be exporter - this must be above plugin manager delete.
     SAFE_DELETE(m_pExportManager);
@@ -1396,8 +1368,8 @@ int CEditorImpl::ClearSelection()
     {
         return 0;
     }
-    QString countString = GetCommandManager()->Execute("general.clear_selection");
-    return countString.toInt();
+    CUndo undo("Clear Selection");
+    return GetObjectManager()->ClearSelection();
 }
 
 void CEditorImpl::LockSelection(bool bLock)
@@ -1550,12 +1522,11 @@ bool CEditorImpl::ToProjectConfigurator(const QString& msg, const QString& capti
 
 float CEditorImpl::GetTerrainElevation(float x, float y)
 {
-    I3DEngine* engine = m_pSystem->GetI3DEngine();
-    if (!engine)
-    {
-        return 0;
-    }
-    return engine->GetTerrainElevation(x, y);
+    float terrainElevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats, x, y,
+        AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+    return terrainElevation;
 }
 
 CHeightmap* CEditorImpl::GetHeightmap()
@@ -1564,9 +1535,13 @@ CHeightmap* CEditorImpl::GetHeightmap()
     assert(m_pTerrainManager);
     return m_pTerrainManager->GetHeightmap();
 #else
-    AZ_Assert(false, "The Height Map doesn't exist in this build.");
     return nullptr;
 #endif //#ifdef LY_TERRAIN_EDITOR
+}
+
+IHeightmap* CEditorImpl::GetIHeightmap()
+{
+    return (IHeightmap*)GetHeightmap();
 }
 
 CVegetationMap* CEditorImpl::GetVegetationMap()
@@ -1650,8 +1625,6 @@ IDataBaseManager* CEditorImpl::GetDBItemManager(EDataBaseItemType itemType)
         return m_pEntityManager;
     case EDB_TYPE_PREFAB:
         return m_pPrefabManager;
-    case EDB_TYPE_GAMETOKEN:
-        return m_pGameTokenManager;
     case EDB_TYPE_PARTICLE:
         return m_particleManager;
     }
@@ -1728,11 +1701,11 @@ void CEditorImpl::SetInGameMode(bool inGame)
     {
         bWasInSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
         GetIEditor()->GetGameEngine()->SetSimulationMode(false);
-        GetIEditor()->GetCommandManager()->Execute("general.enter_game_mode");
+        GetIEditor()->GetGameEngine()->RequestSetGameMode(true);
     }
     else
     {
-        GetIEditor()->GetCommandManager()->Execute("general.exit_game_mode");
+        GetIEditor()->GetGameEngine()->RequestSetGameMode(false);
         GetIEditor()->GetGameEngine()->SetSimulationMode(bWasInSimulationMode);
     }
 }
@@ -2168,11 +2141,6 @@ CAIManager* CEditorImpl::GetAI()
     return m_pAIManager;
 }
 
-CCustomActionsEditorManager* CEditorImpl::GetCustomActionManager()
-{
-    return m_pCustomActionsManager;
-}
-
 CAnimationContext* CEditorImpl::GetAnimation()
 {
     return m_pAnimationContext;
@@ -2203,6 +2171,17 @@ void CEditorImpl::UnregisterDocListener(IDocListener* listener)
     if (doc)
     {
         doc->UnregisterListener(listener);
+    }
+}
+
+void CEditorImpl::StartLevelErrorReportRecording()
+{
+    IErrorReport* errorReport = GetErrorReport();
+    if (errorReport)
+    {
+        errorReport->Clear();
+        errorReport->SetImmediateMode(false);
+        errorReport->SetShowErrors(true);
     }
 }
 
@@ -2469,15 +2448,19 @@ void CEditorImpl::AddErrorMessage(const QString& text, const QString& caption)
 
 void CEditorImpl::CmdPy(IConsoleCmdArgs* pArgs)
 {
-    // Execute the given script command.
-    QString scriptCmd = pArgs->GetCommandLine();
+    if (AzToolsFramework::EditorPythonRunnerRequestBus::HasHandlers())
+    {
+        // Execute the given script command.
+        QString scriptCmd = pArgs->GetCommandLine();
 
-    scriptCmd = scriptCmd.right(scriptCmd.length() - 2); // The part of the text after the 'py'
-    scriptCmd = scriptCmd.trimmed();
-    PyScript::AcquirePythonLock();
-    PyRun_SimpleString(scriptCmd.toUtf8().data());
-    PyErr_Print();
-    PyScript::ReleasePythonLock();
+        scriptCmd = scriptCmd.right(scriptCmd.length() - 2); // The part of the text after the 'py'
+        scriptCmd = scriptCmd.trimmed();
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, scriptCmd.toUtf8().data());
+    }
+    else
+    {
+        AZ_Warning("python", false, "EditorPythonRunnerRequestBus has no handlers");
+    }
 }
 
 void CEditorImpl::OnObjectContextMenuOpened(QMenu* pMenu, const CBaseObject* pObject)

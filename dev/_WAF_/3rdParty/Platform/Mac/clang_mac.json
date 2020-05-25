@@ -27,6 +27,7 @@
                 "libclangRewrite.a",
                 "libclangEdit.a",
                 "libclangAST.a",
+                "libclangASTMatchers.a",
                 "libclangLex.a",
                 "libclangBasic.a",
                 "libLLVMBinaryFormat.a",

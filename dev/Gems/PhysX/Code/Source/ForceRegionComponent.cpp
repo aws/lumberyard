@@ -134,8 +134,6 @@ namespace PhysX
             if (!netForce.IsZero())
             {
                 netForce = netForce.GetNormalizedApprox() * entityParams.m_aabb.GetExtents().GetMaxElement() * 2.0f; // Ensures arrow length is longer than entity AABB so that it can be seen.
-                AZ::Transform transform = AZ::Transform::CreateIdentity();
-                AZ::TransformBus::EventResult(transform, entityId, &AZ::TransformInterface::GetWorldTM);
                 AZ::Vector3 entityPosition = entityParams.m_aabb.GetCenter();
                 debugDisplayRequests.DrawArrow(entityPosition, entityPosition + netForce, 1.5f);
             }

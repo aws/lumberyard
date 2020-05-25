@@ -30,6 +30,10 @@
         "TargetManagement/Platform/Mac":
         [
             "AzFramework/TargetManagement/TargetManagementComponent_Mac.cpp"
+        ],
+        "Windowing/Platform/Mac":
+        [
+            "AzFramework/Windowing/NativeWindow_Mac.mm"
         ]
     },
     "AzFramework_Input_Uber_Mac.cpp":
@@ -59,13 +63,14 @@
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/Touch/InputDeviceTouch_Unimplemented.cpp"
         ],
+        "Input/User/Platform/Mac":
+        [
+            "AzFramework/Input/User/LocalUserId_Platform.h",
+            "../Common/Default/AzFramework/Input/User/LocalUserId_Default.h"
+        ],
         "Input/Devices/VirtualKeyboard/Platform/Mac":
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Unimplemented.cpp"
-        ],
-        "Windowing":
-        [
-            "AzFramework/Windowing/NativeWindow_Mac.mm"
         ]
     }
 }

@@ -341,7 +341,7 @@ namespace AssetProcessor
                 jobInfo->m_elementId.SetPlatform(entry.m_platform.c_str());
                 jobInfo->m_elementId.SetJobDescriptor(entry.m_jobKey.c_str());
                 jobInfo->m_jobState = entry.m_status;
-                jobInfo->m_jobRunKey = entry.m_jobRunKey;
+                jobInfo->m_jobRunKey = aznumeric_cast<uint32_t>(entry.m_jobRunKey);
                 jobInfo->m_builderGuid = entry.m_builderGuid;
                 jobInfo->m_completedTime = QDateTime::fromMSecsSinceEpoch(entry.m_lastLogTime);
                 jobInfo->m_warningCount = entry.m_warningCount;
@@ -372,7 +372,7 @@ namespace AssetProcessor
             jobInfo->m_elementId.SetInputAssetName(entry.m_databaseSourceName.toUtf8().data());
             jobInfo->m_elementId.SetPlatform(entry.m_platformInfo.m_identifier.c_str());
             jobInfo->m_elementId.SetJobDescriptor(entry.m_jobKey.toUtf8().data());
-            jobInfo->m_jobRunKey = entry.m_jobRunKey;
+            jobInfo->m_jobRunKey = aznumeric_cast<uint32_t>(entry.m_jobRunKey);
             jobInfo->m_builderGuid = entry.m_builderGuid;
             jobInfo->m_jobState = status;
             jobInfo->m_warningCount = jobDiagnosticInfo.m_warningCount;
@@ -388,7 +388,7 @@ namespace AssetProcessor
             jobIndex = iter.value();
             jobInfo = m_cachedJobs[jobIndex];
             jobInfo->m_jobState = status;
-            jobInfo->m_jobRunKey = entry.m_jobRunKey;
+            jobInfo->m_jobRunKey = aznumeric_cast<uint32_t>(entry.m_jobRunKey);
             jobInfo->m_builderGuid = entry.m_builderGuid;
             jobInfo->m_warningCount = jobDiagnosticInfo.m_warningCount;
             jobInfo->m_errorCount = jobDiagnosticInfo.m_errorCount;

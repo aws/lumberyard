@@ -1,0 +1,15 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "MaglevControlPanelPlugin.h",
+            "stdafx.cpp",
+            "stdafx.h"
+        ],
+        "Include": 
+        [
+            "Include/PythonWorkerBus.h"
+        ]
+    }
+}

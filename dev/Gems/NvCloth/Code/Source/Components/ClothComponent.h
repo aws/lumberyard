@@ -213,7 +213,8 @@ namespace NvCloth
         void UpdateSimulationCollisions();
         void UpdateSimulationStaticParticles();
         void UpdateSimulation(float deltaTime);
-        void RetrieveSimulationResults();
+        bool RetrieveSimulationResults();
+        void RestoreSimulation();
         void BlendSkinningAnimation();
         void RecalculateTangentSpaces();
 
@@ -263,6 +264,8 @@ namespace NvCloth
 
         AZStd::unique_ptr<ClothDebugDisplay> m_clothDebugDisplay;
         friend class ClothDebugDisplay; // Give access to data to draw debug information
+
+        AZ::u32 m_numInvalidSimulations = 0;
 
         // NvCloth elements
         SolverUniquePtr m_solver;

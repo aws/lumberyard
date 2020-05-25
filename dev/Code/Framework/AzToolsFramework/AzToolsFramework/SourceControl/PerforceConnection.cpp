@@ -24,44 +24,51 @@ namespace AzToolsFramework
         char s_EndOfFileChar(26);
     }
 
-    AZStd::string PerforceCommand::GetCurrentChangelistNumber() const
+    AZStd::string PerforceCommand::GetCurrentChangelistNumber(const PerforceMap* map) const
     {
-        return GetOutputValue("change");
+        return GetOutputValue("change", map);
     }
 
-    AZStd::string PerforceCommand::GetHaveRevision() const
+    AZStd::string PerforceCommand::GetHaveRevision(const PerforceMap* map) const
     {
-        return GetOutputValue("haveRev"); 
+        return GetOutputValue("haveRev", map); 
     }
 
-    AZStd::string PerforceCommand::GetHeadRevision() const
+    AZStd::string PerforceCommand::GetHeadRevision(const PerforceMap* map) const
     {
-        return GetOutputValue("headRev");
+        return GetOutputValue("headRev", map);
     }
 
-    AZStd::string PerforceCommand::GetOtherUserCheckedOut() const
+    AZStd::string PerforceCommand::GetOtherUserCheckedOut(const PerforceMap* map) const
     {
-        return GetOutputValue("otherOpen0");
+        return GetOutputValue("otherOpen0", map);
     }
 
-    int PerforceCommand::GetOtherUserCheckOutCount() const
+    int PerforceCommand::GetOtherUserCheckOutCount(const PerforceMap* map) const
     {
-        return atoi(GetOutputValue("otherOpen").c_str());
+        return atoi(GetOutputValue("otherOpen", map).c_str());
     }
 
-    bool PerforceCommand::CurrentActionIsAdd() const
+    bool PerforceCommand::CurrentActionIsAdd(const PerforceMap* map) const
     {
-        return GetOutputValue("action") == "add";
+        return GetOutputValue("action", map) == "add";
     }
 
-    bool PerforceCommand::CurrentActionIsEdit() const
+    bool PerforceCommand::CurrentActionIsEdit(const PerforceMap* map) const
     {
-        return GetOutputValue("action") == "edit";
+        return GetOutputValue("action", map) == "edit";
     }
 
-    bool PerforceCommand::CurrentActionIsDelete() const
+    bool PerforceCommand::CurrentActionIsDelete(const PerforceMap* map) const
     {
-        return GetOutputValue("action") == "delete";
+        return GetOutputValue("action", map) == "delete";
+    }
+
+    bool PerforceCommand::CurrentActionIsMove(const PerforceMap* map) const
+    {
+        AZStd::string value = GetOutputValue("action", map);
+
+        return value == "move/delete" || value == "move/add";
     }
 
     bool PerforceCommand::FileExists() const
@@ -69,14 +76,19 @@ namespace AzToolsFramework
         return m_rawOutput.errorResult.find("no such file(s)") == AZStd::string::npos;
     }
 
-    bool PerforceCommand::HasRevision() const
+    bool PerforceCommand::FileExists(const char* searchFile) const
     {
-        return atoi(GetOutputValue("haveRev").c_str()) > 0;
+        return m_rawOutput.errorResult.find(AZStd::string::format("%s - no such file(s)", searchFile)) == AZStd::string::npos;
     }
 
-    bool PerforceCommand::HeadActionIsDelete() const
+    bool PerforceCommand::HasRevision(const PerforceMap* map) const
     {
-        return GetOutputValue("headAction") == "delete";
+        return atoi(GetOutputValue("haveRev", map).c_str()) > 0;
+    }
+
+    bool PerforceCommand::HeadActionIsDelete(const PerforceMap* map) const
+    {
+        return GetOutputValue("headAction", map) == "delete";
     }
 
     bool PerforceCommand::IsMarkedForAdd() const
@@ -89,19 +101,19 @@ namespace AzToolsFramework
         return m_rawOutput.outputResult.find("use 'reopen'") != AZStd::string::npos;
     }
 
-    bool PerforceCommand::IsOpenByOtherUsers() const
+    bool PerforceCommand::IsOpenByOtherUsers(const PerforceMap* map) const
     {
-        return OutputKeyExists("otherOpen");
+        return OutputKeyExists("otherOpen", map);
     }
 
-    bool PerforceCommand::IsOpenByCurrentUser() const 
+    bool PerforceCommand::IsOpenByCurrentUser(const PerforceMap* map) const
     {
-        return OutputKeyExists("action");
+        return OutputKeyExists("action", map);
     }
 
-    bool PerforceCommand::NewFileAfterDeletedRev() const
+    bool PerforceCommand::NewFileAfterDeletedRev(const PerforceMap* map) const
     {
-        return (HeadActionIsDelete() && !HasRevision());
+        return (HeadActionIsDelete(map) && !HasRevision(map));
     }
 
     bool PerforceCommand::ApplicationFound() const
@@ -120,9 +132,9 @@ namespace AzToolsFramework
         return false;
     }
 
-    bool PerforceCommand::ExclusiveOpen() const
+    bool PerforceCommand::ExclusiveOpen(const PerforceMap* map) const
     {
-        AZStd::string fileType = GetOutputValue("headType");
+        AZStd::string fileType = GetOutputValue("headType", map);
         if (!fileType.empty())
         {
             size_t modLocation = fileType.find('+');
@@ -134,10 +146,15 @@ namespace AzToolsFramework
         return false;
     }
 
-    AZStd::string PerforceCommand::GetOutputValue(const AZStd::string& key) const
+    AZStd::string PerforceCommand::GetOutputValue(const AZStd::string& key, const PerforceMap* perforceMap) const
     {
-        PerforceMap::const_iterator kvp = m_commandOutputMap.find(key);
-        if (kvp != m_commandOutputMap.end())
+        if(!perforceMap)
+        {
+            perforceMap = &m_commandOutputMap;
+        }
+
+        PerforceMap::const_iterator kvp = perforceMap->find(key);
+        if (kvp != perforceMap->end())
         {
             return kvp->second;
         }
@@ -147,29 +164,15 @@ namespace AzToolsFramework
         }
     }
 
-    AZStd::string PerforceCommand::GetOutputValue(const AZStd::string& key, PerforceMap perforceMap) const
+    bool PerforceCommand::OutputKeyExists(const AZStd::string& key, const PerforceMap* perforceMap) const
     {
-        PerforceMap::const_iterator kvp = perforceMap.find(key);
-        if (kvp != perforceMap.end())
+        if(!perforceMap)
         {
-            return kvp->second;
+            perforceMap = &m_commandOutputMap;
         }
-        else
-        {
-            return "";
-        }
-    }
 
-    bool PerforceCommand::OutputKeyExists(const AZStd::string& key) const
-    {
-        PerforceMap::const_iterator kvp = m_commandOutputMap.find(key);
-        return kvp != m_commandOutputMap.end();
-    }
-
-    bool PerforceCommand::OutputKeyExists(const AZStd::string& key, PerforceMap perforceMap) const
-    {
-        PerforceMap::const_iterator kvp = perforceMap.find(key);
-        return kvp != perforceMap.end();
+        PerforceMap::const_iterator kvp = perforceMap->find(key);
+        return kvp != perforceMap->end();
     }
 
     AZStd::vector<PerforceMap>::iterator PerforceCommand::FindMapWithPartiallyMatchingValueForKey(const AZStd::string& key, const AZStd::string& value)
@@ -190,16 +193,16 @@ namespace AzToolsFramework
 
     AZStd::string PerforceCommand::CreateChangelistForm(const AZStd::string& client, const AZStd::string& user, const AZStd::string& description)
     {
-        AZStd::string changelistForm = "Change:	new\n\nClient:	";
+        AZStd::string changelistForm = "Change:\tnew\n\nClient:\t";
         changelistForm.append(client);
 
         if (!user.empty() && user != "*unknown*")
         {
-            changelistForm.append("\n\nUser:	");
+            changelistForm.append("\n\nUser:\t");
             changelistForm.append(user);
         }
 
-        changelistForm.append("\n\nStatus:	new\n\nDescription:\n	");
+        changelistForm.append("\n\nStatus:\tnew\n\nDescription:\n\t");
         changelistForm.append(description);
         changelistForm.append("\n\n");
         changelistForm += s_EndOfFileChar;
@@ -230,9 +233,33 @@ namespace AzToolsFramework
         ExecuteCommand();
     }
 
+    void PerforceCommand::ExecuteEdit(const AZStd::string& changelist, const AZStd::unordered_set<AZStd::string>& filePaths)
+    {
+        m_commandArgs = "edit -c " + changelist + " ";
+
+        for (const AZStd::string& filePath : filePaths)
+        {
+            m_commandArgs += "\"" + filePath + "\" ";
+        }
+
+        ExecuteCommand();
+    }
+
     void PerforceCommand::ExecuteFstat(const AZStd::string& filePath)
     {
         m_commandArgs = "fstat \"" + filePath + "\"";
+        ExecuteCommand();
+    }
+
+    void PerforceCommand::ExecuteFstat(const AZStd::unordered_set<AZStd::string>& filePaths)
+    {
+        m_commandArgs = "fstat ";
+
+        for (const AZStd::string& filePath : filePaths)
+        {
+            m_commandArgs += "\"" + filePath + "\" ";
+        }
+
         ExecuteCommand();
     }
 

@@ -23,7 +23,6 @@
 #include "CryEdit.h"
 
 #include "Include/SandboxAPI.h"
-#include "PythonToAZOut.h"
 #include "QtUtilWin.h"
 #include "GameExporter.h"
 #include "GameResourcesExporter.h"
@@ -67,6 +66,7 @@
 
 #include "Objects/PrefabObject.h"
 #include "Prefabs/PrefabManager.h"
+#include "Material/MaterialManager.h"
 
 #include "IEditorImpl.h"
 #include "StartupLogoDialog.h"
@@ -83,7 +83,6 @@
 #include "TrackView/TrackViewDialog.h"
 #include "Undo/Undo.h"
 
-
 #include "AI/AIManager.h"
 #include "AI/GenerateSpawners.h"
 
@@ -92,8 +91,8 @@
 #include "TerrainDialog.h"
 #include "TerrainMoveTool.h"
 #include "TerrainModifyTool.h"
-#else
-#include <ITerrain.h>
+#include <AzToolsFramework/Component/EditorComponentAPIBus.h>
+#include <AzToolsFramework/Component/EditorLevelComponentAPIBus.h>
 #endif //#ifdef LY_TERRAIN_EDITOR
 
 // This is the "Sun Trajectory Tool", so it's not directly related to the rest of the Terrain Editor code above.
@@ -108,6 +107,8 @@
 #include "FeedbackDialog/FeedbackDialog.h"
 
 #include "MatEditMainDlg.h"
+
+#include "Objects/ObjectPhysicsManager.h"
 
 #include <WinWidget/WinWidgetId.h>
 
@@ -165,7 +166,6 @@
 #include "QuickAccessBar.h"
 #include "QtViewPaneManager.h"
 
-#include "Util/BoostPythonHelpers.h"
 #include "Export/ExportManager.h"
 
 #include "LevelFileDialog.h"
@@ -192,6 +192,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/std/containers/map.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
@@ -208,6 +209,8 @@
 #include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ViewportSelection/EditorTransformComponentSelectionRequestBus.h>
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
+#include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
@@ -379,11 +382,6 @@ namespace
 {
     static const char* s_CryEditAppInstanceName = "CryEditAppInstanceName";
 
-    QString PyLegacyGetGameFolder()
-    {
-        return Path::GetEditingGameDataFolder().c_str();
-    }
-
     const char* PyGetGameFolder()
     {
         return Path::GetEditingGameDataFolder().c_str();
@@ -401,7 +399,7 @@ namespace
         if (!QFile::exists(levelPath))
         {
             // if the input path can't be found, let's automatically add on the game folder and the levels
-            QString levelsDir = PyLegacyGetGameFolder() / "Levels";
+            QString levelsDir = QString("%1/%2").arg(Path::GetEditingGameDataFolder().c_str()).arg("Levels");
 
             // now let's check if they pre-pended directories (Samples/SomeLevelName)
             QString levelFileName = levelPath;
@@ -472,19 +470,9 @@ namespace
         return CCryEditApp::instance()->CreateLevel(levelName, heightmapResolution, heightmapUnitSize, useTerrain, qualifiedName, exportSettings);
     }
 
-    QString PyLegacyGetCurrentLevelName()
-    {
-        return GetIEditor()->GetGameEngine()->GetLevelName();
-    }
-
     const char* PyGetCurrentLevelName()
     {
         return GetIEditor()->GetGameEngine()->GetLevelName().toUtf8().data();
-    }
-
-    QString PyLegacyGetCurrentLevelPath()
-    {
-        return GetIEditor()->GetGameEngine()->GetLevelPath();
     }
 
     const char* PyGetCurrentLevelPath()
@@ -497,22 +485,10 @@ namespace
         GetIEditor()->LoadPlugins();
     }
 
-    boost::python::tuple PyLegacyGetCurrentViewPosition()
-    {
-        Vec3 pos = GetIEditor()->GetSystem()->GetViewCamera().GetPosition();
-        return boost::python::make_tuple(pos.x, pos.y, pos.z);
-    }
-
     AZ::Vector3 PyGetCurrentViewPosition()
     {
         Vec3 pos = GetIEditor()->GetSystem()->GetViewCamera().GetPosition();
         return AZ::Vector3(pos.x, pos.y, pos.z);
-    }
-
-    boost::python::tuple PyLegacyGetCurrentViewRotation()
-    {
-        Ang3 ang = RAD2DEG(Ang3::GetAnglesXYZ(Matrix33(GetIEditor()->GetSystem()->GetViewCamera().GetMatrix())));
-        return boost::python::make_tuple(ang.x, ang.y, ang.z);
     }
 
     AZ::Vector3 PyGetCurrentViewRotation()
@@ -523,73 +499,25 @@ namespace
 
     void PySetCurrentViewPosition(float x, float y, float z)
     {
-        CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
-        if (pRenderViewport)
+        AzToolsFramework::IEditorCameraController* editorCameraController = AZ::Interface<AzToolsFramework::IEditorCameraController>::Get();
+        AZ_Error("editor", editorCameraController, "IEditorCameraController is not registered.");
+        if (editorCameraController)
         {
-            CUndo undo("Set Current View Position");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoViewPosition());
-            }
-            Matrix34 tm = pRenderViewport->GetViewTM();
-            tm.SetTranslation(Vec3(x, y, z));
-            pRenderViewport->SetViewTM(tm);
+            editorCameraController->SetCurrentViewPosition(AZ::Vector3{ x, y, z });
         }
     }
 
     void PySetCurrentViewRotation(float x, float y, float z)
     {
-        CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
-        if (pRenderViewport)
+        AzToolsFramework::IEditorCameraController* editorCameraController = AZ::Interface<AzToolsFramework::IEditorCameraController>::Get();
+        AZ_Error("editor", editorCameraController, "IEditorCameraController is not registered.");
+        if (editorCameraController)
         {
-            CUndo undo("Set Current View Rotation");
-            if (CUndo::IsRecording())
-            {
-                CUndo::Record(new CUndoViewRotation());
-            }
-            Matrix34 tm = pRenderViewport->GetViewTM();
-            tm.SetRotationXYZ(Ang3(DEG2RAD(x), DEG2RAD(y), DEG2RAD(z)), tm.GetTranslation());
-            pRenderViewport->SetViewTM(tm);
+            editorCameraController->SetCurrentViewRotation(AZ::Vector3{ x, y, z });
         }
     }
 }
 
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevel, general, open_level,
-    "Opens a level.",
-    "general.open_level(str levelName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevelNoPrompt, general, open_level_no_prompt,
-    "Opens a level. Doesn't prompt user about saving a modified level",
-    "general.open_level_no_prompt(str levelName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevel, general, create_level,
-    "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'.",
-    "general.create_level(str levelName, int resolution, int unitSize, bool useTerrain)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevelNoPrompt, general, create_level_no_prompt,
-    "Creates a level named 'levelName' with the given terrain settings.",
-    "general.create_level(str levelName, int heightmapResolution, int heightmapUnitSize, int terrainTextureExportSize, bool useTerrain)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetGameFolder, general, get_game_folder,
-    "Gets the path to the Game folder of current project.",
-    "general.get_game_folder()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetCurrentLevelName, general, get_current_level_name,
-    "Gets the name of the current level.",
-    "general.get_current_level_name()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetCurrentLevelPath, general, get_current_level_path,
-    "Gets the fully specified path of the current level.",
-    "general.get_current_level_path()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(Command_LoadPlugins, general, load_all_plugins,
-    "Loads all available plugins.",
-    "general.load_all_plugins()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetCurrentViewPosition, general, get_current_view_position,
-    "Returns the position of the current view as a list of 3 floats.",
-    "general.get_current_view_position()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetCurrentViewRotation, general, get_current_view_rotation,
-    "Returns the rotation of the current view as a list of 3 floats, each of which represents x, y, z Euler angles.",
-    "general.get_current_view_rotation()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewPosition, general, set_current_view_position,
-    "Sets the position of the current view as given x, y, z coordinates.",
-    "general.set_current_view_position(float xValue, float yValue, float zValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewRotation, general, set_current_view_rotation,
-    "Sets the rotation of the current view as given x, y, z Euler angles.",
-    "general.set_current_view_rotation(float xValue, float yValue, float zValue)");
 
 #define ERROR_LEN 256
 
@@ -775,9 +703,6 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_SELECTION_SAVE, OnSelectionSave)
     ON_COMMAND(ID_IMPORT_ASSET, OnOpenAssetImporter)
     ON_COMMAND(ID_SELECTION_LOAD, OnSelectionLoad)
-    ON_COMMAND(ID_EDIT_PHYS_RESET, OnPhysicsResetState)
-    ON_COMMAND(ID_EDIT_PHYS_GET, OnPhysicsGetState)
-    ON_COMMAND(ID_EDIT_PHYS_SIMULATE, OnPhysicsSimulateObjects)
     ON_COMMAND(ID_OBJECTMODIFY_ALIGN, OnAlignObject)
     ON_COMMAND(ID_MODIFY_ALIGNOBJTOSURF, OnAlignToVoxel)
     ON_COMMAND(ID_OBJECTMODIFY_ALIGNTOGRID, OnAlignToGrid)
@@ -920,9 +845,6 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_MATERIAL_ASSIGNCURRENT, OnMaterialAssigncurrent)
     ON_COMMAND(ID_MATERIAL_RESETTODEFAULT, OnMaterialResettodefault)
     ON_COMMAND(ID_MATERIAL_GETMATERIAL, OnMaterialGetmaterial)
-    ON_COMMAND(ID_PHYSICS_GETPHYSICSSTATE, OnPhysicsGetState)
-    ON_COMMAND(ID_PHYSICS_RESETPHYSICSSTATE, OnPhysicsResetState)
-    ON_COMMAND(ID_PHYSICS_SIMULATEOBJECTS, OnPhysicsSimulateObjects)
     ON_COMMAND(ID_FILE_SAVELEVELRESOURCES, OnFileSavelevelresources)
     ON_COMMAND(ID_CLEAR_REGISTRY, OnClearRegistryData)
     ON_COMMAND(ID_VALIDATELEVEL, OnValidatelevel)
@@ -950,22 +872,14 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_OPEN_MANNEQUIN_EDITOR, OnOpenMannequinEditor)
     ON_COMMAND(ID_OPEN_CHARACTER_TOOL, OnOpenCharacterTool)
     ON_COMMAND(ID_OPEN_DATABASE, OnOpenDataBaseView)
-    ON_COMMAND(ID_OPEN_FLOWGRAPH, OnOpenFlowGraphView)
     ON_COMMAND(ID_OPEN_ASSET_BROWSER, OnOpenAssetBrowserView)
     ON_COMMAND(ID_OPEN_AUDIO_CONTROLS_BROWSER, OnOpenAudioControlsEditor)
-    ON_COMMAND(ID_GAMEP1_AUTOGEN, OnGameP1AutoGen)
 
     ON_COMMAND(ID_OPEN_MATERIAL_EDITOR, OnOpenMaterialEditor)
     ON_COMMAND(ID_GOTO_VIEWPORTSEARCH, OnGotoViewportSearch)
-    ON_COMMAND(ID_BRUSH_MAKEHOLLOW, OnBrushMakehollow)
-    ON_COMMAND(ID_BRUSH_CSGCOMBINE, OnBrushCsgcombine)
-    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT, OnBrushCsgsubstruct)
-    ON_COMMAND(ID_BRUSH_CSGINTERSECT, OnBrushCsgintersect)
     ON_COMMAND(ID_SUBOBJECTMODE_VERTEX, OnSubobjectmodeVertex)
     ON_COMMAND(ID_SUBOBJECTMODE_EDGE, OnSubobjectmodeEdge)
     ON_COMMAND(ID_SUBOBJECTMODE_FACE, OnSubobjectmodeFace)
-    ON_COMMAND(ID_SUBOBJECTMODE_PIVOT, OnSubobjectmodePivot)
-    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT2, OnBrushCsgsubstruct2)
     ON_COMMAND(ID_MATERIAL_PICKTOOL, OnMaterialPicktool)
     ON_COMMAND(ID_DISPLAY_SHOWHELPERS, OnShowHelpers)
     ON_COMMAND(ID_OPEN_AIDEBUGGER, OnOpenAIDebugger)
@@ -975,11 +889,6 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_OPEN_TRACKVIEW, OnOpenTrackView)
     ON_COMMAND(ID_OPEN_UICANVASEDITOR, OnOpenUICanvasEditor)
     ON_COMMAND(ID_GOTO_VIEWPORTSEARCH, OnGotoViewportSearch)
-    ON_COMMAND(ID_BRUSH_MAKEHOLLOW, OnBrushMakehollow)
-    ON_COMMAND(ID_BRUSH_CSGCOMBINE, OnBrushCsgcombine)
-    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT, OnBrushCsgsubstruct)
-    ON_COMMAND(ID_BRUSH_CSGINTERSECT, OnBrushCsgintersect)
-    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT2, OnBrushCsgsubstruct2)
     ON_COMMAND(ID_MATERIAL_PICKTOOL, OnMaterialPicktool)
     ON_COMMAND(ID_TERRAIN_TIMEOFDAY, OnTimeOfDay)
     ON_COMMAND(ID_TERRAIN_TIMEOFDAYBUTTON, OnTimeOfDay)
@@ -1005,13 +914,6 @@ void CCryEditApp::RegisterActionHandlers()
 
     ON_COMMAND(ID_OPEN_QUICK_ACCESS_BAR, OnOpenQuickAccessBar)
 
-    ON_COMMAND(ID_START_STOP, OnStartStop)
-    ON_COMMAND(ID_NEXT_KEY, OnNextKey)
-    ON_COMMAND(ID_PREV_KEY, OnPrevKey)
-    ON_COMMAND(ID_SELECT_ALL, OnSelectAll)
-    ON_COMMAND(ID_SET_KEY, OnKeyAll)
-    ON_COMMAND(ID_NEXT_FRAME, OnNextFrame)
-    ON_COMMAND(ID_PREV_FRAME, OnPrevFrame)
     ON_COMMAND(ID_FILE_SAVE_LEVEL, OnFileSave)
     ON_COMMAND(ID_PANEL_LAYERS_SAVE_EXTERNAL_LAYERS, OnFileSaveExternalLayers)
     ON_COMMAND(ID_CONVERT_LEGACY_ENTITIES, OnFileConvertLegacyEntities)
@@ -1073,6 +975,7 @@ public:
     bool m_bMergeShaders = false;
 
     bool m_bConsoleMode = false;
+    bool m_bNullRenderer = false;
     bool m_bDeveloperMode = false;
     bool m_bRunPythonScript = false;
     bool m_bShowVersionInfo = false;
@@ -1124,6 +1027,7 @@ public:
             { "MergeShaders", m_bMergeShaders },
             { "MatEdit", m_bMatEditMode },
             { "BatchMode", m_bConsoleMode },
+            { "NullRenderer", m_bNullRenderer },
             { "devmode", m_bDeveloperMode },
             { "VTUNE", dummy },
             { "runpython", m_bRunPythonScript },
@@ -1139,6 +1043,7 @@ public:
             {{"logfile", "File name of the log file to write out to.", "logfile"}, m_logFile},
             {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython was used.", "runpythonargs"}, m_pythonArgs},
             {{"exec", "cfg file to run on startup, used for systems like automation", "exec"}, m_execFile},
+            {{"rhi", "Command-line argument to force which rhi to use", "dummyString"}, dummyString },
             {{"exec_line", "command to run on startup, used for systems like automation", "exec_line"}, m_execLineCmd}
             // add dummy entries here to prevent QCommandLineParser error-ing out on cmd line args that will be parsed later
         };
@@ -1308,13 +1213,19 @@ void CCryEditApp::OnFileSave()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnUpdateDocumentReady(QAction* action)
 {
-    action->setEnabled(GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_creatingNewLevel && !m_openingLevel && !m_savingLevel);
+    action->setEnabled(GetIEditor()
+        && GetIEditor()->GetDocument()
+        && GetIEditor()->GetDocument()->IsDocumentReady()
+        && !m_bIsExportingLegacyData
+        && !m_creatingNewLevel
+        && !m_openingLevel
+        && !m_savingLevel);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnUpdateFileOpen(QAction* action)
 {
-    action->setEnabled(!m_creatingNewLevel && !m_openingLevel && !m_savingLevel);
+    action->setEnabled(!m_bIsExportingLegacyData && !m_creatingNewLevel && !m_openingLevel && !m_savingLevel);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1500,9 +1411,14 @@ static int ShowLegacyEntityConversionLogDialog(int objectsConverted, int objects
 bool CCryEditApp::ShowEnableDisableCryEntityRemovalDialog()
 {
     bool isLegacyUIEnabled = GetIEditor()->IsLegacyUIEnabled();
-    QString title = (isLegacyUIEnabled) ? QObject::tr("Enable CryEntityRemoval Gem") : QObject::tr("Disable CryEntityRemoval Gem");
-    QString message = QObject::tr("You must use the Project Configurator to enable/disable the <b>CryEntityRemoval</b> gem for your project, which requires the Editor to be closed.");
-    QString informativeMessage = QObject::tr("Please follow the instructions <a href=\"http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html\">here</a>, after which the Editor will be re-launched automatically.");
+    const QString title = (isLegacyUIEnabled) ? QObject::tr("Enable CryEntityRemoval Gem") : QObject::tr("Disable CryEntityRemoval Gem");
+    const QString message = QObject::tr("You must use the Project Configurator to enable/disable the <b>CryEntityRemoval</b> gem for your project, which requires the Editor to be closed.");
+    return ShowEnableDisableGemDialog(title, message);
+}
+
+bool CCryEditApp::ShowEnableDisableGemDialog(const QString& title, const QString& message, bool restartEditor)
+{
+    const QString informativeMessage = QObject::tr("Please follow the instructions <a href=\"http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html\">here</a>, after which the Editor will be re-launched automatically.");
 
     QMessageBox box(AzToolsFramework::GetActiveWindow());
     box.addButton(QObject::tr("Continue"), QMessageBox::AcceptRole);
@@ -1513,13 +1429,86 @@ bool CCryEditApp::ShowEnableDisableCryEntityRemovalDialog()
     box.setWindowFlags(box.windowFlags() & ~Qt::WindowContextHelpButtonHint);
     if (box.exec() == QMessageBox::AcceptRole)
     {
-        OpenProjectConfigurator(PROJECT_CONFIGURATOR_GEM_PAGE);
+        OpenProjectConfigurator(PROJECT_CONFIGURATOR_GEM_PAGE, restartEditor);
         // Called from a modal dialog with the main window as its parent. Best not to close the main window while the dialog is still active.
         QTimer::singleShot(0, MainWindow::instance(), &MainWindow::close);
         return true;
     }
 
     return false;
+}
+
+void CCryEditApp::AddLegacyTerrainLevelComponentIfNecessary(bool& editorWillClose)
+{
+    editorWillClose = false;
+
+#ifdef LY_TERRAIN_EDITOR
+
+    if (AzFramework::Terrain::TerrainDataRequestBus::HasHandlers())
+    {
+        //No further questions
+        return;
+    }
+
+    bool levelWasCreatedWithLegacyTerrain = false;
+    XmlNodeRef node = GetIEditor()->GetDocument()->GetEnvironmentTemplate();
+    if (node)
+    {
+        XmlNodeRef envState = node->findChild("EnvState");
+        if (envState)
+        {
+            XmlNodeRef showTerrainSurface = envState->findChild("ShowTerrainSurface");
+            const char* attrValue = showTerrainSurface->getAttr("value");
+            if (!attrValue || (attrValue[0] == '\0'))
+            {
+                //The required data not found. Not enough information to make a decision.
+                //quietly do nothing.
+                return;
+            }
+            //@attrValue is normally one of the following values: "false" or "1".
+            if ((attrValue[0] == '1') || (attrValue[0] == 't') || (attrValue[0] == 'T'))
+            {
+                levelWasCreatedWithLegacyTerrain = true;
+            }
+        }
+    }
+    if (!levelWasCreatedWithLegacyTerrain)
+    {
+        //Nothing to do.
+        return;
+    }
+
+    //Need to add the "Legacy Terrain" level component.
+    if (!AddLegacyTerrainLevelComponent())
+    {
+        //Most likely the Legacy Terrain Gem is not enabled.
+        //Notify the user.
+        const QString title = QObject::tr("Enable Legacy Terrain Gem");
+        const QString message = QObject::tr("This level was originally created with Legacy Terrain data. "
+            "You must use the Project Configurator to enable the <b>Legacy Terrain</b> gem for your project, which requires the Editor to be closed.");
+        const bool restartEditor = false;
+        editorWillClose = ShowEnableDisableGemDialog(title, message, restartEditor);
+        return;
+    }
+
+    {
+        //Let the user know they should save and possibly re-export to engine.
+        QMessageBox box(AzToolsFramework::GetActiveWindow());
+        box.addButton(QObject::tr("Ok"), QMessageBox::AcceptRole);
+
+        const QString title = QObject::tr("Added Legacy Terrain Level Component");
+        box.setWindowTitle(title);
+
+        const QString message = QObject::tr("This level was originally created with Legacy Terrain data. "
+            "For your convenience, the <b>Legacy Terrain</b> level component has been added to this level (See Level Inspector). "
+            "It is recommended to save this level. To make this level functional in the Game Client re-exporting it is also necessary.");
+        box.setText(message);
+        box.setWindowFlags(box.windowFlags() & ~Qt::WindowContextHelpButtonHint);
+        box.exec();
+    }
+    
+
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 void CCryEditApp::OnFileConvertLegacyEntities()
@@ -2275,7 +2264,7 @@ void CCryEditApp::ShowSplashScreen(CCryEditApp* app)
 /////////////////////////////////////////////////////////////////////////////
 void CCryEditApp::CreateSplashScreen()
 {
-    if (!m_bConsoleMode)
+    if (!m_bConsoleMode && !IsInAutotestMode())
     {
         // Create startup output splash
         ShowSplashScreen(this);
@@ -2328,7 +2317,6 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
         m_bConsoleMode = true;
         m_bTestMode = true;
     }
-
     m_bConsoleMode |= cmdInfo.m_bConsoleMode;
     inEditorBatchMode = AZ::Environment::CreateVariable<bool>("InEditorBatchMode", m_bConsoleMode);
 
@@ -2710,22 +2698,20 @@ BOOL CCryEditApp::InitConsole()
 /////////////////////////////////////////////////////////////////////////////
 void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 {
+    using namespace AzToolsFramework;
     if (cmdInfo.m_bRunPythonScript)
     {
-        AZStd::unique_ptr<PythonToAZOut> pythonListener;
-        // If running in the console, make sure python errors and printouts are captured.
-        // ScriptTermDialog captures this information when not running in headless mode.
-        if (cmdInfo.m_bConsoleMode)
-        {
-            pythonListener = AZStd::make_unique<PythonToAZOut>();
-        }
         if (cmdInfo.m_pythonArgs.length() > 0)
         {
-            GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file_parameters '%1' '%2'").arg(cmdInfo.m_strFileName, cmdInfo.m_pythonArgs));
+            AZStd::vector<AZStd::string> tokens;
+            AzFramework::StringFunc::Tokenize(cmdInfo.m_pythonArgs.toUtf8().constData(), tokens, ' ');
+            AZStd::vector<AZStd::string_view> pythonArgs;
+            std::transform(tokens.begin(), tokens.end(), std::back_inserter(pythonArgs), [](auto& tokenData) { return tokenData.c_str(); });
+            EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs, cmdInfo.m_strFileName.toUtf8().constData(), pythonArgs);
         }
         else
         {
-            GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file '%1'").arg(cmdInfo.m_strFileName));
+            EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilename, cmdInfo.m_strFileName.toUtf8().constData());
         }
     }
 }
@@ -2862,28 +2848,8 @@ BOOL CCryEditApp::InitInstance()
         return false;
     }
 
-    // Must be called before MainWindow::Initialize, which calls PyScript::InitializePython
-    // Python helpers needing initialization may be added by plugins loaded here
+    // Meant to be called before MainWindow::Initialize
     InitPlugins();
-
-    // If the legacy UI is disabled, we need to un-register the Editor Flow Graph component,
-    // since it is a legacy feature but stored in a component entity, so it won't be flagged
-    // as a legacy entity in our conversion process. This will prevent users from adding/editing
-    // flow graph components.
-    if (!GetIEditor()->IsLegacyUIEnabled())
-    {
-        AZ::Uuid editorFlowGraphComponentUuid = AZ::Uuid("{400972DE-DD1F-4407-8F53-7E514C5767CA}");
-        EBUS_EVENT_ID(editorFlowGraphComponentUuid, AZ::ComponentDescriptorBus, ReleaseDescriptor);
-
-        // we have to actually mark it deprecated, or else we will incur errors as this loads.
-        AZ::SerializeContext* serialize = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serialize, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-        if (serialize)
-        {
-            serialize->ClassDeprecate("EditorFlowGraphComponent", editorFlowGraphComponentUuid);
-        }
-
-    }
 
     mainWindow->Initialize();
 
@@ -2902,8 +2868,8 @@ BOOL CCryEditApp::InitInstance()
     }
 
 #if !defined(AZ_PLATFORM_LINUX)
-    //Show login screen when not in batch mode
-    if(!m_bConsoleMode)
+    //Show login screen when not in batch mode OR in auto test mode
+    if(!m_bConsoleMode && !IsInAutotestMode())
     {
         //Wrap the existing splash with a QT widget so our login screen has a parent
         AWSNativeSDKInit::InitializationManager::InitAwsApi();
@@ -2948,9 +2914,9 @@ BOOL CCryEditApp::InitInstance()
 
     if (MainWindow::instance())
     {
-        if (m_bConsoleMode)
+        if (m_bConsoleMode || IsInAutotestMode())
         {
-            AZ::Environment::FindVariable<int>("assertVerbosityLevel").Set(0);
+            AZ::Environment::FindVariable<int>("assertVerbosityLevel").Set(1);
             m_pConsoleDialog->raise();
         }
         else if (!GetIEditor()->IsInMatEditMode())
@@ -3048,6 +3014,12 @@ BOOL CCryEditApp::InitInstance()
         {
             MainWindow::instance()->setFocus();
         }
+    }
+
+    auto editorPythonEventsInterface = AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Get();
+    if (editorPythonEventsInterface)
+    {
+        editorPythonEventsInterface->StartPython();
     }
 
     if (!InitConsole())
@@ -3194,6 +3166,31 @@ int CCryEditApp::RunPluginUnitTests(CEditCommandLineInfo& cmdLine)
 }
 #endif
 #endif
+
+bool CCryEditApp::AddLegacyTerrainLevelComponent()
+{
+#ifdef LY_TERRAIN_EDITOR
+    AZStd::vector<AZStd::string> componentNames = { "Legacy Terrain", };
+    AZStd::vector<AZ::Uuid> uuids;
+    AzToolsFramework::EditorComponentAPIBus::BroadcastResult(uuids, &AzToolsFramework::EditorComponentAPIRequests::FindComponentTypeIdsByEntityType, componentNames, AzToolsFramework::EditorComponentAPIRequests::EntityType::Level);
+    if (uuids.size() > 0)
+    {
+        AZ_Assert(uuids.size() == 1, "Only one level component named <%s> should exist", componentNames[0].c_str());
+        AzToolsFramework::EditorComponentAPIRequests::AddComponentsOutcome outcome;
+        AzToolsFramework::EditorLevelComponentAPIBus::BroadcastResult(outcome, &AzToolsFramework::EditorLevelComponentAPIRequests::AddComponentsOfType, uuids);
+        if (!outcome.IsSuccess())
+        {
+            AZ_Error("LegacyTerrain", false, "Failed to add the <%s> component to the level entity", componentNames[0].c_str());
+        }
+        else
+        {
+            AZ_Printf("LegacyTerrain", "Successfully added the <%s> component to the level entity", componentNames[0].c_str())
+            return true;
+        }
+    }
+#endif
+    return false;
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::LoadFile(QString fileName)
@@ -3512,7 +3509,9 @@ void CCryEditApp::OpenAWSConsoleFederated(const QString& destUrl)
     }
 
     Aws::STS::STSClient stsClient(credsProvider);
-    std::shared_ptr<Aws::Http::HttpClient> httpClient =  Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration());
+    Aws::Client::ClientConfiguration config;
+    config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
+    std::shared_ptr<Aws::Http::HttpClient> httpClient =  Aws::Http::CreateHttpClient(config);
 
     //Generate a federation token
     Aws::STS::Model::GetFederationTokenRequest request;
@@ -3635,7 +3634,7 @@ int CCryEditApp::ExitInstance(int exitCode)
     CWipFeatureManager::Shutdown();
     #endif
 
-    if (IsInRegularEditorMode() && GetIEditor())
+    if (IsInRegularEditorMode())
     {
         if (GetIEditor())
         {
@@ -3652,8 +3651,8 @@ int CCryEditApp::ExitInstance(int exitCode)
 
     if (IsInRegularEditorMode())
     {
-    CIndexedFiles::AbortFileIndexing();
-    CIndexedFiles::Destroy();
+        CIndexedFiles::AbortFileIndexing();
+        CIndexedFiles::Destroy();
     }
 
     if (GetIEditor() && !GetIEditor()->GetGame() && !GetIEditor()->IsInMatEditMode())
@@ -4025,6 +4024,7 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
         CScopedVariableSetter<bool> autoBackupEnabledChange(gSettings.autoBackupEnabled, false);
         CScopedVariableSetter<int> autoRemindTimeChange(gSettings.autoRemindTime, 0);
 
+        m_bIsExportingLegacyData = true;
         CGameExporter gameExporter;
 
         unsigned int flags = eExp_CoverSurfaces;
@@ -4044,7 +4044,11 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
                 dimensionDialog.SetDimensions(textureResolution);
 
                 // Query the size of the preview
-                dimensionDialog.exec();
+                if (dimensionDialog.exec() != QDialog::Accepted)
+                {
+                    return false;
+                }
+
                 textureResolution = dimensionDialog.GetDimensions();
             }
 
@@ -4071,8 +4075,10 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
                     QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
                 }
             }
+            m_bIsExportingLegacyData = false;
             return true;
         }
+        m_bIsExportingLegacyData = false;
         return false;
     }
 }
@@ -4090,8 +4096,10 @@ void CCryEditApp::ExportToGame(const TerrainTextureExportSettings& exportSetting
 
         CErrorsRecorder errRecorder(GetIEditor());
         // If level not loaded first fast export terrain.
+        m_bIsExportingLegacyData = true;
         CGameExporter gameExporter;
         gameExporter.Export(eExp_ReloadTerrain);
+        m_bIsExportingLegacyData = false;
     }
 
     {
@@ -4112,7 +4120,12 @@ void CCryEditApp::GenerateTerrainTexture(const TerrainTextureExportSettings& exp
 void CCryEditApp::OnUpdateGenerateTerrainTexture(QAction* action)
 {
     CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
-    action->setEnabled(pGameEngine && !pGameEngine->GetLevelPath().isEmpty() && GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+    action->setEnabled(!m_bIsExportingLegacyData
+        && pGameEngine
+        && !pGameEngine->GetLevelPath().isEmpty()
+        && GetIEditor()
+        && GetIEditor()->GetDocument()
+        && GetIEditor()->GetDocument()->IsDocumentReady());
 }
 
 void CCryEditApp::GenerateTerrain()
@@ -4170,7 +4183,7 @@ void CCryEditApp::OnUpdateGenerateTerrain(QAction* action)
 #ifdef LY_TERRAIN_EDITOR
     CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
     // Only enable if the current level doesn't use terrain
-    action->setEnabled(!GetIEditor()->GetTerrainManager()->GetUseTerrain() && pGameEngine && !pGameEngine->GetLevelPath().isEmpty() && GetIEditor()->GetDocument()->IsDocumentReady());
+    action->setEnabled(!m_bIsExportingLegacyData && !GetIEditor()->GetTerrainManager()->GetUseTerrain() && pGameEngine && !pGameEngine->GetLevelPath().isEmpty() && GetIEditor()->GetDocument()->IsDocumentReady());
 #endif //#ifdef LY_TERRAIN_EDITOR
 }
 
@@ -4326,7 +4339,8 @@ void CCryEditApp::DeleteSelectedEntities(bool includeDescendants)
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
     GetIEditor()->BeginUndo();
-    GetIEditor()->ExecuteCommand("general.delete_selected");
+    CUndo undo("Delete Selected Object");
+    GetIEditor()->GetObjectManager()->DeleteSelection();
     GetIEditor()->AcceptUndo("Delete Selection");
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedBrushes);
@@ -5368,41 +5382,6 @@ void CCryEditApp::OnShowHelpers()
     GetIEditor()->Notify(eNotify_OnDisplayRenderUpdate);
 }
 
-void CCryEditApp::OnStartStop()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.start_stop");
-}
-
-void CCryEditApp::OnNextKey()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.next_key");
-}
-
-void CCryEditApp::OnPrevKey()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.prev_key");
-}
-
-void CCryEditApp::OnNextFrame()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.next_frame");
-}
-
-void CCryEditApp::OnPrevFrame()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.prev_frame");
-}
-
-void CCryEditApp::OnSelectAll()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.select_all");
-}
-
-void CCryEditApp::OnKeyAll()
-{
-    GetIEditor()->GetCommandManager()->Execute("face_editor.key_all");
-}
-
 void CCryEditApp::OnGroupMake()
 {
     // Pre-filter the selected objects to make sure that they can be grouped together
@@ -6088,7 +6067,7 @@ void CCryEditApp::OnSwitchPhysics()
 void CCryEditApp::OnSwitchPhysicsUpdate(QAction* action)
 {
     Q_ASSERT(action->isCheckable());
-    action->setChecked(GetIEditor()->GetGameEngine()->GetSimulationMode());
+    action->setChecked(!m_bIsExportingLegacyData && GetIEditor()->GetGameEngine()->GetSimulationMode());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6316,11 +6295,22 @@ void CCryEditApp::OnUpdateNonGameMode(QAction* action)
     action->setEnabled(!GetIEditor()->IsInGameMode());
 }
 
+void CCryEditApp::OnUpdateNewLevel(QAction* action)
+{
+    action->setEnabled(!m_bIsExportingLegacyData);
+}
+
+void CCryEditApp::OnUpdatePlayGame(QAction* action)
+{
+    action->setEnabled(!m_bIsExportingLegacyData);
+}
+
 //////////////////////////////////////////////////////////////////////////
 CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */, const TerrainTextureExportSettings& terrainTextureSettings)
 {
     const QScopedValueRollback<bool> rollback(m_creatingNewLevel);
     m_creatingNewLevel = true;
+    GetIEditor()->Notify(eNotify_OnBeginCreate);
 
     QString currentLevel = GetIEditor()->GetLevelFolder();
     if (!currentLevel.isEmpty())
@@ -6335,12 +6325,14 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     //_MAX_PATH includes null terminator, so we actually want to cap at _MAX_PATH-1
     if (fullyQualifiedLevelName.length() >= _MAX_PATH-1)
     {
+        GetIEditor()->Notify(eNotify_OnEndCreate);
         return ECLR_MAX_PATH_EXCEEDED;
     }
 
     // Does the directory already exist ?
     if (QFileInfo(levelPath).exists())
     {
+        GetIEditor()->Notify(eNotify_OnEndCreate);
         return ECLR_ALREADY_EXISTS;
     }
 
@@ -6348,6 +6340,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     CLogFile::WriteLine("Creating level directory");
     if (!CFileUtil::CreatePath(levelPath))
     {
+        GetIEditor()->Notify(eNotify_OnEndCreate);
         return ECLR_DIR_CREATION_FAILED;
     }
 
@@ -6380,8 +6373,10 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
 
     if (GetIEditor()->GetDocument()->Save())
     {
+        m_bIsExportingLegacyData = true;
         CGameExporter gameExporter;
         gameExporter.Export();
+        m_bIsExportingLegacyData = false;
 
         GetIEditor()->GetGameEngine()->LoadLevel(GetIEditor()->GetGameEngine()->GetMissionName(), true, true);
         GetIEditor()->GetSystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_PRECACHE_START, 0, 0);
@@ -6431,7 +6426,13 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     {
         GenerateTerrainTexture(terrainTextureSettings);
     }
+    else
 #endif //#ifdef LY_TERRAIN_EDITOR
+    {
+        // No terrain, but still need to export default octree and visarea data.
+        CGameExporter gameExporter;
+        gameExporter.Export(eExp_CoverSurfaces | eExp_ReloadTerrain | eExp_SurfaceTexture, eLittleEndian, ".");
+    }
 
     GetIEditor()->GetDocument()->CreateDefaultLevelAssets(resolution, unitSize);
     GetIEditor()->GetDocument()->SetDocumentReady(true);
@@ -6440,6 +6441,13 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     // At the end of the creating level process, add this level to the MRU list
     CCryEditApp::instance()->AddToRecentFileList(fullyQualifiedLevelName);
 
+    //Automatically add the legacy terrain component if available.
+    if (bUseTerrain)
+    {
+        AddLegacyTerrainLevelComponent();
+    }
+
+    GetIEditor()->Notify(eNotify_OnEndCreate);
     return ECLR_OK;
 }
 
@@ -6562,6 +6570,9 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
         return false;
     }
 
+    // We're about to start creating a level, so start recording errors to display at the end.
+    GetIEditor()->StartLevelErrorReportRecording();
+
     QString fullyQualifiedLevelName;
     ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, 
                                             fullyQualifiedLevelName, TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser));
@@ -6665,6 +6676,9 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
         return GetIEditor()->GetDocument();
     }
 
+    // We're about to start loading a level, so start recording errors to display at the end.
+    GetIEditor()->StartLevelErrorReportRecording();
+
     const QScopedValueRollback<bool> rollback(m_openingLevel, true);
 
     MainWindow::instance()->menuBar()->setEnabled(false);
@@ -6717,10 +6731,15 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
         }
     }
 
-    // If the legacy UI is disabled, and we have legacy entities in our level,
-    // then we need to prompt the user with the option to convert their entities
     QTimer::singleShot(0, this, [this] {
-        if (!GetIEditor()->IsLegacyUIEnabled() && FindNumLegacyEntities() > 0)
+        // Need to do the proper adjustments when loading a level that was originally
+        // created with Legacy Terrain.
+        bool editorWillClose = false;
+        AddLegacyTerrainLevelComponentIfNecessary(editorWillClose);
+
+        // If the legacy UI is disabled, and we have legacy entities in our level,
+        // then we need to prompt the user with the option to convert their entities
+        if (!editorWillClose && !GetIEditor()->IsLegacyUIEnabled() && (FindNumLegacyEntities() > 0))
         {
             ConvertLegacyEntities();
         }
@@ -7210,7 +7229,7 @@ void CCryEditApp::OnUpdateTerrainExportblock(QAction* action)
 #ifdef LY_TERRAIN_EDITOR
     AABB box;
     GetIEditor()->GetSelectedRegion(box);
-    action->setEnabled(!box.IsEmpty());
+    action->setEnabled(!m_bIsExportingLegacyData && !box.IsEmpty());
 #endif
 }
 
@@ -7218,7 +7237,7 @@ void CCryEditApp::OnUpdateTerrainExportblock(QAction* action)
 void CCryEditApp::OnUpdateTerrainImportblock(QAction* action)
 {
 #ifdef LY_TERRAIN_EDITOR
-    action->setEnabled(true);
+    action->setEnabled(!m_bIsExportingLegacyData);
 #endif
 }
 
@@ -7615,24 +7634,6 @@ void CCryEditApp::OnModifyAipointPickImpasslink()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnPhysicsGetState()
-{
-    GetIEditor()->GetCommandManager()->Execute("physics.get_objects_state");
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnPhysicsResetState()
-{
-    GetIEditor()->GetCommandManager()->Execute("physics.reset_objects_state");
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnPhysicsSimulateObjects()
-{
-    GetIEditor()->GetCommandManager()->Execute("physics.simulate_objects");
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnFileSavelevelresources()
 {
     CGameResourcesExporter saver;
@@ -7671,7 +7672,7 @@ void CCryEditApp::OnValidateObjectPositions()
 
     CErrorReport errorReport;
     errorReport.SetCurrentFile("");
-    errorReport.SetImmidiateMode(false);
+    errorReport.SetImmediateMode(false);
 
     int objCount = objMan->GetObjectCount();
     AABB bbox1;
@@ -8155,19 +8156,20 @@ void CCryEditApp::OnSwitchcameraNext()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnMaterialAssigncurrent()
 {
-    GetIEditor()->ExecuteCommand("material.assign_to_selection");
+    CUndo undo("Assign Material To Selection");
+    GetIEditor()->GetMaterialManager()->Command_AssignToSelection();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnMaterialResettodefault()
 {
-    GetIEditor()->ExecuteCommand("material.reset_selection");
+    GetIEditor()->GetMaterialManager()->Command_ResetSelection();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnMaterialGetmaterial()
 {
-    GetIEditor()->ExecuteCommand("material.select_from_object");
+    GetIEditor()->GetMaterialManager()->Command_SelectFromObject();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -8195,28 +8197,10 @@ void CCryEditApp::OnOpenDataBaseView()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnOpenFlowGraphView()
-{
-    QtViewPaneManager::instance()->OpenPane(LyViewPane::LegacyFlowGraph);
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnOpenAssetBrowserView()
 {
     QtViewPaneManager::instance()->OpenPane(LyViewPane::AssetBrowser);
 }
-
-////////////////////////////////////////////////////////////////////////////
-//CryGame
-////////////////////////////////////////////////////////////////////////////
-
-void CCryEditApp::OnGameP1AutoGen()
-{
-    // Generate the nav area of the tile the camera is currently located in.
-    PyScript::Execute("general.run_file_parameters(r'generate_nav_area.py','None')");
-    gEnv->pConsole->ExecuteString("ai_AutoGenTacticalPointNavArea");
-}
-////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnOpenTrackView()
@@ -8233,7 +8217,7 @@ void CCryEditApp::OnOpenAudioControlsEditor()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnOpenUICanvasEditor()
 {
-    GetIEditor()->ExecuteCommand("general.open_pane 'UI Editor'");
+    QtViewPaneManager::instance()->OpenPane("UI Editor");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -8255,38 +8239,6 @@ void CCryEditApp::OnOpenTerrainEditor()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnBrushMakehollow()
-{
-    GetIEditor()->ExecuteCommand("brush.make_hollow");
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnBrushCsgcombine()
-{
-    GetIEditor()->ExecuteCommand("brush.csg_union");
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnBrushCsgintersect()
-{
-    GetIEditor()->ExecuteCommand("brush.csg_intersection");
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnBrushCsgsubstruct()
-{
-    GetIEditor()->ExecuteCommand("brush.csg_difference");
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnBrushCsgsubstruct2()
-{
-    GetIEditor()->ExecuteCommand("brush.csg_difference");
-}
-
-
-//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnSubobjectmodeVertex()
 {
     SubObjectModeVertex();
@@ -8305,11 +8257,6 @@ void CCryEditApp::OnSubobjectmodeFace()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnSubobjectmodePivot()
-{
-    SubObjectModePivot();
-}
-
 void CCryEditApp::OnMaterialPicktool()
 {
     GetIEditor()->SetEditTool("EditTool.PickMaterial");
@@ -8476,75 +8423,98 @@ void CCryEditApp::OnResolveMissingObjects()
     GetIEditor()->GetObjectManager()->ResolveMissingObjects();
 }
 
+inline namespace Commands
+{
+    void PySetConfigSpec(int spec, int platform)
+    {
+        CUndo undo("Set Config Spec");
+        if (CUndo::IsRecording())
+        {
+            CUndo::Record(new CUndoConficSpec());
+        }
+        GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)spec, (ESystemConfigPlatform)platform);
+    }
+
+    int PyGetConfigSpec()
+    {
+        return static_cast<int>(GetIEditor()->GetEditorConfigSpec());
+    }
+
+    int PyGetConfigPlatform()
+    {
+        return static_cast<int>(GetIEditor()->GetEditorConfigPlatform());
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnChangeGameSpec(UINT nID)
 {
     switch (nID)
     {
     case ID_GAME_PC_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_PC));
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_PC);
         break;
     case ID_GAME_PC_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_PC));
+        Commands::PySetConfigSpec(CONFIG_MEDIUM_SPEC, CONFIG_PC);
         break;
     case ID_GAME_PC_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_PC));
+        Commands::PySetConfigSpec(CONFIG_HIGH_SPEC, CONFIG_PC);
         break;
     case ID_GAME_PC_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_PC));
+        Commands::PySetConfigSpec(CONFIG_VERYHIGH_SPEC, CONFIG_PC);
         break;
     case ID_GAME_OSXMETAL_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_OSX_METAL));
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_OSX_METAL);
         break;
     case ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_OSX_METAL));
+        Commands::PySetConfigSpec(CONFIG_MEDIUM_SPEC, CONFIG_OSX_METAL);
         break;
     case ID_GAME_OSXMETAL_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_OSX_METAL));
+        Commands::PySetConfigSpec(CONFIG_HIGH_SPEC, CONFIG_OSX_METAL);
         break;
     case ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_OSX_METAL));
+        Commands::PySetConfigSpec(CONFIG_VERYHIGH_SPEC, CONFIG_OSX_METAL);
         break;
     case ID_GAME_ANDROID_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_ANDROID));
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_ANDROID);
         break;
     case ID_GAME_ANDROID_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_ANDROID));
+        Commands::PySetConfigSpec(CONFIG_MEDIUM_SPEC, CONFIG_ANDROID);
         break;
     case ID_GAME_ANDROID_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_ANDROID));
+        Commands::PySetConfigSpec(CONFIG_HIGH_SPEC, CONFIG_ANDROID);
         break;
     case ID_GAME_ANDROID_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_ANDROID));
+        Commands::PySetConfigSpec(CONFIG_VERYHIGH_SPEC, CONFIG_ANDROID);
         break;
     case ID_GAME_IOS_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_IOS));
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_IOS);
         break;
     case ID_GAME_IOS_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_IOS));
+        Commands::PySetConfigSpec(CONFIG_MEDIUM_SPEC, CONFIG_IOS);
         break;
     case ID_GAME_IOS_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_IOS));
+        Commands::PySetConfigSpec(CONFIG_HIGH_SPEC, CONFIG_IOS);
         break;
     case ID_GAME_IOS_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_IOS));
+        Commands::PySetConfigSpec(CONFIG_VERYHIGH_SPEC, CONFIG_IOS);
         break;
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     case ID_GAME_##CODENAME##_ENABLELOWSPEC:\
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_##CODENAME));\
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_##CODENAME);\
         break;\
     case ID_GAME_##CODENAME##_ENABLEMEDIUMSPEC:\
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_##CODENAME));\
+        Commands::PySetConfigSpec(CONFIG_MEDIUM_SPEC, CONFIG_##CODENAME);\
         break;\
     case ID_GAME_##CODENAME##_ENABLEHIGHSPEC:\
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_##CODENAME));\
+        Commands::PySetConfigSpec(CONFIG_HIGH_SPEC, CONFIG_##CODENAME);\
         break;
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
 #undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
     case ID_GAME_APPLETV_ENABLESPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_APPLETV));
+        Commands::PySetConfigSpec(CONFIG_LOW_SPEC, CONFIG_APPLETV);
         break;
     }
 }
@@ -8777,6 +8747,12 @@ namespace
 
     void PyIdleWait(double timeInSec)
     {
+        const bool wasIdleEnabled = PyIdleIsEnabled();
+        if (!wasIdleEnabled)
+        {
+            PyIdleEnable(true);
+        }
+
         clock_t start = clock();
         do
         {
@@ -8784,6 +8760,11 @@ namespace
             QTimer::singleShot(timeInSec * 1000, &loop, &QEventLoop::quit);
             loop.exec();
         } while ((double)(clock() - start) / CLOCKS_PER_SEC < timeInSec);
+
+        if (!wasIdleEnabled)
+        {
+            PyIdleEnable(false);
+        }
     }
 
     void PyIdleWaitFrames(uint32 frames)
@@ -8839,10 +8820,6 @@ void CCryEditApp::SubObjectModeVertex()
     {
         GetIEditor()->ExecuteCommand("edit_mode.select_vertex");
     }
-    else if (pSelObject->GetType() == OBJTYPE_SOLID)
-    {
-        PyScript::Execute("designer.select_vertexmode()");
-    }
     else
     {
         QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
@@ -8862,10 +8839,6 @@ void CCryEditApp::SubObjectModeEdge()
     if (pSelObject->GetType() == OBJTYPE_BRUSH)
     {
         GetIEditor()->ExecuteCommand("edit_mode.select_edge");
-    }
-    else if (pSelObject->GetType() == OBJTYPE_SOLID)
-    {
-        PyScript::Execute("designer.select_edgemode()");
     }
     else
     {
@@ -8887,99 +8860,12 @@ void CCryEditApp::SubObjectModeFace()
     {
         GetIEditor()->ExecuteCommand("edit_mode.select_face");
     }
-    else if (pSelObject->GetType() == OBJTYPE_SOLID)
-    {
-        PyScript::Execute("designer.select_facemode()");
-    }
     else
     {
         QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
     }
 }
 
-void CCryEditApp::SubObjectModePivot()
-{
-    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
-    if (pSelection->GetCount() != 1)
-    {
-        return;
-    }
-
-    CBaseObject* pSelObject = pSelection->GetObject(0);
-
-    if (pSelObject->GetType() == OBJTYPE_SOLID)
-    {
-        PyScript::Execute("designer.select_pivotmode()");
-    }
-    else
-    {
-        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
-    }
-}
-
-namespace
-{
-    void PySetConfigSpec(int spec, int platform)
-    {
-        CUndo undo("Set Config Spec");
-        if (CUndo::IsRecording())
-        {
-            CUndo::Record(new CUndoConficSpec());
-        }
-        GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)spec, (ESystemConfigPlatform)platform);
-    }
-
-    int PyGetConfigSpec()
-    {
-        return static_cast<int>(GetIEditor()->GetEditorConfigSpec());
-    }
-
-    int PyGetConfigPlatform()
-    {
-        return static_cast<int>(GetIEditor()->GetEditorConfigPlatform());
-    }
-}
-
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToSuccess, general, set_result_to_success,
-    "Sets the result of a script execution to success. Used only for Sandbox AutoTests.",
-    "general.set_result_to_success()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToFailure, general, set_result_to_failure,
-    "Sets the result of a script execution to failure. Used only for Sandbox AutoTests.",
-    "general.set_result_to_failure()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleEnable, general, idle_enable,
-    "Enables/Disables idle processing for the Editor. Primarily used for auto-testing.",
-    "general.idle_enable(bool enable)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleIsEnabled, general, idle_is_enabled,
-    "Returns whether or not idle processing is enabled for the Editor. Primarily used for auto-testing.",
-    "general.idle_is_enabled()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleWait, general, idle_wait,
-    "Waits idling for a given seconds. Primarily used for auto-testing.",
-    "general.idle_wait(double time)");
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CCryEditApp::Command_ExportToEngine, general, export_to_engine,
-    "Exports the current level to the engine.",
-    "general.export_to_engine()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetConfigSpec, general, set_config_spec,
-    "Sets the system config spec and platform.",
-    "general.set_config_spec(int spec, int platform)");
-
-REGISTER_PYTHON_ENUM_BEGIN(ESystemConfigSpec, general, system_config_spec)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_LOW_SPEC, low)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_MEDIUM_SPEC, medium)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_HIGH_SPEC, high)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_VERYHIGH_SPEC, veryhigh)
-REGISTER_PYTHON_ENUM_END
-
-REGISTER_PYTHON_ENUM_BEGIN(ESystemConfigPlatform, general, system_config_platform)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_PC, pc)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_OSX_GL, osxgl)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_OSX_METAL, osxmetal)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_ANDROID, android)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_IOS, ios)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_XENIA, xenia)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_PROVO, provo)
-REGISTER_PYTHON_ENUM_ITEM(CONFIG_APPLETV, appletv)
-REGISTER_PYTHON_ENUM_END
 
 CMainFrame * CCryEditApp::GetMainFrame() const
 {
@@ -9051,6 +8937,125 @@ bool CCryEditApp::OpenProjectConfiguratorSwitchProject()
     return ToProjectConfigurator(message, QObject::tr("Editor"), "Project Selection");
 }
 
+void CCryEditApp::StartProcessDetached(const char* process, const char* args)
+{
+    // Build the arguments as a QStringList
+    AZStd::vector<AZStd::string> tokens;
+
+    // separate the string based on spaces for paths like "-launch", "lua", "-files";
+    // also separate the string and keep spaces inside the folder path;
+    // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\empty.lua;
+    // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\'empty'.lua;
+    AZStd::string currentStr(args);
+    AZStd::size_t firstQuotePos = AZStd::string::npos;
+    AZStd::size_t secondQuotePos = 0;
+    AZStd::size_t pos = 0;
+
+    while (!currentStr.empty())
+    {
+        firstQuotePos = currentStr.find_first_of('\"');
+        pos = currentStr.find_first_of(" ");
+
+        if ((firstQuotePos != AZStd::string::npos) && (firstQuotePos < pos || pos == AZStd::string::npos))
+        {
+            secondQuotePos = currentStr.find_first_of('\"', firstQuotePos + 1);
+            if (secondQuotePos == AZStd::string::npos)
+            {
+                AZ_Warning("StartProcessDetached", false, "String tokenize failed, no matching \" found.");
+                return;
+            }
+
+            AZStd::string newElement(AZStd::string(currentStr.data() + (firstQuotePos + 1), (secondQuotePos - 1)));
+            tokens.push_back(newElement);
+
+            currentStr = currentStr.substr(secondQuotePos + 1);
+
+            firstQuotePos = AZStd::string::npos;
+            secondQuotePos = 0;
+            continue;
+        }
+        else
+        {
+            if (pos != AZStd::string::npos)
+            {
+                AZStd::string newElement(AZStd::string(currentStr.data() + 0, pos));
+                tokens.push_back(newElement);
+                currentStr = currentStr.substr(pos + 1);
+            }
+            else
+            {
+                tokens.push_back(AZStd::string(currentStr));
+                break;
+            }
+        }
+    }
+
+    QStringList argsList;
+    for (const auto& arg : tokens)
+    {
+        argsList.push_back(QString(arg.c_str()));
+    }
+
+    // Launch the process
+    bool startDetachedReturn = QProcess::startDetached(
+        process,
+        argsList,
+        QCoreApplication::applicationDirPath()
+    );
+    AZ_Warning("StartProcessDetached", startDetachedReturn, "Failed to start process:%s args:%s", process, args);
+}
+
+void CCryEditApp::OpenLUAEditor(const char* files)
+{
+    AZStd::string args = "-launch lua";
+    if (files && strlen(files) > 0)
+    {
+        AZStd::vector<AZStd::string> resolvedPaths;
+
+        AZStd::vector<AZStd::string> tokens;
+
+        AzFramework::StringFunc::Tokenize(files, tokens, '|');
+
+        for (const auto& file : tokens)
+        {
+            char resolved[AZ_MAX_PATH_LEN];
+
+            AZStd::string fullPath = Path::GamePathToFullPath(file.c_str()).toUtf8().data();
+            azstrncpy(resolved, AZ_MAX_PATH_LEN, fullPath.c_str(), fullPath.size());
+
+            if (AZ::IO::FileIOBase::GetInstance()->Exists(resolved))
+            {
+                AZStd::string current = '\"' + AZStd::string(resolved) + '\"';
+                AZStd::replace(current.begin(), current.end(), '\\', '/');
+                resolvedPaths.push_back(current);
+            }
+        }
+
+        if (!resolvedPaths.empty())
+        {
+            for (const auto& resolvedPath : resolvedPaths)
+            {
+                args.append(AZStd::string::format(" -files %s", resolvedPath.c_str()));
+            }
+        }
+    }
+
+    const char* engineRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+    AZ_Assert(engineRoot != nullptr, "Unable to communicate to AzFramework::ApplicationRequests::Bus");
+
+    const char* appRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+    AZ_Assert(appRoot != nullptr, "Unable to communicate to AzFramework::ApplicationRequests::Bus");
+
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
+    AZStd::string process = AZStd::string::format("\"%s%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE.exe\"", engineRoot, binFolderName.data());
+    AZStd::string processArgs = AZStd::string::format("%s -app-root \"%s\"", args.c_str(), appRoot);
+    StartProcessDetached(process.c_str(), processArgs.c_str());
+}
+
 bool CCryEditApp::IsProjectConfiguratorRunning() const
 {
     FixDanglingSharedMemory("ProjectConfiguratorApp");
@@ -9088,7 +9093,7 @@ void CCryEditApp::OnRefreshAssetDatabases()
     CAssetBrowserManager::Instance()->RefreshAssetDatabases();
 }
 
-bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
+bool CCryEditApp::OpenProjectConfigurator(const QString& startPage, bool restartEditor) const
 {
 #if defined(Q_OS_WIN)
     const char* projectConfigurator = "ProjectConfigurator.exe";
@@ -9113,10 +9118,16 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
         return false;
     }
 
+    QStringList appArguments = { "-s", startPage, "-i", QString::number(GetCurrentProcessId()) };
+    if (restartEditor)
+    {
+        appArguments.append( { "-e", "1" } );
+    }
+
     QString projectConfiguratorPath(QString::fromUtf8(result.GetValue().c_str()));
     bool success = QProcess::startDetached(
         projectConfiguratorPath,
-        { "-s", startPage, "-i", QString::number(GetCurrentProcessId()), "-e", "1" });
+        appArguments);
 
     if (!success)
     {
@@ -9364,126 +9375,14 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
 namespace
 {
-    //! Launches a detached process
-    //! \param process The path to the process to start
-    //! \param args Space separated list of arguments to pass to the process on start.
     void PyStartProcessDetached(const char* process, const char* args)
     {
-        // Build the arguments as a QStringList
-        AZStd::vector<AZStd::string> tokens;
-
-        // separate the string based on spaces for paths like "-launch", "lua", "-files";
-        // also separate the string and keep spaces inside the folder path;
-        // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\empty.lua;
-        // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\'empty'.lua;
-        AZStd::string currentStr(args);
-        AZStd::size_t firstQuotePos = AZStd::string::npos;
-        AZStd::size_t secondQuotePos = 0;
-        AZStd::size_t pos = 0;
-
-        while (!currentStr.empty())
-        {
-            firstQuotePos = currentStr.find_first_of('\"');
-            pos = currentStr.find_first_of(" ");
-
-            if ((firstQuotePos != AZStd::string::npos) && (firstQuotePos < pos || pos == AZStd::string::npos))
-            {
-                secondQuotePos = currentStr.find_first_of('\"', firstQuotePos + 1);
-                if (secondQuotePos == AZStd::string::npos)
-                {
-                    AZ_Warning("PyStartProcessDetached", false, "String tokenize failed, no matching \" found.");
-                    return;
-                }
-
-                AZStd::string newElement(AZStd::string(currentStr.data() + (firstQuotePos + 1), (secondQuotePos - 1)));
-                tokens.push_back(newElement);
-
-                currentStr = currentStr.substr(secondQuotePos + 1);
-
-                firstQuotePos = AZStd::string::npos;
-                secondQuotePos = 0;
-                continue;
-            }
-            else
-            {
-                if (pos != AZStd::string::npos)
-                {
-                    AZStd::string newElement(AZStd::string(currentStr.data() + 0, pos));
-                    tokens.push_back(newElement);
-                    currentStr = currentStr.substr(pos + 1);
-                }
-                else
-                {
-                    tokens.push_back(AZStd::string(currentStr));
-                    break;
-                }
-            }
-        }
-
-        QStringList argsList;
-        for (const auto& arg : tokens)
-        {
-            argsList.push_back(QString(arg.c_str()));
-        }
-
-        // Launch the process
-        QProcess::startDetached(
-            process,
-            argsList,
-            QCoreApplication::applicationDirPath()
-        );
+        CCryEditApp::instance()->StartProcessDetached(process, args);
     }
 
-    //! Launches the Lua Editor/Debugger (Woodpecker)
-    //! \param files A space separated list of aliased paths
     void PyLaunchLUAEditor(const char* files)
     {
-        AZStd::string args = "-launch lua";
-        if (files && strlen(files) > 0)
-        {
-            AZStd::vector<AZStd::string> resolvedPaths;
-
-            AZStd::vector<AZStd::string> tokens;
-
-            AzFramework::StringFunc::Tokenize(files, tokens, '|');
-
-            for (const auto& file : tokens)
-            {
-                char resolved[AZ_MAX_PATH_LEN];
-
-                AZStd::string fullPath = Path::GamePathToFullPath(file.c_str()).toUtf8().data();
-                azstrncpy(resolved, AZ_MAX_PATH_LEN, fullPath.c_str(), fullPath.size());
-
-                if (AZ::IO::FileIOBase::GetInstance()->Exists(resolved))
-                {
-                    AZStd::string current = '\"' + AZStd::string(resolved) + '\"';
-                    AZStd::replace(current.begin(), current.end(), '\\', '/');
-                    resolvedPaths.push_back(current);
-                }
-            }
-
-            if (!resolvedPaths.empty())
-            {
-                for (const auto& resolvedPath : resolvedPaths)
-                {
-                    args.append(AZStd::string::format(" -files %s", resolvedPath.c_str()));
-                }
-            }
-        }
-
-        const char* engineRoot = nullptr;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-        AZ_Assert(engineRoot != nullptr, "Unable to communicate to AzFramework::ApplicationRequests::Bus");
-
-        const char* appRoot = nullptr;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
-        AZ_Assert(appRoot != nullptr, "Unable to communicate to AzFramework::ApplicationRequests::Bus");
-
-        AZStd::string_view binFolderName;
-        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
-
-        AZStd::string cmdLine = AZStd::string::format("general.start_process_detached '%s%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE.exe' '%s -app-root \"%s\"'", engineRoot, binFolderName.data(), args.c_str(), appRoot);
-        GetIEditor()->ExecuteCommand(cmdLine.c_str());
+        CCryEditApp::instance()->OpenLUAEditor(files);
     }
 
     bool PyCheckOutDialogEnableForAll(bool isEnable)
@@ -9491,19 +9390,6 @@ namespace
         return CCheckOutDialog::EnableForAll(isEnable);
     }
 }
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyStartProcessDetached, general, start_process_detached,
-    "Launches a detached process with an optional space separated list of arguments.",
-    "general.start_process_detached(process, args)"
-    );
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLaunchLUAEditor, general, launch_lua_editor,
-    "Launches the Lua editor, may receive a list of space separate file paths, or an empty string to only open the editor.",
-    "general.launch_lua_editor(files)"
-    );
-
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCheckOutDialogEnableForAll, checkout_dialog, enable_for_all,
-    "Enables the 'Apply to all' button in the checkout dialog; useful for allowing the user to apply a decision to check out files to multiple, related operations.",
-    "checkout_dialog.enable_for_all(bool enable)");
 
 namespace AzToolsFramework
 {

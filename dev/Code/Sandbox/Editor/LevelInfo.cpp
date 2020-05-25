@@ -18,6 +18,7 @@
 #ifdef LY_TERRAIN_EDITOR
 #include "./Terrain/Heightmap.h"
 #endif //#ifdef LY_TERRAIN_EDITOR
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "VegetationMap.h"
 #include "QtUI/WaitCursor.h"
@@ -41,7 +42,7 @@ void CLevelInfo::SaveLevelResources(const QString& toPath)
 void CLevelInfo::Validate()
 {
     m_pReport->Clear();
-    m_pReport->SetImmidiateMode(false);
+    m_pReport->SetImmediateMode(false);
     m_pReport->SetShowErrors(true);
 
     int nTotalErrors(0);
@@ -114,7 +115,9 @@ void CLevelInfo::ValidateObjects()
     GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
     float worldSize = si.numSectors * si.sectorSize;
 #else
-    float worldSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
+    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+    float worldSize = terrainAabb.GetWidth();
 #endif //#ifdef LY_TERRAIN_EDITOR
 
     float fGridToWorld = worldSize / gridSize;

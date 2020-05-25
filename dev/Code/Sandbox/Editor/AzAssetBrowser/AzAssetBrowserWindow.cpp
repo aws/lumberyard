@@ -87,7 +87,7 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
 
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::ClearStringFilter, m_ui->m_searchWidget, &SearchWidget::ClearStringFilter);
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::ClearTypeFilter, m_ui->m_searchWidget, &SearchWidget::ClearTypeFilter);
-    m_ui->m_assetBrowserTreeViewWidget->LoadState("AssetBrowserTreeView_main");
+    m_ui->m_assetBrowserTreeViewWidget->SetName("AssetBrowserTreeView_main");
 }
 
 AzAssetBrowserWindow::~AzAssetBrowserWindow()

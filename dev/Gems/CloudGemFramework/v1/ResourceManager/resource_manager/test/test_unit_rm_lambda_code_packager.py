@@ -10,7 +10,7 @@
 #
 # $Revision: #1 $
 
-import mock
+from unittest import mock
 import unittest
 
 from resource_manager import errors

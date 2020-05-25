@@ -57,31 +57,21 @@ class ExecutionEngine(ffi.ObjectRef):
         module._owned = True
         ffi.ObjectRef.__init__(self, ptr)
 
-    def get_pointer_to_function(self, gv):
-        warnings.warn(".get_pointer_to_function() is deprecated.  Use "
-                      ".get_function_address() instead.", DeprecationWarning)
-        ptr = ffi.lib.LLVMPY_GetPointerToGlobal(self, gv)
-        if ptr is None:
-            raise ValueError("Cannot find given global value %r" % (gv.name))
-        return ptr
-
     def get_function_address(self, name):
         """
         Return the address of the function named *name* as an integer.
+
+        It's a fatal error in LLVM if the symbol of *name* doesn't exist.
         """
-        ptr = ffi.lib.LLVMPY_GetFunctionAddress(self, name.encode("ascii"))
-        if ptr is None:
-            raise ValueError("Cannot find given function %s" % name)
-        return ptr
+        return ffi.lib.LLVMPY_GetFunctionAddress(self, name.encode("ascii"))
 
     def get_global_value_address(self, name):
         """
         Return the address of the global value named *name* as an integer.
+
+        It's a fatal error in LLVM if the symbol of *name* doesn't exist.
         """
-        ptr = ffi.lib.LLVMPY_GetGlobalValueAddress(self, name.encode("ascii"))
-        if ptr is None:
-            raise ValueError("Cannot find given global value %s" % name)
-        return ptr
+        return ffi.lib.LLVMPY_GetGlobalValueAddress(self, name.encode("ascii"))
 
     def add_global_mapping(self, gv, addr):
         # XXX unused?
@@ -103,6 +93,14 @@ class ExecutionEngine(ffi.ObjectRef):
         and "usable" for execution.
         """
         ffi.lib.LLVMPY_FinalizeObject(self)
+
+    def run_static_constructors(self):
+        """Run static constructors which initialize module-level static objects."""
+        ffi.lib.LLVMPY_RunStaticConstructors(self)
+
+    def run_static_destructors(self):
+        """Run static destructors which perform module-level cleanup of static resources."""
+        ffi.lib.LLVMPY_RunStaticDestructors(self)
 
     def remove_module(self, module):
         """
@@ -144,6 +142,17 @@ class ExecutionEngine(ffi.ObjectRef):
             if cast(module._ptr, c_void_p).value == ptr:
                 return module
         return None
+
+    def add_object_file(self, obj_file):
+        """
+        Add object file to the jit. object_file can be instance of
+        :class:ObjectFile or a string representing file system path
+        """
+        if isinstance(obj_file, str):
+            obj_file = object_file.ObjectFileRef.from_path(obj_file)
+
+        ffi.lib.LLVMPY_MCJITAddObjectFile(self, obj_file)
+
 
     def set_object_cache(self, notify_func=None, getbuffer_func=None):
         """
@@ -245,10 +254,6 @@ ffi.lib.LLVMPY_AddModule.argtypes = [
     ffi.LLVMModuleRef
 ]
 
-ffi.lib.LLVMPY_GetPointerToGlobal.argtypes = [ffi.LLVMExecutionEngineRef,
-                                              ffi.LLVMValueRef]
-ffi.lib.LLVMPY_GetPointerToGlobal.restype = c_void_p
-
 ffi.lib.LLVMPY_AddGlobalMapping.argtypes = [ffi.LLVMExecutionEngineRef,
                                             ffi.LLVMValueRef,
                                             c_void_p]
@@ -275,6 +280,10 @@ ffi.lib.LLVMPY_GetGlobalValueAddress.argtypes = [
 ]
 ffi.lib.LLVMPY_GetGlobalValueAddress.restype = c_uint64
 
+ffi.lib.LLVMPY_MCJITAddObjectFile.argtypes = [
+    ffi.LLVMExecutionEngineRef,
+    ffi.LLVMObjectFileRef
+]
 
 class _ObjectCacheData(Structure):
     _fields_ = [

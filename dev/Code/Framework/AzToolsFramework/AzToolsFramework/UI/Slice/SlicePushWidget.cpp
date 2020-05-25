@@ -12,19 +12,18 @@
 
 #include "StdAfx.h"
 
+
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTreeWidgetItemIterator::d_ptr': class 'QScopedPointer<QTreeWidgetItemIteratorPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTreeWidgetItemIterator'
+
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTreeWidgetItemIterator::d_ptr': class 'QScopedPointer<QTreeWidgetItemIteratorPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTreeWidgetItemIterator'
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
-AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QRadioButton>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QMessageBox>
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
-                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QKeyEvent>
 AZ_POP_DISABLE_WARNING
 
@@ -689,6 +688,10 @@ namespace AzToolsFramework
     //=========================================================================
     SlicePushWidget::~SlicePushWidget()
     {
+        if (AZ::Data::AssetBus::MultiHandler::BusIsConnected())
+        {
+            StopAssetMonitoring();
+        }
     }
 
     QWidget* SlicePushWidget::CreateMessageWidget()
@@ -1282,7 +1285,7 @@ namespace AzToolsFramework
                 sliceItem->setToolTip(0, tooltip);
                 sliceItem->setToolTip(1, tooltip);
 
-                const size_t instanceCount = CalculateReferenceCount(sliceAssetId);
+                const size_t instanceCount = CalculateReferenceCount(sliceAssetId, m_config->m_rootSlice);
                 const AZStd::string instanceCountDescription = AZStd::string::format("%u", instanceCount);
                 sliceItem->setText(2, instanceCountDescription.c_str());
 
@@ -2542,12 +2545,11 @@ namespace AzToolsFramework
     //=========================================================================
     // SlicePushWidget::CalculateReferenceCount
     //=========================================================================
-    size_t SlicePushWidget::CalculateReferenceCount(const AZ::Data::AssetId& assetId) const
+    size_t SlicePushWidget::CalculateReferenceCount(const AZ::Data::AssetId& assetId, const AZ::SliceComponent* levelSlice)
     {
         // This is an approximate measurement of how much this slice proliferates within the currently-loaded level.
         // Down the line we'll actually query the asset DB's dependency tree, summing up instances.
 
-        AZ::SliceComponent* levelSlice = m_config->m_rootSlice;
         AZ_Warning("SlicePush", levelSlice, "SlicePushWidget::CalculateReferenceCount could not find root slice, displayed counts will be inaccurate!");
         size_t instanceCount = 0;
         AZ::Data::AssetBus::EnumerateHandlersId(assetId,
@@ -2560,22 +2562,7 @@ namespace AzToolsFramework
 
                     size_t count = reference->GetInstances().size();
 
-                    // If the listener is a dependent slice, also multiple by the number of instances
-                    // of that slice within the level.
-                    if (levelSlice && levelSlice != component)
-                    {
-                        AZ::SliceComponent::SliceReference* levelReference = levelSlice->GetSlice(assetId);
-                        if (levelReference)
-                        {
-                            count *= levelReference->GetInstances().size();
-                        }
-                    }
-
                     instanceCount += count;
-                }
-                else
-                {
-                    ++instanceCount;
                 }
                 return true;
             });
@@ -2693,7 +2680,7 @@ namespace AzToolsFramework
                             continue;
                         }
 
-                        pushError = Internal::PushChangedItemToSliceTransaction(transaction, item);
+                        pushError = AzToolsFramework::Internal::PushChangedItemToSliceTransaction(transaction, item);
                         if (!pushError.isEmpty())
                         {
                             break;
@@ -2708,7 +2695,7 @@ namespace AzToolsFramework
             FieldTreeItem* item = *removalNodesItr;
             SliceTransaction::TransactionPtr transaction = transactionMap[item->m_selectedAsset];
 
-            pushError = Internal::PushChangedItemToSliceTransaction(transaction, item);
+            pushError = AzToolsFramework::Internal::PushChangedItemToSliceTransaction(transaction, item);
             if (!pushError.isEmpty())
             {
                 break;

@@ -147,6 +147,10 @@ private: // member functions
     AZ::EntityId FindFirstDescendantInteractable(AZ::EntityId parentEntityId);
     AZ::EntityId CreateContentParentInteractable();
     bool ContentIsAncestor(AZ::EntityId entityId);
+    bool ContentIsAncestor(AZ::EntityId entityId, AZ::EntityId contentId);
+    AZ::Outcome<void, AZStd::string> ValidateTypeIsEntityId(const AZ::Uuid& valueType);
+    AZ::Outcome<void, AZStd::string> ValidatePotentialContent(void* newValue, const AZ::Uuid& valueType);
+    AZ::Outcome<void, AZStd::string> ValidatePotentialExpandedParent(void* newValue, const AZ::Uuid& valueType);
 
     bool IsNavigationSupported();
 

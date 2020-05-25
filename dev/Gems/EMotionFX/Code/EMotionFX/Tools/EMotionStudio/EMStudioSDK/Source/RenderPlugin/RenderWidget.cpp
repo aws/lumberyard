@@ -178,20 +178,20 @@ namespace EMStudio
             case CAMMODE_FRONT:
             case CAMMODE_BOTTOM:
                 // -(scale.x)
-                camDist *= (-2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0)));
+                camDist *= -2.0f / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0));
                 break;
             case CAMMODE_BACK:
             case CAMMODE_TOP:
                 // scale.x
-                camDist *= (2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0)));
+                camDist *= 2.0f / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0));
                 break;
             case CAMMODE_LEFT:
                 // -(scale.y)
-                camDist *= (-2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1)));
+                camDist *= -2.0f / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1));
                 break;
             case CAMMODE_RIGHT:
                 // scale.y
-                camDist *= (2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1)));
+                camDist *= 2.0f / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1));
                 break;
             default:
                 break;
@@ -215,15 +215,15 @@ namespace EMStudio
         // adjust the scale of the manipulator
         if (activeManipulator->GetType() == MCommon::TransformationManipulator::GIZMOTYPE_TRANSLATION)
         {
-            activeManipulator->SetScale(camDist * 0.12);
+            activeManipulator->SetScale(aznumeric_cast<float>(camDist * 0.12));
         }
         else if (activeManipulator->GetType() == MCommon::TransformationManipulator::GIZMOTYPE_ROTATION)
         {
-            activeManipulator->SetScale(camDist * 0.8);
+            activeManipulator->SetScale(aznumeric_cast<float>(camDist * 0.8));
         }
         else if (activeManipulator->GetType() == MCommon::TransformationManipulator::GIZMOTYPE_SCALE)
         {
-            activeManipulator->SetScale(camDist * 0.15, mCamera);
+            activeManipulator->SetScale(aznumeric_cast<float>(camDist * 0.15), mCamera);
         }
 
         // update position of the actor instance (needed for camera follow mode)
@@ -259,7 +259,7 @@ namespace EMStudio
         // accumulate the number of pixels moved since the last right click
         if (leftButtonPressed == false && middleButtonPressed == false && rightButtonPressed && altPressed == false)
         {
-            mPixelsMovedSinceRightClick += (int32)MCore::Math::Abs(deltaX) + (int32)MCore::Math::Abs(deltaY);
+            mPixelsMovedSinceRightClick += (int32)MCore::Math::Abs(aznumeric_cast<float>(deltaX)) + (int32)MCore::Math::Abs(aznumeric_cast<float>(deltaY));
         }
 
         // update size/bounding volumes volumes of all existing gizmos
@@ -849,7 +849,7 @@ namespace EMStudio
         }
 
         // update the camera
-        camera->SetOrthoClipDimensions(AZ::Vector2(mWidth, mHeight));
+        camera->SetOrthoClipDimensions(AZ::Vector2(aznumeric_cast<float>(mWidth), aznumeric_cast<float>(mHeight)));
         camera->Update();
 
         MCommon::RenderUtil::AxisRenderingSettings axisRenderingSettings;
@@ -933,7 +933,7 @@ namespace EMStudio
             MCORE_ASSERT(false);
         }
 
-        const AZ::Vector3 axisPosition = MCore::UnprojectOrtho(originScreenX, originScreenY, mWidth, mHeight, 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
+        const AZ::Vector3 axisPosition = MCore::UnprojectOrtho(aznumeric_cast<float>(originScreenX), aznumeric_cast<float>(originScreenY), aznumeric_cast<float>(mWidth), aznumeric_cast<float>(mHeight), 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
 
         AZ::Matrix4x4 inverseCameraMatrix = camera->GetViewMatrix();
         inverseCameraMatrix.InvertFull();
@@ -972,10 +972,10 @@ namespace EMStudio
         const char*         text                = mCamera->GetTypeString();
         const uint32        textSize            = 10;
         const uint32        cameraNameColor     = MCore::RGBAColor(1.0f, 1.0f, 1.0f, 1.0f).ToInt();
-        const uint32        cameraNameX         = mWidth * 0.5f;
+        const uint32        cameraNameX         = aznumeric_cast<uint32>(mWidth * 0.5f);
         const uint32        cameraNameY         = mHeight - 20;
 
-        renderUtil->RenderText(cameraNameX, cameraNameY, text, cameraNameColor, textSize, true);
+        renderUtil->RenderText(aznumeric_cast<float>(cameraNameX), aznumeric_cast<float>(cameraNameY), text, cameraNameColor, textSize, true);
         //glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         //renderText(screenX, screenY, text);
 

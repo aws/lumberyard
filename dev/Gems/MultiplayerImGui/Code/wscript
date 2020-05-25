@@ -20,6 +20,6 @@ def build(bld):
         test_all_file_list      = ['multiplayerimgui_tests.waf_files'],
 
         # Add custom build options here
-        use                     = ['ImGui'],
+        use                     = ['imguilib'],
         defines                 = ['IMGUI_ENABLED'],
     )

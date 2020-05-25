@@ -1,11 +1,26 @@
-import os, json
-try:
-    import cPickle
-except ImportError:
-    import pickle as cPickle
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+# System Imports
+import json
+import os
+import pickle
+
+# waflib imports
 from waflib import Build, Logs, ConfigSet, Context, Errors, Utils, Node, Task
-from az_code_generator import az_code_gen
-from msvc_helper import pch_msvc
+
+# lmbrwaflib imports
+from lmbrwaflib.az_code_generator import az_code_gen
+from lmbrwaflib.msvc_helper import pch_msvc
+
 
 Build.SAVED_ATTRS.append('cached_engine_path')
 Build.SAVED_ATTRS.append('cached_tp_root_path')
@@ -50,8 +65,8 @@ def restore(self):
     try:
         local_data_str = Utils.readf(dbfn, 'rb')
         try:
-            local_data = cPickle.loads(local_data_str)
-        except cPickle.UnpicklingError:
+            local_data = pickle.loads(local_data_str)
+        except pickle.UnpicklingError:
             Logs.debug('build: Could not unpickle the data from local build cache {}'.format(dbfn))
     except (IOError, EOFError):
         # handle missing file/empty file
@@ -66,8 +81,8 @@ def restore(self):
             dbfn = os.path.join(self.artifacts_cache, 'wafpickle', self.cmd, Context.DBFILE)
             cache_data_str = Utils.readf(dbfn, 'rb')
             try:
-                cache_data = cPickle.loads(cache_data_str)
-            except cPickle.UnpicklingError:
+                cache_data = pickle.loads(cache_data_str)
+            except pickle.UnpicklingError:
                 Logs.debug('build: Could not unpickle the data from global build cache {}'.format(dbfn))
         except (IOError, EOFError):
             # handle missing file/empty file
@@ -135,7 +150,7 @@ def store(self):
     try:
         Node.pickle_lock.acquire()
         Node.Nod3 = self.node_class
-        x = cPickle.dumps(data, -1)
+        x = pickle.dumps(data, -1)
     finally:
         Node.pickle_lock.release()
 
@@ -156,7 +171,7 @@ def store(self):
     write_to_db(os.path.join(self.variant_dir, Context.DBFILE), x)
     # Save to artifacts cache if artifacts cache is enabled
     if self.artifacts_cache and self.is_option_true('artifacts_cache_upload'):
-        x = cPickle.dumps(data, -1)
+        x = pickle.dumps(data, -1)
         wafpickle_dir = os.path.join(self.artifacts_cache, 'wafpickle', self.cmd)
         if not os.path.exists(wafpickle_dir):
             os.makedirs(wafpickle_dir)
@@ -169,13 +184,13 @@ Build.BuildContext.store = Utils.nogc(store)
 
 def replace_engine_path_and_tp_root_in_string(bld, s):
     if not hasattr(bld, 'engine_path_replaced'):
-        bld.engine_path_replaced = bld.engine_path.translate(None, r'\/').lower()
+        bld.engine_path_replaced = bld.engine_path.translate(str.maketrans('', '', '\'')).lower()
     if not hasattr(bld, 'tp_root_replaced'):
-        bld.tp_root_replaced = bld.tp.content.get('3rdPartyRoot').translate(None, r'\/').lower()
-    s = s.translate(None, r'\/').lower()
+        bld.tp_root_replaced = bld.tp.content.get('3rdPartyRoot').translate(str.maketrans('', '', '\'')).lower()
+    s = s.translate(str.maketrans('', '', '\',')).lower()
     s = s.replace(bld.engine_path_replaced, '')
     s = s.replace(bld.tp_root_replaced, '')
-    return s
+    return s.encode()
 
 
 def hash_env_vars(self, env, vars_lst):
@@ -201,7 +216,7 @@ def hash_env_vars(self, env, vars_lst):
     lst = [env[x] for x in vars_lst if x not in ['INCLUDES', 'INCPATHS', 'LIBPATH', 'STLIBPATH']]
     env_str = replace_engine_path_and_tp_root_in_string(self, str(lst))
     m = Utils.md5()
-    m.update(env_str.encode())
+    m.update(env_str)
     ret = m.digest()
     Logs.debug('envhash: %s %r', Utils.to_hex(ret), lst)
 
@@ -222,7 +237,7 @@ def uid(self):
         up = m.update
         up(self.__class__.__name__.encode())
         for k in self.inputs + self.outputs:
-            s = replace_engine_path_and_tp_root_in_string(self.generator.bld, k.abspath().encode())
+            s = replace_engine_path_and_tp_root_in_string(self.generator.bld, k.abspath())
             up(s)
         self.uid_ = m.digest()
         return self.uid_
@@ -240,9 +255,9 @@ def azcg_uid(self):
 
         # Be sure to add any items here that change how code gen runs, this needs to be unique!
         # Ensure anything here will not change over the life of the task
-        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.path.abspath().encode())))
-        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.input_dir.abspath().encode())))
-        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.output_dir.abspath().encode())))
+        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.path.abspath())))
+        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.input_dir.abspath())))
+        up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.output_dir.abspath())))
         up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.inputs)))
         #up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.script_nodes)))
         up(replace_engine_path_and_tp_root_in_string(self.bld, str(self.defines)))
@@ -406,7 +421,7 @@ def replace_nodes(ctx, data):
             new_list = [replace_nodes(ctx, x) for x in data]
             return new_list
         elif isinstance(data, dict):
-            new_dict = {k:replace_nodes(ctx, v) for (k, v) in data.items()}
+            new_dict = {k:replace_nodes(ctx, v) for (k, v) in list(data.items())}
             return new_dict
         elif isinstance(data, Node.Node):
             cache_abspath = data.abspath()

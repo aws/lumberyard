@@ -67,7 +67,7 @@ namespace AZ
             void AssetAttach(void* otherAllocation, const char* file, int line);
             void AssetEnd();
 
-            virtual ThreadData& GetThreadData() override;
+            ThreadData& GetThreadData() override;
 
         private:
             static AssetTrackingImpl* GetSharedInstance();

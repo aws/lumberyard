@@ -16,6 +16,8 @@
 
 namespace ImageProcessing
 {
+    class IImageObject;
+
     class ImageProcessingRequests
         : public AZ::EBusTraits
     {
@@ -26,7 +28,7 @@ namespace ImageProcessing
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
-        // Put your public methods here
+        virtual IImageObject* LoadImage(const AZStd::string& filePath) = 0;
     };
     using ImageProcessingRequestBus = AZ::EBus<ImageProcessingRequests>;
 } // namespace ImageProcessing

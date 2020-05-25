@@ -93,14 +93,31 @@ def build(bld):
         win_lib         = ['shell32'],
 
         darwin_rpath      = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/../Frameworks'],
-        darwin_frameworks = ['CoreServices'],
-        darwin_cxxflags   = [ '-x', 'objective-c++' ],
+        darwin_frameworks = ['ApplicationServices'], # used to make the GUI App foreground and allow input
         darwin_xcassets   = 'Code/Tools/AssetProcessor/qml/Images.xcassets',
         darwin_x64_framework = ['Security'],
         darwin_lib        = ['bsm'],
 
         linux_file_list = ['assetprocessor_gui_linux.waf_files'],
         linux_rpath     = ['@executable_path', '@executable_path/qtlibs/lib']
+    )
+    bld.LYToolLauncher(
+        target          = 'AssetProcessorLauncher',
+        vs_filter       = 'ToolLaunchers',
+        platforms       = ['win', 'darwin', 'linux'],
+        configurations  = ['debug', 'profile'],
+        launch_target   = 'AssetProcessor',
+        file_list       = ['assetprocessor_launcher.waf_files'],
+        use             = ['AzFramework'],
+
+        win_includes    = ['native'],  # for the resource.h file
+        win_file_list   = ['assetprocessor_win_launcher.waf_files'],
+    
+        includes        = bld.Path('Code/Tools/ToolsLauncher'),
+    
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+
     )
 
     ###########################################################################################################################################
@@ -141,7 +158,6 @@ def build(bld):
 
         # Platform Specific
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworks = ['CoreServices'],
 
         linux_rpath     = ['$ORIGIN/qtlibs/lib'],
 
@@ -150,6 +166,25 @@ def build(bld):
         # ==============================
 
         test_all_file_list = ['assetprocessor_test.waf_files']
+    )
+
+    bld.LYToolLauncher(
+        target          = 'AssetProcessorBatchLauncher',
+        vs_filter       = 'ToolLaunchers',
+        platforms       = ['win', 'darwin', 'linux'],
+        configurations  = ['debug', 'profile'],
+        launch_target   = 'AssetProcessorBatch',
+        includes        = bld.Path('Code/Tools/ToolsLauncher'),
+    
+        file_list       = ['assetprocessor_launcher.waf_files'],
+        use             = ['AzFramework'],
+    
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('@ENGINE@/Code/Tools/ToolsLauncher/Platform', export_includes=True)],
+    
+        win_includes    = ['native'],  # for the resource.h file
+        win_lib         = ['Shell32'],
+        win_file_list   = ['assetprocessor_win_launcher.waf_files']
     )
 
 

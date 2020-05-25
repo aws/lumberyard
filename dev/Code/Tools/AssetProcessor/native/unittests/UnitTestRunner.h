@@ -119,6 +119,7 @@ namespace UnitTestUtils
 
         ~AssertAbsorber()
         {
+            BusDisconnect();
         }
 
         void Clear()

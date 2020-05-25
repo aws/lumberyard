@@ -1,0 +1,8 @@
+{
+    "auto": {
+      "Utils": [
+        "Utils/Utils.h",
+        "Utils/Utils.cpp"
+      ]
+    }
+}

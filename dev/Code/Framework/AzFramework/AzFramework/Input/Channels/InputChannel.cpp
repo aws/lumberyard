@@ -183,6 +183,10 @@ namespace AzFramework
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Category, "Input")
                 ->Event("GetInputChannel", &InputChannelRequestBus::Events::GetInputChannel)
+                ->Event("SimulateRawInput", &InputChannelRequestBus::Events::SimulateRawInput)
+                ->Event("SimulateRawInput2D", &InputChannelRequestBus::Events::SimulateRawInput2D)
+                ->Event("SimulateRawInput3D", &InputChannelRequestBus::Events::SimulateRawInput3D)
+                ->Event("SimulateRawInputWithPosition2D", &InputChannelRequestBus::Events::SimulateRawInputWithPosition2D)
             ;
         }
     }

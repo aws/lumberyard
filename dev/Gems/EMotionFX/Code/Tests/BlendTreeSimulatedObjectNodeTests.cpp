@@ -107,7 +107,7 @@ namespace EMotionFX
             m_simNode->AddConnection(bindPoseNode, AnimGraphBindPoseNode::OUTPUTPORT_RESULT, BlendTreeSimulatedObjectNode::INPUTPORT_POSE);
 
             // Connect the weight parameter to the weight of the simulated object node.
-            m_simNode->AddUnitializedConnection(m_parameterNode, /* Weight parameter port */ 0, BlendTreeSimulatedObjectNode::INPUTPORT_WEIGHT);
+            m_simNode->AddUnitializedConnection(m_parameterNode, /* Weight parameter port */ 0, BlendTreeSimulatedObjectNode::INPUTPORT_ACTIVE);
         }
 
         void SetActiveObjects(const AZStd::vector<AZStd::string>& activeObjects)

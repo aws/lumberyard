@@ -1,10 +1,17 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": [ "path" ],
+    "additionalProperties": false,
     "properties": {
-        "path": { "type": "string", "format": "uri" },
-        "description": { "type": "string" }
+        "description": {
+            "type": "string"
+        },
+        "path": {
+            "format": "uri",
+            "type": "string"
+        }
     },
-    "additionalProperties": false
+    "required": [
+        "path"
+    ],
+    "type": "object"
 }

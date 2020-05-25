@@ -724,7 +724,7 @@ namespace GraphCanvas
         qreal height = iconStyleHelper->GetAttribute(Styling::Attribute::Height, 8.0);
         qreal margin = iconStyleHelper->GetAttribute(Styling::Attribute::Margin, 2.0);
 
-        QPixmap* icon = new QPixmap(width + 2 * margin, height + 2 * margin);
+        QPixmap* icon = new QPixmap(aznumeric_cast<int>(width + 2 * margin), aznumeric_cast<int>(height + 2 * margin));
         icon->fill(Qt::transparent);
 
         QPainter painter;
@@ -768,7 +768,7 @@ namespace GraphCanvas
         qreal height = iconStyleHelper->GetAttribute(Styling::Attribute::Height, 8.0);
         qreal margin = iconStyleHelper->GetAttribute(Styling::Attribute::Margin, 2.0);
 
-        QPixmap* icon = new QPixmap(width + 2 * margin, height + 2 * margin);
+        QPixmap* icon = new QPixmap(aznumeric_cast<int>(width + 2 * margin), aznumeric_cast<int>(height + 2 * margin));
         icon->fill(Qt::transparent);
 
         QPainter painter;

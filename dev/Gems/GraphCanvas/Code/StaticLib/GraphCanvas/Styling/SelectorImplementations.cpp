@@ -9,10 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <QDebug>
-
-#include <AzCore/Component/EntityUtils.h>
-
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Styling/SelectorImplementations.h>
 

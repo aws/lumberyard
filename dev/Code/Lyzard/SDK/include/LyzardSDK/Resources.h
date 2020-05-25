@@ -9,15 +9,37 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
 
 namespace Lyzard
 {
-    // SetupAssistant Configuration file name.
-    #define SETUP_CONFIG_FILENAME "SetupAssistantConfig.json"
+    // SetupAssistant Configuration
+    constexpr const char* SetupConfigFilename = "SetupAssistantConfig.json";
+    constexpr const char* SetupUserPrefsFilename = "SetupAssistantUserPreferences.ini";
+    constexpr const char* ThirdPartySearchPathKey = "SDKSearchPath3rdParty";
 
-    // Build settings path and file name.
-    #define BUILD_SETTINGS_DIR   "_WAF_"
-    #define BUILD_SETTINGS_FILE  "user_settings.options"
-    #define ENGINE_ROOT_FILE     "engineroot.txt"
-}
+    // Tools
+    constexpr const char* LmbrSetupToolsDir = "Tools/LmbrSetup";
+    constexpr const char* LmbrExeName = "lmbr";
+
+    // Build Settings
+    constexpr const char* BuildSettingsDir = "_WAF_";
+    constexpr const char* BuildSettingsFilename = "user_settings.options";
+
+    // Engine Config
+    constexpr const char* EngineRootFilename = "engineroot.txt";
+    constexpr const char* EngineConfigFilename = "engine.json";
+
+} // namespace Lyzard
+
+#define SETUP_CONFIG_FILENAME           (Lyzard::SetupConfigFilename)
+#define SETUP_USER_PREFS_FILE           (Lyzard::SetupUserPrefsFilename)
+#define THIRD_PARTY_SEARCH_PATH_KEY     (Lyzard::ThirdPartySearchPathKey)
+#define LMBR_SETUP_TOOLS_DIR            (Lyzard::LmbrSetupToolsDir)
+#define LMBR_EXE_NAME                   (Lyzard::LmbrExeName)
+#define BUILD_SETTINGS_DIR              (Lyzard::BuildSettingsDir)
+#define BUILD_SETTINGS_FILE             (Lyzard::BuildSettingsFilename)
+#define ENGINE_ROOT_FILE                (Lyzard::EngineRootFilename)
+#define ENGINE_CONFIG_FILE              (Lyzard::EngineConfigFilename)
+

@@ -25,7 +25,7 @@
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/ImageConvert.h>
 #include <Processing/ImageConvertJob.h>
 #include <ImageLoader/ImageLoaders.h>
@@ -872,7 +872,7 @@ namespace TextureAtlasBuilder
         AZStd::vector<AtlasCoordinates> paddedMap;
         size_t amountFit = 0;
         if (!TryTightening(
-            input, data, GetWidest(data), GetTallest(data), totalArea, input.m_padding, resultWidth, resultHeight, amountFit, paddedMap))
+            input, data, GetWidest(data), GetTallest(data), aznumeric_cast<int>(totalArea), input.m_padding, resultWidth, resultHeight, amountFit, paddedMap))
         {
             AZ_Error("AtlasBuilder", false, AZStd::string::format("Cannot fit images into given maximum atlas size (%dx%d). Only %d out of %d images fit.", input.m_maxDimension, input.m_maxDimension, amountFit, input.m_filePaths.size()).c_str());
             // For some reason, failing the assert isn't enough to stop the Asset builder. It will still fail further
@@ -896,8 +896,8 @@ namespace TextureAtlasBuilder
         }
         if (input.m_forcePowerOf2)
         {
-            resultWidth = pow(2, 1 + IntegerLog2(static_cast<uint32>(resultWidth - 1)));
-            resultHeight = pow(2, 1 + IntegerLog2(static_cast<uint32>(resultHeight - 1)));
+            resultWidth = aznumeric_cast<int>(pow(2, 1 + IntegerLog2(static_cast<uint32>(resultWidth - 1))));
+            resultHeight = aznumeric_cast<int>(pow(2, 1 + IntegerLog2(static_cast<uint32>(resultHeight - 1))));
         }
         else
         {
@@ -1307,13 +1307,13 @@ namespace TextureAtlasBuilder
         AZStd::vector<AtlasCoordinates>& out)
     {
         // Square solution cannot be smaller than the target area
-        int dimension = sqrt(static_cast<float>(targetArea));
+        int dimension = aznumeric_cast<int>(sqrt(static_cast<float>(targetArea)));
         // Solution cannot be smaller than the smallest side
         dimension = dimension > lowerBound ? dimension : lowerBound;
         if (powerOfTwo)
         {
             // Starting dimension needs to be rounded up to the nearest power of two
-            dimension = pow(2, 1 + IntegerLog2(static_cast<uint32>(dimension - 1)));
+            dimension = aznumeric_cast<int>(pow(2, 1 + IntegerLog2(static_cast<uint32>(dimension - 1))));
         }
 
         AZStd::vector<AtlasCoordinates> track;
@@ -1361,7 +1361,7 @@ namespace TextureAtlasBuilder
         if (powerOfTwo)
         {
             // Starting dimension needs to be rounded up to the nearest power of two
-            minWidth = pow(2, 1 + IntegerLog2(static_cast<uint32>(minWidth - 1)));
+            minWidth = aznumeric_cast<AZ::u32>(pow(2, 1 + IntegerLog2(static_cast<uint32>(minWidth - 1))));
         }
 
         // Round min width up to the nearest compression unit
@@ -1409,7 +1409,7 @@ namespace TextureAtlasBuilder
         if (powerOfTwo)
         {
             // Starting dimensions need to be rounded up to the nearest power of two
-            height = pow(2, 1 + IntegerLog2(static_cast<uint32>(height - 1)));
+            height = aznumeric_cast<AZ::u32>(pow(2, 1 + IntegerLog2(static_cast<uint32>(height - 1))));
         }
 
         AZ::u32 resultArea = height * width;

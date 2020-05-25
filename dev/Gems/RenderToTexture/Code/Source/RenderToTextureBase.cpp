@@ -21,7 +21,7 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Components/CameraBus.h>
 #include <MathConversion.h>
-#include <CryAction.h>
+#include <IGameFramework.h>
 #include <IRenderer.h>
 #include <I3DEngine.h>
 #include <IViewSystem.h>

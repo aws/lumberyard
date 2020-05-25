@@ -20,6 +20,7 @@
 #include <AzCore/std/typetraits/add_const.h>
 #include <AzCore/std/typetraits/add_pointer.h>
 #include <AzCore/std/typetraits/is_abstract.h>
+#include <AzCore/std/typetraits/is_reference.h>
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/typetraits/internal/is_template_copy_constructible.h>
@@ -178,7 +179,7 @@ namespace AZStd
         explicit any(ValueType&& val, allocator alloc = allocator("AZStd::any"))
             : any(alloc)
         {
-            AZ_STATIC_ASSERT(std::is_copy_constructible<decay_t<ValueType>>::value
+            static_assert(std::is_copy_constructible<decay_t<ValueType>>::value
                         ||  (std::is_rvalue_reference<ValueType>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructible or a movable rvalue ref.");
 
             // Initialize typeinfo from the type given
@@ -424,9 +425,9 @@ namespace AZStd
         void assert_value_type_valid(const any& operand)
         {
             (void)operand;
-            AZ_STATIC_ASSERT(!std::is_rvalue_reference<ValueType>::value, "Type requested from any_cast cannot be an rvalue reference (taking the value stored is not supported).");
-            AZ_STATIC_ASSERT(is_reference<ValueType>::value || std::is_copy_constructible<ValueType>::value, "Type requested from any_cast must be a reference or copy constructable.");
-            AZ_STATIC_ASSERT(!is_reference<ValueType>::value || (!isConst || is_const<remove_reference_t<ValueType>>::value), "Type requested must be const; const cannot be any_cast'ed away.");
+            static_assert(!std::is_rvalue_reference<ValueType>::value, "Type requested from any_cast cannot be an rvalue reference (taking the value stored is not supported).");
+            static_assert(is_reference<ValueType>::value || std::is_copy_constructible<ValueType>::value, "Type requested from any_cast must be a reference or copy constructable.");
+            static_assert(!is_reference<ValueType>::value || (!isConst || is_const<remove_reference_t<ValueType>>::value), "Type requested must be const; const cannot be any_cast'ed away.");
             AZ_Assert(!operand.empty(), "Bad any_cast: object is empty");
             AZ_Assert(operand.is<ValueType>(), "Bad any_cast: type requested doesn't match type stored.\nCall .is<ExpectedType>() before any_cast to properly handle unexpected type.");
         }
@@ -467,7 +468,7 @@ namespace AZStd
     template <typename ValueType>
     add_pointer_t<ValueType> any_cast(any* operand)
     {
-        AZ_STATIC_ASSERT(!is_reference<ValueType>::value, "ValueType must not be a reference (cannot return pointer to reference).");
+        static_assert(!is_reference<ValueType>::value, "ValueType must not be a reference (cannot return pointer to reference).");
         if (!operand || operand->empty() || !operand->is<ValueType>())
         {
             return nullptr;

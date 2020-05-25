@@ -20,71 +20,41 @@
 # SOFTWARE.
 # ===================================================================
 
-"""RSA encryption protocol according to PKCS#1 OAEP
+from Crypto.Signature.pss import MGF1
+import Crypto.Hash.SHA1
 
-See RFC3447__ or the `original RSA Labs specification`__ .
-
-This scheme is more properly called ``RSAES-OAEP``.
-
-As an example, a sender may encrypt a message in this way:
-
-        >>> from Crypto.Cipher import PKCS1_OAEP
-        >>> from Crypto.PublicKey import RSA
-        >>>
-        >>> message = 'To be encrypted'
-        >>> key = RSA.importKey(open('pubkey.der').read())
-        >>> cipher = PKCS1_OAEP.new(key)
-        >>> ciphertext = cipher.encrypt(message)
-
-At the receiver side, decryption can be done using the private part of
-the RSA key:
-
-        >>> key = RSA.importKey(open('privkey.der').read())
-        >>> cipher = PKCS1_OAP.new(key)
-        >>> message = cipher.decrypt(ciphertext)
-
-:undocumented: __revision__, __package__
-
-.. __: http://www.ietf.org/rfc/rfc3447.txt
-.. __: http://www.rsa.com/rsalabs/node.asp?id=2125.
-"""
-
-from __future__ import nested_scopes
-
-__revision__ = "$Id$"
-__all__ = [ 'new', 'PKCS1OAEP_Cipher' ]
-
-import Crypto.Signature.PKCS1_PSS
-import Crypto.Hash.SHA
-
-from Crypto.Util.py3compat import *
+from Crypto.Util.py3compat import bord, _copy_bytes
 import Crypto.Util.number
-from   Crypto.Util.number import ceil_div
+from   Crypto.Util.number import ceil_div, bytes_to_long, long_to_bytes
 from   Crypto.Util.strxor import strxor
+from Crypto import Random
 
 class PKCS1OAEP_Cipher:
-    """This cipher can perform PKCS#1 v1.5 OAEP encryption or decryption."""
+    """Cipher object for PKCS#1 v1.5 OAEP.
+    Do not create directly: use :func:`new` instead."""
 
-    def __init__(self, key, hashAlgo, mgfunc, label):
+    def __init__(self, key, hashAlgo, mgfunc, label, randfunc):
         """Initialize this PKCS#1 OAEP cipher object.
-        
+
         :Parameters:
          key : an RSA key object
-          If a private half is given, both encryption and decryption are possible.
-          If a public half is given, only encryption is possible.
+                If a private half is given, both encryption and decryption are possible.
+                If a public half is given, only encryption is possible.
          hashAlgo : hash object
                 The hash function to use. This can be a module under `Crypto.Hash`
                 or an existing hash object created from any of such modules. If not specified,
-                `Crypto.Hash.SHA` (that is, SHA-1) is used.
+                `Crypto.Hash.SHA1` is used.
          mgfunc : callable
                 A mask generation function that accepts two parameters: a string to
                 use as seed, and the lenth of the mask to generate, in bytes.
-                If not specified, the standard MGF1 is used (a safe choice).
-         label : string
+                If not specified, the standard MGF1 consistent with ``hashAlgo`` is used (a safe choice).
+         label : bytes/bytearray/memoryview
                 A label to apply to this particular encryption. If not specified,
                 an empty string is used. Specifying a label does not improve
                 security.
- 
+         randfunc : callable
+                A function that returns random bytes.
+
         :attention: Modify the mask generation function only if you know what you are doing.
                     Sender and receiver must use the same one.
         """
@@ -93,63 +63,64 @@ class PKCS1OAEP_Cipher:
         if hashAlgo:
             self._hashObj = hashAlgo
         else:
-            self._hashObj = Crypto.Hash.SHA
+            self._hashObj = Crypto.Hash.SHA1
 
         if mgfunc:
             self._mgf = mgfunc
         else:
-            self._mgf = lambda x,y: Crypto.Signature.PKCS1_PSS.MGF1(x,y,self._hashObj)
+            self._mgf = lambda x,y: MGF1(x,y,self._hashObj)
 
-        self._label = label
+        self._label = _copy_bytes(None, None, label)
+        self._randfunc = randfunc
 
     def can_encrypt(self):
-        """Return True/1 if this cipher object can be used for encryption."""
+        """Legacy function to check if you can call :meth:`encrypt`.
+
+        .. deprecated:: 3.0"""
         return self._key.can_encrypt()
 
     def can_decrypt(self):
-        """Return True/1 if this cipher object can be used for decryption."""
+        """Legacy function to check if you can call :meth:`decrypt`.
+
+        .. deprecated:: 3.0"""
         return self._key.can_decrypt()
 
     def encrypt(self, message):
-        """Produce the PKCS#1 OAEP encryption of a message.
-    
-        This function is named ``RSAES-OAEP-ENCRYPT``, and is specified in
-        section 7.1.1 of RFC3447.
-    
-        :Parameters:
-         message : string
-                The message to encrypt, also known as plaintext. It can be of
-                variable length, but not longer than the RSA modulus (in bytes)
-                minus 2, minus twice the hash output size.
-   
-        :Return: A string, the ciphertext in which the message is encrypted.
-            It is as long as the RSA modulus (in bytes).
-        :Raise ValueError:
-            If the RSA key length is not sufficiently long to deal with the given
-            message.
+        """Encrypt a message with PKCS#1 OAEP.
+
+        :param message:
+            The message to encrypt, also known as plaintext. It can be of
+            variable length, but not longer than the RSA modulus (in bytes)
+            minus 2, minus twice the hash output size.
+            For instance, if you use RSA 2048 and SHA-256, the longest message
+            you can encrypt is 190 byte long.
+        :type message: bytes/bytearray/memoryview
+
+        :returns: The ciphertext, as large as the RSA modulus.
+        :rtype: bytes
+
+        :raises ValueError:
+            if the message is too long.
         """
-        # TODO: Verify the key is RSA
-    
-        randFunc = self._key._randfunc
-    
+
         # See 7.1.1 in RFC3447
         modBits = Crypto.Util.number.size(self._key.n)
-        k = ceil_div(modBits,8) # Convert from bits to bytes
+        k = ceil_div(modBits, 8) # Convert from bits to bytes
         hLen = self._hashObj.digest_size
         mLen = len(message)
-    
+
         # Step 1b
-        ps_len = k-mLen-2*hLen-2
-        if ps_len<0:
+        ps_len = k - mLen - 2 * hLen - 2
+        if ps_len < 0:
             raise ValueError("Plaintext is too long.")
         # Step 2a
         lHash = self._hashObj.new(self._label).digest()
         # Step 2b
-        ps = bchr(0x00)*ps_len
+        ps = b'\x00' * ps_len
         # Step 2c
-        db = lHash + ps + bchr(0x01) + message
+        db = lHash + ps + b'\x01' + _copy_bytes(None, None, message)
         # Step 2d
-        ros = randFunc(hLen)
+        ros = self._randfunc(hLen)
         # Step 2e
         dbMask = self._mgf(ros, k-hLen-1)
         # Step 2f
@@ -159,44 +130,47 @@ class PKCS1OAEP_Cipher:
         # Step 2h
         maskedSeed = strxor(ros, seedMask)
         # Step 2i
-        em = bchr(0x00) + maskedSeed + maskedDB
-        # Step 3a (OS2IP), step 3b (RSAEP), part of step 3c (I2OSP)
-        m = self._key.encrypt(em, 0)[0]
-        # Complete step 3c (I2OSP)
-        c = bchr(0x00)*(k-len(m)) + m
+        em = b'\x00' + maskedSeed + maskedDB
+        # Step 3a (OS2IP)
+        em_int = bytes_to_long(em)
+        # Step 3b (RSAEP)
+        m_int = self._key._encrypt(em_int)
+        # Step 3c (I2OSP)
+        c = long_to_bytes(m_int, k)
         return c
-    
-    def decrypt(self, ct):
-        """Decrypt a PKCS#1 OAEP ciphertext.
-    
-        This function is named ``RSAES-OAEP-DECRYPT``, and is specified in
-        section 7.1.2 of RFC3447.
-    
-        :Parameters:
-         ct : string
-                The ciphertext that contains the message to recover.
-   
-        :Return: A string, the original message.
-        :Raise ValueError:
-            If the ciphertext length is incorrect, or if the decryption does not
-            succeed.
-        :Raise TypeError:
-            If the RSA key has no private half.
+
+    def decrypt(self, ciphertext):
+        """Decrypt a message with PKCS#1 OAEP.
+
+        :param ciphertext: The encrypted message.
+        :type ciphertext: bytes/bytearray/memoryview
+
+        :returns: The original message (plaintext).
+        :rtype: bytes
+
+        :raises ValueError:
+            if the ciphertext has the wrong length, or if decryption
+            fails the integrity check (in which case, the decryption
+            key is probably wrong).
+        :raises TypeError:
+            if the RSA key has no private half (i.e. you are trying
+            to decrypt using a public key).
         """
-        # TODO: Verify the key is RSA
-    
+
         # See 7.1.2 in RFC3447
         modBits = Crypto.Util.number.size(self._key.n)
         k = ceil_div(modBits,8) # Convert from bits to bytes
         hLen = self._hashObj.digest_size
-    
+
         # Step 1b and 1c
-        if len(ct) != k or k<hLen+2:
+        if len(ciphertext) != k or k<hLen+2:
             raise ValueError("Ciphertext with incorrect length.")
-        # Step 2a (O2SIP), 2b (RSADP), and part of 2c (I2OSP)
-        m = self._key.decrypt(ct)
+        # Step 2a (O2SIP)
+        ct_int = bytes_to_long(ciphertext)
+        # Step 2b (RSADP)
+        m_int = self._key._decrypt(ct_int)
         # Complete step 2c (I2OSP)
-        em = bchr(0x00)*(k-len(m)) + m
+        em = long_to_bytes(m_int, k)
         # Step 3a
         lHash = self._hashObj.new(self._label).digest()
         # Step 3b
@@ -214,42 +188,52 @@ class PKCS1OAEP_Cipher:
         # Step 3f
         db = strxor(maskedDB, dbMask)
         # Step 3g
-        valid = 1
-        one = db[hLen:].find(bchr(0x01))
+        one_pos = db[hLen:].find(b'\x01')
         lHash1 = db[:hLen]
-        if lHash1!=lHash:
-            valid = 0
-        if one<0:
-            valid = 0
-        if bord(y)!=0:
-            valid = 0
-        if not valid:
+        invalid = bord(y) | int(one_pos < 0)
+        hash_compare = strxor(lHash1, lHash)
+        for x in hash_compare:
+            invalid |= bord(x)
+        for x in db[hLen:one_pos]:
+            invalid |= bord(x)
+        if invalid != 0:
             raise ValueError("Incorrect decryption.")
         # Step 4
-        return db[hLen+one+1:]
+        return db[hLen + one_pos + 1:]
 
-def new(key, hashAlgo=None, mgfunc=None, label=b('')):
-    """Return a cipher object `PKCS1OAEP_Cipher` that can be used to perform PKCS#1 OAEP encryption or decryption.
+def new(key, hashAlgo=None, mgfunc=None, label=b'', randfunc=None):
+    """Return a cipher object :class:`PKCS1OAEP_Cipher` that can be used to perform PKCS#1 OAEP encryption or decryption.
 
-    :Parameters:
-     key : RSA key object
-      The key to use to encrypt or decrypt the message. This is a `Crypto.PublicKey.RSA` object.
-      Decryption is only possible if *key* is a private RSA key.
-     hashAlgo : hash object
+    :param key:
+      The key object to use to encrypt or decrypt the message.
+      Decryption is only possible with a private RSA key.
+    :type key: RSA key object
+
+    :param hashAlgo:
       The hash function to use. This can be a module under `Crypto.Hash`
-      or an existing hash object created from any of such modules. If not specified,
-      `Crypto.Hash.SHA` (that is, SHA-1) is used.
-     mgfunc : callable
+      or an existing hash object created from any of such modules.
+      If not specified, `Crypto.Hash.SHA1` is used.
+    :type hashAlgo: hash object
+
+    :param mgfunc:
       A mask generation function that accepts two parameters: a string to
       use as seed, and the lenth of the mask to generate, in bytes.
-      If not specified, the standard MGF1 is used (a safe choice).
-     label : string
+      If not specified, the standard MGF1 consistent with ``hashAlgo`` is used (a safe choice).
+    :type mgfunc: callable
+
+    :param label:
       A label to apply to this particular encryption. If not specified,
       an empty string is used. Specifying a label does not improve
       security.
- 
-    :attention: Modify the mask generation function only if you know what you are doing.
-      Sender and receiver must use the same one.
+    :type label: bytes/bytearray/memoryview
+
+    :param randfunc:
+      A function that returns random bytes.
+      The default is `Random.get_random_bytes`.
+    :type randfunc: callable
     """
-    return PKCS1OAEP_Cipher(key, hashAlgo, mgfunc, label)
+
+    if randfunc is None:
+        randfunc = Random.get_random_bytes
+    return PKCS1OAEP_Cipher(key, hashAlgo, mgfunc, label, randfunc)
 

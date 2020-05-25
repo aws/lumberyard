@@ -357,7 +357,7 @@ namespace CommandSystem
         const int32 motionID = parameters.GetValueAsInt("motionID", this);
 
         AZStd::string command;
-        command = AZStd::string::format("CreateMotionEventTrack -motionID %i -eventTrackName \"%s\" -index %d -enabled %d", motionID, eventTrackName.c_str(), mOldTrackIndex, mOldEnabled);
+        command = AZStd::string::format("CreateMotionEventTrack -motionID %i -eventTrackName \"%s\" -index %d -enabled %s", motionID, eventTrackName.c_str(), mOldTrackIndex, mOldEnabled ? "true" : "false");
         return GetCommandManager()->ExecuteCommandInsideCommand(command.c_str(), outResult);
     }
 
@@ -1012,33 +1012,28 @@ namespace CommandSystem
     // remove event track
     void CommandRemoveEventTrack(EMotionFX::Motion* motion, uint32 trackIndex)
     {
-        // make sure the motion is valid
-        if (motion == nullptr)
+        if (!motion)
         {
             return;
         }
 
-        // get the motion event table and the given event track
-        EMotionFX::MotionEventTable*    eventTable  = motion->GetEventTable();
-        EMotionFX::MotionEventTrack*    eventTrack  = eventTable->GetTrack(trackIndex);
+        EMotionFX::MotionEventTable* eventTable = motion->GetEventTable();
+        EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(trackIndex);
 
         AZStd::string outResult;
-        MCore::CommandGroup commandGroup;
+        MCore::CommandGroup commandGroup("Remove event track");
 
-        // get the number of motion events and iterate through them
         const size_t numMotionEvents = eventTrack->GetNumEvents();
         for (size_t j = 0; j < numMotionEvents; ++j)
         {
             commandGroup.AddCommandString(AZStd::string::format("RemoveMotionEvent -motionID %i -eventTrackName \"%s\" -eventNr %i", motion->GetID(), eventTrack->GetName(), 0).c_str());
         }
 
-        // finally remove the event track
         commandGroup.AddCommandString(AZStd::string::format("RemoveMotionEventTrack -motionID %i -eventTrackName \"%s\"", motion->GetID(), eventTrack->GetName()).c_str());
 
-        // execute the command group
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult))
         {
-            MCore::LogError(outResult.c_str());
+            AZ_Error("EMotionFX", !outResult.empty(), outResult.c_str());
         }
     }
 

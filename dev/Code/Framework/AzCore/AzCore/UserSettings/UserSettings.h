@@ -21,6 +21,7 @@
 
 namespace AZ
 {
+    class ReflectContext;
     class SerializeContext;
 
     /**
@@ -72,6 +73,8 @@ namespace AZ
         static void Release(AZStd::intrusive_ptr<T>& userSetting);
 
         static bool Save(u32 providerId, const char* settingsPath, SerializeContext* sc);
+
+        static void Reflect(ReflectContext* context);
 
     protected:
         void    add_ref();

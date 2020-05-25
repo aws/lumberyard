@@ -16,9 +16,16 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
 
+#include <AzFramework/Asset/AssetSystemBus.h>
+
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
+
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/NodePaletteTreeItem.h>
 #include <GraphCanvas/Widgets/GraphCanvasTreeCategorizer.h>
 
+#include <ScriptEvents/ScriptEventsAsset.h>
+
+#include <Editor/View/Widgets/NodePalette/NodePaletteModelBus.h>
 #include <ScriptCanvas/Core/Core.h>
 
 namespace ScriptCanvasEditor
@@ -62,6 +69,10 @@ namespace ScriptCanvasEditor
         NodePaletteModel();
         ~NodePaletteModel();
 
+        NodePaletteId GetNotificationId() const;
+
+        void AssignAssetModel(AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel);
+
         void RepopulateModel();
 
         void RegisterCustomNode(AZStd::string_view categoryPath, const AZ::Uuid& uuid, AZStd::string_view name, const AZ::SerializeContext::ClassData* classData);
@@ -69,6 +80,9 @@ namespace ScriptCanvasEditor
 
         void RegisterEBusHandlerNodeModelInformation(AZStd::string_view categoryPath, AZStd::string_view busName, AZStd::string_view eventName, const ScriptCanvas::EBusBusId& busId, const AZ::BehaviorEBusHandler::BusForwarderEvent& forwardEvent);
         void RegisterEBusSenderNodeModelInformation(AZStd::string_view categoryPath, AZStd::string_view busName, AZStd::string_view eventName, const ScriptCanvas::EBusBusId& busId, const ScriptCanvas::EBusEventId& eventId, const AZ::BehaviorEBusEventSender& eventSender);
+
+        // Asset Based Registrations
+        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterScriptEvent(ScriptEvents::ScriptEventsAsset* scriptEventAsset);
 
         void RegisterCategoryInformation(const AZStd::string& category, const CategoryInformation& categoryInformation);
         const CategoryInformation* FindCategoryInformation(const AZStd::string& categoryStyle) const;
@@ -82,12 +96,29 @@ namespace ScriptCanvasEditor
         GraphCanvas::GraphCanvasTreeItem* CreateCategoryNode(AZStd::string_view categoryPath, AZStd::string_view categoryName, GraphCanvas::GraphCanvasTreeItem* treeItem) const override;
         ////
 
+        // Asset Node Support
+        void OnRowsInserted(const QModelIndex& parentIndex, int first, int last);
+        void OnRowsAboutToBeRemoved(const QModelIndex& parentIndex, int first, int last);
+
+        void TraverseTree(QModelIndex index = QModelIndex());
+        ////
+
     private:
+
+        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> ProcessAsset(AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry);
+        void RemoveAsset(const AZ::Data::AssetId& assetId);
 
         void ClearRegistry();
 
+        AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel =  nullptr;
+        AZStd::vector< QMetaObject::Connection > m_lambdaConnections;
+
         AZStd::unordered_map< AZStd::string, CategoryInformation > m_categoryInformation;
         NodePaletteRegistry m_registeredNodes;
+
+        AZStd::unordered_multimap<AZ::Data::AssetId, ScriptCanvas::NodeTypeIdentifier> m_assetMapping;
+
+        NodePaletteId m_paletteId;
     };
 
     // Concrete Sub Classes with whatever extra data is required [ScriptCanvas Only]
@@ -107,7 +138,7 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(CustomNodeModelInformation, AZ::SystemAllocator, 0);
 
         AZStd::string m_classMethod;
-        AZStd::string m_metehodName;        
+        AZStd::string m_metehodName;
     };
 
     struct EBusHandlerNodeModelInformation
@@ -134,5 +165,19 @@ namespace ScriptCanvasEditor
 
         ScriptCanvas::EBusBusId m_busId;
         ScriptCanvas::EBusEventId m_eventId;
-    };    
+    };
+
+    struct ScriptEventHandlerNodeModelInformation
+        : public EBusHandlerNodeModelInformation
+    {
+        AZ_RTTI(ScriptEventHandlerNodeModelInformation, "{BCA92869-63F4-4A1F-B751-F3F28443BBFC}", EBusHandlerNodeModelInformation);
+        AZ_CLASS_ALLOCATOR(ScriptEventHandlerNodeModelInformation, AZ::SystemAllocator, 0);
+    };
+
+    struct ScriptEventSenderNodeModelInformation
+        : public EBusSenderNodeModelInformation
+    {
+        AZ_RTTI(ScriptEventSenderNodeModelInformation, "{99046345-080C-42A6-BE76-D09583055EED}", EBusSenderNodeModelInformation);
+        AZ_CLASS_ALLOCATOR(ScriptEventSenderNodeModelInformation, AZ::SystemAllocator, 0);
+    };
 }

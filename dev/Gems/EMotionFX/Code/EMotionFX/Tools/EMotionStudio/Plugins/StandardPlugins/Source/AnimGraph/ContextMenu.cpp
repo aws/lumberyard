@@ -213,7 +213,8 @@ namespace EMStudio
                     {
                         EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)animGraphNode->GetParentNode();
                         if (actionFilter.m_setEntryNode &&
-                            stateMachine->GetEntryState() != animGraphNode)
+                            stateMachine->GetEntryState() != animGraphNode &&
+                            animGraphNode->GetCanBeEntryNode())
                         {
                             QAction* setAsEntryStateAction = menu.addAction("Set As Entry State");
                             setAsEntryStateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/EntryState.png"));
@@ -374,6 +375,11 @@ namespace EMStudio
                 alignRightAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/AlignRight.png"));
                 alignTopAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/AlignTop.png"));
                 alignBottomAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/AlignBottom.png"));
+
+                connect(alignLeftAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AlignLeft);
+                connect(alignRightAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AlignRight);
+                connect(alignTopAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AlignTop);
+                connect(alignBottomAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AlignBottom);
 
                 menu.addSeparator();
             }

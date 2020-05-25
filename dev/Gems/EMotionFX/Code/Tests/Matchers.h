@@ -19,6 +19,21 @@
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Compare.h>
 #include <Tests/Printers.h>
+#include <AzCore/std/string/string.h>
+
+inline testing::PolymorphicMatcher<testing::internal::StrEqualityMatcher<AZStd::string> >
+StrEq(const AZStd::string& str)
+{
+    return ::testing::MakePolymorphicMatcher(testing::internal::StrEqualityMatcher<AZStd::string>(
+      str, true, true));
+}
+
+MATCHER(StrEq, "")
+{
+    const auto& lhs = testing::get<0>(arg);
+    const auto& rhs = testing::get<1>(arg);
+    return ::testing::ExplainMatchResult(StrEq(AZStd::string(rhs.data(), rhs.size())), lhs, result_listener);
+}
 
 MATCHER(IsClose, "")
 {

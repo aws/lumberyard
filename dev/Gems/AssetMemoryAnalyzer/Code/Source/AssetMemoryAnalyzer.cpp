@@ -23,14 +23,17 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 template<>
-inline size_t AZStd::hash<AssetMemoryAnalyzer::Data::CodePoint>::operator()(const AssetMemoryAnalyzer::Data::CodePoint& codePoint) const
+struct AZStd::hash<AssetMemoryAnalyzer::Data::CodePoint>
 {
-    size_t seed = 0;
-    AZStd::hash_combine(seed, codePoint.m_file);
-    AZStd::hash_combine(seed, codePoint.m_line);
+    size_t operator()(const AssetMemoryAnalyzer::Data::CodePoint& codePoint) const
+    {
+        size_t seed = 0;
+        AZStd::hash_combine(seed, codePoint.m_file);
+        AZStd::hash_combine(seed, codePoint.m_line);
 
-    return seed;
-}
+        return seed;
+    }
+};
 
 namespace AssetMemoryAnalyzer
 {

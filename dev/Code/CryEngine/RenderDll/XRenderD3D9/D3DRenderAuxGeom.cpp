@@ -101,6 +101,7 @@ void CRenderAuxGeomD3D::ReleaseDeviceObjects()
     for (uint32 i(0); i < e_auxObjNumLOD; ++i)
     {
         m_sphereObj[ i ].Release();
+        m_diskObj[ i ].Release();
         m_coneObj[ i ].Release();
         m_cylinderObj[ i ].Release();
     }
@@ -116,6 +117,7 @@ int CRenderAuxGeomD3D::GetDeviceDataSize()
     for (uint32 i = 0; i < e_auxObjNumLOD; ++i)
     {
         nSize += m_sphereObj[i].GetDeviceDataSize();
+        nSize += m_diskObj[i].GetDeviceDataSize();
         nSize += m_coneObj[i].GetDeviceDataSize();
         nSize += m_cylinderObj[i].GetDeviceDataSize();
     }
@@ -192,7 +194,54 @@ static void CreateSphere(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib, float ra
     }
 }
 
+// function to generate a disk mesh
+static void CreateDisk(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib, float radius, unsigned int sections)
+{
+    // calc required number of vertices/indices/triangles to build a disk for the given parameters
+    uint32 numVertices = (sections + 1) * 2;
+    uint32 numTriangles = sections * 2;
+    uint32 numIndices = numTriangles * 3;
 
+    // setup buffers
+    vb.clear();
+    vb.reserve(numVertices);
+
+    ib.clear();
+    ib.reserve(numIndices);
+
+    Vec3 yUp = Vec3(0.0f, 1.0f, 0.0f);
+    Vec3 yDown = Vec3(0.0f, -1.0f, 0.0f);
+
+    // center vertex
+    vb.push_back(SAuxObjVertex(Vec3(0.0f, 0.0f, 0.0f), yUp));
+    vb.push_back(SAuxObjVertex(Vec3(0.0f, 0.0f, 0.0f), yDown));
+
+    // create circle around it
+    float sectionSlice(DEG2RAD(360.0f / (float)sections));
+    for (uint32 i(0); i <= sections; ++i)
+    {
+        Vec3 v;
+        v.x = radius * cosf(i * sectionSlice);
+        v.y = 0.0f;
+        v.z = radius * sinf(i * sectionSlice);
+        vb.push_back(SAuxObjVertex(v, yUp));
+        vb.push_back(SAuxObjVertex(v, yDown));
+    }
+
+    // build faces
+    for (uint16 i = 0; i < numTriangles; i += 2)
+    {
+        // top face
+        ib.push_back(0);
+        ib.push_back(2 + i + 2);
+        ib.push_back(2 + i);
+
+        // bottom face
+        ib.push_back(1);
+        ib.push_back(3 + i);
+        ib.push_back(3 + i + 2);
+    }
+}
 
 // function to generate a cone mesh
 static void CreateCone(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib, float radius, float height, unsigned int sections)
@@ -381,6 +430,24 @@ struct SSphereMeshCreateFunc
     unsigned int m_sections;
 };
 
+// Functor to generate a disk mesh. To be used with generalized CreateMesh function.
+struct SDiskMeshCreateFunc
+{
+    SDiskMeshCreateFunc(float radius, unsigned int rings)
+        : m_radius(radius)
+        , m_rings(rings)
+    {
+    }
+
+    void CreateMesh(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib)
+    {
+        CreateDisk(vb, ib, m_radius, m_rings);
+    }
+
+    float m_radius;
+    unsigned int m_rings;
+};
+
 
 // Functor to generate a cone mesh. To be used with generalized CreateMesh function.
 struct SConeMeshCreateFunc
@@ -535,6 +602,12 @@ HRESULT CRenderAuxGeomD3D::RestoreDeviceObjects()
     {
         m_sphereObj[ i ].Release();
         if (FAILED(hr = CreateMesh(m_sphereObj[ i ], SSphereMeshCreateFunc(1.0f, 9 + 4 * i, 9 + 4 * i))))
+        {
+            return(hr);
+        }
+
+        m_diskObj[i].Release();
+        if (FAILED(hr = CreateMesh(m_diskObj[ i ], SDiskMeshCreateFunc(1.0f, 9 + 4 * i))))
         {
             return(hr);
         }
@@ -935,6 +1008,11 @@ void CRenderAuxGeomD3D::DrawAuxObjects(CAuxGeomCB::AuxSortedPushBuffer::const_it
             default:
             {
                 pMesh = &m_sphereObj[ lodLevel ];
+                break;
+            }
+            case CAuxGeomCB::eDOT_Disk:
+            {
+                pMesh = &m_diskObj[ lodLevel ];
                 break;
             }
             case CAuxGeomCB::eDOT_Cone:

@@ -19,6 +19,7 @@ namespace AZ
     {
         namespace Internal
         {
+            using SizeType = AZ::u64;
             using FileHandleType = int;
         }
     }

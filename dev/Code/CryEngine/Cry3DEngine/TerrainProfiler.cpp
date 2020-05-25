@@ -14,14 +14,13 @@
 
 #if !defined(_RELEASE)
 
-#include <AzCore/Debug/FrameProfilerComponent.h>
-
 #include "../CryCommon/CrySizer.h"
 #include "../CryCommon/IResourceCollector.h"
 
+#include "terrain.h"
 #include "TerrainProfiler.h"
 
-namespace AZ
+namespace LegacyTerrain
 {
     namespace Debug
     {
@@ -65,117 +64,109 @@ namespace AZ
             size_t m_nTotalSize;
         };
 
-
-        TerrainProfiler* TerrainProfiler::m_instance = nullptr;
-
         TerrainProfiler::TerrainProfiler() : m_elapsedSecondsForLogging(0.0f)
         {
-            m_perTileStatisticsManager.AddStatistic("VisibleTiles", "");
-            m_perTileStatisticsManager.AddStatistic("TimePerTiles", "us");
-            m_perTileStatisticsManager.AddStatistic("TimePerVisibleTiles", "us");
-            m_perTileStatisticsManager.AddStatistic("MemoryUsage", "KB");
+            AzFramework::Debug::StatisticalProfilerProxy* profilerProxy = AZ::Interface<AzFramework::Debug::StatisticalProfilerProxy>::Get();
+            if (!profilerProxy)
+            {
+                AZ_Warning("TerrainProfiler", false, "The Legacy Terrain Profiler couldn't find the StatisticalProfilerProxy");
+                return;
+            }
+            AzFramework::Debug::StatisticalProfilerProxy::StatisticalProfilerType& profiler = profilerProxy->GetProfiler(AZ::Debug::ProfileCategory::LegacyTerrain);
+            AzFramework::Statistics::StatisticsManager<>& statisticsManager = profiler.GetStatsManager();
 
-            m_visibleTilesCountStat = m_perTileStatisticsManager.GetStatistic("VisibleTiles");
+            AZStd::string visibleTilesStatName("VisibleTiles");
+            AZStd::string memoryUsageStatName("MemoryUsage");
+            if (statisticsManager.GetCount() < 1)
+            {
+
+                statisticsManager.AddStatistic(visibleTilesStatName, visibleTilesStatName, "", true);
+                statisticsManager.AddStatistic(memoryUsageStatName, memoryUsageStatName, "KB", true);
+
+                statisticsManager.AddStatistic(StatisticCheckVisibility, StatisticCheckVisibility, "us", true);
+                statisticsManager.AddStatistic(StatisticUpdateNodes, StatisticUpdateNodes, "us", true);
+                statisticsManager.AddStatistic(StatisticDrawVisibleSectors, StatisticDrawVisibleSectors, "us", true);
+                statisticsManager.AddStatistic(StatisticUpdateSectorMeshes, StatisticUpdateSectorMeshes, "us", true);
+                statisticsManager.AddStatistic(StatisicLoadTimeFromDisk, StatisicLoadTimeFromDisk, "us", true);
+                statisticsManager.AddStatistic(StatisticFxDrawTechnique, StatisticFxDrawTechnique, "us", true);
+
+                AZStd::string timePerFrameStatName("TimePerFrame");
+                AZStd::vector<AZStd::string> statsPerFrame;
+                statsPerFrame.push_back(StatisticCheckVisibility);
+                statsPerFrame.push_back(StatisticUpdateNodes);
+                statsPerFrame.push_back(StatisticDrawVisibleSectors);
+                statsPerFrame.push_back(StatisticUpdateSectorMeshes);
+
+                int num_stats_per_frame = profiler.AddPerFrameStatisticalAggregate(statsPerFrame, timePerFrameStatName, timePerFrameStatName);
+                AZ_Assert(num_stats_per_frame == statsPerFrame.size(), "Failed to mark %d stats for per frame calculations.", statsPerFrame.size() - num_stats_per_frame);
+
+                AZStd::string timePerRendererFrameStatName("TimePerRenderFrame");
+                statsPerFrame.clear();
+                statsPerFrame.push_back(StatisticFxDrawTechnique);
+
+                num_stats_per_frame = profiler.AddPerFrameStatisticalAggregate(statsPerFrame, timePerRendererFrameStatName, timePerRendererFrameStatName);
+                AZ_Assert(num_stats_per_frame == statsPerFrame.size(), "Failed to mark %d stats for per render frame calculations.", statsPerFrame.size() - num_stats_per_frame);
+            }
+
+            statisticsManager.ResetAllStatistics();
+
+            m_visibleTilesCountStat = statisticsManager.GetStatistic(visibleTilesStatName);
+            m_memoryUsageStat = statisticsManager.GetStatistic(memoryUsageStatName);
             AZ_Assert(m_visibleTilesCountStat, "Failed to find visible tiles count statistic");
-            m_performanceAcrossAllTilesStat = m_perTileStatisticsManager.GetStatistic("TimePerTiles");
-            AZ_Assert(m_performanceAcrossAllTilesStat, "Failed to find TimePerTiles statistic");
-            m_performanceAcrossVisibleTilesStat = m_perTileStatisticsManager.GetStatistic("TimePerVisibleTiles");
-            AZ_Assert(m_performanceAcrossVisibleTilesStat, "Failed to find TimePerVisibleTiles statistic");
-            m_memoryUsageStat = m_perTileStatisticsManager.GetStatistic("MemoryUsage");
             AZ_Assert(m_memoryUsageStat, "Failed to find MemoryUsage statistic");
 
-            FrameProfilerBus::Handler::BusConnect();
-            m_profilingEntity = AZStd::make_unique<Entity>();
-            m_profilingEntity->CreateComponent<FrameProfilerComponent>();
-            m_profilingEntity->Init();
-           
-            // We'll only activate our profiler if we've set the cvar to capture timing data.
-            UpdateFrameProfilerStatus(m_profilingEntity);
+            profilerProxy->ActivateProfiler(AZ::Debug::ProfileCategory::LegacyTerrain, true);
 
             m_timerForLogging.Stamp();
+
+            AZ::TickBus::Handler::BusConnect();
         };
 
-        TerrainProfiler::~TerrainProfiler() 
+        TerrainProfiler::~TerrainProfiler()
         {
-            if (m_profilingEntity->GetState() == AZ::Entity::State::ES_ACTIVE)
+            AZ::TickBus::Handler::BusDisconnect();
+
+            auto proxy = AZ::Interface<AzFramework::Debug::StatisticalProfilerProxy>::Get();
+            if (proxy)
             {
-                m_profilingEntity->Deactivate();
+                proxy->ActivateProfiler(AZ::Debug::ProfileCategory::LegacyTerrain, false);
             }
-            m_profilingEntity = nullptr;
-            FrameProfilerBus::Handler::BusDisconnect();
         };
 
-        void TerrainProfiler::UpdateFrameProfilerStatus(AZStd::unique_ptr<Entity>& profilingEntity)
+        //////////////////////////////////////////////////////////////////////////
+        // Tick bus START
+        void TerrainProfiler::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         {
-            // Activate / deactivate the timing captures as necessary.
-            // NOTE:  We're being careful to only activate if/when the terrain profiler has been told to capture data
-            // and to deactivate as soon as we should stop, since activating a FrameProfilerComponent will cause timing
-            // captures across the entire engine, not just terrain.  This can cause a measureable performance impact.
-            if (GetCVars()->e_TerrainPerformanceSecondsPerLog > 0.0f)
+            auto profilerProxy = AZ::Interface<AzFramework::Debug::StatisticalProfilerProxy>::Get();
+            if (!profilerProxy)
             {
-                if (profilingEntity->GetState() == AZ::Entity::State::ES_INIT)
-                {
-                    profilingEntity->Activate();
-                }
+                AZ_Warning("TerrainProfiler", false, "The Legacy Terrain Profiler couldn't find the StatisticalProfilerProxy");
+                return;
             }
-            else
-            {
-                if (profilingEntity->GetState() == AZ::Entity::State::ES_ACTIVE)
-                {
-                    profilingEntity->Deactivate();
-                }
-            }
+            AzFramework::Debug::StatisticalProfilerProxy::StatisticalProfilerType& profiler = profilerProxy->GetProfiler(AZ::Debug::ProfileCategory::LegacyTerrain);
 
-        }
+            profiler.SummarizePerFrameStats();
 
-        //FrameProfilerBus
-        void TerrainProfiler::OnFrameProfilerData(const FrameProfiler::ThreadDataArray& data)
-        {
-            const float terrainPerformanceSecondsPerLog = GetCVars()->e_TerrainPerformanceSecondsPerLog;
+            const float terrainPerformanceSecondsPerLog = GetCVarAsFloat("e_TerrainPerformanceSecondsPerLog");
             if (terrainPerformanceSecondsPerLog <= 0.0f)
             {
                 return;
             }
 
-            bool gotData = false;
-            for (size_t iThread = 0; iThread < data.size(); ++iThread)
-            {
-                const FrameProfiler::ThreadData& threadData = data[iThread];
-                FrameProfiler::ThreadData::RegistersMap::const_iterator registerIterator = threadData.m_registers.begin();
-                for (; registerIterator != threadData.m_registers.end(); ++registerIterator)
-                {
-                    const FrameProfiler::RegisterData& registerData = registerIterator->second;
-                    AZ::u32 terrainCrc = AZ_CRC("TerrainProfiler", 0xf048dd73);
-                    if (terrainCrc != registerData.m_systemId)
-                    {
-                        //Some other system appears to be using the FrameProfilerComponent & Friends.
-                        continue;
-                    }
-
-                    //registerData.m_function has the function name.
-                    if (registerData.m_type == ProfilerRegister::Type::PRT_TIME)
-                    {
-                        gotData = true;
-                        const FrameProfiler::FrameData& frameData = registerData.m_frames.back();
-                        m_timeStatisticsManager.PushTimeDataSample(registerData.m_name, frameData.m_timeData);
-                    }
-                }
-            }
-
-            if (!gotData)
-            {
-                return;
-            }
-
             CalculateMemoryStatistics();
-            CalculateStatisticsPerTile();
-            LogStatistics(terrainPerformanceSecondsPerLog);
+            LogStatistics(profiler, terrainPerformanceSecondsPerLog);
         }
+
+        int TerrainProfiler::GetTickOrder()
+        {
+            return AZ::TICK_LAST;
+        }
+        // Tick bus END
+        //////////////////////////////////////////////////////////////////////////
 
         void TerrainProfiler::CalculateMemoryStatistics()
         {
-
-            const int cvarLogMemoryMask = GetCVars()->e_TerrainPerformanceCollectMemoryStats;
+            const int cvarLogMemoryMask = GetCVarAsInteger("e_TerrainPerformanceCollectMemoryStats");
 
             if (cvarLogMemoryMask < 1)
             {
@@ -183,51 +174,29 @@ namespace AZ
             }
 
             SimpleSizer memorySizer;
-            CTerrain* terrain = GetTerrain();
-            AZ_Assert(terrain, "GetTerrain() returned NULL");
+            CTerrain* terrain = CTerrain::GetTerrain();
+            AZ_Assert(terrain, "CTerrain::GetTerrain() returned NULL");
+            if (!terrain->HasMacroTexture())
+            {
+                //The terrain data is incomplete. Not unusual, happens momentarily when the legacy terrain
+                //level component is being added to the level when using the editor.
+                return;
+            }
             terrain->GetMemoryUsage(&memorySizer);
             const size_t memoryUsageBytes = memorySizer.GetTotalSize();
             const double memoryUsageKBytes = static_cast<double>(memoryUsageBytes) / 1024.0;
             m_memoryUsageStat->PushSample(memoryUsageKBytes);
         }
 
-        void TerrainProfiler::CalculateStatisticsPerTile()
+        void TerrainProfiler::LogStatistics(AzFramework::Debug::StatisticalProfilerProxy::StatisticalProfilerType& profiler,
+            float terrainPerformanceSecondsPerLog)
         {
-            double allStatsSumMicroSecs = 0.0;
-            const AZStd::vector<AzFramework::Statistics::NamedRunningStatistic>& timeStatsVector = m_timeStatisticsManager.GetAllStatistics();
-            for (const AzFramework::Statistics::NamedRunningStatistic& stat : timeStatsVector)
+            const AzFramework::Statistics::NamedRunningStatistic* statPerFrame = profiler.GetFirstStatPerFrame();
+            if (!statPerFrame || statPerFrame->GetNumSamples() < 1)
             {
-                allStatsSumMicroSecs += stat.GetMostRecentSample();
+                return;
             }
 
-            if (m_totalTilesCount)
-            {
-                m_performanceAcrossAllTilesStat->PushSample(allStatsSumMicroSecs / m_totalTilesCount);
-                const double visibleTilesCount = m_visibleTilesCountStat->GetMostRecentSample();
-                if (visibleTilesCount > 0.0)
-                {
-                    m_performanceAcrossVisibleTilesStat->PushSample(allStatsSumMicroSecs / visibleTilesCount);
-                }
-            }
-        }
-
-        void TerrainProfiler::LogAndResetStatManager(AzFramework::Statistics::RunningStatisticsManager& statsManager)
-        {
-            const AZStd::vector<AzFramework::Statistics::NamedRunningStatistic>& statsVector = statsManager.GetAllStatistics();
-            for (const AzFramework::Statistics::NamedRunningStatistic& stat : statsVector)
-            {
-                if (stat.GetNumSamples() == 0)
-                {
-                    continue;
-                }
-                const AZStd::string& statReport = stat.GetFormatted();
-                AZ_Printf("TerrainPerformance", "%s\n", statReport.c_str());
-            }
-            statsManager.ResetAllStatistics();
-        }
-
-        void TerrainProfiler::LogStatistics(float terrainPerformanceSecondsPerLog)
-        {
             m_elapsedSecondsForLogging += m_timerForLogging.StampAndGetDeltaTimeInSeconds();
             if (m_elapsedSecondsForLogging < terrainPerformanceSecondsPerLog)
             {
@@ -235,12 +204,11 @@ namespace AZ
             }
 
             AZ_Printf("TerrainPerformance", ">>>>>>>>>>>>>>>>>\n");
-            LogAndResetStatManager(m_timeStatisticsManager);
-            LogAndResetStatManager(m_perTileStatisticsManager);
+            profiler.LogAndResetStats("TerrainPerformance");
             AZ_Printf("TerrainPerformance", "<<<<<<<<<<<<<<<<<\n");
             m_elapsedSecondsForLogging = 0;
         }
     }; //namespace Debug
-}; //namespace AZ
+}; //namespace LegacyTerrain
 
 #endif //#if !defined(_RELEASE)

@@ -17,6 +17,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 #include <IRenderAuxGeom.h>
 
 #include "WaterVolumeComponent.h"

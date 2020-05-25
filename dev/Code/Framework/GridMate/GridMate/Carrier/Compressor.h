@@ -38,7 +38,7 @@ namespace GridMate
     class Compressor
     {
     public:
-        virtual ~Compressor() AZ_DEFAULT_METHOD;
+        virtual ~Compressor() = default;
 
         /*
         * Initialize compressor
@@ -93,7 +93,7 @@ namespace GridMate
     class CompressionFactory
     {
     public:
-        virtual ~CompressionFactory() AZ_DEFAULT_METHOD;
+        virtual ~CompressionFactory() = default;
 
         /*
         * Instantiate new compressor

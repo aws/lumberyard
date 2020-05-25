@@ -12,6 +12,8 @@
 
 #include "Math.h"
 
+#include <ScriptCanvas/Internal/Nodes/ExpressionNodeBase.h>
+
 #pragma warning (disable:4503) // decorated name length exceeded, name was truncated
 
 namespace ScriptCanvas
@@ -38,6 +40,8 @@ namespace ScriptCanvas
                         ;
                 }
             }
+
+            Nodes::Internal::ExpressionNodeBase::Reflect(reflection);
         }
 
         void Math::InitNodeRegistry(NodeRegistry& nodeRegistry)
@@ -49,6 +53,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Math, Divide>(nodeRegistry);
             AddNodeToRegistry<Math, Matrix3x3>(nodeRegistry);
             AddNodeToRegistry<Math, Matrix4x4>(nodeRegistry);
+            AddNodeToRegistry<Math, MathExpression>(nodeRegistry);
             AddNodeToRegistry<Math, Multiply>(nodeRegistry);
             AddNodeToRegistry<Math, Number>(nodeRegistry);
             AddNodeToRegistry<Math, OBB>(nodeRegistry);
@@ -60,7 +65,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Math, Transform>(nodeRegistry);
             AddNodeToRegistry<Math, Vector2>(nodeRegistry);
             AddNodeToRegistry<Math, Vector3>(nodeRegistry);
-            AddNodeToRegistry<Math, Vector4>(nodeRegistry);
+            AddNodeToRegistry<Math, Vector4>(nodeRegistry);            
             MathRegistrar::AddToRegistry<Math>(nodeRegistry);
             RandomNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             AABBNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
@@ -87,6 +92,7 @@ namespace ScriptCanvas
                     ScriptCanvas::Nodes::Math::Divide::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Matrix3x3::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Matrix4x4::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::MathExpression::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Multiply::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Number::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::OBB::CreateDescriptor(),

@@ -180,7 +180,7 @@ namespace EMStudio
     void NotificationWindow::OpacityChanged(qreal opacity)
     {
         // set the new opacity for the paint of the window
-        mOpacity = opacity * 255;
+        mOpacity = aznumeric_cast<int>(opacity * 255);
 
         // update the window
         update();

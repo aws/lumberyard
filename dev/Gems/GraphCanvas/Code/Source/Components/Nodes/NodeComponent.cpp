@@ -40,11 +40,17 @@ namespace GraphCanvas
             return;
         }
 
+        serializeContext->Class<NodeSaveData>()
+            ->Version(1)
+            ->Field("HideUnusedSlots", &NodeSaveData::m_hideUnusedSlots)
+            ;
+
         serializeContext->Class<NodeComponent, GraphCanvasPropertyComponent>()
-            ->Version(3)
+            ->Version(4)
             ->Field("Configuration", &NodeComponent::m_configuration)
             ->Field("Slots", &NodeComponent::m_slots)
             ->Field("UserData", &NodeComponent::m_userData)
+            ->FieldFromBase<NodeComponent>("SaveData", &ComponentSaveDataInterface<NodeSaveData>::m_saveData)
             ;
 
 
@@ -92,7 +98,8 @@ namespace GraphCanvas
 
     void NodeComponent::Init()
     {
-        GraphCanvasPropertyComponent::Init();
+        InitSaveDataInterface(GetEntityId());
+
         AZ::EntityBus::Handler::BusConnect(GetEntityId());
 
         for (auto entityRef : m_slots)
@@ -224,6 +231,7 @@ namespace GraphCanvas
         }
 
         m_sceneId = sceneId;
+        RegisterIds(GetEntityId(), m_sceneId);
 
         if (m_sceneId.IsValid())
         {
@@ -264,6 +272,20 @@ namespace GraphCanvas
     void NodeComponent::SignalMemberSetupComplete()
     {
         SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnMemberSetupComplete);
+
+        if (m_saveData.m_hideUnusedSlots)
+        {
+            SceneRequests* requests = SceneRequestBus::FindFirstHandler(GetScene());
+
+            if (requests->IsLoading() || requests->IsPasting())
+            {
+                m_updateSlotState = true;
+            }
+            else
+            {
+                HideUnusedSlotsImpl();
+            }
+        }
     }
 
     AZ::EntityId NodeComponent::GetScene() const
@@ -301,6 +323,30 @@ namespace GraphCanvas
         for (auto& slotRef : m_slots)
         {
             StyleNotificationBus::Event(slotRef->GetId(), &StyleNotifications::OnStyleChanged);
+        }
+    }
+
+    void NodeComponent::OnGraphLoadComplete()
+    {
+        if (m_updateSlotState)
+        {
+            m_updateSlotState = false;
+            if (m_saveData.m_hideUnusedSlots)
+            {
+                HideUnusedSlotsImpl();
+            }
+        }
+    }
+
+    void NodeComponent::OnPasteEnd()
+    {
+        if (m_updateSlotState)
+        {
+            m_updateSlotState = false;
+            if (m_saveData.m_hideUnusedSlots)
+            {
+                HideUnusedSlotsImpl();
+            }
         }
     }
 
@@ -349,13 +395,18 @@ namespace GraphCanvas
         {
             m_slots.erase(entry);
 
+            QGraphicsLayoutItem* layoutItem = nullptr;
+            VisualRequestBus::EventResult(layoutItem, slotId, &VisualRequests::AsGraphicsLayoutItem);
+
             SlotNotificationBus::MultiHandler::BusDisconnect(slotId);
             NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotRemovedFromNode, slotId);
             SlotRequestBus::Event(slotId, &SlotRequests::ClearConnections);
-            SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());            
+            SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());
 
             AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::DeleteEntity, slotId);
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
+
+            delete layoutItem;
         }
     }
 
@@ -568,7 +619,7 @@ namespace GraphCanvas
                         {
                             foundDisabledNode = true;
                         }
-                    }                    
+                    }
                 }
             }
         }
@@ -583,5 +634,49 @@ namespace GraphCanvas
         }
 
         return graphicsInterface->GetEnabledState();
+    }
+
+    bool NodeComponent::IsHidingUnusedSlots()
+    {
+        return m_saveData.m_hideUnusedSlots;
+    }
+
+    void NodeComponent::ShowAllSlots()
+    {
+        if (m_saveData.m_hideUnusedSlots)
+        {
+            for (auto slotEntity : m_slots)
+            {
+                VisualRequestBus::Event(slotEntity->GetId(), &VisualRequests::SetVisible, true);
+            }
+
+            m_saveData.m_hideUnusedSlots = false;
+            m_saveData.SignalDirty();
+        }
+    }
+
+    void NodeComponent::HideUnusedSlots()
+    {
+        // Always hide the slots to deal with new slots that might have been added. Or previously filled slots that
+        // are no unfilled.
+        HideUnusedSlotsImpl();
+
+        m_saveData.m_hideUnusedSlots = true;
+        m_saveData.SignalDirty();
+    }
+
+    void NodeComponent::HideUnusedSlotsImpl()
+    {
+        HideSlotConfig hideConfig;
+
+        for (auto slotEntity : m_slots)
+        {
+            Endpoint endpoint(GetEntityId(), slotEntity->GetId());
+
+            if (GraphUtils::CanHideEndpoint(endpoint, hideConfig))
+            {
+                VisualRequestBus::Event(endpoint.GetSlotId(), &VisualRequests::SetVisible, false);
+            }
+        }
     }
 }

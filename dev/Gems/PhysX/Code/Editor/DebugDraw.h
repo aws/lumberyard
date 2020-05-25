@@ -77,29 +77,31 @@ namespace PhysX
             void DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay,
                 const Physics::ColliderConfiguration& colliderConfig,
                 const Physics::SphereShapeConfiguration& sphereShapeConfig,
-                const AZ::Vector3& transformScale) const;
+                const AZ::Vector3& colliderScale = AZ::Vector3::CreateOne()) const;
 
             void DrawBox(AzFramework::DebugDisplayRequests& debugDisplay,
                 const Physics::ColliderConfiguration& colliderConfig,
                 const Physics::BoxShapeConfiguration& boxShapeConfig,
-                const AZ::Vector3& transformScale) const;
+                const AZ::Vector3& colliderScale = AZ::Vector3::CreateOne(),
+                const bool forceUniformScaling = false) const;
 
             void DrawCapsule(AzFramework::DebugDisplayRequests& debugDisplay,
                 const Physics::ColliderConfiguration& colliderConfig,
                 const Physics::CapsuleShapeConfiguration& capsuleShapeConfig,
-                const AZ::Vector3& transformScale) const;
+                const AZ::Vector3& colliderScale = AZ::Vector3::CreateOne(),
+                const bool forceUniformScaling = false) const;
 
             void DrawMesh(AzFramework::DebugDisplayRequests& debugDisplay,
                 const Physics::ColliderConfiguration& colliderConfig,
                 const Physics::CookedMeshShapeConfiguration& assetConfig,
-                AZ::Vector3 meshScale, AZ::u32 geomIndex) const;
+                const AZ::Vector3& meshScale,
+                AZ::u32 geomIndex) const;
 
             void DrawPolygonPrism(AzFramework::DebugDisplayRequests& debugDisplay,
                 const Physics::ColliderConfiguration& colliderConfig, const AZStd::vector<AZ::Vector3>& points) const;
 
-            AZ::Transform GetColliderLocalTransform(const Physics::ColliderConfiguration& colliderConfig) const;
-            float GetUniformScale() const;
-            AZ::Vector3 GetNonUniformScale() const;
+            AZ::Transform GetColliderLocalTransform(const Physics::ColliderConfiguration& colliderConfig,
+                const AZ::Vector3& colliderScale = AZ::Vector3::CreateOne()) const;
 
             AZ::u32 GetNumShapes() const;
             const AZStd::vector<AZ::Vector3>& GetVerts(AZ::u32 geomIndex) const;

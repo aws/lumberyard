@@ -11,6 +11,7 @@
 */
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/SlotContextMenu.h>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/SlotMenuActions/SlotContextMenuAction.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/SlotMenuActions/SlotContextMenuActions.h>
 
@@ -28,5 +29,15 @@ namespace GraphCanvas
         AddMenuAction(aznew RemoveSlotMenuAction(this));
         AddMenuAction(aznew ClearConnectionsMenuAction(this));
         AddMenuAction(aznew ResetToDefaultValueMenuAction(this));
+
+        bool allowDataReferences = false;
+        AssetEditorSettingsRequestBus::EventResult(allowDataReferences, editorId, &AssetEditorSettingsRequests::AllowDataReferenceSlots);
+
+        if (allowDataReferences)
+        {
+            AddMenuAction(aznew ToggleReferenceStateAction(this));            
+        }
+
+        AddMenuAction(aznew PromoteToVariableAction(this));
     }
 }

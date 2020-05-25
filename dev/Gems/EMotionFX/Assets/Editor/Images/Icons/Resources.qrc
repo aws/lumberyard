@@ -26,5 +26,6 @@
         <file>ArrowDownGray.png</file>
         <file>ArrowRightGray.png</file>
         <file>AnimGraph.png</file>
+        <file>EMFX_icon_32x32.png</file>
     </qresource>
 </RCC>

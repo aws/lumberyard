@@ -41,6 +41,7 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* reflection);
 
         static BehaviorContextObjectPtr Create(const AZ::BehaviorClass& behaviorClass, const void* value = nullptr);
+        static BehaviorContextObjectPtr CreateDeepCopy(const AZ::BehaviorClass& behaviorClass, const BehaviorContextObject* value = nullptr);
 
         template<typename t_Value>
         AZ_INLINE static BehaviorContextObjectPtr Create(const t_Value& value, const AZ::BehaviorClass& behaviorClass);
@@ -56,6 +57,8 @@ namespace ScriptCanvas
         AZ_FORCE_INLINE const void* Get() const;
 
         AZ_FORCE_INLINE void* Mod();
+
+        BehaviorContextObjectPtr CloneObject(const AZ::BehaviorClass& behaviorClass);
 
     private:
         using AnyTypeHandlerFunction = AZStd::any::type_info::HandleFnT;
@@ -102,8 +105,6 @@ namespace ScriptCanvas
         AZ_FORCE_INLINE static AnyTypeHandlerFunction GetHandlerObjectHeap(const AZ::BehaviorClass& behaviorClass);
 
         AZ_FORCE_INLINE static AnyTypeHandlerFunction GetHandlerReference();
-
-        static void CheckClass(const AZ::BehaviorClass& behaviorClass);
 
         AZStd::atomic_int m_referenceCount{0};
         AZ::u32 m_flags{ 0 };
@@ -258,27 +259,23 @@ namespace ScriptCanvas
     AZ_INLINE BehaviorContextObjectPtr BehaviorContextObject::Create(const t_Value& value, const AZ::BehaviorClass& behaviorClass)
     {
         AZ_Assert(azrtti_typeid<t_Value>() == behaviorClass.m_typeId, "bad call to Create, mismatch with azrttti on value and behavior class");
-        CheckClass(behaviorClass);
         return Create(behaviorClass, reinterpret_cast<const void*>(&value));
     }
 
     AZ_INLINE BehaviorContextObject* BehaviorContextObject::CreateCopy(const AZ::BehaviorClass& behaviorClass, const void* value)
     {
-        CheckClass(behaviorClass);
         AZ_Assert(value, "invalid copy source object");
         return aznew BehaviorContextObject(value, GetAnyTypeInfoObject(behaviorClass), Owned);
     }
 
     AZ_INLINE BehaviorContextObject* BehaviorContextObject::CreateDefault(const AZ::BehaviorClass& behaviorClass)
     {
-        CheckClass(behaviorClass);
         const bool useHeap = AZStd::GetMax(behaviorClass.m_size, behaviorClass.m_alignment) > AZStd::Internal::ANY_SBO_BUF_SIZE;
         return useHeap ? CreateDefaultHeap(behaviorClass) : CreateDefaultBuffer(behaviorClass);
     }
 
     AZ_INLINE BehaviorContextObject* BehaviorContextObject::CreateDefaultBuffer(const AZ::BehaviorClass& behaviorClass)
     {
-        CheckClass(behaviorClass);
         AZ_ALIGN(char buffer[AZStd::Internal::ANY_SBO_BUF_SIZE], 32);
         AZ::BehaviorObject object = InvokeConstructor(behaviorClass, AZStd::addressof(buffer));
         auto bco = aznew BehaviorContextObject(object.m_address, GetAnyTypeInfoObject(behaviorClass), Owned);
@@ -288,7 +285,6 @@ namespace ScriptCanvas
 
     AZ_INLINE BehaviorContextObject* BehaviorContextObject::CreateDefaultHeap(const AZ::BehaviorClass& behaviorClass)
     {
-        CheckClass(behaviorClass);
         AZ::BehaviorObject object = InvokeConstructor(behaviorClass, nullptr);
         auto bco = aznew BehaviorContextObject(object.m_address, GetAnyTypeInfoObject(behaviorClass), Owned);
         return bco;

@@ -18,6 +18,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
 #include <AzQtComponents/Utilities/Conversions.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <QMenu>
 #include <QShortcut>
 #include <QPainter>
@@ -339,7 +340,7 @@ bool PaletteModel::lacksAnyOf(const QVector<AZ::Color>& colors) const
 int PaletteModel::indexOf(const AZ::Color& color) const
 {
     auto i = std::find_if(m_palette->colors().cbegin(), m_palette->colors().cend(), [&color](const AZ::Color& candidate) { return candidate.IsClose(color); });
-    return i == m_palette->colors().cend() ? -1 : std::distance(m_palette->colors().cbegin(), i);
+    return i == m_palette->colors().cend() ? -1 : aznumeric_cast<int>(std::distance(m_palette->colors().cbegin(), i));
 }
 
 bool PaletteModel::tryAppend(const AZ::Color& color)
@@ -368,7 +369,7 @@ void PaletteModel::insertIgnoringDuplicates(int row, QVector<AZ::Color>::const_i
     }
     else
     {
-        beginInsertRows({}, row, row + std::distance(first, last) - 1);
+        beginInsertRows({}, row, row + aznumeric_cast<int>(std::distance(first, last)) - 1);
         m_palette->insertColorsIgnoringDuplicates(row, first, last);
         endInsertRows();
     }
@@ -523,7 +524,7 @@ void PaletteItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
     AZ::Color color = index.data(PaletteModel::ColorRole).value<AZ::Color>();
     if (m_view->isGammaEnabled())
     {
-        color = AdjustGamma(color, m_view->gamma());
+        color = AdjustGamma(color, aznumeric_cast<float>(m_view->gamma()));
     }
 
     m_renderer->setColor(color);

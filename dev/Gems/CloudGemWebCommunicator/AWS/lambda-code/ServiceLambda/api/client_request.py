@@ -9,23 +9,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
 import importlib
 import boto3
 import CloudCanvas
 import service
-import iot_websocket
-import iot_openssl
-import registration_shared
-import channel_list
+from . import iot_websocket
+from . import iot_openssl
+from . import registration_shared
+from . import channel_list
 from datetime import datetime
 
-from registration_shared import client_registry_table_name
+from .registration_shared import client_registry_table_name
 
 @service.api 
 def request_channel_list(request):
 
-    print 'Channel list requested from {}'.format(request)
-    print 'Client Registry is ' + client_registry_table_name
+    print('Channel list requested from {}'.format(request))
+    print('Client Registry is ' + client_registry_table_name)
 
     try:
         return request_channel_list.player_channel_list
@@ -39,12 +40,12 @@ def request_channel_list(request):
 
 @service.api     
 def request_registration(request, registration_type):
-    print 'Registration requested for {} type {}'.format(request, registration_type)
+    print('Registration requested for {} type {}'.format(request, registration_type))
 
     responseObject = {}
 
     if registration_type == 'OPENSSL':
-        print 'OPENSSL registration not enabled for client request'
+        print('OPENSSL registration not enabled for client request')
     elif registration_type == 'WEBSOCKET':
         responseObject = iot_websocket.register_websocket(request)
     

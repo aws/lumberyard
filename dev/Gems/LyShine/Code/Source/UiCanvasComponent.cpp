@@ -324,6 +324,8 @@ UiCanvasComponent::UiCanvasComponent()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiCanvasComponent::~UiCanvasComponent()
 {
+    DestroyScheduledElements();
+
     m_uiAnimationSystem.RemoveAllSequences();
 
     // remove all entries from m_elementsNeedingTransformRecompute list, can't use clear since that doesn't set the
@@ -1380,6 +1382,20 @@ void UiCanvasComponent::SetTooltipDisplayElement(AZ::EntityId entityId)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ForceFocusInteractable(AZ::EntityId interactableId)
+{
+    if (interactableId.IsValid())
+    {
+        AZ::EntityId lastHoverInteractable = m_hoverInteractable;
+        // Force the interactable to have the hover. Will also auto activate the
+        // interactable if the flag is set
+        ForceHoverInteractable(interactableId);
+        // Will also set as active interactable
+        CheckHoverInteractableAndAutoActivate(lastHoverInteractable, UiNavigationHelpers::Command::Unknown, true);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point)
 {
     SetHoverInteractable(interactableId);
@@ -1559,6 +1575,17 @@ void UiCanvasComponent::StartSequence(const AZStd::string& sequenceName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::PlaySequenceRange(const AZStd::string& sequenceName, float startTime, float endTime)
+{
+    IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
+    if (sequence)
+    {
+        m_uiAnimationSystem.AddUiAnimationListener(sequence, this);
+        m_uiAnimationSystem.PlaySequence(sequence, nullptr, false, false, startTime, endTime);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::StopSequence(const AZStd::string& sequenceName)
 {
     IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
@@ -1638,6 +1665,25 @@ bool UiCanvasComponent::IsSequencePlaying(const AZStd::string& sequenceName)
         return m_uiAnimationSystem.IsPlaying(sequence);
     }
     return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiCanvasComponent::GetSequenceLength(const AZStd::string& sequenceName)
+{
+    float length = 0.f;
+    IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
+    if (sequence)
+    {
+        auto range = sequence->GetTimeRange();
+        length = range.Length();
+    }
+    return length;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetSequenceStopBehavior(IUiAnimationSystem::ESequenceStopBehavior stopBehavior)
+{
+    m_uiAnimationSystem.SetSequenceStopBehavior(stopBehavior);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1955,6 +2001,7 @@ void UiCanvasComponent::UpdateCanvas(float deltaTime, bool isInGame)
         EBUS_EVENT_ID(GetEntityId(), UiCanvasUpdateNotificationBus, UpdateInEditor, deltaTime);
     }
 
+    DestroyScheduledElements();
     SendRectChangeNotificationsAndRecomputeLayouts();
 }
 
@@ -2038,6 +2085,23 @@ void UiCanvasComponent::UnscheduleElementForTransformRecompute(UiElementComponen
         m_elementsNeedingTransformRecompute.erase(ElementComponentSlist::const_iterator_impl(elementComponent));
         elementComponent->m_next = nullptr;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ScheduleElementDestroy(AZ::EntityId entityId)
+{
+    m_elementsScheduledForDestroy.push_back(entityId);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::DestroyScheduledElements()
+{
+    for (auto entityId : m_elementsScheduledForDestroy)
+    {
+        UiElementComponent::DestroyElementEntity(entityId);
+    }
+
+    m_elementsScheduledForDestroy.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2340,6 +2404,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
 
         behaviorContext->EBus<UiAnimationBus>("UiAnimationBus")
             ->Event("StartSequence", &UiAnimationBus::Events::StartSequence)
+            ->Event("PlaySequenceRange", &UiAnimationBus::Events::PlaySequenceRange)
             ->Event("StopSequence", &UiAnimationBus::Events::StopSequence)
             ->Event("AbortSequence", &UiAnimationBus::Events::AbortSequence)
             ->Event("PauseSequence", &UiAnimationBus::Events::PauseSequence)
@@ -2348,12 +2413,18 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetSequencePlayingSpeed", &UiAnimationBus::Events::GetSequencePlayingSpeed)
             ->Event("SetSequencePlayingSpeed", &UiAnimationBus::Events::SetSequencePlayingSpeed)
             ->Event("GetSequencePlayingTime", &UiAnimationBus::Events::GetSequencePlayingTime)
-            ->Event("IsSequencePlaying", &UiAnimationBus::Events::IsSequencePlaying);
+            ->Event("IsSequencePlaying", &UiAnimationBus::Events::IsSequencePlaying)
+            ->Event("GetSequenceLength", &UiAnimationBus::Events::GetSequenceLength)
+            ->Event("SetSequenceStopBehavior", &UiAnimationBus::Events::SetSequenceStopBehavior);
 
         behaviorContext->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Started>("eUiAnimationEvent_Started")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Stopped>("eUiAnimationEvent_Stopped")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Aborted>("eUiAnimationEvent_Aborted")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Updated>("eUiAnimationEvent_Updated");
+
+        behaviorContext->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_LeaveTime>("eSSB_LeaveTime")
+            ->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_GotoEndTime>("eSSB_GotoEndTime")
+            ->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_GotoStartTime>("eSSB_GotoStartTime");
 
         behaviorContext->EBus<UiAnimationNotificationBus>("UiAnimationNotificationBus")
             ->Handler<UiAnimationNotificationBusBehaviorHandler>();
@@ -3107,12 +3178,12 @@ void UiCanvasComponent::ClearActiveInteractable()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::CheckHoverInteractableAndAutoActivate(AZ::EntityId prevHoverInteractable, UiNavigationHelpers::Command command)
+void UiCanvasComponent::CheckHoverInteractableAndAutoActivate(AZ::EntityId prevHoverInteractable, UiNavigationHelpers::Command command, bool forceAutoActivate)
 {
     // Check if this hover interactable should automatically go to an active state
     bool autoActivate = false;
     EBUS_EVENT_ID_RESULT(autoActivate, m_hoverInteractable, UiInteractableBus, GetIsAutoActivationEnabled);
-    if (autoActivate)
+    if (autoActivate || forceAutoActivate)
     {
         bool handled = false;
         EBUS_EVENT_ID_RESULT(handled, m_hoverInteractable, UiInteractableBus, HandleAutoActivation);

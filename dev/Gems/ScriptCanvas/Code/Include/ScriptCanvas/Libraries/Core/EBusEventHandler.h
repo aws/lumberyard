@@ -22,6 +22,8 @@
 #include <ScriptCanvas/Core/Graph.h>
 #include <AzCore/std/containers/map.h>
 
+#include <ScriptCanvas/Core/EBusNodeBus.h>
+
 namespace AZ
 {
     class BehaviorEBus;
@@ -51,12 +53,16 @@ namespace ScriptCanvas
                 int m_numExpectedArguments = {};
                 bool m_resultEvaluated = {};
 
+                bool m_shouldHandleEvent = false;
+                bool m_isHandlingEvent = false;
+
                 static bool EBusEventEntryVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
                 static void Reflect(AZ::ReflectContext* context);
             };
 
             class EBusEventHandler 
                 : public Node
+                , public EBusHandlerNodeRequestBus::Handler
             {
             public:
 
@@ -83,9 +89,18 @@ namespace ScriptCanvas
                 ~EBusEventHandler() override;
 
                 void OnInit() override;
-                
                 void OnActivate() override;
+                void OnPostActivate() override;
                 void OnDeactivate() override;
+
+                void OnGraphSet() override;
+                
+                void CollectVariableReferences(AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+                bool ContainsReferencesToVariables(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds) const override;
+
+                // EBusHandlerNodeRequestBus
+                void SetAddressId(const Datum& datumValue) override;
+                ////
 
                 void InitializeBus(const AZStd::string& ebusName);
 
@@ -96,7 +111,6 @@ namespace ScriptCanvas
                 void Connect();
                 
                 void Disconnect();
-
 
                 const EBusEventEntry* FindEvent(const AZStd::string& name) const;
                 AZ_INLINE const char* GetEBusName() const { return m_ebusName.c_str(); }
@@ -133,6 +147,7 @@ namespace ScriptCanvas
                 void OnEvent(const char* eventName, const int eventIndex, AZ::BehaviorValueParameter* result, const int numParameters, AZ::BehaviorValueParameter* parameters);
 
                 void OnInputSignal(const SlotId&) override;
+                void OnInputChanged(const Datum& input, const SlotId& slotID) override;
 
             private:
                 EBusEventHandler(const EBusEventHandler&) = delete;

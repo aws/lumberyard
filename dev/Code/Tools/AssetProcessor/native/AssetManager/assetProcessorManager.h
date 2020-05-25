@@ -40,6 +40,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 #include "native/utilities/JobDiagnosticTracker.h"
+#include "SourceFileRelocator.h"
 
 class FileWatcher;
 
@@ -180,6 +181,9 @@ namespace AssetProcessor
         //! and neither have any builders.
         void SetEnableModtimeSkippingFeature(bool enable);
 
+        //! Query logging will log every asset database query.
+        void SetQueryLogging(bool enableLogging);
+
         //! Scans assets that match the given pattern for content that looks like a missing product dependency.
         //! Note that the pattern is used as an SQL query, so use SQL syntax for the search (wildcard is %, not *).
         void ScanForMissingProductDependencies(QString pattern, int maxScanIteration=AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration);
@@ -205,7 +209,7 @@ namespace AssetProcessor
         void AssetToProcess(JobDetails jobDetails);
 
         //! Emit whenever a new asset is found or an existing asset is updated
-        void AssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
+        void AssetMessage(AzFramework::AssetSystem::AssetNotificationMessage message);
         
         // InputAssetProcessed - uses absolute asset path of input file - no outputprefix
         void InputAssetProcessed(QString fullAssetPath, QString platform);
@@ -232,6 +236,8 @@ namespace AssetProcessor
         void SourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath);
         void SourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid);
         void JobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo);
+
+        void JobComplete(JobEntry jobEntry, AzToolsFramework::AssetSystem::JobStatus status);
 
         //! Send a message when a new path dependency is resolved, so that downstream tools know the AssetId of the resolved dependency.
         void PathDependencyResolved(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
@@ -266,7 +272,7 @@ namespace AssetProcessor
         void ProcessGetAbsoluteAssetDatabaseLocationRequest(NetworkRequestID requestId, BaseAssetProcessorMessage* message);
         
         //! This request comes in and is expected to do whatever heuristic is required in order to determine if an asset actually exists in the database.
-        void OnRequestAssetExists(NetworkRequestID requestId, QString platform, QString searchTerm);
+        void OnRequestAssetExists(NetworkRequestID requestId, QString platform, QString searchTerm, AZ::Data::AssetId assetId);
 
         //! Searches the product and source asset tables to try and find a match
         QString GuessProductOrSourceAssetName(QString searchTerm,  QString platform, bool useLikeSearch);
@@ -302,6 +308,7 @@ namespace AssetProcessor
         void DispatchFileChange();
         bool InitializeCacheRoot();
         void PopulateJobStateCache();
+        void AutoFailJob(const AZStd::string& consoleMsg, const AZStd::string& autoFailReason, const AZStd::vector<AssetProcessedEntry>::iterator& assetIter);
         
         using ProductInfoList = AZStd::vector<AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>>;
 
@@ -432,6 +439,7 @@ namespace AssetProcessor
         AZStd::unordered_map<JobDesc, AZStd::unordered_set<AZ::Uuid>> m_jobDescToBuilderUuidMap;
         
         AZStd::unique_ptr<PathDependencyManager> m_pathDependencyManager;
+        AZStd::unique_ptr<SourceFileRelocator> m_sourceFileRelocator;
 
         JobDiagnosticTracker m_jobDiagnosticTracker{};
         
@@ -521,9 +529,6 @@ namespace AssetProcessor
         // when true, only processes files if their modtime or builder(s) have changed
         // defaults to true (in the settings) for GUI mode, false for batch mode
         bool m_allowModtimeSkippingFeature = false;
-
-        // a file name to use in dependency lists to indicate a missing dependency.
-        QString m_placeHolderFileName = "$missing_dependency$";
 
 protected Q_SLOTS:
         void FinishAnalysis(AZStd::string fileToCheck);

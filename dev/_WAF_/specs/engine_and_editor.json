@@ -12,8 +12,6 @@
         "SceneUI",
         "SceneCore",
         "Cry3DEngine",
-        "CryAction",
-        "CryAction_AutoFlowNode",
         "CryCommon",
         "CryFont",
         "CryNetwork",
@@ -24,6 +22,9 @@
         "CryRenderGL",
         "CryRenderMetal",
         "CryRenderNULL",
-        "LmbrAWS"
+        "LyzardGems",
+        "LyzardEngines",
+        "LyzardProjects",
+        "GemRegistry"
     ]
 }

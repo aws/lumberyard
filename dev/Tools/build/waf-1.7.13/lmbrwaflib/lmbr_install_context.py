@@ -8,10 +8,13 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import os, sys
 
+# System Imports
+import os
+import sys
+
+# waflib imports
 from waflib import Build, Context, Errors, Logs, Runner, Utils
-from waflib.Configure import conf
 
 
 class LmbrInstallContext(Build.InstallContext):
@@ -85,6 +88,8 @@ class LmbrInstallContext(Build.InstallContext):
     def get_build_iterator(self):
         self.set_group(self.group_name)
         self.cur = self.current_group
+
+        self.targets = ''
 
         self.post_group()
 

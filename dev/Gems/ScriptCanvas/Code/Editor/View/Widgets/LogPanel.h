@@ -47,11 +47,11 @@ namespace ScriptCanvasEditor
 
         protected:
 
-            void OnBuildGameEntity(const AZStd::string&, const AZ::EntityId&, const AZ::EntityId&) override;
+            void OnBuildGameEntity(const AZStd::string&, const AZ::EntityId& editGraphId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId) override;
 
             QWidget* CreateTab(const AzToolsFramework::LogPanel::TabSettings& settings) override;
 
-            AZ::EntityId m_runtimeGraphId;
+            ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
 
             QTabWidget* pTabWidget;
         };
@@ -75,7 +75,7 @@ namespace ScriptCanvasEditor
             Q_OBJECT;
         public:
             AZ_CLASS_ALLOCATOR(LogTab, AZ::SystemAllocator, 0);
-            LogTab(QWidget* pParent, const AZ::EntityId& runtimeGraphId, const AzToolsFramework::LogPanel::TabSettings& in_settings);
+            LogTab(QWidget* pParent, const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AzToolsFramework::LogPanel::TabSettings& in_settings);
             ~LogTab() override;
 
             void LogMessage(const AZStd::string& message) override;

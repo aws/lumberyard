@@ -19,6 +19,7 @@
 #include "Multiplayer/MultiplayerUtils.h"
 
 #include <GameLift/GameLiftBus.h>
+#include <GameLift/Session/GameLiftSessionDefs.h>
 #include <GameLift/Session/GameLiftServerService.h>
 #include <CertificateManager/ICertificateManagerGem.h>
 #include <CertificateManager/DataSource/FileDataSourceBus.h>
@@ -30,7 +31,7 @@
 namespace Multiplayer
 {
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
     static void StartGameLiftServer(IConsoleCmdArgs *args)
     {
         CRY_ASSERT(gEnv->pConsole);
@@ -456,17 +457,20 @@ namespace Multiplayer
             REGISTER_STRING(AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID, "DefaultHopper", 0, AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID_DESC);
 #endif
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             REGISTER_STRING("gamelift_fleet_id", "", VF_DUMPTODISK, "Id of GameLift Fleet to use with this client.");
+            REGISTER_STRING("gamelift_queue_name", "", VF_DUMPTODISK, "Name of GameLift Queue to use with this client.");
             REGISTER_STRING("gamelift_aws_access_key", "", VF_DUMPTODISK, "AWS Access Key.");
             REGISTER_STRING("gamelift_aws_secret_key", "", VF_DUMPTODISK, "AWS Secret Key.");
             REGISTER_STRING("gamelift_aws_region", "us-west-2", VF_DUMPTODISK, "AWS Region to use for GameLift.");
             REGISTER_STRING("gamelift_endpoint", "gamelift.us-west-2.amazonaws.com", VF_DUMPTODISK, "GameLift service endpoint.");
             REGISTER_STRING("gamelift_alias_id", "", VF_DUMPTODISK, "Id of GameLift alias to use with the client.");
+            REGISTER_STRING("gamelift_matchmaking_config_name", "", VF_DUMPTODISK, "Matchmaking config name");
             REGISTER_INT("gamelift_uselocalserver", 0, VF_DEV_ONLY, "Set to non zero to use the local GameLift Server.");
 
             REGISTER_COMMAND_DEV_ONLY("gamelift_host", MPHostGameLiftCmd, 0, "try to create and then join a GameLift session. gamelift_host <serverName> <mapName> <maxPlayers>");
             REGISTER_COMMAND_DEV_ONLY("gamelift_join", MPJoinGameLiftCmd, 0, "try to join a GameLift session");
+            REGISTER_COMMAND_DEV_ONLY("gamelift_flexmatch", MPMatchmakingGameLiftCmd, 0, "try to matchmake a GameLift session creates or backfills matchmake game session. gamelift_flexmatch <configName>");
 
             // player IDs must be unique and anonymous
             bool includeBrackets = false;
@@ -476,9 +480,13 @@ namespace Multiplayer
             REGISTER_COMMAND("gamelift_stop_client", StopGameLiftClient, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
             REGISTER_COMMAND("gamelift_start_server", StartGameLiftServer, VF_NULL, "Start up the GameLift server. This will initialize gameLift server API.\nThe session will start after GameLift initialization");
             REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
+            REGISTER_INT("gamelift_flexmatch_enable", 0, VF_NULL, "Enable Custom backfill");
+            REGISTER_INT("gamelift_flexmatch_onplayerremoved_enable", 0, VF_NULL, "Enables creating backfill tickets on player disconnect.");
+            REGISTER_INT("gamelift_flexmatch_minimumplayersessioncount", 2, VF_NULL, "Minimum player session count in a matchmaking config. Same as min players in matchmaking rule set");
+            REGISTER_FLOAT("gamlift_flexmatch_start_delay", 5.0F, VF_NULL, "initial delay for custom backfill in seconds.");
 #endif
         }
     }
@@ -487,7 +495,7 @@ namespace Multiplayer
     {
         if (gEnv && !gEnv->IsEditor())
         {
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
             UNREGISTER_COMMAND("gamelift_start_client");
             UNREGISTER_CVAR("gamelift_player_id");
             UNREGISTER_CVAR("gamelift_alias_id");
@@ -497,11 +505,17 @@ namespace Multiplayer
             UNREGISTER_CVAR("gamelift_aws_secret_key");
             UNREGISTER_CVAR("gamelift_aws_access_key");
             UNREGISTER_CVAR("gamelift_fleet_id");
+            UNREGISTER_CVAR("gamelift_queue_name");
+            UNREGISTER_CVAR("gamelift_matchmaking_config_name");
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
             UNREGISTER_COMMAND("gamelift_stop_server");
             UNREGISTER_COMMAND("gamelift_start_server");
+            UNREGISTER_COMMAND("gamelift_flexmatch_enable");
+            UNREGISTER_COMMAND("gamelift_flexmatch_onplayerremoved_enable");
+            UNREGISTER_COMMAND("gamelift_flexmatch_minimumplayersessioncount");
+            UNREGISTER_COMMAND("gamlift_flexmatch_start_delay");
 #endif
 
 #if AZ_TRAIT_MULTIPLAYER_USE_MATCH_MAKER_CVARS
@@ -713,7 +727,7 @@ namespace Multiplayer
         EBUS_EVENT_ID_RESULT(s_instance->m_search,gridMate,GridMate::LANSessionServiceBus,StartGridSearch,searchParams);
     }
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
     //------------------------------------------------------------------------
     void MultiplayerCVars::MPHostGameLiftCmd(IConsoleCmdArgs* args)
     {
@@ -751,6 +765,21 @@ namespace Multiplayer
         AZ_UNUSED(args);
         MultiplayerGameLiftClientBus::Broadcast(
             &MultiplayerGameLiftClientBus::Events::StopGameLiftClientService);
+    }
+
+    //------------------------------------------------------------------------
+    void MultiplayerCVars::MPMatchmakingGameLiftCmd(IConsoleCmdArgs *args)
+    {
+        if (args->GetArgCount() != 2)
+        {
+            AZ_TracePrintf("MultiplayerModule", "gamelift_flexmatch: Invalid number of arguments. Expected gamelift_flexmatch <configName>");
+            return;
+        }
+
+        const char* configName = args->GetArg(1);        
+
+        MultiplayerGameLiftClientBus::Broadcast(
+            &MultiplayerGameLiftClientBus::Events::StartGameLiftMatchmaking, configName);
     }
 #endif
 

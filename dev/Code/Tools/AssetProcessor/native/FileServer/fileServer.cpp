@@ -109,16 +109,19 @@ void FileServer::ConnectionAdded(unsigned int connId, Connection* connection)
     connect(connection, &Connection::AssetPlatformChanged, this, [this, connection]()
         {
             auto fileIO = m_fileIOs[connection->ConnectionId()];
-            if ((fileIO) && (!connection->AssetPlatform().isEmpty())) // when someone disconnects, the asset platform may be cleared before disconnect is set.
+            if ((fileIO) && (!connection->AssetPlatforms().isEmpty())) // when someone disconnects, the asset platform may be cleared before disconnect is set.
             {
                 QDir projectCacheRoot;
+                // Because the platform based aliases below can only be one platform at at a time we need to prefer a single platform in case multiple listening platforms
+                // exist on the same connection
+                QString assetPlatform = connection->AssetPlatforms().first();
                 if (!AssetUtilities::ComputeProjectCacheRoot(projectCacheRoot))
                 {
                     projectCacheRoot = m_systemRoot;
                 }
                 else
                 {
-                    projectCacheRoot = QDir(projectCacheRoot.absoluteFilePath(connection->AssetPlatform()));
+                    projectCacheRoot = QDir(projectCacheRoot.absoluteFilePath(assetPlatform));
                 }
                 fileIO->SetAlias("@root@", projectCacheRoot.absolutePath().toUtf8().data());
 

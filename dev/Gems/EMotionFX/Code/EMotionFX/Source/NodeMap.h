@@ -85,16 +85,8 @@ namespace EMotionFX
         const AZStd::string& GetFileNameString() const;
 
         // source actor
-        void SetSourceActorFileName(const char* fileName);
-        void SetSourceActor(Actor* actor, bool deleteExisting = true);
+        void SetSourceActor(Actor* actor);
         Actor* GetSourceActor() const;
-        void SetAutoDeleteSourceActor(bool autoDelete);
-        bool GetAutoDeleteSourceActor() const;
-        const char* GetSourceActorFileName() const;
-        const AZStd::string& GetSourceActorFileNameString() const;
-
-        // auto load source actor, based on the set source actor filename, and store the pointer also inside this class
-        bool LoadSourceActor();
 
         // saving
         bool Save(const char* fileName, MCore::Endian::EEndianType targetEndianType) const;
@@ -102,13 +94,11 @@ namespace EMotionFX
     private:
         MCore::Array<MapEntry>  mEntries;                   /**< The array of entries. */
         AZStd::string           mFileName;                  /**< The filename. */
-        AZStd::string           mSourceActorFileName;       /**< The source actor filename. */
         Actor*                  mSourceActor;               /**< The source actor. */
-        bool                    mAutoDeleteSourceActor;     /**< Automatically delete the source actor object on destruction? */
 
         // constructor and destructor
         NodeMap();
-        ~NodeMap();
+        ~NodeMap() = default;
 
         // file saving
         bool WriteFileString(MCore::DiskFile* f, const AZStd::string& textToSave, MCore::Endian::EEndianType targetEndianType) const;

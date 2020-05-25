@@ -1222,7 +1222,7 @@ namespace UnitTest
 
         //////////////////////////////////////////////////////////////////////////
         // FrameProfilerDrillerBus
-        virtual void OnFrameProfilerData(const FrameProfiler::ThreadDataArray& data)
+        void OnFrameProfilerData(const FrameProfiler::ThreadDataArray& data) override
         {
             for (size_t iThread = 0; iThread < data.size(); ++iThread)
             {

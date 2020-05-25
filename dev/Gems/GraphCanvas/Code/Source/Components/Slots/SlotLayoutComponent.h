@@ -78,5 +78,7 @@ namespace GraphCanvas
     private:
         QGraphicsWidget* m_layoutWidget;
         QGraphicsLayout* m_layout;
+
+        bool m_isVisible = true;
     };
 }

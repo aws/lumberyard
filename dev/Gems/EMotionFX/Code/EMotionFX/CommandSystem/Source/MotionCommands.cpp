@@ -1169,38 +1169,42 @@ namespace CommandSystem
         {
             return;
         }
-
-        // get the number of motions to load
         const size_t numFileNames = filenames.size();
 
-        // construct the command name
-        AZStd::string valueString;
-        valueString = AZStd::string::format("%s %d motion%s", (reload) ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
+        const AZStd::string commandGroupName = AZStd::string::format("%s %d motion%s", reload ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
+        MCore::CommandGroup commandGroup(commandGroupName, static_cast<uint32>(numFileNames * 2));
 
-        // create our command group
-        MCore::CommandGroup commandGroup(valueString.c_str(), (uint32)numFileNames * 2);
-
-        // iterate over all filenames and load the motions
         AZStd::string command;
+        const EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
         for (size_t i = 0; i < numFileNames; ++i)
         {
-            // in case we want to reload the same motion remove the old one first
-            if (reload)
-            {
-                valueString = AZStd::string::format("RemoveMotion -filename \"%s\"", filenames[i].c_str());
-                commandGroup.AddCommandString(valueString.c_str());
-            }
+            const AZStd::string& filename = filenames[i];
+            const EMotionFX::Motion* motion = motionManager.FindMotionByFileName(filename.c_str());
 
-            command = AZStd::string::format("ImportMotion -filename \"%s\"", filenames[i].c_str());
-            commandGroup.AddCommandString(command);
+            if (reload && motion)
+            {
+                // Remove the old motion first and then load the motion again.
+                command = AZStd::string::format("RemoveMotion -filename \"%s\"", filename.c_str());
+                commandGroup.AddCommandString(command);
+
+                // Make sure the motion id stays the same after re-importing it.
+                command = AZStd::string::format("ImportMotion -filename \"%s\" -motionID %d", filename.c_str(), motion->GetID());
+                commandGroup.AddCommandString(command);
+            }
+            else
+            {
+                // Just import the motion.
+                command = AZStd::string::format("ImportMotion -filename \"%s\"", filename.c_str());
+                commandGroup.AddCommandString(command);
+            }
         }
 
-        // execute the group command
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, valueString) == false)
+        AZStd::string result;
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
-            if (valueString.empty() == false)
+            if (!result.empty())
             {
-                MCore::LogError(valueString.c_str());
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
 

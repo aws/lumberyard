@@ -71,9 +71,6 @@ namespace AssetProcessor
 
         bool GetBuilderByID(const AZStd::string& builderName, AZStd::shared_ptr<InternalMockBuilder>& builder);
         bool GetBuildUUIDFromName(const AZStd::string& builderName, AZ::Uuid& buildUUID);
-    protected:
-        AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<InternalMockBuilder> > m_internalBuilders;
-
         struct BuilderFilePatternMatcherAndBuilderDesc
         {
             AssetUtilities::BuilderFilePatternMatcher   m_matcherBuilderPattern;
@@ -81,8 +78,11 @@ namespace AssetProcessor
             AZ::Uuid                                    m_internalUuid;
             AZStd::string                               m_internalBuilderName;
         };
-        
+
         AZStd::list<BuilderFilePatternMatcherAndBuilderDesc> m_matcherBuilderPatterns;
+    protected:
+        AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<InternalMockBuilder> > m_internalBuilders;
+
         AZStd::unordered_map<AZStd::string, AZ::Uuid > m_internalBuilderUUIDByName;
         int m_getMatchingBuildersInfoFunctionCalls;
         int m_internalBuilderRegistrationCount;

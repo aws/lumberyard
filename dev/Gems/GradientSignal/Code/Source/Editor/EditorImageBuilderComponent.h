@@ -18,6 +18,9 @@
 
 namespace GradientSignal
 {
+    class ImageAsset;
+    class ImageSettings;
+
     //! Builder to process images 
     class EditorImageBuilderWorker
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
@@ -38,6 +41,8 @@ namespace GradientSignal
         //////////////////////////////////////////////////////////////////////////
 
         static AZ::Uuid GetUUID();
+        static AZStd::unique_ptr<ImageAsset> LoadImageFromPath(const AZStd::string& fullPath);
+        static AZStd::unique_ptr<ImageSettings> LoadImageSettingsFromPath(const AZStd::string& fullPath);
 
     private:
         bool m_isShuttingDown = false;

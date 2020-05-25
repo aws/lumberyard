@@ -9,7 +9,7 @@
     "android_settings" : {
         "package_name" : "com.amazon.lumberyard.startergame",
         "version_number" : 1,
-        "version_name" : "1.0.0.0",
+        "version_name" : "1.0.0",
         "orientation" : "landscape"
     }
 }

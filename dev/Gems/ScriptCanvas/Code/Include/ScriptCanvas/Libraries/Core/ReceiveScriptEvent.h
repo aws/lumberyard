@@ -20,9 +20,7 @@
 #include <AzCore/std/containers/map.h>
 
 #include <ScriptEvents/ScriptEventsBus.h>
-#include <ScriptEvents/ScriptEventsAsset.h>
 #include <ScriptEvents/ScriptEventsAssetRef.h>
-
 
 namespace AZ
 {
@@ -45,8 +43,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Receive Script Event", "Allows you to handle a event.")
                     ScriptCanvas_Node::Uuid("{76CF9938-4A7E-4CDA-8DF3-77C10239D99C}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Bus.png")
-                    ScriptCanvas_Node::EventHandler("SerializeContextEventHandlerDefault<ReceiveScriptEvent>")
-                    ScriptCanvas_Node::Version(1)
+                    ScriptCanvas_Node::Version(2)
                     ScriptCanvas_Node::GraphEntryPoint(true)
                     ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                 );
@@ -57,6 +54,7 @@ namespace ScriptCanvas
                 ~ReceiveScriptEvent() override;
 
                 void OnActivate() override;
+                void OnPostActivate() override;
                 void OnDeactivate() override;
 
                 // Inputs
@@ -79,11 +77,11 @@ namespace ScriptCanvas
 
                 bool IsIDRequired() const;
 
-                void OnWriteEnd();
-
                 void UpdateScriptEventAsset() override;
 
                 using Events = AZStd::vector<Internal::ScriptEventEntry>;
+
+                void SetAutoConnectToGraphOwner(bool enabled);
 
             protected:
 
@@ -95,6 +93,7 @@ namespace ScriptCanvas
                 void Disconnect(bool queueDisconnect = true);
 
                 bool CreateEbus();
+                bool SetupHandler();
 
                 void OnInputSignal(const SlotId& slotId) override;
                 
@@ -129,6 +128,8 @@ namespace ScriptCanvas
                 };
 
                 EventHookUserData m_userData;
+
+                ScriptCanvas_SerializePropertyWithDefaults(bool, m_autoConnectToGraphOwner, true);
             };
         } // namespace Core
     } // namespace Nodes

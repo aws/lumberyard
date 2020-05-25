@@ -4,7 +4,7 @@
     ],
     "source": "@GEM@",
     "description": "Static libraries for AWS IoT Device SDK",
-    "includes": [
+    "system_includes": [
         "External/IoTDevice/1.0.0/include"
     ],
     "lib_required": "True"

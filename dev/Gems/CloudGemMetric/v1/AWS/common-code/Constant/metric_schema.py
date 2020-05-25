@@ -1,3 +1,14 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 import metric_constant as c
 import collections
 
@@ -203,7 +214,7 @@ def object_encoding(columns):
             if col == req.long_name:
                 notfound = False
                 result[col] = req.type        
-                break;
+                break
         if notfound:
             #custom columns must be defined as utf8 for now or we risk running into an Athena error HIVE_PARTITION_SCHEMA_MISMATCH: There is a mismatch between the table and partition schemas. The types are incompatible and cannot be coerced. 
             result[col] = 'infer'

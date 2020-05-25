@@ -10,10 +10,8 @@
 #
 
 import os
-import json
 from resource_manager_common import constant 
 
-from resource_manager.errors import HandledError
 
 LAMBDA_CONFIGURATION_RESOURCE_NAME      = 'ServiceLambdaConfiguration'
 LAMBDA_FUNCTION_RESOURCE_NAME           = 'ServiceLambda'
@@ -31,7 +29,7 @@ RESOURCE_DEFINITIONS = {
             "ServiceToken": { "Ref": "ProjectResourceHandler" },
             "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
             "ConfigurationKey": { "Ref": "ConfigurationKey" },
-            "Runtime": "python2.7",
+            "Runtime": "python3.7",
             "FunctionName": LAMBDA_FUNCTION_RESOURCE_NAME,
             "Settings": {
             }
@@ -192,14 +190,17 @@ def list_paths(context, args):
 def add_cli_commands(subparsers, addCommonArgs):
 
     # add-service-api-resources
-    subparser = subparsers.add_parser('add-service-api-resources', help='Add the resources necessery to implement a swagger.json based service API to a resource group.')
+    subparser = subparsers.add_parser('add-service-api-resources',
+                                      help='Add the resources necessary to implement a swagger.json based service API to a resource group.')
     subparser.add_argument('--resource-group', required=True, metavar='GROUP', help='The name of the resource group.')
-    subparser.add_argument('--force', required=False, action='store_true', help='Force the replacement of existing resource defintions. By default existing resource definitions with the same names are not changed.')
+    subparser.add_argument('--force', required=False, action='store_true',
+                           help='Force the replacement of existing resource definitions. By default existing resource definitions with the same names are not changed.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=add_resources)
 
     # remove-service-api-resources
-    subparser = subparsers.add_parser('remove-service-api-resources', help='Remove the resources that implement a swagger.json based service API from a resource group.')
+    subparser = subparsers.add_parser('remove-service-api-resources',
+                                      help='Remove the resources that implement a swagger.json based service API from a resource group.')
     subparser.add_argument('--resource-group', required=True, metavar='GROUP', help='The name of the resource group.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=remove_resources)

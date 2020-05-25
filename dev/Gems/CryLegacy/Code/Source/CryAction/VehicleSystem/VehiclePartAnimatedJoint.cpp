@@ -19,7 +19,6 @@
 
 #include "ICryAnimation.h"
 #include "IVehicleSystem.h"
-#include "IGameTokens.h"
 
 #include "CryAction.h"
 #include "Vehicle.h"
@@ -539,8 +538,6 @@ void CVehiclePartAnimatedJoint::Update(float frameTime)
             if (strcmp(GetName(), "dials_speedometer") == 0)
             {
                 float value = 0.0f;
-                IGameTokenSystem* pGTS = CCryAction::GetCryAction()->GetIGameTokenSystem();
-                pGTS->GetTokenValueAs("vehicle.speedNorm", value);
                 if (fabsf(m_initialRotOfs) > 0.0f)
                 {
                     float halfmeter = fabsf(m_initialRotOfs) * 0.25f;
@@ -554,8 +551,6 @@ void CVehiclePartAnimatedJoint::Update(float frameTime)
             else if (strcmp(GetName(), "dials_revometer") == 0)
             {
                 float value = 0.0f;
-                IGameTokenSystem* pGTS = CCryAction::GetCryAction()->GetIGameTokenSystem();
-                pGTS->GetTokenValueAs("vehicle.rpmNorm", value);
                 SetLocalBaseTM(m_initialTM * Matrix33::CreateRotationZ(-value * m_dialsRotMax - m_initialRotOfs));
             }
         }

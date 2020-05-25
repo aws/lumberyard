@@ -131,11 +131,8 @@ void CSubObjSelectionTypePanel::ChangeSelectionType(QListWidgetItem* current, QL
     }
     break;
 
-    case SO_ELEM_POLYGON:
-    {
-        CCryEditApp::SubObjectModePivot();
-    }
-    break;
+    default:
+        AZ_Warning("editor", false, "Unknown element type %zu", elementTypeEnum);
     }
 }
 

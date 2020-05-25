@@ -52,8 +52,8 @@ namespace UnitTest
         GIdx
     };
 
-    const char BlackListFile[] = "BlackList";
-    const char WhiteListFile[] = "WhiteList";
+    const char ExcludeFile[] = "Exclude";
+    const char IncludeFile[] = "Include";
 
     class FileTagQueryManagerTest : public AzFramework::FileTag::FileTagQueryManager
     {
@@ -87,22 +87,6 @@ namespace UnitTest
             desc.m_enableDrilling = false;
             m_data->m_application.Start(desc);
 
-            m_data->m_blackListQueryManager = AZStd::make_unique<FileTagQueryManagerTest>(FileTagType::BlackList);
-            m_data->m_whiteListQueryManager = AZStd::make_unique<FileTagQueryManagerTest>(FileTagType::WhiteList);
-
-            AZStd::vector<AZStd::string> blackListFileTags = { DummyFileTags[DummyFileTagIndex::AIdx], DummyFileTags[DummyFileTagIndex::BIdx] };
-            EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(DummyFile, FileTagType::BlackList, blackListFileTags).IsSuccess());
-
-            AZStd::vector<AZStd::string> whiteListFileTags = { DummyFileTags[DummyFileTagIndex::CIdx], DummyFileTags[DummyFileTagIndex::DIdx] };
-            EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(AnotherDummyFile, FileTagType::WhiteList, whiteListFileTags).IsSuccess());
-
-            AZStd::vector<AZStd::string> blackListPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
-            EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyPattern, FilePatternType::Regex, FileTagType::BlackList, blackListPatternTags).IsSuccess());
-
-            AZStd::vector<AZStd::string> whiteListWildcardTags = { DummyFileTags[DummyFileTagIndex::GIdx] };
-            EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyWildcard, FilePatternType::Wildcard, FileTagType::WhiteList, whiteListWildcardTags).IsSuccess());
-
-
             m_data->m_localFileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
             m_data->m_priorFileIO = AZ::IO::FileIOBase::GetInstance();
             AZ::IO::FileIOBase::SetInstance(nullptr);
@@ -110,19 +94,34 @@ namespace UnitTest
 
             AZ::IO::FileIOBase::GetInstance()->SetAlias("@assets@", GetTestFolderPath().c_str());
 
-            AzFramework::StringFunc::Path::Join(GetTestFolderPath().c_str(), AZStd::string::format("%s.%s", BlackListFile, FileTagAsset::Extension()).c_str(), m_data->m_blackListFile, true);
+            m_data->m_excludeFileQueryManager = AZStd::make_unique<FileTagQueryManagerTest>(FileTagType::Exclude);
+            m_data->m_includeFileQueryManager = AZStd::make_unique<FileTagQueryManagerTest>(FileTagType::Include);
 
-            AzFramework::StringFunc::Path::Join(GetTestFolderPath().c_str(), AZStd::string::format("%s.%s", WhiteListFile, FileTagAsset::Extension()).c_str(), m_data->m_whiteListFile, true);
+            AZStd::vector<AZStd::string> excludedFileTags = { DummyFileTags[DummyFileTagIndex::AIdx], DummyFileTags[DummyFileTagIndex::BIdx] };
+            EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(DummyFile, FileTagType::Exclude, excludedFileTags).IsSuccess());
 
-            EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::BlackList, m_data->m_blackListFile));
-            EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::WhiteList, m_data->m_whiteListFile));
+            AZStd::vector<AZStd::string> includedFileTags = { DummyFileTags[DummyFileTagIndex::CIdx], DummyFileTags[DummyFileTagIndex::DIdx] };
+            EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(AnotherDummyFile, FileTagType::Include, includedFileTags).IsSuccess());
 
-            EXPECT_TRUE(m_data->m_blackListQueryManager->Load(m_data->m_blackListFile));
-            EXPECT_TRUE(m_data->m_whiteListQueryManager->Load(m_data->m_whiteListFile));
+            AZStd::vector<AZStd::string> excludedPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
+            EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyPattern, FilePatternType::Regex, FileTagType::Exclude, excludedPatternTags).IsSuccess());
+
+            AZStd::vector<AZStd::string> includedWildcardTags = { DummyFileTags[DummyFileTagIndex::GIdx] };
+            EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyWildcard, FilePatternType::Wildcard, FileTagType::Include, includedWildcardTags).IsSuccess());
+            
+            AzFramework::StringFunc::Path::Join(GetTestFolderPath().c_str(), AZStd::string::format("%s.%s", ExcludeFile, FileTagAsset::Extension()).c_str(), m_data->m_excludeFile, true);
+
+            AzFramework::StringFunc::Path::Join(GetTestFolderPath().c_str(), AZStd::string::format("%s.%s", IncludeFile, FileTagAsset::Extension()).c_str(), m_data->m_includeFile, true);
+
+            EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Exclude, m_data->m_excludeFile));
+            EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Include, m_data->m_includeFile));
+
+            EXPECT_TRUE(m_data->m_excludeFileQueryManager->Load(m_data->m_excludeFile));
+            EXPECT_TRUE(m_data->m_includeFileQueryManager->Load(m_data->m_includeFile));
 
             AzFramework::StringFunc::Path::Join(GetTestFolderPath().c_str(), "Test_Dependencies.xml", m_data->m_engineDependenciesFile, true);
             std::ofstream outFile(m_data->m_engineDependenciesFile.c_str(), std::ofstream::out | std::ofstream::app);
-            outFile << "<EngineDependencies versionnumber=\"1.0.0\"><Dependency path=\"Foo/Dummy.txt\" optional=\"true\"/><Dependency path=\"Foo/dummy_abc.txt\" optional=\"false\"/></EngineDependencies>";
+            outFile << "<EngineDependencies versionnumber=\"1.0.0\"><Dependency path=\"Foo\\Dummy.txt\" optional=\"true\"/><Dependency path=\"Foo/dummy_abc.txt\" optional=\"false\"/></EngineDependencies>";
             outFile.close();
         }
 
@@ -135,14 +134,14 @@ namespace UnitTest
                 fileIO->Remove(m_data->m_engineDependenciesFile.c_str());
             }
 
-            if (fileIO->Exists(m_data->m_blackListFile.c_str()))
+            if (fileIO->Exists(m_data->m_excludeFile.c_str()))
             {
-                fileIO->Remove(m_data->m_blackListFile.c_str());
+                fileIO->Remove(m_data->m_excludeFile.c_str());
             }
 
-            if (fileIO->Exists(m_data->m_whiteListFile.c_str()))
+            if (fileIO->Exists(m_data->m_includeFile.c_str()))
             {
-                fileIO->Remove(m_data->m_whiteListFile.c_str());
+                fileIO->Remove(m_data->m_includeFile.c_str());
             }
 
             AZ::IO::FileIOBase::SetInstance(nullptr);
@@ -158,12 +157,12 @@ namespace UnitTest
         {
             AzFramework::Application m_application;
             AzFramework::FileTag::FileTagManager m_fileTagManager;
-            AZStd::unique_ptr<FileTagQueryManagerTest> m_blackListQueryManager;
-            AZStd::unique_ptr<FileTagQueryManagerTest> m_whiteListQueryManager;
+            AZStd::unique_ptr<FileTagQueryManagerTest> m_excludeFileQueryManager;
+            AZStd::unique_ptr<FileTagQueryManagerTest> m_includeFileQueryManager;
             AZ::IO::FileIOBase* m_priorFileIO = nullptr;
             AZStd::unique_ptr<AZ::IO::FileIOBase> m_localFileIO;
-            AZStd::string m_blackListFile;
-            AZStd::string m_whiteListFile;
+            AZStd::string m_excludeFile;
+            AZStd::string m_includeFile;
             AZStd::string m_engineDependenciesFile;
         };
 
@@ -173,68 +172,124 @@ namespace UnitTest
 
     TEST_F(FileTagTest, FileTags_QueryFile_Valid)
     {
-        AZStd::set<AZStd::string> tags = m_data->m_blackListQueryManager->GetTags(DummyFile);
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(DummyFile);
 
-        EXPECT_EQ(tags.size(), 2);
+        ASSERT_EQ(tags.size(), 2);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::AIdx]), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::BIdx]), 1);
 
-        tags = m_data->m_whiteListQueryManager->GetTags(DummyFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_includeFileQueryManager->GetTags(DummyFile);
+        ASSERT_EQ(tags.size(), 0);
 
-        tags = m_data->m_whiteListQueryManager->GetTags(AnotherDummyFile);
-        EXPECT_EQ(tags.size(), 2);
+        tags = m_data->m_includeFileQueryManager->GetTags(AnotherDummyFile);
+        ASSERT_EQ(tags.size(), 2);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::CIdx]), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::DIdx]), 1);
 
-        tags = m_data->m_blackListQueryManager->GetTags(AnotherDummyFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_excludeFileQueryManager->GetTags(AnotherDummyFile);
+        ASSERT_EQ(tags.size(), 0);
+    }
+
+    TEST_F(FileTagTest, FileTags_QueryByAbsoluteFilePath_Valid)
+    {
+        AZStd::string absoluteDummyFilePath = DummyFile;
+        EXPECT_TRUE(AzFramework::StringFunc::AssetDatabasePath::Join("@assets@", absoluteDummyFilePath.c_str(), absoluteDummyFilePath));
+
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(absoluteDummyFilePath);
+
+        ASSERT_EQ(tags.size(), 2);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::AIdx]), 1);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::BIdx]), 1);
+
+        tags = m_data->m_includeFileQueryManager->GetTags(absoluteDummyFilePath);
+        ASSERT_EQ(tags.size(), 0);
+
+        AZStd::string absoluteAnotherDummyFilePath = AnotherDummyFile;
+        EXPECT_TRUE(AzFramework::StringFunc::AssetDatabasePath::Join("@assets@", absoluteAnotherDummyFilePath.c_str(), absoluteAnotherDummyFilePath));
+
+        tags = m_data->m_includeFileQueryManager->GetTags(absoluteAnotherDummyFilePath);
+        ASSERT_EQ(tags.size(), 2);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::CIdx]), 1);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::DIdx]), 1);
+
+        tags = m_data->m_excludeFileQueryManager->GetTags(absoluteAnotherDummyFilePath);
+        ASSERT_EQ(tags.size(), 0);
+    }
+
+    TEST_F(FileTagTest, FileTags_QueryTagsDefinedForFilePathWithAlias_Valid)
+    {
+        using namespace  AzFramework::FileTag;
+
+        // Set the customized alias
+        AZStd::string customizedAliasFilePath;
+        const char* assetsAlias = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+        AzFramework::StringFunc::AssetDatabasePath::Join(assetsAlias, "foo", customizedAliasFilePath);
+        AZ::IO::FileIOBase::GetInstance()->SetAlias("@customizedalias@", customizedAliasFilePath.c_str());
+
+        // Add tags for a file path with this customzied alias
+        AZStd::string DummyFileWithcustomizedAlias;
+        EXPECT_TRUE(AzFramework::StringFunc::AssetDatabasePath::Join("@customizedalias@", "dummy.txt", DummyFileWithcustomizedAlias));
+
+        AZStd::vector<AZStd::string> excludedFileTags = { DummyFileTags[DummyFileTagIndex::CIdx], DummyFileTags[DummyFileTagIndex::DIdx] };
+        EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(DummyFileWithcustomizedAlias, FileTagType::Exclude, excludedFileTags).IsSuccess());
+
+        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Exclude, m_data->m_excludeFile));
+
+        m_data->m_excludeFileQueryManager->ClearData();
+        EXPECT_TRUE(m_data->m_excludeFileQueryManager->Load(m_data->m_excludeFile));
+
+        // Query the file and verify the tags were added successfully
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(AnotherDummyFile);
+
+        ASSERT_EQ(tags.size(), 2);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::CIdx]), 1);
+        EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::DIdx]), 1);
     }
 
     TEST_F(FileTagTest, FileTags_QueryPattern_Valid)
     {
-        AZStd::set<AZStd::string> tags = m_data->m_blackListQueryManager->GetTags(MatchingPatternFile);
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(MatchingPatternFile);
 
-        EXPECT_EQ(tags.size(), 2);
+        ASSERT_EQ(tags.size(), 2);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::EIdx]), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::FIdx]), 1);
 
-        tags = m_data->m_whiteListQueryManager->GetTags(MatchingPatternFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_includeFileQueryManager->GetTags(MatchingPatternFile);
+        ASSERT_EQ(tags.size(), 0);
 
-        tags = m_data->m_blackListQueryManager->GetTags(NonMatchingPatternFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_excludeFileQueryManager->GetTags(NonMatchingPatternFile);
+        ASSERT_EQ(tags.size(), 0);
 
-        tags = m_data->m_whiteListQueryManager->GetTags(NonMatchingPatternFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_includeFileQueryManager->GetTags(NonMatchingPatternFile);
+        ASSERT_EQ(tags.size(), 0);
     }
 
     TEST_F(FileTagTest, FileTags_QueryWildcard_Valid)
     {
-        AZStd::set<AZStd::string> tags = m_data->m_whiteListQueryManager->GetTags(MatchingWildcardFile);
+        AZStd::set<AZStd::string> tags = m_data->m_includeFileQueryManager->GetTags(MatchingWildcardFile);
 
-        EXPECT_EQ(tags.size(), 1);
+        ASSERT_EQ(tags.size(), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::GIdx]), 1);
 
-        tags = m_data->m_blackListQueryManager->GetTags(MatchingWildcardFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_excludeFileQueryManager->GetTags(MatchingWildcardFile);
+        ASSERT_EQ(tags.size(), 0);
 
-        tags = m_data->m_blackListQueryManager->GetTags(NonMatchingWildcardFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_excludeFileQueryManager->GetTags(NonMatchingWildcardFile);
+        ASSERT_EQ(tags.size(), 0);
 
-        tags = m_data->m_whiteListQueryManager->GetTags(NonMatchingWildcardFile);
-        EXPECT_EQ(tags.size(), 0);
+        tags = m_data->m_includeFileQueryManager->GetTags(NonMatchingWildcardFile);
+        ASSERT_EQ(tags.size(), 0);
     }
 
-    TEST_F(FileTagTest, FileTags_LoadEngineDependencies_AddToBlackList)
+    TEST_F(FileTagTest, FileTags_LoadEngineDependencies_AddToExcludeFile)
     {
-        m_data->m_blackListQueryManager->ClearData();
-        EXPECT_TRUE(m_data->m_blackListQueryManager->LoadEngineDependencies(m_data->m_engineDependenciesFile));
+        m_data->m_excludeFileQueryManager->ClearData();
+        EXPECT_TRUE(m_data->m_excludeFileQueryManager->LoadEngineDependencies(m_data->m_engineDependenciesFile));
 
         AZStd::string normalizedFilePath = AnotherDummyFile;
         EXPECT_TRUE(AzFramework::StringFunc::Path::Normalize(normalizedFilePath));
 
-        AZStd::set<AZStd::string> outputTags = m_data->m_blackListQueryManager->GetTags(normalizedFilePath);
+        AZStd::set<AZStd::string> outputTags = m_data->m_excludeFileQueryManager->GetTags(normalizedFilePath);
         EXPECT_EQ(outputTags.size(), 2);
         EXPECT_EQ(outputTags.count("ignore"), 1);
         EXPECT_EQ(outputTags.count("productdependency"), 1);
@@ -242,7 +297,7 @@ namespace UnitTest
         normalizedFilePath = MatchingPatternFile;
         EXPECT_TRUE(AzFramework::StringFunc::Path::Normalize(normalizedFilePath));
 
-        outputTags = m_data->m_blackListQueryManager->GetTags(normalizedFilePath);
+        outputTags = m_data->m_excludeFileQueryManager->GetTags(normalizedFilePath);
         EXPECT_EQ(outputTags.size(), 0);
     }
 
@@ -250,17 +305,17 @@ namespace UnitTest
     {
         using namespace  AzFramework::FileTag;
         AZStd::vector<AZStd::string>  inputTags = { DummyFileTags[DummyFileTagIndex::GIdx] };
-        EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(MatchingWildcardFile, FileTagType::BlackList, inputTags).IsSuccess());
+        EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(MatchingWildcardFile, FileTagType::Exclude, inputTags).IsSuccess());
 
         inputTags = { DummyFileTags[DummyFileTagIndex::AIdx] };
-        EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyWildcard, FilePatternType::Wildcard, FileTagType::BlackList, inputTags).IsSuccess());
+        EXPECT_TRUE(m_data->m_fileTagManager.AddFilePatternTags(DummyWildcard, FilePatternType::Wildcard, FileTagType::Exclude, inputTags).IsSuccess());
 
-        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::BlackList, m_data->m_blackListFile));
+        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Exclude, m_data->m_excludeFile));
 
-        m_data->m_blackListQueryManager->ClearData();
-        EXPECT_TRUE(m_data->m_blackListQueryManager->Load(m_data->m_blackListFile));
+        m_data->m_excludeFileQueryManager->ClearData();
+        EXPECT_TRUE(m_data->m_excludeFileQueryManager->Load(m_data->m_excludeFile));
         
-        AZStd::set<AZStd::string> outputTags = m_data->m_blackListQueryManager->GetTags(MatchingWildcardFile);
+        AZStd::set<AZStd::string> outputTags = m_data->m_excludeFileQueryManager->GetTags(MatchingWildcardFile);
 
         EXPECT_EQ(outputTags.size(), 2);
         EXPECT_EQ(outputTags.count(DummyFileTagsLowerCase[DummyFileTagIndex::AIdx]), 1);
@@ -270,84 +325,84 @@ namespace UnitTest
     TEST_F(FileTagTest, FileTags_RemoveTag_Valid)
     {
         using namespace  AzFramework::FileTag;
-        AZStd::set<AZStd::string> tags = m_data->m_blackListQueryManager->GetTags(DummyFile);
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(DummyFile);
 
-        EXPECT_EQ(tags.size(), 2);
+        ASSERT_EQ(tags.size(), 2);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::AIdx]), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::BIdx]), 1);
 
         //remove Tag A
-        AZStd::vector<AZStd::string> blackListFileTags = { DummyFileTags[DummyFileTagIndex::AIdx] };
-        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::BlackList, blackListFileTags).IsSuccess());
+        AZStd::vector<AZStd::string> excludedFileTags = { DummyFileTags[DummyFileTagIndex::AIdx] };
+        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::Exclude, excludedFileTags).IsSuccess());
 
-        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::BlackList, m_data->m_blackListFile));
+        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Exclude, m_data->m_excludeFile));
 
-        m_data->m_blackListQueryManager->ClearData();
-        EXPECT_TRUE(m_data->m_blackListQueryManager->Load(m_data->m_blackListFile));
+        m_data->m_excludeFileQueryManager->ClearData();
+        EXPECT_TRUE(m_data->m_excludeFileQueryManager->Load(m_data->m_excludeFile));
 
-        tags = m_data->m_blackListQueryManager->GetTags(DummyFile);
+        tags = m_data->m_excludeFileQueryManager->GetTags(DummyFile);
 
-        EXPECT_EQ(tags.size(), 1);
+        ASSERT_EQ(tags.size(), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::BIdx]), 1);
 
         //remove Tag B
-        blackListFileTags = { DummyFileTags[DummyFileTagIndex::BIdx] };
-        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::BlackList, blackListFileTags).IsSuccess());
+        excludedFileTags = { DummyFileTags[DummyFileTagIndex::BIdx] };
+        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::Exclude, excludedFileTags).IsSuccess());
 
-        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::BlackList, m_data->m_blackListFile));
+        EXPECT_TRUE(m_data->m_fileTagManager.Save(FileTagType::Exclude, m_data->m_excludeFile));
 
-        m_data->m_blackListQueryManager->ClearData();
-        EXPECT_TRUE(m_data->m_blackListQueryManager->Load(m_data->m_blackListFile));
+        m_data->m_excludeFileQueryManager->ClearData();
+        EXPECT_TRUE(m_data->m_excludeFileQueryManager->Load(m_data->m_excludeFile));
 
-        tags = m_data->m_blackListQueryManager->GetTags(DummyFile);
+        tags = m_data->m_excludeFileQueryManager->GetTags(DummyFile);
 
-        EXPECT_EQ(tags.size(), 0);
+        ASSERT_EQ(tags.size(), 0);
     }
 
     TEST_F(FileTagTest, FileTags_Matching_Valid)
     {
         AZStd::vector<AZStd::string> matchFileTags = { DummyFileTags[DummyFileTagIndex::AIdx], DummyFileTags[DummyFileTagIndex::BIdx] };
 
-        bool match = m_data->m_blackListQueryManager->Match(DummyFile, matchFileTags);
+        bool match = m_data->m_excludeFileQueryManager->Match(DummyFile, matchFileTags);
         EXPECT_TRUE(match);
 
         matchFileTags = { DummyFileTags[DummyFileTagIndex::AIdx] };
-        match = m_data->m_blackListQueryManager->Match(DummyFile, matchFileTags);
+        match = m_data->m_excludeFileQueryManager->Match(DummyFile, matchFileTags);
         EXPECT_TRUE(match);
 
         matchFileTags = { DummyFileTags[DummyFileTagIndex::BIdx] };
-        match = m_data->m_blackListQueryManager->Match(DummyFile, matchFileTags);
+        match = m_data->m_excludeFileQueryManager->Match(DummyFile, matchFileTags);
         EXPECT_TRUE(match);
 
         matchFileTags = { DummyFileTags[DummyFileTagIndex::CIdx] };
-        match = m_data->m_blackListQueryManager->Match(DummyFile, matchFileTags);
+        match = m_data->m_excludeFileQueryManager->Match(DummyFile, matchFileTags);
         EXPECT_FALSE(match);
     }
 
     TEST_F(FileTagTest, FileTags_ValidateError_Ok)
     {
         using namespace  AzFramework::FileTag;
-        AZStd::set<AZStd::string> tags = m_data->m_blackListQueryManager->GetTags(DummyFile);
+        AZStd::set<AZStd::string> tags = m_data->m_excludeFileQueryManager->GetTags(DummyFile);
 
-        EXPECT_EQ(tags.size(), 2);
+        ASSERT_EQ(tags.size(), 2);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::AIdx]), 1);
         EXPECT_EQ(tags.count(DummyFileTagsLowerCase[DummyFileTagIndex::BIdx]), 1);
 
         // file tags already exists
-        AZStd::vector<AZStd::string> blackListFileTags = { DummyFileTags[DummyFileTagIndex::AIdx], DummyFileTags[DummyFileTagIndex::BIdx] };
+        AZStd::vector<AZStd::string> excludedFileTags = { DummyFileTags[DummyFileTagIndex::AIdx], DummyFileTags[DummyFileTagIndex::BIdx] };
 
-        EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(DummyFile, FileTagType::BlackList, blackListFileTags).IsSuccess());
+        EXPECT_TRUE(m_data->m_fileTagManager.AddFileTags(DummyFile, FileTagType::Exclude, excludedFileTags).IsSuccess());
 
         //remove Tag C which does not exist
-        blackListFileTags = { DummyFileTags[DummyFileTagIndex::CIdx] };
-        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::BlackList, blackListFileTags).IsSuccess());
+        excludedFileTags = { DummyFileTags[DummyFileTagIndex::CIdx] };
+        EXPECT_TRUE(m_data->m_fileTagManager.RemoveFileTags(DummyFile, FileTagType::Exclude, excludedFileTags).IsSuccess());
         // Invalid FilePattern type
-        AZStd::vector<AZStd::string> blackListPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
-        EXPECT_FALSE(m_data->m_fileTagManager.RemoveFilePatternTags(DummyPattern, FilePatternType::Wildcard, FileTagType::BlackList, blackListPatternTags).IsSuccess());
+        AZStd::vector<AZStd::string> excludedPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
+        EXPECT_FALSE(m_data->m_fileTagManager.RemoveFilePatternTags(DummyPattern, FilePatternType::Wildcard, FileTagType::Exclude, excludedPatternTags).IsSuccess());
 
         // Removing a FilePattern that does not exits
         const char pattern[] = R"(^(.+)_([a-z0-9]+)\..+$)";
-        blackListPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
-        EXPECT_FALSE(m_data->m_fileTagManager.RemoveFilePatternTags(pattern, FilePatternType::Regex, FileTagType::BlackList, blackListPatternTags).IsSuccess());
+        excludedPatternTags = { DummyFileTags[DummyFileTagIndex::EIdx], DummyFileTags[DummyFileTagIndex::FIdx] };
+        EXPECT_FALSE(m_data->m_fileTagManager.RemoveFilePatternTags(pattern, FilePatternType::Regex, FileTagType::Exclude, excludedPatternTags).IsSuccess());
     }
 }

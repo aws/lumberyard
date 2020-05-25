@@ -85,21 +85,10 @@ namespace PhysX
 
     namespace ForceRegionUtil
     {
-        using PointList = AZStd::vector<AZ::Vector3>;
-
         /// Creates a structure with params about the force region used to calculate a resulting force.
         RegionParams CreateRegionParams(const AZ::EntityId& entityId);
 
         /// Creates a structure with params about en entity used to calculate a resulting force.
         EntityParams CreateEntityParams(const AZ::EntityId& entityId);
-
-        /// Generates a list of points on a box.
-        PointList GenerateBoxPoints(const AZ::Vector3& min, const AZ::Vector3& max);
-
-        /// Generates a list of points on the surface of a sphere.
-        PointList GenerateSpherePoints(float radius);
-
-        /// Generates a list of points on the surface of a cylinder.
-        PointList GenerateCylinderPoints(float height, float radius);
     }
 }

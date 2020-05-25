@@ -87,11 +87,13 @@ private:
 };
 
 /////////////////////////////////////////////////////////////////////////////
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 // CModelViewport window
 class SANDBOX_API CModelViewport
     : public CRenderViewport
     , public IEntityEventListener
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
     // Construction
 public:

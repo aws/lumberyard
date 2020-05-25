@@ -715,13 +715,13 @@ namespace UnitTest
                 TEST_F(AnyTest, Any_PointerAnyCast_IsReturnTypeValid)
                 {
                     any a;
-                    AZ_STATIC_ASSERT((AZStd::is_same<decltype(any_cast<int>(&a)), int*>::value), "Return type mismatch");
-                    AZ_STATIC_ASSERT((AZStd::is_same<decltype(any_cast<int const>(&a)), int const*>::value), "Return type mismatch");
+                    static_assert((AZStd::is_same<decltype(any_cast<int>(&a)), int*>::value), "Return type mismatch");
+                    static_assert((AZStd::is_same<decltype(any_cast<int const>(&a)), int const*>::value), "Return type mismatch");
 
                     any const& ca = a;
                     (void)ca;
-                    AZ_STATIC_ASSERT((AZStd::is_same<decltype(any_cast<int>(&ca)), int const*>::value), "Return type mismatch");
-                    AZ_STATIC_ASSERT((AZStd::is_same<decltype(any_cast<int const>(&ca)), int const*>::value), "Return type mismatch");
+                    static_assert((AZStd::is_same<decltype(any_cast<int>(&ca)), int const*>::value), "Return type mismatch");
+                    static_assert((AZStd::is_same<decltype(any_cast<int const>(&ca)), int const*>::value), "Return type mismatch");
                 }
 
                 // Test any_cast<...>(nullptr) always returns nullptr

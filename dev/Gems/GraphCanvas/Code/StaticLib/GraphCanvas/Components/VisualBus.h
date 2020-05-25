@@ -15,7 +15,9 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QGraphicsItem>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Utils/StateControllers/StateController.h>
 #include <GraphCanvas/Types/Types.h>
@@ -53,8 +55,8 @@ namespace GraphCanvas
 
         virtual QPainterPath GetOutline() const = 0;
 
-        virtual void SetZValue(int zValue) = 0;
-        virtual int GetZValue() const = 0;
+        virtual void SetZValue(qreal zValue) = 0;
+        virtual qreal GetZValue() const = 0;
     };
 
     using SceneMemberUIRequestBus = AZ::EBus<SceneMemberUIRequests>;

@@ -44,10 +44,9 @@ namespace
     }
 }
 
-ConnectionManager::ConnectionManager(AssetProcessor::PlatformConfiguration* platformConfig, QObject* parent)
+ConnectionManager::ConnectionManager(QObject* parent)
     : QAbstractItemModel(parent)
     , m_nextConnectionId(1)
-    , m_platformConfig(platformConfig)
 {
     Q_ASSERT(!s_singleton);
     s_singleton = this;
@@ -123,7 +122,7 @@ unsigned int ConnectionManager::internalAddConnection(bool isUserConnection, qin
         beginInsertRows(QModelIndex(), 0, 0);
     }
 
-    Connection* connection = new Connection(isUserConnection, m_platformConfig, socketDescriptor, this);
+    Connection* connection = new Connection(isUserConnection, socketDescriptor, this);
     connect(connection, &Connection::IsAddressWhiteListed, this, &ConnectionManager::IsAddressWhiteListed);
     connect(this, &ConnectionManager::AddressIsWhiteListed, connection, &Connection::AddressIsWhiteListed);
   
@@ -171,35 +170,41 @@ void ConnectionManager::OnStatusChanged(unsigned int connId)
     }
 
     Connection* connection = foundElement.value();
-    QString assetPlatform = connection->AssetPlatform();
+    QStringList assetPlatforms = connection->AssetPlatforms();
 
     if (connection->Status() == Connection::Connected)
     {
         int priorCount = 0;
-        auto existingEntry = m_platformsConnected.find(connection->AssetPlatform());
-        if (existingEntry == m_platformsConnected.end())
+        for (const auto& thisPlatform : assetPlatforms)
         {
-            m_platformsConnected.insert(assetPlatform, 1);
-        }
-        else
-        {
-            priorCount = existingEntry.value();
-            m_platformsConnected[assetPlatform] = priorCount + 1;
-        }
+            auto existingEntry = m_platformsConnected.find(thisPlatform);
+            if (existingEntry == m_platformsConnected.end())
+            {
+                m_platformsConnected.insert(thisPlatform, 1);
+            }
+            else
+            {
+                priorCount = existingEntry.value();
+                m_platformsConnected[thisPlatform] = priorCount + 1;
+            }
 
-        if (priorCount == 0)
-        {
-            EBUS_EVENT(AssetProcessorPlatformBus, AssetProcessorPlatformConnected, assetPlatform.toUtf8().data());
+            if (priorCount == 0)
+            {
+                EBUS_EVENT(AssetProcessorPlatformBus, AssetProcessorPlatformConnected, thisPlatform.toUtf8().data());
+            }
         }
     }
     else
     {
-        // connection dropped!
-        int priorCount = m_platformsConnected[assetPlatform];
-        m_platformsConnected[assetPlatform] = priorCount - 1;
-        if (priorCount == 1)
+        for (const auto& thisPlatform : assetPlatforms)
         {
-            EBUS_EVENT(AssetProcessorPlatformBus, AssetProcessorPlatformDisconnected, assetPlatform.toUtf8().data());
+            // connection dropped!
+            int priorCount = m_platformsConnected[thisPlatform];
+            m_platformsConnected[thisPlatform] = priorCount - 1;
+            if (priorCount == 1)
+            {
+                EBUS_EVENT(AssetProcessorPlatformBus, AssetProcessorPlatformDisconnected, thisPlatform.toUtf8().data());
+            }
         }
     }
 }
@@ -307,7 +312,7 @@ QVariant ConnectionManager::data(const QModelIndex& index, int role) const
         case PortColumn:
             return connection->Port();
         case PlatformColumn:
-            return connection->AssetPlatform();
+            return connection->AssetPlatforms().join(',');
         case AutoConnectColumn:
             if (!isUserConnection)
             {
@@ -1099,7 +1104,7 @@ void ConnectionManager::RouteIncomingMessage(unsigned int connId, unsigned int t
 
 void ConnectionManager::SendMessageToService(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload)
 {
-    QString platform = getConnection(connId)->AssetPlatform();
+    QString platform = getConnection(connId)->AssetPlatforms().join(',');
     auto iter = m_messageRoute.find(type);
     while (iter != m_messageRoute.end() && iter.key() == type)
     {

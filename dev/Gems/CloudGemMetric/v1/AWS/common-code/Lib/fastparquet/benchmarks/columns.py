@@ -1,10 +1,14 @@
-from contextlib import contextmanager
-import os
 import numpy as np
+import os
 import pandas as pd
+import shutil
+import sys
+import tempfile
 import time
+from contextlib import contextmanager
+
 from fastparquet import write, ParquetFile
-from dask.utils import tmpdir
+from fastparquet.util import join_path
 
 
 @contextmanager
@@ -18,15 +22,16 @@ def measure(name, result):
 def time_column():
     with tmpdir() as tempdir:
         result = {}
-        fn = os.path.join(tempdir, 'temp.parq')
+        fn = join_path(tempdir, 'temp.parq')
         n = 10000000
-        r = np.random.randint(-1e10, 1e10, n)
+        r = np.random.randint(-1e10, 1e10, n, dtype='int64')
         d = pd.DataFrame({'w': pd.Categorical(np.random.choice(
                 ['hi', 'you', 'people'], size=n)),
                           'x': r.view('timedelta64[ns]'),
                           'y': r / np.random.randint(1, 1000, size=n),
                           'z': np.random.randint(0, 127, size=n,
                                                  dtype=np.uint8)})
+        d['b'] = r > 0
 
         for col in d.columns:
             df = d[[col]]
@@ -35,19 +40,19 @@ def time_column():
                 write(fn, df, has_nulls=False)
 
             pf = ParquetFile(fn)
-            pf.to_pandas(categories={'w': 3})  # warm-up
+            pf.to_pandas()  # warm-up
 
             with measure('%s: read, no nulls' % d.dtypes[col], result):
-                pf.to_pandas(categories={'w': 3})
+                pf.to_pandas()
 
             with measure('%s: write, no nulls, has_null=True' % d.dtypes[col], result):
                 write(fn, df, has_nulls=True)
 
             pf = ParquetFile(fn)
-            pf.to_pandas(categories={'w': 3})  # warm-up
+            pf.to_pandas()  # warm-up
 
             with measure('%s: read, no nulls, has_null=True' % d.dtypes[col], result):
-                pf.to_pandas(categories={'w': 3})
+                pf.to_pandas()
 
             if d.dtypes[col].kind == 'm':
                 d.loc[n//2, col] = pd.to_datetime('NaT')
@@ -61,19 +66,19 @@ def time_column():
                 write(fn, df, has_nulls=True)
 
             pf = ParquetFile(fn)
-            pf.to_pandas(categories={'w': 3})  # warm-up
+            pf.to_pandas()  # warm-up
 
             with measure('%s: read, with null, has_null=True' % d.dtypes[col], result):
-                pf.to_pandas(categories={'w': 3})
+                pf.to_pandas()
 
             with measure('%s: write, with null, has_null=False' % d.dtypes[col], result):
                 write(fn, df, has_nulls=False)
 
             pf = ParquetFile(fn)
-            pf.to_pandas(categories={'w': 3})  # warm-up
+            pf.to_pandas()  # warm-up
 
             with measure('%s: read, with null, has_null=False' % d.dtypes[col], result):
-                pf.to_pandas(categories={'w': 3})
+                pf.to_pandas()
 
         return result
 
@@ -81,7 +86,7 @@ def time_column():
 def time_text():
     with tmpdir() as tempdir:
         result = {}
-        fn = os.path.join(tempdir, 'temp.parq')
+        fn = join_path(tempdir, 'temp.parq')
         n = 1000000
         d = pd.DataFrame({
             'a': np.random.choice(['hi', 'you', 'people'], size=n),
@@ -105,14 +110,6 @@ def time_text():
                 with measure('%s: read, fixed: %s' % (t, fixed), result):
                     pf.to_pandas()
         return result
-
-
-if __name__ == '__main__':
-    result = {}
-    for f in [time_column, time_text]:
-        result.update(f())
-    for k in sorted(result):
-        print(k, result[k])
 
 
 def time_find_nulls(N=10000000):
@@ -143,10 +140,7 @@ def time_find_nulls(N=10000000):
     df.loc[:, 'x'] = pd.to_datetime('NaT')
     run_find_nulls(df, result)
 
-    [(k + (v, )) for k, v in result.items()]
-    df = pd.DataFrame(out, columns=('type', 'nvalid', 'op', 'time'))
-    df.groupby(('type', 'nvalid', 'op')).sum()
-    return df
+    return df.groupby(('type', 'nvalid', 'op')).sum()
 
 
 def run_find_nulls(df, res):
@@ -161,4 +155,43 @@ def run_find_nulls(df, res):
         df.x.notnull().all()
     with measure((df.x.dtype.kind, nvalid, 'count'), res):
         df.x.count()
+
+
+
+# from https://github.com/dask/dask/blob/6cbcf0813af48597a427a1fe6c71cce2a79086b0/dask/utils.py#L78
+@contextmanager
+def ignoring(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
+# from https://github.com/dask/dask/blob/6cbcf0813af48597a427a1fe6c71cce2a79086b0/dask/utils.py#L116
+@contextmanager
+def tmpdir(dir=None):
+    dirname = tempfile.mkdtemp(dir=dir)
+
+    try:
+        yield dirname
+    finally:
+        if os.path.exists(dirname):
+            if os.path.isdir(dirname):
+                with ignoring(OSError):
+                    shutil.rmtree(dirname)
+            else:
+                with ignoring(OSError):
+                    os.remove(dirname)
+
+
+if __name__ == '__main__':
+    result = {}
+
+    print("sys.version = " + sys.version)
+    print("sys.platform = " + sys.platform)
+
+    for f in [time_column, time_text]:
+        result.update(f())
+    for k in sorted(result):
+        print(k, result[k])
+
 

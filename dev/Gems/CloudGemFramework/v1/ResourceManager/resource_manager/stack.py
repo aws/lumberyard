@@ -9,17 +9,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-
 import time
-
-from errors import HandledError
-from botocore.exceptions import ClientError
-
-import util
 import os
+import six
 from datetime import datetime
 from dateutil.tz import tzlocal
 
+from botocore.exceptions import ClientError
+
+from .errors import HandledError
+from . import util
 from cgf_utils import aws_utils
 from cgf_utils import custom_resource_utils
 
@@ -93,14 +92,16 @@ class StackContext(object):
 
         return None
 
-    def create_using_url(self, stack_name, template_url, region, parameters=None, created_callback=None, capabilities=[], rolling=False,
+    def create_using_url(self, stack_name, template_url, region, parameters=None, created_callback=None, capabilities=None, rolling=False,
                          throw_failed_resources=False):
+        if capabilities is None:
+            capabilities = []
 
         self.context.view.creating_stack(stack_name)
 
         parameter_list = []
         if parameters:
-            for key, value in parameters.iteritems():
+            for key, value in six.iteritems(parameters):
                 parameter_list.append(
                     {
                         'ParameterKey': key,
@@ -131,13 +132,39 @@ class StackContext(object):
 
         return res['StackId']
 
-    def create_using_template(self, stack_name, template_body, region, parameters={}, created_callback=None, capabilities=[], timeoutinminutes=60,
+    def create_using_template(self, stack_name, template_body, region,
+                              parameters=None,
+                              created_callback=None,
+                              capabilities=None,
+                              tags=None,
+                              timeout_in_minutes=60,
                               throw_failed_resources=False):
+        """
+        Create a stack using a new template
+        See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack
+
+        :param stack_name:          The name of the stack to create
+        :param template_body:       The template body to use to create the stack from
+        :param region:              The region to create the stack in
+        :param parameters:          Input parameters for the stack
+        :param created_callback:    Callback to notify when stack created
+        :param capabilities:        Capabilities to define in the stack
+        :param tags:                Tags to associate with the stack
+        :param timeout_in_minutes:  When stack creation should timeout
+        :param throw_failed_resources:  If function should throw if stack fails to be created
+        :return: The created stack's stack id
+        """
+        if parameters is None:
+            parameters = {}
+        if capabilities is None:
+            capabilities = []
+        if tags is None:
+            tags = []
 
         self.context.view.creating_stack(stack_name)
 
         cf = self.context.aws.client('cloudformation', region=region)
-        parameter_list = [{'ParameterKey': k, 'ParameterValue': v} for k, v in parameters.iteritems()]
+        parameter_list = [{'ParameterKey': k, 'ParameterValue': v} for k, v in six.iteritems(parameters)]
 
         try:
             res = cf.create_stack(
@@ -145,7 +172,8 @@ class StackContext(object):
                 TemplateBody=template_body,
                 Capabilities=capabilities,
                 Parameters=parameter_list,
-                TimeoutInMinutes=timeoutinminutes
+                TimeoutInMinutes=timeout_in_minutes,
+                Tags=tags
             )
         except ClientError as e:
             raise HandledError('Could not start creation of {0} stack.'.format(stack_name), e)
@@ -161,7 +189,29 @@ class StackContext(object):
 
         return res['StackId']
 
-    def update(self, stack_id, template_url, parameters={}, pending_resource_status={}, capabilities=[], template_body=None, throw_failed_resources=False):
+    def update(self, stack_id, template_url, parameters=None, pending_resource_status=None, capabilities=None, template_body=None, tags=None,
+               throw_failed_resources=False):
+        """
+        Update an existing stack with new properties.
+        See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
+
+        :param stack_id:        The id of the stack to update
+        :param template_url:    The template to update the stack with
+        :param parameters:      New input parameters for the stack
+        :param pending_resource_status: If provided, clean up any undeletable resources
+        :param capabilities:    New capabilities for the stack
+        :param template_body:   The template body to update the stack with (if body is provided prefer over url)
+        :param tags             Stack-level tags to apply on the stack update
+        :param throw_failed_resources:  Throw if resources fail
+        """
+        if capabilities is None:
+            capabilities = []
+        if pending_resource_status is None:
+            pending_resource_status = {}
+        if parameters is None:
+            parameters = {}
+        if tags is None:
+            tags = []
 
         stack_name = util.get_stack_name_from_arn(stack_id)
 
@@ -178,7 +228,8 @@ class StackContext(object):
         update_params = {
             'StackName': stack_id,
             'Capabilities': capabilities,
-            'Parameters': [self.__encode_parameter(k, v, current_params) for k, v in parameters.iteritems()]
+            'Parameters': [self.__encode_parameter(k, v, current_params) for k, v in six.iteritems(parameters)],
+            'Tags': tags
         }
 
         if template_body:
@@ -259,7 +310,7 @@ class StackContext(object):
         """
         deleted_resource_logical_ids, resource_definitions = self.__get_deleted_resources(stack_id, pending_resource_status)
 
-        for logical_resource_id, resource in resource_definitions.iteritems():
+        for logical_resource_id, resource in six.iteritems(resource_definitions):
             if deleted_resource_logical_ids is None or logical_resource_id in deleted_resource_logical_ids:
                 if resource_type == 's3' and resource.get('Type') == 'AWS::S3::Bucket' and resource.get('DeletionPolicy', 'Delete') == 'Delete':
                     self.__remove_bucket_contents(stack_id, logical_resource_id)
@@ -288,7 +339,7 @@ class StackContext(object):
         if pending_resource_status is not None:
             deleted_resource_logical_ids = set()
             resource_definitions = {}
-            for key, value in pending_resource_status.iteritems():
+            for key, value in six.iteritems(pending_resource_status):
                 if key.count('.') == 0 and value.get('PendingAction') == self.PENDING_DELETE:
                     deleted_resource_logical_ids.add(key)
                     resource_definitions[key] = value['OldDefinition']
@@ -385,7 +436,7 @@ class StackContext(object):
         except ClientError as e:
             if optional and e.response['Error']['Code'] == 'ValidationError':
                 return {}
-            message = e.message
+            message = str(e)
             if e.response['Error']['Code'] == 'ValidationError':
                 message += ' Make sure the AWS credentials you are using have access to the project\'s resources.'
             raise HandledError('Could not get stack {} resource data. {}'.format(
@@ -399,7 +450,7 @@ class StackContext(object):
                 physical_resource_id = entry.get('PhysicalResourceId', None)
                 if physical_resource_id is not None:
                     nested_map = self.describe_resources(physical_resource_id)
-                    for k, v in nested_map.iteritems():
+                    for k, v in six.iteritems(nested_map):
                         resource_descriptions[entry['LogicalResourceId'] + '.' + k] = v
             elif entry['ResourceType'] == 'Custom::CognitoUserPool':  # User Pools require extra information (client id/secret)
                 resource_descriptions[entry['LogicalResourceId']]['UserPoolClients'] = []
@@ -429,11 +480,18 @@ class StackContext(object):
     def get_pending_resource_status(
             self,
             stack_id,
-            new_template={},
-            new_parameter_values={},
-            new_content_paths={},
+            new_template=None,
+            new_parameter_values=None,
+            new_content_paths=None,
             is_enabled=True
     ):
+        if new_content_paths is None:
+            new_content_paths = {}
+        if new_parameter_values is None:
+            new_parameter_values = {}
+        if new_template is None:
+            new_template = {}
+
         if stack_id:
             resource_descriptions = self.describe_resources(stack_id, recursive=False)
             old_template = self.get_current_template(stack_id)
@@ -449,8 +507,7 @@ class StackContext(object):
         changed_reference_targets = self.__determine_changed_parameters(new_template, old_template, new_parameter_values, old_parameter_values)
 
         # look for added or changed resource definitions...
-
-        for logical_resource_name, new_resource_definition in new_resource_definitions.iteritems():
+        for logical_resource_name, new_resource_definition in six.iteritems(new_resource_definitions):
 
             resource_description = resource_descriptions.get(logical_resource_name, None)
 
@@ -488,7 +545,6 @@ class StackContext(object):
                 if is_enabled:
 
                     # is in new template and in description map, look for changes...
-
                     self.__diff_resource(
                         logical_resource_name,
                         resource_description,
@@ -511,8 +567,7 @@ class StackContext(object):
                     )
 
         # look for removed resource definitions...
-
-        for logical_resource_name, old_resource_definition in old_resource_definitions.iteritems():
+        for logical_resource_name, old_resource_definition in six.iteritems(old_resource_definitions):
 
             # skip if in new template (was processed above)
 
@@ -536,7 +591,6 @@ class StackContext(object):
                 )
 
         # any changes to IAM resources are security related
-
         for resource_description in resource_descriptions.values():
             if resource_description.get('ResourceType').startswith('AWS::IAM::') and resource_description.get('PendingAction'):
                 self.__set_pending_security_change(resource_description, 'Has a security related resource type.')
@@ -595,6 +649,18 @@ class StackContext(object):
             }
         )
 
+    @staticmethod
+    def __calc_parameter_value(parameter_name, new_parameter_definition, old_parameter_definition, old_parameter_values):
+        """ Work out what is the appropriate default value for a parameter
+        Check to see if value existed in previous CF stack as we use None to specify 'UsePreviousValue' semantics
+        """
+        if old_parameter_definition is not None:  # Was previously defined so take value from old template
+            old_value = old_parameter_values.get(parameter_name)
+            new_value = old_value if old_value is not None else old_parameter_definition.get('Default')
+        else:
+            new_value = new_parameter_definition.get('Default')
+        return new_value
+
     def __determine_changed_parameters(self, new_template, old_template, new_parameter_values, old_parameter_values):
         new_parameter_definitions = new_template.get('Parameters', {})
         old_parameter_definitions = old_template.get('Parameters', {})
@@ -603,29 +669,26 @@ class StackContext(object):
 
         # look for added and changed parameters...
 
-        for parameter_name, new_parameter_definition in new_parameter_definitions.iteritems():
+        for parameter_name, new_parameter_definition in six.iteritems(new_parameter_definitions):
 
             if parameter_name in ['ConfigurationBucket', 'ConfigurationKey']:
                 continue  # always ignore these parameters
 
             new_value = new_parameter_values.get(parameter_name)
-            if new_value is None:
-                new_value = new_parameter_definition.get('Default')
-
             old_parameter_definition = old_parameter_definitions.get(parameter_name)
+
+            if new_value is None:
+                new_value = self.__calc_parameter_value(parameter_name, new_parameter_definition, old_parameter_definition, old_parameter_values)
+
             if old_parameter_definition is None:
-
                 # added parameter...
-
                 changed_parameters[parameter_name] = {
                     'type': 'parameter',
                     'reasons': ['Parameter {} added (has value {}).'.format(parameter_name, new_value)]
                 }
 
             else:
-
                 # look for changed value...
-
                 old_value = old_parameter_values.get(parameter_name)
                 if old_value is None:
                     old_value = old_parameter_definition.get('Default') if old_parameter_definition else None
@@ -638,9 +701,9 @@ class StackContext(object):
 
         # look for removed parameters
 
-        for parameter_name, old_parameter_definition in old_parameter_definitions.iteritems():
+        for parameter_name, old_parameter_definition in six.iteritems(old_parameter_definitions):
 
-            if new_parameter_definitions.has_key(parameter_name) or parameter_name == 'ConfigurationKey':
+            if parameter_name in new_parameter_definitions or parameter_name == 'ConfigurationKey':
                 continue
 
             old_value = old_parameter_values.get(parameter_name)
@@ -726,7 +789,7 @@ class StackContext(object):
                     return
 
     def __compare_template_properties(self, old_properties, new_properties, changed_reference_targets, update_reasons):
-        for property_name, new_property_value in new_properties.iteritems():
+        for property_name, new_property_value in six.iteritems(new_properties):
 
             old_property_value = old_properties.get(property_name)
 
@@ -744,7 +807,7 @@ class StackContext(object):
                 if impacted_references:
                     update_reasons.append('Property {} references changed.'.format(property_name))
 
-        for property_name, old_property_value in old_properties.iteritems():
+        for property_name, old_property_value in six.iteritems(old_properties):
 
             if property_name in new_properties.keys():
                 continue
@@ -754,7 +817,7 @@ class StackContext(object):
     def __compare_template_metadata(self, old_metadata, new_metadata, changed_reference_targets, update_reasons, path=''):
         is_security_related_change = False
 
-        for key, new_value in new_metadata.iteritems():
+        for key, new_value in six.iteritems(new_metadata):
 
             full_path = path + key
             is_changed = False
@@ -786,7 +849,7 @@ class StackContext(object):
                 if full_path.startswith('CloudCanvas.Permissions') or full_path.startswith('CloudCanvas.RoleMappings'):
                     is_security_related_change = True
 
-        for key, old_value in old_metadata.iteritems():
+        for key, old_value in six.iteritems(old_metadata):
 
             if key in new_metadata.keys():
                 continue
@@ -862,10 +925,15 @@ class StackContext(object):
                                          stack_description,
                                          args,
                                          pending_resource_status,
-                                         ignore_resource_types=[],
-                                         only_resource_types=[]
+                                         ignore_resource_types=None,
+                                         only_resource_types=None
                                          ):
-        for resource_name, resource_description in pending_resource_status.iteritems():
+        if only_resource_types is None:
+            only_resource_types = []
+        if ignore_resource_types is None:
+            ignore_resource_types = []
+
+        for resource_name, resource_description in six.iteritems(pending_resource_status):
             resource_type = resource_description.get('ResourceType', '')
             if resource_type in ignore_resource_types:
                 continue
@@ -885,15 +953,17 @@ class StackContext(object):
             stack_description,
             args,
             pending_resource_status,
-            ignore_resource_types=[]
+            ignore_resource_types=None
     ):
+        if ignore_resource_types is None:
+            ignore_resource_types = []
 
         changed_resources = {}
         deleted_resources = {}
         are_deletions = False
         are_security_changes = False
 
-        for resource_name, resource_description in pending_resource_status.iteritems():
+        for resource_name, resource_description in six.iteritems(pending_resource_status):
             pending_action = resource_description.get('PendingAction')
             if pending_action:
                 changed_resources[resource_name] = resource_description
@@ -918,10 +988,13 @@ class StackContext(object):
 
         return self.get_stack_operation_capabilities(pending_resource_status, ignore_resource_types)
 
-    def get_stack_operation_capabilities(self, pending_resource_status, ignore_resource_types=[]):
+    def get_stack_operation_capabilities(self, pending_resource_status, ignore_resource_types=None):
+        if ignore_resource_types is None:
+            ignore_resource_types = []
+
         capabilities = set()
         are_iam_resources = False
-        for _, resource_description in pending_resource_status.iteritems():
+        for _, resource_description in six.iteritems(pending_resource_status):
             resource_type = resource_description.get('ResourceType', '')
 
             if resource_type in ignore_resource_types:

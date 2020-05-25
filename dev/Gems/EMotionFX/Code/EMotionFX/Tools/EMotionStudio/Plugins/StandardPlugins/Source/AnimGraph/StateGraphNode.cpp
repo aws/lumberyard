@@ -29,8 +29,8 @@ namespace EMStudio
     const QColor StateMachineColors::s_interruptionCandidateColor = QColor(63, 140, 62);
     const QColor StateMachineColors::s_selectedColor = QColor(255, 128, 0);
 
-    StateConnection::StateConnection(const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection)
-        : NodeConnection(modelIndex, targetNode, 0, sourceNode, 0)
+    StateConnection::StateConnection(NodeGraph* parentGraph, const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection)
+        : NodeConnection(parentGraph, modelIndex, targetNode, 0, sourceNode, 0)
     {
         mColor                  = StateMachineColors::s_transitionColor;
         mIsWildcardConnection   = isWildcardConnection;
@@ -136,8 +136,7 @@ namespace EMStudio
 
         QColor color = mColor;
 
-        mIsSelected = selectionModel.isSelected(m_modelIndex);
-        if (mIsSelected)
+        if (GetIsSelected())
         {
             color = StateMachineColors::s_selectedColor;
         }
@@ -171,7 +170,7 @@ namespace EMStudio
             painter.setOpacity(1.0);
         }
 
-        bool isSelected = mIsSelected;
+        bool isSelected = GetIsSelected();
         if (interruptionSelectionMode)
         {
             isSelected = true;
@@ -216,8 +215,8 @@ namespace EMStudio
         pen->setStyle(Qt::SolidLine);
         painter->setPen(*pen);
 
-        const AZ::Vector2   transitionStart(start.rx(), start.ry());
-        const AZ::Vector2   transitionEnd(end.rx(), end.ry());
+        const AZ::Vector2   transitionStart(aznumeric_cast<float>(start.rx()), aznumeric_cast<float>(start.ry()));
+        const AZ::Vector2   transitionEnd(aznumeric_cast<float>(end.rx()), aznumeric_cast<float>(end.ry()));
 
         EMotionFX::AnimGraphStateTransition* transition = m_modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
         AZ_Assert(transition, "Expected non-null transition");
@@ -239,7 +238,7 @@ namespace EMStudio
             const AZ::Vector2   transitionMid = transitionStart + localEnd * 0.5;
             const AZ::Vector2   transitionDir = localEnd.GetNormalized();
             const AZ::Vector2   conditionStart = transitionMid - transitionDir * (elementSize * 0.5f * (float)(sumSize));
-            const AZ::Vector2   actionStart = transitionMid - transitionDir * (elementSize * 0.5f * (float)sumSize) + transitionDir * elementSize * numConditions;
+            const AZ::Vector2   actionStart = transitionMid - transitionDir * (elementSize * 0.5f * (float)sumSize) + transitionDir * aznumeric_cast<float>(elementSize) * aznumeric_cast<float>(numConditions);
 
             for (size_t i = 0; i < numConditions; ++i)
             {
@@ -289,7 +288,7 @@ namespace EMStudio
 
                 // render the rect per action
                 painter->setBrush(*brush);
-                painter->drawRect(recLeft.GetX(), recLeft.GetY(), shapeDiameter * 2.0f, shapeDiameter * 2.0f);
+                painter->drawRect(aznumeric_cast<int>(recLeft.GetX()), aznumeric_cast<int>(recLeft.GetY()), aznumeric_cast<int>(shapeDiameter * 2), aznumeric_cast<int>(shapeDiameter * 2));
             }
         }
     }
@@ -312,8 +311,8 @@ namespace EMStudio
             end += QPoint(3, 3);
         }
 
-        const AZ::Vector2   transitionStart(start.rx(), start.ry());
-        const AZ::Vector2   transitionEnd(end.rx(), end.ry());
+        const AZ::Vector2   transitionStart(aznumeric_cast<float>(start.rx()), aznumeric_cast<float>(start.ry()));
+        const AZ::Vector2   transitionEnd(aznumeric_cast<float>(end.rx()), aznumeric_cast<float>(end.ry()));
 
         EMotionFX::AnimGraphStateTransition* transition = m_modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
         AZ_Assert(transition, "Expected non-null transition");
@@ -342,7 +341,7 @@ namespace EMStudio
                 // calculate the circle middle point
                 const AZ::Vector2 circleMid = conditionStart  + transitionDir * (elementSize * (float)i);
 
-                const float distance = AZ::Vector2(AZ::Vector2(mousePos.x(), mousePos.y()) - circleMid).GetLength();
+                const float distance = AZ::Vector2(AZ::Vector2(aznumeric_cast<float>(mousePos.x()), aznumeric_cast<float>(mousePos.y())) - circleMid).GetLength();
                 if (distance <= circleDiameter)
                 {
                     return condition;
@@ -357,14 +356,14 @@ namespace EMStudio
     {
         QPoint start, end;
         CalcStartAndEndPoints(start, end);
-        return NodeGraph::LineIntersectsRect(rect, start.x(), start.y(), end.x(), end.y());
+        return NodeGraph::LineIntersectsRect(rect, aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()));
     }
 
     bool StateConnection::CheckIfIsCloseTo(const QPoint& point)
     {
         QPoint start, end;
         CalcStartAndEndPoints(start, end);
-        return (NodeGraph::DistanceToLine(start.x(), start.y(), end.x(), end.y(), point.x(), point.y()) <= 5.0f);
+        return (NodeGraph::DistanceToLine(aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()), aznumeric_cast<float>(point.x()), aznumeric_cast<float>(point.y())) <= 5.0f);
 
         //QRect testRect(point.x() - 1, point.y() - 1, 2, 2);
         //return Intersects(testRect);
@@ -375,11 +374,11 @@ namespace EMStudio
         QPoint start, end;
         CalcStartAndEndPoints(start, end);
 
-        AZ::Vector2 dir = AZ::Vector2(end.x() - start.x(), end.y() - start.y());
+        AZ::Vector2 dir = AZ::Vector2(aznumeric_cast<float>(end.x() - start.x()), aznumeric_cast<float>(end.y() - start.y()));
         dir.Normalize();
-        AZ::Vector2 newStart = AZ::Vector2(end.x(), end.y()) - dir * 5.0f;
+        AZ::Vector2 newStart = AZ::Vector2(aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y())) - dir * 5.0f;
 
-        return (NodeGraph::DistanceToLine(newStart.GetX(), newStart.GetY(), end.x(), end.y(), point.x(), point.y()) <= 7.0f);
+        return (NodeGraph::DistanceToLine(newStart.GetX(), newStart.GetY(), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()), aznumeric_cast<float>(point.x()), aznumeric_cast<float>(point.y())) <= 7.0f);
     }
 
     bool StateConnection::CheckIfIsCloseToTail(const QPoint& point) const
@@ -387,11 +386,11 @@ namespace EMStudio
         QPoint start, end;
         CalcStartAndEndPoints(start, end);
 
-        AZ::Vector2 dir = AZ::Vector2(end.x() - start.x(), end.y() - start.y());
+        AZ::Vector2 dir = AZ::Vector2(aznumeric_cast<float>(end.x() - start.x()), aznumeric_cast<float>(end.y() - start.y()));
         dir.Normalize();
-        AZ::Vector2 newStart = AZ::Vector2(start.x(), start.y()) + dir * 6.0f;
+        AZ::Vector2 newStart = AZ::Vector2(aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y())) + dir * 6.0f;
 
-        return (AZ::Vector2(newStart - AZ::Vector2(point.x(), point.y())).GetLength() <= 6.0f);
+        return (AZ::Vector2(newStart - AZ::Vector2(aznumeric_cast<float>(point.x()), aznumeric_cast<float>(point.y()))).GetLength() <= 6.0f);
     }
 
     void StateConnection::CalcStartAndEndPoints(QPoint& outStart, QPoint& outEnd) const
@@ -422,26 +421,21 @@ namespace EMStudio
 
         // calc the real start point
         double realX, realY;
-        if (NodeGraph::LineIntersectsRect(sourceRect, start.x(), start.y(), end.x(), end.y(), &realX, &realY))
+        if (NodeGraph::LineIntersectsRect(sourceRect, aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()), &realX, &realY))
         {
-            start.setX(realX);
-            start.setY(realY);
+            start.setX(aznumeric_cast<int>(realX));
+            start.setY(aznumeric_cast<int>(realY));
         }
 
         // calc the real end point
-        if (NodeGraph::LineIntersectsRect(targetRect, start.x(), start.y(), end.x(), end.y(), &realX, &realY))
+        if (NodeGraph::LineIntersectsRect(targetRect, aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()), aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()), &realX, &realY))
         {
-            end.setX(realX);
-            end.setY(realY);
+            end.setX(aznumeric_cast<int>(realX));
+            end.setY(aznumeric_cast<int>(realY));
         }
 
         outStart    = start;
         outEnd      = end;
-    }
-
-    void StateConnection::SetIsSelected(bool selected)
-    {
-        AZ_Assert(false, "Visual transition selection state is determined by the anim graph model and should not be manually overwritten.");
     }
 
     void StateConnection::RenderTransition(QPainter& painter, QBrush& brush, QPen& pen,
@@ -449,8 +443,8 @@ namespace EMStudio
         const QColor& color, const QColor& activeColor,
         bool isSelected, bool isDashed, bool isActive, float weight, bool highlightHead, bool gradientActiveIndicator)
     {
-        const AZ::Vector2 azStart = AZ::Vector2(start.x(), start.y());
-        const AZ::Vector2 azEnd = AZ::Vector2(end.x(), end.y());
+        const AZ::Vector2 azStart = AZ::Vector2(aznumeric_cast<float>(start.x()), aznumeric_cast<float>(start.y()));
+        const AZ::Vector2 azEnd = AZ::Vector2(aznumeric_cast<float>(end.x()), aznumeric_cast<float>(end.y()));
         AZ::Vector2 azStartEnd = azEnd - azStart;
 
         // Skip degenerated transitions (in case nodes are moved close or over each other).
@@ -731,7 +725,9 @@ namespace EMStudio
 
         QColor borderColor;
         pen->setWidth(2);
-        if (mIsSelected)
+        const bool isSelected = GetIsSelected();
+
+        if (isSelected)
         {
             borderColor = StateMachineColors::s_selectedColor;
         }
@@ -742,7 +738,7 @@ namespace EMStudio
 
         // background color
         QColor bgColor;
-        if (mIsSelected)
+        if (isSelected)
         {
             bgColor.setRgbF(0.93f, 0.547f, 0.0f, 1.0f); //  rgb(72, 63, 238)
         }
@@ -753,7 +749,7 @@ namespace EMStudio
 
         // blinking red error color
         const bool hasError = GetHasError();
-        if (hasError && mIsSelected == false)
+        if (hasError && !isSelected)
         {
             if (mParentGraph->GetUseAnimation())
             {
@@ -768,7 +764,7 @@ namespace EMStudio
         QColor bgColor2;
         bgColor2 = bgColor.lighter(30); // make darker actually, 30% of the old color, same as bgColor * 0.3f;
 
-        QColor textColor = mIsSelected ? Qt::black : Qt::white;
+        QColor textColor = isSelected ? Qt::black : Qt::white;
 
         // is highlighted/hovered (on-mouse-over effect)
         if (mIsHighlighted)
@@ -820,7 +816,7 @@ namespace EMStudio
         painter.setBrush(Qt::NoBrush);
         painter.setPen(textColor);
         //painter.drawStaticText(mRect.left(), mRect.center().y()-6, mTitleText);
-        painter.drawStaticText(mRect.left(), mRect.center().y() - mTitleText.size().height() / 2, mTitleText);
+        painter.drawStaticText(mRect.left(), aznumeric_cast<int>(mRect.center().y() - mTitleText.size().height() / 2), mTitleText);
         //  painter.drawPixmap( mRect, mTextPixmap );
         painter.setOpacity(1.0f);
 
@@ -885,7 +881,7 @@ namespace EMStudio
         }
 
         painter.setPen(mVisualizeHighlighted ? StateMachineColors::s_selectedColor : vizBorder);
-        if (mIsSelected == false)
+        if (!GetIsSelected())
         {
             painter.setBrush(mVisualize ? mVisualizeColor : bgColor);
         }

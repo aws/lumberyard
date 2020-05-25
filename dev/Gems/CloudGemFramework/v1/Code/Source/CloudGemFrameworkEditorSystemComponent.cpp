@@ -43,7 +43,7 @@ namespace CloudGemFramework
                 ec->Class<CloudGemFrameworkEditorSystemComponent>(COMPONENT_DISPLAY_NAME, COMPONENT_DESCRIPTION)
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, COMPONENT_CATEGORY)
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC(COMPONENT_CATEGORY))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }

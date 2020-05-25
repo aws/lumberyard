@@ -12,8 +12,9 @@
 
 #include <ImageProcessing_precompiled.h>
 
-#include <Processing/ImageObject.h>
+#include <ImageProcessing/ImageObject.h>
 #include <Processing/PixelFormatInfo.h>
+#include <Processing/ImageFlags.h>
 #include <Converters/PixelOperation.h>
 #include <Compressors/ETC2.h>
 

@@ -17,7 +17,7 @@
 /**
 * Helper to create checkers for member function inside a class.
 *
-* Ex. AZ_HAS_MEMBER(IsReady,IsReadyMember,void,())
+* Ex. AZ_HAS_MEMBER(IsReadyMember,IsReady,void,())
 *     struct A {};
 *     struct B
 *     {

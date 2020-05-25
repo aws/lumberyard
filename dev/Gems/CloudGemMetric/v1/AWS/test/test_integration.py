@@ -1,3 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 import resource_manager_common.constant as constant
 import boto3
 from botocore.exceptions import ClientError
@@ -43,30 +55,30 @@ class IntegrationTest_CloudGemMetric(base_stack_test.BaseStackTestCase):
 
         self.assertIsNotNone(amoeba_resource)
         self.assertIsNotNone(consumer_resource)        
-        events_client = boto3.client('events', region_name=lmbr_aws_test_support.REGION)                
-        
-        print "Deleting rule {} for lambda {}".format(amoeba_resource, amoeba), events_client.remove_targets(
-                                                Rule=amoeba_resource,
-                                                Ids=[
-                                                    amoeba,
-                                                ]
-                                            ) 
-        print "Deleting rule {} for lambda {}".format(consumer_resource, consumer), events_client.remove_targets(
-                                                Rule=consumer_resource,
-                                                Ids=[
-                                                    consumer,
-                                                ]
-                                            )         
-        print events_client.put_rule(
+        events_client = boto3.client('events', region_name=lmbr_aws_test_support.REGION)
+
+        print("Deleting rule {} for lambda {}".format(amoeba_resource, amoeba), events_client.remove_targets(
+            Rule=amoeba_resource,
+            Ids=[
+                amoeba,
+            ]
+        ))
+        print("Deleting rule {} for lambda {}".format(consumer_resource, consumer), events_client.remove_targets(
+            Rule=consumer_resource,
+            Ids=[
+                consumer,
+            ]
+        ))
+        print(events_client.put_rule(
             Name=consumer_resource,
             ScheduleExpression="rate(1 day)",
             State='DISABLED'
-        )
-        print events_client.put_rule(
+        ))
+        print(events_client.put_rule(
             Name=amoeba_resource,
             ScheduleExpression="rate(1 day)",
             State='DISABLED'
-        )        
+        ))
 
     def __010_create_metric_use_lambda_no_chunking(self):
         self.lmbr_aws('metric', 'send-test-metrics', '--threads', '1', '--iterations-per-thread', '1', '--events-per-iteration', '5', '--use-lambda', '--event-type', 'bug')
@@ -128,7 +140,7 @@ class IntegrationTest_CloudGemMetric(base_stack_test.BaseStackTestCase):
         self.lmbr_aws('metric', 'glue-crawler')
         self.assertIn("'RUNNING'", self.lmbr_aws_stdout)
         #Allow the crawler time to complete the crawling before querying results
-        time.sleep(300)        
+        time.sleep(400)        
 
     def __060_validating_metrics_with_athena(self):
         prefix = "{}_{}".format( self.TEST_PROJECT_STACK_NAME.replace('-','_'), self.TEST_DEPLOYMENT_NAME.replace('-','_') )

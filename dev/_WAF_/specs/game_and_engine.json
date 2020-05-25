@@ -10,8 +10,6 @@
         "CryNetwork",
         "CryPhysics",
         "CrySystem",
-        "CryAction",
-        "CryAction_AutoFlowNode",
         "GemRegistry",
         "GridMate",
         "LyIdentity_shared",

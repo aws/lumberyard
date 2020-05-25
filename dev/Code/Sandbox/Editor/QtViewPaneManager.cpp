@@ -621,6 +621,11 @@ QtViewPaneManager* QtViewPaneManager::instance()
     return s_instance();
 }
 
+bool QtViewPaneManager::exists()
+{
+    return s_instance.exists();
+}
+
 void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities)
 {
     Q_ASSERT(mainWindow && !m_mainWindow && settings && !m_settings);
@@ -986,16 +991,26 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
     // as the panes are moved around
     m_mainWindow->setUpdatesEnabled(false);
 
+    AzToolsFramework::EntityIdList selectedEntityIds;
+
     // Reset all of the settings, or windows opened outside of RestoreDefaultLayout won't be reset at all.
     // Also ensure that this is done after CloseAllPanes, because settings will be saved in CloseAllPanes
     if (resetSettings)
     {
+        // Store off currently selected entities
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+        // Clear any selection
+        AzToolsFramework::EntityIdList noEntities;
+        AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, noEntities);
+
         ViewLayoutState state;
 
         state.viewPanes.push_back(LyViewPane::EntityOutliner);
         state.viewPanes.push_back(LyViewPane::EntityInspector);
         state.viewPanes.push_back(LyViewPane::AssetBrowser);
         state.viewPanes.push_back(LyViewPane::Console);
+        state.viewPanes.push_back(LyViewPane::LevelInspector);
 
         // Only include the rollupbar in our default layout if legacy mode is enabled
         if (m_enableLegacyCryEntities)
@@ -1026,6 +1041,7 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
     const QtViewPane* assetBrowserViewPane = OpenPane(LyViewPane::AssetBrowser, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* entityInspectorViewPane = OpenPane(LyViewPane::EntityInspector, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* consoleViewPane = OpenPane(LyViewPane::Console, QtViewPane::OpenMode::UseDefaultState);
+    const QtViewPane* levelInspectorPane = OpenPane(LyViewPane::LevelInspector, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* rollupBarViewPane = nullptr;
     if (m_enableLegacyCryEntities)
     {
@@ -1078,11 +1094,33 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
                 if (tabWidget)
                 {
                     tabWidget->moveTab(1, 0);
+
+                    if (levelInspectorPane)
+                    {
+                        tabWidget->addTab(levelInspectorPane->m_dockWidget);
+                    }
+
                     tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
 
                     // Resize our tabbed entity inspector and rollup bar dock widget
                     // so that it takes up an appropriate amount of space (with the
                     // minimum sizes removed, it was being shrunk too small by default)
+
+                    QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
+                    m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
+                }
+            }
+            else if (levelInspectorPane)
+            {
+                // Tab the entity inspector with the level Inspector so that when they are
+                // tabbed they will be given the rollupbar's default width which
+                // is more appropriate, and move the entity inspector to be the
+                // first tab on the left and active
+                AzQtComponents::DockTabWidget* tabWidget = m_advancedDockManager->tabifyDockWidget(levelInspectorPane->m_dockWidget, entityInspectorViewPane->m_dockWidget, m_mainWindow);
+                if (tabWidget)
+                {
+                    tabWidget->moveTab(1, 0);
+                    tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
 
                     QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
                     m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
@@ -1119,6 +1157,12 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         // (use window() because the MainWindow may be wrapped in another window
         // like a WindowDecoratorWrapper or another QMainWindow for various layout reasons)
         m_mainWindow->window()->showMaximized();
+
+        if (resetSettings)
+        {
+            // Restore selection
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, selectedEntityIds);
+        }
     });
 }
 
@@ -1370,6 +1414,14 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
         return false;
     }
 
+    // Store off currently selected entities
+    AzToolsFramework::EntityIdList selectedEntityIds;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+    // Clear any selection
+    AzToolsFramework::EntityIdList noEntities;
+    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, noEntities);
+
     m_fakeDockWidgetGeometries = state.fakeDockWidgetGeometries;
 
     for (const QString& paneName : state.viewPanes)
@@ -1393,6 +1445,8 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
 
     // must do this after opening all of the panes!
     m_advancedDockManager->restoreState(state.mainWindowState);
+
+    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, selectedEntityIds);
 
     // In case of a crash it might happen that the QMainWindow state gets out of sync with the
     // QtViewPaneManager state, which would result in we opening dock widgets that QMainWindow

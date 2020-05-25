@@ -40,7 +40,7 @@ def build(bld):
         vs_filter       = 'Tools',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'cryscompileserver.waf_files',
-        platforms       = ['win', 'darwin_x64'],
+        platforms       = ['win', 'darwin'],
         configurations  = ['all'],
         exclude_monolithic = True,
         disable_pch     = True,

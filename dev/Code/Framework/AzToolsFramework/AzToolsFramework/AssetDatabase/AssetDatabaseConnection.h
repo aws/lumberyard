@@ -18,6 +18,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/bitset.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/SQLite/SQLiteQueryLogBus.h>
 
 // At the time of writing, AZStd::function does not support RVALUE-Refs.  We use std::function instead.
 #include <functional>
@@ -61,6 +62,7 @@ namespace AzToolsFramework
             AddedProductDependencyPlatform = 22,
             AddedMissingProductDependencyTable = 23,
             AddedWarningAndErrorCountToJobs = 24,
+            AddedFromAssetIdField = 25,
             //Add all new versions before this
             DatabaseVersionCount,
             LatestVersion = DatabaseVersionCount - 1
@@ -114,7 +116,7 @@ namespace AzToolsFramework
             AZStd::string m_displayName; // a display name, blank means it should not show up in UIs
             AZStd::string m_portableKey; // a key that uniquely identifies a scan folder so that we can recognize the same one in other databases/computer
             AZStd::string m_outputPrefix;
-            int m_isRoot;
+            int m_isRoot = 0;
         };
 
         typedef AZStd::vector<ScanFolderDatabaseEntry> ScanFolderDatabaseEntryContainer;
@@ -206,7 +208,7 @@ namespace AzToolsFramework
             };
             
             SourceFileDependencyEntry() = default;
-            SourceFileDependencyEntry(AZ::Uuid builderGuid, const char* source, const char* dependsOnSource, TypeOfDependency dependencyType);
+            SourceFileDependencyEntry(AZ::Uuid builderGuid, const char* source, const char* dependsOnSource, TypeOfDependency dependencyType, AZ::u32 fromAssetId);
 
             AZStd::string ToString() const;
             auto GetColumns();
@@ -216,6 +218,7 @@ namespace AzToolsFramework
             TypeOfDependency m_typeOfDependency = DEP_SourceToSource;
             AZStd::string m_source;
             AZStd::string m_dependsOnSource;
+            AZ::u32 m_fromAssetId = false; // Indicates if the dependency was converted from an AssetId into a path before being stored in the DB
         };
 
         typedef AZStd::vector<SourceFileDependencyEntry> SourceFileDependencyEntryContainer;
@@ -279,8 +282,8 @@ namespace AzToolsFramework
             };
 
             ProductDependencyDatabaseEntry() = default;
-            ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType);
-            ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath="", DependencyType dependencyType = DependencyType::ProductDep_ProductFile);
+            ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType, AZ::u32 fromAssetId);
+            ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, AZ::u32 fromAssetId, const AZStd::string& unresolvedPath="", DependencyType dependencyType = DependencyType::ProductDep_ProductFile);
             
             bool operator == (const ProductDependencyDatabaseEntry& other) const;
 
@@ -295,6 +298,7 @@ namespace AzToolsFramework
             AZStd::string m_unresolvedPath;
             AZStd::string m_platform;
             DependencyType m_dependencyType = DependencyType::ProductDep_ProductFile;
+            AZ::u32 m_fromAssetId = false; // Indicates if the dependency was originally from an AssetId (true) or if it was originally a path dependency (false)
         };
 
         typedef AZStd::vector<ProductDependencyDatabaseEntry> ProductDependencyDatabaseEntryContainer;
@@ -378,7 +382,7 @@ namespace AzToolsFramework
             AZ::s64 m_fileID = InvalidEntryId;
             AZ::s64 m_scanFolderPK = InvalidEntryId;
             AZStd::string m_fileName;
-            int m_isFolder;
+            int m_isFolder = 0;
             AZ::u64 m_modTime{};
         };
 
@@ -412,14 +416,13 @@ namespace AzToolsFramework
         //! sense for their specific purpose, otherwise that statement should be added to this class so
         //! it can be reused by any system that needs it. Note that if a system needs read only access
         //! and has no special query needs, then this class can be used directly.
-        class AssetDatabaseConnection
+        class AssetDatabaseConnection : public SQLite::SQLiteQueryLogBus::Handler
         {
         public:
             AZ_CLASS_ALLOCATOR(AssetDatabaseConnection, AZ::SystemAllocator, 0);
 
             AssetDatabaseConnection();
             virtual ~AssetDatabaseConnection();
-
 
             //Open / Close the database
             bool OpenDatabase();
@@ -526,7 +529,7 @@ namespace AzToolsFramework
             bool QueryJobByJobID(AZ::s64 jobID, jobHandler handler);
             bool QueryJobByJobKey(AZStd::string jobKey, jobHandler handler);
             bool QueryJobByJobRunKey(AZ::u64 jobRunKey, jobHandler handler);
-            bool QueryJobByProductID(AZ::s64 jobID, jobHandler handler);
+            bool QueryJobByProductID(AZ::s64 productID, jobHandler handler);
             bool QueryJobBySourceID(AZ::s64 sourceID, jobHandler handler, AZ::Uuid builderGuid = AZ::Uuid::CreateNull(), const char* jobKey = nullptr, const char* platform = nullptr, AssetSystem::JobStatus status = AssetSystem::JobStatus::Any);
 
             //product
@@ -568,26 +571,36 @@ namespace AzToolsFramework
             /// direct query - look up table row by row ID
             bool QuerySourceDependencyBySourceDependencyId(AZ::s64 sourceDependencyID, sourceFileDependencyHandler handler);
 
-            /** reverse dependencies (query sources which depend on 'dependsOnSource').
-            *   Optional nullable 'dependentFilter' filters it to only resulting sources which are LIKE the filter.
-            */
+            //! Query sources which depend on 'dependsOnSource'.
+            //! Reverse dependencies are incoming dependencies: what assets depend on me?
+            //! Optional nullable 'dependentFilter' filters it to only resulting sources which are LIKE the filter.
             bool QuerySourceDependencyByDependsOnSource(const char* dependsOnSource, const char* dependentFilter, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency dependencyType, sourceFileDependencyHandler handler);
 
-            /** Attempt to match either DEP_SourcetoSource or DEP_JobToJob
-            *   Then allow DEP_SourceLikeMatch with Wildcard characters
-            *   Optional nullable 'dependentFilter' filters it to only resulting sources which are LIKE the filter.
-            */
+            //! Attempt to match either DEP_SourcetoSource or DEP_JobToJob
+            //! Then allow DEP_SourceLikeMatch with Wildcard characters
+            //! Optional nullable 'dependentFilter' filters it to only resulting sources which are LIKE the filter.
             bool QuerySourceDependencyByDependsOnSourceWildcard(const char* dependsOnSource, const char* dependentFilter, sourceFileDependencyHandler handler);
 
-            /** forward dependencies (query everything 'sourceDependency' depends on)
-            *   Optional nullable 'dependentFilter' filters it to only resulting dependendencies which are LIKE the filter.
-            */
+            //! Query everything 'sourceDependency' depends on.
+            //! Optional nullable 'dependentFilter' filters it to only resulting dependencies which are LIKE the filter.
             bool QueryDependsOnSourceBySourceDependency(const char* sourceDependency, const char* dependencyFilter, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency dependencyType, sourceFileDependencyHandler handler);
+
+            // Recursive reverse dependency query (returns all the source dependencies which depend on 'dependsOnSource' and all the entries that depend on them, etc)
+            bool QueryAllSourceDependencyByDependsOnSource(const char* dependsOnSource, SourceFileDependencyEntry::TypeOfDependency dependencyType, sourceFileDependencyHandler handler);
+
+            // Returns all sources who's products depend on any of the products of the specified source
+            bool QueryProductDependenciesThatDependOnProductBySourceId(AZ::s64 sourceId, productDependencyHandler handler);
 
             //ProductDependencies
             bool QueryProductDependencyByProductDependencyId(AZ::s64 productDependencyID, productDependencyHandler handler);
             bool QueryProductDependencyByProductId(AZ::s64 productID, productDependencyHandler handler);
+            bool QueryProductDependencyBySourceGuidSubId(AZ::Uuid guid, AZ::u32 subId, const AZStd::string& platform, productDependencyHandler handler);
             bool QueryDirectProductDependencies(AZ::s64 productID, productHandler handler);
+
+            //! Query products which depend on the product with "dependencySubId" and whose source file has "dependencySourceGuid")
+            //! These finds all incoming dependencies: everything that depends on the given asset.
+            //! Similar to QueryDirectProductDependencies, this query deals with product dependencies but retrieves rows from Products, not ProductDependencies.
+            bool QueryDirectReverseProductDependenciesBySourceGuidSubId(AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubId, productHandler handler);
             bool QueryAllProductDependencies(AZ::s64 productID, productHandler handler);
             bool QueryUnresolvedProductDependencies(productDependencyHandler handler);
 
@@ -602,6 +615,9 @@ namespace AzToolsFramework
             bool QueryFileByFileNameScanFolderID(const char* fileName, AZ::s64 scanFolderID, fileHandler handler);
             //////////////////////////////////////////////////////////////////////////
 
+            void SetQueryLogging(bool enableLogging);
+            void LogQuery(const char* statement, const AZStd::string& params) override;
+            void LogResultId(AZ::s64 rowId) override;
         protected:
             
             SQLite::Connection* m_databaseConnection;

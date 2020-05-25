@@ -85,10 +85,9 @@ def build(bld):
 
             # Additional options to override for the editor module, for example,
             defines             = ["TOUCHBENDING_EDITOR"],
-            includes            = ['.',
-                                   bld.ThirdPartyPath('boost'),
-                                   bld.Path('Code/CryEngine/CryCommon'),
-                                   bld.Path('Code/Tools')],
+            includes            = [bld.Path('Code/Tools'),
+                                   bld.Path('Code/CryEngine/CryCommon')
+                                  ],
 
             pch                 = pch_file,
             use                 = ['AzFramework','SceneCore', 'SceneData'],

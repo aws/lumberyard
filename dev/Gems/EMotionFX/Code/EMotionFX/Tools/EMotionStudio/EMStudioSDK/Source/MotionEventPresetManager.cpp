@@ -10,20 +10,24 @@
 *
 */
 
-#include "MotionEventPresetManager.h"
 #include <AzCore/Math/Color.h>
-#include "EMStudioManager.h"
-#include "RenderPlugin/RenderOptions.h"
-#include <MCore/Source/Color.h>
-#include <MCore/Source/LogManager.h>
-#include <EMotionFX/Source/EventManager.h>
-#include <EMotionFX/Source/TwoStringEventData.h>
-#include <MysticQt/Source/MysticQtManager.h>
-#include <QSettings>
-
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/Utils.h>
 
+#include <MCore/Source/Color.h>
+#include <MCore/Source/LogManager.h>
+
+#include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
+
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MotionEventPresetManager.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderOptions.h>
+
+#include <MysticQt/Source/MysticQtManager.h>
+
+#include <QSettings>
 
 namespace EMStudio
 {
@@ -241,10 +245,23 @@ namespace EMStudio
             presets.emplace_back(preset);
         }
 
+        bool fileExisted = false;
+        AZStd::string checkoutResultString;
+        if (!SourceControlCommand::CheckOutFile(filename.c_str(), fileExisted, checkoutResultString, /*useSourceControl=*/true, /*add=*/false))
+        {
+            AZ_Warning("EMotionFX", false, checkoutResultString.c_str());
+        }
+
         // Check if the settings correctly saved.
         if (AZ::Utils::SaveObjectToFile(filename, AZ::DataStream::ST_XML, &presets))
         {
             mDirtyFlag = false;
+
+            // Add file in case it did not exist before (when saving it the first time).
+            if (!SourceControlCommand::CheckOutFile(filename.c_str(), fileExisted, checkoutResultString, /*useSourceControl=*/true, /*add=*/true))
+            {
+                AZ_Warning("EMotionFX", false, checkoutResultString.c_str());
+            }
 
             if (showNotification)
             {
@@ -266,10 +283,13 @@ namespace EMStudio
 
     void MotionEventPresetManager::SaveToSettings()
     {
-        QSettings settings(GetManager()->GetMainWindow());
-        settings.beginGroup("EMotionFX");
-        settings.setValue("lastEventPresetFile", mFileName.c_str());
-        settings.endGroup();
+        if (!mFileName.empty())
+        {
+            QSettings settings(GetManager()->GetMainWindow());
+            settings.beginGroup("EMotionFX");
+            settings.setValue("lastEventPresetFile", mFileName.c_str());
+            settings.endGroup();
+        }
     }
 
 
@@ -277,8 +297,13 @@ namespace EMStudio
     {
         QSettings settings(GetManager()->GetMainWindow());
         settings.beginGroup("EMotionFX");
-        mFileName = FromQtString(settings.value("lastEventPresetFile", QVariant("")).toString());
+        AZStd::string filename = FromQtString(settings.value("lastEventPresetFile", QVariant("")).toString());
         settings.endGroup();
+
+        if (!filename.empty())
+        {
+            mFileName = AZStd::move(filename);
+        }
     }
 
 

@@ -10,7 +10,8 @@
 #
 
 import sys
-import urllib2
+from urllib.request import urlopen
+from urllib.error import HTTPError
 import zipfile
 import os
 import shutil
@@ -29,13 +30,13 @@ def main():
     target_dir = args.destination or build_version_folder(version)
 
     if not target_dir:
-        print 'Missing destination folder'
+        print('Missing destination folder')
         return
 
-    print 'Getting items- Services: {} Platforms: {} for version {} from {} to {}'.format(args.service or 'all', args.platform or 'all',version, version_url,target_dir)
+    print('Getting items- Services: {} Platforms: {} for version {} from {} to {}'.format(args.service or 'all', args.platform or 'all',version, version_url,target_dir))
     get_all_items(version_url, target_dir, args)
 
-    print 'Finished'
+    print('Finished')
     return
 
 def _create_parser():
@@ -74,7 +75,7 @@ def get_nativesdk_root():
     thirdparty_folder = find_third_party(os.getcwd())
 
     if not thirdparty_folder:
-        print 'Could not find 3rd party!'
+        print('Could not find 3rd party!')
         return None
 
     return os.path.join(thirdparty_folder, 'AWS', 'AWSNativeSDK')
@@ -275,43 +276,42 @@ def get_lib_prefix():
 def get_dependent_lib_prefix():
     return 'aws-'
 
-def fetch_item(platform_info, version_url, args):
+def fetch_item(file_name, platform_info, version_url, args):
     if args.nofetch or platform_info.get('nofetch'):
-        print 'Skipping fetch'
+        print('Skipping fetch')
         return True
     if args.dependencies:
-        print 'Skipping fetch - dependencies only'
+        print('Skipping fetch - dependencies only')
         return False
-    file_names = platform_info.get('zipfiles')
-    for file_name in file_names:
-        file_url = version_url + platform_info.get('build_folder') + '/' + file_name
-    print 'fetching {}'.format(file_url)
+
+    file_url = version_url + platform_info.get('build_folder') + '/' + file_name
+    print('fetching {}'.format(file_url))
     file_size = 0
     try:
-        result = urllib2.urlopen(file_url)
+        result = urlopen(file_url)
         file_size = result.headers['content-length']
-    except urllib2.HTTPError, errorInfo:
-        print 'FAILED - Error code {}'.format(errorInfo.code)
+    except HTTPError as errorInfo:
+        print('FAILED - Error Code {}'.format(errorInfo))
         return False
 
     read_block_size = 1024 * 1024 * 16
 
     total_read = 0
-        source_file_path = os.path.join(args.source, file_name)
+    source_file_path = os.path.join(args.source, file_name)
     try:
-            with open(source_file_path, "wb") as writehandle:
+        with open(source_file_path, "wb") as writehandle:
             while True:
                 this_block = result.read(read_block_size)
-                print 'Read {} bytes {} / {}'.format(len(this_block), total_read, file_size)
+                print('Read {} bytes {} / {}'.format(len(this_block), total_read, file_size))
                 if not this_block:
                     break
                 writehandle.write(this_block)
                 total_read += len(this_block)
     except:
-            print 'Could not write to {}'.format(source_file_path)
+        print('Could not write to {}'.format(source_file_path))
         return False
 
-    print 'Got {} bytes total'.format(total_read)
+    print('Got {} bytes total'.format(total_read))
     return True
 
 def get_output_paths(platform_info, file_name, zip_file_name):
@@ -326,7 +326,7 @@ def get_output_paths(platform_info, file_name, zip_file_name):
     if debug_release == 'Debug' or debug_release == 'Release':
         return [ os.path.join(bin_lib_str, platform_info.get('platform'), custom_path, debug_release, name_and_ext) ]
 
-    print 'WARNING - Could not determine path for {} - Returning as Debug and Release'.format(file_name)
+    print('WARNING - Could not determine path for {} - Returning as Debug and Release'.format(file_name))
 
     return_strings = []
     return_strings.append(os.path.join(bin_lib_str, platform_info.get('platform'), custom_path, 'Debug', name_and_ext))
@@ -337,6 +337,7 @@ def get_output_paths(platform_info, file_name, zip_file_name):
 def sanitize_file(file_name):
     file_name = file_name.replace('\\','/')
     return file_name
+
 
 # Determine whether this is a file which should be extracted and where it should go
 # Headers come out "as is"
@@ -365,48 +366,49 @@ def get_file_destinations(platform_info, file_name, zip_file_name, args):
             if file_name.endswith(libextension):
                 library_basename = '{}{}'.format(get_dependent_lib_prefix(), depend_lib)
                 file_basename = os.path.basename(file_name)
+                output_strs = []
                 if file_basename.startswith(library_basename) or file_basename.startswith('lib' + library_basename):
                     output_strs = get_output_paths(platform_info, file_name, zip_file_name)
-                return True, output_strs
+                    return True, output_strs
     return False, None
 
 def is_zip_folder(zip_file_entry):
     if not zip_file_entry:
         return False
-    if isinstance(zip_file_entry, basestring):
+    if isinstance(zip_file_entry, str):
         return zip_file_entry.endswith('/') or zip_file_entry.endswith('\\')
     return False
 
 
-def extract_item(platform_info, target_dir, args):
-    file_names = platform_info.get('zipfiles')
-    for file_name in file_names:
-        source_file_path = os.path.join(args.source, file_name)
+def extract_item(file_name, platform_info, target_dir, args):
+    source_file_path = os.path.join(args.source, file_name)
+    print('Attempting to extract {}'.format(source_file_path))
+    try:
         read_zip = zipfile.ZipFile(source_file_path, 'r')
-    except:
-        print '\nCould not unzip {}\n'.format(file_name)
+    except Exception as e:
+        print('\nCould not unzip {} : {}\n'.format(source_file_path, e))
         return
-        print '\nExtracting {} to {}\n'.format(source_file_path, target_dir)
+    print('\nExtracting {} to {}\n'.format(source_file_path, target_dir))
 
     for zip_file in read_zip.namelist():
         sanitized_file = sanitize_file(zip_file)
-            should_unzip, file_paths = get_file_destinations(platform_info, sanitized_file, file_name, args)
+        should_unzip, file_paths = get_file_destinations(platform_info, sanitized_file, file_name, args)
         if should_unzip:
             for file_path in file_paths:
                 file_path = os.path.join(target_dir, file_path)
                 archived_file = read_zip.open(zip_file)
                 if not os.path.exists(os.path.dirname(file_path)):
-                    print 'Creating Path {}\n    -->{}'.format(zip_file, file_path)
+                    print('Creating Path {}\n    -->{}'.format(zip_file, file_path))
                     os.makedirs(os.path.dirname(file_path))
                 if not is_zip_folder(file_path):
-                    print 'Extracting {}\n    -->{}'.format(zip_file, file_path)
+                    print('Extracting {}\n    -->{}'.format(zip_file, file_path))
                     close_output = False
                     try:
-                        output_file = file(file_path, 'wb')
+                        output_file = open(file_path, 'wb')
                         close_output = True
                         shutil.copyfileobj(archived_file, output_file)
                     except IOError as e:
-                        print 'Could not copy {} to {} ({})'.format(zip_file, file_path, e)
+                        print('Could not copy {} to {} ({})'.format(zip_file, file_path, e))
                     archived_file.close()
                     if close_output:
                         output_file.close()
@@ -417,9 +419,9 @@ def cleanup_item(file_name, args):
     source_file_path = os.path.join(args.source, file_name)
     try:
         os.remove(source_file_path)
-        print 'Removed {}'.format(source_file_path)
+        print('Removed {}'.format(source_file_path))
     except Exception as e:
-        print 'Could not cleanup {} ({})'.format(source_file_path, e)
+        print('Could not cleanup {} ({})'.format(source_file_path, e))
 
 def copy_dir(source_dir, dest_dir):
     if not os.path.isdir(dest_dir):
@@ -430,12 +432,12 @@ def copy_dir(source_dir, dest_dir):
         destfile = os.path.join(dest_dir, filename)
         if os.path.isfile(sourcefile):
             try:
-                print 'Attempting to copy {} to {}'.format(sourcefile, destfile)
+                print('Attempting to copy {} to {}'.format(sourcefile, destfile))
                 shutil.copy(sourcefile,destfile)
                 import stat
                 os.chmod(destfile, stat.S_IWRITE) # Remove readonly flag after the file has been copied
             except IOError as e:
-                print 'Could not copy {} to {} ({})'.format(sourcefile, destfile, e)
+                print('Could not copy {} to {} ({})'.format(sourcefile, destfile, e))
         elif os.path.isdir(sourcefile):
             copy_dir(sourcefile, destfile)
 
@@ -453,10 +455,10 @@ def get_all_items(version_url, target_dir, args):
     for thisEntry in file_list:
         file_names = thisEntry.get('zipfiles')
         for file_name in file_names:
-            if file_name in fetched_set or fetch_item(thisEntry, version_url, args):
-            extract_item(thisEntry, target_dir, args)
-            fetched_set.add(file_name)
-            copy_extras(thisEntry, target_dir)
+            if file_name in fetched_set or fetch_item(file_name, thisEntry, version_url, args):
+                extract_item(file_name, thisEntry, target_dir, args)
+                fetched_set.add(file_name)
+                copy_extras(thisEntry, target_dir)
 
     if not args.noclean:
         for file_name in fetched_set:
@@ -467,7 +469,7 @@ def add_restricted_platform_list(platform_list):
         from restricted_platforms import add_restricted_platforms
         add_restricted_platforms(platform_list, get_default_library_list())
     except ImportError as e:
-        print 'No restricted module found - {}'.format(e.message)
+        print('No restricted module found - {}'.format(e.message))
         return False
     else:
         return True

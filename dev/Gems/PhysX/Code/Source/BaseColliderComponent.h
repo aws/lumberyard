@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/TransformBus.h>
 
 #include <AzFramework/Physics/CollisionBus.h>
@@ -22,16 +21,17 @@
 #include <PhysX/ColliderShapeBus.h>
 
 #include <Source/Shape.h>
-#include <Source/RigidBodyStatic.h>
 
 namespace PhysX
 {
     class RigidBodyStatic;
 
+    // This disables the warning about calling deprecated functions.  It is necessary because several functions from
+    // ColliderComponentRequestBus have been deprecated, and the bus handling causes these functions to be called here.
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Base class for all runtime collider components.
     class BaseColliderComponent
         : public AZ::Component
-        , public AZ::EntityBus::Handler
         , public ColliderComponentRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , protected PhysX::ColliderShapeRequestBus::Handler
@@ -65,11 +65,11 @@ namespace PhysX
         bool IsTrigger() override;
 
         // CollisionFilteringRequestBus
-        void SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& filterTag) override;
+        void SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 filterTag) override;
         AZStd::string GetCollisionLayerName() override;
-        void SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& filterTag) override;
+        void SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 filterTag) override;
         AZStd::string GetCollisionGroupName() override;
-        void ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& filterTag, bool enabled) override;
+        void ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 filterTag, bool enabled) override;
 
     protected:
         /// Class for collider's shape parameters that are cached.
@@ -120,12 +120,6 @@ namespace PhysX
         void Activate() override;
         void Deactivate() override;
 
-        // AZ::EntityBus
-        void OnEntityActivated(const AZ::EntityId& parentEntityId) override;
-
-        AZ::Vector3 GetNonUniformScale() const;
-        float GetUniformScale() const;
-
         /// Updates the scale of shape configurations to reflect the scale from the transform component.
         /// Specific collider components should override this function.
         virtual void UpdateScaleForShapeConfigs();
@@ -133,16 +127,15 @@ namespace PhysX
         ShapeInfoCache m_shapeInfoCache;
         Physics::ShapeConfigurationList m_shapeConfigList;
     private:
-        void InitStaticRigidBody();
         bool InitShapes();
         bool IsMeshCollider() const;
         bool InitMeshCollider();
 
-        AZStd::unique_ptr<PhysX::RigidBodyStatic> m_staticRigidBody;
         AZStd::vector<AZStd::shared_ptr<Physics::Shape>> m_shapes;
         // This is here only to cover the edge case where GetColliderConfig (which expects a const reference to be
         // returned) is called and m_shapeConfigList is empty. It can be removed as soon as the deprecation of
         // GetColliderConfig is complete.
         static const Physics::ColliderConfiguration s_defaultColliderConfig;
     };
+    AZ_POP_DISABLE_WARNING
 }

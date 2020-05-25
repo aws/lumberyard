@@ -68,13 +68,13 @@ namespace CommandSystem
 
     bool CommandAnimGraphAddTransitionAction::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -150,13 +150,13 @@ namespace CommandSystem
     bool CommandAnimGraphAddTransitionAction::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -179,7 +179,6 @@ namespace CommandSystem
         GetSyntax().ReserveParameters(5);
 
         MCore::CommandSyntax& syntax = GetSyntax();
-        ParameterMixinAnimGraphId::InitSyntax(syntax);
         ParameterMixinTransitionId::InitSyntax(syntax);
 
         GetSyntax().AddRequiredParameter("actionType", "The type id of the transition action to add.", MCore::CommandSyntax::PARAMTYPE_STRING);
@@ -189,7 +188,6 @@ namespace CommandSystem
 
     bool CommandAnimGraphAddTransitionAction::SetCommandParameters(const MCore::CommandLine& parameters)
     {
-        ParameterMixinAnimGraphId::SetCommandParameters(parameters);
         ParameterMixinTransitionId::SetCommandParameters(parameters);
         return true;
     }
@@ -225,13 +223,13 @@ namespace CommandSystem
 
     bool CommandAnimGraphRemoveTransitionAction::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -263,13 +261,13 @@ namespace CommandSystem
     bool CommandAnimGraphRemoveTransitionAction::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, this, outResult);
+        EMotionFX::AnimGraphStateTransition* transition = GetTransition(animGraph, outResult);
         if (!transition)
         {
             return false;
@@ -289,7 +287,6 @@ namespace CommandSystem
         GetSyntax().ReserveParameters(3);
 
         MCore::CommandSyntax& syntax = GetSyntax();
-        ParameterMixinAnimGraphId::InitSyntax(syntax);
         ParameterMixinTransitionId::InitSyntax(syntax);
 
         GetSyntax().AddRequiredParameter("actionIndex", "The index of the transition action to remove.", MCore::CommandSyntax::PARAMTYPE_INT);
@@ -297,7 +294,6 @@ namespace CommandSystem
 
     bool CommandAnimGraphRemoveTransitionAction::SetCommandParameters(const MCore::CommandLine& parameters)
     {
-        ParameterMixinAnimGraphId::SetCommandParameters(parameters);
         ParameterMixinTransitionId::SetCommandParameters(parameters);
         return true;
     }
@@ -345,7 +341,7 @@ namespace CommandSystem
 
     bool CommandAnimGraphAddStateAction::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
@@ -431,7 +427,7 @@ namespace CommandSystem
     bool CommandAnimGraphAddStateAction::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
@@ -514,7 +510,7 @@ namespace CommandSystem
 
     bool CommandAnimGraphRemoveStateAction::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;
@@ -560,7 +556,7 @@ namespace CommandSystem
     bool CommandAnimGraphRemoveStateAction::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
-        EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
+        EMotionFX::AnimGraph* animGraph = GetAnimGraph(outResult);
         if (!animGraph)
         {
             return false;

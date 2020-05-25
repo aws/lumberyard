@@ -14,7 +14,6 @@ import cgf_service_client
 import cgf_lambda_settings
 import service
 import ban_handler
-import json
 
 @service.api
 def get(request):

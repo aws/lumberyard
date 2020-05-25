@@ -12,7 +12,7 @@
 
 import dateutil
 import json
-import mock
+from unittest import mock
 import random
 import unittest
 
@@ -331,7 +331,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_StackInfo(unit
                                               stack_type=MOCK_STACK_TYPE, session=mock_list_stack_resources)
                 actual_resources = target.resources
                 actual_resources_2 = target.resources
-                self.assertItemsEqual(actual_resources, mock_resources)
+                self.assertCountEqual(actual_resources, mock_resources)
                 self.assertIs(actual_resources, actual_resources_2)
                 self.assertIs(actual_resources.stack, target)
                 mock_list_stack_resources.assert_called_once_with(StackName=MOCK_STACK_ARN)
@@ -481,7 +481,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_ResourceInfoLi
         target.append(expected_resource)
         target.append(mock.MagicMock(test_attr='unexpected-2', type='unexpected-type'))
         actual_list = target.get_by_type(expected_type)
-        self.assertItemsEqual(actual_list, expected_list)
+        self.assertCountEqual(actual_list, expected_list)
 
 
 class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_ResourceInfo(unittest.TestCase):
@@ -615,7 +615,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_ProjectInfo(un
                 mock_DeploymentInfo.assert_any_call(stack_manager, mock_deployment_2_stack_arn,
                                                     deployment_access_stack_arn=mock_deployment_2_access_stack_arn,
                                                     session=MOCK_SESSION, project_info=target)
-                self.assertItemsEqual(actual_deployments, mock_deployments)
+                self.assertCountEqual(actual_deployments, mock_deployments)
 
     def test_configuration_bucket(self):
         expected_configuration_bucket_id = 'test-id'
@@ -683,7 +683,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_DeploymentInfo
                           return_value=mock_response) as mock_list_stack_resources:
             stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
             target = stack_info.DeploymentInfo(stack_manager=stack_manager, deployment_stack_arn=MOCK_STACK_ARN,
-                                           session=MOCK_SESSION, stack_description=MOCK_STACK_DESCRIPTION)
+                                               session=MOCK_SESSION, stack_description=MOCK_STACK_DESCRIPTION)
             self.assertEquals(target.stack_type, stack_info.StackInfo.STACK_TYPE_DEPLOYMENT)
             self.assertIs(target.session, MOCK_SESSION)
             self.assertIs(target.stack_description, MOCK_STACK_DESCRIPTION)
@@ -829,7 +829,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_DeploymentInfo
 
     def test_project_provided(self):
         stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
-        mock_project_info =  stack_info.ProjectInfo(stack_manager=stack_manager, project_stack_arn=MOCK_STACK_ARN)
+        mock_project_info = stack_info.ProjectInfo(stack_manager=stack_manager, project_stack_arn=MOCK_STACK_ARN)
         target = stack_info.DeploymentInfo(stack_manager=stack_manager, deployment_stack_arn=MOCK_STACK_ARN,
                                            project_info=mock_project_info)
         self.assertIs(target.project, mock_project_info)
@@ -891,7 +891,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_DeploymentInfo
                 target = stack_info.DeploymentInfo(stack_manager=stack_manager, deployment_stack_arn=MOCK_STACK_ARN,
                                                    session=MOCK_SESSION)
                 actual_resource_groups = target.resource_groups
-                self.assertItemsEqual(actual_resource_groups, mock_resource_groups)
+                self.assertCountEqual(actual_resource_groups, mock_resource_groups)
                 mock_ResourceGroupInfo.assert_any_call(stack_manager, mock_physical_resource_id_1,
                                                        resource_group_name=mock_logical_resource_id_1,
                                                        session=target.session, deployment_info=target)

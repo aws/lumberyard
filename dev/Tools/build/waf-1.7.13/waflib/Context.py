@@ -103,6 +103,11 @@ def create_context(cmd_name, *k, **kw):
 	for x in classes:
 		if x.cmd == cmd_name:
 			return x(*k, **kw)
+	lowercmd = cmd_name.lower()
+	if lowercmd != cmd_name:
+		for x in classes:
+			if x.cmd == lowercmd:
+				return x(*k, **kw)
 	ctx = Context(*k, **kw)
 	ctx.fun = cmd_name
 	return ctx
@@ -173,9 +178,9 @@ class Context(ctx):
 		# binds the context to the nodes in use to avoid a context singleton
 		class node_class(waflib.Node.Node):
 			pass
-		self.node_class = node_class
-		self.node_class.__module__ = "waflib.Node"
-		self.node_class.__name__ = "Nod3"
+		# binds the context to the nodes in use to avoid a context singleton
+		self.node_class = type('Nod3', (waflib.Node.Node,), {})
+		self.node_class.__module__ = 'waflib.Node'
 		self.node_class.ctx = self
 
 		self.root = self.node_class('', None)
@@ -371,7 +376,7 @@ class Context(ctx):
 
 		if out:
 			if not isinstance(out, str):
-				out = out.decode(sys.stdout.encoding or 'iso8859-1')
+				out = out.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 			if ' '  in out:
 				if self.logger:
 					self.logger.debug('out: %s' % out)
@@ -379,7 +384,7 @@ class Context(ctx):
 					write_output(sys.stdout, out)
 		if err:		
 			if not isinstance(err, str):
-				err = err.decode(sys.stdout.encoding or 'iso8859-1')
+				err = err.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 			if self.logger:
 				self.logger.error('err: %s' % err)
 			else:
@@ -430,9 +435,9 @@ class Context(ctx):
 			raise Errors.WafError('Execution failure: %s' % str(e), ex=e)
 
 		if not isinstance(out, str):
-			out = out.decode(sys.stdout.encoding or 'iso8859-1')
+			out = out.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 		if not isinstance(err, str):
-			err = err.decode(sys.stdout.encoding or 'iso8859-1')
+			err = err.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
 
 		if out and quiet != STDOUT and quiet != BOTH:
 			self.to_log('out: %s' % out)
@@ -647,7 +652,7 @@ def load_branch_spec(path):
 	branch_spec_file = path + os.sep + "waf_branch_spec.py"
 	branch_spec_globals = {"__file__": branch_spec_file}
 	if os.path.isfile(branch_spec_file):
-		execfile(branch_spec_file, branch_spec_globals)
+		exec(compile(open(branch_spec_file, "rb").read(), branch_spec_file, 'exec'), branch_spec_globals)
 		return branch_spec_globals
 	else:
 		Logs.error('Waf: Unable to locate file %s' % branch_spec_file)

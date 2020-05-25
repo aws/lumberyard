@@ -43,8 +43,6 @@
 
 #include "Material/MaterialManager.h"
 
-#include "Util/BoostPythonHelpers.h"
-
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -125,6 +123,33 @@ namespace
                 return false;
             }
 
+            // Detect Widget move
+            // We're doing this before the events are actually consumed to avoid confusion
+            if (IsDragGuardedWidget(obj))
+            {
+                switch (e->type())
+                {
+                    case QEvent::MouseButtonPress:
+                    {
+                        m_widgetDraggedState = WidgetDraggedState::Clicked;
+                        break;
+                    }
+                    case QEvent::Move:
+                    {
+                        if (m_widgetDraggedState == WidgetDraggedState::Clicked)
+                        {
+                            m_widgetDraggedState = WidgetDraggedState::Dragged;
+                        }
+                        break;
+                    }
+                    case QEvent::MouseButtonRelease:
+                    {
+                        m_widgetDraggedState = WidgetDraggedState::None;
+                        break;
+                    }
+                }
+            }
+
             switch (e->type())
             {
                 case QEvent::Wheel:
@@ -165,8 +190,8 @@ namespace
 
                 case QEvent::Shortcut:
                 {
-                    // eat shortcuts in game mode
-                    if (GetIEditor()->IsInGameMode())
+                    // Eat shortcuts in game mode or when a guarded widget is being dragged
+                    if (GetIEditor()->IsInGameMode() || m_widgetDraggedState == WidgetDraggedState::Dragged)
                     {
                         return true;
                     }
@@ -231,6 +256,23 @@ namespace
                 });
             }
         }
+
+        //! Detect if the event's target is a Widget we want to guard from shortcuts while it's being dragged
+        //! We're guarding toolbars only right now but this can be extended to more QWidgets
+        bool IsDragGuardedWidget(const QObject* obj)
+        {
+            return qobject_cast<const QToolBar*>(obj) != nullptr;
+        }
+
+        //! Enum to keep track of Widget dragged state
+        enum class WidgetDraggedState
+        {
+            None,       //!< No widget is being clicked nor dragged
+            Clicked,    //!< A widget has been clicked on but has not been dragged
+            Dragged,    //!< A widget is being dragged
+        };
+
+        WidgetDraggedState m_widgetDraggedState = WidgetDraggedState::None;
     };
 
     static void LogToDebug(QtMsgType Type, const QMessageLogContext& Context, const QString& message)
@@ -710,7 +752,6 @@ namespace Editor
     void EditorQtApplication::InstallEditorTranslators()
     {
         m_editorTranslator =        CreateAndInitializeTranslator("editor_en-us.qm", ":/Translations");
-        m_flowgraphTranslator =     CreateAndInitializeTranslator("flowgraph_en-us.qm", ":/Translations");
         m_assetBrowserTranslator =  CreateAndInitializeTranslator("assetbrowser_en-us.qm", ":/Translations");
     }
 
@@ -724,7 +765,6 @@ namespace Editor
     void EditorQtApplication::UninstallEditorTranslators()
     {
         DeleteTranslator(m_editorTranslator);
-        DeleteTranslator(m_flowgraphTranslator);
         DeleteTranslator(m_assetBrowserTranslator);
     }
 

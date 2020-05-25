@@ -14,51 +14,10 @@
 
 #include <AzCore/std/typetraits/config.h>
 
-#ifdef AZSTD_UNDERLAYING_TYPE
-
 namespace AZStd
 {
     using std::underlying_type;
 }
-
-#else
-
-#   include <AzCore/std/typetraits/is_enum.h>
-
-namespace AZStd
-{
-    namespace Internal
-    {
-        template<size_t size>
-        struct underlaying_type_guess;
-
-        template<>
-        struct underlaying_type_guess<1>
-        {
-            typedef AZ::u8 type;
-        };
-
-        template<>
-        struct underlaying_type_guess<2>
-        {
-            typedef AZ::u16 type;
-        };
-
-        template<>
-        struct underlaying_type_guess<4>
-        {
-            typedef AZ::u32 type;
-        };
-    }
-
-    template<class T>
-    struct underlying_type
-    {
-        AZ_STATIC_ASSERT(AZStd::is_enum<T>::value == true, "This is supported only for enums!");
-        typedef typename Internal::underlaying_type_guess<sizeof(T)>::type type;
-    };
-}
-#endif // AZSTD_UNDERLAYING_TYPE
 
 #endif // AZSTD_TYPE_TRAITS_UNDERLYING_TYPE_INCLUDED
 #pragma once

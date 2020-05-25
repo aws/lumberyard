@@ -61,6 +61,7 @@ private slots:
 protected:
     COPY_MENU_FLAGS m_flags;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     //callbacks for each menu event, these need to be set outside of class
     std::function<void()> onCopyCallback;
     std::function<void()> onPasteCallback;
@@ -71,5 +72,6 @@ protected:
 
     //callback for custom menu additions
     std::function<void(QMenu*)> onCustomMenuCreationCallback;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 #endif // QCopyableWidget_h__

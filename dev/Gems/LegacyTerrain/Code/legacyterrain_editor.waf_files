@@ -1,0 +1,15 @@
+{
+    "none":
+    {
+        "Source/Editor":
+        [
+            "Source/Editor/LegacyTerrainEditorModule.h",
+            "Source/Editor/LegacyTerrainEditorModule.cpp",
+            "Source/Editor/LegacyTerrainEditorLevelComponent.h",
+            "Source/Editor/LegacyTerrainEditorLevelComponent.cpp"
+        ]
+    },
+    "auto": {
+    }
+}
+

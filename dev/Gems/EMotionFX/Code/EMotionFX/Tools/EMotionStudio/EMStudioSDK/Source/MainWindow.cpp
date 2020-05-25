@@ -1578,13 +1578,13 @@ namespace EMStudio
     // open an actor
     void MainWindow::OnFileOpenActor()
     {
-
         if (mDirtyFileManager->SaveDirtyFiles({azrtti_typeid<EMotionFX::Actor>()}) == DirtyFileManager::CANCELED)
         {
             return;
         }
 
         AZStd::vector<AZStd::string> filenames = mFileManager->LoadActorsFileDialog(this);
+        activateWindow();
         if (filenames.empty())
         {
             return;
@@ -1602,6 +1602,7 @@ namespace EMStudio
     void MainWindow::OnFileMergeActor()
     {
         AZStd::vector<AZStd::string> filenames = mFileManager->LoadActorsFileDialog(this);
+        activateWindow();
         if (filenames.empty())
         {
             return;

@@ -930,6 +930,7 @@ namespace EMStudio
     void MotionSetManagementWindow::OnOpen()
     {
         AZStd::string filename = GetMainWindow()->GetFileManager()->LoadMotionSetFileDialog(this);
+        GetMainWindow()->activateWindow();
         mPlugin->LoadMotionSet(filename);
     }
 

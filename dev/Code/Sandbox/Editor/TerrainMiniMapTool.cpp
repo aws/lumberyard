@@ -17,7 +17,8 @@
 #include "StdAfx.h"
 
 #include <I3DEngine.h>
-#include <ITerrain.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <IEditorGame.h>
 #include <IGameFramework.h>
 #include <ILevelSystem.h>
@@ -81,6 +82,7 @@ private:
 
 class CTerrainMiniMapPanel
     : public QWidget
+    , public AzFramework::Terrain::TerrainDataNotificationBus::Handler
 {
 public:
     CTerrainMiniMapTool* m_tool;
@@ -91,9 +93,17 @@ public:
     QComboBox* m_resolutions;
 
     CTerrainMiniMapPanel(class CTerrainMiniMapTool* tool, QWidget* pParent = nullptr);
+    ~CTerrainMiniMapPanel();
 
     void ReloadValues();
     void InitPanel();
+
+    ///////////////////////////////////////////////////////////////////////////
+    // AzFramework::Terrain::TerrainDataNotificationBus::Handler START
+    void OnTerrainDataCreateEnd() override { InitPanel(); }
+    void OnTerrainDataDestroyEnd() override { InitPanel(); }
+    // AzFramework::Terrain::TerrainDataNotificationBus::Handler END
+    ///////////////////////////////////////////////////////////////////////////
 
 protected:
     void OnGenerateArea();
@@ -133,6 +143,13 @@ CTerrainMiniMapPanel::CTerrainMiniMapPanel(class CTerrainMiniMapTool* tool, QWid
     connect(m_btnGenerate, &QPushButton::clicked, this, &CTerrainMiniMapPanel::OnGenerateArea);
     connect(ui->RESOLUTION, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &CTerrainMiniMapPanel::OnResolutionChange);
     connect(m_cameraHeight, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainMiniMapPanel::OnHeightChange);
+
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
+}
+
+CTerrainMiniMapPanel::~CTerrainMiniMapPanel()
+{
+    AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
 }
 
 void CTerrainMiniMapPanel::ReloadValues()
@@ -153,14 +170,14 @@ void CTerrainMiniMapPanel::ReloadValues()
 
 void CTerrainMiniMapPanel::InitPanel()
 {
-    bool isEnable = GetIEditor()->Get3DEngine()->GetITerrain() ? TRUE : FALSE;
+    const bool isLegacyTerrainActive = LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers();
     QList<QWidget*> nIDs = { ui->DDS_NAME, ui->TIF_NAME, ui->XML_NAME, ui->IS_DDS, ui->IS_TIF, ui->GENERATEBTN, ui->STATIC_OUTPUT, ui->STATIC_DDS, ui->STATIC_TIF, ui->FILE_SAVE_AS, ui->ALONG_XAXIS };
     for (int i = 0; i < nIDs.size(); i++)
     {
-        nIDs[i]->setEnabled(isEnable);
+        nIDs[i]->setEnabled(isLegacyTerrainActive);
     }
 
-    if (!GetIEditor()->Get3DEngine()->GetITerrain())
+    if (!isLegacyTerrainActive)
     {
         return;
     }
@@ -488,6 +505,13 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
 //////////////////////////////////////////////////////////////////////////
 void CTerrainMiniMapTool::Generate(bool bHideProxy)
 {
+    const bool isLegacyTerrainActive = LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers();
+    if (!isLegacyTerrainActive)
+    {
+        AZ_Warning("LegacyTerrain", false, "The LegacyTerrain Level Component must be activated to generate the minimap.");
+        return;
+    }
+
     m_ConstClearList.clear();
 
     if (bHideProxy)

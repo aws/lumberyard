@@ -17,7 +17,7 @@ def build(bld):
         # Settings
         target          = 'MaglevControlPanel',
         vs_filter       = 'Sandbox/Plugins',
-        file_list       = 'maglevcontrolpanel.waf_files',
+        file_list       = ['maglevcontrolpanel_common.waf_files'],
         platforms       = ['win', 'darwin'],
         configurations  = ['all'],
         exclude_monolithic = True,
@@ -32,7 +32,7 @@ def build(bld):
                            'QT5CORE',
                            'QT5GUI',
                            'QT5WIDGETS',
-                           'BOOSTPYTHON',
+                           'PYBIND11',
                            'AWS_CPP_SDK_CORE',
                            'AWS_CPP_SDK_COGNITO_IDENTITY',
                            'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
@@ -44,26 +44,19 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor/Include'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/Sandbox/Plugins/EditorUI_QT'),
-                           bld.Path('Code/CryEngine/CryAction'),
-                           bld.ThirdPartyPath('boost')
+                           bld.Path('Code/Sandbox/Plugins/EditorUI_QT')
                            ],
-        export_includes = [bld.ThirdPartyPath('boost')],
         defines         = ['QT_NO_DEBUG',
                            'QT_NO_EMIT',
                            'EDITOR_COMMON_IMPORTS'],
-        darwin_use      = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
+
         win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+        win_file_list    = ['maglevcontrolpanel_win.waf_files'],
+        win_test_all_file_list = ['maglevcontrolpanel_test.waf_files'],
+        win_uselib = ['PYTHON37'],
 
-        darwin_x64_lib  = ['python2.7', 'curl'],
-
-        clang_cxxflags  = ['-fexceptions', #BOOSTPYTHON
-                           '-Wno-unused-local-typedef', #BOOSTPYTHON
-                           '-Wno-inconsistent-dllimport', #BOOSTPYTHON
-                           '-Wno-deprecated-register'], #BOOSTPYTHON
-
-        # Testing
-        test_all_file_list = ['maglevcontrolpanel_test.waf_files'],
+        darwin_file_list = ['maglevcontrolpanel_darwin.waf_files'],
+        darwin_disable_tests = True
     )
 
 

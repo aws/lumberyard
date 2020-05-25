@@ -11,7 +11,8 @@
 ########################################################################################
 
 
-SUBFOLDERS = [ 
+SUBFOLDERS = [
+    'AtomCore',
     'AzCore', 
     'AzFramework', 
     'AzGameFramework',

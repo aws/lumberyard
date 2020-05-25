@@ -27,11 +27,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="lambda-code\ServiceLambda\api\example.py" />
-	<Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
     <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="lambda-code" />
+    <Folder Include="lambda-code\ServiceLambda\" />
+    <Folder Include="lambda-code\ServiceLambda\api\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

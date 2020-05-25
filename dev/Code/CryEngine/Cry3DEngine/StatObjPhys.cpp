@@ -3593,20 +3593,20 @@ void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
 
 #define ARE_THE_SAME(arg1, arg2, type) ((AZStd::is_same<decltype(arg1), type& >::value) && (AZStd::is_same<decltype(arg2), type& >::value))
 
-            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pVtx[0], dstSpine.pVtx[0], Vec3), "Unexpected type");
+            static_assert(ARE_THE_SAME(srcSpine.pVtx[0], dstSpine.pVtx[0], Vec3), "Unexpected type");
             memcpy(dstSpine.pVtx = new Vec3[nVtx], srcSpine.pVtx, sizeof(Vec3) * nVtx);
 
-            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pSegDim[0], dstSpine.pSegDim[0], Vec4), "Unexpected type");
+            static_assert(ARE_THE_SAME(srcSpine.pSegDim[0], dstSpine.pSegDim[0], Vec4), "Unexpected type");
             memcpy(dstSpine.pSegDim = new Vec4[nVtx], srcSpine.pSegDim, sizeof(Vec4) * nVtx);
 
             //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
-            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pStiffness[0], dstSpine.pStiffness[0], float), "Unexpected type");
+            static_assert(ARE_THE_SAME(srcSpine.pStiffness[0], dstSpine.pStiffness[0], float), "Unexpected type");
             memcpy(dstSpine.pStiffness = new float[nVtx], srcSpine.pStiffness, sizeof(float) * nVtx);
 
-            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pDamping[0], dstSpine.pDamping[0], float), "Unexpected type");
+            static_assert(ARE_THE_SAME(srcSpine.pDamping[0], dstSpine.pDamping[0], float), "Unexpected type");
             memcpy(dstSpine.pDamping = new float[nVtx], srcSpine.pDamping, sizeof(float) * nVtx);
 
-            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pThickness[0], dstSpine.pThickness[0], float), "Unexpected type");
+            static_assert(ARE_THE_SAME(srcSpine.pThickness[0], dstSpine.pThickness[0], float), "Unexpected type");
             memcpy(dstSpine.pThickness = new float[nVtx], srcSpine.pThickness, sizeof(float) * nVtx);
 
 #undef ARE_THE_SAME

@@ -49,7 +49,7 @@ SlicerManipulator::SlicerManipulator( SpriteBorder border,
                 ( m_isVertical ? thicknessInPixels : ( 3.0f * CRYINCLUDE_EDITORCOMMON_ARBITRARILY_LARGE_NUMBER ) ),
                 ( m_isVertical ? ( 3.0f * CRYINCLUDE_EDITORCOMMON_ARBITRARILY_LARGE_NUMBER ) : thicknessInPixels ) );
 
-    setPixelPosition( GetBorderValueInPixels( m_sprite, m_border, ( m_isVertical ? m_unscaledPixmapSize.width() : m_unscaledPixmapSize.height() ) ) );
+    setPixelPosition( GetBorderValueInPixels( m_sprite, m_border, aznumeric_cast<float>( m_isVertical ? m_unscaledPixmapSize.width() : m_unscaledPixmapSize.height() ) ) );
 
     setFlag( QGraphicsItem::ItemIsMovable, true );
     setFlag( QGraphicsItem::ItemIsSelectable, true ); // This allows using the CTRL key to select multiple manipulators and move them simultaneously.
@@ -74,29 +74,29 @@ void SlicerManipulator::paint(QPainter* painter, const QStyleOptionGraphicsItem*
     // Draw a thin line in the middle of the selectable area.
     if( m_isVertical )
     {
-        float x = ( ( ( rect().left() + rect().right() ) * 0.5f ) - CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH );
+        float x = aznumeric_cast<float>( ( ( rect().left() + rect().right() ) * 0.5f ) - CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH );
 
         pen.setColor( m_color );
         painter->setPen( pen );
-        painter->drawLine( x, rect().top(), x, rect().bottom() );
+        painter->drawLine(aznumeric_cast<int>(x), aznumeric_cast<int>(rect().top()), aznumeric_cast<int>(x), aznumeric_cast<int>(rect().bottom()) );
 
         x += CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH;
         pen.setColor( Qt::black );
         painter->setPen( pen );
-        painter->drawLine( x, rect().top(), x, rect().bottom() );
+        painter->drawLine(aznumeric_cast<int>(x), aznumeric_cast<int>(rect().top()), aznumeric_cast<int>(x), aznumeric_cast<int>(rect().bottom()) );
     }
     else
     {
-        float y = ( ( ( rect().top() + rect().bottom() ) * 0.5f ) - CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH );
+        float y = aznumeric_cast<float>( ( ( rect().top() + rect().bottom() ) * 0.5f ) - CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH );
 
         pen.setColor( m_color );
         painter->setPen( pen );
-        painter->drawLine( rect().left(), y, rect().right(), y );
+        painter->drawLine(aznumeric_cast<int>(rect().left()), aznumeric_cast<int>(y), aznumeric_cast<int>(rect().right()), aznumeric_cast<int>(y) );
 
         y += CRYINCLUDE_EDITORCOMMON_SLICERMANIPULATOR_WIDTH;
         pen.setColor( Qt::black );
         painter->setPen( pen );
-        painter->drawLine( rect().left(), y, rect().right(), y );
+        painter->drawLine(aznumeric_cast<int>(rect().left()), aznumeric_cast<int>(y), aznumeric_cast<int>(rect().right()), aznumeric_cast<int>(y) );
     }
 }
 
@@ -111,13 +111,13 @@ QVariant SlicerManipulator::itemChange(GraphicsItemChange change, const QVariant
     if( ( change == ItemPositionChange ) &&
         scene() )
     {
-        float totalScaledSizeInPixels = ( m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height() );
+        float totalScaledSizeInPixels = aznumeric_cast<float>( m_isVertical ? m_scaledPixmapSize.width() : m_scaledPixmapSize.height() );
 
-        float p = clamp_tpl<float>( ( m_isVertical ? value.toPointF().x() : value.toPointF().y() ),
+        float p = clamp_tpl<float>(aznumeric_cast<float>( m_isVertical ? value.toPointF().x() : value.toPointF().y() ),
                                     0.0f,
                                     totalScaledSizeInPixels );
 
-        m_edit->setPixelPosition( m_isVertical ? ( p * m_unscaledOverScaledFactor.x() ) : ( p * m_unscaledOverScaledFactor.y() ) );
+        m_edit->setPixelPosition( m_isVertical ? aznumeric_cast<float>( p * m_unscaledOverScaledFactor.x() ) : aznumeric_cast<float>( p * m_unscaledOverScaledFactor.y() ) );
 
         SetBorderValue( m_sprite, m_border, p, totalScaledSizeInPixels );
 

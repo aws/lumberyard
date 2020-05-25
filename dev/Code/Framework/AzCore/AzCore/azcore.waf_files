@@ -18,6 +18,8 @@
         [
             "Asset/AssetCommon.cpp",
             "Asset/AssetCommon.h",
+            "Asset/AssetJsonSerializer.cpp",
+            "Asset/AssetJsonSerializer.h",
             "Asset/AssetManager.cpp",
             "Asset/AssetManager.h",
             "Asset/AssetManagerBus.h",
@@ -58,6 +60,19 @@
             "Component/NamedEntityId.h",
             "Component/TickBus.h",
             "Component/TransformBus.h"
+        ],
+        "Console": [
+            "Console/Console.cpp",
+            "Console/Console.h",
+            "Console/ConsoleDataWrapper.h",
+            "Console/ConsoleDataWrapper.inl",
+            "Console/ConsoleFunctor.cpp",
+            "Console/ConsoleFunctor.h",
+            "Console/ConsoleFunctor.inl",
+            "Console/ConsoleNotificationBus.h",
+            "Console/ConsoleTypeHelpers.h",
+            "Console/ConsoleTypeHelpers.inl", 
+            "Console/IConsole.h"
         ],
         "Prefab":
         [
@@ -117,7 +132,9 @@
             "Debug/TraceMessageBus.h",
             "Debug/TraceMessagesDriller.cpp",
             "Debug/TraceMessagesDriller.h",
-            "Debug/TraceMessagesDrillerBus.h"
+            "Debug/TraceMessagesDrillerBus.h",
+            "Debug/TraceReflection.cpp",
+            "Debug/TraceReflection.h"
         ],
         "Driller":
         [
@@ -134,6 +151,8 @@
         [
             "EBus/BusImpl.h",
             "EBus/EBus.h",
+            "EBus/Event.h",
+            "EBus/Event.inl",
             "EBus/Policies.h",
             "EBus/Results.h",
             "EBus/Environment.cpp",
@@ -252,6 +271,7 @@
             "Math/Aabb.cpp",
             "Math/Aabb.h",
             "Math/Crc.cpp",
+            "Math/Crc.inl",
             "Math/Crc.h",
             "Math/DocsMath.h",
             "Math/FourVector3.h",
@@ -385,11 +405,33 @@
             "Module/ModuleManager.cpp",
             "Module/ModuleManager.h"
         ],
+        "Module/Internal":
+        [
+            "Module/Internal/ModuleManagerSearchPathTool.h",
+            "Module/Internal/ModuleManagerSearchPathTool.cpp"
+        ],
+
         "NativeUI":
         [
             "NativeUI/NativeUISystemComponent.cpp",
             "NativeUI/NativeUISystemComponent.h",
             "NativeUI/NativeUIRequests.h"
+        ],
+        "Name":
+        [
+            "Name/Name.h",
+            "Name/Name.cpp",
+            "Name/NameDictionary.h",
+            "Name/NameDictionary.cpp",
+            "Name/NameJsonSerializer.h",
+            "Name/NameJsonSerializer.cpp",
+            "Name/NameSerializer.h",
+            "Name/NameSerializer.cpp"
+        ],
+        "Name/Internal":
+        [
+            "Name/Internal/NameData.h",
+            "Name/Internal/NameData.cpp"
         ],
         "Outcome":
         [
@@ -524,6 +566,11 @@
         [
             "State/HSM.cpp",
             "State/HSM.h"
+        ],
+        "StringFunc":
+        [
+            "StringFunc/StringFunc.cpp",
+            "StringFunc/StringFunc.h"
         ],
         "UserSettings":
         [

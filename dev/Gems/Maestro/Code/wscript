@@ -21,9 +21,7 @@ def build(bld):
 
         includes    = [ '.',
                         'Include',
-                        bld.ThirdPartyPath('boost'),
-                        bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')
+                        bld.Path('Code/CryEngine/CryCommon')
                       ],
 
         editor = dict(
@@ -34,13 +32,10 @@ def build(bld):
             includes    = [ '.',
                             'Include',
                             'Source',
-                            bld.ThirdPartyPath('boost'),
-                            bld.Path('Code/CryEngine/CryCommon'),
                             bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                            bld.Path('Code/CryEngine/CryCommon'),
-                            bld.Path('Code/CryEngine/CryAction')
+                            bld.Path('Code/CryEngine/CryCommon')
                            ],
             use_required_gems    = True,
 

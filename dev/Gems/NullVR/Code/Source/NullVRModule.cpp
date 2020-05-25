@@ -12,10 +12,14 @@
 
 #include "NullVR_precompiled.h"
 #include <platform_impl.h>
+#include <NullVR_Traits_Platform.h>
 
+#if AZ_TRAIT_NULLVR_SUPPORTED
 #include "NullVRDevice.h"
+#endif //AZ_TRAIT_NULLVR_SUPPORTED
 
 #include <IGem.h>
+
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 
@@ -31,9 +35,11 @@ namespace NullVR
             : CryHooksModule()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+# if AZ_TRAIT_NULLVR_SUPPORTED
             m_descriptors.insert(m_descriptors.end(), {
                 NullVRDevice::CreateDescriptor(),
             });
+#endif //AZ_TRAIT_NULLVR_SUPPORTED
 
             // This is an internal Amazon gem, so register it's components for metrics tracking, otherwise the name of the component won't get sent back.
             // IF YOU ARE A THIRDPARTY WRITING A GEM, DO NOT REGISTER YOUR COMPONENTS WITH EditorMetricsComponentRegistrationBus
@@ -52,7 +58,9 @@ namespace NullVR
         AZ::ComponentTypeList GetRequiredSystemComponents() const override
         {
             return AZ::ComponentTypeList{
+#if AZ_TRAIT_NULLVR_SUPPORTED
                 azrtti_typeid<NullVRDevice>(),
+#endif //AZ_TRAIT_NULLVR_SUPPORTED
             };
         }
 

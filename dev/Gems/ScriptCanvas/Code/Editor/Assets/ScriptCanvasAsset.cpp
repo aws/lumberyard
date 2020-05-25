@@ -74,7 +74,7 @@ namespace ScriptCanvasEditor
                 return false;
             }
 
-            variableManager->SetUniqueId(graph->GetUniqueId());
+            variableManager->ConfigureScriptCanvasId(graph->GetScriptCanvasId());
             if (!scEntityDataElement.SetData(context, scEntity))
             {
                 AZ_Error("Script Canvas", false, "Failed to set converted Script Canvas Entity back on data element node when transitioning from version %u to version 4", rootDataElementNode.GetVersion());
@@ -120,6 +120,11 @@ namespace ScriptCanvasEditor
     AZ::Entity* ScriptCanvasAsset::GetScriptCanvasEntity() const
     {
         return m_data.m_scriptCanvasEntity.get();
+    }
+
+    ScriptCanvas::Graph* ScriptCanvasAsset::GetScriptCanvasGraph() const
+    {
+        return AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(m_data.m_scriptCanvasEntity.get());
     }
 
     void ScriptCanvasAsset::SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity)

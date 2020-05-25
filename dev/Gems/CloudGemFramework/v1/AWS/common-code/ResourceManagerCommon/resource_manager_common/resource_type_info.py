@@ -14,12 +14,13 @@ import boto3
 import json
 import re
 import sys
+from . import constant
+from six import iteritems
 
-import constant
 try:
     from cgf_utils import aws_utils
 except:
-    print 'Failed to import from cgf_utils, path is {}'.format(sys.path)
+    print('Failed to import from cgf_utils, path is {}'.format(sys.path))
 
 from cgf_utils import lambda_utils
 
@@ -175,7 +176,7 @@ def _load_mappings_for_prefix(destination, bucket, prefix, delimiter, s3_client)
         lambda_dictionary = lambda_info if isinstance(lambda_info, dict) else {}  # Backwards compatibility
 
         # Add resource type definitions from the file to the dictionary
-        for resource_type_name, data in definitions.iteritems():
+        for resource_type_name, data in iteritems(definitions):
             destination[resource_type_name] = ResourceTypeInfo(resource_stack_id, path_info.resource_name,
                                                                resource_type_name, lambda_dictionary,
                                                                resource_type_name in deleted_types,

@@ -19,7 +19,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <Debug.h>
+#include "DebugLibraryDefinition.h"
 
 namespace ScriptCanvasDiagnostics
 {

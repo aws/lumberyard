@@ -16,11 +16,6 @@
 def build(bld):
 
     bld.DefineGem(
-        
-        includes=['.',
-                  bld.ThirdPartyPath('boost'),
-                  bld.Path('Code/CryEngine/CryCommon')],
-        
         Editor = dict(
             file_list       = ['slicefavorites.waf_files' ],
             test_all_file_list = ['slicefavorites_tests.waf_files'],

@@ -18,17 +18,22 @@ $ waf configure xcode_mac
 $ waf configure xcode_appletv
 """
 
-from waflib import Context, TaskGen, Build, Utils, Logs, Options
-from waflib.TaskGen import feature, after_method
-from waflib.Configure import conf, conf_event, ConfigurationContext
-
-from build_configurations import PLATFORM_MAP
-
+# System Imports
 import copy
 import os
 import re
 import subprocess
 import sys
+
+# waflib imports
+from waflib import Build, Context, Logs, Options, TaskGen, Utils
+from waflib.Configure import conf, conf_event, ConfigurationContext
+from waflib.TaskGen import after_method, feature
+
+# lmbrwaflib imports
+from lmbrwaflib.build_configurations import PLATFORM_MAP
+
+
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl)'
 
@@ -111,7 +116,7 @@ class XCodeNode:
     def tostring(self, value):
         if isinstance(value, dict):
             result = "{\n"
-            for k,v in value.items():
+            for k,v in list(value.items()):
                 result = result + "\t\t\t%s = %s;\n" % (k, self.tostring(v))
             result = result + "\t\t}"
             return result
@@ -130,7 +135,7 @@ class XCodeNode:
 
     def write_recursive(self, value, file):
         if isinstance(value, dict):
-            for k,v in value.items():
+            for k,v in list(value.items()):
                 self.write_recursive(v, file)
         elif isinstance(value, list):
             for i in value:
@@ -139,14 +144,14 @@ class XCodeNode:
             value.write(file)
 
     def write(self, file):
-        for attribute,value in self.__dict__.items():
+        for attribute,value in list(self.__dict__.items()):
             if attribute[0] != '_':
                 self.write_recursive(value, file)
 
         w = file.write
         w("\t%s = {\n" % self._id)
         w("\t\tisa = %s;\n" % self.__class__.__name__)
-        for attribute,value in self.__dict__.items():
+        for attribute,value in list(self.__dict__.items()):
             if attribute[0] != '_':
                 w("\t\t%s = %s;\n" % (attribute, self.tostring(value)))
         w("\t};\n\n")
@@ -674,7 +679,7 @@ class xcode(Build.BuildContext):
                 PLATFORM_SDK_NAME[platform_name],
                 '--show-sdk-path'
             ]
-            sdk_path = subprocess.check_output(xcrun_cmd).strip()
+            sdk_path = subprocess.check_output(xcrun_cmd).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip()
 
             # the installTest requires UIKit to show a dialog
             frameworks_group = PBXGroup('Frameworks')
@@ -791,6 +796,7 @@ class xcode(Build.BuildContext):
 class xcode_mac(xcode):
     '''Generate an xcode project for Mac'''
     cmd = 'xcode_mac'
+    is_project_generator = True
 
     def get_target_platforms(self):
         return ['darwin_x64']
@@ -820,6 +826,7 @@ class xcode_mac(xcode):
 class xcode_ios(xcode):
     '''Generate an xcode project for iOS'''
     cmd = 'xcode_ios'
+    is_project_generator = True
 
     def get_target_platforms(self):
         return ['ios']
@@ -830,32 +837,11 @@ class xcode_ios(xcode):
     def get_target_configurations(self):
         return PLATFORM_MAP['ios'].get_configuration_names()
 
-    def _get_settings_file(self):
-        return 'ios_settings.json'
-
     def get_settings(self):
         settings = xcode.get_settings(self)
 
-        settings_root = self.root.find_node([Context.launch_dir, '_WAF_', 'apple'])
-
-        settings_files = [
-            'common_arm_settings.json',
-            self._get_settings_file()
-        ]
-
-        for file_name in settings_files:
-
-            settings_file = settings_root.find_node(file_name)
-            if not settings_file:
-                Logs.warn('[WARN] Could not find {} file in {}. Project will not have all necessary options set correctly'.format(file_name, settings_root.abspath()))
-
-            else:
-                settings.update(self.parse_json_file(settings_file))
-
-        # For symroot need to have the full path so change the value from
-        # relative path to a full path
-        if 'SYMROOT' in settings:
-            settings['SYMROOT'] = os.path.join(Context.launch_dir, settings['SYMROOT'])
+        get_arm_settings_func = getattr(self, 'get_{}_xcode_settings'.format(self.get_target_platform_name()), lambda : dict())
+        settings.update(get_arm_settings_func())
 
         return settings
 
@@ -878,6 +864,7 @@ class xcode_ios(xcode):
 class xcode_appletv(xcode_ios):
     '''Generate an xcode project for apple tv'''
     cmd = 'xcode_appletv'
+    is_project_generator = True
 
     def get_target_platforms(self):
         return ['appletv']
@@ -887,9 +874,6 @@ class xcode_appletv(xcode_ios):
 
     def get_target_configurations(self):
         return PLATFORM_MAP['appletv'].get_configuration_names()
-
-    def _get_settings_file(self):
-        return 'appletv_settings.json'
 
     def get_xcode_project_name(self):
         return self.get_appletv_project_name()
@@ -929,7 +913,7 @@ def xcode_stub_parse_vcxproj(self):
     pass
 
 
-@conf_event(after_methods=['update_valid_configurations_file'],
+@conf_event(after_methods=['load_compile_rules_for_enabled_platforms'],
             after_events=['inject_generate_uber_command', 'inject_generate_module_def_command'])
 def inject_xcode_commands(conf):
     """

@@ -62,6 +62,7 @@ namespace GraphCanvas
         SlotConfiguration* CloneSlotConfiguration() const override;
 
         int GetLayoutPriority() const override;
+        void SetLayoutPriority(int priority) override;
         ////
 
         // ConnectionNotificationBus        

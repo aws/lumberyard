@@ -16,8 +16,6 @@
 #include "CAISystem.h"
 #include "AILog.h"
 
-#include "ScriptBind_AI.h"
-
 #include "AIVehicle.h"
 #include "AIPlayer.h"
 #include "ObjectContainer.h"
@@ -30,7 +28,6 @@
 #include "SmartObjects.h"
 #include "CalculationStopper.h"
 #include "AIRadialOcclusion.h"
-#include "AIActions.h"
 #include "GraphNodeManager.h"
 #include "FireCommand.h"
 #include "CentralInterestManager.h"
@@ -52,7 +49,6 @@
 #include "Walkability/WalkabilityCacheManager.h"
 #include "DebugDrawContext.h"
 #include "FlightNavRegion2.h"
-#include "Sequence/SequenceManager.h"
 #include "ClusterDetector.h"
 #include "SmartPathFollower.h"
 
@@ -70,7 +66,6 @@
 #include "AIBubblesSystem/AIBubblesSystem.h"
 #endif
 
-#include "FlowNodes/AIFlowBaseNode.h"
 #include "FlyHelpers_TacticalPointLanguageExtender.h"
 
 #include <CryProfileMarker.h>
@@ -142,8 +137,7 @@ void RemoveNonActors(CAISystem::AIActorSet& actorSet)
 // CAISystem
 //====================================================================
 CAISystem::CAISystem(ISystem* pSystem)
-    : m_pScriptAI(0)
-    , m_nTickCount(0)
+    : m_nTickCount(0)
     , m_actorProxyFactory(0)
     , m_groupProxyFactory(0)
     , m_pGraph(0)
@@ -151,7 +145,6 @@ CAISystem::CAISystem(ISystem* pSystem)
     , m_bInitialized(false)
     , m_pSmartObjectManager(NULL)
     , m_bUpdateSmartObjects(false)
-    , m_pAIActionManager(NULL)
     , m_lastAmbientFireUpdateTime(-10.0f)
     , m_lastVisBroadPhaseTime(-10.0f)
     , m_lastExpensiveAccessoryUpdateTime(-10.0f)
@@ -230,7 +223,6 @@ CAISystem::~CAISystem()
     }
 
     delete m_pSmartObjectManager;
-    delete m_pAIActionManager;
 
     // Release fire command factory.
     for (std::vector<IFireCommandDesc*>::iterator it = m_firecommandDescriptors.begin(); it != m_firecommandDescriptors.end(); ++it)
@@ -238,8 +230,6 @@ CAISystem::~CAISystem()
         (*it)->Release();
     }
     m_firecommandDescriptors.clear();
-
-    SAFE_RELEASE(m_pScriptAI);
 
     // (MATT) Flush all the objects that have been deregistered.
     // Really, this should delete all AI objects regardless {2009/03/27}
@@ -275,7 +265,6 @@ CAISystem::~CAISystem()
     SAFE_DELETE(gAIEnv.pRayCaster);
     SAFE_DELETE(gAIEnv.pIntersectionTester);
     SAFE_DELETE(gAIEnv.pMovementSystem);
-    SAFE_DELETE(gAIEnv.pSequenceManager);
     SAFE_DELETE(gAIEnv.pClusterDetector);
 
 #ifdef CRYAISYSTEM_DEBUG
@@ -308,11 +297,6 @@ bool CAISystem::Init()
 
 bool CAISystem::PostInit()
 {
-    if (!m_pScriptAI)
-    {
-        m_pScriptAI = new CScriptBind_AI();
-    }
-
     Reset(IAISystem::RESET_INTERNAL);
 
     m_nTickCount = 0;
@@ -386,10 +370,6 @@ bool CAISystem::PostInit()
         {
             gAIEnv.pGroupManager = new CGroupManager();
         }
-        if (!gAIEnv.pAIActionManager)
-        {
-            gAIEnv.pAIActionManager = m_pAIActionManager = new CAIActionManager();
-        }
         if (!gAIEnv.pSmartObjectManager)
         {
             gAIEnv.pSmartObjectManager = m_pSmartObjectManager = new CSmartObjectManager();
@@ -407,10 +387,6 @@ bool CAISystem::PostInit()
         if (!gAIEnv.pMovementSystem)
         {
             gAIEnv.pMovementSystem = MovementSystemCreator().CreateMovementSystem();
-        }
-        if (!gAIEnv.pSequenceManager)
-        {
-            gAIEnv.pSequenceManager = new AIActionSequence::SequenceManager();
         }
         if (!gAIEnv.pClusterDetector)
         {
@@ -443,7 +419,6 @@ bool CAISystem::PostInit()
 
 bool CAISystem::CompleteInit()
 {
-    AIFlowBaseNode::RegisterFactory();
     return true;
 }
 
@@ -547,7 +522,6 @@ void CAISystem::SetupAIEnvironment()
         gAIEnv.pTargetTrackManager = new CTargetTrackManager();
     }
 
-    gAIEnv.pAIActionManager = m_pAIActionManager = new CAIActionManager();
     gAIEnv.pSmartObjectManager = m_pSmartObjectManager = new CSmartObjectManager();
 
     gAIEnv.pPerceptionManager = new CPerceptionManager();
@@ -573,8 +547,6 @@ void CAISystem::SetupAIEnvironment()
 
     gAIEnv.pMovementSystem = MovementSystemCreator().CreateMovementSystem();
 
-    gAIEnv.pSequenceManager = new AIActionSequence::SequenceManager();
-
     gAIEnv.pClusterDetector = new ClusterDetector();
 
 #ifdef CRYAISYSTEM_DEBUG
@@ -590,9 +562,6 @@ void CAISystem::SetupAIEnvironment()
 //-----------------------------------------------------------------------------------------------------------
 bool CAISystem::InitSmartObjects()
 {
-    AILogProgress("[AISYSTEM] Initializing AI Actions.");
-    m_pAIActionManager->LoadLibrary(AI_ACTIONS_PATH);
-
     AILogProgress("[AISYSTEM] Initializing Smart Objects.");
     m_pSmartObjectManager->LoadSmartObjectsLibrary();
 
@@ -1797,10 +1766,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
         {
             gAIEnv.pGroupManager = new CGroupManager();
         }
-        if (!gAIEnv.pAIActionManager)
-        {
-            gAIEnv.pAIActionManager = m_pAIActionManager = new CAIActionManager();
-        }
         if (!gAIEnv.pSmartObjectManager)
         {
             gAIEnv.pSmartObjectManager = m_pSmartObjectManager = new CSmartObjectManager();
@@ -1876,8 +1841,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
             SAFE_DELETE(gAIEnv.pCoverSystem);
             SAFE_DELETE(gAIEnv.pNavigationSystem);
             SAFE_DELETE(gAIEnv.pGroupManager);
-            SAFE_DELETE(m_pAIActionManager);
-            gAIEnv.pAIActionManager = NULL;
             SAFE_DELETE(m_pSmartObjectManager);
             gAIEnv.pSmartObjectManager = NULL;
             SAFE_DELETE(gAIEnv.pRayCaster);
@@ -1998,8 +1961,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
 
     if (m_pSmartObjectManager->IsInitialized())
     {
-        m_pAIActionManager->Reset();
-
         // If CAISystem::Reset() was called from CAISystem::Shutdown() IEntitySystem is already deleted
         if (gEnv->pEntitySystem)
         {
@@ -2206,7 +2167,6 @@ void CAISystem::Reset(IAISystem::EResetReason reason)
 
     if (reason ==  IAISystem::RESET_ENTER_GAME || reason ==  IAISystem::RESET_UNLOAD_LEVEL)
     {
-        gAIEnv.pSequenceManager->Reset();
         gAIEnv.pClusterDetector->Reset();
     }
 
@@ -2681,11 +2641,6 @@ void CAISystem::FlushSystem(bool bDeleteAll)
         gAIEnv.pTacticalPointSystem->Reset();
     }
 
-    if (gAIEnv.pSequenceManager)
-    {
-        gAIEnv.pSequenceManager->Reset();
-    }
-
     if (gAIEnv.pClusterDetector)
     {
         gAIEnv.pClusterDetector->Reset();
@@ -2912,11 +2867,6 @@ void CAISystem::Update(CTimeValue frameStartTime, float frameDeltaTime)
         if (m_pSmartObjectManager && !m_pSmartObjectManager->IsInitialized())
         {
             InitSmartObjects();
-        }
-
-        if (m_pAIActionManager)
-        {
-            m_pAIActionManager->Update();
         }
 
         m_frameStartTime = frameStartTime;
@@ -4639,8 +4589,6 @@ void CAISystem::NotifyEnableState(CAIActor* pAIActor, bool state)
     }
     else
     {
-        gAIEnv.pSequenceManager->AgentDisabled(pAIActor->GetEntityID());
-
         gAIEnv.pActorLookUp->RemoveActor(pAIActor);
 
         pAIActor->ClearProbableTargets();
@@ -5350,11 +5298,6 @@ void CAISystem::Serialize(TSerialize ser)
     if (ser.IsReading())
     {
         gAIEnv.pWalkabilityCacheManager->Reset();
-
-        if (m_pAIActionManager)
-        {
-            m_pAIActionManager->Reset();
-        }
     }
     // reregister smart objects with navigation before serializing anything
     // so that code can safely query the completed navgraph
@@ -5414,11 +5357,6 @@ void CAISystem::Serialize(TSerialize ser)
     }
     ser.EndGroup();
 
-    if (m_pAIActionManager)
-    {
-        m_pAIActionManager->Serialize(ser);
-    }
-
     if (gAIEnv.pTargetTrackManager)
     {
         gAIEnv.pTargetTrackManager->Serialize(ser);
@@ -5470,11 +5408,6 @@ void CAISystem::Serialize(TSerialize ser)
     if (ser.IsReading())
     {
         gAIEnv.pObjectContainer->PostSerialize();
-    }
-
-    if (ser.IsReading())
-    {
-        gAIEnv.pSequenceManager->Reset();
     }
 }
 
@@ -7321,11 +7254,6 @@ IMovementSystem* CAISystem::GetMovementSystem() const
     return gAIEnv.pMovementSystem;
 }
 
-AIActionSequence::ISequenceManager* CAISystem::GetSequenceManager() const
-{
-    return gAIEnv.pSequenceManager;
-}
-
 IClusterDetector* CAISystem::GetClusterDetector() const
 {
     return gAIEnv.pClusterDetector;
@@ -7359,14 +7287,6 @@ string CAISystem::GetPathTypeNames()
         pathNames += iter->first + ' ';
     }
     return pathNames;
-}
-
-//===================================================================
-// Parse AI description tables
-//===================================================================
-bool CAISystem::ParseTables(int firstTable, bool parseMovementAbility, IFunctionHandler* pH, AIObjectParams& aiParams, bool& updateAlways)
-{
-    return m_pScriptAI->ParseTables(firstTable, parseMovementAbility, pH, aiParams, updateAlways);
 }
 
 bool CAISystem::CompareFloatsFPUBugWorkaround(float fLeft, float fRight)
@@ -7533,11 +7453,6 @@ const CAISystem::AIActorSet& CAISystem::GetEnabledAIActorSet() const
 bool CAISystem::IsEnabled() const
 {
     return m_IsEnabled;
-}
-
-IAIActionManager* CAISystem::GetAIActionManager()
-{
-    return m_pAIActionManager;
 }
 
 ISmartObjectManager* CAISystem::GetSmartObjectManager()

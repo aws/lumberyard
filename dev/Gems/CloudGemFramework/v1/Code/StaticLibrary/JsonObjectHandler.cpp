@@ -12,6 +12,7 @@
 #include "CloudGemFramework_precompiled.h"
 
 #include <CloudGemFramework/JsonObjectHandler.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/JSON/error/error.h>
 
 namespace CloudGemFramework
@@ -120,10 +121,15 @@ namespace CloudGemFramework
             else
             {
                 // Doesn't support embedded \0, which rapidjson allows.
-                *m_targetString = str;
+                *m_targetString = AZStd::string::format("%.*s", length, str);
                 return true;
             }
 
+        }
+
+        bool RawNumber(const Ch* str, rapidjson::SizeType length, bool copy)
+        {
+            return String(str, length, copy);
         }
 
         bool Null()
@@ -223,7 +229,7 @@ namespace CloudGemFramework
             }
             if (m_expecting == Expecting::DOUBLE)
             {
-                *m_targetDouble = i;
+                *m_targetDouble = aznumeric_caster(i);
                 return true;
             }
             return UnexpectedContent(Expecting::INT64);
@@ -247,7 +253,7 @@ namespace CloudGemFramework
             }
             if (m_expecting == Expecting::DOUBLE)
             {
-                *m_targetDouble = i;
+                *m_targetDouble = aznumeric_caster(i);
                 return true;
             }
             return UnexpectedContent(Expecting::UINT64);

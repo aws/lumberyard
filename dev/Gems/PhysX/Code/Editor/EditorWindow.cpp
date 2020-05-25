@@ -11,6 +11,9 @@
 */
 #include <PhysX_precompiled.h>
 
+#include <AzCore/Interface/Interface.h>
+#include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/SystemBus.h>
 #include <AzToolsFramework/API/ViewPaneOptions.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LyViewPaneNames.h>
@@ -30,10 +33,13 @@ namespace PhysX
             , m_ui(new Ui::EditorWindowClass())
         {
             m_ui->setupUi(this);
-            PhysX::Configuration configuration;
-            PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
-            m_ui->m_PhysXConfigurationWidget->SetConfiguration(configuration);
 
+            const PhysX::PhysXConfiguration& physxConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
+            const Physics::WorldConfiguration& worldConfiguration = AZ::Interface<Physics::SystemRequests>::Get()->GetDefaultWorldConfiguration();
+            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary = *AZ::Interface<Physics::SystemRequests>::Get()->GetDefaultMaterialLibraryAssetPtr();
+            const Physics::CollisionConfiguration& collisionConfiguration = AZ::Interface<Physics::CollisionRequests>::Get()->GetCollisionConfiguration();
+
+            m_ui->m_PhysXConfigurationWidget->SetConfiguration(physxConfiguration, collisionConfiguration, worldConfiguration, materialLibrary);
             connect(m_ui->m_PhysXConfigurationWidget, &PhysX::Editor::ConfigurationWidget::onConfigurationChanged, 
                 this, &EditorWindow::SaveConfiguration);
         }
@@ -48,9 +54,16 @@ namespace PhysX
             AzToolsFramework::RegisterViewPane<EditorWindow>(LyViewPane::PhysXConfigurationEditor, LyViewPane::CategoryTools, options);
         }
 
-        void EditorWindow::SaveConfiguration(const PhysX::Configuration& configuration)
+        void EditorWindow::SaveConfiguration(
+            const PhysX::PhysXConfiguration& physxConfiguration,
+            const Physics::CollisionConfiguration& collisionConfiguration,
+            const Physics::WorldConfiguration& worldConfiguration,
+            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary)
         {
-            PhysX::ConfigurationRequestBus::Broadcast(&PhysX::ConfigurationRequests::SetConfiguration, configuration);
+            AZ::Interface<PhysX::ConfigurationRequests>::Get()->SetPhysXConfiguration(physxConfiguration);
+            AZ::Interface<Physics::SystemRequests>::Get()->SetDefaultWorldConfiguration(worldConfiguration);
+            AZ::Interface<Physics::SystemRequests>::Get()->SetDefaultMaterialLibrary(materialLibrary);
+            AZ::Interface<Physics::CollisionRequests>::Get()->SetCollisionConfiguration(collisionConfiguration);
         }
     }
 }

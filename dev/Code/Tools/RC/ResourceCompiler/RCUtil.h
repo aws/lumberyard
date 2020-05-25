@@ -21,7 +21,7 @@ namespace ResourceCompilerUtil
     const int UseDefaultPort = 0;
 
     //! Attempts to connect to the asset processor using the specified port.  Returns false and logs an error on failure
-    bool ConnectToAssetProcessor(int port, const char* identifier)
+    bool ConnectToAssetProcessor(int port, const char* identifier, const char* projectName)
     {
         using namespace AzFramework;
         using namespace AzFramework::AssetSystem;
@@ -31,6 +31,8 @@ namespace ResourceCompilerUtil
             RCLog("Setting AP connection port to %d", port);
             AssetSystemRequestBus::Broadcast(&AssetSystemRequestBus::Events::SetAssetProcessorPort, port);
         }
+
+        AssetSystemRequestBus::Broadcast(&AssetSystemRequestBus::Events::SetProjectName, projectName);
 
         AssetSystemRequestBus::Broadcast(&AssetSystemRequestBus::Events::Connect, identifier);
 

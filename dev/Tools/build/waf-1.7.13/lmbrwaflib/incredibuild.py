@@ -9,25 +9,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+# System Imports
+import multiprocessing
 import os
 import string
 import subprocess
 import sys
-import multiprocessing
-
-from waflib import Logs, Utils, Options, Errors
-from waflib.Configure import conf
-from cry_utils import WAF_EXECUTABLE
-from lumberyard import multi_conf, NON_BUILD_COMMANDS, CURRENT_WAF_EXECUTABLE
-import utils
 
 # Attempt to import the winregistry module.
 try:
-    import _winreg
+    import winreg
     WINREG_SUPPORTED = True
 except ImportError:
     WINREG_SUPPORTED = False
     pass
+
+# waflib imports
+from waflib import Logs, Utils, Options, Errors
+from waflib.Configure import conf
+
+# lmbrwaflib imports
+from lmbrwaflib import utils
+from lmbrwaflib.cry_utils import WAF_EXECUTABLE
+from lmbrwaflib.lumberyard import multi_conf, CURRENT_WAF_EXECUTABLE
+
 
 IB_REGISTRY_PATH = "Software\\Wow6432Node\\Xoreax\\Incredibuild\\Builder"
 
@@ -41,7 +46,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
         # Check windows registry only
         return False
 
-    import _winreg
+    import winreg
 
     if not ctx.is_option_true('use_incredibuild'):
         # No need to check IB settings if there is no IB
@@ -53,7 +58,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
 
     # Open the incredibuild settings registry key to validate if IB is installed properly
     try:
-        ib_settings_read_only = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0, _winreg.KEY_READ)
+        ib_settings_read_only = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0, winreg.KEY_READ)
     except:
         Logs.debug('lumberyard: Cannot open registry entry "HKEY_LOCAL_MACHINE\\{}"'.format(IB_REGISTRY_PATH))
         Logs.warn('[WARNING] Incredibuild does not appear to be correctly installed on your machine.  Disabling Incredibuild.')
@@ -61,7 +66,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
 
     def _read_ib_reg_setting(reg_key, setting_name, setting_path, expected_value):
         try:
-            reg_data, reg_type = _winreg.QueryValueEx(reg_key, setting_name)
+            reg_data, reg_type = winreg.QueryValueEx(reg_key, setting_name)
             return reg_data == expected_value
         except:
             Logs.debug('lumberyard: Cannot find a registry entry for "HKEY_LOCAL_MACHINE\\{}\\{}"'.format(setting_path,setting_name))
@@ -69,7 +74,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
 
     def _write_ib_reg_setting(reg_key, setting_name, setting_path, value):
         try:
-            _winreg.SetValueEx(reg_key, setting_name, 0, _winreg.REG_SZ, str(value))
+            winreg.SetValueEx(reg_key, setting_name, 0, winreg.REG_SZ, str(value))
             return True
         except WindowsError as e:
             Logs.warn('lumberyard: Unable write to HKEY_LOCAL_MACHINE\\{}\\{} : {}'.format(setting_path,setting_name,e.strerror))
@@ -95,7 +100,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
 
     # if auto-update-incredibuild-settings is true, then attempt to update the values automatically
     try:
-        ib_settings_writing = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0,  _winreg.KEY_SET_VALUE |  _winreg.KEY_READ)
+        ib_settings_writing = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0,  winreg.KEY_SET_VALUE |  winreg.KEY_READ)
     except:
         Logs.warn('[WARNING] Cannot access a registry entry "HKEY_LOCAL_MACHINE\\{}" for writing.'.format(IB_REGISTRY_PATH))
         Logs.warn('[WARNING] Please run "{0}" as an administrator or change the value to "0" in the registry to ensure a correct operation of WAF'.format(WAF_EXECUTABLE) )
@@ -165,6 +170,7 @@ def internal_verify_incredibuild_license(licence_name, platform_name):
     """ Helper function to check if user has a incredibuild licence """
     try:
         result = subprocess.check_output(['xgconsole.exe', '/QUERYLICENSE'])
+        result = str(result).strip()
     except:
         error = '[ERROR] Incredibuild not found on system'
         return False, "", error
@@ -175,6 +181,31 @@ def internal_verify_incredibuild_license(licence_name, platform_name):
 
     return True,"", ""
 
+def clean_arg_for_subprocess_call(arg):
+    # incredibuild will invoke with a command line like this:
+    # ['xgconsole.exe', '/command="program" "arg1" "arg2" ...', 'other incredibuild params go here']
+    # it is important that each arg is encapsulated in quotes when it has spaces in it
+    # the input in this case is a single arg from our own command line, which we assume has no quotes but may contain spaces
+    # the most infamous example of this might be something like this:
+    # arg[0] = '"d:\\ly engine\\tools\\python\\python.cmd" "d:\\ly engine\\tools\\build\waf.py"'
+    # arg[1] = '--bootstrap-tool-param=--3rdpartypath="d:/ly engine/3rdParty" --none'
+    # we want to transform this into returning:
+    # '"d:\\ly engine\\tools\\python\\python.cmd" "d:\\ly engine\\tools\\build\waf.py"' (unchanged)
+    # '"--bootstrap-tool-param=--3rdpartypath=""d:/ly engine/3rdParty"" --none"' (wrapped with quotes)
+    # notice we have to double escape existing quotes...
+    
+    # if it starts and ends with a quote, we do nothing to it as we assume its already escaped.
+    if not arg:
+        return ''
+        
+    if arg[:1] == arg[-1:] == '"':
+        return arg
+    
+    arg = arg.replace('"', '""')
+    if (' ' in arg):
+        return '"' + arg + '"'
+    
+    return arg
 
 @conf
 def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace=None):
@@ -200,7 +231,7 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
         return False
 
     # Skip non-build commands
-    if bld.cmd in NON_BUILD_COMMANDS:
+    if getattr(bld, 'is_project_generator', False):
         return False
 
     # Don't use IB for special single file operations
@@ -220,8 +251,8 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
 
     try:
         # Get correct incredibuild installation folder to not depend on PATH
-        IB_settings = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0, _winreg.KEY_READ)
-        (ib_folder, type) = _winreg.QueryValueEx(IB_settings, 'Folder')
+        IB_settings = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, IB_REGISTRY_PATH, 0, winreg.KEY_READ)
+        (ib_folder, type) = winreg.QueryValueEx(IB_settings, 'Folder')
     except:
         Logs.warn('[WARNING] Incredibuild disabled.  Cannot find incredibuild installation.')
         return False
@@ -239,6 +270,7 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
             return False
 
     result = subprocess.check_output([str(ib_folder) + '/xgconsole.exe', '/QUERYLICENSE'])
+    result = str(result).strip()
 
     # Make & Build Tools is required
     if not 'Make && Build Tools' in result:
@@ -266,8 +298,6 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
     for arg in sys.argv[1:]:
         if arg == 'generate_uber_files':
             continue
-        if arg == 'generate_module_def_files':
-            continue
         if arg == 'msvs':
             bExecuteMSVS = True
             continue
@@ -275,10 +305,7 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
             Logs.warn(
                 '[WARNING] Incredibuild disabled, running configure and build in one line is not supported with incredibuild. To build with incredibuild, run the build without the configure command on the same line')
             return False
-        if ' ' in arg and '=' in arg:  # replace strings like "--build-options=c:/root with spaces in it/file" with "--build-options=file"
-            command, path_val = string.split(arg, '=')
-            path_val = os.path.relpath(path_val)
-            arg = command + '=' + path_val
+        arg = clean_arg_for_subprocess_call(arg)
         cmd_line_args += [arg]
 
     if bExecuteMSVS:  # Execute MSVS without IB
@@ -292,7 +319,8 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
     num_jobs = bld.options.incredibuild_max_cores
 
     # Build Command Line
-    command = CURRENT_WAF_EXECUTABLE + ' --jobs=' + str(num_jobs) + ' ' + command_line_options
+    Logs.debug("incredibuild: Current WAF: {} ".format(CURRENT_WAF_EXECUTABLE))
+    command = clean_arg_for_subprocess_call(CURRENT_WAF_EXECUTABLE) + ' --jobs=' + str(num_jobs) + ' ' + command_line_options
     if build_metrics_supported:
         command += ' --enable-build-metrics'
         if metrics_namespace is not None:
@@ -321,9 +349,9 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
         # this, but since we aren't using this, we warn instead
         try:
             # grab the limitor for number of local jobs that incredibuild will use
-            (ib_max_local_cpu,type) = _winreg.QueryValueEx(IB_settings, 'ForceCPUCount_WhenInitiator')
+            (ib_max_local_cpu,type) = winreg.QueryValueEx(IB_settings, 'ForceCPUCount_WhenInitiator')
             # grab the limitor that incredibuild will use if a profile is not specified
-            (ib_max_link,type) = _winreg.QueryValueEx(IB_settings, 'MaxParallelLinkTargets')
+            (ib_max_link,type) = winreg.QueryValueEx(IB_settings, 'MaxParallelLinkTargets')
         except:
             Logs.warn('[WARNING] unable to query Incredibuild registry, parallel linking may be sub-optimal')
         else:
@@ -332,7 +360,7 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
                 ib_max_local_cpu = multiprocessing.cpu_count()
             # executable links are limited to max_parallel_link using a semaphore.  lib/dll links are limited to number
             # of cores since they are generally single threaded
-            min_setting_needed = int(min(ib_max_local_cpu, bld.options.max_parallel_link))
+            min_setting_needed = min(ib_max_local_cpu, int(bld.options.max_parallel_link))
             ib_max_link = int(ib_max_link)
             if ib_max_link < min_setting_needed:
                 Logs.warn('[WARNING] Incredibuild configuration \'MaxParallelLinkTargets\' limits link tasks to %d, increasing to %d will improve link throughput' % (ib_max_link, min_setting_needed))
@@ -340,8 +368,8 @@ def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace
     process_call.append('/command=' + command)
     process_call.append('/useidemonitor')
     process_call.append('/nologo')
-
-    Logs.debug('incredibuild: Cmdline: ' + str(process_call))
+   
+    Logs.debug('incredibuild: process_call: ' + str(process_call))
     if subprocess.call(process_call, env=os.environ.copy()):
         bld.fatal("[ERROR] Build Failed")
 

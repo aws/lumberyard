@@ -988,7 +988,7 @@ namespace AZ
         {
             delete m_excludedFileIO; //for now delete it, when We change to always create local file io We won't
 #ifdef REMOTEFILEIO_CACHE_FILETREE
-            AzFramework::AssetSystemBus::Handler::BusDisconnect();
+            AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
 #endif
             REMOTEFILE_LOG_CALL(AZStd::string::format("RemoteFileIO()::RemoteFileIO()").c_str());
         }
@@ -1610,24 +1610,26 @@ namespace AZ
                 }
             }
 
-            AzFramework::AssetSystemBus::Handler::BusConnect();
+            AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 
             return returnValue;
         }
 
         //=========================================================================
-        // AssetSystemBus::AssetChanged
+        // AssetCatalogEventBus::OnCatalogAssetChanged
         //=========================================================================
-        void RemoteFileIO::AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage message)
+        void RemoteFileIO::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
         {
+            AZ_UNUSED(assetId);
             CacheFileTree();
         }
 
         //=========================================================================
-        // AssetSystemBus::AssetRemoved
+        // AssetSystemBus::OnCatalogAssetRemoved
         //=========================================================================
-        void RemoteFileIO::AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message)
+        void RemoteFileIO::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
         {
+            AZ_UNUSED(assetId);
             CacheFileTree();
         }
 #endif //REMOTEFILEIO_CACHE_FILETREE

@@ -53,7 +53,12 @@ namespace GraphCanvas
         virtual bool IsDropConnectionSpliceEnabled() const { return true; }
         virtual AZStd::chrono::milliseconds GetDropConnectionSpliceTime() const { return AZStd::chrono::milliseconds(500); }
 
-        virtual bool IsSplicedNodeNudgingEnabled() const { return false; }
+        virtual bool IsSplicedNodeNudgingEnabled() const
+        {
+            return false;
+        }
+
+        virtual bool IsNodeNudgingEnabled() const { return IsSplicedNodeNudgingEnabled(); }
 
         // Shake Configuration
         virtual bool IsShakeToDespliceEnabled() const { return false; }
@@ -96,6 +101,9 @@ namespace GraphCanvas
 
         // Enable Node Disabling
         virtual bool AllowNodeDisabling() const { return false; }
+
+        // Enable Reference Slots
+        virtual bool AllowDataReferenceSlots() const { return false; }
     };
 
     using AssetEditorSettingsRequestBus = AZ::EBus<AssetEditorSettingsRequests>;

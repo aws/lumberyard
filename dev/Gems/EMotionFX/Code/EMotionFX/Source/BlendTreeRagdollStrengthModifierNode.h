@@ -89,6 +89,7 @@ namespace EMotionFX
     private:
         bool IsStrengthReadOnly() const;
         bool IsDampingRatioReadOnly() const;
+        AZStd::string GetModifiedJointName(int index) const;
 
         AZStd::vector<AZStd::string>    m_modifiedJointNames;
         float                           m_strength;

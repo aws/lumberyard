@@ -42,10 +42,11 @@ namespace Input
                 ;
 
             serializeContext->Class<InputConfigurationComponent, AZ::Component>()
-                ->Version(2)
+                ->Version(3)
                 ->Field("Input Event Bindings", &InputConfigurationComponent::m_inputEventBindingsAsset)
                 ->Field("Input Contexts", &InputConfigurationComponent::m_inputContexts)
-                ->Field("Local User Id", &InputConfigurationComponent::m_localUserId)
+                ->Field("Local Player Index", &InputConfigurationComponent::m_localPlayerIndex)
+                ->NameChange(2, 3, "Local User Id", "Local Player Index")
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -73,7 +74,7 @@ namespace Input
                     ->DataElement(AZ::Edit::UIHandlers::Default, &InputConfigurationComponent::m_inputContexts, "Input contexts", "These are the contexts valid for this input binding.  The default context is empty string")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputConfigurationComponent::m_localUserId, "Local player index",
+                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputConfigurationComponent::m_localPlayerIndex, "Local player index",
                             "The player index that this component will receive input from (0 based, -1 means all controllers).\n"
                             "Will only work on platforms such as PC where the local user id corresponds to the local player index.\n"
                             "For other platforms, SetLocalUserId must be called at runtime with the id of a logged in user.")
@@ -86,6 +87,11 @@ namespace Input
 
     void InputConfigurationComponent::Init()
     {
+        // The player index that this component will receive input from (0 based, -1 means all controllers)
+        // can be set from data, but will only work on platforms such as PC where the local user id corresponds
+        // to the local player index. For other platforms, SetLocalUserId must be called at runtime with the id
+        // of a logged in user, which will overwrite anything set here from data.
+        m_localUserId = m_localPlayerIndex;
     }
 
     void InputConfigurationComponent::Activate()

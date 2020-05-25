@@ -17,12 +17,21 @@ from runpy import run_path
 
 def build(bld):
 
+    exclude_monolithic_gl = False
+
+    if bld.is_option_true('use_other_in_monolithic'):
+        exclude_monolithic_gl = True
+      
     restricted_scripts = {}
     for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
         platform_wscript = os.path.join(bld.path.abspath(), p0, 'wscript_{0}'.format(p1))
         if os.path.exists(platform_wscript):
             restricted_scripts[p3] = run_path(platform_wscript)
-	
+
+    exclude_monolithic_gl = False
+
+    if bld.is_option_true('use_other_in_monolithic'):
+        exclude_monolithic_gl = True
     #==============================
     # Build CryRenderGL
     #==============================
@@ -43,6 +52,7 @@ def build(bld):
                                'android:release',
                                'darwin:performance',
                                'darwin:release'],
+        exclude_monolithic  = exclude_monolithic_gl,
         pch                 = '../../StdAfx.cpp',
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
@@ -51,10 +61,8 @@ def build(bld):
                                'AMD_SHARED',
                                'NVAPI',
                                'GLAD'],
-        includes            = [ bld.ThirdPartyPath('boost'),
-                                bld.Path('Code/CryEngine/CryCommon'),
-                                '..', 
-                                '../..',
+        includes            = [ bld.Path('Code/CryEngine/CryCommon'),
+                                '..', '../..',
                                 bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                 bld.Path('Code/CryEngine/RenderDll/Common'),
                                 bld.ThirdPartyPath('squish'),
@@ -83,7 +91,8 @@ def build(bld):
 
         # Platform Specific
         win_file_list       = ['opengl_mesh_baker.waf_files'],
-        win_includes        = [bld.Path('Code/Tools/HLSLCrossCompiler/include'),
+        win_includes        = ['.',
+                               bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                bld.ThirdPartyPath('squish')],
         win_lib             = ['opengl32',
                                'winmm',

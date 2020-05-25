@@ -18,8 +18,12 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Serialization/IdUtils.h>
-#include <ScriptCanvas/Data/DataRegistry.h>
+#include <AzCore/Serialization/Utils.h>
 #include <AzCore/Math/Transform.h>
+
+#include <ScriptCanvas/Data/DataRegistry.h>
+
+#include <ScriptCanvas/Core/GraphScopedTypes.h>
 
 #include "DatumBus.h"
 
@@ -346,6 +350,11 @@ namespace
         return FromBehaviorContext<Data::AABBType>(typeID, source, destination);
     }
 
+    AZ_INLINE bool FromBehaviorContextAssetId(const AZ::Uuid& typeID, const void* source, AZStd::any& destination)
+    {
+        return FromBehaviorContext<Data::AssetIdType>(typeID, source, destination);
+    }
+
     AZ_INLINE bool FromBehaviorContextBool(const AZ::Uuid& typeID, const void* source, AZStd::any& destination)
     {
         return FromBehaviorContext<bool>(typeID, source, destination);
@@ -552,12 +561,22 @@ namespace
         return *reinterpret_cast<const t_Value*>(lhs) == *reinterpret_cast<const t_Value*>(rhs);
     }
 
+    template<>
+    AZ_INLINE bool IsDataEqual<Data::NumberType>(const void* lhs, const void* rhs)
+    {
+        static constexpr Data::NumberType epsilon = 0.00000001;
+        return AZ::IsClose(*reinterpret_cast<const Data::NumberType*>(lhs), *reinterpret_cast<const Data::NumberType*>(rhs), epsilon);
+    }
+
     AZ_INLINE bool IsDataEqual(const Data::Type& type, const void* lhs, const void* rhs)
     {
         switch (type.GetType())
         {
         case Data::eType::AABB:
             return IsDataEqual<Data::AABBType>(lhs, rhs);
+
+        case Data::eType::AssetId:
+            return IsDataEqual<Data::AssetIdType>(lhs, rhs);
 
         case Data::eType::BehaviorContextObject:
             AZ_Error("ScriptCanvas", false, "BehaviorContextObject passed into IsDataEqual, which is invalid, an attempt must be made to call the behavior method");
@@ -681,6 +700,10 @@ namespace
             AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
             return false;
 
+        case Data::eType::AssetId:
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::AssetIdType>::GetName().c_str());
+            return false;
+
         case Data::eType::Matrix3x3:
             AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName().c_str());
             return false;
@@ -760,6 +783,10 @@ namespace
 
         case Data::eType::EntityID:
             AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
+            return false;
+
+        case Data::eType::AssetId:
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::AssetIdType>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix3x3:
@@ -1260,6 +1287,44 @@ namespace ScriptCanvas
         const_cast<bool&>(m_isOverloadedStorage) = isOverloadedStorage;
     }
 
+    void Datum::DeepCopyDatum(const Datum& source)
+    {
+        if (this != &source)
+        {
+            m_originality = eOriginality::Original;
+            InitializeOverloadedStorage(source.m_type, m_originality);
+            m_class = source.m_class;
+            m_type = source.m_type;
+            
+            if (!Data::IsValueType(m_type))
+            {
+                AZ::BehaviorContext* behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                auto classIter = behaviorContext->m_typeToClassMap.find(m_type.GetAZType());
+
+                if (classIter != behaviorContext->m_typeToClassMap.end())
+                {
+                    BehaviorContextObjectPtr sourceObjectPtr = (*AZStd::any_cast<BehaviorContextObjectPtr>(&source.m_storage));
+                    auto anyCastResult = AZStd::any_cast<BehaviorContextObjectPtr>(&m_storage);
+                    BehaviorContextObjectPtr newObjectPtr = sourceObjectPtr->CloneObject((*classIter->second));
+                    m_storage = AZStd::move(newObjectPtr);
+                    BehaviorContextObjectPtr newSourceObjectPtr = (*AZStd::any_cast<BehaviorContextObjectPtr>(&m_storage));
+                }
+            }
+            else
+            {
+                m_storage = source.m_storage;
+                m_conversionStorage = source.m_conversionStorage;
+            }
+
+            m_notificationId = source.m_notificationId;
+
+            m_datumLabel = source.m_datumLabel;
+            m_visibility = source.m_visibility;
+        }
+    }
+
     ComparisonOutcome Datum::CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs)
     {
         // depending on when this gets called, check for null operands, they could be possible
@@ -1461,6 +1526,9 @@ namespace ScriptCanvas
         case ScriptCanvas::Data::eType::AABB:
             return InitializeAABB(source);
 
+        case ScriptCanvas::Data::eType::AssetId:
+            return InitializeAssetId(source);
+
         case ScriptCanvas::Data::eType::BehaviorContextObject:
             return InitializeBehaviorContextObject(originality, source);
 
@@ -1525,6 +1593,12 @@ namespace ScriptCanvas
         return true;
     }
 
+    bool Datum::InitializeAssetId(const void* source)
+    {
+        m_storage = source ? *reinterpret_cast<const Data::AssetIdType*>(source) : Data::Traits<Data::AssetIdType>::GetDefault();
+        return true;
+    }
+
     bool Datum::InitializeBehaviorContextParameter(const AZ::BehaviorParameter& parameterDesc, eOriginality originality, const void* source)
     {
         if (AZ::BehaviorContextHelper::IsStringParameter(parameterDesc))
@@ -1566,7 +1640,7 @@ namespace ScriptCanvas
 
     bool Datum::InitializeBehaviorContextObject(eOriginality originality, const void* source)
     {
-        AZ_STATIC_ASSERT(sizeof(BehaviorContextObjectPtr) <= AZStd::Internal::ANY_SBO_BUF_SIZE, "BehaviorContextObjectPtr doesn't fit in generic Datum storage");
+        static_assert(sizeof(BehaviorContextObjectPtr) <= AZStd::Internal::ANY_SBO_BUF_SIZE, "BehaviorContextObjectPtr doesn't fit in generic Datum storage");
         AZ::BehaviorContext* behaviorContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
         AZ_Assert(behaviorContext, "Script Canvas can't do anything without a behavior context!");
@@ -1767,6 +1841,11 @@ namespace ScriptCanvas
         return const_cast<void*>(GetValueAddress());
     }
 
+    void Datum::OnDatumEdited()
+    {
+        DatumNotificationBus::Event(m_notificationId, &DatumNotifications::OnDatumEdited, this);
+    }
+
     Datum& Datum::operator=(Datum&& source)
     {
         if (this != &source)
@@ -1778,13 +1857,8 @@ namespace ScriptCanvas
                 m_class = AZStd::move(source.m_class);
                 m_type = AZStd::move(source.m_type);
                 m_storage = AZStd::move(source.m_storage);
-                OnDatumChanged();
             }
-            else if (ConvertImplicitlyChecked(source.GetType(), source.GetValueAddress(), m_type, m_storage, m_class))
-            {
-                OnDatumChanged();
-            }
-            else
+            else if (!ConvertImplicitlyChecked(source.GetType(), source.GetValueAddress(), m_type, m_storage, m_class))
             {
                 AZ_Error("Script Canvas", false, "Failed to convert from %s to %s", GetName(source.GetType()).c_str(), GetName(m_type).c_str());
             }
@@ -1810,14 +1884,9 @@ namespace ScriptCanvas
                 InitializeOverloadedStorage(source.m_type, m_originality);
                 m_class = source.m_class;
                 m_type = source.m_type;
-                m_storage = source.m_storage;
-                OnDatumChanged();
+                m_storage = source.m_storage;                
             }
-            else if (ConvertImplicitlyChecked(source.GetType(), source.GetValueAddress(), m_type, m_storage, m_class))
-            {
-                OnDatumChanged();
-            }
-            else
+            else if (!ConvertImplicitlyChecked(source.GetType(), source.GetValueAddress(), m_type, m_storage, m_class))
             {
                 AZ_Error("Script Canvas", false, "Failed to convert from %s to %s", GetName(source.GetType()).c_str(), GetName(m_type).c_str());
             }
@@ -1963,12 +2032,6 @@ namespace ScriptCanvas
         }
     }
 
-    void Datum::OnDatumChanged()
-    {
-        DatumSystemNotificationBus::Broadcast(&DatumSystemNotifications::OnDatumChanged, *this);
-        DatumNotificationBus::Event(m_notificationId, &DatumNotifications::OnDatumChanged, this);
-    }
-
     void Datum::OnWriteEnd()
     {
         if (m_type.GetType() == Data::eType::BehaviorContextObject)
@@ -2016,7 +2079,7 @@ namespace ScriptCanvas
                         ->Attribute(AZ::Edit::Attributes::Visibility, &Datum::GetDatumVisibility)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Datum::OnDatumChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Datum::OnDatumEdited)
                     ;
             }
         }
@@ -2055,8 +2118,6 @@ namespace ScriptCanvas
                 AZ_Error("Script Canvas", false, "Unsupported ScriptCanvas Data type");
             }
         }
-
-        OnDatumChanged();
     }
 
     void Datum::SetLabel(AZStd::string_view name)

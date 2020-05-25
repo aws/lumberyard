@@ -1,6 +1,17 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
+from __future__ import print_function
 from fastparquet import ParquetFile
 from fastparquet import write as pwrite
-from StringIO import StringIO
 import io
 import metric_constant as c
 import time
@@ -28,13 +39,13 @@ def debug_file(context, args):
         key = args.s3_key
         if not key.startswith('/'):
             key = "/{}".format(key)
-        print read(s3,bucket,key)
+        print(read(s3, bucket, key))
 
 def debug_local_file(context, args):
     file_path = args.file_path
-    print "Loading parquet file '{}'".format(file_path)
+    print("Loading parquet file '{}'".format(file_path))
     pf = ParquetFile(file_path)
     df=pf.to_pandas()
-    print "The set contains: \n{}".format(df)   
+    print("The set contains: \n{}".format(df))
 
 

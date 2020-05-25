@@ -11,7 +11,6 @@
 */
 
 #include <AzCore/Debug/Timer.h>
-#include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/Utils.h>
@@ -965,12 +964,11 @@ namespace EMotionFX
     }
 
 
-    AnimGraph* AnimGraph::LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context)
+    AnimGraph* AnimGraph::LoadFromFile(const AZStd::string& filename, AZ::SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& loadFilter)
     {
         AZ::Debug::Timer loadTimer;
         loadTimer.Stamp();
 
-        AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
         AnimGraph* animGraph =  AZ::Utils::LoadObjectFromFile<AnimGraph>(filename, context, loadFilter);
         if (animGraph)
         {

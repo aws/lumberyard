@@ -62,5 +62,16 @@ namespace EMotionFX
         {
             m_isVisible = isVisible;
         }
+
+        Actor* RenderActorInstance::GetActor() const
+        {
+            ActorAsset* actorAsset = m_actorAsset.Get();
+            if (actorAsset)
+            {
+                return actorAsset->GetActor();
+            }
+
+            return nullptr;
+        }
     } // namespace Integration
 } // namespace EMotionFX

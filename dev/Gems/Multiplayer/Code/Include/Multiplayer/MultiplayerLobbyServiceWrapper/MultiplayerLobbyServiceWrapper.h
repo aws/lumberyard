@@ -40,9 +40,9 @@ namespace Multiplayer
         virtual bool StartSessionService(GridMate::IGridMate* gridMate) = 0;
         virtual void StopSessionService(GridMate::IGridMate* gridMate) = 0;
         
-        GridMate::GridSession* CreateServer(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc);
-        GridMate::GridSearch* ListServers(GridMate::IGridMate* gridMate);
-        GridMate::GridSession* JoinSession(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc, const GridMate::SearchInfo* searchInfo);       
+        virtual GridMate::GridSession* CreateServer(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc);
+        virtual GridMate::GridSearch* ListServers(GridMate::IGridMate* gridMate);
+        virtual GridMate::GridSession* JoinSession(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc, const GridMate::SearchInfo* searchInfo);       
         
     protected:
         const AZ::EntityId& GetTargetEntityId() const

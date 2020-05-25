@@ -10,16 +10,15 @@
 #
 # $Revision: #1 $
 
-from aws import AWSContext
-from config import ConfigContext
-from stack import StackContext
-from view import ViewContext
-from metrics import MetricsContext
-from gem import GemContext
-from resource_group_context import ResourceGroupController
-from resource_type_context import ResourceTypeContext
-from stack_info_manager_context import StackInfoManagerContext
-from hook import HookContext
+from .aws import AWSContext
+from .config import ConfigContext
+from .stack import StackContext
+from .view import ViewContext
+from .gem import GemContext
+from .resource_group_context import ResourceGroupController
+from .resource_type_context import ResourceTypeContext
+from .stack_info_manager_context import StackInfoManagerContext
+from .hook import HookContext
 
 
 class Context(object):

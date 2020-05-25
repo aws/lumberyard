@@ -5,7 +5,7 @@
     ],
     "source": "@3P:GameLiftServerSDK@",
     "description": "Shared libraries for GameLift Server SDK",
-    "includes": [
+    "system_includes": [
         "include"
     ],
     "lib_required": "True"

@@ -11,11 +11,11 @@ REM remove or modify any license notices. This file is distributed on an "AS IS"
 REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM
 REM Auto builds Lumberyard on Windows ready for GameLift hosting
-REM Example: BuildGameLiftServer.bat MultiplayerSample all VS2017
+REM Example: BuildGameLiftServer.bat MultiplayerSample all VS2019
 REM Script can accept arguments to skip interactive mode
 REM %~1 = Project Name
 REM %~2 = Compile option to perform, one of : "all", "server", "assets"
-REM %~3 = VisualStudio re-distributable can include ["VS2017"]. Defaults to VS2017
+REM %~3 = VisualStudio re-distributable can include ["VS2017", "VS2019"]. Defaults to VS2019
 
 
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
@@ -33,7 +33,7 @@ SET VS_VERSION=%~3
 
 REM Work out what version of visual studio should we use
 IF "%VS_VERSION%" == "" (
-    SET VS_VERSION="VS2017"
+    SET VS_VERSION="VS2019"
 )
 call :SetUpVisualStudio %VS_VERSION%
 
@@ -63,7 +63,7 @@ IF "%PROJECT_NAME_PARAM%" NEQ "" (
 
 REM INTERACTIVE MODE BELOW
 
-SET /p PROJECT_NAME="Enter Project Name (eg. MultiplayerProject): "
+SET /p PROJECT_NAME="Enter Project Name (eg. MultiplayerSample): "
 IF "%PROJECT_NAME%" EQU "" (
     GOTO :InvalidProjectName
 )
@@ -76,7 +76,7 @@ IF "%ConfirmCompileOptionInput%" EQU "" (
     GOTO :BuildFailed
 )
 
-SET /p ConfirmVisualStudioVersionInput="VisualStudio version [VS2017]: "
+SET /p ConfirmVisualStudioVersionInput="VisualStudio version [VS2017, VS2019]: "
 IF "%ConfirmVisualStudioVersionInput%" EQU "" (
     GOTO :UnsupportVisualStudio
 ) ELSE (
@@ -101,14 +101,21 @@ EXIT /B 0
 :SetUpVisualStudio 
     SET VS_VERSION=%~1
     
-    IF /i "%VS_VERSION%"=="VS2017" (
-        Echo Set build environment for VS2017
-        SET VS_VERSION=VS2017
-        SET VS_VERSION_LOWER=vs2017
-        SET BINFOLDER=Bin64vc141
+    IF /i "%VS_VERSION%"=="VS2019" (
+        Echo Set build environment for VS2019
+        SET VS_VERSION=VS2019
+        SET VS_VERSION_LOWER=vs2019
+        SET BINFOLDER=Bin64vc142
     ) ELSE (
-        ECHO Unknown visual studio version: %VS_VERSION%
-        GOTO :UnsupportVisualStudio
+        IF /i "%VS_VERSION%"=="VS2017" (
+            Echo Set build environment for VS2017
+            SET VS_VERSION=VS2017
+            SET VS_VERSION_LOWER=vs2017
+            SET BINFOLDER=Bin64vc141
+        ) ELSE (
+            ECHO Unknown visual studio version: %VS_VERSION%
+            GOTO :UnsupportVisualStudio
+        )
     )
     EXIT /B 1
 
@@ -134,13 +141,8 @@ EXIT /B 0
     DEL exclusion_list.txt
     
     ECHO ----- COPYING ADDITIONAL FILES -----
-    IF "%VS_VERSION%" EQU "VS2017" (
-        XCOPY "%DESTINATION_PROJECT_FOLDER_NAME%\..\Tools\Redistributables\Visual Studio 2017\VC_redist.x64.exe" %CD% /Y /I /F /R || GOTO :CopyFailed
-        ECHO VC_redist.x64.exe /q > install.bat || GOTO :CopyFailed
-    ) ELSE (
-        ECHO "Unsupported VS version %VS_VERSION%. Please add mapping above"
-        GOTO :CopyFailed
-    )
+    XCOPY "%DESTINATION_PROJECT_FOLDER_NAME%\..\Tools\Redistributables\Visual Studio 2015-2019\VC_redist.x64.exe" %CD% /Y /I /F /R || GOTO :CopyFailed
+    ECHO VC_redist.x64.exe /q > install.bat || GOTO :CopyFailed
     POPD
     GOTO :EOF
     
@@ -185,12 +187,12 @@ EXIT /B 0
     EXIT /B 1
 
 :PrintUsage
-    ECHO ----- Usage: %~nx1 [ProjectName] [all, server, assets] [VS2017] -----
-    ECHO ProjectName: The name of your project. eg: MultiplayerProject
+    ECHO ----- Usage: %~nx1 [ProjectName] [all, server, assets] [VS2019, VS2017] -----
+    ECHO ProjectName: The name of your project. eg: MultiplayerSample
     ECHO all: This option will compile the dedicated server and compile the server assets.
     ECHO server: This option will compile the dedicated server.
     ECHO assets: This option will compile the server assets.
-    ECHO vs: This option provides the version of VisualStudio to target [VS2017^]
+    ECHO vs: This option provides the version of VisualStudio to target [VS2019, VS2017^]
     GOTO :EOF
  
 

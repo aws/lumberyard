@@ -20,20 +20,24 @@ namespace ScriptCanvas
     {
         namespace Core
         {
-            void ExtractProperty::OnInit()
+            bool ExtractProperty::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
             {
+                if (rootElement.GetVersion() < 1)
                 {
-                    DynamicDataSlotConfiguration slotConfiguration;
+                    SlotMetadata metadata;
+                    rootElement.FindSubElementAndGetData(AZ_CRC("m_sourceAccount", 0x25f29920), metadata);
 
-                    slotConfiguration.m_name = "Source";
-                    slotConfiguration.m_dynamicDataType = DynamicDataType::Value;
-                    slotConfiguration.SetConnectionType(ConnectionType::Input);
-
-                    m_sourceAccount.m_slotId = AddSlot(slotConfiguration);
+                    rootElement.RemoveElementByName(AZ_CRC("m_sourceAccount", 0x25f29920));
+                    rootElement.AddElementWithData(serializeContext, "m_dataType", metadata.m_dataType);
                 }
 
+                return true;
+            }
+
+            void ExtractProperty::OnInit()
+            {
                 // DYNAMIC_SLOT_VERSION_CONVERTER
-                Slot* sourceSlot = GetSlot(m_sourceAccount.m_slotId);
+                Slot* sourceSlot = ExtractPropertyProperty::GetSourceSlot(this);
 
                 if (sourceSlot && !sourceSlot->IsDynamicSlot())
                 {
@@ -43,17 +47,33 @@ namespace ScriptCanvas
 
                 RefreshGetterFunctions();
             }
+
+            void ExtractProperty::OnSlotDisplayTypeChanged(const SlotId& slotId, const Data::Type& dataType)
+            {
+                if (!dataType.IsValid() || dataType == m_dataType)
+                {
+                    return;
+                }
+
+                if (slotId == ExtractPropertyProperty::GetSourceSlotId(this))
+                {
+                    m_dataType = dataType;
+
+                    ClearPropertySlots();
+                    AddPropertySlots(dataType);
+                }
+            }
             
             Data::Type ExtractProperty::GetSourceSlotDataType() const
             {
-                return m_sourceAccount.m_dataType;
+                return m_dataType;
             }
 
             void ExtractProperty::OnInputSignal(const SlotId& slotID)
             {
                 if (slotID == GetSlotId(GetInputSlotName()))
                 {
-                    if (auto input = GetInput(m_sourceAccount.m_slotId))
+                    if (auto input = FindDatum(ExtractPropertyProperty::GetSourceSlotId(this)))
                     {
                         for(auto&& propertyAccount : m_propertyAccounts)
                         {
@@ -71,33 +91,6 @@ namespace ScriptCanvas
                         }
                     }
                     SignalOutput(GetSlotId(GetOutputSlotName()));
-                }
-            }
-
-            void ExtractProperty::OnEndpointConnected(const Endpoint& endpoint)
-            {
-                Node::OnEndpointConnected(endpoint);
-
-                const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
-
-                if (currentSlotId == m_sourceAccount.m_slotId)
-                {
-                    AZ::Entity* dataOutEntity{};
-                    AZ::ComponentApplicationBus::BroadcastResult(dataOutEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
-                    auto dataOutNode = dataOutEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(dataOutEntity) : nullptr;
-                    if (dataOutNode)
-                    {
-                        AZ::TypeId previousType = ScriptCanvas::Data::ToAZType(m_sourceAccount.m_dataType);
-
-                        // Sets the source metadata data type to be the same as the endpoint
-                        m_sourceAccount.m_dataType = dataOutNode->GetSlotDataType(endpoint.GetSlotId());
-
-                        if (m_sourceAccount.m_dataType.GetAZType() != previousType)
-                        {
-                            ClearPropertySlots();
-                            AddPropertySlots(m_sourceAccount.m_dataType);
-                        }
-                    }
                 }
             }
 

@@ -11,7 +11,11 @@
 */
 #pragma once
 
+// qpainter.h(465): warning C4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
+// qpainter.h(450): warning C4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QColor>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
@@ -33,11 +37,11 @@ namespace GraphCanvas
     {
     };
     
-	//! NodePropertiesRequestBus
-	//!
+    //! NodePropertiesRequestBus
+    //!
     //! These are requests that will modify the display state of the entire node.
     //! This will handle things like locking editing states in reaction to the mouse cursor, 
-	//! or forcing a layout state to a particular state.
+    //! or forcing a layout state to a particular state.
     class NodePropertiesRequests
         : public AZ::EBusTraits
     {
@@ -55,8 +59,8 @@ namespace GraphCanvas
     
     using NodePropertiesRequestBus = AZ::EBus<NodePropertiesRequests>;
     
-	//! NodePropertyRequestBus
-	//!
+    //! NodePropertyRequestBus
+    //!
     //! Requests that should modify a specific node property display.
     //! Will handle things like changing the display property or disabling the property.
     class NodePropertyRequests

@@ -14,6 +14,7 @@
 
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <EMotionFX/Source/AnimGraphBus.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <QDialog>
 #include <QPointer>
@@ -85,6 +86,7 @@ namespace EMStudio
 
     public:
         ParameterWindow(AnimGraphPlugin* plugin);
+        ~ParameterWindow();
 
         void Reinit(bool forceReinit = false);
 
@@ -112,8 +114,11 @@ namespace EMStudio
         // AnimGraphNotificationBus
         void OnParameterActionTriggered(const EMotionFX::ValueParameter* valueParameter) override;
 
+        int GetTopLevelItemCount() const;
+
     public slots:
         void OnRecorderStateChanged();
+        void OnMakeDefaultValue();
 
     private slots:
         void UpdateInterface();
@@ -133,9 +138,10 @@ namespace EMStudio
         void OnMoveParameterDown();
         void OnTextFilterChanged(const QString& text);
         void OnSelectionChanged();
-        void OnMakeDefaultValue();
 
         void OnGamepadControlToggle();
+
+        void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
 
     private:
         void contextMenuEvent(QContextMenuEvent* event) override;

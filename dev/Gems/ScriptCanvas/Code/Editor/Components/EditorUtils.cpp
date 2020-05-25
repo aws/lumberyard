@@ -13,11 +13,14 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <ScriptCanvas/Components/EditorUtils.h>
+AZ_POP_DISABLE_WARNING
 
 #include <ScriptCanvas/Components/EditorGraph.h>
 #include <ScriptCanvas/GraphCanvas/MappingBus.h>
 #include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
+#include <ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h>
 #include <ScriptCanvas/Utils/NodeUtils.h>
 
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
@@ -64,6 +67,23 @@ namespace ScriptCanvasEditor
         }
 
         return resultHash;
+    }
+
+    AZStd::vector< ScriptCanvas::NodeTypeIdentifier > NodeIdentifierFactory::ConstructNodeIdentifiers(const GraphCanvas::GraphCanvasTreeItem* treeItem)
+    {
+        AZStd::vector< ScriptCanvas::NodeTypeIdentifier > nodeIdentifiers;
+
+        if (auto scriptEventTreeItem = azrtti_cast<const ScriptEventsEventNodePaletteTreeItem*>(treeItem))
+        {
+            nodeIdentifiers.emplace_back(ScriptCanvas::NodeUtils::ConstructScriptEventReceiverIdentifier(scriptEventTreeItem->GetBusIdentifier(), scriptEventTreeItem->GetEventIdentifier()));
+            nodeIdentifiers.emplace_back(ScriptCanvas::NodeUtils::ConstructSendScriptEventIdentifier(scriptEventTreeItem->GetBusIdentifier(), scriptEventTreeItem->GetEventIdentifier()));
+        }
+        else
+        {
+            nodeIdentifiers.emplace_back(ConstructNodeIdentifier(treeItem));
+        }
+
+        return nodeIdentifiers;
     }
 
     //////////////////////////
@@ -113,6 +133,34 @@ namespace ScriptCanvasEditor
                         if (hasEvent || !graphCanvasNodeId.IsValid())
                         {
                             RegisterNodeType(ScriptCanvas::NodeUtils::ConstructEBusEventReceiverIdentifier(busId, eventPair.second.m_eventId));
+                        }
+                    }
+                }
+                else if (auto scriptEventHandler = azrtti_cast<ScriptCanvas::Nodes::Core::ReceiveScriptEvent*>(nodeComponent))
+                {
+                    GraphCanvas::NodeId graphCanvasNodeId;
+                    SceneMemberMappingRequestBus::EventResult(graphCanvasNodeId, nodeEntity->GetId(), &SceneMemberMappingRequests::GetGraphCanvasEntityId);
+
+                    EBusHandlerNodeDescriptorRequests* ebusDescriptorRequests = EBusHandlerNodeDescriptorRequestBus::FindFirstHandler(graphCanvasNodeId);
+
+                    if (ebusDescriptorRequests == nullptr)
+                    {
+                        continue;
+                    }
+
+                    AZStd::vector< HandlerEventConfiguration > eventConfigurations = ebusDescriptorRequests->GetEventConfigurations();
+
+                    ScriptCanvas::EBusBusId busId = scriptEventHandler->GetBusId();
+
+                    for (const auto& eventConfiguration : eventConfigurations)
+                    {
+                        bool hasEvent = ebusDescriptorRequests->ContainsEvent(eventConfiguration.m_eventId);
+
+                        // In case we are populating from an uncreated scene if we don't have a valid graph canvas node id
+                        // just accept everything. We can overreport on unknown data for now.
+                        if (hasEvent)
+                        {
+                            RegisterNodeType(ScriptCanvas::NodeUtils::ConstructScriptEventReceiverIdentifier(busId, eventConfiguration.m_eventId));
                         }
                     }
                 }

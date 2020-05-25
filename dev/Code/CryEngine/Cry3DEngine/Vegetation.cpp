@@ -16,13 +16,15 @@
 
 #include "StdAfx.h"
 
-#include "terrain.h"
+#include <MathConversion.h>
+
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "Vegetation.h"
 #include "DeformableNode.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #include "TouchBendingCVegetationAgent.h"
 
@@ -84,11 +86,10 @@ void CVegetation::CalcMatrix(Matrix34A& tm, int* pFObjFlags)
         tm.SetRotationZ(GetZAngle());
 
         Matrix33 m33;
-#ifdef LY_TERRAIN_LEGACY_RUNTIME
-        GetTerrain()->GetTerrainAlignmentMatrix(m_vPos, vegetGroup.GetAlignToTerrainAmount(), m33);
-#else
         m33.SetIdentity();
-#endif
+
+        GetTerrainAlignmentMatrix(m_vPos, vegetGroup.GetAlignToTerrainAmount(), m33);
+
         tm = m33 * tm;
     }
     else
@@ -332,6 +333,11 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
                 pOD->m_fTempVars[8] = abs(GetCVars()->e_VegetationUseTerrainColorDistance) * vegetGroup.fVegRadius * GetCVars()->e_ViewDistRatioVegetation;
             }
         }
+    }
+    else
+    {
+        // No terrain texture to blend with, so remove the blend flag
+        pRenderObject->m_ObjFlags &= ~FOB_BLEND_WITH_TERRAIN_COLOR;
     }
 
     IFoliage* pFoliage = const_cast<CVegetation*>(this)->GetFoliage();
@@ -998,4 +1004,19 @@ float CVegetation::GetFirstLodDistance() const
     StatInstGroup& vegetGroup = GetStatObjGroup();
     CStatObj* pStatObj = static_cast<CStatObj*>(vegetGroup.GetStatObj());
     return pStatObj ? pStatObj->GetLodDistance() : FLT_MAX;
+}
+
+void CVegetation::GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33)
+{
+    AZ::Vector3 terrainNormal = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainNormal();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainNormal
+        , &AzFramework::Terrain::TerrainDataRequests::GetNormalFromFloats
+        , vPos.x, vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+    Vec3 vTerrainNormal = AZVec3ToLYVec3(terrainNormal);
+    vTerrainNormal = LERP(Vec3(0, 0, 1.f), vTerrainNormal, amount);
+    vTerrainNormal.Normalize();
+    Vec3 vDir = Vec3(-1, 0, 0).Cross(vTerrainNormal);
+
+    matrix33 = matrix33.CreateOrientation(vDir, -vTerrainNormal, 0);
 }

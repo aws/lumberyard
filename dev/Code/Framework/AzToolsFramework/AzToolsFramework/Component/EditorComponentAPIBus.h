@@ -27,14 +27,34 @@ namespace AzToolsFramework
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        //! Finds the component ids from their type names
+        enum class EntityType
+        {
+            Game,
+            System,
+            Layer,
+            Level
+        };
+
+        //! LUMBERYARD_DEPRECATED(LY-106816)
+        //! Use FindComponentTypeIdsByEntityType instead.
+        //! Finds the component ids from their type names. Only searches for typedId for Entity Type "Game".
         virtual AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) = 0;
+
+        //! This method requires the filter @entityType because it is possible that two components
+        //! With different uuids to have the same name. But, the chances of collision is reduced by specifying
+        //! the entity type.
+        virtual AZStd::vector<AZ::Uuid> FindComponentTypeIdsByEntityType(const AZStd::vector<AZStd::string>& componentTypeNames, EntityType entityType) = 0;
 
         //! Finds the component names from their type ids
         virtual AZStd::vector<AZStd::string> FindComponentTypeNames(const AZ::ComponentTypeList& componentTypeIds) = 0;
 
-        //! Returns the full list of names for all components that can be created with the EditorComponent API.
+        //! LUMBERYARD_DEPRECATED(LY-106816)
+        //! Use BuildComponentTypeNameListByEntityType instead.
+        //! Returns the full list of names for all components that can be created for Game Entity type (aka inGameMenu).
         virtual AZStd::vector<AZStd::string> BuildComponentTypeNameList() = 0;
+
+        //! Returns the full list of names for all components that can be created for the given Entity type (aka type of Menu).
+        virtual AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EntityType entityType) = 0;
 
         using AddComponentsOutcome = AZ::Outcome<AZStd::vector<AZ::EntityComponentIdPair>, AZStd::string>;
 
@@ -88,6 +108,9 @@ namespace AzToolsFramework
 
         //! Set Value of Property on Component
         virtual PropertyOutcome SetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) = 0;
+
+        //! Compare Value of Property on Component
+        virtual bool CompareComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) = 0;
 
         //! Get a full list of Component Properties for the Component Entity provided
         virtual const AZStd::vector<AZStd::string> BuildComponentPropertyList(const AZ::EntityComponentIdPair& componentInstance) = 0;

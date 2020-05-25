@@ -13,18 +13,16 @@
 #include "DynamicTypeContract.h"
 
 #include <ScriptCanvas/Core/ContractBus.h>
-#include <ScriptCanvas/Core/NodeBus.h>
 #include <ScriptCanvas/Core/Slot.h>
+#include <ScriptCanvas/Core/Node.h>
 
 namespace ScriptCanvas
 {
     AZ::Outcome<void, AZStd::string> DynamicTypeContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
-        Data::Type targetType;
-        NodeRequestBus::EventResult(targetType, targetSlot.GetNodeId(), &NodeRequests::GetSlotDataType, targetSlot.GetId());
+        Data::Type targetType = targetSlot.GetDataType();
 
-        bool acceptsType{};
-        NodeRequestBus::EventResult(acceptsType, sourceSlot.GetNodeId(), &NodeRequests::SlotAcceptsType, sourceSlot.GetId(), targetType);
+        bool acceptsType = sourceSlot.GetNode()->SlotAcceptsType(sourceSlot.GetId(), targetType);
         
         if (acceptsType)
         {

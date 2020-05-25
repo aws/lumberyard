@@ -8,10 +8,15 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
+# System Imports
 import os
+
+# waflib imports
 from waflib import Errors, Logs, Utils
 from waflib.Configure import conf
-from lumberyard import deprecated
+
+# lmbrwaflib imports
 
 
 PLATFORM = 'android_armv8_clang'

@@ -109,7 +109,6 @@ namespace CommandSystem
         RegisterCommand(new CommandMotionSetAddMotion());
         RegisterCommand(new CommandMotionSetRemoveMotion());
         RegisterCommand(new CommandMotionSetAdjustMotion());
-        RegisterCommand(new CommandLoadMotionSet());
 
         // register motion compression commands
         RegisterCommand(new CommandWaveletCompressMotion());
@@ -137,7 +136,6 @@ namespace CommandSystem
         RegisterCommand(new CommandAnimGraphRemoveParameter());
         RegisterCommand(new CommandAnimGraphAdjustParameter());
         RegisterCommand(new CommandAnimGraphMoveParameter());
-        RegisterCommand(new CommandLoadAnimGraph());
         RegisterCommand(new CommandCreateAnimGraph());
         RegisterCommand(new CommandRemoveAnimGraph());
         RegisterCommand(new CommandActivateAnimGraph());

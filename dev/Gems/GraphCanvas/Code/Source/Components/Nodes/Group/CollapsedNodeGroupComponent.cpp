@@ -194,7 +194,7 @@ namespace GraphCanvas
         qreal height = boundingRect.height();
 
         // Want the Collapsed Node Group to appear centered over top of the Node Group.
-        AZ::Vector2 offset(width * 0.5f, height * 0.5f);
+        AZ::Vector2 offset(aznumeric_cast<float>(width * 0.5f), aznumeric_cast<float>(height * 0.5f));
 
         m_previousPosition = ConversionUtils::QPointToVector(boundingRect.topLeft());;
         m_previousPosition -= offset;
@@ -360,7 +360,7 @@ namespace GraphCanvas
             configuration.m_bounds = blockItem->sceneBoundingRect();
         }
 
-        configuration.m_zValue = graphicsItem->zValue() + 10;
+        configuration.m_zValue = aznumeric_cast<int>(graphicsItem->zValue() + 10);
 
         SceneRequestBus::EventResult(m_effectId, graphId, &SceneRequests::CreateOccluder, configuration);
 

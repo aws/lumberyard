@@ -46,6 +46,10 @@
 #error Unsupported Platform for RC
 #endif
 
+#if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+    #include <native/utilities/Utils_UnixLike.h>
+#endif
+
 
 namespace AssetProcessor
 {
@@ -194,6 +198,16 @@ namespace AssetProcessor
         processLaunchInfo.m_showWindow = false;
         processLaunchInfo.m_workingDirectory = m_systemRoot.absolutePath().toUtf8().data();
         processLaunchInfo.m_processPriority = AzToolsFramework::PROCESSPRIORITY_IDLE;
+
+        // for external projects on unix platforms, we need to propagate the project's loader 
+        // path to the builder subprocesses
+    #if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
+        AZStd::vector<AZStd::string> evnVars;
+        if (GetExternalProjectEnv(evnVars))
+        {
+            processLaunchInfo.m_environmentVariables = &evnVars;
+        }
+    #endif // AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 
         AZ_TracePrintf("RC Builder", "Executing RC.EXE: '%s' ...\n", processLaunchInfo.m_commandlineParameters.c_str());
         AZ_TracePrintf("Rc Builder", "Executing RC.EXE with working directory: '%s' ...\n", processLaunchInfo.m_workingDirectory.c_str());

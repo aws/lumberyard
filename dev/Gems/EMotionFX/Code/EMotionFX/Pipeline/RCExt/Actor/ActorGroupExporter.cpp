@@ -10,7 +10,9 @@
 *
 */
 
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/AutoRegisteredActor.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/CommandSystem/Source/MetaData.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
@@ -32,12 +34,15 @@ namespace EMotionFX
     {
         namespace SceneEvents = AZ::SceneAPI::Events;
         namespace SceneUtil = AZ::SceneAPI::Utilities;
-        namespace SceneContainer = AZ::SceneAPI::Containers;
-        namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
 
         ActorGroupExporter::ActorGroupExporter()
         {
             BindToCall(&ActorGroupExporter::ProcessContext);
+        }
+
+        Actor* ActorGroupExporter::GetActor() const
+        {
+            return m_actor.get();
         }
 
         void ActorGroupExporter::Reflect(AZ::ReflectContext* context)
@@ -49,22 +54,19 @@ namespace EMotionFX
             }
         }
 
-        SceneEvents::ProcessingResult ActorGroupExporter::ProcessContext(ActorGroupExportContext& context) const
+        SceneEvents::ProcessingResult ActorGroupExporter::ProcessContext(ActorGroupExportContext& context)
         {
-            if (context.m_phase != AZ::RC::Phase::Filling)
+            if (context.m_phase == AZ::RC::Phase::Construction)
             {
                 return SceneEvents::ProcessingResult::Ignored;
             }
-
-            const AZStd::string& groupName = context.m_group.GetName();
-            AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(groupName, context.m_outputDirectory, "");
-            if (filename.empty() || !SceneUtil::FileUtilities::EnsureTargetFolderExists(filename))
+            if (context.m_phase == AZ::RC::Phase::Finalizing)
             {
-                return SceneEvents::ProcessingResult::Failure;
+                return SaveActor(context);
             }
 
-            EMotionFX::Actor* actor = EMotionFX::Actor::Create(groupName.c_str());
-            if (!actor)
+            m_actor = AZStd::make_shared<Actor>(context.m_group.GetName().c_str());
+            if (!m_actor)
             {
                 return SceneEvents::ProcessingResult::Failure;
             }
@@ -72,9 +74,8 @@ namespace EMotionFX
             SceneEvents::ProcessingResultCombiner result;
 
             const Group::IActorGroup& actorGroup = context.m_group;
-            AZStd::vector<AZStd::string> actorMaterialReferences;
-            ActorBuilderContext actorBuilderContext(context.m_scene, context.m_outputDirectory, actorGroup, actor, actorMaterialReferences, AZ::RC::Phase::Construction);
-            
+            ActorBuilderContext actorBuilderContext(context.m_scene, context.m_outputDirectory, actorGroup, m_actor.get(), m_actorMaterialReferences, AZ::RC::Phase::Construction);
+
             result += SceneEvents::Process(actorBuilderContext);
             result += SceneEvents::Process<ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Filling);
             result += SceneEvents::Process<ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Finalizing);
@@ -83,25 +84,36 @@ namespace EMotionFX
             AZStd::string metaDataString;
             if (Rule::MetaDataRule::LoadMetaData(actorGroup, metaDataString))
             {
-                if (!CommandSystem::MetaData::ApplyMetaDataOnActor(actor, metaDataString))
+                if (!CommandSystem::MetaData::ApplyMetaDataOnActor(m_actor.get(), metaDataString))
                 {
-                    AZ_Error("EMotionFX", false, "Applying meta data to '%s' failed.", filename.c_str());
+                    AZ_Error("EMotionFX", false, "Applying meta data to actor '%s' failed.", m_actor->GetName());
                 }
             }
 
             AZStd::shared_ptr<EMotionFX::PhysicsSetup> physicsSetup;
             if (EMotionFX::Pipeline::Rule::LoadFromGroup<EMotionFX::Pipeline::Rule::ActorPhysicsSetupRule, AZStd::shared_ptr<EMotionFX::PhysicsSetup>>(actorGroup, physicsSetup))
             {
-                actor->SetPhysicsSetup(physicsSetup);
+                m_actor->SetPhysicsSetup(physicsSetup);
             }
 
             AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup> simulatedObjectSetup;
-            if (EMotionFX::Pipeline::Rule::LoadFromGroup<EMotionFX::Pipeline::Rule::SimulatedObjectSetupRule, AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup>>(actorGroup, simulatedObjectSetup))
+            if (EMotionFX::Pipeline::Rule::LoadFromGroup<EMotionFX::Pipeline::Rule::SimulatedObjectSetupRule>(actorGroup, simulatedObjectSetup))
             {
-                actor->SetSimulatedObjectSetup(simulatedObjectSetup);
+                m_actor->SetSimulatedObjectSetup(simulatedObjectSetup);
             }
 
-            ExporterLib::SaveActor(filename, actor, MCore::Endian::ENDIAN_LITTLE);
+            return result.GetResult();
+        }
+
+        AZ::SceneAPI::Events::ProcessingResult ActorGroupExporter::SaveActor(ActorGroupExportContext& context)
+        {
+            AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(context.m_group.GetName(), context.m_outputDirectory, "");
+            if (filename.empty() || !SceneUtil::FileUtilities::EnsureTargetFolderExists(filename))
+            {
+                return SceneEvents::ProcessingResult::Failure;
+            }
+
+            ExporterLib::SaveActor(filename, m_actor.get(), MCore::Endian::ENDIAN_LITTLE);
 
 #ifdef EMOTIONFX_ACTOR_DEBUG
             // Use there line to create a log file and inspect detail debug info
@@ -122,15 +134,12 @@ namespace EMotionFX
             AZ::SceneAPI::Events::ExportProduct& product = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), emotionFXActorAssetType,
                 AZStd::nullopt, AZStd::nullopt);
 
-            for (AZStd::string& materialPathReference : actorMaterialReferences)
+            for (AZStd::string& materialPathReference : m_actorMaterialReferences)
             {
                 product.m_legacyPathDependencies.emplace_back(AZStd::move(materialPathReference));
             }
 
-            // Destroy the actor after save.
-            MCore::Destroy(actor);
-
-            return result.GetResult();
+            return SceneEvents::ProcessingResult::Success;
         }
     } // namespace Pipeline
 } // namespace EMotionFX

@@ -1,0 +1,84 @@
+{
+    "inputPath": ".",
+    "copyFiles": [
+        {
+            "inFile": "AssetProcessorPlatformConfig.ini",
+            "outFile": "AssetProcessorPlatformConfig.ini",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "bootstrap.cfg",
+            "outFile": "bootstrap.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "editor.cfg",
+            "outFile": "editor.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "engine.json",
+            "outFile": "engine.json",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "engineroot.txt",
+            "outFile": "engineroot.txt",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "lmbr_waf.bat",
+            "outFile": "lmbr_waf.bat",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "lmbr_waf.sh",
+            "outFile": "lmbr_waf.sh",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "shadercachegen.cfg",
+            "outFile": "shadercachegen.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "system_BuildShaderPak_DX11.cfg",
+            "outFile": "system_BuildShaderPak_DX11.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "system_BuildShaderPak_GL4.cfg",
+            "outFile": "system_BuildShaderPak_GL4.cfg",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "waf_branch_spec.py",
+            "outFile": "waf_branch_spec.py",
+            "isTemplated": false,
+            "isOptional": false
+        },
+        {
+            "inFile": "ProjectTemplates/ExternalProjectTemplate/wscript",
+            "outFile": "wscript",
+            "isTemplated": true,
+            "isOptional": false
+        },
+        {
+            "inFile": "_WAF_/user_settings.options",
+            "outFile": "_WAF_/user_settings.options",
+            "isTemplated": false,
+            "isOptional": true
+        }
+    ],
+    "createDirectories": []
+}

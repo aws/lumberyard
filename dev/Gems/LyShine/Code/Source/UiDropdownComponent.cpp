@@ -524,10 +524,12 @@ void UiDropdownComponent::Reflect(AZ::ReflectContext* context)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
                 editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiDropdownComponent::m_content, "Content", "The element that contains the dropdown list.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeValidate, &UiDropdownComponent::ValidatePotentialContent)
                     ->Attribute(AZ::Edit::Attributes::EnumValues, &UiDropdownComponent::PopulateChildEntityList);
 
                 editInfo->DataElement(AZ::Edit::UIHandlers::EntityId, &UiDropdownComponent::m_expandedParentId, "Expanded Parent", "The element the dropdown content should parent to when expanded (the canvas by default)."
-                    "This is used for layering, to display the dropdown content over other elements in the canvas that might be after it in the hierarchy.");
+                    "This is used for layering, to display the dropdown content over other elements in the canvas that might be after it in the hierarchy.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeValidate, &UiDropdownComponent::ValidatePotentialExpandedParent);
 
                 editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiDropdownComponent::m_textElement, "Text Element", "The text element to use to display which option is selected.")
                     ->Attribute(AZ::Edit::Attributes::EnumValues, &UiDropdownComponent::PopulateChildEntityList);
@@ -768,6 +770,72 @@ void UiDropdownComponent::Collapse(bool transferHover)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Outcome<void, AZStd::string> UiDropdownComponent::ValidateTypeIsEntityId(const AZ::Uuid& valueType)
+{
+    if (azrtti_typeid<AZ::EntityId>() != valueType)
+    {
+        AZ_Assert(false, "Unexpected value type");
+        return AZ::Failure(AZStd::string("Trying to set an entity ID to something that isn't an entity ID!"));
+    }
+    return AZ::Success();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Outcome<void, AZStd::string> UiDropdownComponent::ValidatePotentialContent(void* newValue, const AZ::Uuid& valueType)
+{
+    auto typeValidation = ValidateTypeIsEntityId(valueType);
+
+    if (!typeValidation.IsSuccess()) {
+        return typeValidation;
+    }
+
+    AZ::EntityId actualValue = *static_cast<AZ::EntityId*>(newValue);
+
+    // Don't allow the change if it will result in a cycle hierarchy
+    if (actualValue.IsValid() && actualValue == m_expandedParentId)
+    {
+        return AZ::Failure(AZStd::string("You cannot set content to be the same as expanded parent!"));
+    }
+
+    if (ContentIsAncestor(m_expandedParentId, actualValue))
+    {
+        return AZ::Failure(AZStd::string("You cannot set content to be an ancestor of expanded parent!"));
+    }
+
+    return AZ::Success();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Outcome<void, AZStd::string> UiDropdownComponent::ValidatePotentialExpandedParent(void* newValue, const AZ::Uuid& valueType)
+{
+    auto typeValidation = ValidateTypeIsEntityId(valueType);
+
+    if (!typeValidation.IsSuccess()) {
+        return typeValidation;
+    }
+
+    AZ::EntityId actualValue = *static_cast<AZ::EntityId*>(newValue);
+
+    // Don't allow the change if it will result in a cycle hierarchy
+    if (actualValue.IsValid() && actualValue == m_content)
+    {
+        return AZ::Failure(AZStd::string("You cannot set expanded parent to be the same as content!"));
+    }
+
+    if (ContentIsAncestor(actualValue))
+    {
+        return AZ::Failure(AZStd::string("You cannot set expanded parent to be a child of content!"));
+    }
+
+    return AZ::Success();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::FailureValue<AZStd::string> FailureMessage(string message) {
+    return AZ::Failure(AZStd::string(message));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiDropdownComponent::HandleReleasedCommon(const AZ::Vector2& point)
 {
     if (m_isHandlingEvents)
@@ -929,8 +997,14 @@ AZ::EntityId UiDropdownComponent::CreateContentParentInteractable()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiDropdownComponent::ContentIsAncestor(AZ::EntityId entityId)
 {
+    return ContentIsAncestor(entityId, m_content);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiDropdownComponent::ContentIsAncestor(AZ::EntityId entityId, AZ::EntityId contentId)
+{
     bool contentIsAncestor = false;
-    EBUS_EVENT_ID_RESULT(contentIsAncestor, entityId, UiElementBus, IsAncestor, m_content);
+    EBUS_EVENT_ID_RESULT(contentIsAncestor, entityId, UiElementBus, IsAncestor, contentId);
     if (contentIsAncestor)
     {
         return true;

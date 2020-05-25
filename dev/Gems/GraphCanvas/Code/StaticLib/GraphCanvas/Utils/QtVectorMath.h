@@ -17,6 +17,16 @@
 
 namespace GraphCanvas
 {
+    class QtMath
+    {
+    public:
+        static QPointF PointOnCircle(const QPointF& centerPoint, float radius, float degrees)
+        {
+            float radians = AZ::DegToRad(degrees);
+            return QPointF(centerPoint.x() + radius * std::cosf(radians), centerPoint.y() + radius * std::sinf(radians));
+        }
+    };
+
     class QtVectorMath
     {
     public:
@@ -27,7 +37,7 @@ namespace GraphCanvas
         
         static float GetLength(const QPointF& point)
         {
-            return std::sqrtf(point.x() * point.x() + point.y() * point.y());
+            return std::sqrtf(aznumeric_cast<float>(point.x() * point.x() + point.y() * point.y()));
         }
         
         static QPointF Normalize(const QPointF& point)
@@ -113,7 +123,7 @@ namespace GraphCanvas
             {
                 for (const QPointF& bPoint : bIntersectionPoints)
                 {
-                    int testLength = GetLength(aPoint - bPoint);
+                    int testLength = aznumeric_cast<int>(GetLength(aPoint - bPoint));
 
                     if (minimumLength < 0 || testLength < minimumLength)
                     {

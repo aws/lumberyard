@@ -152,6 +152,8 @@ namespace NvCloth
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Wind")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_windVelocity, "Velocity", 
                         "Wind in global coordinates acting on cloth's triangles. Disabled when both air coefficients are zero.")
+                        ->Attribute(AZ::Edit::Attributes::Min, -100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_airDragCoefficient, "Air drag coefficient",
                         "Amount of air dragging.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)

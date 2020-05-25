@@ -109,8 +109,6 @@
         ],
         "Source/Scripting":
         [
-            "Source/Scripting/EditorFlowGraphComponent.h",
-            "Source/Scripting/EditorFlowGraphComponent.cpp",
             "Source/Scripting/EditorLookAtComponent.h",
             "Source/Scripting/EditorLookAtComponent.cpp",
             "Source/Scripting/EditorRandomTimedSpawnerComponent.cpp",
@@ -127,6 +125,8 @@
             "Source/Shape/EditorBaseShapeComponent.cpp",
             "Source/Shape/EditorSphereShapeComponent.h",
             "Source/Shape/EditorSphereShapeComponent.cpp",
+            "Source/Shape/EditorDiskShapeComponent.h",
+            "Source/Shape/EditorDiskShapeComponent.cpp",
             "Source/Shape/EditorBoxShapeComponent.h",
             "Source/Shape/EditorBoxShapeComponent.cpp",
             "Source/Shape/EditorCylinderShapeComponent.h",

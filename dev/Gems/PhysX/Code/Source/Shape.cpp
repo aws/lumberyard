@@ -17,6 +17,7 @@
 #include <Source/Material.h>
 #include <Source/Collision.h>
 #include <AzFramework/Physics/Material.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysX
 {
@@ -47,18 +48,22 @@ namespace PhysX
         return *this;
     }
 
-    auto releasePxShape = [](physx::PxShape* shape)
+    void Shape::ReleasePxShape(physx::PxShape* shape)
     {
-        shape->userData = nullptr;
-        shape->release();
-    };
+        if (shape != nullptr)
+        {
+            PHYSX_SCENE_WRITE_LOCK(GetScene());
+            shape->userData = nullptr;
+            shape->release();
+        }
+    }
 
     Shape::Shape(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration)
         : m_collisionLayer(colliderConfiguration.m_collisionLayer)
     {
         if (physx::PxShape* newShape = Utils::CreatePxShapeFromConfig(colliderConfiguration, shapeConfiguration, m_collisionGroup))
         {
-            m_pxShape = PxShapeUniquePtr(newShape, releasePxShape);
+            m_pxShape = PxShapeUniquePtr(newShape, AZStd::bind(&Shape::ReleasePxShape, this, newShape));
             m_pxShape->userData = this;
 
             ExtractMaterialsFromPxShape();
@@ -69,11 +74,19 @@ namespace PhysX
 
     Shape::Shape(physx::PxShape* nativeShape)
     {
-        m_pxShape = PxShapeUniquePtr(nativeShape, releasePxShape);
+        m_pxShape = PxShapeUniquePtr(nativeShape, AZStd::bind(&Shape::ReleasePxShape, this, nativeShape));
         m_pxShape->acquireReference();
         m_pxShape->userData = this;
 
         ExtractMaterialsFromPxShape();
+    }
+
+    Shape::~Shape()
+    {
+        //release the shape here, so when Shape::ReleasePxShape is called to delete the physx::PxShape* we can still acquire the scene lock.
+        m_pxShape.reset();
+        m_pxShape = nullptr;
+        m_attachedActor = nullptr;
     }
 
     physx::PxShape* Shape::GetPxShape()
@@ -171,6 +184,9 @@ namespace PhysX
     void Shape::SetCollisionLayer(const Physics::CollisionLayer& layer)
     {
         m_collisionLayer = layer;
+
+        PHYSX_SCENE_WRITE_LOCK(GetScene());
+
         physx::PxFilterData filterData = m_pxShape->getSimulationFilterData();
         Collision::SetLayer(layer, filterData);
         m_pxShape->setSimulationFilterData(filterData);
@@ -185,6 +201,9 @@ namespace PhysX
     void Shape::SetCollisionGroup(const Physics::CollisionGroup& group)
     {
         m_collisionGroup = group;
+
+        PHYSX_SCENE_WRITE_LOCK(GetScene());
+
         physx::PxFilterData filterData = m_pxShape->getSimulationFilterData();
         Collision::SetGroup(m_collisionGroup, filterData);
         m_pxShape->setSimulationFilterData(filterData);
@@ -233,5 +252,28 @@ namespace PhysX
             return true;
         }
         return false;
+    }
+
+    void Shape::AttachedToActor(void* actor)
+    {
+        physx::PxActor* pxActor = static_cast<physx::PxActor*>(actor);
+        if (pxActor != nullptr)
+        {
+            m_attachedActor = pxActor;
+        }
+    }
+
+    void Shape::DetachedFromActor()
+    {
+        m_attachedActor = nullptr;
+    }
+
+    physx::PxScene* Shape::GetScene() const
+    {
+        if (m_attachedActor != nullptr)
+        {
+            return m_attachedActor->getScene();
+        }
+        return nullptr;
     }
 }

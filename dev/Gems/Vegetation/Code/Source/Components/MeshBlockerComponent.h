@@ -102,7 +102,7 @@ namespace Vegetation
 
         //////////////////////////////////////////////////////////////////////////
         // SurfaceData::SurfaceDataSystemNotificationBus
-        void OnSurfaceChanged(const AZ::EntityId& entityId, const AZ::Aabb& bounds) override;
+        void OnSurfaceChanged(const AZ::EntityId& entityId, const AZ::Aabb& oldBounds, const AZ::Aabb& newBounds) override;
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::TickBus

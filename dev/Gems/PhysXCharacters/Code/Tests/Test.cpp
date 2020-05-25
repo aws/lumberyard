@@ -31,13 +31,12 @@
 #include <Physics/PhysicsTests.inl>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <PhysXCharacters/SystemBus.h>
+#include <PhysX/ComponentTypeIds.h>
 #include <PhysX/SystemComponentBus.h>
 #include <Source/Components/CharacterControllerComponent.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
 #include <System/SystemComponent.h>
 #include <Components/RagdollComponent.h>
-
-#ifdef AZ_TESTS_ENABLED
 
 namespace PhysXCharacters
 {
@@ -413,6 +412,7 @@ namespace PhysXCharacters
 
         auto triggerEntity = AZStd::make_unique<AZ::Entity>("TriggerEntity");
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
+        triggerEntity->CreateComponent(PhysX::StaticRigidBodyComponentTypeId);
         PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::AddColliderComponentToEntity, triggerEntity.get(), triggerConfig, boxConfig, false);
         triggerEntity->Init();
         triggerEntity->Activate();
@@ -467,4 +467,4 @@ namespace PhysXCharacters
 
     AZ_UNIT_TEST_HOOK(new PhysXCharactersTestEnvironment);
 } // namespace PhysXCharacters
-#endif // AZ_TESTS_ENABLED
+

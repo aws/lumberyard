@@ -1,0 +1,28 @@
+{
+    "none": {
+        "EditorPlugin": [
+            "main.cpp",
+            "DynamicContentEditorPlugin.cpp",
+            "CloudGemDynamicContent_precompiled.cpp",
+            "CloudGemDynamicContent_precompiled.h",
+            "QDynamicContentEditorMainWindow.h",
+            "QDynamicContentEditorMainWindow.cpp",
+            "create_package.ui",
+            "dynamic_content.ui",
+            "change_target_platform.ui",
+            "create_new_manifest.ui",
+            "incompatible_files.ui",
+            "platform_warning.ui",
+            "upload_packages.ui",
+            "PackagesModel.h",
+            "PackagesModel.cpp",
+            "FileWatcherModel.h",
+            "FileWatcherModel.cpp",
+            "ManifestTableKeys.h",
+            "ManifestTableKeys.cpp",
+            "ManifestDataStructures.h",
+            "fileWatcherView.h",
+            "fileWatcherView.cpp"
+        ]
+    }
+}

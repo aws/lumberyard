@@ -1,63 +1,71 @@
-from resource_manager.test import lmbr_aws_test_support
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
 from requests_aws4auth import AWS4Auth
+from cgf_utils.aws_sts import AWSSTSUtils
 import requests
-import unittest
+
+from . import lmbr_aws_test_support
 
 
 class Test_Service_Helpers(lmbr_aws_test_support.lmbr_aws_TestCase):
 
-    def __init__(self, gem_name, deployment_name, region):
+    def __init__(self, gem_name, deployment_name, region, *args, **kwargs):
+        super(Test_Service_Helpers, self).__init__(*args, **kwargs)
         self.gem_name = gem_name
         self.deployment_name = deployment_name
         self.region = region
-
 
     def get_service_url(self, path):
         base_url = self.get_stack_output(self.get_resource_group_stack_arn(self.deployment_name, self.gem_name), 'ServiceUrl')
         self.assertIsNotNone(base_url, "Missing ServiceUrl stack output.")
         return base_url + path
 
-
     def service_get(self, path, params=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call(
-            'GET', 
-            path, 
-            params=params, 
-            anonymous_auth=anonymous_auth, 
+            'GET',
+            path,
+            params=params,
+            anonymous_auth=anonymous_auth,
             player_auth=player_auth,
-            player_credentials=player_credentials, 
-            admin_auth=admin_auth, 
+            player_credentials=player_credentials,
+            admin_auth=admin_auth,
             expected_status_code=expected_status_code
-            )
-
+        )
 
     def service_put(self, path, body=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call(
-            'PUT', 
-            path, 
-            body=body, 
-            anonymous_auth=anonymous_auth, 
+            'PUT',
+            path,
+            body=body,
+            anonymous_auth=anonymous_auth,
             player_auth=player_auth,
-            player_credentials=player_credentials, 
-            admin_auth=admin_auth, 
+            player_credentials=player_credentials,
+            admin_auth=admin_auth,
             expected_status_code=expected_status_code
-            )
-
+        )
 
     def service_post(self, path, body=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call(
-            'POST', 
-            path, 
-            body=body, 
-            anonymous_auth=anonymous_auth, 
+            'POST',
+            path,
+            body=body,
+            anonymous_auth=anonymous_auth,
             player_auth=player_auth,
-            player_credentials=player_credentials, 
-            admin_auth=admin_auth, 
+            player_credentials=player_credentials,
+            admin_auth=admin_auth,
             expected_status_code=expected_status_code
-            )
+        )
 
-
-    def __service_call(self, method, path, body=None, params=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, assumed_role=None, expected_status_code=200):
+    def __service_call(self, method, path, body=None, params=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False,
+                       assumed_role=None, expected_status_code=200):
         url = self.get_service_url(path)
         if admin_auth:
             session_credentials = self.session.get_credentials().get_frozen_credentials()
@@ -66,7 +74,8 @@ class Test_Service_Helpers(lmbr_aws_test_support.lmbr_aws_TestCase):
             creds = self.context['anonymous_aws_credentials']
             auth = AWS4Auth(creds['AccessKeyId'], creds['SecretKey'], self.region, 'execute-api', session_token=creds['SessionToken'])
         elif player_credentials:
-            auth = AWS4Auth(player_credentials['AccessKeyId'], player_credentials['SecretKey'], self.region, 'execute-api', session_token=player_credentials['SessionToken'])
+            auth = AWS4Auth(player_credentials['AccessKeyId'], player_credentials['SecretKey'], self.region, 'execute-api',
+                            session_token=player_credentials['SessionToken'])
         elif player_auth:
             creds = self.context['aws_credentials']
             auth = AWS4Auth(creds['AccessKeyId'], creds['SecretKey'], self.region, 'execute-api', session_token=creds['SessionToken'])
@@ -76,7 +85,7 @@ class Test_Service_Helpers(lmbr_aws_test_support.lmbr_aws_TestCase):
             else:
                 role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.deployment_name), assumed_role)
 
-            sts = self.session.client('sts')
+            sts = AWSSTSUtils(self.region).client(self.session)
 
             res = sts.assume_role(RoleArn=role_arn, RoleSessionName='CloudGemFrameworkTest')
 
@@ -91,11 +100,11 @@ class Test_Service_Helpers(lmbr_aws_test_support.lmbr_aws_TestCase):
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
         self.assertEquals(response.status_code, expected_status_code,
-            'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
+                          'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:
             result = response.json().get('result', None)
             self.assertIsNotNone(result, "Missing 'result' in response: {}".format(response))
             return result
         else:
-            return response.text    
+            return response.text

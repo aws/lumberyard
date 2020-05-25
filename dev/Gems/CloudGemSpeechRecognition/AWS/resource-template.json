@@ -216,7 +216,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "ServiceLambda",
-                "Runtime": "python2.7",
+                "Runtime": "python3.7",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 },

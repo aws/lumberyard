@@ -17,7 +17,7 @@ namespace QtHelpers
 {
     AZ::Vector2 QPointFToVector2(const QPointF& point)
     {
-        return AZ::Vector2(point.x(), point.y());
+        return AZ::Vector2(aznumeric_cast<float>(point.x()), aznumeric_cast<float>(point.y()));
     }
 
     AZ::Vector2 MapGlobalPosToLocalVector2(const QWidget* widget, const QPoint& pos)

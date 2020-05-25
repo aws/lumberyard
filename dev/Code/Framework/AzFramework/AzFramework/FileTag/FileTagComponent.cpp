@@ -46,13 +46,13 @@ namespace AzFramework
 
         void FileTagQueryComponent::Activate()
         {
-            m_fileTagBlackListQueryManager.reset(aznew FileTagQueryManager(FileTagType::BlackList));
-            m_fileTagWhiteListQueryManager.reset(aznew FileTagQueryManager(FileTagType::WhiteList));
+            m_excludeFileQueryManager.reset(aznew FileTagQueryManager(FileTagType::Exclude));
+            m_includeFileQueryManager.reset(aznew FileTagQueryManager(FileTagType::Include));
         }
         void FileTagQueryComponent::Deactivate()
         {
-            m_fileTagBlackListQueryManager.reset();
-            m_fileTagWhiteListQueryManager.reset();
+            m_excludeFileQueryManager.reset();
+            m_includeFileQueryManager.reset();
         }
 
         void FileTagQueryComponent::Reflect(AZ::ReflectContext* context)
@@ -65,34 +65,34 @@ namespace AzFramework
             }
         }
 
-        void BlackListFileComponent::Activate()
+        void ExcludeFileComponent::Activate()
         {
-            m_fileTagBlackListQueryManager.reset(aznew FileTagQueryManager(FileTagType::BlackList));
-            if (!m_fileTagBlackListQueryManager.get()->Load())
+            m_excludeFileQueryManager.reset(aznew FileTagQueryManager(FileTagType::Exclude));
+            if (!m_excludeFileQueryManager.get()->Load())
             {
-                AZ_Error("FileTagQueryComponent", false, "Not able to load default blacklist file (%s). Please make sure that it exists on disk.\n", FileTagQueryManager::GetDefaultFileTagFilePath(FileTagType::BlackList).c_str());
+                AZ_Error("FileTagQueryComponent", false, "Not able to load default exclude file (%s). Please make sure that it exists on disk.\n", FileTagQueryManager::GetDefaultFileTagFilePath(FileTagType::Exclude).c_str());
             }
 
             AzFramework::AssetCatalogEventBus::Handler::BusConnect();
         }
 
-        void BlackListFileComponent::Deactivate()
+        void ExcludeFileComponent::Deactivate()
         {
             AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
-            m_fileTagBlackListQueryManager.reset();
+            m_excludeFileQueryManager.reset();
         }
 
-        void BlackListFileComponent::Reflect(AZ::ReflectContext* context)
+        void ExcludeFileComponent::Reflect(AZ::ReflectContext* context)
         {
             // CustomAssetTypeComponent is responsible for reflecting the FileTagAsset class
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<BlackListFileComponent, AZ::Component>()
+                serializeContext->Class<ExcludeFileComponent, AZ::Component>()
                     ->Version(1);
             }
         }
 
-        void BlackListFileComponent::OnCatalogLoaded(const char* catalogFile)
+        void ExcludeFileComponent::OnCatalogLoaded(const char* catalogFile)
         {
             AZ_UNUSED(catalogFile);
 
@@ -107,9 +107,9 @@ namespace AzFramework
                     continue;
                 }
 
-                if (!m_fileTagBlackListQueryManager.get()->LoadEngineDependencies(assetPath))
+                if (!m_excludeFileQueryManager.get()->LoadEngineDependencies(assetPath))
                 {
-                    AZ_Error("BlackListFileComponent", false, "Failed to add assets referenced from %s to the black list", assetPath.c_str());
+                    AZ_Error("ExcludeFileComponent", false, "Failed to add assets referenced from %s to the black list", assetPath.c_str());
                 }
             }
         }

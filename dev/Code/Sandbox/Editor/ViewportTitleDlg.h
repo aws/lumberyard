@@ -17,6 +17,7 @@
 
 
 #include "RenderViewport.h"
+#include <AzCore/Component/Component.h>
 
 #include <functional>
 
@@ -138,5 +139,24 @@ protected:
     QAction* m_searchAndAction;
     QAction* m_searchOrAction;
 };
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class ViewportTitleDlgPythonFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(ViewportTitleDlgPythonFuncsHandler, "{2D686C2D-04F0-4C96-B432-0702E774062E}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
+
 
 #endif // CRYINCLUDE_EDITOR_VIEWPORTTITLEDLG_H

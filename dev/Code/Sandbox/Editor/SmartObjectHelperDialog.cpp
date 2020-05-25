@@ -57,24 +57,6 @@ void CSmartObjectHelperDialog::OnDeleteBtn()
 
 void CSmartObjectHelperDialog::OnNewBtn()
 {
-    /*
-        CString filename;
-        if ( GetIEditor()->GetAI()->NewAction(filename, this) )
-        {
-            m_sSOAction = PathUtil::GetFileName((const char*)filename);
-            IAIAction* pAction = gEnv->pAISystem->GetAIAction( m_sSOAction );
-            if ( pAction )
-            {
-                CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
-                CFlowGraph* pFlowGraph = pManager->FindGraphForAction( pAction );
-                assert( pFlowGraph );
-                if ( pFlowGraph )
-                    pManager->OpenView( pFlowGraph );
-
-                accept();
-            }
-        }
-    */
 }
 
 void CSmartObjectHelperDialog::OnEditBtn()

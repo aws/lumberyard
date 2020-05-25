@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <AzCore/PlatformDef.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/client/ClientConfiguration.h>
@@ -144,9 +145,12 @@ namespace Amazon {
     {
     public:
         LoginManager(QWidget& parent)
-            : m_httpClient(Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration()))
-            , m_parent(parent)
-        {};
+            : m_parent(parent)
+        {
+            Aws::Client::ClientConfiguration config;
+            config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
+            m_httpClient = Aws::Http::CreateHttpClient(config);
+        }
 
         std::shared_ptr<AmazonIdentity> GetLoggedInUser();
         void LogOut() { m_identity.reset(); }

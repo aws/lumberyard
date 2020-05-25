@@ -23,6 +23,7 @@
 #include "Serialization/Enum.h"
 #include "ToolFactory.h"
 #include "Core/BrushHelper.h"
+#include "QtViewPaneManager.h"
 
 using Serialization::ActionButton;
 using namespace CD;
@@ -132,7 +133,7 @@ void UVMappingTool::Leave()
 
 void UVMappingTool::OpenUVMappingWnd()
 {
-    GetIEditor()->ExecuteCommand(QStringLiteral("general.open_pane '%1'").arg(ToolName()));
+    QtViewPaneManager::instance()->OpenPane(ToolName());
 }
 
 void UVMappingTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point)
@@ -384,8 +385,8 @@ void UVMappingTool::OnManipulatorDrag(CViewport* pView, ITransformManipulator* p
             BrushFloat tu = (BrushFloat)basis_u.Dot(-vTranslation);
             BrushFloat tv = (BrushFloat)basis_v.Dot(-vTranslation);
 
-            texInfo.shift[0] = texInfo.shift[0] + tu;
-            texInfo.shift[1] = texInfo.shift[1] + tv;
+            texInfo.shift[0] = aznumeric_cast<float>(texInfo.shift[0] + tu);
+            texInfo.shift[1] = aznumeric_cast<float>(texInfo.shift[1] + tv);
 
             SetTexInfoToPolygon(pPolygon, texInfo, CD::eTexParam_Offset);
             UpdatePanel(texInfo);
@@ -417,7 +418,7 @@ void UVMappingTool::OnManipulatorDrag(CViewport* pView, ITransformManipulator* p
                 tn.x = tn.y = 0;
             }
 
-            float fDeltaRotation = (180.0F / CD::PI) * value.x;
+            float fDeltaRotation = aznumeric_cast<float>((180.0F / CD::PI) * value.x);
             if (tn.y < 0 || tn.x > 0 || tn.z > 0)
             {
                 fDeltaRotation = -fDeltaRotation;
@@ -431,7 +432,7 @@ void UVMappingTool::OnManipulatorDrag(CViewport* pView, ITransformManipulator* p
     }
     else if (editMode == eEditModeScale)
     {
-        Vec3 vScale(offsetTM.m00, offsetTM.m11, offsetTM.m22);
+        Vec3 vScale(aznumeric_cast<float>(offsetTM.m00), aznumeric_cast<float>(offsetTM.m11), aznumeric_cast<float>(offsetTM.m22));
         for (int i = 0, iCount(m_MouseDownContext.m_TexInfos.size()); i < iCount; ++i)
         {
             CD::PolygonPtr pPolygon(m_MouseDownContext.m_TexInfos[i].first);
@@ -447,8 +448,8 @@ void UVMappingTool::OnManipulatorDrag(CViewport* pView, ITransformManipulator* p
             BrushFloat tu = std::abs((BrushFloat)basis_u.Dot(vScale));
             BrushFloat tv = std::abs((BrushFloat)basis_v.Dot(vScale));
 
-            texInfo.scale[0] += tu - 1;
-            texInfo.scale[1] += tv - 1;
+            texInfo.scale[0] = aznumeric_cast<float>(texInfo.scale[0] + (tu - 1));
+            texInfo.scale[1] = aznumeric_cast<float>(texInfo.scale[1] + (tv - 1));
 
             if (texInfo.scale[0] < 0.01f)
             {

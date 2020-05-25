@@ -17,15 +17,10 @@
 #pragma once
 
 #include <AzToolsFramework/API/EditorVegetationRequestsBus.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #define RAD2BYTE(x) ((x) * 255.0f / float(g_PI2))
 #define BYTE2RAD(x) ((x) * float(g_PI2) / 255.0f)
-
-// Magic number restriction to prevent crash (https://jira.agscollab.com/browse/LY-19536)
-// should eventually be able to remove this once vegetation is componentized and
-// refactored to be streamed in as needed
-#define MAX_VEGETATION_INSTANCES 2000000
-
 
 class CVegetationObject;
 struct CVegetationInstance;
@@ -35,9 +30,13 @@ struct CVegetationInstance;
 */
 class CVegetationMap
     : public AzToolsFramework::EditorVegetation::EditorVegetationRequestsBus::Handler
+    , private AzFramework::Terrain::TerrainDataNotificationBus::Handler
 {
 public:
-    CVegetationMap();
+    // Magic number restriction to prevent crash (https://jira.agscollab.com/browse/LY-19536)
+    // should eventually be able to remove this once vegetation is componentized and
+    // refactored to be streamed in as needed
+    CVegetationMap(int maxVegetationInstances = 2000000);
     ~CVegetationMap();
 
     //////////////////////////////////////////////////////////////////////////
@@ -60,7 +59,10 @@ public:
     void PlaceObjectsOnTerrain();
 
     //! Get total number of vegetation instances.
-    int GetNumInstances() const { return m_numInstances; };
+    int GetNumInstances() const { return m_numInstances; }
+
+    //! Get max supported number of vegetation instances.
+    int GetMaxInstances() const { return m_maxVegetationInstances; }
 
     //////////////////////////////////////////////////////////////////////////
     // Vegetation Objects
@@ -131,9 +133,6 @@ public:
     bool MoveInstance(CVegetationInstance* obj, const Vec3& newPos, bool bTerrainAlign = true);
     //! Remove object from 3D engine and place it back again.
     void RepositionObject(CVegetationObject* object);
-
-    //! Update vegetation position z coordinate
-    void OnHeightMapChanged();
 
     //! Remove objects within specified area from 3D engine and then place it back again on top of terrain.
     void RepositionArea(const AABB& box, const Vec3& offset =  Vec3(0, 0, 0), ImageRotationDegrees rotation = ImageRotationDegrees::Rotate0, bool isCopy = false);
@@ -224,6 +223,11 @@ public:
     void DeleteObjectInstance(CVegetationInstance* instance) override;
 
 private:
+    //////////////////////////////////////////////////////////////////////////
+    // AzFramework::Terrain::TerrainDataNotificationBus
+    void OnTerrainDataCreateEnd() override;
+    void OnTerrainDataDestroyEnd() override;
+
     struct SectorInfo
     {
         CVegetationInstance* first; // First vegetation object instance in this sector.
@@ -293,6 +297,11 @@ private:
     EStoreUndo m_storeBaseUndoState;
 
     friend class CUndoVegInstanceCreate;
+
+    // Magic number restriction to prevent crash (https://jira.agscollab.com/browse/LY-19536)
+    // should eventually be able to remove this once vegetation is componentized and
+    // refactored to be streamed in as needed
+    int m_maxVegetationInstances;
 };
 
 #endif // CRYINCLUDE_EDITOR_VEGETATIONMAP_H

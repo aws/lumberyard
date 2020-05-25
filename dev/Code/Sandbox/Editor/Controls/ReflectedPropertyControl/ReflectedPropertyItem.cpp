@@ -292,7 +292,6 @@ void ReflectedPropertyItem::SetVariable(IVariable *var)
     case ePropertySOTemplate:
     case ePropertyEquip:
     case ePropertyReverbPreset:
-    case ePropertyCustomAction:
     case ePropertyGameToken:
     case ePropertyMissionObj:
     case ePropertySequence:

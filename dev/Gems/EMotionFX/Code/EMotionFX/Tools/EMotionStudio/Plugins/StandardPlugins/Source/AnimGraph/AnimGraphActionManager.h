@@ -51,7 +51,7 @@ namespace EMStudio
     class AnimGraphActionManager
         : public QObject
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         AnimGraphActionManager(AnimGraphPlugin* plugin);
@@ -60,6 +60,14 @@ namespace EMStudio
         bool GetIsReadyForPaste() const;
 
         void ShowNodeColorPicker(EMotionFX::AnimGraphNode* animGraphNode);
+
+        enum AlignMode
+        {
+            Left,
+            Right,
+            Top,
+            Bottom
+        };
 
     public slots:
         void Copy();
@@ -86,6 +94,13 @@ namespace EMStudio
         void OpenReferencedAnimGraph(EMotionFX::AnimGraphReferenceNode* referenceNode);
 
         void ActivateGraphForSelectedActors(EMotionFX::AnimGraph* animGraph, EMotionFX::MotionSet* motionSet);
+
+        // Align selected nodes.
+        void AlignNodes(AlignMode alignMode);
+        void AlignLeft() { AlignNodes(Left); }
+        void AlignRight() { AlignNodes(Right); }
+        void AlignTop() { AlignNodes(Top); }
+        void AlignBottom() { AlignNodes(Bottom); }
 
     private:
         void SetSelectedEnabled(bool enabled);

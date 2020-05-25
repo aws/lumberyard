@@ -28,7 +28,7 @@ import unittest
 from Crypto.SelfTest.st_common import list_test_cases, a2b_hex, b2a_hex
 from Crypto import Random
 from Crypto.PublicKey import ElGamal
-from Crypto.Util.number import *
+from Crypto.Util.number import bytes_to_long
 from Crypto.Util.py3compat import *
 
 class ElGamalTest(unittest.TestCase):
@@ -93,49 +93,60 @@ class ElGamalTest(unittest.TestCase):
         }
     ]
 
-    def test_generate_128(self):
-        self._test_random_key(128)
-
-    def test_generate_512(self):
-        self._test_random_key(512)
+    def test_generate_180(self):
+        self._test_random_key(180)
 
     def test_encryption(self):
         for tv in self.tve:
-            for as_longs in (0,1):
-                d = self.convert_tv(tv, as_longs)
-                key = ElGamal.construct(d['key'])
-                ct = key.encrypt(d['pt'], d['k'])
-                self.assertEquals(ct[0], d['ct1'])
-                self.assertEquals(ct[1], d['ct2'])
+            d = self.convert_tv(tv, True)
+            key = ElGamal.construct(d['key'])
+            ct = key._encrypt(d['pt'], d['k'])
+            self.assertEquals(ct[0], d['ct1'])
+            self.assertEquals(ct[1], d['ct2'])
 
     def test_decryption(self):
         for tv in self.tve:
-            for as_longs in (0,1):
-                d = self.convert_tv(tv, as_longs)
-                key = ElGamal.construct(d['key'])
-                pt = key.decrypt((d['ct1'], d['ct2']))
-                self.assertEquals(pt, d['pt'])
+            d = self.convert_tv(tv, True)
+            key = ElGamal.construct(d['key'])
+            pt = key._decrypt((d['ct1'], d['ct2']))
+            self.assertEquals(pt, d['pt'])
 
     def test_signing(self):
         for tv in self.tvs:
-            for as_longs in (0,1):
-                d = self.convert_tv(tv, as_longs)
-                key = ElGamal.construct(d['key'])
-                sig1, sig2 = key.sign(d['h'], d['k'])
-                self.assertEquals(sig1, d['sig1'])
-                self.assertEquals(sig2, d['sig2'])
+            d = self.convert_tv(tv, True)
+            key = ElGamal.construct(d['key'])
+            sig1, sig2 = key._sign(d['h'], d['k'])
+            self.assertEquals(sig1, d['sig1'])
+            self.assertEquals(sig2, d['sig2'])
 
     def test_verification(self):
         for tv in self.tvs:
-            for as_longs in (0,1):
-                d = self.convert_tv(tv, as_longs)
-                key = ElGamal.construct(d['key'])
-                # Positive test
-                res = key.verify( d['h'], (d['sig1'],d['sig2']) )
-                self.failUnless(res)
-                # Negative test
-                res = key.verify( d['h'], (d['sig1']+1,d['sig2']) )
-                self.failIf(res)
+            d = self.convert_tv(tv, True)
+            key = ElGamal.construct(d['key'])
+            # Positive test
+            res = key._verify( d['h'], (d['sig1'],d['sig2']) )
+            self.failUnless(res)
+            # Negative test
+            res = key._verify( d['h'], (d['sig1']+1,d['sig2']) )
+            self.failIf(res)
+
+    def test_bad_key3(self):
+        tup = tup0 = list(self.convert_tv(self.tvs[0], 1)['key'])[:3]
+        tup[0] += 1 # p += 1 (not prime)
+        self.assertRaises(ValueError, ElGamal.construct, tup)
+
+        tup = tup0
+        tup[1] = 1 # g = 1
+        self.assertRaises(ValueError, ElGamal.construct, tup)
+
+        tup = tup0
+        tup[2] = tup[0]*2 # y = 2*p
+        self.assertRaises(ValueError, ElGamal.construct, tup)
+
+    def test_bad_key4(self):
+        tup = tup0 = list(self.convert_tv(self.tvs[0], 1)['key'])
+        tup[3] += 1 # x += 1
+        self.assertRaises(ValueError, ElGamal.construct, tup)
 
     def convert_tv(self, tv, as_longs=0):
         """Convert a test vector from textual form (hexadecimal ascii
@@ -151,7 +162,7 @@ class ElGamalTest(unittest.TestCase):
             tv2['key'] += [tv2[c]]
             del tv2[c]
         return tv2
- 
+
     def _test_random_key(self, bits):
         elgObj = ElGamal.generate(bits, Random.new().read)
         self._check_private_key(elgObj)
@@ -164,8 +175,6 @@ class ElGamalTest(unittest.TestCase):
 
         # Check capabilities
         self.failUnless(elgObj.has_private())
-        self.failUnless(elgObj.can_sign())
-        self.failUnless(elgObj.can_encrypt())
 
         # Sanity check key data
         self.failUnless(1<elgObj.g<(elgObj.p-1))
@@ -177,8 +186,6 @@ class ElGamalTest(unittest.TestCase):
 
         # Check capabilities
         self.failIf(elgObj.has_private())
-        self.failUnless(elgObj.can_sign())
-        self.failUnless(elgObj.can_encrypt())
 
         # Sanity check key data
         self.failUnless(1<elgObj.g<(elgObj.p-1))
@@ -186,18 +193,18 @@ class ElGamalTest(unittest.TestCase):
 
     def _exercise_primitive(self, elgObj):
         # Test encryption/decryption
-        plaintext = b("Test")
-        ciphertext = elgObj.encrypt(plaintext, 123456789L)
-        plaintextP = elgObj.decrypt(ciphertext)
+        plaintext = 127218
+        ciphertext = elgObj._encrypt(plaintext, 123456789)
+        plaintextP = elgObj._decrypt(ciphertext)
         self.assertEquals(plaintext, plaintextP)
 
         # Test signature/verification
-        signature = elgObj.sign(plaintext, 987654321L)
-        elgObj.verify(plaintext, signature)
+        signature = elgObj._sign(plaintext, 987654321)
+        elgObj._verify(plaintext, signature)
 
     def _exercise_public_primitive(self, elgObj):
-        plaintext = b("Test")
-        ciphertext = elgObj.encrypt(plaintext, 123456789L)
+        plaintext = 92987276
+        ciphertext = elgObj._encrypt(plaintext, 123456789)
 
 def get_tests(config={}):
     tests = []

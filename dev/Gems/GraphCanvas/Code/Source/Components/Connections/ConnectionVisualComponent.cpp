@@ -119,14 +119,15 @@ namespace GraphCanvas
     {
         return m_connectionGraphicsItem->path();
     }
-    void ConnectionVisualComponent::SetZValue(int zValue)
+
+    void ConnectionVisualComponent::SetZValue(qreal zValue)
     {
         m_connectionGraphicsItem->setZValue(zValue);
     }
 
-    int ConnectionVisualComponent::GetZValue() const
+    qreal ConnectionVisualComponent::GetZValue() const
     {
-        return m_connectionGraphicsItem->zValue();
+        return aznumeric_cast<int>(m_connectionGraphicsItem->zValue());
     }
 
     void ConnectionVisualComponent::CreateConnectionVisual()
@@ -369,7 +370,7 @@ namespace GraphCanvas
 
                 if (rootVisual)
                 {
-                    nodeHeight = rootVisual->boundingRect().height();
+                    nodeHeight = aznumeric_cast<float>(rootVisual->boundingRect().height());
                 }
 
                 GeometryRequestBus::EventResult(nodePos, sourceNode, &GeometryRequestBus::Events::GetPosition);
@@ -564,13 +565,13 @@ namespace GraphCanvas
                 QPointF startPoint = painterPath.pointAtPercent(0);
                 QPointF endPoint = painterPath.pointAtPercent(1);
 
-                float distanceToSource = (clickPoint - startPoint).manhattanLength();
-                float distanceToTarget = (clickPoint - endPoint).manhattanLength();
+                float distanceToSource = aznumeric_cast<float>((clickPoint - startPoint).manhattanLength());
+                float distanceToTarget = aznumeric_cast<float>((clickPoint - endPoint).manhattanLength());
 
                 float maxDistance = m_style.GetAttribute(Styling::Attribute::ConnectionDragMaximumDistance, 100.0f);
                 float dragPercentage = m_style.GetAttribute(Styling::Attribute::ConnectionDragPercent, 0.1f);
 
-                float acceptanceDistance = AZStd::GetMin<float>(maxDistance, painterPath.length() * dragPercentage);
+                float acceptanceDistance = AZStd::GetMin(maxDistance, aznumeric_cast<float>(painterPath.length() * dragPercentage));
 
                 if (distanceToSource < acceptanceDistance)
                 {
@@ -601,7 +602,7 @@ namespace GraphCanvas
         if (m_trackMove)
         {
             float maxDistance = m_style.GetAttribute(Styling::Attribute::ConnectionDragMoveBuffer, 0.0f);
-            float distanceFromInitial = (m_initialPoint - mouseEvent->scenePos()).manhattanLength();
+            float distanceFromInitial = aznumeric_cast<float>((m_initialPoint - mouseEvent->scenePos()).manhattanLength());
 
             if (distanceFromInitial > maxDistance)
             {

@@ -43,10 +43,10 @@ namespace ScriptCanvas
 
             protected:
 
-                void InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType) override;
+                void InitializeSlot(const SlotId& slotId, const ScriptCanvas::Data::Type& dataType) override;                
                 bool IsValidArithmeticSlot(const SlotId& slotId) const override;
 
-                void OnResetDatumToDefaultValue(Datum* datum) override;
+                void OnResetDatumToDefaultValue(ModifiableDatumView& datumView) override;
             };
         }
     }

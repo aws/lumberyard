@@ -1,0 +1,19 @@
+{
+    "none": {
+        "Source": [
+            "Source/LegacyTerrain_precompiled.cpp",
+            "Source/LegacyTerrain_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/LegacyTerrain/LegacyTerrainUtil.h"
+        ],
+        "Source": [
+            "Source/LegacyTerrainModule.h",
+            "Source/LegacyTerrainModule.cpp",
+            "Source/LegacyTerrainLevelComponent.cpp",
+            "Source/LegacyTerrainLevelComponent.h"
+        ]
+    }
+}

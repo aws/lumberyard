@@ -26,6 +26,7 @@
 
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <Editor/Components/IconComponent.h>
+#include <Editor/GraphCanvas/Components/DynamicOrderingDynamicSlotComponent.h>
 #include <Editor/GraphCanvas/Components/DynamicSlotComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverEventNodeDescriptorComponent.h>
@@ -88,13 +89,10 @@ namespace
         AZ::EntityId scNodeEntityId = userData && userData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
         if (scNodeEntityId.IsValid())
         {
-            ScriptCanvas::Datum* datum = nullptr;
-            ScriptCanvas::EditorNodeRequestBus::EventResult(datum, scNodeEntityId, &ScriptCanvas::EditorNodeRequests::ModInput, scSlotId);
-            if(datum)
-            {
-                // Only input data slots will get this far.
-                datum->SetLabel(name.GetDisplayString());
-            }
+            ScriptCanvas::ModifiableDatumView datumView;
+            ScriptCanvas::NodeRequestBus::Event(scNodeEntityId, &ScriptCanvas::NodeRequests::FindModifiableDatumView, scSlotId, datumView);
+
+            datumView.RelabelDatum(name.GetDisplayString());
         }
     }
 
@@ -107,14 +105,46 @@ namespace
             return;
         }
 
-        ScriptCanvas::Datum* datum = nullptr;
-        ScriptCanvas::EditorNodeRequestBus::EventResult(datum, node->GetEntityId(), &ScriptCanvas::EditorNodeRequests::ModInput, slotId);
-        if (!datum)
+        ScriptCanvas::ModifiableDatumView datumView;
+        node->FindModifiableDatumView(slotId, datumView);
+
+        datumView.RelabelDatum(name.GetDisplayString());
+    }
+
+    GraphCanvas::ConnectionType ToGraphCanvasConnectionType(ScriptCanvas::ConnectionType connectionType)
+    {
+        GraphCanvas::ConnectionType graphCanvasConnectionType = GraphCanvas::CT_Invalid;
+        switch (connectionType)
         {
-            return;
+        case ScriptCanvas::ConnectionType::Input:
+            graphCanvasConnectionType = GraphCanvas::CT_Input;
+            break;
+        case ScriptCanvas::ConnectionType::Output:
+            graphCanvasConnectionType = GraphCanvas::CT_Output;
+            break;
+        default:
+            break;
         }
 
-        datum->SetLabel(name.GetDisplayString());
+        return graphCanvasConnectionType;
+    }
+
+    ScriptCanvas::ConnectionType ToScriptCanvasConnectionType(GraphCanvas::ConnectionType connectionType)
+    {
+        ScriptCanvas::ConnectionType scriptCanvasConnectionType = ScriptCanvas::ConnectionType::Unknown;
+        switch (connectionType)
+        {
+        case GraphCanvas::CT_Input:
+            scriptCanvasConnectionType = ScriptCanvas::ConnectionType::Input;
+            break;
+        case GraphCanvas::CT_Output:
+            scriptCanvasConnectionType = ScriptCanvas::ConnectionType::Output;
+            break;
+        default:
+            break;
+        }
+
+        return scriptCanvasConnectionType;
     }
 }
 
@@ -138,6 +168,7 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+
         //////////////////////
         // NodeConfiguration
         //////////////////////
@@ -196,6 +227,18 @@ namespace ScriptCanvasEditor
             }
 
             return {};
+        }
+
+        void ConfigureGeneralScriptCanvasEntity(const ScriptCanvas::Node* node, AZ::Entity* graphCanvasEntity, const GraphCanvas::SlotGroup& slotGroup = GraphCanvas::SlotGroups::Invalid)
+        {
+            if (node->RequiresDynamicSlotOrdering())
+            {
+                graphCanvasEntity->CreateComponent<DynamicOrderingDynamicSlotComponent>(slotGroup);
+            }
+            else
+            {
+                graphCanvasEntity->CreateComponent<DynamicSlotComponent>(slotGroup);
+            }
         }
 
         // Handles the creation of a node through the node configurations for most nodes.
@@ -276,14 +319,11 @@ namespace ScriptCanvasEditor
                 GraphCanvas::SlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, slotTooltipKeyedString);
             }
 
-            if (node->IsNodeExtendable())
-            {
-                for (int i = 0; i < node->GetNumberOfExtensions(); ++i)
-                {
-                    ScriptCanvas::ExtendableSlotConfiguration configuration = node->GetExtensionConfiguration(i);
+            const auto& visualExtensions = node->GetVisualExtensions();
 
-                    DisplayExtensionSlot(graphCanvasEntity->GetId(), configuration);
-                }
+            for (const auto& extensionConfiguration : visualExtensions)
+            {
+                DisplayVisualExtensionSlot(graphCanvasEntity->GetId(), extensionConfiguration);
             }
 
             GraphCanvas::TranslationKeyedString subtitleKeyedString(nodeConfiguration.m_subtitleFallback, nodeConfiguration.m_translationContext);
@@ -313,8 +353,19 @@ namespace ScriptCanvasEditor
         AZ::EntityId DisplayNode(const AZ::EntityId& graphCanvasGraphId, const ScriptCanvas::Node* node, StyleConfiguration styleConfiguration = StyleConfiguration())
         {
             NodeConfiguration nodeConfiguration;
+            
+            
+            nodeConfiguration.PopulateComponentDescriptors<IconComponent, UserDefinedNodeDescriptorComponent>();
 
-            nodeConfiguration.PopulateComponentDescriptors<IconComponent, DynamicSlotComponent, UserDefinedNodeDescriptorComponent>();
+            if (node->RequiresDynamicSlotOrdering())
+            {
+                nodeConfiguration.PopulateComponentDescriptors<DynamicOrderingDynamicSlotComponent>();
+            }
+            else
+            {
+                nodeConfiguration.PopulateComponentDescriptors<DynamicSlotComponent>();
+            }
+
             nodeConfiguration.m_nodeSubStyle = styleConfiguration.m_nodeSubStyle;
             nodeConfiguration.m_titlePalette = styleConfiguration.m_titlePalette;
             nodeConfiguration.m_scriptCanvasId = node->GetEntityId();
@@ -428,7 +479,7 @@ namespace ScriptCanvasEditor
             }
 
             // Add the icon component
-            graphCanvasEntity->CreateComponent<DynamicSlotComponent>();
+            ConfigureGeneralScriptCanvasEntity(methodNode, graphCanvasEntity);
             graphCanvasEntity->CreateComponent<IconComponent>(ScriptCanvas::Nodes::Core::Method::RTTI_Type());
             graphCanvasEntity->CreateComponent<SlotMappingComponent>(methodNode->GetEntityId());
             graphCanvasEntity->CreateComponent<SceneMemberMappingComponent>(methodNode->GetEntityId());
@@ -647,11 +698,11 @@ namespace ScriptCanvasEditor
             AZ::EntityId graphCanvasNodeId = graphCanvasEntity->GetId();
 
             // Add the icon component
+            ConfigureGeneralScriptCanvasEntity(busNode, graphCanvasEntity);
             graphCanvasEntity->CreateComponent<IconComponent>(ScriptCanvas::Nodes::Core::ReceiveScriptEvent::RTTI_Type());
             graphCanvasEntity->CreateComponent<ScriptEventReceiverNodeDescriptorComponent>(assetId);
             graphCanvasEntity->CreateComponent<SlotMappingComponent>(busNode->GetEntityId());
-            graphCanvasEntity->CreateComponent<SceneMemberMappingComponent>(busNode->GetEntityId());
-            graphCanvasEntity->CreateComponent<DynamicSlotComponent>();
+            graphCanvasEntity->CreateComponent<SceneMemberMappingComponent>(busNode->GetEntityId());            
             graphCanvasEntity->Init();
             graphCanvasEntity->Activate();
 
@@ -763,7 +814,7 @@ namespace ScriptCanvasEditor
             }
 
             // Add the icon component
-            graphCanvasEntity->CreateComponent<DynamicSlotComponent>();
+            ConfigureGeneralScriptCanvasEntity(senderNode, graphCanvasEntity);            
             graphCanvasEntity->CreateComponent<IconComponent>(ScriptCanvas::Nodes::Core::Method::RTTI_Type());
             graphCanvasEntity->CreateComponent<SlotMappingComponent>(senderNode->GetEntityId());
             graphCanvasEntity->CreateComponent<SceneMemberMappingComponent>(senderNode->GetEntityId());
@@ -937,7 +988,7 @@ namespace ScriptCanvasEditor
             return graphCanvasNodeId;
         }
 
-        NodeIdPair CreateNode(const AZ::Uuid& classId, AZ::EntityId scriptCanvasGraphId, const StyleConfiguration& styleConfiguration)
+        NodeIdPair CreateNode(const AZ::Uuid& classId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const StyleConfiguration& styleConfiguration)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             NodeIdPair nodeIdPair;
@@ -946,18 +997,18 @@ namespace ScriptCanvasEditor
             AZ::Entity* scriptCanvasEntity{ aznew AZ::Entity };
             scriptCanvasEntity->Init();
             nodeIdPair.m_scriptCanvasId = scriptCanvasEntity->GetId();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, classId);
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, classId);
             scriptCanvasEntity->SetName(AZStd::string::format("SC-Node(%s)", scriptCanvasEntity->GetName().data()));
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIdPair.m_graphCanvasId = DisplayNode(graphCanvasGraphId, node, styleConfiguration);
 
             return nodeIdPair;
         }
 
-        NodeIdPair CreateEntityNode(const AZ::EntityId& sourceId, AZ::EntityId scriptCanvasGraphId)
+        NodeIdPair CreateEntityNode(const AZ::EntityId& sourceId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             NodeIdPair nodeIdPair;
@@ -966,7 +1017,7 @@ namespace ScriptCanvasEditor
             AZ::Entity* scriptCanvasEntity{ aznew AZ::Entity };
             scriptCanvasEntity->Init();
             nodeIdPair.m_scriptCanvasId = scriptCanvasEntity->GetId();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, ScriptCanvas::Nodes::Entity::EntityRef::RTTI_Type());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, ScriptCanvas::Nodes::Entity::EntityRef::RTTI_Type());
 
             auto* entityNode = azrtti_cast<ScriptCanvas::Nodes::Entity::EntityRef*>(node);
             entityNode->SetEntityRef(sourceId);
@@ -980,14 +1031,14 @@ namespace ScriptCanvasEditor
             }
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIdPair.m_graphCanvasId = DisplayEntityNode(graphCanvasGraphId, entityNode);
 
             return nodeIdPair;
         }
 
-        NodeIdPair CreateObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, AZ::EntityId scriptCanvasGraphId)
+        NodeIdPair CreateObjectMethodNode(const AZStd::string& className, const AZStd::string& methodName, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             NodeIdPair nodeIds;
@@ -997,7 +1048,7 @@ namespace ScriptCanvasEditor
             scriptCanvasEntity->Init();
             nodeIds.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, ScriptCanvas::Nodes::Core::Method::RTTI_Type());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, ScriptCanvas::Nodes::Core::Method::RTTI_Type());
             auto* methodNode = azrtti_cast<ScriptCanvas::Nodes::Core::Method*>(node);
 
             ScriptCanvas::Namespaces emptyNamespaces;
@@ -1007,14 +1058,14 @@ namespace ScriptCanvasEditor
             scriptCanvasEntity->SetName(AZStd::string::format("SC-Node(%s)", displayName.c_str()));
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIds.m_graphCanvasId = DisplayMethodNode(graphCanvasGraphId, methodNode);
 
             return nodeIds;
         }
 
-        NodeIdPair CreateEbusWrapperNode(const AZStd::string& busName, const AZ::EntityId& scriptCanvasGraphId)
+        NodeIdPair CreateEbusWrapperNode(const AZStd::string& busName, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             NodeIdPair nodeIdPair;
@@ -1024,21 +1075,21 @@ namespace ScriptCanvasEditor
             AZ::Entity* scriptCanvasEntity = aznew AZ::Entity(AZStd::string::format("SC-Node(%s)", busName.c_str()).c_str());
             scriptCanvasEntity->Init();
 
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, ScriptCanvas::Nodes::Core::EBusEventHandler::RTTI_Type());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, ScriptCanvas::Nodes::Core::EBusEventHandler::RTTI_Type());
             auto* busNode = azrtti_cast<ScriptCanvas::Nodes::Core::EBusEventHandler*>(node);
             busNode->InitializeBus(busName);
 
             nodeIdPair.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIdPair.m_graphCanvasId = DisplayEbusWrapperNode(graphCanvasGraphId, busNode);
 
             return nodeIdPair;
         }
 
-        NodeIdPair CreateScriptEventReceiverNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Data::AssetId& assetId)
+        NodeIdPair CreateScriptEventReceiverNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId)
         {
             AZ_Assert(assetId.IsValid(), "CreateScriptEventReceiverNode asset Id must be valid");
 
@@ -1057,21 +1108,21 @@ namespace ScriptCanvasEditor
             AZ::Entity* scriptCanvasEntity = aznew AZ::Entity(AZStd::string::format("SC-Node(%s)", asset.Get()->m_definition.GetName().data()).c_str());
             scriptCanvasEntity->Init();
 
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, ScriptCanvas::Nodes::Core::ReceiveScriptEvent::RTTI_Type());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, ScriptCanvas::Nodes::Core::ReceiveScriptEvent::RTTI_Type());
             auto* busNode = azrtti_cast<ScriptCanvas::Nodes::Core::ReceiveScriptEvent*>(node);
             busNode->Initialize(assetId);
 
             nodeIdPair.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIdPair.m_graphCanvasId = DisplayScriptEventWrapperNode(graphCanvasGraphId, busNode);
 
             return nodeIdPair;
         }
 
-        NodeIdPair CreateScriptEventSenderNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId)
+        NodeIdPair CreateScriptEventSenderNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId)
         {
             AZ_Assert(assetId.IsValid(), "CreateScriptEventSenderNode asset Id must be valid");
 
@@ -1084,7 +1135,7 @@ namespace ScriptCanvasEditor
             scriptCanvasEntity->Init();
 
             ScriptCanvas::Node* node = nullptr;
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, ScriptCanvas::Nodes::Core::SendScriptEvent::RTTI_Type());
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, ScriptCanvas::Nodes::Core::SendScriptEvent::RTTI_Type());
             auto* senderNode = azrtti_cast<ScriptCanvas::Nodes::Core::SendScriptEvent*>(node);
 
             senderNode->ConfigureNode(assetId, eventId);
@@ -1092,14 +1143,14 @@ namespace ScriptCanvasEditor
             nodeIdPair.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIdPair.m_graphCanvasId = DisplayScriptEventSenderNode(graphCanvasGraphId, senderNode);
 
             return nodeIdPair;
         }
 
-        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId)
+        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             const AZ::Uuid k_VariableNodeTypeId = azrtti_typeid<ScriptCanvas::Nodes::Core::GetVariableNode>();
@@ -1109,7 +1160,7 @@ namespace ScriptCanvasEditor
             ScriptCanvas::Node* node = nullptr;
             AZ::Entity* scriptCanvasEntity = aznew AZ::Entity();
             scriptCanvasEntity->Init();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, k_VariableNodeTypeId);
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, k_VariableNodeTypeId);
 
             ScriptCanvas::Nodes::Core::GetVariableNode* variableNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::GetVariableNode>(scriptCanvasEntity);
 
@@ -1121,7 +1172,7 @@ namespace ScriptCanvasEditor
             nodeIds.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIds.m_graphCanvasId = DisplayGetVariableNode(graphCanvasGraphId, variableNode);            
 
@@ -1130,7 +1181,7 @@ namespace ScriptCanvasEditor
             return nodeIds;
         }
 
-        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId)
+        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
             AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
             const AZ::Uuid k_VariableNodeTypeId = azrtti_typeid<ScriptCanvas::Nodes::Core::SetVariableNode>();
@@ -1140,7 +1191,7 @@ namespace ScriptCanvasEditor
             ScriptCanvas::Node* node = nullptr;
             AZ::Entity* scriptCanvasEntity = aznew AZ::Entity();
             scriptCanvasEntity->Init();
-            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasGraphId, k_VariableNodeTypeId);
+            ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, scriptCanvasEntity->GetId(), scriptCanvasId, k_VariableNodeTypeId);
 
             ScriptCanvas::Nodes::Core::SetVariableNode* variableNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::SetVariableNode>(scriptCanvasEntity);
 
@@ -1152,7 +1203,7 @@ namespace ScriptCanvasEditor
             nodeIds.m_scriptCanvasId = scriptCanvasEntity->GetId();
 
             AZ::EntityId graphCanvasGraphId;
-            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
             nodeIds.m_graphCanvasId = DisplaySetVariableNode(graphCanvasGraphId, variableNode);
 
@@ -1180,14 +1231,7 @@ namespace ScriptCanvasEditor
                     executionConfiguration.m_slotGroup = slot.GetDisplayGroup();
                 }
 
-                if (slot.IsInput())
-                {
-                    executionConfiguration.m_connectionType = GraphCanvas::CT_Input;
-                }
-                else
-                {
-                    executionConfiguration.m_connectionType = GraphCanvas::CT_Output;
-                }
+                executionConfiguration.m_connectionType = ToGraphCanvasConnectionType(slot.GetConnectionType());
 
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, executionConfiguration);
             }
@@ -1206,29 +1250,29 @@ namespace ScriptCanvasEditor
                     dataSlotConfiguration.m_slotGroup = slot.GetDisplayGroup();
                 }
 
-                if (slot.IsInput())
-                {
-                    dataSlotConfiguration.m_connectionType = GraphCanvas::CT_Input;
-                }
-                else
-                {
-                    dataSlotConfiguration.m_connectionType = GraphCanvas::CT_Output;
-                }
+                dataSlotConfiguration.m_connectionType = ToGraphCanvasConnectionType(slot.GetConnectionType());
 
                 if (ScriptCanvas::Data::IsContainerType(typeId))
                 {
-                    dataSlotConfiguration.m_dataSlotType = GraphCanvas::DataSlotType::Container;
+                    dataSlotConfiguration.m_dataValueType = GraphCanvas::DataValueType::Container;
                     dataSlotConfiguration.m_containerTypeIds = ScriptCanvas::Data::GetContainedTypes(typeId);
                 }
 
                 switch (slot.GetDynamicDataType())
                 {
                 case ScriptCanvas::DynamicDataType::Container:
-                    dataSlotConfiguration.m_dataSlotType = GraphCanvas::DataSlotType::Container;
+                    dataSlotConfiguration.m_dataValueType = GraphCanvas::DataValueType::Container;
                     break;
                 default:
                     break;
                 }
+
+                if (slot.IsVariableReference())
+                {
+                    dataSlotConfiguration.m_dataSlotType = GraphCanvas::DataSlotType::Reference;
+                }
+                
+                dataSlotConfiguration.m_canConvertTypes = slot.CanConvertTypes();
 
                 GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, dataSlotConfiguration);
             }
@@ -1243,87 +1287,82 @@ namespace ScriptCanvasEditor
             {
                 return AZ::EntityId();
             }
+        }        
+
+        namespace SlotDisplayHelper
+        {
+            AZ::EntityId DisplayPropertySlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::VisualExtensionSlotConfiguration& propertyConfiguration)
+            {
+                AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
+
+                GraphCanvas::SlotConfiguration graphCanvasConfiguration;
+
+                graphCanvasConfiguration.m_name = propertyConfiguration.m_name;
+                graphCanvasConfiguration.m_tooltip = propertyConfiguration.m_tooltip;
+                graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(propertyConfiguration.m_displayGroup);
+
+                graphCanvasConfiguration.m_connectionType = ToGraphCanvasConnectionType(propertyConfiguration.m_connectionType);                
+
+                AZ::Entity* slotEntity = nullptr;
+                GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreatePropertySlot, graphCanvasNodeId, propertyConfiguration.m_identifier, graphCanvasConfiguration);
+
+                if (slotEntity)
+                {
+                    slotEntity->Init();
+                    slotEntity->Activate();
+
+                    GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
+                }
+
+                return slotEntity ? slotEntity->GetId() : AZ::EntityId();
+            }
+
+            AZ::EntityId DisplayExtendableSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::VisualExtensionSlotConfiguration& extenderConfiguration)
+            {
+                AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
+
+                GraphCanvas::ExtenderSlotConfiguration graphCanvasConfiguration;
+
+                graphCanvasConfiguration.m_name = extenderConfiguration.m_name;
+                graphCanvasConfiguration.m_tooltip = extenderConfiguration.m_tooltip;
+                graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(extenderConfiguration.m_displayGroup);
+
+                graphCanvasConfiguration.m_connectionType = ToGraphCanvasConnectionType(extenderConfiguration.m_connectionType);
+
+                graphCanvasConfiguration.m_extenderId = extenderConfiguration.m_identifier;
+
+                AZ::Entity* slotEntity = nullptr;
+
+                GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, graphCanvasConfiguration);
+
+                if (slotEntity)
+                {
+                    slotEntity->Init();
+                    slotEntity->Activate();
+
+                    GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
+                }
+
+                return slotEntity ? slotEntity->GetId() : AZ::EntityId();
+            }
         }
 
-        AZ::EntityId DisplayScriptCanvasPropertySlot(const AZ::EntityId& graphCanvasNodeId, const AZ::Crc32& propertyId, const GraphCanvas::SlotConfiguration& slotConfiguration)
+        AZ::EntityId DisplayVisualExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::VisualExtensionSlotConfiguration& extensionConfiguration)
         {
-            AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
-            AZ::Entity* slotEntity = nullptr;
-
-            GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreatePropertySlot, graphCanvasNodeId, propertyId, slotConfiguration);
-
-            if (slotEntity)
+            AZ::EntityId slotId;
+            switch (extensionConfiguration.m_extensionType)
             {
-                slotEntity->Init();
-                slotEntity->Activate();
-
-                GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
+            case ScriptCanvas::VisualExtensionSlotConfiguration::VisualExtensionType::ExtenderSlot:
+                slotId = SlotDisplayHelper::DisplayExtendableSlot(graphCanvasNodeId, extensionConfiguration);
+                break;
+            case ScriptCanvas::VisualExtensionSlotConfiguration::VisualExtensionType::PropertySlot:
+                slotId = SlotDisplayHelper::DisplayPropertySlot(graphCanvasNodeId, extensionConfiguration);
+                break;
+            default:
+                break;
             }
 
-            return slotEntity ? slotEntity->GetId() : AZ::EntityId();
-        }
-
-        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::ExtendableSlotConfiguration& extenderConfiguration)
-        {
-            AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
-
-            GraphCanvas::ExtenderSlotConfiguration graphCanvasConfiguration;
-
-            graphCanvasConfiguration.m_name = extenderConfiguration.m_name;
-            graphCanvasConfiguration.m_tooltip = extenderConfiguration.m_tooltip;
-            graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(extenderConfiguration.m_displayGroup);
-
-            graphCanvasConfiguration.m_extenderId = extenderConfiguration.m_identifier;
-
-            if (extenderConfiguration.m_connectionType == ScriptCanvas::ConnectionType::Input)
-            {
-                graphCanvasConfiguration.m_connectionType = GraphCanvas::CT_Input;
-            }
-            else if (extenderConfiguration.m_connectionType == ScriptCanvas::ConnectionType::Output)
-            {
-                graphCanvasConfiguration.m_connectionType = GraphCanvas::CT_Output;
-            }
-
-            
-            AZ::Entity* slotEntity = nullptr;
-
-            GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, graphCanvasConfiguration);
-
-            if (slotEntity)
-            {
-                slotEntity->Init();
-                slotEntity->Activate();
-
-                GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
-            }
-
-            return slotEntity ? slotEntity->GetId() : AZ::EntityId();
-        }
-
-        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, GraphCanvas::ConnectionType connectionType, const AZStd::string& name, const AZStd::string& toolTip, const AZStd::string& displayGroup, GraphCanvas::ExtenderId extenderId)
-        {
-            GraphCanvas::ExtenderSlotConfiguration graphCanvasConfiguration;
-
-            graphCanvasConfiguration.m_name = name;
-            graphCanvasConfiguration.m_tooltip = toolTip;
-            graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(displayGroup);
-
-            graphCanvasConfiguration.m_extenderId = extenderId;
-            graphCanvasConfiguration.m_connectionType = connectionType;
-
-            AZ::Entity* slotEntity = nullptr;
-
-            GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, graphCanvasConfiguration);
-
-            if (slotEntity)
-            {
-                slotEntity->Init();
-                slotEntity->Activate();
-
-                GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
-            }
-
-            return slotEntity ? slotEntity->GetId() : AZ::EntityId();
+            return slotId;
         }
     } // namespace Nodes
 } // namespace ScriptCanvasEditor

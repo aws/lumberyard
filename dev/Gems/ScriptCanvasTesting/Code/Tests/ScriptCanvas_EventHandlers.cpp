@@ -38,4 +38,3 @@ TEST_F(ScriptCanvasTestFixture, EBusResultNested)
 {
     RunUnitTestGraph("LY_SC_UnitTest_EBusResultNested");
 }
-

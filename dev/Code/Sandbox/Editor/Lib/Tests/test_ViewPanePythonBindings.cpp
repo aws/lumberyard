@@ -55,5 +55,7 @@ namespace ViewPaneFuncsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("update_viewport") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("resize_viewport") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("bind_viewport") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_viewport_expansion_policy") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("set_viewport_expansion_policy") != behaviorContext->m_methods.end());
     }
 }

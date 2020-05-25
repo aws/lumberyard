@@ -92,7 +92,11 @@ namespace EMStudio
         // make sure we only show the parameters that are wanted after the name are filtering
         AZStd::string loweredParameter = parameter->GetName();
         AZStd::to_lower(loweredParameter.begin(), loweredParameter.end());
-        if (m_searchWidgetText.empty() || loweredParameter.find(m_searchWidgetText) != AZStd::string::npos)
+        const bool textFilterPassed = (m_searchWidgetText.empty() || loweredParameter.find(m_searchWidgetText) != AZStd::string::npos);
+
+        const bool typeFilterPassed = (m_filterTypes.empty() || AZStd::find(m_filterTypes.begin(), m_filterTypes.end(), parameter->RTTI_GetType()) != m_filterTypes.end());
+
+        if (textFilterPassed && typeFilterPassed)
         {
             QTreeWidgetItem* item = nullptr;
             if (groupParameterItem)
@@ -229,6 +233,10 @@ namespace EMStudio
         mUseSingleSelection = useSingleSelection;
     }
 
+    void ParameterWidget::SetFilterTypes(const AZStd::vector<AZ::TypeId>& filterTypes)
+    {
+        m_filterTypes = filterTypes;
+    }
 
     void ParameterWidget::ItemDoubleClicked(QTreeWidgetItem* item, int column)
     {

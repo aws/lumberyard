@@ -1,6 +1,13 @@
 {
     "Dependencies": [
         {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        },
+        {
             "Uuid": "4e08125824434932a0fe3717259caa47",
             "VersionConstraints": [
                 "~>0.1"

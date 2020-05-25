@@ -44,6 +44,7 @@
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Commands/SelectionCommand.h>
 #include <AzToolsFramework/Commands/SliceDetachEntityCommand.h>
+#include <AzToolsFramework/Commands/DetachSubSliceInstanceCommand.h>
 #include <AzToolsFramework/Slice/SliceDataFlagsCommand.h>
 #include <AzToolsFramework/Slice/SliceCompilation.h>
 
@@ -381,6 +382,8 @@ namespace AzToolsFramework
     //=========================================================================
     void EditorEntityContextComponent::DetachSliceInstances(const AZ::SliceComponent::SliceInstanceAddressSet& instances)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         const char* undoMsg = instances.size() == 1 ? "Detach Instance from Slice" : "Detach Instances from Slice";
 
         // Get all entities in the input instance(s)
@@ -406,8 +409,33 @@ namespace AzToolsFramework
         DetachFromSlice(entities, undoMsg);
     }
 
+    //=========================================================================
+    // EditorEntityContextRequestBus::DetachSubsliceInstances
+    //=========================================================================
+    void EditorEntityContextComponent::DetachSubsliceInstances(const AZ::SliceComponent::SliceInstanceEntityIdRemapList& subsliceRootList)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        if (subsliceRootList.empty())
+        {
+            return;
+        }
+
+        const char* undoMsg = subsliceRootList.size() == 1 ? "Detach Subslice Instance from owning Slice Instance" : "Detach Subslice Instances from owning Slice Instance";
+
+        ScopedUndoBatch undoBatch(undoMsg);
+
+        AzToolsFramework::DetachSubsliceInstanceCommand* detachCommand = aznew AzToolsFramework::DetachSubsliceInstanceCommand(subsliceRootList, undoMsg);
+        detachCommand->SetParent(undoBatch.GetUndoBatch());
+
+        // Running Redo on the DetachSubsliceInstanceCommand will perform the Detach command
+        ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequestBus::Events::RunRedoSeparately, undoBatch.GetUndoBatch());
+    }
+
     void EditorEntityContextComponent::DetachFromSlice(const AzToolsFramework::EntityIdList& entities, const char* undoMessage)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (entities.empty())
         {
             return;
@@ -415,10 +443,7 @@ namespace AzToolsFramework
 
         ScopedUndoBatch undoBatch(undoMessage);
 
-        PreemptiveUndoCache* preemptiveUndoCache = nullptr;
-        ToolsApplicationRequests::Bus::BroadcastResult(preemptiveUndoCache, &ToolsApplicationRequests::GetUndoCache);
-
-        AzToolsFramework::SliceDetachEntityCommand* detachCommand = aznew AzToolsFramework::SliceDetachEntityCommand(entities, AZStd::string(undoMessage));
+        AzToolsFramework::SliceDetachEntityCommand* detachCommand = aznew AzToolsFramework::SliceDetachEntityCommand(entities, undoMessage);
         detachCommand->SetParent(undoBatch.GetUndoBatch());
 
         // Running Redo on the SliceDetachEntityCommand will perform the Detach command
@@ -556,16 +581,16 @@ namespace AzToolsFramework
         const AZ::SliceComponent::SliceInstanceAddress& sourceSubSliceInstanceAddress,
         AZ::SliceComponent::EntityIdToEntityIdMap* out_sourceToCloneEntityIdMap)
     {
-        AZ::SliceComponent::SliceInstanceAddress subSliceInstanceCloneAddress = 
+        AZ::SliceComponent::SliceInstanceAddress subsliceInstanceCloneAddress = 
             GetRootSlice()->CloneAndAddSubSliceInstance(sourceSliceInstanceAddress.GetInstance(), sourceSubSliceInstanceAncestry, sourceSubSliceInstanceAddress, out_sourceToCloneEntityIdMap);
 
-        if (!subSliceInstanceCloneAddress.IsValid())
+        if (!subsliceInstanceCloneAddress.IsValid())
         {
             AZ_Assert(false, "Clone sub-slice instance failed.");
             return AZ::SliceComponent::SliceInstanceAddress();
         }
 
-        return subSliceInstanceCloneAddress;
+        return subsliceInstanceCloneAddress;
     }
 
     //=========================================================================
@@ -653,6 +678,10 @@ namespace AzToolsFramework
         AZ::SliceComponent::EntityList sourceEntities;
         GetRootSlice()->GetEntities(sourceEntities);
 
+        AZStd::vector<AZStd::unique_ptr<AZ::Entity>> tempEntities;
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnSaveStreamForGameBegin, stream, streamType, tempEntities);
+
+        sourceEntities.insert(sourceEntities.end(), tempEntities.begin(), tempEntities.end());
         // Add the root slice metadata entity so that we export any level components
         sourceEntities.push_back(GetRootSlice()->GetMetadataEntity());
 
@@ -695,15 +724,28 @@ namespace AzToolsFramework
         // Reclaim entities from the temporary source asset. We now have ownership of the entities.
         sourceSliceData->RemoveAllEntities(false);
 
+
         if (!sliceCompilationResult)
         {
             AZ_Error("Save Runtime Stream", false, "Failed to export entities for runtime:\n%s", sliceCompilationResult.GetError().c_str());
+            EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnSaveStreamForGameFailure, sliceCompilationResult.GetError());
             return false;
         }
 
         // Export runtime slice representing the level, which is a completely flat list of entities.
         AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset = sliceCompilationResult.GetValue();
-        return AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, exportSliceAsset.Get()->GetEntity());
+        bool saveResult = AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, exportSliceAsset.Get()->GetEntity());
+        if (saveResult)
+        {
+            EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnSaveStreamForGameSuccess, stream);
+        }
+        else
+        {
+            EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnSaveStreamForGameFailure,
+                AZStd::string::format("Unable to save slice asset %s to stream", exportSliceAsset.GetId().ToString<AZStd::string>().data()));
+        }
+
+        return saveResult;
     }
 
     //=========================================================================
@@ -852,6 +894,56 @@ namespace AzToolsFramework
             EditorEntityContextNotificationBus::Broadcast(
                 &EditorEntityContextNotification::OnEntityStreamLoadFailed);
         }
+    }
+
+    AZ::SliceComponent::SliceInstanceAddress EditorEntityContextComponent::PromoteEditorEntitiesIntoSlice(const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, const AZ::SliceComponent::EntityIdToEntityIdMap& liveToAssetMap)
+    {
+        AZ::SliceComponent* editorRootSlice = nullptr;
+        EditorEntityContextRequestBus::BroadcastResult(editorRootSlice, &EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+
+        if (!sliceAsset.GetId().IsValid())
+        {
+            AZ_Error("EditorEntityContextComponent::PromoteEditorEntitiesIntoSlice", false, "SliceAsset with Invalid Asset ID passed in. Unable to promote entities into slice");
+            return AZ::SliceComponent::SliceInstanceAddress();
+        }
+
+        if (!editorRootSlice)
+        {
+            AZ_Assert(editorRootSlice, "EditorEntityContextComponent::PromoteEditorEntitiesIntoSlice: Editor root slice not found! Unable to promote entities into slice");
+            return AZ::SliceComponent::SliceInstanceAddress();
+        }
+
+        AzFramework::SliceInstantiationTicket ticket = GenerateSliceInstantiationTicket();
+
+        PreSliceInstantiate(sliceAsset.GetId(), AZ::SliceComponent::SliceInstanceAddress(), ticket);
+
+        AZ::SliceComponent::SliceInstanceAddress instanceAddress = editorRootSlice->AddSliceUsingExistingEntities(sliceAsset, liveToAssetMap);
+
+        if (!instanceAddress.IsValid())
+        {
+            SliceInstantiateFailed(sliceAsset.GetId(), ticket);
+            return AZ::SliceComponent::SliceInstanceAddress();
+        }
+
+        PostSliceInstantiate(sliceAsset.GetId(), instanceAddress, ticket);
+
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotificationBus::Events::OnSliceInstantiated, sliceAsset.GetId(), instanceAddress, ticket);
+
+        const EntityList& instanceEntities = instanceAddress.GetInstance()->GetInstantiated()->m_entities;
+
+        EntityIdSet instantiatedIdSet;
+        AzToolsFramework::EntityIdList instantiatedIds;
+        for (const AZ::Entity* instanceEntity : instanceEntities)
+        {
+            instantiatedIdSet.emplace(instanceEntity->GetId());
+            instantiatedIds.emplace_back(instanceEntity->GetId());
+        }
+
+        UpdateSelectedEntitiesInHierarchy(instantiatedIdSet);
+
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotificationBus::Events::OnEditorEntitiesPromotedToSlicedEntities, instantiatedIds);
+
+        return instanceAddress;
     }
 
     //=========================================================================
@@ -1093,22 +1185,6 @@ namespace AzToolsFramework
     }
 
     //=========================================================================
-    // EntityContextEventBus::QueueSliceReplacement
-    //=========================================================================
-    void EditorEntityContextComponent::QueueSliceReplacement(const char* targetPath,
-        const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
-        const AZStd::unordered_set<AZ::EntityId>& entitiesInSelection,
-        const AZ::EntityId& parentAfterReplacement,
-        const AZ::Vector3& offsetAfterReplacement,
-        const AZ::Quaternion& rotationAfterReplacement,
-        bool rootAutoCreated)
-    {
-        AZ_Error("EditorEntityContext", m_queuedSliceReplacement.m_path.empty(), "A slice replacement is already on the queue.");
-        m_queuedSliceReplacement.Setup(targetPath, selectedToAssetMap, entitiesInSelection, parentAfterReplacement, offsetAfterReplacement, rotationAfterReplacement, rootAutoCreated);
-        AzFramework::AssetCatalogEventBus::Handler::BusConnect();
-    }
-
-    //=========================================================================
     // EntityContextEventBus::MapEditorIdToRuntimeId
     //=========================================================================
     bool EditorEntityContextComponent::MapEditorIdToRuntimeId(const AZ::EntityId& editorId, AZ::EntityId& runtimeId)
@@ -1147,20 +1223,6 @@ namespace AzToolsFramework
     }
 
     //=========================================================================
-    // EntityContextEventBus::OnCatalogAssetAdded
-    //=========================================================================
-    void EditorEntityContextComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
-    {
-        if (m_queuedSliceReplacement.IsValid())
-        {
-            if (m_queuedSliceReplacement.OnCatalogAssetAdded(assetId))
-            {
-                AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
-            }
-        }
-    }
-
-    //=========================================================================
     // EntityContextEventBus::OnSlicePreInstantiate
     //=========================================================================
     void EditorEntityContextComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
@@ -1170,11 +1232,6 @@ namespace AzToolsFramework
 
         // Start an undo that will wrap the entire slice instantiation event (unable to do this at a higher level since this is queued up by AzFramework and there's no undo concept at that level)
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "Slice Instantiation");
-
-        if (ticket == m_queuedSliceReplacement.m_ticket)
-        {
-            m_queuedSliceReplacement.OnSlicePreInstantiate();
-        }
 
         // Find the next ticket corresponding to this asset.
         // Given the desired world root, position entities in the instance.
@@ -1214,12 +1271,6 @@ namespace AzToolsFramework
 
         const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
-        if (ticket == m_queuedSliceReplacement.m_ticket)
-        {
-            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorEntityContextComponent::OnSliceInstantiated:FinalizeQueuedSlice");
-            m_queuedSliceReplacement.Finalize(sliceAddress);
-        }
-
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
         // Make a copy of sliceAddress because a handler of EditorEntityContextNotification::OnSliceInstantiated (CCryEditDoc::OnSliceInstantiated)
@@ -1243,20 +1294,7 @@ namespace AzToolsFramework
                     setOfEntityIds.insert(entity->GetId());
                 }
 
-                EntityIdList selectEntities;
-                AZ::EntityId commonRoot;
-                bool wasCommonRootFound = false;
-                ToolsApplicationRequests::Bus::BroadcastResult(
-                    wasCommonRootFound, &ToolsApplicationRequests::FindCommonRoot, setOfEntityIds, commonRoot, &selectEntities);
-                if (!wasCommonRootFound || selectEntities.empty())
-                {
-                    for (AZ::Entity* entity : entities)
-                    {
-                        selectEntities.push_back(entity->GetId());
-                    }
-                }
-
-                ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selectEntities);
+                UpdateSelectedEntitiesInHierarchy(setOfEntityIds);
 
                 // Create a slice instantiation undo command.
                 {
@@ -1470,6 +1508,25 @@ namespace AzToolsFramework
     }
 
     //=========================================================================
+    // UpdateSelectedEntitiesInHierarchy
+    //=========================================================================
+    void EditorEntityContextComponent::UpdateSelectedEntitiesInHierarchy(const EntityIdSet& entityIdSet)
+    {
+        // Use a lambda to call multiple requests via one Broadcast
+        ToolsApplicationRequestBus::Broadcast([&entityIdSet](ToolsApplicationRequests* toolsApplicationRequest)
+        {
+            EntityIdList selectedEntities;
+            AZ::EntityId commonRoot;
+            if (toolsApplicationRequest->FindCommonRoot(entityIdSet, commonRoot, &selectedEntities) || selectedEntities.empty())
+            {
+                selectedEntities.insert(selectedEntities.end(), entityIdSet.begin(), entityIdSet.end());
+            }
+
+            toolsApplicationRequest->SetSelectedEntities(selectedEntities);
+        });
+    }
+
+    //=========================================================================
     // OnAssetReady
     //=========================================================================
     void EditorEntityContextComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -1490,7 +1547,8 @@ namespace AzToolsFramework
             if (asset.GetId() == request.m_asset.GetId())
             {
                 AZ::SliceComponent::SliceInstanceAddress address =
-                    rootSlice->RestoreEntity(request.m_entity, request.m_restoreInfo);
+                    rootSlice->RestoreEntity(request.m_entity, request.m_restoreInfo,
+                        request.m_restoreType == SliceEntityRestoreType::Added);
 
                 if (address.IsValid())
                 {
@@ -1501,6 +1559,10 @@ namespace AzToolsFramework
                             deletedEntitiesRestored.push_back(request.m_entity);
                         } break;
 
+                        case SliceEntityRestoreType::Added:
+                        {
+                            // Fall through and perform same operations as Detached
+                        }
                         case SliceEntityRestoreType::Detached:
                         {
                             detachedEntitiesRestored.push_back(request.m_entity->GetId());
@@ -1556,247 +1618,6 @@ namespace AzToolsFramework
 
         // Ensure selection set is preserved after applying the new level slice.
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selectedEntities);
-    }
-    //=========================================================================
-    // QueuedSliceReplacement::IsValid
-    //=========================================================================
-    bool EditorEntityContextComponent::QueuedSliceReplacement::IsValid() const
-    {
-        return !m_path.empty();
-    }
-
-    //=========================================================================
-    // QueuedSliceReplacement::Reset
-    //=========================================================================
-    void EditorEntityContextComponent::QueuedSliceReplacement::Reset()
-    {
-        m_path.clear();
-    }
-
-    //=========================================================================
-    // QueuedSliceReplacement::OnCatalogAssetAdded
-    //=========================================================================
-    bool EditorEntityContextComponent::QueuedSliceReplacement::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
-    {
-        AZStd::string relativePath;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(
-            relativePath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, assetId);
-
-        if (AZStd::string::npos != AzFramework::StringFunc::Find(m_path.c_str(), relativePath.c_str()))
-        {
-            // Find the root entity within the supplied list and that was used to create the slice.
-            // This entity and its descendants will be replaced by a new instance of the slice.
-            AZ::Transform spawnSliceTransform = AZ::Transform::CreateIdentity();
-            for (const auto& pair : m_selectedToAssetMap)
-            {
-                AZ::Entity* entity = nullptr;
-                AZ::ComponentApplicationBus::BroadcastResult(
-                    entity, &AZ::ComponentApplicationBus::Events::FindEntity, pair.first);
-
-                if (entity)
-                {
-                    Components::TransformComponent* transformComponent =
-                        entity->FindComponent<Components::TransformComponent>();
-                    if (transformComponent)
-                    {
-                        if (transformComponent->IsRootEntity())
-                        {
-                            // We need to inherit translation and rotation. Scale are adopted from the slice.
-                            spawnSliceTransform = AZ::Transform::CreateTranslation(transformComponent->GetWorldTM().GetTranslation());
-                            spawnSliceTransform.SetRotationPartFromQuaternion(transformComponent->GetWorldRotationQuaternion());
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Request the slice instantiation.
-            AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(assetId, false);
-            EditorEntityContextRequestBus::BroadcastResult(m_ticket, &EditorEntityContextRequests::InstantiateEditorSlice, asset, spawnSliceTransform);
-
-            return true;
-        }
-
-        // Not the asset we're queued to instantiate.
-        return false;
-    }
-
-    void EditorEntityContextComponent::QueuedSliceReplacement::OnSlicePreInstantiate()
-    {
-        // Delete the entities from the world that were used to create the slice, since the slice
-        // will be instantiated to replace them.
-        AZStd::vector<AZ::EntityId> deleteEntityIds;
-        deleteEntityIds.reserve(m_entitiesInSelection.size());
-        for (const auto& entityToDelete : m_entitiesInSelection)
-        {
-            deleteEntityIds.push_back(entityToDelete);
-        }
-
-        ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::DeleteEntities, deleteEntityIds);
-
-        //remove deleted items from dirty list to prevent undo warnings
-        for (const auto& entityToDelete : m_entitiesInSelection)
-        {
-            ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::RemoveDirtyEntity, entityToDelete);
-        }
-    }
-
-    //=========================================================================
-    // QueuedSliceReplacement::Finalize
-    //=========================================================================
-    void EditorEntityContextComponent::QueuedSliceReplacement::Finalize(const AZ::SliceComponent::SliceInstanceAddress& instanceAddress)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        AZ::SliceComponent::EntityAncestorList ancestors;
-        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> remapIds;
-
-        const auto& newEntities = instanceAddress.GetInstance()->GetInstantiated()->m_entities;
-
-        const AZ::Entity* rootEntity = nullptr;
-
-        // Store mapping between live Ids we're out to remove, and the ones now provided by
-        // the slice instance, so we can fix up references on any still-external entities.
-        // Also finds the root entity of this slice
-        {
-            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorEntityContextComponent::QueuedSliceReplacement::Finalize:CalculateRemapAndFindRoot");
-            for (const AZ::Entity* newEntity : newEntities)
-            {
-                ancestors.clear();
-                instanceAddress.GetReference()->GetInstanceEntityAncestry(newEntity->GetId(), ancestors, 1);
-
-                AZ_Error("EditorEntityContext", !ancestors.empty(), "Failed to locate ancestor for newly created slice entity.");
-                if (!ancestors.empty())
-                {
-                    for (const auto& pair : m_selectedToAssetMap)
-                    {
-                        const AZ::EntityId& ancestorId = ancestors.front().m_entity->GetId();
-                        if (pair.second == ancestorId)
-                        {
-                            remapIds[pair.first] = newEntity->GetId();
-                            break;
-                        }
-                    }
-                }
-
-                Components::TransformComponent* transformComponent =
-                    newEntity->FindComponent<Components::TransformComponent>();
-
-                if (transformComponent)
-                {
-                    if (transformComponent->IsRootEntity())
-                    {
-                        // There should always be ONLY ONE root for any slice, if this assert was hit then the slice is invalid
-                        AZ_Assert(!rootEntity, "There cannot be more than one root for any Slice")
-                        rootEntity = newEntity;
-                    }
-                }
-            }
-        }
-
-        // Set the slice root as a child of the parent after slice replacement and
-        // position the slice root at the correct offset and rotation from this new parent
-        if (rootEntity)
-        {
-            Components::TransformComponent* transformComponent =
-                rootEntity->FindComponent<Components::TransformComponent>();
-
-            if (transformComponent)
-            {
-                if (m_parentAfterReplacement.IsValid())
-                {
-                    transformComponent->SetParentRelative(m_parentAfterReplacement);
-                }
-
-                if (m_rootAutoCreated)
-                {
-                    AZ::Transform sliceRootTM(AZ::Transform::Identity());
-                    sliceRootTM.SetTranslation(m_offsetAfterReplacement);
-                    sliceRootTM.SetRotationPartFromQuaternion(m_rotationAfterReplacement);
-                    transformComponent->SetLocalTM(sliceRootTM);
-                }
-                else
-                {
-                    auto scale = transformComponent->GetScale();
-                    transformComponent->SetWorldTranslation(m_offsetAfterReplacement);
-                    transformComponent->SetRotationQuaternion(m_rotationAfterReplacement);
-                    transformComponent->SetLocalScale(scale);
-                }
-            }
-        }
-
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
-
-        // Remap references from outside the slice to the new slice entities (so that other entities don't get into a broken state due to slice creation)
-        {
-            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorEntityContextComponent::QueuedSliceReplacement::Finalize:RemapExternalReferences");
-            AZ::SliceComponent* editorRootSlice;
-            EditorEntityContextRequestBus::BroadcastResult(editorRootSlice, &EditorEntityContextRequestBus::Events::GetEditorRootSlice);
-            AZ_Assert(editorRootSlice != nullptr, "Editor root slice not found!");
-
-            AZ::SliceComponent::EntityList editorRootSliceEntities;
-            editorRootSlice->GetEntities(editorRootSliceEntities);
-
-            // gather metadata entities
-            AZ::SliceComponent::EntityIdSet metadataEntityIds;
-            editorRootSlice->GetMetadataEntityIds(metadataEntityIds);
-            for (AZ::EntityId metadataEntityId : metadataEntityIds)
-            {
-                AZ::Entity* metadataEntity = nullptr;
-                AZ::ComponentApplicationBus::BroadcastResult(metadataEntity, &AZ::ComponentApplicationBus::Events::FindEntity, metadataEntityId);
-                if (metadataEntity)
-                {
-                    editorRootSliceEntities.push_back(metadataEntity);
-                }
-            }
-
-            for (AZ::Entity* entity : editorRootSliceEntities)
-            {
-                bool needsReferenceUpdates = false;
-
-                // Deactivating and re-activating an entity is expensive - much more expensive than this check, so we first make sure we need to do
-                // any remapping before going through the act of remapping
-                AZ::EntityUtils::EnumerateEntityIds(entity,
-                    [&needsReferenceUpdates, &remapIds](const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* /*elementData*/) -> void
-                {
-                    if (!isEntityId && id.IsValid())
-                    {
-                        auto iter = remapIds.find(id);
-                        if (iter != remapIds.end())
-                        {
-                            needsReferenceUpdates = true;
-                        }
-                    }
-                }, serializeContext);
-
-                if (needsReferenceUpdates)
-                {
-                    entity->Deactivate();
-
-                    AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(entity,
-                        [&remapIds](const AZ::EntityId& originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>& /*idGenerator*/) -> AZ::EntityId
-                        {
-                            auto iter = remapIds.find(originalId);
-                            if (iter == remapIds.end())
-                            {
-                                return originalId;
-                            }
-                            else
-                            {
-                                return iter->second;
-                            }
-                        }, serializeContext, false);
-
-                    entity->Activate();
-                }
-            }
-        }
-
-
-        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntitiesReplacedBySlicedEntities, remapIds);
-
-        Reset();
     }
 
 } // namespace AzToolsFramework

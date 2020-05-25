@@ -72,8 +72,8 @@ static void DrawGridLine(IRenderAuxGeom& aux, ColorB col, const float alpha, con
         orthoWeight = 1.0f;
     }
 
-    col.a = (1.0f - (weight * (1.0f - alphaFalloff))) * alpha;
-    colEnd.a = alphaFalloff * alpha;
+    col.a = aznumeric_cast<uint8_t>((1.0f - (weight * (1.0f - alphaFalloff))) * alpha);
+    colEnd.a = aznumeric_cast<uint8_t>(alphaFalloff * alpha);
 
     Vec3 orthoStep = state.gridOrigin.q * (orthoDir * halfSlide * orthoWeight);
 
@@ -92,8 +92,8 @@ static void DrawGridLines(IRenderAuxGeom& aux, const uint count, const uint inte
 {
     const uint countHalf = count / 2;
     Vec3 step = stepDir * stepSize;
-    Vec3 orthoStep = orthoDir * countHalf;
-    Vec3 maxStep = step * countHalf;// + stepDir*fabs(offset);
+    Vec3 orthoStep = orthoDir * aznumeric_cast<float>(countHalf);
+    Vec3 maxStep = step * aznumeric_cast<float>(countHalf);// + stepDir*fabs(offset);
     const float maxStepLen = count * stepSize;
     const float halfStepLen = countHalf * stepSize;
 
@@ -144,7 +144,7 @@ static void DrawOrigin(IRenderAuxGeom& aux, const ColorB& col)
 
 static void DrawOrigin(IRenderAuxGeom& aux, const int left, const int top, const float scale, const Matrix34 cameraTM)
 {
-    Vec3 originPos = Vec3(left, top, 0);
+    Vec3 originPos = Vec3(aznumeric_cast<float>(left), aznumeric_cast<float>(top), 0);
     Quat originRot = Quat(0.707107f, 0.707107f, 0, 0) * Quat(cameraTM).GetInverted();
     Vec3 x = originPos + originRot * Vec3(1, 0, 0) * scale;
     Vec3 y = originPos + originRot * Vec3(0, 1, 0) * scale;
@@ -303,6 +303,14 @@ bool QViewport::CreateRenderContext()
     HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
 
     ERenderType renderType = GetIEditor()->GetEnv()->pRenderer->GetRenderType();
+    if (renderType == eRT_Other)
+    {
+        if (m_renderContextCreated && windowHandle == m_lastHwnd)
+        {
+            // the hwnd has not changed, no need to destroy and recreate context (and swap chain etc)
+            return false;
+        }
+    }
 
     m_creatingRenderContext = true;
     DestroyRenderContext();
@@ -310,10 +318,13 @@ bool QViewport::CreateRenderContext()
     {
         m_renderContextCreated = true;
 
-        AzFramework::WindowRequestBus::Handler::BusConnect(windowHandle);
-        AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, windowHandle);
+        if (renderType == eRT_Other)
+        {
+            AzFramework::WindowRequestBus::Handler::BusConnect(windowHandle);
+            AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, windowHandle);
 
-        m_lastHwnd = windowHandle;
+            m_lastHwnd = windowHandle;
+        }
 
         StorePreviousContext();
         GetIEditor()->GetEnv()->pRenderer->CreateContext(windowHandle);
@@ -540,7 +551,7 @@ void QViewport::ProcessMouse()
             QuatT qt = m_state->cameraTarget;
             Vec3 ydir = qt.GetColumn1().GetNormalized();
             Vec3 pos = qt.t;
-            pos = pos - 0.2f * ydir * (m_mousePressPos.y() - point.y()) * speedScale;
+            pos = pos - 0.2f * ydir * aznumeric_cast<float>(m_mousePressPos.y() - point.y()) * speedScale;
             qt.t = pos;
             CameraMoved(qt, false);
 
@@ -570,7 +581,7 @@ void QViewport::ProcessMouse()
         {
             float speedScale = CalculateMoveSpeed(m_fastMode, m_slowMode);
 
-            Ang3 angles(-point.y() + m_mousePressPos.y(), 0, -point.x() + m_mousePressPos.x());
+            Ang3 angles(aznumeric_cast<float>(-point.y() + m_mousePressPos.y()), 0, aznumeric_cast<float>(-point.x() + m_mousePressPos.x()));
             angles = angles * 0.001f * m_settings->camera.rotationSpeed;
 
             QuatT qt = m_state->cameraTarget;
@@ -603,7 +614,7 @@ void QViewport::ProcessMouse()
             Vec3 xdir = qt.GetColumn0().GetNormalized();
             Vec3 zdir = qt.GetColumn2().GetNormalized();
 
-            Vec3 delta = 0.0025f * xdir * (point.x() - m_mousePressPos.x()) * speedScale + 0.0025f * zdir * (m_mousePressPos.y() - point.y()) * speedScale;
+            Vec3 delta = 0.0025f * xdir * aznumeric_cast<float>(point.x() - m_mousePressPos.x()) * speedScale + 0.0025f * zdir * aznumeric_cast<float>(m_mousePressPos.y() - point.y()) * speedScale;
             qt.t += delta;
 
             // Move the orbit target with the pan operation.  This ensures the
@@ -638,7 +649,7 @@ void QViewport::ProcessMouse()
         up = right.Cross(at).GetNormalized();
 
         Ang3                angles = CCamera::CreateAnglesYPR(Matrix33::CreateFromVectors(right, at, up));
-        const Ang3  delta = Ang3(-point.y() + m_mousePressPos.y(), 0.0f, -point.x() + m_mousePressPos.x()) * 0.002f * m_settings->camera.rotationSpeed;
+        const Ang3  delta = Ang3(aznumeric_cast<float>(-point.y() + m_mousePressPos.y()), 0.0f, aznumeric_cast<float>(-point.x() + m_mousePressPos.x())) * 0.002f * m_settings->camera.rotationSpeed;
         angles.x += delta.z;
         angles.y -= delta.x;
         angles.y = clamp_tpl(angles.y, -1.5f, 1.5f);
@@ -1098,7 +1109,7 @@ float QViewport::CalculateMoveSpeed(bool shiftPressed, bool ctrlPressed, bool sc
         // Slow the movement down as we get closer to the orbit target
         QuatT qt = m_state->cameraTarget;
         float distanceFromTarget = (qt.t - m_state->orbitTarget).GetLength();
-        moveSpeed *= distanceFromTarget * 0.01;
+        moveSpeed *= distanceFromTarget * 0.01f;
         // Prevent the speed from going too close to 0, which would prevent movement
         moveSpeed = max(0.001f, moveSpeed);
     }
@@ -1218,7 +1229,7 @@ void QViewport::wheelEvent(QWheelEvent* ev)
     Vec3 ydir = qt.GetColumn1().GetNormalized();
     Vec3 pos = qt.t;
     const float wheelSpeed = m_settings->camera.zoomSpeed * (m_fastMode ? m_settings->camera.fastMoveMultiplier : 1.0f) * (m_slowMode ? m_settings->camera.slowMoveMultiplier : 1.0f);
-    pos += 0.01f * ydir * ev->delta() * wheelSpeed;
+    pos += 0.01f * ydir * aznumeric_cast<float>(ev->delta()) * wheelSpeed;
     qt.t = pos;
     CameraMoved(qt, false);
 }
@@ -1271,8 +1282,8 @@ void QViewport::resizeEvent(QResizeEvent* ev)
 #else
     const qreal ratio = 1.0f;
 #endif
-    int cx = ev->size().width() * ratio;
-    int cy = ev->size().height() * ratio;
+    int cx = aznumeric_cast<int>(ev->size().width() * ratio);
+    int cy = aznumeric_cast<int>(ev->size().height() * ratio);
     if (cx == 0 || cy == 0)
     {
         return;

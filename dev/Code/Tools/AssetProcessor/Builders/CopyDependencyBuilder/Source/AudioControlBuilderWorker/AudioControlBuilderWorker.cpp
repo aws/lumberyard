@@ -286,7 +286,7 @@ namespace CopyDependencyBuilder
                 return AZ::Failure(AZStd::string("Events field is not an array. Please regenerate the metadata for this soundbank."));
             }
 
-            for (AZ::u64 eventIndex = 0; eventIndex < eventsArray.Size(); ++eventIndex)
+            for (rapidjson::SizeType eventIndex = 0; eventIndex < eventsArray.Size(); ++eventIndex)
             {
                 eventNames.emplace(eventsArray[eventIndex].GetString());
             }

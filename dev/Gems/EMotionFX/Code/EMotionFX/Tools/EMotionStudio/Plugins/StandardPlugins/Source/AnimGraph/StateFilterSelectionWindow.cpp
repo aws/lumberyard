@@ -109,54 +109,60 @@ namespace EMStudio
         const uint32 numRows        = numNodeGroups + numNodes;
         mTableWidget->setRowCount(numRows);
 
-        // iterate the nodes and add them all
-        uint32 currentRowIndex = 0;
-        for (uint32 i = 0; i < numNodes; ++i)
+        // Block signals for the table widget to not reach OnSelectionChanged() when adding rows as that
+        // clears m_selectedNodeIds and thus breaks the 'is node selected' check in the following loop.
         {
-            EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(i);
+            QSignalBlocker signalBlocker(mTableWidget);
 
-            // check if we need to select the node
-            bool isSelected = false;
-            if (AZStd::find(m_selectedNodeIds.begin(), m_selectedNodeIds.end(), childNode->GetId()) != m_selectedNodeIds.end())
+            // iterate the nodes and add them all
+            uint32 currentRowIndex = 0;
+            for (uint32 i = 0; i < numNodes; ++i)
             {
-                isSelected = true;
-            }
+                EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(i);
 
-            AddRow(currentRowIndex, childNode->GetName(), false, isSelected);
-            currentRowIndex++;
-        }
-
-        // iterate the node groups and add them all
-        for (uint32 i = 0; i < numNodeGroups; ++i)
-        {
-            // get a pointer to the node group
-            EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
-
-            // check if any of the nodes from the node group actually is visible in the current state machine
-            bool addGroup = false;
-            for (uint32 n = 0; n < numNodes; ++n)
-            {
-                EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(n);
-                if (nodeGroup->Contains(childNode->GetId()))
-                {
-                    addGroup = true;
-                    break;
-                }
-            }
-
-            if (addGroup)
-            {
-                // check if we need to select the node group
+                // check if we need to select the node
                 bool isSelected = false;
-                if (AZStd::find(oldGroupSelection.begin(), oldGroupSelection.end(), nodeGroup->GetName()) != oldGroupSelection.end())
+                if (AZStd::find(m_selectedNodeIds.begin(), m_selectedNodeIds.end(), childNode->GetId()) != m_selectedNodeIds.end())
                 {
                     isSelected = true;
                 }
 
-                AZ::Color color;
-                color.FromU32(nodeGroup->GetColor());
-                AddRow(currentRowIndex, nodeGroup->GetName(), true, isSelected, AzQtComponents::ToQColor(color));
+                AddRow(currentRowIndex, childNode->GetName(), false, isSelected);
                 currentRowIndex++;
+            }
+
+            // iterate the node groups and add them all
+            for (uint32 i = 0; i < numNodeGroups; ++i)
+            {
+                // get a pointer to the node group
+                EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
+
+                // check if any of the nodes from the node group actually is visible in the current state machine
+                bool addGroup = false;
+                for (uint32 n = 0; n < numNodes; ++n)
+                {
+                    EMotionFX::AnimGraphNode* childNode = m_stateMachine->GetChildNode(n);
+                    if (nodeGroup->Contains(childNode->GetId()))
+                    {
+                        addGroup = true;
+                        break;
+                    }
+                }
+
+                if (addGroup)
+                {
+                    // check if we need to select the node group
+                    bool isSelected = false;
+                    if (AZStd::find(oldGroupSelection.begin(), oldGroupSelection.end(), nodeGroup->GetName()) != oldGroupSelection.end())
+                    {
+                        isSelected = true;
+                    }
+
+                    AZ::Color color;
+                    color.FromU32(nodeGroup->GetColor());
+                    AddRow(currentRowIndex, nodeGroup->GetName(), true, isSelected, AzQtComponents::ToQColor(color));
+                    currentRowIndex++;
+                }
             }
         }
 
@@ -318,6 +324,4 @@ namespace EMStudio
             }
         }
     }
-}   // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/StateFilterSelectionWindow.moc>
+} // namespace EMStudio

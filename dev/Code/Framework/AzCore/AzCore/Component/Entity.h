@@ -141,7 +141,7 @@ namespace AZ
          * Sets the name of the entity.
          * @param name A name for the entity.
          */
-        void SetName(AZStd::string name) { m_name = name; OnNameChanged(); }
+        void SetName(AZStd::string name) { m_name = AZStd::move(name); OnNameChanged(); }
 
         /**
          * Gets the state of the entity.

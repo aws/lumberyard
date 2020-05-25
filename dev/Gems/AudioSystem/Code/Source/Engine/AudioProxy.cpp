@@ -371,6 +371,11 @@ namespace Audio
     {
         if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
         {
+            if (!gEnv->pEntitySystem)
+            {
+                return;
+            }
+
             IAreaManager* const pAreaManager = gEnv->pEntitySystem->GetAreaManager();
 
             SAudioAreaInfo m_aAreaQueries[sMaxAreas];

@@ -57,10 +57,10 @@ QColor ToQColor(const SerializableColorF& v)
 
 void FromQColor(SerializableColorF& vColor, QColor color)
 {
-    vColor.r = color.redF();
-    vColor.g = color.greenF();
-    vColor.b = color.blueF();
-    vColor.a = color.alphaF();
+    vColor.r = aznumeric_cast<float>(color.redF());
+    vColor.g = aznumeric_cast<float>(color.greenF());
+    vColor.b = aznumeric_cast<float>(color.blueF());
+    vColor.a = aznumeric_cast<float>(color.alphaF());
 }
 
 

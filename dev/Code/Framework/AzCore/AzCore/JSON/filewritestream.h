@@ -9,12 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_RAPIDJSON_FILEWRITESTREAM
-#define AZCORE_RAPIDJSON_FILEWRITESTREAM
+
+#pragma once
 
 #include <AzCore/JSON/rapidjson.h>
 
-// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
+// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.1.0\include
 #include <rapidjson/filewritestream.h>
-
-#endif // AZCORE_RAPIDJSON_FILEWRITESTREAM

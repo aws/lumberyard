@@ -11,21 +11,17 @@
 */
 #pragma once
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
 
 #include <GameLift/Session/GameLiftSearch.h>
 #include <GameLift/Session/GameLiftSessionDefs.h>
-
-#ifdef GetMessage
-#undef GetMessage
-#endif
 
 namespace GridMate
 {
     class GameLiftClientService;
 
-    /*!
-    * Sends request to GameLift backend to create new session with given parameters.
+    /*
+    * Directly places a GameSession on a GameLift fleet via CreateGameSession using the given parameters.
     * When request is completed - ordinary session search ebus events are issued.
     */
     class GameLiftSessionRequest
@@ -35,18 +31,15 @@ namespace GridMate
 
     public:
         GM_CLASS_ALLOCATOR(GameLiftSessionRequest);
-
+        bool Initialize() override;
         void AbortSearch() override;
 
-    private:
-        GameLiftSessionRequest(GameLiftClientService* service, const GameLiftSessionRequestParams& params);
-        bool Initialize();
-
+    protected:
+        GameLiftSessionRequest(GameLiftClientService* service, const AZStd::shared_ptr<GameLiftRequestInterfaceContext> context);
         void Update() override;
-        void SearchDone();
 
+    private:
         Aws::GameLift::Model::CreateGameSessionOutcomeCallable m_createGameSessionOutcomeCallable;
-        GameLiftSessionRequestParams m_requestParams;
     };
 } // namespace GridMate
 

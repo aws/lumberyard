@@ -9,7 +9,12 @@
             "Tests/PolygonPrismMeshUtilsTest.cpp",
             "Tests/PhysXColliderComponentModeTests.cpp",
             "Tests/ShapeColliderComponentTests.cpp",
-            "Tests/TestColliderComponent.h"
+            "Tests/TestColliderComponent.h",
+            "Tests/SystemComponentTest.cpp",
+            "Tests/RigidBodyComponentTests.cpp",
+            "Tests/StaticRigidBodyComponentTests.cpp",
+            "Tests/PrimitiveShapeFitterTests.cpp",
+            "Tests/PrimitiveShapeFitterTestData.cpp"
         ]
     }
 }

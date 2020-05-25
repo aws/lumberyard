@@ -2107,7 +2107,7 @@ void CFileUtil::GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, 
 
     if (mtlCount > 0)
     {
-        std::vector<_smart_ptr<IMaterial>> arrMtls;
+        AZStd::vector<_smart_ptr<IMaterial>> arrMtls;
 
         arrMtls.resize(mtlCount);
         pMtlMan->GetLoadedMaterials(&arrMtls, mtlCount);

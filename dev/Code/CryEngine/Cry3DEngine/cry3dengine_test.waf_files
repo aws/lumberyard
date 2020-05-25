@@ -10,6 +10,7 @@
             "Tests/Test_Cry3DEngine.cpp",
             "Tests/MockValidationTest.cpp",
             "Tests/MaterialTests.cpp",
+            "Tests/MergedMeshTest.cpp",
             "Tests/OctreeTest.cpp"
         ]
     }

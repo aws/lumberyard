@@ -22,7 +22,7 @@ namespace Vegetation
     {
     public:
         using BaseClassType = EditorVegetationComponentBase<ReferenceShapeComponent, ReferenceShapeConfig>;
-        AZ_EDITOR_COMPONENT(EditorReferenceShapeComponent, "{21BC79CA-C2F4-428F-AF2E-B76E233D4254}", BaseClassType);
+        AZ_EDITOR_COMPONENT(EditorReferenceShapeComponent, EditorReferenceShapeComponentTypeId, BaseClassType);
         static void Reflect(AZ::ReflectContext* context);
 
         static constexpr const char* const s_categoryName = "Vegetation";

@@ -48,7 +48,7 @@ namespace EMStudio
         void Init();
 
         MCORE_INLINE float GetPlaySpeed() const                     { return mPlaySpeedSlider->value() * 0.001f; }
-        MCORE_INLINE void SetPlaySpeed(float value)                 { mPlaySpeedSlider->setValue(value * 1000); }
+        MCORE_INLINE void SetPlaySpeed(float value)                 { mPlaySpeedSlider->setValue(static_cast<int>(value * 1000)); }
 
     public slots:
         void UpdateInterface();

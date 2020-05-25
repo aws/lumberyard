@@ -206,6 +206,14 @@ namespace EMStudio
         if (!modelIndex.isValid())
         {
             m_objectEditor->ClearInstances(false);
+            for (const CachedWidgets& widget : m_conditionsCachedWidgets)
+            {
+                widget.m_objectEditor->ClearInstances(false);
+            }
+            for (const CachedWidgets& widget : m_actionsCachedWidgets)
+            {
+                widget.m_objectEditor->ClearInstances(false);
+            }
         }
 
         // This only works on TRANSITIONS and NODES
@@ -629,7 +637,18 @@ namespace EMStudio
                 }
             }
 
-            CommandSystem::AddCondition(transition, conditionType, contents);
+            CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
+                transition->GetAnimGraph()->GetID(),
+                transition->GetId(),
+                conditionType,
+                /*insertAt=*/AZStd::nullopt,
+                contents);
+
+            AZStd::string commandResult;
+            if (!GetCommandManager()->ExecuteCommand(addConditionCommand, commandResult))
+            {
+                AZ_Error("EMotionFX", false, commandResult.c_str());
+            }
         }
     }
 
@@ -646,7 +665,14 @@ namespace EMStudio
         // convert the object into a state transition
         EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
 
-        CommandSystem::RemoveCondition(transition, conditionIndex);
+        CommandSystem::CommandRemoveTransitionCondition* removeConditionCommand = aznew CommandSystem::CommandRemoveTransitionCondition(
+            transition->GetAnimGraph()->GetID(), transition->GetId(), conditionIndex);
+
+        AZStd::string commandResult;
+        if (!EMStudio::GetCommandManager()->ExecuteCommand(removeConditionCommand, commandResult))
+        {
+            AZ_Error("EMotionFX", false, commandResult.c_str());
+        }
     }
 
 
@@ -731,7 +757,13 @@ namespace EMStudio
         MCore::CommandGroup commandGroup;
         for (const CopyPasteConditionObject& copyPasteObject : m_copyPasteClipboard)
         {
-            CommandSystem::AddCondition(transition, copyPasteObject.mConditionType, copyPasteObject.mContents, /*insertAt*/ AZStd::nullopt, &commandGroup);
+            CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
+                transition->GetAnimGraph()->GetID(),
+                transition->GetId(),
+                copyPasteObject.mConditionType,
+                /*insertAt=*/AZStd::nullopt,
+                copyPasteObject.mContents);
+            commandGroup.AddCommand(addConditionCommand);
         }
 
         AZStd::string result;
@@ -782,7 +814,13 @@ namespace EMStudio
                 continue;
             }
 
-            CommandSystem::AddCondition(transition, m_copyPasteClipboard[i].mConditionType, m_copyPasteClipboard[i].mContents, /*insertAt*/ AZStd::nullopt, &commandGroup);
+            CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
+                transition->GetAnimGraph()->GetID(),
+                transition->GetId(),
+                m_copyPasteClipboard[i].mConditionType,
+                /*insertAt=*/AZStd::nullopt,
+                m_copyPasteClipboard[i].mContents);
+            commandGroup.AddCommand(addConditionCommand);
 
             numPastedConditions++;
         }

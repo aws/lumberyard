@@ -32,8 +32,8 @@ namespace ExporterLib
         static Exporter* Create();
 
         // actor
-        bool SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
-        bool SaveActor(AZStd::string filenameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
+        bool SaveActor(MCore::MemoryFile* file, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
+        bool SaveActor(AZStd::string filenameWithoutExtension, const EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
 
         // skeletal motion
         bool SaveSkeletalMotion(MCore::MemoryFile* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs);

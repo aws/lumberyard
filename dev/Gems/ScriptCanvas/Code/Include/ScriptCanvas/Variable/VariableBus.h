@@ -16,23 +16,26 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Outcome/Outcome.h>
 
-#include <ScriptCanvas/Variable/VariableDatum.h>
+#include <ScriptCanvas/Core/GraphScopedTypes.h>
+#include <ScriptCanvas/Variable/GraphVariable.h>
 
 namespace ScriptCanvas
 {
     class VariableData;
 
-    using GraphVariableMapping = AZStd::unordered_map< VariableId, VariableNameValuePair >;
-
     // Bus Interface for adding, removing and finding exposed Variable datums associated with a ScriptCanvas Graph
     class VariableRequests
+        : public AZ::EBusTraits
     {
     public:
-        using AllocatorType = AZStd::allocator;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = GraphScopedVariableId;
 
-        //! Retrieves address of the variable datum that can be modified
-        virtual VariableDatum* GetVariableDatum() = 0;
-        virtual const VariableDatum* GetVariableDatumConst() const = 0;
+        using AllocatorType = AZStd::allocator;
+        
+        virtual GraphVariable* GetVariable() = 0;
+        virtual const GraphVariable* GetVariableConst() const = 0;
 
         //! Returns the type associated with the specified variable.
         virtual Data::Type GetType() const = 0;
@@ -47,10 +50,11 @@ namespace ScriptCanvas
         virtual AZ::Outcome<void, AZStd::string> RenameVariable(AZStd::string_view newVarName) = 0;
     };
 
+    using VariableRequestBus = AZ::EBus<VariableRequests>;
+
     class CopiedVariableData
     {
     public:
-        typedef AZStd::unordered_map< VariableId, VariableNameValuePair > VariableMapping;
 
         AZ_RTTI(CopiedVariableData, "{84548415-DD9E-4943-8D1E-3E1CC49ADACB}");
         AZ_CLASS_ALLOCATOR(CopiedVariableData, AZ::SystemAllocator, 0);
@@ -58,18 +62,23 @@ namespace ScriptCanvas
         virtual ~CopiedVariableData() = default;
 
         static const char* k_variableKey;
-        VariableMapping m_variableMapping;
+        GraphVariableMapping m_variableMapping;
     };
 
     class GraphVariableManagerRequests
+        : public AZ::EBusTraits
     {
     public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = ScriptCanvasId;
+
         using AllocatorType = AZStd::allocator;
 
         //! Adds a variable that is keyed by the string and maps to a type that can be storedAZStd::any(any type with a AzTypeInfo specialization)
         //! returns an AZ::Outcome which on success contains the VariableId and on Failure contains a string with error information
-        virtual AZ::Outcome<VariableId, AZStd::string> CloneVariable(const VariableNameValuePair& baseVariable) = 0;
-        virtual AZ::Outcome<VariableId, AZStd::string> RemapVariable(const VariableNameValuePair& variableConfiguration) = 0;
+        virtual AZ::Outcome<VariableId, AZStd::string> CloneVariable(const GraphVariable& baseVariable) = 0;
+        virtual AZ::Outcome<VariableId, AZStd::string> RemapVariable(const GraphVariable& variableConfiguration) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view key, const Datum& value) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& keyValuePair) = 0;
 
@@ -115,15 +124,17 @@ namespace ScriptCanvas
 
         //! Searches for a variable with the specified name
         //! returns pointer to the first variable with the specified name or nullptr
-        virtual VariableDatum* FindVariable(AZStd::string_view propName) = 0;
-
-        //! Returns the type associated with the specified variable.
-        virtual Data::Type GetVariableType(const VariableId& variableId) = 0;
+        virtual GraphVariable* FindVariable(AZStd::string_view propName) = 0;        
 
         //! Searches for a variable by VariableId
         //! returns a pair of <variable datum pointer, variable name> with the supplied id
         //! The variable datum pointer is non-null if the variable has been found
-        virtual VariableNameValuePair* FindVariableById(const VariableId& varId) = 0;
+        virtual GraphVariable* FindVariableById(const VariableId& varId) = 0;
+
+        virtual GraphVariable* FindFirstVariableWithType(const Data::Type& dataType, const AZStd::unordered_set< ScriptCanvas::VariableId >& blacklistId) = 0;
+
+        //! Returns the type associated with the specified variable.
+        virtual Data::Type GetVariableType(const VariableId& variableId) = 0;
 
         //! Retrieves all properties stored by the Handler
         //! returns variable container
@@ -138,11 +149,15 @@ namespace ScriptCanvas
 
         virtual const VariableData* GetVariableDataConst() const = 0;
         virtual VariableData* GetVariableData() = 0;
+
         //! Sets the VariableData and connects the variables ids to the VariableRequestBus for this handler
         virtual void SetVariableData(const VariableData& variableData) = 0;
+
         //! Deletes oldVariableData and sends out GraphVariableManagerNotifications for each deleted variable
         virtual void DeleteVariableData(const VariableData& variableData) = 0;
     };
+
+    using GraphVariableManagerRequestBus = AZ::EBus<GraphVariableManagerRequests>;
 
     class VariableNodeRequests
     {
@@ -159,29 +174,13 @@ namespace ScriptCanvas
         virtual void UpdateVersion() {}
     };
 
-    struct RequestByVariableIdTraits : public AZ::EBusTraits
-    {
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = VariableId;
-    };
-
-    struct RequestByGraphIdTraits : public AZ::EBusTraits
-    {
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-    };
-
     struct RequestByNodeIdTraits : public AZ::EBusTraits
     {
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
     };
-
-    using VariableRequestBus = AZ::EBus<VariableRequests, RequestByVariableIdTraits>;
-    using GraphVariableManagerRequestBus = AZ::EBus<GraphVariableManagerRequests, RequestByGraphIdTraits>;
+    
     using VariableNodeRequestBus = AZ::EBus<VariableNodeRequests, RequestByNodeIdTraits>;
     using ScriptEventNodeRequestBus = AZ::EBus<ScriptEventNodeRequests, RequestByNodeIdTraits>;
 
@@ -191,7 +190,7 @@ namespace ScriptCanvas
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvasId;
 
         // Invoked when after a variable has been added to the handler
         virtual void OnVariableAddedToGraph(const ScriptCanvas::VariableId& /*variableId*/, AZStd::string_view /*variableName*/) {}
@@ -210,7 +209,7 @@ namespace ScriptCanvas
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = VariableId;
+        using BusIdType = GraphScopedVariableId;
 
         // Invoked before a variable is erased from the Variable Bus Handler
         virtual void OnVariableRemoved() {}
@@ -218,13 +217,13 @@ namespace ScriptCanvas
         // Invoked after a variable is renamed
         virtual void OnVariableRenamed(AZStd::string_view /*newVariableName*/) {}
 
-        virtual void OnVariableValueChanged() {};
-
         virtual void OnVariableExposureChanged() {};
         virtual void OnVariableExposureGroupChanged() {};
+
+        virtual void OnVariableValueChanged() {};
     };
 
-    using VariableNotificationBus = AZ::EBus<VariableNotifications>;
+    using VariableNotificationBus = AZ::EBus<VariableNotifications>;    
 
     class VariableNodeNotifications
         : public AZ::EBusTraits

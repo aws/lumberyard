@@ -579,7 +579,7 @@ FbxNode* CFBXExporter::CreateFBXAnimNode(FbxScene* pScene, FbxAnimLayer* pAnimBa
         {
             const Export::EntityAnimData* pAnimData = pObj->GetEntityAnimationData(animDataIndex);
 
-            FbxTime time = 0.0f;
+            FbxTime time = 0;
             time.SetSecondDouble(pAnimData->keyTime);
 
             FbxAnimCurve* pCurve = NULL;
@@ -750,7 +750,7 @@ void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, Fb
             FbxAnimCurveKey key = pCurve->KeyGet(keyID);
             entityData.keyValue = key.GetValue();
             FbxTime time = key.GetTime();
-            entityData.keyTime = time.GetSecondDouble();
+            entityData.keyTime = aznumeric_cast<float>(time.GetSecondDouble());
 
             entityData.leftTangent = pCurve->KeyGetLeftDerivative(keyID);
             entityData.rightTangent = pCurve->KeyGetRightDerivative(keyID);
@@ -764,7 +764,7 @@ void CFBXExporter::FillAnimationData(Export::Object* pObject, FbxNode* pNode, Fb
                 entityData.dataType = Export::AnimParamType::FOV;
                 // Lumberyard field of view is the vertical angle
                 pNode->GetCamera()->SetApertureMode(FbxCamera::eVertical);
-                entityData.keyValue = pNode->GetCamera()->ComputeFieldOfView(entityData.keyValue);
+                entityData.keyValue = aznumeric_cast<float>(pNode->GetCamera()->ComputeFieldOfView(entityData.keyValue));
             }
             else
             {

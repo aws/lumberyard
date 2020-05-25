@@ -62,9 +62,11 @@ protected:
 private:
     QPropertyTree* m_propertyTree;
     QBoxLayout* m_layout;
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     std::unique_ptr<Serialization::SStruct> m_serializer;
     std::unique_ptr<Serialization::BinOArchive> m_backup;
     string m_windowStateFilename;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QSize m_sizeHint;
     bool m_storeContent;
 };

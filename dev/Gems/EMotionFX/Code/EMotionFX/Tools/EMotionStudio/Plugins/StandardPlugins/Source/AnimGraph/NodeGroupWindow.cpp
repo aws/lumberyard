@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/Color.h>
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "NodeGroupWindow.h"
@@ -347,7 +348,7 @@ namespace EMStudio
             // get the color and convert to Qt color
             AZ::Color color;
             color.FromU32(nodeGroup->GetColor());
-            const QColor backgroundColor(static_cast<float>(color.GetR()) * 100, static_cast<float>(color.GetG()) * 100, static_cast<float>(color.GetB()) * 100, 50);
+            const QColor backgroundColor(aznumeric_cast<int>(static_cast<float>(color.GetR()) * 100.0f), aznumeric_cast<int>(static_cast<float>(color.GetG()) * 100.0f), aznumeric_cast<int>(static_cast<float>(color.GetB()) * 100.0f), 50);
 
             // create the visibility checkbox item
             QTableWidgetItem* visibilityCheckboxItem = new QTableWidgetItem();
@@ -635,7 +636,14 @@ namespace EMStudio
         for (uint32 i = 0; i < numRowIndices; ++i)
         {
             const AZStd::string nodeGroupName = FromQtString(mTableWidget->item(rowIndices[i], 2)->text());
-            tempString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroupName.c_str());
+            if (i == 0 || i == numRowIndices - 1)
+            {
+                tempString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroupName.c_str());
+            }
+            else
+            {
+                tempString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\" -nodeGroupWindowUpdate false", animGraph->GetID(), nodeGroupName.c_str());
+            }
             internalCommandGroup.AddCommandString(tempString.c_str());
         }
 
@@ -800,12 +808,12 @@ namespace EMStudio
     // command callbacks
     //----------------------------------------------------------------------------------------------------------------------------------
 
-    bool NodeGroupWindow::CommandAnimGraphAddNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
-    bool NodeGroupWindow::CommandAnimGraphAddNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)           { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
-    bool NodeGroupWindow::CommandAnimGraphRemoveNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
-    bool NodeGroupWindow::CommandAnimGraphRemoveNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
-    bool NodeGroupWindow::CommandAnimGraphAdjustNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
-    bool NodeGroupWindow::CommandAnimGraphAdjustNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphNodeGroupWindow(); }
+    bool NodeGroupWindow::CommandAnimGraphAddNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
+    bool NodeGroupWindow::CommandAnimGraphAddNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)           { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
+    bool NodeGroupWindow::CommandAnimGraphRemoveNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
+    bool NodeGroupWindow::CommandAnimGraphRemoveNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
+    bool NodeGroupWindow::CommandAnimGraphAdjustNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
+    bool NodeGroupWindow::CommandAnimGraphAdjustNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); return commandLine.GetValueAsBool("updateUI", true) ? UpdateAnimGraphNodeGroupWindow() : true; }
 }   // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGroupWindow.moc>

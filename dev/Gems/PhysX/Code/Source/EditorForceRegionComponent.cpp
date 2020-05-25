@@ -12,6 +12,7 @@
 #include <PhysX_precompiled.h>
 
 #include <Source/EditorColliderComponent.h>
+#include <Source/EditorShapeColliderComponent.h>
 #include <Source/EditorForceRegionComponent.h>
 #include <Source/ForceRegionComponent.h>
 #include <Source/Utils.h>
@@ -260,42 +261,51 @@ namespace PhysX
         for (AZ::Component* component : enabledComponents)
         {
             EditorColliderComponent* editorColliderComponent = azrtti_cast<EditorColliderComponent*>(component);
-            if (!editorColliderComponent)
+            EditorShapeColliderComponent* editorShapeColliderComponent = azrtti_cast<EditorShapeColliderComponent*>(component);
+            if (!editorColliderComponent && !editorShapeColliderComponent)
             {
                 continue;
             }
-            const PhysX::EditorProxyShapeConfig& shapeConfig = editorColliderComponent->GetShapeConfiguration();
-            AZStd::vector<AZ::Vector3> randomPoints;
-            if (shapeConfig.IsBoxConfig())
+            if (editorColliderComponent)
             {
-                AZ::Vector3 dimensions = shapeConfig.m_box.m_dimensions;
-                randomPoints = PhysX::ForceRegionUtil::GenerateBoxPoints(dimensions * -0.5f
-                    , dimensions * 0.5f);
-            }
-            else if (shapeConfig.IsCapsuleConfig())
-            {
-                float height = shapeConfig.m_capsule.m_height;
-                float radius = shapeConfig.m_capsule.m_radius;
-                randomPoints = ForceRegionUtil::GenerateCylinderPoints(height - radius * 2.0f
-                    , radius);
-            }
-            else if (shapeConfig.IsSphereConfig())
-            {
-                float radius = shapeConfig.m_sphere.m_radius;
-                randomPoints = ForceRegionUtil::GenerateSpherePoints(radius);
-            }
-            else if (shapeConfig.IsAssetConfig())
-            {
-                const AZ::Vector3 halfExtents = aabb.GetExtents() * 0.5f;
-                randomPoints = PhysX::ForceRegionUtil::GenerateBoxPoints(-halfExtents, halfExtents);
+                const PhysX::EditorProxyShapeConfig& shapeConfig = editorColliderComponent->GetShapeConfiguration();
+                AZStd::vector<AZ::Vector3> randomPoints;
+                if (shapeConfig.IsBoxConfig())
+                {
+                    AZ::Vector3 dimensions = shapeConfig.m_box.m_dimensions;
+                    randomPoints = Utils::Geometry::GenerateBoxPoints(dimensions * -0.5f
+                        , dimensions * 0.5f);
+                }
+                else if (shapeConfig.IsCapsuleConfig())
+                {
+                    float height = shapeConfig.m_capsule.m_height;
+                    float radius = shapeConfig.m_capsule.m_radius;
+                    randomPoints = Utils::Geometry::GenerateCylinderPoints(height - radius * 2.0f
+                        , radius);
+                }
+                else if (shapeConfig.IsSphereConfig())
+                {
+                    float radius = shapeConfig.m_sphere.m_radius;
+                    randomPoints = Utils::Geometry::GenerateSpherePoints(radius);
+                }
+                else if (shapeConfig.IsAssetConfig())
+                {
+                    const AZ::Vector3 halfExtents = aabb.GetExtents() * 0.5f;
+                    randomPoints = Utils::Geometry::GenerateBoxPoints(-halfExtents, halfExtents);
+                }
+
+                PhysX::Utils::ColliderPointsLocalToWorld(randomPoints
+                    , GetWorldTM()
+                    , editorColliderComponent->GetColliderConfiguration().m_position
+                    , editorColliderComponent->GetColliderConfiguration().m_rotation);
+
+                DrawForceArrows(randomPoints, debugDisplayRequests);
             }
 
-            PhysX::Utils::ColliderPointsLocalToWorld(randomPoints
-                , GetWorldTM()
-                , editorColliderComponent->GetColliderConfiguration().m_position
-                , editorColliderComponent->GetColliderConfiguration().m_rotation);
-
-            DrawForceArrows(randomPoints, debugDisplayRequests);
+            else if (editorShapeColliderComponent)
+            {
+                DrawForceArrows(editorShapeColliderComponent->GetSamplePoints(), debugDisplayRequests);
+            }
         }
     }
 

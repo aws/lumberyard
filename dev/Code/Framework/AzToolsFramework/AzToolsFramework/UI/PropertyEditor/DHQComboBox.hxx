@@ -34,8 +34,14 @@ namespace AzToolsFramework
 
         void showPopup() override;
 
+        void SetHeaderOverride(const QString& overrideString);
+
     protected:
+        void paintEvent(QPaintEvent* event) override;
         void wheelEvent(QWheelEvent* e) override;
+        bool event(QEvent* event) override;
+
+        QString m_headerOverride;
     };
 }
 

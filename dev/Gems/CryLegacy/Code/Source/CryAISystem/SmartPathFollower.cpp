@@ -28,9 +28,6 @@
 
 #include "Navigation/NavigationSystem/NavigationSystem.h"
 
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
-
 float InterpolatedPath::FindNextSegmentIndex(size_t startIndex) const
 {
     float addition = .0f;
@@ -963,6 +960,7 @@ bool CSmartPathFollower::Update(PathFollowResult& result, const Vec3& curPos, co
 #ifndef _RELEASE
                     if (gAIEnv.CVars.SmartPathFollower_useAdvancedPathShortcutting_debug != 0)
                     {
+                        gEnv->pGame->GetIGameFramework()->GetIPersistentDebug()->Begin("SmartPath_AdvancedPathShortcutting", true);
                         gEnv->pGame->GetIGameFramework()->GetIPersistentDebug()->AddLine(lineseg.start + Vec3(0.0, 0.0f, 1.5f), lineseg.end + Vec3(0.0f, 0.0f, 1.5f), ColorF(1.0f, 0.0f, 0.0f), 1.0f);
                     }
 #endif
@@ -973,6 +971,7 @@ bool CSmartPathFollower::Update(PathFollowResult& result, const Vec3& curPos, co
 #ifndef _RELEASE
                 if (gAIEnv.CVars.SmartPathFollower_useAdvancedPathShortcutting_debug != 0)
                 {
+                    gEnv->pGame->GetIGameFramework()->GetIPersistentDebug()->Begin("SmartPath_AdvancedPathShortcutting", true);
                     gEnv->pGame->GetIGameFramework()->GetIPersistentDebug()->AddLine(lineseg.start + Vec3(0.0, 0.0f, 1.5f), lineseg.end + Vec3(0.0f, 0.0f, 1.5f), ColorF(0.0f, 1.0f, 0.0f), 1.0f);
                 }
 #endif

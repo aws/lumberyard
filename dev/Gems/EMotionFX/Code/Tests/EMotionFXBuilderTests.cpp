@@ -15,6 +15,7 @@
 #include <EMotionFX/Pipeline/EMotionFXBuilder/MotionSetBuilderWorker.h>
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
@@ -28,18 +29,16 @@ namespace EMotionFX
 {
     class EMotionFXBuilderTests
         : public EMotionFXBuilderFixture
-//        , public UnitTest::TraceBusRedirector
     {
     protected:
         void SetUp() override
         {
             EMotionFXBuilderFixture::SetUp();
-            //BusConnect();
         }
 
         void TearDown() override
         {
-            //BusDisconnect();
+            AZ::Data::AssetManager::Instance().PrepareShutDown();
             EMotionFXBuilderFixture::TearDown();
         }
     };

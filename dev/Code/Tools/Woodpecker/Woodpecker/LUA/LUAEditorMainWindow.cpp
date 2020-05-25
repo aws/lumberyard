@@ -311,7 +311,7 @@ namespace LUAEditor
         m_gui->m_assetBrowserTreeView->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
 
         // Maintains the tree expansion state between runs
-        m_gui->m_assetBrowserTreeView->LoadState("LuaIDETreeView");
+        m_gui->m_assetBrowserTreeView->SetName("LuaIDETreeView");
 
         connect(m_gui->m_assetBrowserTreeView, &QTreeView::doubleClicked, this, [this](const QModelIndex&)
         {

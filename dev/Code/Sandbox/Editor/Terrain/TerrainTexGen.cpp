@@ -18,8 +18,6 @@
 #include "Terrain/TerrainManager.h"
 #include "TerrainLighting.h"
 
-#include "ITerrain.h"
-
 CTerrainTexGen::CTerrainTexGen()
     : m_LayerTexGen()
     , m_LightGen()
@@ -60,7 +58,7 @@ bool CTerrainTexGen::GenerateSurfaceTexture(int flags, CImageEx& surfaceTexture)
 {
     int num = 0;                // progress
 
-    if (!gEnv->p3DEngine->GetITerrain())
+    if (!LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())
     {
         return false;
     }

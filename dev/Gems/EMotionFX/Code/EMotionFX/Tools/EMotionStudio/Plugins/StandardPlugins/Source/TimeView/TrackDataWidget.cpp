@@ -193,12 +193,12 @@ namespace EMStudio
         if (mPlugin->mTrackDataWidget->mDraggingElement == nullptr && mPlugin->mTrackDataWidget->mResizeElement == nullptr && hasFocus())
         {
             painter.setPen(mPlugin->mPenCurTimeHelper);
-            painter.drawLine(mPlugin->mCurMouseX, 14, mPlugin->mCurMouseX, rect.bottom());
+            painter.drawLine(aznumeric_cast<int>(mPlugin->mCurMouseX), 14, aznumeric_cast<int>(mPlugin->mCurMouseX), rect.bottom());
         }
 
         // draw the current time marker
         float startHeight = 0.0f;
-        const float curTimeX = mPlugin->TimeToPixel(mPlugin->mCurTime);
+        const float curTimeX = aznumeric_cast<float>(mPlugin->TimeToPixel(mPlugin->mCurTime));
         painter.setPen(mPlugin->mPenCurTimeHandle);
         painter.drawLine(QPointF(curTimeX, startHeight), QPointF(curTimeX, rect.bottom()));
     }
@@ -218,8 +218,8 @@ namespace EMStudio
 
         const float animationLength = recorder.GetRecordTime();
         const double animEndPixel = mPlugin->TimeToPixel(animationLength);
-        backgroundRect.setLeft(animEndPixel);
-        motionRect.setRight(animEndPixel);
+        backgroundRect.setLeft(aznumeric_cast<int>(animEndPixel));
+        motionRect.setRight(aznumeric_cast<int>(animEndPixel));
         motionRect.setTop(0);
         backgroundRect.setTop(0);
 
@@ -335,12 +335,13 @@ namespace EMStudio
         const bool showNodeNames = mPlugin->mTrackHeaderWidget->mNodeNamesCheckBox->isChecked();
         const bool showMotionFiles = mPlugin->mTrackHeaderWidget->mMotionFilesCheckBox->isChecked();
         const bool limitGraphHeight = mPlugin->mTrackHeaderWidget->mLimitGraphHeightCheckBox->isChecked();
+        const bool interpolate = recorder.GetRecordSettings().mInterpolate;
 
-        float graphHeight = geometry().height() - mGraphStartHeight;
+        float graphHeight = aznumeric_cast<float>(geometry().height() - mGraphStartHeight);
         float graphBottom;
         if (limitGraphHeight == false)
         {
-            graphBottom = geometry().height();
+            graphBottom = aznumeric_cast<float>(geometry().height());
         }
         else
         {
@@ -362,7 +363,7 @@ namespace EMStudio
             double startTimePixel   = mPlugin->TimeToPixel(curItem->mStartTime);
             double endTimePixel     = mPlugin->TimeToPixel(curItem->mEndTime);
 
-            const QRect itemRect(QPoint(startTimePixel, mGraphStartHeight), QPoint(endTimePixel, geometry().height()));
+            const QRect itemRect(QPoint(aznumeric_cast<int>(startTimePixel), mGraphStartHeight), QPoint(aznumeric_cast<int>(endTimePixel), geometry().height()));
             if (rect.intersects(itemRect) == false)
             {
                 continue;
@@ -387,7 +388,7 @@ namespace EMStudio
             }
 
             QPainterPath path;
-            int32 widthInPixels = (endTimePixel - startTimePixel);
+            int32 widthInPixels = aznumeric_cast<int32>(endTimePixel - startTimePixel);
             if (widthInPixels > 0)
             {
                 EMotionFX::KeyTrackLinearDynamic<float, float>* keyTrack = &curItem->mGlobalWeights; // init on global weights
@@ -402,7 +403,7 @@ namespace EMStudio
                     keyTrack = &curItem->mPlayTimes;
                 }
 
-                float lastWeight = keyTrack->GetValueAtTime(0.0f, &curItem->mCachedKey);
+                float lastWeight = keyTrack->GetValueAtTime(0.0f, &curItem->mCachedKey, nullptr, interpolate);
                 const float keyTimeStep = (curItem->mEndTime - curItem->mStartTime) / (float)widthInPixels;
 
                 const int32 pixelStepSize = 1;//(widthInPixels / 300.0f) + 1;
@@ -419,16 +420,16 @@ namespace EMStudio
 
                     if (firstPixel && startTimePixel < 0)
                     {
-                        w = -startTimePixel;
+                        w = aznumeric_cast<int32>(-startTimePixel);
                         firstPixel = false;
                     }
 
-                    const float weight = keyTrack->GetValueAtTime(w * keyTimeStep, &curItem->mCachedKey);
+                    const float weight = keyTrack->GetValueAtTime(w * keyTimeStep, &curItem->mCachedKey, nullptr, interpolate);
                     const float height = graphBottom - weight * graphHeight;
                     path.lineTo(QPointF(startTimePixel + w + 1, height));
                 }
 
-                const float weight = keyTrack->GetValueAtTime(curItem->mEndTime, &curItem->mCachedKey);
+                const float weight = keyTrack->GetValueAtTime(curItem->mEndTime, &curItem->mCachedKey, nullptr, interpolate);
                 const float height = graphBottom - weight * graphHeight;
                 path.lineTo(QPointF(startTimePixel + widthInPixels - 1, height));
                 path.lineTo(QPointF(startTimePixel + widthInPixels, graphBottom + 1));
@@ -437,7 +438,7 @@ namespace EMStudio
         }
 
         // calculate the remapped track list, based on sorted global weight, with the most influencing track on top
-        recorder.ExtractNodeHistoryItems(*actorInstanceData, mPlugin->mCurTime, true, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
+        recorder.ExtractNodeHistoryItems(*actorInstanceData, aznumeric_cast<float>(mPlugin->mCurTime), true, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
 
         // display the values and names
         uint32 offset = 0;
@@ -504,7 +505,7 @@ namespace EMStudio
         const MCore::Array<EMotionFX::Recorder::EventHistoryItem*>& historyItems = actorInstanceData->mEventHistoryItems;
 
         QRect clipRect = rect;
-        clipRect.setRight(mPlugin->TimeToPixel(animationLength));
+        clipRect.setRight(aznumeric_cast<int>(mPlugin->TimeToPixel(animationLength)));
         painter.setClipRect(clipRect);
         painter.setClipping(true);
 
@@ -518,10 +519,10 @@ namespace EMStudio
         {
             EMotionFX::Recorder::EventHistoryItem* curItem = historyItems[i];
 
-            float height = (curItem->mTrackIndex * 20) + mEventsStartHeight;
+            float height = aznumeric_cast<float>((curItem->mTrackIndex * 20) + mEventsStartHeight);
             double startTimePixel   = mPlugin->TimeToPixel(curItem->mStartTime);
 
-            const QRect itemRect(QPoint(startTimePixel - tickHalfWidth, height), QSize(tickHalfWidth * 2, tickHeight));
+            const QRect itemRect(QPoint(aznumeric_cast<int>(startTimePixel - tickHalfWidth), aznumeric_cast<int>(height)), QSize(aznumeric_cast<int>(tickHalfWidth * 2), aznumeric_cast<int>(tickHeight)));
             if (rect.intersects(itemRect) == false)
             {
                 continue;
@@ -562,12 +563,12 @@ namespace EMStudio
             painter.setPen(Qt::red);
             painter.setBrush(Qt::black);
 
-            tickPoints[0] = QPoint(startTimePixel,                  height);
-            tickPoints[1] = QPoint(startTimePixel + tickHalfWidth,    height + tickHeight / 2);
-            tickPoints[2] = QPoint(startTimePixel + tickHalfWidth,    height + tickHeight);
-            tickPoints[3] = QPoint(startTimePixel - tickHalfWidth,    height + tickHeight);
-            tickPoints[4] = QPoint(startTimePixel - tickHalfWidth,    height + tickHeight / 2);
-            tickPoints[5] = QPoint(startTimePixel,                  height);
+            tickPoints[0] = QPoint(aznumeric_cast<int>(startTimePixel),                  aznumeric_cast<int>(height));
+            tickPoints[1] = QPoint(aznumeric_cast<int>(startTimePixel + tickHalfWidth),    aznumeric_cast<int>(height + tickHeight / 2));
+            tickPoints[2] = QPoint(aznumeric_cast<int>(startTimePixel + tickHalfWidth),    aznumeric_cast<int>(height + tickHeight));
+            tickPoints[3] = QPoint(aznumeric_cast<int>(startTimePixel - tickHalfWidth),    aznumeric_cast<int>(height + tickHeight));
+            tickPoints[4] = QPoint(aznumeric_cast<int>(startTimePixel - tickHalfWidth),    aznumeric_cast<int>(height + tickHeight / 2));
+            tickPoints[5] = QPoint(aznumeric_cast<int>(startTimePixel),                  aznumeric_cast<int>(height));
 
             painter.setPen(Qt::NoPen);
             painter.setBrush(gradient);
@@ -610,11 +611,12 @@ namespace EMStudio
         // calculate the remapped track list, based on sorted global weight, with the most influencing track on top
         const bool sorted = mPlugin->mTrackHeaderWidget->mSortNodeActivityCheckBox->isChecked();
         const uint32 graphContentsCode = mPlugin->mTrackHeaderWidget->mNodeContentsComboBox->currentIndex();
-        recorder.ExtractNodeHistoryItems(*actorInstanceData, mPlugin->mCurTime, sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
+        recorder.ExtractNodeHistoryItems(*actorInstanceData, aznumeric_cast<float>(mPlugin->mCurTime), sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
 
         const bool useNodeColors = mPlugin->mTrackHeaderWidget->mNodeTypeColorsCheckBox->isChecked();
         const bool showNodeNames = mPlugin->mTrackHeaderWidget->mNodeNamesCheckBox->isChecked();
         const bool showMotionFiles = mPlugin->mTrackHeaderWidget->mMotionFilesCheckBox->isChecked();
+        const bool interpolate = recorder.GetRecordSettings().mInterpolate;
 
         const uint32 nodeContentsCode = mPlugin->mTrackHeaderWidget->mNodeContentsComboBox->currentIndex();
 
@@ -676,7 +678,7 @@ namespace EMStudio
             painter.setClipRegion(itemRect.toRect());
             painter.setClipping(true);
 
-            int32 widthInPixels = (endTimePixel - startTimePixel);
+            int32 widthInPixels = aznumeric_cast<int32>(endTimePixel - startTimePixel);
             if (widthInPixels > 0)
             {
                 EMotionFX::KeyTrackLinearDynamic<float, float>* keyTrack = &curItem->mGlobalWeights; // init on global weights
@@ -690,7 +692,7 @@ namespace EMStudio
                     keyTrack = &curItem->mPlayTimes;
                 }
 
-                float lastWeight = keyTrack->GetValueAtTime(0.0f, &curItem->mCachedKey);
+                float lastWeight = keyTrack->GetValueAtTime(0.0f, &curItem->mCachedKey, nullptr, interpolate);
                 const float keyTimeStep = (curItem->mEndTime - curItem->mStartTime) / (float)widthInPixels;
 
                 const int32 pixelStepSize = 1;//(widthInPixels / 300.0f) + 1;
@@ -707,17 +709,17 @@ namespace EMStudio
 
                     if (firstPixel && startTimePixel < 0)
                     {
-                        w = -startTimePixel;
+                        w = aznumeric_cast<int>(-startTimePixel);
                         firstPixel = false;
                     }
 
-                    const float weight = keyTrack->GetValueAtTime(w * keyTimeStep, &curItem->mCachedKey);
-                    const float height = itemRect.bottom() - weight * mNodeHistoryItemHeight;
+                    const float weight = keyTrack->GetValueAtTime(w * keyTimeStep, &curItem->mCachedKey, nullptr, interpolate);
+                    const float height = aznumeric_cast<float>(itemRect.bottom() - weight * mNodeHistoryItemHeight);
                     path.lineTo(QPointF(startTimePixel + w + 1, height));
                 }
 
-                const float weight = keyTrack->GetValueAtTime(curItem->mEndTime, &curItem->mCachedKey);
-                const float height = itemRect.bottom() - weight * mNodeHistoryItemHeight;
+                const float weight = keyTrack->GetValueAtTime(curItem->mEndTime, &curItem->mCachedKey, nullptr, interpolate);
+                const float height = aznumeric_cast<float>(itemRect.bottom() - weight * mNodeHistoryItemHeight);
                 path.lineTo(QPointF(startTimePixel + widthInPixels - 1, height));
                 path.lineTo(QPointF(startTimePixel + widthInPixels, itemRect.bottom() + 1));
                 painter.drawPath(path);
@@ -767,7 +769,7 @@ namespace EMStudio
 
             if (!mTempString.empty())
             {
-                painter.drawText(itemRect.left() + 3, itemRect.bottom() - 2, mTempString.c_str());
+                painter.drawText(aznumeric_cast<int>(itemRect.left() + 3), aznumeric_cast<int>(itemRect.bottom() - 2), mTempString.c_str());
             }
 
             painter.setClipping(false);
@@ -935,8 +937,8 @@ namespace EMStudio
                     for (uint32 e = 0; e < numElements; ++e)
                     {
                         TimeTrackElement* element = track->GetElement(e);
-                        if (MCore::Compare<float>::CheckIfIsClose(element->GetStartTime(), copyElement.m_startTime, MCore::Math::epsilon) &&
-                            MCore::Compare<float>::CheckIfIsClose(element->GetEndTime(), copyElement.m_endTime, MCore::Math::epsilon))
+                        if (MCore::Compare<float>::CheckIfIsClose(aznumeric_cast<float>(element->GetStartTime()), copyElement.m_startTime, MCore::Math::epsilon) &&
+                            MCore::Compare<float>::CheckIfIsClose(aznumeric_cast<float>(element->GetEndTime()), copyElement.m_endTime, MCore::Math::epsilon))
                         {
                             element->SetIsCut(true);
                         }
@@ -1062,9 +1064,9 @@ namespace EMStudio
                 {
                     if (recorder.GetIsInPlayMode())
                     {
-                        recorder.SetCurrentPlayTime(mPlugin->GetCurrentTime());
+                        recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                         recorder.SetAutoPlay(false);
-                        emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                        emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     }
                 }
                 else
@@ -1073,8 +1075,8 @@ namespace EMStudio
                     if (motionInstances.size() == 1)
                     {
                         EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                        motionInstance->SetCurrentTime(mPlugin->GetCurrentTime(), false);
-                        emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()), false);
+                        emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     }
                 }
 
@@ -1217,12 +1219,12 @@ namespace EMStudio
     void TrackDataWidget::DoMouseYMoveZoom(int32 deltaY, TimeViewPlugin* plugin)
     {
         // keep the scaling speed in range so that we're not scaling insanely fast
-        float movement = MCore::Min<float>(deltaY, 9.0f);
+        float movement = MCore::Min(aznumeric_cast<float>(deltaY), 9.0f);
         movement = MCore::Max<float>(movement, -9.0f);
 
         // scale relatively to the current scaling value, meaning when the range is bigger we scale faster than when viewing only a very small time range
         float timeScale = plugin->GetTimeScale();
-        timeScale *= 1.0f - 0.01 * movement;
+        timeScale *= 1.0f - 0.01f * movement;
 
         // set the new scaling value
         plugin->SetScale(timeScale);
@@ -1328,7 +1330,7 @@ namespace EMStudio
                     {
                         EMotionFX::MotionInstance* motionInstance = motionInstances[0];
                         motionInstance->SetPause(true);
-                        motionInstance->SetCurrentTime(mPlugin->GetCurrentTime());
+                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     }
                 }
                 else
@@ -1338,12 +1340,12 @@ namespace EMStudio
                         recorder.StartPlayBack();
                     }
 
-                    recorder.SetCurrentPlayTime(mPlugin->GetCurrentTime());
+                    recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     recorder.SetAutoPlay(false);
                 }
 
-                emit mPlugin->ManualTimeChangeStart(mPlugin->GetCurrentTime());
-                emit mPlugin->ManualTimeChange(mPlugin->GetCurrentTime());
+                emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
             }
             else // not inside timeline
             {
@@ -1541,7 +1543,7 @@ namespace EMStudio
             if (elementTrackChanged && mDraggingElement)
             {
                 // lastly fire a signal so that the data can change along with
-                emit ElementTrackChanged(mDraggingElement->GetElementNumber(), mDraggingElement->GetStartTime(), mDraggingElement->GetEndTime(), mDragElementTrack->GetName(), mouseCursorTrack->GetName());
+                emit ElementTrackChanged(mDraggingElement->GetElementNumber(), aznumeric_cast<float>(mDraggingElement->GetStartTime()), aznumeric_cast<float>(mDraggingElement->GetEndTime()), mDragElementTrack->GetName(), mouseCursorTrack->GetName());
             }
             mDragElementTrack = nullptr;
 
@@ -1632,7 +1634,7 @@ namespace EMStudio
         if (motionInstances.size() == 1)
         {
             EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-            motionInstance->SetCurrentTime(dropTime, false);
+            motionInstance->SetCurrentTime(aznumeric_cast<float>(dropTime), false);
             motionInstance->Pause();
         }
     }
@@ -2152,7 +2154,7 @@ namespace EMStudio
                 double pasteTimeInSecs = 0.0;
                 pasteTimeInSecs = mPlugin->PixelToTime(mContextMenuX, true);
 
-                startTime   = pasteTimeInSecs;
+                startTime   = aznumeric_cast<float>(pasteTimeInSecs);
                 endTime     = startTime + duration;
             }
 
@@ -2315,7 +2317,7 @@ namespace EMStudio
         // make sure the mTrackRemap array is up to date
         const bool sorted = mPlugin->mTrackHeaderWidget->mSortNodeActivityCheckBox->isChecked();
         const uint32 graphContentsCode = mPlugin->mTrackHeaderWidget->mNodeContentsComboBox->currentIndex();
-        EMotionFX::GetRecorder().ExtractNodeHistoryItems(*actorInstanceData, mPlugin->mCurTime, sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
+        EMotionFX::GetRecorder().ExtractNodeHistoryItems(*actorInstanceData, aznumeric_cast<float>(mPlugin->mCurTime), sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
 
         // get the history items shortcut
         const MCore::Array<EMotionFX::Recorder::NodeHistoryItem*>&  historyItems = actorInstanceData->mNodeHistoryItems;
@@ -2335,8 +2337,8 @@ namespace EMStudio
                 continue;
             }
 
-            rect.setLeft(startTimePixel);
-            rect.setRight(endTimePixel);
+            rect.setLeft(aznumeric_cast<int>(startTimePixel));
+            rect.setRight(aznumeric_cast<int>(endTimePixel));
             rect.setTop((mNodeRectsStartHeight + (mTrackRemap[curItem->mTrackIndex] * (mNodeHistoryItemHeight + 3)) + 3));
             rect.setBottom(rect.top() + mNodeHistoryItemHeight);
 
@@ -2528,11 +2530,11 @@ namespace EMStudio
         {
             EMotionFX::Recorder::EventHistoryItem* curItem = historyItems[i];
 
-            float height = (curItem->mTrackIndex * 20) + mEventsStartHeight;
+            float height = aznumeric_cast<float>((curItem->mTrackIndex * 20) + mEventsStartHeight);
             double startTimePixel   = mPlugin->TimeToPixel(curItem->mStartTime);
             //double endTimePixel       = mPlugin->TimeToPixel( curItem->mEndTime );
 
-            const QRect rect(QPoint(startTimePixel - tickHalfWidth, height), QSize(tickHalfWidth * 2, tickHeight));
+            const QRect rect(QPoint(aznumeric_cast<int>(startTimePixel - tickHalfWidth), aznumeric_cast<int>(height)), QSize(aznumeric_cast<int>(tickHalfWidth * 2), aznumeric_cast<int>(tickHeight)));
             if (rect.contains(QPoint(x, y)))
             {
                 return curItem;
@@ -2695,7 +2697,7 @@ namespace EMStudio
     {
         painter.setPen(QColor(60, 70, 80));
         painter.setBrush(Qt::NoBrush);
-        painter.drawLine(QPoint(0, heightOffset), QPoint(mPlugin->TimeToPixel(animationLength), heightOffset));
+        painter.drawLine(QPoint(0, heightOffset), QPoint(aznumeric_cast<int>(mPlugin->TimeToPixel(animationLength)), heightOffset));
         return 1;
     }
 }   // namespace EMStudio

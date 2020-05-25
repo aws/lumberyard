@@ -42,7 +42,7 @@ AZStd::vector<ScriptCanvas::Datum> TestMathFunction(std::initializer_list<AZStd:
     EXPECT_NE(nullptr, graph);
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
@@ -110,7 +110,8 @@ TEST_F(ScriptCanvasTestFixture, MathCustom)
     graph->GetEntity()->Init();
 
     const AZ::EntityId graphEntityId = graph->GetEntityId();
-    const AZ::EntityId graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
+
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
@@ -183,7 +184,8 @@ TEST_F(ScriptCanvasTestFixture, MathMixed1)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
+
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
@@ -301,7 +303,8 @@ TEST_F(ScriptCanvasTestFixture, MathMixed2)
     graph->GetEntity()->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+    const ScriptCanvasId& graphUniqueId = graph->GetScriptCanvasId();
+
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
@@ -3563,7 +3566,7 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
 
     { // CreateFromEulerAnglesNode
         Data::QuaternionType baseValue = AZ::ConvertEulerDegreesToQuaternion(AZ::Vector3(1.0f,2.0f,3.0f));
-        auto output = TestMathFunction<CreateFromEulerAnglesNode>({ "Number: Yaw", "Number: Pitch", "Number: Roll" }, { Datum(1.0f), Datum(2.0f), Datum(3.0f) }, { "Result: Quaternion" }, { Datum(AZ::Quaternion()) });
+        auto output = TestMathFunction<CreateFromEulerAnglesNode>({ "Number: Pitch", "Number: Roll", "Number: Yaw" }, { Datum(1.0f), Datum(2.0f), Datum(3.0f) }, { "Result: Quaternion" }, { Datum(AZ::Quaternion()) });
         EXPECT_TRUE(baseValue.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 

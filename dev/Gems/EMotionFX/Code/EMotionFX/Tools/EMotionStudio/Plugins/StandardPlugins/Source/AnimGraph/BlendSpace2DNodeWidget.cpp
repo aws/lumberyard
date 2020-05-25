@@ -67,7 +67,7 @@ namespace EMStudio
         m_highlightedEdgePen.setWidth(2);
 
         m_highlightedDottedPen.setColor(color);
-        m_highlightedDottedPen.setWidth(qreal(0.7)); // width set with qreal which is a typedef of double
+        m_highlightedDottedPen.setWidthF(0.7);
         m_highlightedDottedPen.setStyle(Qt::DotLine);
 
         m_gridPen.setColor(QColor(61, 61, 61));
@@ -597,7 +597,7 @@ namespace EMStudio
 
         int flags = 0;
 
-        const int locX = loc.x();
+        const int locX = aznumeric_cast<int>(loc.x());
         if (locX > refPoint.x())
         {
             if ((locX + s_textWidthMargin) < winWidth)
@@ -621,7 +621,7 @@ namespace EMStudio
             }
         }
 
-        const int locY = loc.y();
+        const int locY = aznumeric_cast<int>(loc.y());
         if (locY > refPoint.y())
         {
             if (locY + s_textHeightMargin < winHeight)
@@ -680,26 +680,26 @@ namespace EMStudio
         float left, right, top, bottom;
         if (flags & Qt::AlignLeft)
         {
-            left = loc.x() + s_infoTextGapToPos;
+            left = aznumeric_cast<float>(loc.x() + s_infoTextGapToPos);
             right = left + s_maxTextDim;
         }
         else
         {
-            right = loc.x() - s_infoTextGapToPos;
+            right = aznumeric_cast<float>(loc.x() - s_infoTextGapToPos);
             left = right - s_maxTextDim;
         }
         if (flags & Qt::AlignTop)
         {
-            top = loc.y() + s_infoTextGapToPos;
+            top = aznumeric_cast<float>(loc.y() + s_infoTextGapToPos);
             bottom = top + s_maxTextDim;
         }
         else
         {
-            bottom = loc.y() - s_infoTextGapToPos;
+            bottom = aznumeric_cast<float>(loc.y() - s_infoTextGapToPos);
             top = bottom - s_maxTextDim;
         }
 
-        QRect rect(QPoint(left, top), QPoint(right, bottom));
+        QRect rect(QPoint(aznumeric_cast<int>(left), aznumeric_cast<int>(top)), QPoint(aznumeric_cast<int>(right), aznumeric_cast<int>(bottom)));
 
         QRect boundRect = m_infoTextFontMetrics->boundingRect(rect, flags, textToDraw);
         boundRect.adjust(-3, -3, 3, 3);
@@ -779,8 +779,8 @@ namespace EMStudio
         const AZ::u32 numMotions = (AZ::u32)m_renderPoints.size();
         for (AZ::u32 i = 0; i < numMotions; ++i)
         {
-            const float diffX = windowX - m_renderPoints[i].x();
-            const float diffY = windowY - m_renderPoints[i].y();
+            const float diffX = aznumeric_cast<float>(windowX - m_renderPoints[i].x());
+            const float diffY = aznumeric_cast<float>(windowY - m_renderPoints[i].y());
             const float distSqr = diffX * diffX + diffY * diffY;
             if (distSqr < minDistSqr)
             {

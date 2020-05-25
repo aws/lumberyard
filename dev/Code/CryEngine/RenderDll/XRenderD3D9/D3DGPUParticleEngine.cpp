@@ -360,7 +360,7 @@ struct SGPUWindArea
 {
     enum AreaShape
     {
-        SHAPE_BOX = 0, SHAPE_SPHERE
+        WIND_SHAPE_BOX = 0, WIND_SHAPE_SPHERE = 1
     };
 
     Vec3 wind_direction;
@@ -1268,7 +1268,7 @@ static int SendWindDataToGPU(GPUEmitterResources& resources, const SPhysEnviron*
             gpuData[j].falloffScale = windAreas[i].m_fFalloffScale;
             gpuData[j].aabb_min = windAreas[i].m_bbArea.min;
             gpuData[j].aabb_max = windAreas[i].m_bbArea.max;
-            gpuData[j].shape = windAreas[i].m_nGeomShape == GEOM_BOX ? SGPUWindArea::SHAPE_BOX : SGPUWindArea::SHAPE_SPHERE;
+            gpuData[j].shape = windAreas[i].m_nGeomShape == GEOM_BOX ? SGPUWindArea::WIND_SHAPE_BOX : SGPUWindArea::WIND_SHAPE_SPHERE;
             gpuData[j].matToLocal = Matrix34(windAreas[i].m_matToLocal);
 
             j++;

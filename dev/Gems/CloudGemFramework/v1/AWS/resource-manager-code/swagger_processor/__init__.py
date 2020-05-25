@@ -18,8 +18,8 @@ from resource_manager.errors import HandledError
 
 import swagger_spec_validator
 
-import interface
-import lambda_dispatch
+from .interface import *
+from .lambda_dispatch import *
 
 
 def add_cli_commands(subparsers, addCommonArgs):
@@ -52,7 +52,7 @@ def _process_swagger_cli(context, args):
         with open(args.output, 'w') as file:
             file.write(result)
     else:
-        print result
+        print(result)
 
 
 def process_swagger_path(context, swagger_path):
@@ -61,24 +61,25 @@ def process_swagger_path(context, swagger_path):
         with open(swagger_path, 'r') as swagger_file:
             swagger_content = swagger_file.read()
     except IOError as e:
-        raise HandledError('Could not read file {}: {}'.format(swagger_path, e.message))
+        raise HandledError('Could not read file {}: {}'.format(swagger_path, str(e)))
 
     try:
         swagger = json.loads(swagger_content)
     except ValueError as e:
-        raise HandledError('Cloud not parse {} as JSON: {}'.format(swagger_path, e.message))
+        raise HandledError('Cloud not parse {} as JSON: {}'.format(swagger_path, str(e)))
 
     try:
         process_swagger(context, swagger)
     except ValueError as e:
-        raise HandledError('Could not process {}: {}'.format(swagger_path, e.message))
+        raise HandledError('Could not process {}: {}'.format(swagger_path, str(e)))
 
     try:
         content = json.dumps(swagger, sort_keys=True, indent=4)
     except ValueError as e:
-        raise HandledError('Could not convert processed swagger to JSON: {}'.format(e.message))
+        raise HandledError('Could not convert processed swagger to JSON: {}'.format(str(e)))
 
     return content
+
 
 def process_swagger(context, swagger):
     
@@ -92,6 +93,7 @@ def process_swagger(context, swagger):
 
     # make sure we produce a valid document
     validate_swagger(swagger)
+
 
 def validate_swagger(swagger):
     try:
@@ -113,4 +115,4 @@ def validate_swagger(swagger):
             content = json.dumps(swagger, indent=4, sort_keys=True)
         except:
             content = swagger
-        raise ValueError('Swagger validation error: {}\n\nSwagger content:\n{}\n'.format(e.message, content))
+        raise ValueError('Swagger validation error: {}\n\nSwagger content:\n{}\n'.format(str(e), content))

@@ -52,18 +52,26 @@ namespace PhysX
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("TerrainService", 0x28ee7719));
+            provided.push_back(AZ_CRC("PhysicsTerrainService", 0xb2dbb88d));
         }
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("TerrainService", 0x28ee7719));
+            incompatible.push_back(AZ_CRC("PhysicsTerrainService", 0xb2dbb88d));
             incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
+            // Technically speaking this component requires a "TerrainService" component.
+            // But a "TerrainService" component is a Level component (See 'Legacy Terrain' component for an example).
+            // For historical reasons this is a regular component and to prevent integration errors with customers
+            // (especially customers that have this component in Slices), this method does not
+            // register dependencies.
         }
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
+            // Depends on TerrainService, but not required. Simply guarantees that if a "TerrainService" component
+            // exists it will be activated before the PhysX Terrain component is activated.
+            dependent.push_back(AZ_CRC("TerrainService", 0x28ee7719));
         }
 
         // AZ::Component
@@ -81,7 +89,7 @@ namespace PhysX
         void OnDeselected() override;
 
         // PhysX::ConfigurationNotificationBus
-        virtual void OnConfigurationRefreshed(const PhysX::Configuration& configuration) override;
+        virtual void OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration) override;
 
     private:
         // ToolsApplicationNotificationBus

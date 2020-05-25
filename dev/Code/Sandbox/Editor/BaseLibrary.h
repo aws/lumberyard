@@ -45,7 +45,7 @@ public:
     const QString& GetName() const;
 
     //! Set new filename for this library.
-    virtual bool SetFilename(const QString& filename, bool checkForUnique = true) { m_filename = filename; m_filename.toLower(); return true; };
+    virtual bool SetFilename(const QString& filename, bool checkForUnique = true) { m_filename = filename.toLower(); return true; };
     const QString& GetFilename() const { return m_filename; };
 
     virtual bool Save() = 0;
@@ -122,8 +122,10 @@ protected:
     // Manager.
     IBaseLibraryManager* m_pManager;
 
+    AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     // Array of all our library items.
     std::vector<_smart_ptr<CBaseLibraryItem> > m_items;
+    AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };
 
 #endif // CRYINCLUDE_EDITOR_BASELIBRARY_H

@@ -19,7 +19,7 @@ def build(bld):
         platforms  = ['win', 'darwin', 'linux'],
         configurations = ['debug_test', 'profile_test'],
 
-        use = ['AzCore'],
+        use = ['AzCore','AzTest', 'AzTestShared'],
 
         features = ['az_code_gen'],
 

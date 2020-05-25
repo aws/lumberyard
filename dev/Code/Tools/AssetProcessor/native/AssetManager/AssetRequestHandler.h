@@ -60,10 +60,14 @@ Q_SIGNALS:
         //! Request that a compile group is created for all assets that match that platform and search term.
         //! emitting this signal will ultimately result in OnCompileGroupCreated and OnCompileGroupFinished being executed
         //! at some later time with the same groupID.
-        void RequestCompileGroup(NetworkRequestID groupID, QString platform, QString searchTerm, bool isStatusRequest);
+        void RequestCompileGroup(NetworkRequestID groupID, QString platform, QString searchTerm, AZ::Data::AssetId assetId, bool isStatusRequest);
 
         //! This request goes out to ask the system in general whether an asset can be found (as a product).
-        void RequestAssetExists(NetworkRequestID groupID, QString platform, QString searchTerm);
+        void RequestAssetExists(NetworkRequestID groupID, QString platform, QString searchTerm, AZ::Data::AssetId assetId);
+
+        void RequestEscalateAssetByUuid(QString platform, AZ::Uuid escalatedAssetUUID);
+        void RequestEscalateAssetBySearchTerm(QString platform, QString escalatedSearchTerm);
+
     public Q_SLOTS:
         //! ProcessGetAssetStatus - someone on the network wants to know about the status of an asset.
         //! isStatusRequest will be TRUE if its a status request.  If its false it means its a compile request
@@ -107,16 +111,18 @@ Q_SIGNALS:
         class AssetRequestLine
         {
         public:
-            AssetRequestLine(QString platform, QString searchTerm, bool isStatusRequest);
+            AssetRequestLine(QString platform, QString searchTerm, const AZ::Data::AssetId& assetId, bool isStatusRequest);
             bool IsStatusRequest() const;
             QString GetPlatform() const;
             QString GetSearchTerm() const;
-
+            const AZ::Data::AssetId& GetAssetId() const;
+            QString GetDisplayString() const;
 
         private:
             bool m_isStatusRequest;
             QString m_platform;
             QString m_searchTerm;
+            AZ::Data::AssetId m_assetId;
         };
 
         // this map keeps track of whether a request was for a compile (FALSE), or a status (TRUE)

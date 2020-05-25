@@ -4100,14 +4100,40 @@ namespace UnitTest
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(1.0f);
-                    EXPECT_TRUE(splineAddress.m_segmentIndex == 3);
-                    EXPECT_TRUE(splineAddress.m_segmentFraction == 1.0f);
+                    EXPECT_EQ(3, splineAddress.m_segmentIndex);
+                    EXPECT_FLOAT_EQ(1.0f, splineAddress.m_segmentFraction);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.6f);
+                    EXPECT_EQ(2, splineAddress.m_segmentIndex);
+                    EXPECT_FLOAT_EQ(0.4f, splineAddress.m_segmentFraction);
                 }
 
                 {
                     SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.5f);
-                    EXPECT_TRUE(splineAddress.m_segmentIndex == 2);
-                    EXPECT_FLOAT_EQ(0.0f, splineAddress.m_segmentFraction);
+                    // Due to /fp:fast differences in VS2019, the number of segments the Spline Address
+                    // returns either be 1 or 2.
+                    // To workaround this issue, the segment fraction is used to determine if the spline address is near
+                    // the end of the second segment
+                    EXPECT_GE(splineAddress.m_segmentIndex, 1);
+                    EXPECT_LE(splineAddress.m_segmentIndex, 2);
+
+                    // The following performs a check to validate spline address is "near" two segments
+                    // in length
+                    switch (splineAddress.m_segmentIndex)
+                    {
+                    case 1:
+                        // When the segment index is 1, the percentage along segment index 1 should be close to 100%
+                        EXPECT_FLOAT_EQ(1.0f, splineAddress.m_segmentFraction);
+                        break;
+                    case 2:
+                        // When the segment index is 2, the percentage along segment index 2 should be close to 0%
+                        EXPECT_FLOAT_EQ(0.0f, splineAddress.m_segmentFraction);
+                        break;
+                    default:
+                        ADD_FAILURE() << "The four vertex Bezier Spline that has been split in half should be close to two segments in length";
+                    }
                 }
             }
         }

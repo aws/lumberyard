@@ -16,9 +16,11 @@
 
 #include "StdAfx.h"
 #include "ToolBox.h"
-#include "Util/BoostPythonHelpers.h"
 #include "IconManager.h"
 #include "ActionManager.h"
+
+#include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 //////////////////////////////////////////////////////////////////////////
 // CToolBoxCommand
@@ -45,7 +47,8 @@ void CToolBoxCommand::Execute() const
 {
     if (m_type == CToolBoxCommand::eT_SCRIPT_COMMAND)
     {
-        PyScript::Execute(m_text.toUtf8().data());
+        using namespace AzToolsFramework;
+        EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByString, m_text.toUtf8().data());
     }
     else if (m_type == CToolBoxCommand::eT_CONSOLE_COMMAND)
     {
@@ -58,6 +61,14 @@ void CToolBoxCommand::Execute() const
         }
         else
         {
+            // does the command required an active Python interpreter?
+            if (m_text.contains("pyRunFile") && !AzToolsFramework::EditorPythonRunnerRequestBus::HasHandlers())
+            {
+                AZ_Warning("toolbar", false, "The command '%s' requires an embedded Python interpreter. "
+                                             "The gem named EditorPythonBindings offers this service. "
+                                             "Please enable this gem for the project.", m_text.toUtf8().data());
+                return;
+            }
             GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(m_text.toUtf8().data());
         }
     }
@@ -337,7 +348,6 @@ void CToolBoxManager::Load(ActionManager* actionManager)
 
 void CToolBoxManager::LoadShelves(QString scriptPath, QString shelvesPath, ActionManager* actionManager)
 {
-    GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file_parameters 'addToSysPath.py' '%1'").arg(scriptPath));
     IFileUtil::FileArray files;
     CFileUtil::ScanDirectory(shelvesPath, "*.xml", files);
 
@@ -404,6 +414,12 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
         }
     }
 
+    const char* engineRoot = nullptr;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+    QDir engineDir = engineRoot ? QDir(engineRoot) : QDir::current();
+
+    string enginePath = PathUtil::AddSlash(engineDir.absolutePath().toUtf8().data());
+
     for (int i = 0; i < toolBoxNode->getChildCount(); ++i)
     {
         XmlNodeRef macroNode = toolBoxNode->getChild(i);
@@ -429,7 +445,7 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
         }
 
         string shelfPath = PathUtil::GetParentDirectory(xmlpath.toUtf8().data());
-        string fullIconPath = PathUtil::AddSlash(shelfPath.c_str());
+        string fullIconPath = enginePath + PathUtil::AddSlash(shelfPath.c_str());
         fullIconPath.append(iconPath.toUtf8().data());
 
         pMacro->SetIconPath(fullIconPath);

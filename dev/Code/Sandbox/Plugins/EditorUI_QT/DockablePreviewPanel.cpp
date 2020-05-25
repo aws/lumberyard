@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "EditorUI_QT_Precompiled.h"
 #include "DockablePreviewPanel.h"
 #include "DockWidgetTitleBar.h"
 #include "PreviewWindowView.h"

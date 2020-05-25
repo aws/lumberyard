@@ -12,6 +12,9 @@ function SpawnerScriptSample:OnActivate()
         self.spawnerNotiBusHandler = SpawnerComponentNotificationBus.Connect(self, self.entityId)
     end
     Script.ReloadScript("some/path/test3.lua")
+    if self.script.reloadScriptVar == true then
+        
+    end
 end
 
 -- This handler is called when we start spawning a slice.

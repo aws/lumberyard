@@ -51,8 +51,7 @@
 #endif
 
 #if defined(AZ_PLATFORM_MAC)
-#include <AppKit/NSRunningApplication.h>
-#include <CoreServices/CoreServices.h>
+#include <ApplicationServices/ApplicationServices.h>
 
 #include "MacDockIconHandler.h"
 #endif
@@ -94,7 +93,12 @@ namespace
 GUIApplicationManager::GUIApplicationManager(int* argc, char*** argv, QObject* parent)
     : BatchApplicationManager(argc, argv, parent)
 {
-    
+#if defined(AZ_PLATFORM_MAC)
+    // Since AP is not shipped as a '.app' package, it will not receive keyboard focus
+    // unless we tell the OS specifically to treat it as a foreground application.
+    ProcessSerialNumber psn = { 0, kCurrentProcess };
+    TransformProcessType(&psn, kProcessTransformToForegroundApplication);
+#endif
 }
 
 
@@ -391,7 +395,7 @@ bool GUIApplicationManager::Run()
 
 void GUIApplicationManager::NegotiationFailed()
 {
-    QString message = QCoreApplication::translate("error", "An attempt to connect to the game or editor has failed. The game or editor appears to be running from a different folder. Please restart the asset processor from the correct branch.");
+    QString message = QCoreApplication::translate("error", "An attempt to connect to the game or editor has failed. The game or editor appears to be running from a different folder or a different project. Please restart the asset processor from the correct branch or make sure the game/editor is running the same project as the asset processor.");
     QMetaObject::invokeMethod(this, "ShowMessageBox", Qt::QueuedConnection, Q_ARG(QString, QString("Negotiation Failed")), Q_ARG(QString, message), Q_ARG(bool, false));
 }
 

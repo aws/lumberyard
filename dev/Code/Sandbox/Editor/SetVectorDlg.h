@@ -37,6 +37,7 @@ public:
     CSetVectorDlg(QWidget* pParent = NULL);   // standard constructor
     ~CSetVectorDlg();
 
+    static Vec3 GetVectorFromString(const QString& vecString);
     // Implementation
 protected:
     void OnInitDialog();

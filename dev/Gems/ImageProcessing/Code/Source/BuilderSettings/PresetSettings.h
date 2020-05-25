@@ -16,7 +16,7 @@
 #include <BuilderSettings/ImageProcessingDefines.h>
 #include <BuilderSettings/CubemapSettings.h>
 #include <BuilderSettings/MipmapSettings.h>
-#include <BuilderSettings/PixelFormats.h>
+#include <ImageProcessing/PixelFormats.h>
 
 namespace ImageProcessing
 {

@@ -28,7 +28,7 @@ namespace ScriptCanvas
         //! BusIdType represents a unique id for the execution component
         //! Because multiple Script Canvas graphs can execute on the same entity
         //! this is not an "EntityId" in the sense that it uniquely identifies an entity.
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvasId;
 
         virtual AZStd::string_view GetLastErrorDescription() const = 0;
         virtual void HandleError(const Node& callStackTop) = 0;
@@ -45,13 +45,13 @@ namespace ScriptCanvas
     ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
     if (inErrorState)\
     {\
-        ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::HandleError, (node));\
+        ScriptCanvas::ErrorReporterBus::Event(node.GetOwningScriptCanvasId(), &ScriptCanvas::ErrorReporter::HandleError, (node));\
     }
 
 #define SCRIPTCANVAS_REPORT_ERROR(node, ...)\
-    ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::ReportError, (node), __VA_ARGS__)
+    ScriptCanvas::ErrorReporterBus::Event(node.GetOwningScriptCanvasId(), &ScriptCanvas::ErrorReporter::ReportError, (node), __VA_ARGS__)
 
 #define SCRIPTCANVAS_RETURN_IF_ERROR_STATE(node)\
     bool inErrorState = false;\
-    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
+    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetOwningScriptCanvasId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
     if (inErrorState) { return; }  

@@ -36,7 +36,11 @@ namespace PhysX
             explicit EditorWindow(QWidget* parent = nullptr);
 
         private:
-            void SaveConfiguration(const PhysX::Configuration& configuration);
+            static void SaveConfiguration(
+                const PhysX::PhysXConfiguration& physxConfiguration,
+                const Physics::CollisionConfiguration& collisionConfiguration,
+                const Physics::WorldConfiguration& worldConfiguration,
+                const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary);
 
             QScopedPointer<Ui::EditorWindowClass> m_ui;
         };

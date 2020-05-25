@@ -36,7 +36,7 @@ namespace GameLift
 
         virtual bool IsGameLiftServer() const = 0;
 
-#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
+#if defined(BUILD_GAMELIFT_CLIENT)
         // Start GridMate client service for GameLift sessions
         virtual GridMate::GameLiftClientService* StartClientService(const GridMate::GameLiftClientServiceDesc& desc) = 0;
 
@@ -47,7 +47,7 @@ namespace GameLift
         virtual GridMate::GameLiftClientService* GetClientService() = 0;
 #endif
 
-#if BUILD_GAMELIFT_SERVER
+#if defined(BUILD_GAMELIFT_SERVER)
         // Start GridMate server service for GameLift sessions
         virtual GridMate::GameLiftServerService* StartServerService(const GridMate::GameLiftServerServiceDesc& desc) = 0;
 

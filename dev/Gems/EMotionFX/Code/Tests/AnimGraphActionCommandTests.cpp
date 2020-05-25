@@ -22,6 +22,7 @@
 #include <MCore/Source/CommandGroup.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <Tests/AnimGraphFixture.h>
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -32,19 +33,15 @@ namespace EMotionFX
         void ConstructGraph() override
         {
             AnimGraphFixture::ConstructGraph();
-
-            m_stateA = aznew AnimGraphMotionNode();
-            m_stateA->SetName("A");
-            m_rootStateMachine->AddChildNode(m_stateA);
-            m_rootStateMachine->SetEntryState(m_stateA);
-
-            m_stateB = aznew AnimGraphMotionNode();
-            m_stateB->SetName("B");
-            m_rootStateMachine->AddChildNode(m_stateB);
-
+            m_motionNodeAnimGraph = AnimGraphFactory::Create<TwoMotionNodeAnimGraph>();
+            m_rootStateMachine = m_motionNodeAnimGraph->GetRootStateMachine();
+            m_stateA = m_motionNodeAnimGraph->GetMotionNodeA();
+            m_stateB = m_motionNodeAnimGraph->GetMotionNodeB();
             m_transition = AddTransition(m_stateA, m_stateB, 1.0f);
+            m_motionNodeAnimGraph->InitAfterLoading();
         }
 
+        AZStd::unique_ptr<TwoMotionNodeAnimGraph> m_motionNodeAnimGraph;
         AnimGraphNode* m_stateA = nullptr;
         AnimGraphNode* m_stateB = nullptr;
         AnimGraphStateTransition* m_transition = nullptr;
@@ -161,10 +158,10 @@ namespace EMotionFX
             << "There should be exactly one state action.";
 
         // 2. Remove the whole state including the action.
-        CommandSystem::DeleteNodes(&commandGroup, m_animGraph, { m_stateA });
+        CommandSystem::DeleteNodes(&commandGroup, m_motionNodeAnimGraph.get(), { m_stateA });
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
         commandGroup.RemoveAllCommands();
-        EXPECT_EQ(nullptr, m_animGraph->RecursiveFindNodeByName("A")) << "State A should be gone.";
+        EXPECT_EQ(nullptr, m_motionNodeAnimGraph->RecursiveFindNodeByName("A")) << "State A should be gone.";
 
         // 3. Undo remove state.
         EXPECT_TRUE(commandManager.Undo(result));

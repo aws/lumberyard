@@ -59,12 +59,12 @@ namespace InputNodes
 
         //////////////////////////////////////////////////////////////////////////
         /// ScriptCanvas_Node
-        void OnInputSignal(const ScriptCanvas::SlotId& slotId) override;
+        void OnInputChanged(const ScriptCanvas::Datum& input, const ScriptCanvas::SlotId& slotId) override;
 
     protected:
         //////////////////////////////////////////////////////////////////////////
         /// Node
-        void OnActivate() override;
+        void OnPostActivate() override;
         void OnDeactivate() override;
 
         //////////////////////////////////////////////////////////////////////////

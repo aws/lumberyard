@@ -10,17 +10,18 @@
 #
 # $Revision$
 
-
 import json
 import datetime
 import botocore
+from six import text_type
+
 
 class SafeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
         elif isinstance(obj, datetime.datetime):
-            return unicode(obj)
+            return text_type(obj)
         elif isinstance(obj, botocore.response.StreamingBody):
             return str(obj)
         return '(cannot convert to JSON: {})'.format(type(obj))

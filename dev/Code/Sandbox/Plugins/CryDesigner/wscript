@@ -32,15 +32,13 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS',
                            'QT5NETWORK',
-                           'BOOSTPYTHON',
                            'AWS_CPP_SDK_CORE',
                            'AWS_CPP_SDK_COGNITO_IDENTITY',
                            'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
                            'AWS_CPP_SDK_MOBILEANALYTICS'],
         pch            = 'StdAfx.cpp',
-        features        = ['qt5', 'EmbeddedPython'],
-        defines         = ['USE_PYTHON_SCRIPTING',
-                           'SANDBOX_IMPORTS',
+        features        = ['qt5'],
+        defines         = ['SANDBOX_IMPORTS',
                            'DISABLE_UVMAPPING_WINDOW'],
         includes        = ['.',
                            bld.Path('Code/CryEngine/CryCommon'),
@@ -48,12 +46,6 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor/Include'),
                            '..'],
 
-        clang_enable_rtti = True,
-
-        darwin_x64_lib  = ['python2.7'],
-        win_x64_clang_cxxflags 	= ['-fexceptions', #BOOSTPYTHON
-                                  '-Wno-inconsistent-dllimport', #BOOSTPYTHON
-                                  '-Wno-deprecated-register'], #BOOSTPYTHON
         darwin_cxxflags = ['-Wno-deprecated-register'],
 
         # Testing

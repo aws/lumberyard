@@ -118,34 +118,11 @@ namespace AzToolsFramework
         /// The unique id of the manager this manipulator was registered with.
         ManipulatorManagerId GetManipulatorManagerId() const { return m_manipulatorManagerId; }
 
-        /// GetEntityId() Deprecated - Now use EntityIds().
-        /// A single manipulator can be used with 0 - * entities.
-        AZ_DEPRECATED(, "GetEntityId() is deprecated, please use EntityIds()")
-        static AZ::EntityId GetEntityId() { return AZ::EntityId(); }
-
-        /// The id of the Entities this manipulator is associated with.
-        AZ_DEPRECATED(, "EntityIds() is deprecated, please use EntityComponentIdPairs()")
-        const AZStd::unordered_set<AZ::EntityId> EntityIds() const
-        {
-            AZStd::unordered_set<AZ::EntityId> entityIds;
-            for (const AZ::EntityComponentIdPair& entityComponentIdPair : m_entityComponentIdPairs)
-            {
-                entityIds.insert(entityComponentIdPair.GetEntityId());
-            }
-
-            return entityIds;
-        }
-
         /// Returns all EntityComponentIdPairs associated with this manipulator.
         const EntityComponentIds& EntityComponentIdPairs() const
         {
             return m_entityComponentIdPairs;
         }
-
-        // Note: intentionally left commented (disabled) to stop warnings firing while this call is still in use.
-        // AZ_DEPRECATED(, "AddEntityId() is deprecated, please use AddEntityComponentIdPair()")
-        /// Add an entity the manipulator is responsible for.
-        void AddEntityId(AZ::EntityId entityId);
 
         /// Add an entity and component the manipulator is responsible for.
         void AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
@@ -262,16 +239,11 @@ namespace AzToolsFramework
         void Register(ManipulatorManagerId manipulatorManagerId);
         void Unregister();
         void SetBoundsDirty();
-        AZ_DEPRECATED(, "AddEntityId() is deprecated, please use AddEntityComponentIdPair()")
-        void AddEntityId(AZ::EntityId entityId);
         void AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
         void RemoveEntityId(AZ::EntityId entityId);
         void RemoveEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
         bool PerformingAction();
         bool Registered();
-
-        AZ_DEPRECATED(, "GetPosition() is deprecated, please use GetLocalTransform().GetTranslation()")
-        AZ::Vector3 GetPosition() const { return m_localTransform.GetPosition(); }
 
         const AZ::Transform& GetLocalTransform() const { return m_localTransform; }
         const AZ::Transform& GetSpace() const { return m_space; }

@@ -11,6 +11,7 @@
 */
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QCompleter>
 #include <QDialog>
 #include <QLineEdit>
@@ -19,13 +20,14 @@
 #include <QTableView>
 #include <QTimer>
 #include <QWidget>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Memory/SystemAllocator.h>
 
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Utils/StateControllers/StackStateController.h>
-#include <GraphCanvas/Widgets/ComboBox/ComboBoxModel.h>
+#include <GraphCanvas/Widgets/ComboBox/ComboBoxItemModelInterface.h>
 
 namespace GraphCanvas
 {
@@ -54,11 +56,11 @@ namespace GraphCanvas
     {
         Q_OBJECT
     public:
-        GraphCanvasComboBoxMenu(ComboBoxModelInterface* model, QWidget* parent = nullptr);
+        GraphCanvasComboBoxMenu(ComboBoxItemModelInterface* model, QWidget* parent = nullptr);
         ~GraphCanvasComboBoxMenu() override;
 
-        ComboBoxModelInterface* GetInterface();
-        const ComboBoxModelInterface* GetInterface() const;
+        ComboBoxItemModelInterface* GetInterface();
+        const ComboBoxItemModelInterface* GetInterface() const;
 
         GraphCanvasComboBoxFilterProxyModel* GetProxyModel();
         const GraphCanvasComboBoxFilterProxyModel* GetProxyModel() const;
@@ -79,6 +81,7 @@ namespace GraphCanvas
 
         void SetSelectedIndex(QModelIndex index);
         QModelIndex GetSelectedIndex() const;
+        QModelIndex GetSelectedSourceIndex() const;
 
         void OnTableClicked(const QModelIndex& modelIndex);
 
@@ -102,7 +105,7 @@ namespace GraphCanvas
 
         QTableView m_tableView;
 
-        ComboBoxModelInterface* m_modelInterface;
+        ComboBoxItemModelInterface* m_modelInterface;
         GraphCanvasComboBoxFilterProxyModel m_filterProxyModel;
 
         GraphCanvas::StateSetter<bool> m_disableHidingStateSetter;
@@ -119,19 +122,25 @@ namespace GraphCanvas
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasComboBox, AZ::SystemAllocator, 0);
         
-        GraphCanvasComboBox(ComboBoxModelInterface* comboBoxModel, QWidget* parent = nullptr);
+        GraphCanvasComboBox(ComboBoxItemModelInterface* comboBoxModel, QWidget* parent = nullptr);
         ~GraphCanvasComboBox();
 
         void RegisterViewId(const ViewId& viewId);
         void SetAnchorPoint(QPoint globalPoint);
         void SetMenuWidth(qreal width);
         
-        void SetSelectedIndex(const QModelIndex& selectedIndex);
+        void SetSelectedIndex(const QModelIndex& sourceIndex);
         QModelIndex GetSelectedIndex() const;
+
+        // Weird issue where the background color gets dropped when provide the override. Going to pass it in for now.
+        void SetOutline(const QBrush& brush, const QColor& backgroundColor);
+        void SetOutlineColor(const QColor& color, const QColor& backgroundColor);
+        void SetOutlineColor(const QGradient& gradient, const QColor& backgroundColor);
+        void ClearOutlineColor();
 
         void ResetComboBox();
         void CancelInput();
-        void HideMenu();        
+        void HideMenu();
 
         bool IsMenuVisible() const;
 
@@ -158,12 +167,15 @@ namespace GraphCanvas
         void OnFocusOut();
         
     protected:
+
+        void OnIndexSelected(QModelIndex proxyIndex);
         
         void OnTextChanged();
         void OnOptionsClicked();
         void OnReturnPressed();
         void OnEditComplete();
-        
+
+        void ClearFilter();
         void UpdateFilter();
         void CloseMenu();
 
@@ -207,16 +219,14 @@ namespace GraphCanvas
         
         bool m_ignoreNextComplete;
         bool m_recursionBlocker;
-    
-        QModelIndex m_selectedIndex;
+
+        QString m_selectedName;
         
         QCompleter m_completer;
         GraphCanvasComboBoxMenu m_comboBoxMenu;
 
-        ComboBoxModelInterface* m_modelInterface;
+        ComboBoxItemModelInterface* m_modelInterface;
         
         GraphCanvas::StateSetter<bool> m_disableHidingStateSetter;
     };
-    
-    
 }

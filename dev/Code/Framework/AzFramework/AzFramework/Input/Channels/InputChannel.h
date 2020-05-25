@@ -236,7 +236,7 @@ namespace AzFramework
     template<class CustomDataType>
     inline const CustomDataType* InputChannel::GetCustomData() const
     {
-        AZ_STATIC_ASSERT((AZStd::is_base_of<CustomData, CustomDataType>::value),
+        static_assert((AZStd::is_base_of<CustomData, CustomDataType>::value),
             "Custom input data must inherit from InputChannel::CustomData");
 
         const CustomData* customData = GetCustomData();

@@ -134,8 +134,7 @@ void ParticleLibraryAutoRecovery::Load()
         QString xml;
         settings.setArrayIndex(arrayIndex++);
         xml = settings.value("xml").toString();
-        filepath = settings.value("filepath").toString();
-        filepath.toLower();
+        filepath = settings.value("filepath").toString().toLower();
         if (!(xml.length() <= 0 && filepath.length() <= 0))
         {
             XmlNodeRef node = GetIEditor()->GetSystem()->LoadXmlFromBuffer(xml.toStdString().c_str(), xml.length());

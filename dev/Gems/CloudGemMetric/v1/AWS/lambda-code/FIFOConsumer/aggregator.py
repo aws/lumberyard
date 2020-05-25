@@ -1,5 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 from partitioner import Partitioner
-from StringIO import StringIO
 from compression import Compress, NoCompression, CompressionClassFactory
 from sensitivity import SensitivityClassFactory
 from payload import CSV, JSON, PayloadClassFactory
@@ -15,6 +25,7 @@ import logging
 import metric_schema
 import os
 import json
+from six import string_types
 
 
 class Aggregator(object):
@@ -79,8 +90,8 @@ class Aggregator(object):
     def partition(self, token, row, sensitivity_type):        
         #schema hash      
         columns = row.keys()
-        columns = [i.decode('UTF-8') if isinstance(i, basestring) else i for i in columns]
-        columns.sort()   
+        columns = [i if isinstance(i, string_types) else i for i in columns]
+        columns.sort()
         rows_as_string = str(columns)                       
         schema_hash = hash(rows_as_string)         
         event_name = row[metric_schema.EVENT.id] 

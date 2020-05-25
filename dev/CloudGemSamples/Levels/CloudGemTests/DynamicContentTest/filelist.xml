@@ -1,6 +1,6 @@
-<download name="dynamiccontenttest" type="Map">
+<download name="DynamicContentTest" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="9882" md5="ef3e5bd1f7b7b842705b9f1d315dfdf8"/>
+  <file src="level.pak" dest="level.pak" size="9809" md5="a24ec63433328b57c41016d326ba0157"/>
  </files>
 </download>

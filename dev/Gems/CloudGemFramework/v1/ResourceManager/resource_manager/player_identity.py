@@ -9,11 +9,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
+import json
 
-import aws
-import botocore
-import json 
-from errors import HandledError
+from botocore.exceptions import ClientError
+
+from .errors import HandledError
 from resource_manager_common import constant
 
 key = 'player-access/'+constant.AUTH_SETTINGS_FILENAME
@@ -31,35 +31,36 @@ standard_auth_provider_uris = {
     facebook: facebook_uri
 }
 
+
 def add_login_provider(context, args):
-    ##download the file from s3   
+    # download the file from s3
     auth_doc = _load_doc_from_s3(context)
            
-    ##parse the document into json
+    # parse the document into json
     auth_obj = json.loads(auth_doc)
 
-    ##add the provider info to the json doc, overwrites the existing configuration if already there.
+    # add the provider info to the json doc, overwrites the existing configuration if already there.
     provider_uri = ''
     provider_name = args.provider_name
 
     provider_args = {}    
 
-    if  provider_name in standard_auth_provider_uris.keys():
-         provider_uri = standard_auth_provider_uris[provider_name]    
+    if provider_name in standard_auth_provider_uris.keys():
+        provider_uri = standard_auth_provider_uris[provider_name]
     else:
         provider_name = 'open_id-' + provider_name
-        if args.provider_uri == None:
+        if args.provider_uri is None:
             raise HandledError('If a generic open id provider is used, a provider URI must be specified.')
 
         provider_uri = args.provider_uri
 
-        if args.provider_port != None:
+        if args.provider_port is not None:
             provider_args['provider_port'] = args.provider_port
         else:
             provider_args['provider_port'] = standard_https_port
 
-        if args.provider_path != None:
-             provider_args['provider_path'] = args.provider_path
+        if args.provider_path is not None:
+            provider_args['provider_path'] = args.provider_path
         else:
             raise HandledError('If a generic open id provider is used, a provider path must be specified.')
 
@@ -71,20 +72,20 @@ def add_login_provider(context, args):
 
     auth_obj[provider_name] = provider_args
    
-    ##put the document back
+    # put the document back
     _put_obj_in_s3(context, json.dumps(auth_obj))
 
-#updates zero or more args in the provider doc
+# updates zero or more args in the provider doc
 def update_login_provider(context, args):
-    ##download the file from s3   
+    # download the file from s3
     auth_doc = _load_doc_from_s3(context)
            
-    ##parse the document into json
+    # parse the document into json
     auth_obj = json.loads(auth_doc)
 
     provider_name = args.provider_name
 
-    ##update the provider info to the json doc, or update the provider info if already there
+    # update the provider info to the json doc, or update the provider info if already there
     if provider_name not in standard_auth_provider_uris.keys():
         provider_name = 'open_id-' + provider_name
 
@@ -93,39 +94,39 @@ def update_login_provider(context, args):
 
     provider_args = auth_obj[provider_name]
 
-    if args.provider_port != None:
+    if args.provider_port is not None:
         provider_args['provider_port'] = args.provider_port
     
-    if args.provider_path != None:
+    if args.provider_path is not None:
         provider_args['provider_path'] = args.provider_path
     
-    if args.provider_uri != None:
+    if args.provider_uri is not None:
         provider_args['provider_uri'] = args.provider_uri 
 
-    if args.app_id != None:
+    if args.app_id is not None:
         provider_args['app_id'] = args.app_id
 
-    if args.client_id != None:
+    if args.client_id is not None:
         provider_args['client_id'] = args.client_id
 
-    if args.client_secret != None:
+    if args.client_secret is not None:
         provider_args['client_secret'] = args.client_secret
 
-    if args.redirect_uri != None:
+    if args.redirect_uri is not None:
         provider_args['redirect_uri'] = args.redirect_uri    
 
     auth_obj[provider_name] = provider_args
    
-    ##put the document back
+    # put the document back
     _put_obj_in_s3(context, json.dumps(auth_obj))
   
 def remove_login_provider(context, args):
     auth_doc = _load_doc_from_s3(context)
            
-    ##parse the document into json
+    # parse the document into json
     auth_obj = json.loads(auth_doc)
 
-    ##remove the provider info from the json doc
+    # remove the provider info from the json doc
     provider_name = args.provider_name
     if provider_name not in standard_auth_provider_uris.keys():
         provider_name = 'open_id-' + provider_name
@@ -133,7 +134,7 @@ def remove_login_provider(context, args):
     if provider_name in auth_obj:
         del auth_obj[provider_name]
 
-    ##put the document back
+    # put the document back
     _put_obj_in_s3(context, json.dumps(auth_obj))
      
 def _get_bucket(context):
@@ -149,14 +150,15 @@ def _load_doc_from_s3(context):
         context.view.downloading_content(bucket, key)
         auth_res = s3_client.get_object(Bucket = bucket, Key = key)
         auth_doc = auth_res['Body'].read()
-    except botocore.exceptions.ClientError as e:
+    except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code == 'NoSuchKey':
             auth_doc = '{ }'
     except Exception as e:
-        raise HandledError('Error connecting to s3. {}'.format(e.message))
+        raise HandledError('Error connecting to s3. {}'.format(e))
     
     return auth_doc
+
 
 def _put_obj_in_s3(context, str):
     s3_client = context.aws.client('s3')
@@ -166,5 +168,6 @@ def _put_obj_in_s3(context, str):
         context.view.uploading_content(bucket, key, 'authentication document')
         s3_client.put_object(Bucket = bucket, Key = key, Body = str)
     except Exception as e:
-       raise HandledError('Error uploading auth document to s3. {}'.format(e.message))
-    
+        raise HandledError('Error uploading auth document to s3. {}'.format(e))
+
+

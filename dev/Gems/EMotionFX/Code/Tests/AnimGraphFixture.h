@@ -14,8 +14,9 @@
 
 #include "SystemComponentFixture.h"
 #include <EMotionFX/Source/MotionSet.h>
-
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Debug/TraceMessageBus.h>
+#include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
 {
@@ -28,16 +29,17 @@ namespace EMotionFX
     class AnimGraphTimeCondition;
     class Transform;
 
-    class AnimGraphFixture : public SystemComponentFixture,
-        public AZ::Debug::TraceMessageBus::Handler
+    class AnimGraphFixture
+        : public SystemComponentFixture
+        , public AZ::Debug::TraceMessageBus::Handler
     {
     public:
         void SetUp() override;
         void TearDown() override;
 
-        // Derived classes should override and construct the rest of the graph at this point
-        // They should call this base ConstructGrpah to get the anim graph and root state 
-        // machine created
+        // Derived classes should override and construct the rest of the graph at this point.
+        // They should call this base ConstructGraph to get the anim graph and root state machine created.
+
         virtual void ConstructGraph();
 
         virtual void ConstructActor();
@@ -51,19 +53,19 @@ namespace EMotionFX
 
         void AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name);
 
-        // Helper functions for state machine construction (Works on m_rootStateMachine)
+        // Helper functions for state machine construction (Works on m_rootStateMachine).
         AnimGraphStateTransition* AddTransition(AnimGraphNode* source, AnimGraphNode* target, float time);
         AnimGraphTimeCondition* AddTimeCondition(AnimGraphStateTransition* transition, float countDownTime);
         AnimGraphStateTransition* AddTransitionWithTimeCondition(AnimGraphNode* source, AnimGraphNode* target, float blendTime, float countDownTime);
 
-        // Helper function for motion set construction (Works on m_motionSet)
+        // Helper function for motion set construction (Works on m_motionSet).
         MotionSet::MotionEntry* AddMotionEntry(const AZStd::string& motionId, float motionMaxTime);
 
-        // TraceMessageBus - Intercepting to prevent dialog popup in AnimGraphReferenceNodeWithNoContentsTest
-        virtual bool OnError(const char* /*window*/, const char* /*message*/) override { return true; } 
+        // TraceMessageBus - Intercepting to prevent dialog popup in AnimGraphReferenceNodeWithNoContentsTest.
+        virtual bool OnError(const char* /*window*/, const char* /*message*/) override { return true; }
 
 
-        using SimulateFrameCallback = std::function<void(AnimGraphInstance*, /*time*/float, /*timeDelta*/float, /*frame*/int)>;
+        using SimulateFrameCallback = std::function<void(AnimGraphInstance*, /*time*/ float, /*timeDelta*/ float, /*frame*/ int)>;
         using SimulateCallback = std::function<void(AnimGraphInstance*)>;
 
         /**
@@ -81,11 +83,11 @@ namespace EMotionFX
             SimulateFrameCallback postUpdateCallback);
 
     protected:
-        Actor* m_actor = nullptr;
+        AZStd::unique_ptr<Actor> m_actor;
         ActorInstance* m_actorInstance = nullptr;
-        AnimGraph* m_animGraph = nullptr;
+        AZStd::unique_ptr<AnimGraph> m_animGraph;
         AnimGraphStateMachine* m_rootStateMachine = nullptr;
         AnimGraphInstance* m_animGraphInstance = nullptr;
-        MotionSet* m_motionSet = nullptr;        
+        MotionSet* m_motionSet = nullptr;
     };
 }

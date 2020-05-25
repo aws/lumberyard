@@ -45,7 +45,7 @@ namespace ScriptCanvas
         {
             return Data::Matrix4x4Type::CreateFromQuaternion(source);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromQuaternion, "Math/Matrix4x4", "{08EACF1F-E32F-4099-8F87-DFC9BF485FBA}", "returns a rotation matrix using the supplied quaternion", "Source");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromQuaternion, "Math/Matrix4x4", "{B838FE73-B028-45E0-B847-1621B22A2185}", "returns a rotation matrix using the supplied quaternion", "Source");
 
         AZ_INLINE Data::Matrix4x4Type FromQuaternionAndTranslation(const Data::QuaternionType& rotation, const Data::Vector3Type& translation)
         {
@@ -166,7 +166,7 @@ namespace ScriptCanvas
             source.GetRows(&row0, &row1, &row2, &row3);
             return std::make_tuple(row0, row1, row2, row3);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE(GetRows, "Math/Matrix4x4", "{DDF76F4C-0C79-4856-B577-7DBA092CE59B}", "returns all rows from matrix", "Source", "Row1", "Row2", "Row3", "Row4");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE(GetRows, "Math/Matrix4x4", "{594636A1-749C-4821-A0D3-ED43E112601E}", "returns all rows from matrix", "Source", "Row1", "Row2", "Row3", "Row4");
 
         AZ_INLINE Data::Matrix4x4Type Invert(const Data::Matrix4x4Type& source)
         {

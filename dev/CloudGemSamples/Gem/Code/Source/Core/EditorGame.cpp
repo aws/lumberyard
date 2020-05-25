@@ -111,16 +111,6 @@ void EditorGame::OnCloseLevel()
     m_Game->GetIGameFramework()->MarkGameStarted(false);
 }
 
-IFlowSystem* EditorGame::GetIFlowSystem()
-{
-    return m_Game->GetIGameFramework()->GetIFlowSystem();
-}
-
-IGameTokenSystem* EditorGame::GetIGameTokenSystem()
-{
-    return m_Game->GetIGameFramework()->GetIGameTokenSystem();
-}
-
 IEntity* EditorGame::GetPlayer()
 {
     IEntity* entity = NULL;

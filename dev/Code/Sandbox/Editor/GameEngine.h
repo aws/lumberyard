@@ -25,8 +25,6 @@
 
 struct IEditorGame;
 class CStartupLogoDialog;
-struct IFlowSystem;
-struct IGameTokenSystem;
 struct IEquipmentSystemInterface;
 struct IInitializeUIInfo;
 class CNavigation;
@@ -38,6 +36,26 @@ public:
     virtual void OnPostEditorUpdate() = 0;
 };
 
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/Math/Vector3.h>
+
+namespace AzToolsFramework
+{
+    //! Operates the Editor's camera
+    class IEditorCameraController
+    {
+    public:
+        AZ_RTTI(IEditorCameraController, "{AEF60D3E-10A1-4161-9379-F68C69A5959C}");
+
+        IEditorCameraController() = default;
+        IEditorCameraController(IEditorCameraController&&) = delete;
+        IEditorCameraController& operator=(IEditorCameraController&&) = delete;
+        virtual ~IEditorCameraController() = default;
+
+        virtual void SetCurrentViewPosition(const AZ::Vector3& position) {}
+        virtual void SetCurrentViewRotation(const AZ::Vector3& rotation) {}
+    };
+}
 
 class ThreadedOnErrorHandler : public QObject
 {
@@ -53,11 +71,13 @@ private:
     ISystemUserCallback* m_userCallback;
 };
 
-
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //! This class serves as a high-level wrapper for CryEngine game.
 class SANDBOX_API CGameEngine
     : public IEditorNotifyListener
+    , private AzToolsFramework::IEditorCameraController
 {
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     CGameEngine();
     ~CGameEngine(void);
@@ -165,21 +185,8 @@ public:
     void Update();
     virtual void OnEditorNotifyEvent(EEditorNotifyEvent event);
     struct IEntity* GetPlayerEntity();
-    // Retrieve pointer to the game flow system implementation.
-    IFlowSystem* GetIFlowSystem() const;
-    IGameTokenSystem* GetIGameTokenSystem() const;
     IEquipmentSystemInterface* GetIEquipmentSystemInterface() const;
     IEditorGame* GetIEditorGame() const { return m_pEditorGame; }
-    //! When enabled flow system will be updated at editing mode.
-    void EnableFlowSystemUpdate(bool bEnable)
-    {
-        m_bUpdateFlowSystem = bEnable;
-
-        const EEditorNotifyEvent event = bEnable ? eNotify_OnEnableFlowSystemUpdate : eNotify_OnDisableFlowSystemUpdate;
-        GetIEditor()->Notify(event);
-    }
-
-    bool IsFlowSystemUpdateEnabled() const { return m_bUpdateFlowSystem; }
     void LockResources();
     void UnlockResources();
     void ResetResources();
@@ -207,6 +214,9 @@ public:
     }
 
 private:
+    void SetCurrentViewPosition(const AZ::Vector3& position) override;
+    void SetCurrentViewRotation(const AZ::Vector3& rotation) override;
+
     void SetGameMode(bool inGame);
     void SwitchToInGame();
     void SwitchToInEditor();
@@ -223,7 +233,6 @@ private:
     bool m_bSimulationMode;
     bool m_bSimulationModeAI;
     bool m_bSyncPlayerPosition;
-    bool m_bUpdateFlowSystem;
     bool m_bJustCreated;
     bool m_bIgnoreUpdates;
     ISystem* m_pISystem;

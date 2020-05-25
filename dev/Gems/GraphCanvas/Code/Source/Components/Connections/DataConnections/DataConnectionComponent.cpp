@@ -54,14 +54,20 @@ namespace GraphCanvas
     {
     }
 
-    void DataConnectionComponent::Activate()
+    bool DataConnectionComponent::AllowNodeCreation() const
     {
-        ConnectionComponent::Activate();
-    }
+        DataSlotType slotType = DataSlotType::Value;
 
-    void DataConnectionComponent::Deactivate()
-    {
-        ConnectionComponent::Deactivate();
+        if (m_sourceEndpoint.IsValid())
+        {            
+            DataSlotRequestBus::EventResult(slotType, m_sourceEndpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
+        }
+        else if (m_targetEndpoint.IsValid())
+        {
+            DataSlotRequestBus::EventResult(slotType, m_targetEndpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
+        }
+
+        return slotType == DataSlotType::Value;
     }
     
     ConnectionComponent::ConnectionMoveResult DataConnectionComponent::OnConnectionMoveComplete(const QPointF& scenePos, const QPoint& screenPos)
@@ -78,30 +84,36 @@ namespace GraphCanvas
             DataSlotType sourceSlotType = DataSlotType::Unknown;
             DataSlotRequestBus::EventResult(sourceSlotType, GetSourceSlotId(), &DataSlotRequests::GetDataSlotType);
 
+            DataSlotType targetSlotType = DataSlotType::Unknown;
+            DataSlotRequestBus::EventResult(targetSlotType, GetTargetSlotId(), &DataSlotRequests::GetDataSlotType);
+
             bool converted = false;
 
-            if (sourceSlotType == DataSlotType::Variable)
+            if (m_dragContext == DragContext::MoveTarget)
             {
-                // Temporary dirtiness.
-                // When dragging from a input to an output, we put the connection into the output
-                // to make the display look right.
-                //
-                // But converting a DataSlot to a Reference, clears off all connections(including us).
-                // To fix this, just remove ourselves from the target before converting to a reference.
-                if (m_dragContext == DragContext::MoveSource)
+                if (sourceSlotType == DataSlotType::Value)
                 {
-                    SlotNotificationBus::Event(GetTargetSlotId(), &SlotNotifications::OnDisconnectedFrom, GetEntityId(), GetSourceEndpoint());
+                    DataSlotRequestBus::EventResult(converted, GetTargetSlotId(), &DataSlotRequests::ConvertToValue);
                 }
-                
-                DataSlotRequestBus::EventResult(converted, GetTargetSlotId(), &DataSlotRequests::ConvertToReference);
+                else if (sourceSlotType == DataSlotType::Reference)
+                {
+                    DataSlotRequestBus::EventResult(converted, GetTargetSlotId(), &DataSlotRequests::ConvertToReference);
+                }
             }
-            else if (sourceSlotType == DataSlotType::Value)
+            else if (m_dragContext == DragContext::MoveSource)
             {
-                DataSlotRequestBus::EventResult(converted, GetTargetSlotId(), &DataSlotRequests::ConvertToValue);
+                if (targetSlotType == DataSlotType::Value)
+                {
+                    DataSlotRequestBus::EventResult(converted, GetSourceSlotId(), &DataSlotRequests::ConvertToValue);
+                }
+                else if (targetSlotType == DataSlotType::Reference)
+                {
+                    DataSlotRequestBus::EventResult(converted, GetSourceSlotId(), &DataSlotRequests::ConvertToReference);
+                }
             }
-            else if (sourceSlotType == DataSlotType::Container)
+            else if (m_dragContext == DragContext::TryConnection)
             {
-                retVal = ConnectionComponent::OnConnectionMoveComplete(scenePos, screenPos);
+                converted = true;
             }
 
             if (converted)
@@ -109,16 +121,26 @@ namespace GraphCanvas
                 DataSlotType targetSlotType = DataSlotType::Unknown;
                 DataSlotRequestBus::EventResult(targetSlotType, GetTargetSlotId(), &DataSlotRequests::GetDataSlotType);
 
-                if (targetSlotType == DataSlotType::Reference)
-                {
-                    AZ::EntityId variableId;
-                    DataSlotRequestBus::EventResult(variableId, GetSourceSlotId(), &DataSlotRequests::GetVariableId);
-
-                    DataSlotRequestBus::Event(GetTargetSlotId(), &DataSlotRequests::AssignVariable, variableId);
-                }
-                else if (targetSlotType == DataSlotType::Value)
+                if (targetSlotType == DataSlotType::Value)
                 {
                     retVal = ConnectionComponent::OnConnectionMoveComplete(scenePos, screenPos);
+                }
+                else if (targetSlotType == DataSlotType::Reference)
+                {
+                    GraphId graphId;
+                    SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+                    if (m_dragContext == DragContext::MoveSource)
+                    {
+                        GraphModelRequestBus::Event(graphId, &GraphModelRequests::SynchronizeReferences, GetTargetEndpoint(), GetSourceEndpoint());
+                    }
+                    else if (m_dragContext == DragContext::MoveTarget)
+                    {
+                        GraphModelRequestBus::Event(graphId, &GraphModelRequests::SynchronizeReferences, GetSourceEndpoint(), GetTargetEndpoint());
+                    }
+                    
+                    // We don't want the connection to persist.
+                    retVal = ConnectionMoveResult::DeleteConnection;
                 }
             }
         }

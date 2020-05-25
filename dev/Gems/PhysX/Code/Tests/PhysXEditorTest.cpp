@@ -12,8 +12,6 @@
 
 #include "PhysX_precompiled.h"
 
-#ifdef AZ_TESTS_ENABLED
-
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
@@ -42,12 +40,6 @@ namespace Physics
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
         }
-
-        AZ::ComponentApplication* m_application;
-        AZ::Entity* m_systemEntity;
-        AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-        AZ::IO::LocalFileIO m_fileIo;
     };
 
     class PhysXEditorTest
@@ -81,4 +73,3 @@ namespace Physics
         return result;
     }
 } // namespace Physics
-#endif // AZ_TESTS_ENABLED

@@ -14,10 +14,11 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector3.h>
-#include <AzFramework/Physics/RigidBody.h>
 
 namespace Physics
 {
+    class RigidBody;
+
     class RigidBodyRequests
         : public AZ::ComponentBus
     {

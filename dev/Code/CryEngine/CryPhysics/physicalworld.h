@@ -470,6 +470,9 @@ public:
     void DetachEntityGridThunks(CPhysicalPlaceholder* pobj);
     void ScheduleForStep(CPhysicalEntity* pent, float time_interval);
     CPhysicalEntity* CheckColliderListsIntegrity();
+    void RemoveFromAllColliders(CPhysicalEntity* pEntity);
+    void RemovePhysicalEntityFromRayCastEvent(CPhysicalEntity* pEntity, EventPhysRWIResult* pEvent);
+    void RemoveFromAllEvents(CPhysicalEntity* pEntity);
 
     virtual int CoverPolygonWithCircles(strided_pointer<vector2df> pt, int npt, bool bConsecutive, const vector2df& center,
         vector2df*& centers, float*& radii, float minCircleRadius)
@@ -1274,7 +1277,7 @@ struct ChangeRequest
         , m_bLocked(0)
         , m_bLockedCaller(0)
     {
-        if (pent->m_iSimClass == -1 && ((CPhysicalEntity*)pent)->m_iDeletionTime == 3)
+        if (pent->m_iSimClass == -1 &&  pent->m_iDeletionTime == 3)
         {
             bInactive |= bInactive - 1 >> 31;
         }

@@ -106,6 +106,25 @@ namespace ScriptCanvasEditor
             int m_timeMS;
         };
 
+        class AutoSaveSettings
+        {
+        public:
+            AZ_RTTI(AutoSaveSettings, "{FAB6437B-8BC2-46E1-B364-986DEBD8376A}");
+            AZ_CLASS_ALLOCATOR(AutoSaveSettings, AZ::SystemAllocator, 0);
+
+            AutoSaveSettings(bool enabled = false, int timeSeconds = 10)
+                : m_enabled(enabled)
+                , m_timeSeconds(timeSeconds)
+            {
+            }
+
+            virtual ~AutoSaveSettings() = default;
+
+            bool m_enabled;
+            int m_timeSeconds;
+
+        };
+
         class ShakeToDespliceSettings
         {
             friend class ScriptCanvasEditorSettings;
@@ -256,20 +275,17 @@ namespace ScriptCanvasEditor
 
             double m_snapDistance;
 
-            bool m_showPreviewMessage;
-            bool m_showExcludedNodes; //! During preview we're excluding some behavior context nodes that may not work perfectly in Script Canvas.
-
             bool m_allowBookmarkViewpointControl;
-            bool m_allowNodeNudgingOnSplice;
+            bool m_allowNodeNudging;
 
             bool m_rememberOpenCanvases;
 
             ToggleableConfiguration m_dragNodeCouplingConfig;
             ToggleableConfiguration m_dragNodeSplicingConfig;
 
-            ToggleableConfiguration m_dropNodeSplicingConfig;  
+            ToggleableConfiguration m_dropNodeSplicingConfig;
 
-            ToggleableConfiguration m_autoSaveConfig;
+            AutoSaveSettings m_autoSaveConfig;
 
             ShakeToDespliceSettings m_shakeDespliceConfig;
 

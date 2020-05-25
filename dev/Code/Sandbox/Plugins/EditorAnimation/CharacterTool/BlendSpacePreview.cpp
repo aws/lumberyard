@@ -63,7 +63,7 @@ namespace CharacterTool
             m_characterScaleSlider = new QSlider(Qt::Horizontal, this);
             m_characterScaleSlider->setMinimum(0);
             m_characterScaleSlider->setMaximum(SLIDER_MAX_VALUE);
-            m_characterScaleSlider->setValue(SLIDER_MAX_VALUE * 0.5f);
+            m_characterScaleSlider->setValue(aznumeric_cast<int>(SLIDER_MAX_VALUE * 0.5f));
             m_characterScaleSlider->setMaximumWidth(200);
             toolbar->addWidget(m_characterScaleSlider);
 
@@ -133,7 +133,7 @@ namespace CharacterTool
     void BlendSpacePreview::OnResetView()
     {
         m_viewport->ResetCamera();
-        m_characterScaleSlider->setValue(SLIDER_MAX_VALUE * 0.5f);
+        m_characterScaleSlider->setValue(aznumeric_cast<int>(SLIDER_MAX_VALUE * 0.5f));
     }
 
     void BlendSpacePreview::IdleUpdate()

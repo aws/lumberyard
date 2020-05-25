@@ -1,4 +1,15 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
 
+from __future__ import print_function
 import service
 import os
 import metric_constant as c
@@ -8,6 +19,7 @@ import util
 from dynamodb import DynamoDb
 from cloudwatch import CloudWatch
 from athena import Athena, Query
+from cgf_lambda_service import ClientError
 
 @service.api
 def consumer_save_duration(request):    
@@ -37,7 +49,7 @@ def consumer_sqs_delete_duration(request):
 @service.api
 def cloudwatch_metric(request, namespace, metric_name, dimension_name, dimension_value, aggregation_type, time_delta_hours=8, period_in_seconds=300):    
     if dimension_value not in os.environ:
-        raise errors.ClientError("The dimension value '{}' is not one of the environment variables.  It should be the logical name of a resource.  Example: FIFOConsumer.".format(dimension_value))     
+        raise ClientError("The dimension value '{}' is not one of the environment variables.  It should be the logical name of a resource.  Example: FIFOConsumer.".format(dimension_value))     
 
     cw = CloudWatch()
     return  cw.get_metric("AWS/"+namespace, metric_name, dimension_name, os.environ[dimension_value], aggregation_type, start=(datetime.datetime.today() - datetime.timedelta(hours=time_delta_hours)), period=period_in_seconds)    
@@ -78,5 +90,5 @@ def cli(context, args):
     os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]
     os.environ["AWS_ACCESS_KEY"] = args.aws_access_key if args.aws_access_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
     os.environ["AWS_SECRET_KEY"] = args.aws_secret_key if args.aws_secret_key else credentials.get(args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)
-    
-    print eval(args.function)( type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]}))
+
+    print(eval(args.function)(type('obj', (object,), {c.ENV_STACK_ID: resources[c.ENV_STACK_ID]})))

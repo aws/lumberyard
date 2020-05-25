@@ -1,6 +1,7 @@
 {
-  "TemplateDefinitionVersion": 1,
-  "Name": "Empty",
-  "Description":  "This reference project for advanced users is the bare minimum Lumberyard project.",
-  "IconPath": "${ProjectName}/preview.png"
+    "TemplateDefinitionVersion": 1,
+    "Name": "Empty",
+    "Description":  "This reference project for advanced users is the bare minimum Lumberyard project.",
+    "IconPath": "${ProjectName}/preview.png",
+    "GemTemplate": "game_project_gem_template"
 }

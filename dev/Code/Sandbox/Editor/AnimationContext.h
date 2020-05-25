@@ -31,6 +31,7 @@ struct IAnimationContextListener
     virtual void OnTimeChanged(float newTime) {}
 };
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 /** CAnimationContext stores information about current editable animation sequence.
         Stores information about whenever animation is being recorded know,
         current sequence, current time in sequence etc.
@@ -40,6 +41,7 @@ class SANDBOX_API CAnimationContext
     , public IUndoManagerListener
     , public ITrackViewSequenceManagerListener
 {
+    AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 public:
     //////////////////////////////////////////////////////////////////////////
     // Constructors.

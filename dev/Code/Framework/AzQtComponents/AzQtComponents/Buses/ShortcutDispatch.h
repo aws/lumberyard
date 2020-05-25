@@ -15,7 +15,9 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/EBus/EBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QWidget>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {

@@ -11,13 +11,19 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
+# System Imports
 import os
 import subprocess
-
-from waflib import Context, Utils, Logs, Errors
+import argparse
+import shlex
+# waflib imports
+from waflib import Context, Utils, Logs, Errors, Options
 from waflib.Configure import conf, ConfigurationContext
-from cry_utils import append_to_unique_list, split_comma_delimited_string
 
+# lmbrwaflib imports
+from lmbrwaflib.cry_utils import append_to_unique_list, split_comma_delimited_string
+
+# misc imports
 from waf_branch_spec import BINTEMP_FOLDER
 from waf_branch_spec import CACHE_FOLDER
 from waf_branch_spec import LUMBERYARD_VERSION
@@ -38,6 +44,17 @@ for default_copyright_org in DEFAULT_COPYRIGHT_TABLE:
     COPYRIGHT_TABLE[default_copyright_org] = DEFAULT_COPYRIGHT_TABLE[default_copyright_org]
 for additional_copyright_org in ADDITIONAL_COPYRIGHT_TABLE:
     COPYRIGHT_TABLE[additional_copyright_org] = ADDITIONAL_COPYRIGHT_TABLE[additional_copyright_org]
+
+
+@conf
+def _get_settings_search_roots(ctx):
+    """ Helper function for getting the settings search root nodes in reverse order of precedence """
+    search_roots = [ ctx.get_launch_node() ]
+
+    if not ctx.is_engine_local():
+        search_roots.insert(0, ctx.get_engine_node())
+
+    return search_roots
 
 
 @conf
@@ -89,43 +106,6 @@ def get_cache_folder_node(ctx):
 
 #############################################################################
 @conf
-def get_dep_proj_folder_name(self, msvs_ver):
-    return self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.depproj'
-
-
-@conf
-def get_project_output_folder(self, msvs_ver):
-    project_folder_node = self.root.make_node(Context.launch_dir).make_node(self.options.visual_studio_solution_folder).make_node(self.get_dep_proj_folder_name(msvs_ver))
-    project_folder_node.mkdir()
-    return project_folder_node
-
-#############################################################################
-@conf
-def get_solution_name(self, msvs_ver):
-    return self.options.visual_studio_solution_folder + '/' + self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.sln'
-
-#############################################################################
-@conf
-def get_solution_dep_proj_folder_name(self, msvs_ver):
-    return self.options.visual_studio_solution_folder + '/' + self.get_dep_proj_folder_name(msvs_ver)
-
-#############################################################################
-#############################################################################
-@conf
-def get_appletv_project_name(self):
-    return self.options.appletv_project_folder + '/' + self.options.appletv_project_name
-
-@conf
-def get_ios_project_name(self):
-    return self.options.ios_project_folder + '/' + self.options.ios_project_name
-
-
-@conf
-def get_mac_project_name(self):
-    return self.options.mac_project_folder + '/' + self.options.mac_project_name
-
-
-@conf
 def get_company_name(self, project, copyright_org):
 
     if copyright_org in DEFAULT_COPYRIGHT_TABLE:
@@ -170,85 +150,12 @@ def _get_valid_platform_info_filename(self):
 
 # Attempt to import the winregistry module.
 try:
-    import _winreg
+    import winreg
 
     WINREG_SUPPORTED = True
 except ImportError:
     WINREG_SUPPORTED = False
     pass
-
-
-def get_msbuild_root(toolset_version):
-    """
-    Get the MSBuild root installed folder path from the registry
-    """
-
-    reg_key = 'SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\{}.0'.format(toolset_version)
-    msbuild_root_regkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, reg_key, 0, _winreg.KEY_READ)
-    (root_path, type) = _winreg.QueryValueEx(msbuild_root_regkey, 'MSBuildToolsRoot')
-    return root_path.encode('utf-8')
-
-
-def find_vswhere():
-    vs_path = os.environ['ProgramFiles(x86)']
-    vswhere_exe = os.path.join(vs_path, 'Microsoft Visual Studio\\Installer\\vswhere.exe')
-    if not os.path.isfile(vswhere_exe):
-        vswhere_exe = ''
-    return vswhere_exe
-
-
-def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOptions):
-    """
-    Check the cpp tools for a platform based on the presence of a platform specific 'Platform.props' folder
-    """
-
-    try:
-        if toolsetVer == '15':
-            vswhere_exe = find_vswhere()
-            if vswhere_exe == '':
-                return False
-
-            vs2017vswhereOptionsBuildtools = vs2017vswhereOptions[:]
-            vs2017vswhereOptionsBuildtools.append('-products')
-            vs2017vswhereOptionsBuildtools.append('Microsoft.VisualStudio.Product.BuildTools')
-
-            installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
-            if not installation_path:
-                installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildtools)
-
-            if not installation_path:
-                try:
-                    version_arg_index = vs2017vswhereOptions.index('-version')
-                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
-                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-
-                    vs2017vswhereOptions = ['-version', '[15.0,16.0)']
-                    vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
-                    vs2017vswhereOptionsBuildTools.append('-products')
-                    vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
-
-                    installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
-                    if not installation_path:
-                        installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildtools)
-                except ValueError:
-                    pass
-
-            installation_path = installation_path[:len(installation_path)-2]
-            Logs.info('[INFO] Using Visual Studio version installed at: {}'.format(installation_path))
-            build_root = os.path.join(installation_path, 'MSBuild', toolsetVer+'.0')
-            props_file = os.path.join(build_root, 'Microsoft.common.props')
-            return os.path.exists(props_file)
-        else:
-            platform_root_dir = os.path.join(get_msbuild_root(toolsetVer),
-                                             'Microsoft.Cpp','v4.0','V{}0'.format(toolsetVer),
-                                             'Platforms',
-                                             platform_tool_name)
-            platform_props_file = os.path.join(platform_root_dir,'Platform.props')
-            return os.path.exists(platform_props_file)
-    except Exception as err:
-        Logs.warn("[WARN] Unable to determine toolset path for platform vetting : {}".format(err.message))
-        return True
-
 
 @conf
 def get_project_vs_filter(self, target):
@@ -261,134 +168,41 @@ def get_project_vs_filter(self, target):
     return self.vs_project_filters[target]
 
 
-def _load_android_settings(ctx):
-    """ Helper function for loading the global android settings """
-
-    if hasattr(ctx, 'android_settings'):
-        return
-
-    ctx.android_settings = {}
-    settings_file = ctx.engine_node.make_node(['_WAF_','android','android_settings.json'])
-    try:
-        ctx.android_settings = ctx.parse_json_file(settings_file)
-    except Exception as e:
-        ctx.cry_file_error(str(e), settings_file.abspath())
-
-
-def _get_android_setting(ctx, setting, default_value = None):
-    """" Helper function for getting android settings """
-    _load_android_settings(ctx)
-
-    return ctx.android_settings.get(setting, default_value)
-
-@conf
-def get_android_dev_keystore_alias(conf):
-    return _get_android_setting(conf, 'DEV_KEYSTORE_ALIAS')
-
-@conf
-def get_android_dev_keystore_path(conf):
-    local_path = _get_android_setting(conf, 'DEV_KEYSTORE')
-    debug_ks_node = conf.engine_node.make_node(local_path)
-    return debug_ks_node.abspath()
-
-@conf
-def get_android_distro_keystore_alias(conf):
-    return _get_android_setting(conf, 'DISTRO_KEYSTORE_ALIAS')
-
-@conf
-def get_android_distro_keystore_path(conf):
-    local_path = _get_android_setting(conf, 'DISTRO_KEYSTORE')
-    release_ks_node = conf.engine_node.make_node(local_path)
-    return release_ks_node.abspath()
-
-@conf
-def get_android_build_environment(conf):
-    env = _get_android_setting(conf, 'BUILD_ENVIRONMENT')
-    if env == 'Development' or env == 'Distribution':
-        return env
-    else:
-        Logs.fatal('[ERROR] Invalid android build environment, valid environments are: Development and Distribution')
-
-@conf
-def get_android_env_keystore_alias(conf):
-    env = conf.get_android_build_environment()
-    if env == 'Development':
-        return conf.get_android_dev_keystore_alias()
-    elif env == 'Distribution':
-        return conf.get_android_distro_keystore_alias()
-
-@conf
-def get_android_env_keystore_path(conf):
-    env = conf.get_android_build_environment()
-    if env == 'Development':
-        return conf.get_android_dev_keystore_path()
-    elif env == 'Distribution':
-        return conf.get_android_distro_keystore_path()
-
-@conf
-def get_android_build_tools_version(conf):
+def update_android_environment_from_bootstrap_params(environment, bootstrap_params):
+    """Allows the updating of the environment block if they are overriden on the command line.
+    environment is a dictionary it will write to.  Bootstrap params is a string that is expected
+    to be in shell format, containing what params would have been sent to the bootstrap tool.
     """
-    Get the version of build-tools to use for Android APK packaging process.  Also
-    sets the 'buildToolsVersion' when generating the Android Studio gradle project.
-    The following is require in order for validation and use of "latest" value.
-
-    def configure(conf):
-        conf.load('android')
-    """
-    build_tools_version = conf.env['ANDROID_BUILD_TOOLS_VER']
-
-    if not build_tools_version:
-        build_tools_version = _get_android_setting(conf, 'BUILD_TOOLS_VER')
-
-    return build_tools_version
-
-@conf
-def get_android_sdk_version(conf):
-    """
-    Gets the desired Android API version used when building the Java code,
-    must be equal to or greater than the ndk_platform.  The following is
-    required for the validation to work and use of "latest" value.
-
-    def configure(conf):
-        conf.load('android')
-    """
-    sdk_version = conf.env['ANDROID_SDK_VERSION']
-
-    if not sdk_version:
-        sdk_version = _get_android_setting(conf, 'SDK_VERSION')
-
-    return sdk_version
-
-@conf
-def get_android_ndk_platform(conf):
-    """
-    Gets the desired Android API version used when building the native code,
-    must be equal to or less than the sdk_version.  If not specified, the
-    specified sdk version, or closest match, will be used.  The following is
-    required for the auto-detection and validation to work.
-
-    def configure(conf):
-        conf.load('android')
-    """
-    ndk_platform = conf.env['ANDROID_NDK_PLATFORM']
-
-    if not ndk_platform:
-        ndk_platform = _get_android_setting(conf, 'NDK_PLATFORM')
-
-    return ndk_platform
-
-@conf
-def get_android_project_relative_path(self):
-    return self.options.android_studio_project_folder + '/' + self.options.android_studio_project_name
-
-@conf
-def get_android_project_absolute_path(self):
-    return self.path.make_node(self.options.android_studio_project_folder + '/' + self.options.android_studio_project_name).abspath()
-
-@conf
-def get_android_patched_libraries_relative_path(self):
-    return self.get_android_project_relative_path() + '/' + 'AndroidLibraries'
-
+    bootstrap_param_parser = argparse.ArgumentParser()
+    bootstrap_param_parser.add_argument('--jdk', action='store')
+    bootstrap_param_parser.add_argument('--android-ndk', action='store')
+    bootstrap_param_parser.add_argument('--android-sdk', action='store')
+    bootstrap_param_parser.add_argument('--enablecapability', action='append')
+    
+    # use shlex to lex the command line.  This correctly applies rules for
+    # spaces and quotes.  We want to tweak it though, so that it does not
+    # take backslash to mean an escape character (this is for backward compat with existing build scripts)
+    lexed = shlex.shlex(bootstrap_params, posix=True)
+    lexed.whitespace_split = True
+    lexed.escape = '' # do not use back slashes to escape.
+    params = list(lexed)
+    
+    #params = shlex.split(bootstrap_params, posix=True, escape='')
+    parsed_params = bootstrap_param_parser.parse_known_args(params)[0]
+    parsed_capabilities = getattr(parsed_params, 'enablecapability', [])
+    jdk_override = getattr(parsed_params, 'jdk', None)
+    android_sdk_override = getattr(parsed_params, 'android_sdk', None)
+    android_ndk_override = getattr(parsed_params, 'android_ndk', None)
+    android_is_enabled = parsed_capabilities and 'compileandroid' in parsed_capabilities
+    
+    if jdk_override:
+        environment['LY_JDK'] = jdk_override
+    if android_sdk_override:
+        environment['LY_ANDROID_SDK'] = android_sdk_override
+    if android_ndk_override:
+        environment['LY_ANDROID_NDK'] = android_ndk_override
+    if android_is_enabled:
+        environment['ENABLE_ANDROID'] = 'True' # this is not a typo, its a JSON string 'True'
 
 def _load_environment_file(ctx):
     """ Helper function for loading the environment file created by Setup Assistant """
@@ -396,32 +210,48 @@ def _load_environment_file(ctx):
     if hasattr(ctx, 'local_environment'):
         return
 
-    ctx.local_environment = {}
-    settings_file = ctx.get_engine_node().make_node('_WAF_').make_node('environment.json')
-    try:
-        ctx.local_environment = ctx.parse_json_file(settings_file)
-    except Exception as e:
-        ctx.cry_file_error(str(e), settings_file.abspath())
+    if isinstance(ctx, Options.OptionsContext):
+        # during 'options' phase (where we declare the command line options, before we parse them)
+        # it is not okay to go loading or overriding any files, since the actual command line
+        # does not exist.
+        return
 
+    settings_files = list()
+    for root_node in _get_settings_search_roots(ctx):
+        settings_node = root_node.make_node(['_WAF_', 'environment.json'])
+        if os.path.exists(settings_node.abspath()):
+            settings_files.append(settings_node)
+
+    ctx.local_environment = dict()
+    for settings_file in settings_files:
+        try:
+            ctx.local_environment.update(ctx.parse_json_file(settings_file))
+        except Exception as e:
+            ctx.cry_file_error(str(e), settings_file.abspath())
+
+    # allow command line params to override this (for build systems doing android).
+    # this is hardcoded here for build systems to override the stuff that would be written into environment.json to
+    # just load from the command line instead.
+    bootstrap_params = getattr(ctx.options,'bootstrap_tool_param',None)
+    if bootstrap_params:
+        update_android_environment_from_bootstrap_params(ctx.local_environment, bootstrap_params)
 
 def _get_environment_file_var(ctx, env_var):
     _load_environment_file(ctx)
     return ctx.local_environment[env_var]
 
-
 @conf
 def get_env_file_var(conf, env_var, required = False, silent = False):
-
+    """Gets a value of a variable inside the android settings file called _WAF_/environment.json"""
     try:
         return _get_environment_file_var(conf, env_var)
-    except Exception as e:
+    except KeyError: # other exceptions such as failure to parse malformed command line or JSON must still function!
         if not silent:
-            message = 'Failed to find {} in _WAF_/environment.json: {}'.format(env_var, e)
+            message = 'Failed to find {} in _WAF_/environment.json or bootstrap-tool-param command line: {}'.format(env_var, e)
             if required:
                 Logs.error('[ERROR] %s' % message)
             else:
                 Logs.warn('[WARN] %s' % message)
-        pass
 
     return ''
 
@@ -432,10 +262,21 @@ def _load_specs(ctx):
         return
 
     ctx.loaded_specs_dict = {}
-    spec_file_folder    = ctx.root.make_node(Context.launch_dir).make_node('/_WAF_/specs')
-    spec_files              = spec_file_folder.ant_glob('**/*.json')
 
-    for file in spec_files:
+    search_roots = _get_settings_search_roots(ctx)
+
+    # load the spec files from both the engine and project location
+    # were the project version will take prior if a duplicate is found
+    spec_files = dict()
+    for root_node in search_roots:
+        spec_folder_node = root_node.make_node(['_WAF_', 'specs'])
+        if os.path.exists(spec_folder_node.abspath()):
+            spec_file_nodes = spec_folder_node.ant_glob('**/*.json')
+            spec_files.update(
+                { node.name : node for node in spec_file_nodes }
+            )
+
+    for file in spec_files.values():
         try:
             spec = ctx.parse_json_file(file)
             spec_name = str(file).split('.')[0]
@@ -443,10 +284,13 @@ def _load_specs(ctx):
         except Exception as e:
             ctx.cry_file_error(str(e), file.abspath())
 
+    # index '-1', or the last element in the list, is guaranteed to be launch dir (project)
+    launch_node = search_roots[-1]
+
     # For any enabled game project, see if it has a WAFSpec subfolder as well
     enabled_game_projects_list = split_comma_delimited_string(ctx.options.enabled_game_projects, True)
     for project in enabled_game_projects_list:
-        game_project_spec = ctx.path.make_node(project).make_node('WAFSpec').make_node('{}.json'.format(project))
+        game_project_spec = launch_node.make_node([project, 'WAFSpec', '{}.json'.format(project)])
         if os.path.exists(game_project_spec.abspath()):
             try:
                 spec = ctx.parse_json_file(game_project_spec)
@@ -466,7 +310,7 @@ def loaded_specs(ctx):
     _load_specs(ctx)
 
     ret = []
-    for (spec,entry) in ctx.loaded_specs_dict.items():
+    for (spec,entry) in list(ctx.loaded_specs_dict.items()):
         ret.append(spec)
 
     return ret
@@ -594,7 +438,7 @@ def add_target_to_spec(ctx, target, spec_name=None):
         specs_to_add.append(ctx.options.project_spec)
     else:
         # No spec, load all of the loaded specs
-        specs_to_add.extend(ctx.self.loaded_specs_dict.keys())
+        specs_to_add.extend(list(ctx.self.loaded_specs_dict.keys()))
         
     for spec_to_add in specs_to_add:
         # For each spec, check if the target even needs to be added to the spec
@@ -605,7 +449,7 @@ def add_target_to_spec(ctx, target, spec_name=None):
             spec_module_list.append(target)
             # Update any cached module list for this spec with this target as well
             cache_key_prefix = '{}_'.format(spec_to_add)
-            for cache_key, cache_key_values in spec_modules_cache.items():
+            for cache_key, cache_key_values in list(spec_modules_cache.items()):
                 if cache_key.startswith(cache_key_prefix):
                     cache_key_values.append(target)
 
@@ -701,7 +545,7 @@ def spec_game_projects(ctx, spec_name=None):
     if spec_game_folder_map_list and len(spec_game_folder_map_list) > 0:
         # If there is an override game folder map in the spec, then validate its uniqueness and add it to the map
         spec_game_folder_map = spec_game_folder_map_list[0]
-        for game_name, game_folder in spec_game_folder_map.items():
+        for game_name, game_folder in list(spec_game_folder_map.items()):
             if game_name in GAME_FOLDER_MAP:
                 current_game_folder = GAME_FOLDER_MAP[game_name]
                 if current_game_folder != game_folder:
@@ -779,7 +623,7 @@ def project_launchers(ctx, default_launchers, spec_name = None):
         launchers.add(spec_launcher)
 
     # First pass is to collect all the additional launchers
-    for project_name, project_values in projects_settings.items():
+    for project_name, project_values in list(projects_settings.items()):
         if 'additional_launchers' in project_values:
             for additional_launcher in project_values['additional_launchers']:
                 launchers.add(additional_launcher)

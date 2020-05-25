@@ -117,9 +117,6 @@ namespace AZ
             /// Reflect the descriptor data.
             static void     Reflect(ReflectContext* context, ComponentApplication* app);
 
-            /// @deprecated
-            AZ_DEPRECATED(static void ReflectSerialize(SerializeContext* context, ComponentApplication* app), "Function deprecated, use ComponentApplication::Descriptor::Reflect() instead");
-
             Descriptor();
 
             bool            m_useExistingAllocator;     ///< True if the user is creating the system allocation and setup tracking modes, if this is true all other parameters are IGNORED. (default: false)

@@ -10,10 +10,8 @@ The inheritance tree is the following:
 """
 
 import os, sys, errno, re, shutil
-try:
-	import cPickle
-except ImportError:
-	import pickle as cPickle
+import pickle
+
 from waflib import Runner, TaskGen, Utils, ConfigSet, Task, Logs, Options, Context, Errors
 import waflib.Node
 
@@ -310,7 +308,7 @@ class BuildContext(Context.Context):
 				waflib.Node.pickle_lock.acquire()
 				waflib.Node.Nod3 = self.node_class
 				try:
-					data = cPickle.loads(data)
+					data = pickle.loads(data)
 				except Exception as e:
 					Logs.debug('build: Could not pickle the build cache %s: %r' % (dbfn, e))
 				else:
@@ -338,7 +336,7 @@ class BuildContext(Context.Context):
 		try:
 			waflib.Node.pickle_lock.acquire()
 			waflib.Node.Nod3 = self.node_class
-			x = cPickle.dumps(data, -1)
+			x = pickle.dumps(data, -1)
 		finally:
 			waflib.Node.pickle_lock.release()
 
@@ -954,6 +952,7 @@ class InstallContext(BuildContext):
 
 		# list of targets to uninstall for removing the empty folders after uninstalling
 		self.uninstall = []
+		self.nocache = True
 		self.is_install = INSTALL
 
 	def do_install(self, src, tgt, chmod=Utils.O644):
@@ -1246,7 +1245,7 @@ class CleanContext(BuildContext):
 		if self.bldnode != self.srcnode:
 			# would lead to a disaster if top == out
 			lst=[]
-			for e in self.all_envs.values():
+			for e in list(self.all_envs.values()):
 				lst.extend(self.root.find_or_declare(f) for f in e[CFG_FILES])
 			for n in self.bldnode.ant_glob('**/*', excl='.lock* *conf_check_*/** config.log c4che/*', quiet=True):
 				if n in lst:

@@ -26,8 +26,10 @@ namespace GraphCanvas
         CreateNodeGroupMenuAction(QObject* parent, bool collapseGroup);
         virtual ~CreateNodeGroupMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        using ContextMenuAction::RefreshAction;
+
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
 
     private:
         bool m_collapseGroup;
@@ -42,11 +44,10 @@ namespace GraphCanvas
         UngroupNodeGroupMenuAction(QObject* parent);
         virtual ~UngroupNodeGroupMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        using ContextMenuAction::RefreshAction;
 
-    private:
-        AZ::EntityId m_groupTarget;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class CollapseNodeGroupMenuAction
@@ -58,11 +59,10 @@ namespace GraphCanvas
         CollapseNodeGroupMenuAction(QObject* parent);
         virtual ~CollapseNodeGroupMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        using ContextMenuAction::RefreshAction;
 
-    private:
-        AZ::EntityId m_groupTarget;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class ExpandNodeGroupMenuAction
@@ -74,11 +74,10 @@ namespace GraphCanvas
         ExpandNodeGroupMenuAction(QObject* parent);
         virtual ~ExpandNodeGroupMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        using ContextMenuAction::RefreshAction;
 
-    private:
-        AZ::EntityId m_groupTarget;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 
     class EditGroupTitleMenuAction
@@ -90,11 +89,9 @@ namespace GraphCanvas
         EditGroupTitleMenuAction(QObject* parent);
         virtual ~EditGroupTitleMenuAction() = default;
 
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+        using ContextMenuAction::RefreshAction;
 
-    private:
-
-        AZ::EntityId m_groupTarget;
+        void RefreshAction() override;
+        SceneReaction TriggerAction(const AZ::Vector2& scenePos) override;
     };
 }

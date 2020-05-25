@@ -47,7 +47,7 @@ namespace Physics
                 ->Property("Distance", BehaviorValueProperty(&RayCastHit::m_distance))
                 ->Property("Position", BehaviorValueProperty(&RayCastHit::m_position))
                 ->Property("Normal", BehaviorValueProperty(&RayCastHit::m_normal))
-                ->Property("EntityId", [](RayCastHit& result) {return result.m_body->GetEntityId(); }, nullptr)
+                ->Property("EntityId", [](RayCastHit& result) { return result.m_body != nullptr ? result.m_body->GetEntityId() : AZ::EntityId(); }, nullptr)
                 ;
 
             behaviorContext->Class<RaycastHitArray>()

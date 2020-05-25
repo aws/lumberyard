@@ -54,6 +54,7 @@ namespace LmbrCentral
                 //   ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBaseShapeComponent::OnDisplayFilledChanged)
                 ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBaseShapeComponent::m_shapeColor, "Shape Color", "The color to use when rendering the faces of the shape object")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBaseShapeComponent::OnShapeColorChanged)
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorBaseShapeComponent::GetShapeColorIsEditable)
                 ;
         }
     }
@@ -84,11 +85,28 @@ namespace LmbrCentral
     void EditorBaseShapeComponent::SetShapeColor(const AZ::Color& shapeColor)
     {
         m_shapeColor = shapeColor;
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
     }
 
     void EditorBaseShapeComponent::SetShapeWireframeColor(const AZ::Color& wireColor)
     {
         m_shapeWireColor = wireColor;
+    }
+
+    void EditorBaseShapeComponent::SetShapeColorIsEditable(bool editable)
+    {
+        if (m_shapeColorIsEditable != editable)
+        {
+            m_shapeColorIsEditable = editable;
+
+          // This changes the visibility of a property so a request to refresh the entire tree must be sent.
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+        }
+    }
+
+    bool EditorBaseShapeComponent::GetShapeColorIsEditable()
+    {
+        return m_shapeColorIsEditable;
     }
 
     bool EditorBaseShapeComponent::CanDraw() const

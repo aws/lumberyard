@@ -259,9 +259,6 @@ typedef uint32 vtx_idx;
 // Enable additional structures and code for sprite motion blur. Currently non-functional and disabled
 // #define PARTICLE_MOTION_BLUR
 
-// Enable additional vertex formats for PopcornFX particles.
-#define POPCORNFX_PARTICLES
-
 // a special ticker thread to run during load and unload of levels
 #define USE_NETWORK_STALL_TICKER_THREAD
 

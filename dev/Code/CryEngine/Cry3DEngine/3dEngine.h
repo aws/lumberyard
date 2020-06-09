@@ -1243,6 +1243,8 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     virtual void GetLightVolumes(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols);
+    virtual uint16 RegisterVolumeForLighting(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo);
+
     CLightVolumesMgr m_LightVolumesMgr;
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -2464,6 +2464,12 @@ struct I3DEngine
     virtual void GetLightVolumes(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols) = 0;
 
     // Summary:
+    //   Registers a volume for lighting
+    // Return Value:
+    //   The index of the registered volume.
+    virtual uint16 RegisterVolumeForLighting(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo) = 0;
+
+    // Summary:
     //   Reload the heightmap.
     // Description:
     //   Reloading the heightmap will resets all decals and particles.

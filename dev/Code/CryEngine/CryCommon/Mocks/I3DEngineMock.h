@@ -397,6 +397,8 @@ public:
         const PodArray<ILightSource*>* ());
     MOCK_METHOD3(GetLightVolumes,
         void(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols));
+    MOCK_METHOD4(RegisterVolumeForLighting,
+        uint16(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo));
     MOCK_METHOD1(RestoreTerrainFromDisk,
         bool(int));
     MOCK_METHOD1(GetFilePath,

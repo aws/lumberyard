@@ -36,7 +36,7 @@ namespace ScriptCanvas
         friend class Node;
     public:
 
-        enum DataType
+        enum DataType : int
         {
             NoData,
             Data,

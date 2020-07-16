@@ -501,14 +501,17 @@ namespace AzFramework
                         NetBindingSliceInstantiationHandler& sliceHandler = itSliceHandler->second;
                         for (AZ::EntityId boundEntityId : sliceHandler.m_boundEntities)
                         {
-							AZ::Entity* entity = nullptr;
-							AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, boundEntityId);
+							if(boundEntityId == entityId)
+							{
+								AZ::Entity* entity = nullptr;
+								AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, boundEntityId);
 
-                            if (entity)
-                            {
-                                entity->Deactivate();
-                                return;
-                            }
+                            	if (entity)
+                            	{
+                                	entity->Deactivate();
+                                	return;
+                            	}
+							}
                         }
 
                         // clean any relevant bind requests as well

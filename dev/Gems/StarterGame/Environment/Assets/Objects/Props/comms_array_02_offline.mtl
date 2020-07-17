@@ -1,0 +1,33 @@
+<Material MtlFlags="557312" DccMaterialHash="954980070" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Comms_Terminal_m" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.03954624,0.03954624,0.03954624,1" Emittance="0.99110222,0.12743771,0.0033465358,70.707069" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/Airship_Terminal_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_terminal_01_ddna.tif"/>
+    <Texture Map="Emittance" File="objects/airship/airship_terminal_03_emis.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="3" TexMod_UOscillatorRate="20" TexMod_UOscillatorPhase="0.5" TexMod_UOscillatorAmplitude="1" TexMod_VOscillatorType="3" TexMod_VOscillatorRate="10" TexMod_VOscillatorPhase="0.30000001" TexMod_VOscillatorAmplitude="0.050000001"/>
+    </Texture>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Comms_Array_01_m" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.03954624,0.03954624,0.03954624,1" Emittance="0.010960096,1,0.095307469,0" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/props/comms_array_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/props/comms_array_01_ddna.tif"/>
+    <Texture Map="Emittance" File="objects/props/comms_array_01_emis.tif"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Comms_doorframe_01_m" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200A00000000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="1,1,1,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_doorgate_02_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_doorgate_01_ddna.tif"/>
+    <Texture Map="Specular" File="objects/airship/airship_doorgate_01_spec.tif"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="proxy_col" MtlFlags="558208" DccMaterialHash="0" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="0.5,0.5,0.5,1" Specular="0.5,0.5,0.5,0.039215688" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+</Material>

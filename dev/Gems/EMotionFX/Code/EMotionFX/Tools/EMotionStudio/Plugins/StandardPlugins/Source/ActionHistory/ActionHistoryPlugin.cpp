@@ -59,7 +59,7 @@ namespace EMStudio
 
     const char* ActionHistoryPlugin::GetCreatorName() const
     {
-        return "MysticGD";
+        return "Amazon";
     }
 
 
@@ -87,7 +87,7 @@ namespace EMStudio
         mList->setSelectionRectVisible(true);
         mList->setSelectionBehavior(QAbstractItemView::SelectRows);
         mList->setSelectionMode(QAbstractItemView::SingleSelection);
-        mDock->SetContents(mList);
+        mDock->setWidget(mList);
 
         // Detect item selection changes.
         connect(mList, &QListWidget::itemSelectionChanged, this, &ActionHistoryPlugin::OnSelectedItemChanged);

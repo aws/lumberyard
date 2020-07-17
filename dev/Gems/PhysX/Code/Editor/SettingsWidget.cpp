@@ -76,7 +76,6 @@ namespace PhysX
 
         void SettingsWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
         }
 
         void SettingsWidget::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*node*/)

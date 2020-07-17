@@ -12,12 +12,17 @@
 */
 
 /*
-
-BreadCrumbs are QWidgets with a QHBoxLayout with 0 content margins and one QLabel child widget.
-
+* BreadCrumbs are QWidgets with a QHBoxLayout with 0 content margins, a QToolButton
+* to display the overflow menu and a QLabel child widget.
 */
 
 AzQtComponents--BreadCrumbs #breadcrumbs-separator
 {
-	background-color: #373737;
+    background-color: #373737;
+}
+
+AzQtComponents--BreadCrumbs #MenuButton
+{
+    qproperty-icon: url(:/Breadcrumb/img/UI20/Breadcrumb/dot-dot-dot_with_arrow.svg);
+    qproperty-iconSize: 22px 11px;
 }

@@ -20,7 +20,8 @@
 #include <SFunctor.h>
 
 #include <AzQtComponents/Components/StyledLineEdit.h>
-#include <AzQtComponents/Components/StyledSpinBox.h>
+#include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Components/Widgets/SliderCombo.h>
 
 #include <Controls/ui_ConsoleSCB.h>
 
@@ -403,13 +404,20 @@ void CConsoleSCB::OnStyleSettingsChanged()
     // Set the debug/warning text colors appropriately for the background theme
     // (e.g. not have black text on black background)
     QColor textColor = Qt::black;
+    m_colorTable[4] = QColor(200, 0, 0); // red
+    m_colorTable[6] = QColor(128, 112, 0); // yellow
     m_backgroundTheme = gSettings.consoleBackgroundColorTheme;
     if (m_backgroundTheme == SEditorSettings::ConsoleColorTheme::Dark)
     {
         textColor = Qt::white;
+        m_colorTable[4] = QColor(0xff, 0xc3, 0x61); // red, error
+        m_colorTable[6] = QColor(0xff, 0xc3, 0x61); // yellow, warning
     }
     m_colorTable[0] = textColor;
     m_colorTable[1] = textColor;
+
+    const bool ui20 = !AzQtComponents::StyleManager::isUi10();
+    const bool ui20AndDark = ui20 && !GetIEditor()->IsInConsolewMode() && CConsoleSCB::GetCreatedInstance() && m_backgroundTheme == SEditorSettings::ConsoleColorTheme::Dark;
 
     QColor bgColor;
     if (!GetIEditor()->IsInConsolewMode() && CConsoleSCB::GetCreatedInstance() && m_backgroundTheme == SEditorSettings::ConsoleColorTheme::Dark)
@@ -420,8 +428,8 @@ void CConsoleSCB::OnStyleSettingsChanged()
     {
         bgColor = Qt::white;
     }
-    ui->textEdit->setBackgroundVisible(true);
-    ui->textEdit->setStyleSheet(QString("QPlainTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
+    ui->textEdit->setBackgroundVisible(!ui20AndDark);
+    ui->textEdit->setStyleSheet(ui20AndDark ? QString() : QString("QPlainTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
 
     // Clear out the console text when we change our background color since
     // some of the previous text colors may not be appropriate for the
@@ -740,28 +748,33 @@ ConsoleVariableItemDelegate::ConsoleVariableItemDelegate(QObject* parent)
  */
 void ConsoleVariableItemDelegate::setEditorData(QWidget* editor, const QModelIndex& index) const
 {
-    // If the editor widget is our styled spin box, the value is either an int or float
-    AzQtComponents::StyledDoubleSpinBox* spinBox = qobject_cast<AzQtComponents::StyledDoubleSpinBox*>(editor);
-    if (spinBox)
+    if (auto* doubleEditor = qobject_cast<AzQtComponents::SliderDoubleCombo*>(editor))
     {
         // If this is a float variable, we need to set the decimal precision of
-        // our spin box to fit the precision of the variable's default value
+        // our editor to fit the precision of the variable's default value
         QVariant value = index.data();
         IVariable* var = index.data(ConsoleVariableModel::VariableCustomRole).value<IVariable*>();
-        IVariable::EType type = var->GetType();
-        if (type == IVariable::FLOAT)
+        Q_ASSERT(var->GetType() == IVariable::FLOAT);
+
+        QString valStr = QString::number(value.toFloat());
+        int decimalIndex = valStr.indexOf('.');
+        if (decimalIndex != -1)
         {
-            QString valStr = QString::number(value.toFloat());
-            int decimalIndex = valStr.indexOf('.');
-            if (decimalIndex != -1)
-            {
-                valStr.remove(0, decimalIndex + 1);
-                spinBox->setDecimals(valStr.size());
-            }
+            valStr.remove(0, decimalIndex + 1);
+            doubleEditor->setDecimals(valStr.size());
         }
 
-        // Set the initial value to our spin box
-        spinBox->setValue(value.toDouble()); 
+        // Set the initial value to our editor
+        doubleEditor->setValue(value.toDouble());
+    }
+    else if (auto* intEditor = qobject_cast<AzQtComponents::SliderCombo*>(editor))
+    {
+        QVariant value = index.data();
+        IVariable* var = index.data(ConsoleVariableModel::VariableCustomRole).value<IVariable*>();
+        Q_ASSERT(var->GetType() == IVariable::INT);
+
+        // Set the initial value to our editor
+        intEditor->setValue(value.toInt());
     }
     // Otherwise the value is a string, so the editor will be our styled line edit
     else
@@ -784,23 +797,56 @@ void ConsoleVariableItemDelegate::setEditorData(QWidget* editor, const QModelInd
  */
 void ConsoleVariableItemDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const
 {
-    // If the editor widget is our styled spin box, the value is either an int
-    // or float, so write the value from the spin box to the model
-    AzQtComponents::StyledDoubleSpinBox* spinBox = qobject_cast<AzQtComponents::StyledDoubleSpinBox*>(editor);
-    if (spinBox)
+    if (auto* doubleEditor = qobject_cast<AzQtComponents::SliderDoubleCombo*>(editor))
     {
-        model->setData(index, spinBox->value());
+        model->setData(index, doubleEditor->value());
     }
-    // Otherwise the value is a string, so grab the data from our styled line edit
+    else if (auto* intEditor = qobject_cast<AzQtComponents::SliderCombo*>(editor))
+    {
+        model->setData(index, intEditor->value());
+    }
+    else if (auto* lineEdit = qobject_cast<AzQtComponents::StyledLineEdit*>(editor))
+    {
+        model->setData(index, lineEdit->text());
+    }
+}
+
+template <typename EditorType>
+static void SetEditorRange(EditorType* editor, IVariable* var)
+{
+    // Retrieve the limits set for the variable
+    float min;
+    float max;
+    float step;
+    bool hardMin;
+    bool hardMax;
+    var->GetLimits(min, max, step, hardMin, hardMax);
+
+    // If this variable has custom limits set, then use that as the min/max
+    // Otherwise, the min/max for the input box will be bounded by the type
+    // limit, but the slider will be constricted to a smaller default range
+    static const double defaultMin = -100.0f;
+    static const double defaultMax = 100.0f;
+    if (var->HasCustomLimits())
+    {
+        editor->setRange(min, max);
+    }
     else
     {
-        AzQtComponents::StyledLineEdit* lineEdit = qobject_cast<AzQtComponents::StyledLineEdit*>(editor);
-        if (!lineEdit)
-        {
-            return;
-        }
+        editor->setSoftRange(defaultMin, defaultMax);
+    }
 
-        model->setData(index, lineEdit->text());
+    // Set the step size. The default variable step is 0, so if it's
+    // not set then set our step size to 0.1 for float variables.
+    // The default step size for our spin box is 1.0 so we can just
+    // use that for the int values
+    if (step > 0)
+    {
+        editor->spinbox()->setSingleStep(step);
+    }
+    else if (auto doubleSpinBox = qobject_cast<AzQtComponents::DoubleSpinBox*>(editor->spinbox()))
+    {
+        doubleSpinBox->setSingleStep(0.1);
     }
 }
 
@@ -822,8 +868,8 @@ QWidget* ConsoleVariableItemDelegate::createEditor(QWidget* parent, const QStyle
     IVariable* var = index.data(ConsoleVariableModel::VariableCustomRole).value<IVariable*>();
     if (var)
     {
-        // Create the proper styled spin box for the int or float value
-        AzQtComponents::StyledDoubleSpinBox* spinBox = nullptr;
+        // Create the proper editor for the int or float value
+        QWidget* editor = nullptr;
         QVariant value = index.data();
 
         // Use the IVariable type; it's more stable than Qt's
@@ -834,72 +880,40 @@ QWidget* ConsoleVariableItemDelegate::createEditor(QWidget* parent, const QStyle
             // We need to make sure this is casted to the regular StyledSpinBox
             // instead of the StyledDoubleSpinBox base class because when we
             // set the min/max it has overridden that method to update the validator
-            AzQtComponents::StyledSpinBox* spinBoxInt = new AzQtComponents::StyledSpinBox(parent);
-            spinBox = spinBoxInt;
+            auto* intEditor = new AzQtComponents::SliderCombo(parent);
+            editor = intEditor;
 
             // If this variable doesn't have custom limits set, use the type min/max
             if (!hasCustomLimits)
             {
-                spinBoxInt->setMinimum(INT_MIN);
-                spinBoxInt->setMaximum(INT_MAX);
+                intEditor->setMinimum(INT_MIN);
+                intEditor->setMaximum(INT_MAX);
             }
+
+            SetEditorRange(intEditor, var);
         }
         else if (type == IVariable::FLOAT)
         {
-            spinBox = new AzQtComponents::StyledDoubleSpinBox(parent);
+            auto* doubleEditor = new AzQtComponents::SliderDoubleCombo(parent);
+            editor = doubleEditor;
 
             // If this variable doesn't have custom limits set, use the integer
             // type min/max because if we use the DBL_MIN/MAX the minimum will
             // be interpreted as 0
             if (!hasCustomLimits)
             {
-                spinBox->setMinimum(INT_MIN);
-                spinBox->setMaximum(INT_MAX);
+                doubleEditor->setMinimum(INT_MIN);
+                doubleEditor->setMaximum(INT_MAX);
             }
+
+            SetEditorRange(doubleEditor, var);
         }
 
-        if (spinBox)
+        if (editor)
         {
             // Set the given geometry
-            spinBox->setGeometry(option.rect);
-
-            // Retrieve the limits set for the variable
-            float min;
-            float max;
-            float step;
-            bool hardMin;
-            bool hardMax;
-            var->GetLimits(min, max, step, hardMin, hardMax);
-
-            // If this variable has custom limits set, then use that as the min/max
-            // Otherwise, the min/max for the input box will be bounded by the type
-            // limit, but the slider will be constricted to a smaller default range
-            static const double defaultMin = -100.0f;
-            static const double defaultMax = 100.0f;
-            if (var->HasCustomLimits())
-            {
-                spinBox->setMinimum(min);
-                spinBox->setMaximum(max);
-            }
-            else
-            {
-                spinBox->SetCustomSliderRange(defaultMin, defaultMax);
-            }
-
-            // Set the step size. The default variable step is 0, so if it's
-            // not set then set our step size to 0.1 for float variables.
-            // The default step size for our spin box is 1.0 so we can just
-            // use that for the int values
-            if (step > 0)
-            {
-                spinBox->setSingleStep(step);
-            }
-            else if (type == IVariable::FLOAT)
-            {
-                spinBox->setSingleStep(0.1);
-            }
-
-            return spinBox;
+            editor->setGeometry(option.rect);
+            return editor;
         }
     }
     

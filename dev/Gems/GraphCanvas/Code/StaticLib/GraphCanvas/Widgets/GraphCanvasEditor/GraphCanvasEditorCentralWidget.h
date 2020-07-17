@@ -12,7 +12,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QMainWindow>
 #include <qdockwidget.h>
 #include <qmimedata.h>
 
@@ -20,6 +19,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string_view.h>
+#include <AzQtComponents/Components/DockMainWindow.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
@@ -29,6 +29,11 @@
 namespace Ui
 {
     class GraphCanvasEditorCentralWidget;
+}
+
+namespace AzQtComponents
+{
+    class FancyDocking;
 }
 
 namespace GraphCanvas
@@ -72,33 +77,44 @@ namespace GraphCanvas
     };
 
     class AssetEditorCentralDockWindow
-        : public QMainWindow
+        : public AzQtComponents::DockMainWindow
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(AssetEditorCentralDockWindow, AZ::SystemAllocator, 0);
 
-        AssetEditorCentralDockWindow(const EditorId& editorId);
+        AssetEditorCentralDockWindow(const EditorId& editorId, const char* saveIdentifier);
         ~AssetEditorCentralDockWindow();
 
         GraphCanvasEditorEmptyDockWidget* GetEmptyDockWidget() const;
 
         void OnEditorOpened(EditorDockWidget* dockWidget);
         void OnEditorClosed(EditorDockWidget* dockWidget);
-
-        void OnEditorDockChanged(bool isDocked);
+        bool CloseAllEditors();
+        EditorDockWidget* GetEditorDockWidgetByGraphId(const GraphId& graphId) const;
+        const AZStd::unordered_set<EditorDockWidget*>& GetEditorDockWidgets() const;
 
         void OnFocusChanged(QWidget* oldWidget, QWidget* nowFocus);
+
+    signals:
+        void OnEditorClosing(EditorDockWidget* dockWidget);
 
     protected:
 
         void UpdateCentralWidget();
+        void ActiveGraphChanged(EditorDockWidget* dockWidget);
+        bool IsDockedInMainWindow(QDockWidget* dockWidget);
+
+    protected Q_SLOTS:
+        void HandleTabWidgetCurrentChanged(int index);
 
     private:
 
         EditorId m_editorId;
 
         GraphCanvasEditorEmptyDockWidget*    m_emptyDockWidget;
-        AZStd::unordered_set< QDockWidget* > m_editorDockWidgets;
+        AZStd::unordered_set< EditorDockWidget* > m_editorDockWidgets;
+
+        AzQtComponents::FancyDocking* m_fancyDockingManager;
     };
 }

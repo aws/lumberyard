@@ -12,28 +12,40 @@
 
 #include <NvCloth_precompiled.h>
 
-#include <ISystem.h>
-#include <IConsole.h>
+#include <AzCore/Console/IConsole.h>
 
 #include <AzFramework/Viewport/ViewportColors.h>
 #include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
 
-#include <Components/ClothComponent.h>
-#include <System/ActorClothColliders.h>
+#include <Components/ClothComponentMesh/ClothDebugDisplay.h>
+#include <Components/ClothComponentMesh/ActorClothColliders.h>
+#include <Components/ClothComponentMesh/ClothComponentMesh.h>
 
-#include <System/ClothDebugDisplay.h>
+#include <System/Cloth.h>
 
 namespace NvCloth
 {
-    extern const char* g_clothDebugDrawCVAR;
-    extern const char* g_clothDebugDrawNormalsCVAR;
-    extern const char* g_clothDebugDrawCollidersCVAR;
+    AZ_CVAR(int32_t, cloth_DebugDraw, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Draw cloth wireframe mesh:\n"
+        " 0 - Disabled\n"
+        " 1 - Cloth wireframe and particle weights");
 
-    ClothDebugDisplay::ClothDebugDisplay(ClothComponent* clothComponent)
-        : m_clothComponent(clothComponent)
+    AZ_CVAR(int32_t, cloth_DebugDrawNormals, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Draw cloth normals:\n"
+        " 0 - Disabled\n"
+        " 1 - Cloth normals\n"
+        " 2 - Cloth normals, tangents and bitangents");
+
+    AZ_CVAR(int32_t, cloth_DebugDrawColliders, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Draw cloth colliders:\n"
+        " 0 - Disabled\n"
+        " 1 - Cloth colliders");
+
+    ClothDebugDisplay::ClothDebugDisplay(ClothComponentMesh* clothComponentMesh)
+        : m_clothComponentMesh(clothComponentMesh)
     {
-        AZ_Assert(m_clothComponent, "Invalid cloth component");
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(m_clothComponent->GetEntityId());
+        AZ_Assert(m_clothComponentMesh, "Invalid cloth component mesh");
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(m_clothComponentMesh->m_entityId);
     }
 
     ClothDebugDisplay::~ClothDebugDisplay()
@@ -43,9 +55,9 @@ namespace NvCloth
 
     bool ClothDebugDisplay::IsDebugDrawEnabled() const
     {
-        return gEnv->pConsole->GetCVar(g_clothDebugDrawCVAR)->GetIVal() > 0
-            || gEnv->pConsole->GetCVar(g_clothDebugDrawNormalsCVAR)->GetIVal() > 0
-            || gEnv->pConsole->GetCVar(g_clothDebugDrawCollidersCVAR)->GetIVal() > 0;
+        return cloth_DebugDraw > 0
+            || cloth_DebugDrawNormals > 0
+            || cloth_DebugDrawColliders > 0;
     }
 
     void ClothDebugDisplay::DisplayEntityViewport(
@@ -54,32 +66,28 @@ namespace NvCloth
     {
         AZ_UNUSED(viewportInfo);
 
-        if (!IsDebugDrawEnabled() || !m_clothComponent->m_cloth)
+        if (!IsDebugDrawEnabled() || !m_clothComponentMesh->m_clothSimulation)
         {
             return;
         }
 
-        const int clothDebugDraw = gEnv->pConsole->GetCVar(g_clothDebugDrawCVAR)->GetIVal();
-        const int clothDebugDrawNormals = gEnv->pConsole->GetCVar(g_clothDebugDrawNormalsCVAR)->GetIVal();
-        const int clothDebugDrawColliders = gEnv->pConsole->GetCVar(g_clothDebugDrawCollidersCVAR)->GetIVal();
-
         AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
-        AZ::TransformBus::EventResult(entityTransform, m_clothComponent->GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+        AZ::TransformBus::EventResult(entityTransform, m_clothComponentMesh->m_entityId, &AZ::TransformInterface::GetWorldTM);
         debugDisplay.PushMatrix(entityTransform);
 
-        if (clothDebugDraw > 0)
+        if (cloth_DebugDraw > 0)
         {
             DisplayParticles(debugDisplay);
             DisplayWireCloth(debugDisplay);
         }
 
-        if (clothDebugDrawNormals > 0)
+        if (cloth_DebugDrawNormals > 0)
         {
-            bool showTangents = (clothDebugDrawNormals > 1);
+            bool showTangents = (cloth_DebugDrawNormals > 1);
             DisplayNormals(debugDisplay, showTangents);
         }
 
-        if (clothDebugDrawColliders > 0)
+        if (cloth_DebugDrawColliders > 0)
         {
             DisplayColliders(debugDisplay);
         }
@@ -92,7 +100,7 @@ namespace NvCloth
         const float particleAlpha = 1.0f;
         const float particleRadius = 0.007f;
 
-        const auto& clothRenderParticles = m_clothComponent->GetRenderParticles();
+        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
 
         for(const auto& particle : clothRenderParticles)
         {
@@ -105,8 +113,8 @@ namespace NvCloth
 
     void ClothDebugDisplay::DisplayWireCloth(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        const auto& clothIndices = m_clothComponent->m_clothInitialIndices;
-        const auto& clothRenderParticles = m_clothComponent->GetRenderParticles();
+        const auto& clothIndices = m_clothComponentMesh->m_clothSimulation->GetInitialIndices();
+        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
 
         const size_t numIndices = clothIndices.size();
         if (numIndices % 3 != 0)
@@ -138,9 +146,9 @@ namespace NvCloth
 
     void ClothDebugDisplay::DisplayNormals(AzFramework::DebugDisplayRequests& debugDisplay, bool showTangents)
     {
-        const auto& clothIndices = m_clothComponent->m_clothInitialIndices;
-        const auto& clothRenderParticles = m_clothComponent->GetRenderParticles();
-        const auto& clothRenderTangentSpaces = m_clothComponent->GetRenderTangentSpaces();
+        const auto& clothIndices = m_clothComponentMesh->m_clothSimulation->GetInitialIndices();
+        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
+        const auto& clothRenderTangentSpaces = m_clothComponentMesh->GetRenderTangentSpaces();
 
         const size_t numIndices = clothIndices.size();
         if (numIndices % 3 != 0)
@@ -191,22 +199,22 @@ namespace NvCloth
 
     void ClothDebugDisplay::DisplayColliders(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        if (!m_clothComponent->m_actorClothColliders)
+        if (!m_clothComponentMesh->m_actorClothColliders)
         {
             return;
         }
 
-        if (m_clothComponent->IsClothFullyAnimated())
+        if (m_clothComponentMesh->IsClothFullyAnimated())
         {
             return;
         }
 
-        for (const SphereCollider& collider : m_clothComponent->m_actorClothColliders->GetSphereColliders())
+        for (const SphereCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetSphereColliders())
         {
             DrawSphereCollider(debugDisplay, collider.m_radius, collider.m_currentModelSpaceTransform);
         }
 
-        for (const CapsuleCollider& collider : m_clothComponent->m_actorClothColliders->GetCapsuleColliders())
+        for (const CapsuleCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetCapsuleColliders())
         {
             DrawCapsuleCollider(debugDisplay, collider.m_radius, collider.m_height, collider.m_currentModelSpaceTransform);
         }

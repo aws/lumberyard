@@ -61,6 +61,9 @@ namespace EMStudio
         // set the selection mode
         mHierarchyWidget->SetSelectionMode(useSingleSelection);
         mUseSingleSelection = useSingleSelection;
+
+        setMinimumSize(QSize(500, 400));
+        resize(700, 800);
     }
 
 

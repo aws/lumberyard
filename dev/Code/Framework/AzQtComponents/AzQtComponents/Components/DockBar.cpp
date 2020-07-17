@@ -75,12 +75,6 @@ namespace AzQtComponents
         painter->restore();
     }
 
-    void DockBar::drawSolidFrame(QPainter* painter, const QRect& area, const QColor& backgroundColor)
-    {
-        // Draw the solid background for our dock bar
-        painter->fillRect(area.adjusted(0, 0, 0, -1), backgroundColor);
-    }
-
     void DockBar::drawTabContents(QPainter* painter, const QRect& area, const DockBarColors& colors, const QString& title)
     {
         painter->save();
@@ -88,20 +82,32 @@ namespace AzQtComponents
         // Draw either the tear icon or the application icon
         const int iconWidth = drawIcon(painter, area.x(), tearIcon());
         // Draw the title using the icon width as the left margin
-        drawTitle(painter, iconWidth, area, area.right(), colors.text, title);
+        drawTabTitle(painter, iconWidth, area, area.right(), colors.text, title);
 
         painter->restore();
+    }
+
+    QString DockBar::GetTabTitleElided(const QString& title, int& textWidth)
+    {
+        const QFontMetrics fontMetrics({ g_dockBarFontFamily, g_dockBarFontPointSize });
+
+        textWidth = fontMetrics.width(title);
+        if (textWidth > MaxTabTitleWidth)
+        {
+            textWidth = MaxTabTitleWidth;
+        }
+
+        return fontMetrics.elidedText(title, Qt::ElideRight, textWidth);
     }
 
     /**
      * Return the minimum width in pixels of a dock bar based on the title width plus all the margin offsets
      */
-    int DockBar::getTitleMinWidth(const QString& title, bool enableTear)
+    int DockBar::GetTabTitleMinWidth(const QString& title, bool enableTear)
     {
-        const QFontMetrics fontMetrics({g_dockBarFontFamily, g_dockBarFontPointSize});
-
-        // Calculate the base width of the text plus margins
-        int textWidth = fontMetrics.width(title);
+        // Calculate the base width of the text (capped at our max title width) plus margins
+        int textWidth = 0;
+        GetTabTitleElided(title, textWidth);
         int width = HandleLeftMargin + TitleLeftMargin + textWidth + TitleRightMargin + ButtonsSpacing;
 
         // If we have enabled tearing, add in the width of the tear icon
@@ -163,56 +169,6 @@ namespace AzQtComponents
     }
 
     /**
-     * Draw the specified dock bar segment
-     */
-    void DockBar::DrawSegment(QPainter& painter, const QRect& area, int buttonsX, bool enableTear, bool drawSideBorders,
-        const DockBarColors& colors, const QString& title)
-    {
-        painter.save();
-
-        // Draw the background
-        DockBar::drawFrame(&painter, area, drawSideBorders, colors);
-
-        // Draw either the tear icon or the application icon
-        int iconWidth = 0;
-        if (enableTear)
-        {
-            iconWidth = drawIcon(&painter, area.x(), m_tearIcon);
-        }
-        else
-        {
-            iconWidth = drawIcon(&painter, area.x(), m_applicationIcon);
-        }
-
-        // Draw the title using the icon width as the left margin
-        drawTitle(&painter, iconWidth, area, buttonsX, colors.text, title);
-
-        painter.restore();
-    }
-
-    /**
-     * Draw a dock bar segment with a solid background
-     */
-    void DockBar::DrawSolidBackgroundSegment(QPainter& painter, const QRect& area,
-        int buttonsX, bool drawAppIcon, const QColor& backgroundColor, const QColor& textColor, const QString& title)
-    {
-        // Draw the background
-        DockBar::drawSolidFrame(&painter, area, backgroundColor);
-
-        // Draw the application icon (if specified)
-        int iconWidth = 0;
-        if (drawAppIcon)
-        {
-            iconWidth = drawIcon(&painter, area.x(), m_applicationIcon);
-        }
-        
-        // Draw the title using the icon width as the left margin
-        painter.save();
-        drawTitle(&painter, iconWidth, area, buttonsX, textColor, title);
-        painter.restore();
-    }
-
-    /**
      * Draw the specified icon and return its width
      */
     int DockBar::drawIcon(QPainter* painter, int x, const QPixmap& icon)
@@ -222,9 +178,9 @@ namespace AzQtComponents
     }
 
     /**
-     * Draw the specified title on our dock bar
+     * Draw the specified title on our dock tab bar
      */
-    void DockBar::drawTitle(QPainter* painter, int leftContentWidth, const QRect& area,
+    void DockBar::drawTabTitle(QPainter* painter, int leftContentWidth, const QRect& area,
         int buttonsX, const QColor& color, const QString& title)
     {
         if (title.isEmpty())
@@ -239,7 +195,18 @@ namespace AzQtComponents
         f.setPointSize(g_dockBarFontPointSize);
         painter->setFont(f);
         painter->setPen(color);
-        painter->drawText(QRectF(textX, 0, maxX - textX, area.height() - 1), Qt::AlignVCenter, title);
+
+        // Cap our maximum allowed tab title width
+        int textWidth = maxX - textX;
+
+        // Elide our title text if it exceeds the maximum width
+        QFontMetrics fontMetrics = painter->fontMetrics();
+        QString elidedTitle = fontMetrics.elidedText(title, Qt::ElideRight, textWidth);
+
+        // We use the Qt::TextSingleLine flag to make sure whitespace is all treated
+        // as spaces so that the text all prints on a single line, otherwise it would
+        // try to render the text on multiple lines even if you restrict the height
+        painter->drawText(QRectF(textX, 0, textWidth, area.height() - 1), Qt::AlignVCenter | Qt::TextSingleLine, elidedTitle);
     }
 
 #include <Components/DockBar.moc>

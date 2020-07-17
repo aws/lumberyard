@@ -13,8 +13,10 @@
             "Include/ScriptCanvas/ScriptCanvasGem.h"
         ],
         "Include/ScriptCanvas/Asset": [
+            "Include/ScriptCanvas/Asset/AssetDescription.h",
             "Include/ScriptCanvas/Asset/AssetRegistry.cpp",
             "Include/ScriptCanvas/Asset/AssetRegistry.h",
+            "Include/ScriptCanvas/Asset/AssetRegistryBus.h",
             "Include/ScriptCanvas/Asset/ExecutionLogAsset.cpp",
             "Include/ScriptCanvas/Asset/ExecutionLogAsset.h",
             "Include/ScriptCanvas/Asset/ExecutionLogAssetBus.h",
@@ -23,6 +25,11 @@
             "Include/ScriptCanvas/Asset/RuntimeAssetHandler.cpp",
             "Include/ScriptCanvas/Asset/RuntimeAssetHandler.h"
         ],
+        "Include/ScriptCanvas/Asset/Functions": [
+            "Include/ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h",
+            "Include/ScriptCanvas/Asset/Functions/RuntimeFunctionAssetHandler.cpp",
+            "Include/ScriptCanvas/Asset/Functions/RuntimeFunctionAssetHandler.h"
+        ],
         "Include/ScriptCanvas/Bus": [
             "Include/ScriptCanvas/Core/ScriptCanvasBus.h",
             "Include/ScriptCanvas/Core/ExecutionNotificationsBus.cpp",
@@ -30,6 +37,7 @@
             "Include/ScriptCanvas/Core/GraphBus.h",
             "Include/ScriptCanvas/Core/NodeBus.h",
             "Include/ScriptCanvas/Core/EBusNodeBus.h",
+            "Include/ScriptCanvas/Core/NodelingBus.h",
             "Include/ScriptCanvas/Core/SignalBus.h",
             "Include/ScriptCanvas/Core/ContractBus.h"
         ],
@@ -87,6 +95,8 @@
             "Include/ScriptCanvas/Core/Contracts/ContractRTTI.h",
             "Include/ScriptCanvas/Core/Contracts/DisallowReentrantExecutionContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/DisallowReentrantExecutionContract.h",
+            "Include/ScriptCanvas/Core/Contracts/DisplayGroupConnectedSlotLimitContract.cpp",
+            "Include/ScriptCanvas/Core/Contracts/DisplayGroupConnectedSlotLimitContract.h",
             "Include/ScriptCanvas/Core/Contracts/DynamicTypeContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/DynamicTypeContract.h",
             "Include/ScriptCanvas/Core/Contracts/ExclusivePureDataContract.cpp",
@@ -169,6 +179,9 @@
             "Include/ScriptCanvas/Libraries/Core/ErrorHandler.h",
             "Include/ScriptCanvas/Libraries/Core/ForEach.cpp",
             "Include/ScriptCanvas/Libraries/Core/ForEach.h",
+            "Include/ScriptCanvas/Libraries/Core/FunctionBus.h",
+            "Include/ScriptCanvas/Libraries/Core/FunctionNode.cpp",
+            "Include/ScriptCanvas/Libraries/Core/FunctionNode.h",
             "Include/ScriptCanvas/Libraries/Core/GetVariable.cpp",
             "Include/ScriptCanvas/Libraries/Core/GetVariable.h",
             "Include/ScriptCanvas/Libraries/Core/Method.cpp",
@@ -181,6 +194,8 @@
             "Include/ScriptCanvas/Libraries/Core/SetVariable.h",
             "Include/ScriptCanvas/Libraries/Core/Start.cpp",
             "Include/ScriptCanvas/Libraries/Core/Start.h",
+            "Include/ScriptCanvas/Libraries/Core/ExecutionNode.cpp",
+            "Include/ScriptCanvas/Libraries/Core/ExecutionNode.h",
             "Include/ScriptCanvas/Libraries/Core/String.h",
             "Include/ScriptCanvas/Libraries/Core/UnaryOperator.h",
             "Include/ScriptCanvas/Libraries/Core/UnaryOperator.cpp",

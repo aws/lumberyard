@@ -45,40 +45,17 @@ namespace GradientSignal
         }
     }
 
-    template<typename T>
-    AzToolsFramework::EntityIdList GetSamplerGradientEntities(T& configuration, AZStd::enable_if_t<AZStd::is_same<T, MixedGradientConfig>::value>* = nullptr)
-    {
-        AzToolsFramework::EntityIdList gradientIds;
-        for (auto& layer : configuration.m_layers)
-        {
-            gradientIds.push_back(layer.m_gradientSampler.m_gradientId);
-        }
-
-        return gradientIds;
-    }
-
-    template<typename T>
-    void SetSamplerGradientEntities(T& configuration, AzToolsFramework::EntityIdList gradientIds, AZStd::enable_if_t<AZStd::is_same<T, MixedGradientConfig>::value>* = nullptr)
-    {
-        size_t numLayers = configuration.GetNumLayers();
-        if (numLayers != gradientIds.size())
-        {
-            return;
-        }
-
-        for (int i = 0; i < numLayers; ++i)
-        {
-            configuration.m_layers[i].m_gradientSampler.m_gradientId = gradientIds[i];
-        }
-    }
-
     class EditorMixedGradientComponent
         : public EditorGradientComponentBase<MixedGradientComponent, MixedGradientConfig>
     {
     public:
         using BaseClassType = EditorGradientComponentBase<MixedGradientComponent, MixedGradientConfig>;
-        AZ_EDITOR_COMPONENT(EditorMixedGradientComponent, "{90642402-6C5F-4C4D-B1F0-8C0F242A2716}", BaseClassType);
+        AZ_EDITOR_COMPONENT(EditorMixedGradientComponent, EditorMixedGradientComponentTypeId, BaseClassType);
         static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component overrides ...
+        void Init() override;
+        void Activate() override;
 
         static constexpr const char* const s_categoryName = "Gradient Modifiers";
         static constexpr const char* const s_componentName = "Gradient Mixer";
@@ -90,5 +67,8 @@ namespace GradientSignal
     protected:
 
         AZ::u32 ConfigurationChanged() override;
+
+    private:
+        void ForceOneEntry();
     };
 }

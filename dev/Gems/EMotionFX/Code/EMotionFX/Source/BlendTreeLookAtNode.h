@@ -61,33 +61,24 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-                , mRotationQuat(AZ::Quaternion::CreateIdentity())
-                , mNodeIndex(MCORE_INVALIDINDEX32)
-                , mMustUpdate(true)
-                , mIsValid(false)
-                , mFirstUpdate(true)
-                , mTimeDelta(0.0f)
-            {}
-            ~UniqueData() {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
+
+            void Update() override;
 
         public:
-            AZ::Quaternion mRotationQuat;
-            float       mTimeDelta;
-            uint32      mNodeIndex;
-            bool        mMustUpdate;
-            bool        mIsValid;
-            bool        mFirstUpdate;
+            AZ::Quaternion mRotationQuat = AZ::Quaternion::CreateIdentity();
+            float mTimeDelta = 0.0f;
+            uint32 mNodeIndex = InvalidIndex32;
+            bool mFirstUpdate = true;
         };
 
         BlendTreeLookAtNode();
         ~BlendTreeLookAtNode();
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetSupportsVisualization() const override              { return true; }
         bool GetHasOutputPose() const override                      { return true; }
         bool GetSupportsDisable() const override                    { return true; }
@@ -107,10 +98,11 @@ namespace EMotionFX
         void SetLimitsEnabled(bool limitsEnabled);
         void SetSmoothingEnabled(bool smoothingEnabled);
 
+        const AZStd::string& GetTargetNodeName() const { return m_targetNodeName; }
+
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 

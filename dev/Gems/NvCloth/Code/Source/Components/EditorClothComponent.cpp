@@ -18,7 +18,9 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <Editor/PropertyTypes.h>
+
 #include <Components/EditorClothComponent.h>
+#include <Components/ClothComponent.h>
 
 namespace NvCloth
 {
@@ -151,23 +153,27 @@ namespace NvCloth
                     // Wind
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Wind")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_windVelocity, "Velocity", 
-                        "Wind in global coordinates acting on cloth's triangles. Disabled when both air coefficients are zero.")
-                        ->Attribute(AZ::Edit::Attributes::Min, -100.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        "Wind in global coordinates acting on cloth's triangles. Disabled when both air coefficients are zero.\n"
+                        "NOTE: A combination of high values in wind properties can cause unstable results.")
+                        ->Attribute(AZ::Edit::Attributes::Min, -50.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_airDragCoefficient, "Air drag coefficient",
-                        "Amount of air dragging.")
+                        "Amount of air dragging.\n"
+                        "NOTE: A combination of high values in wind properties can cause unstable results.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
                         ->Attribute(AZ::Edit::Attributes::Decimals, 6)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_airLiftCoefficient, "Air lift coefficient",
-                        "Amount of air lifting.")
+                        "Amount of air lifting.\n"
+                        "NOTE: A combination of high values in wind properties can cause unstable results.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
                         ->Attribute(AZ::Edit::Attributes::Decimals, 6)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_fluidDensity, "Air Density", 
-                        "Density of air used for air drag and lift calculations.")
+                        "Density of air used for air drag and lift calculations.\n"
+                        "NOTE: A combination of high values in wind properties can cause unstable results.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
 
                     // Collision

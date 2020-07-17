@@ -14,7 +14,7 @@
 
 #include <AzCore/Component/Entity.h>
 
-#include <Utils/AssetHelper.h>
+#include <System/DataTypes.h>
 
 namespace NvCloth
 {

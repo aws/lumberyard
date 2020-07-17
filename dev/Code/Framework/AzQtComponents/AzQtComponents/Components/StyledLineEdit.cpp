@@ -38,21 +38,18 @@ namespace AzQtComponents
         if (flavor != m_flavor)
         {
             m_flavor = flavor;
-            adaptColorText();
             emit flavorChanged();
         }
     }
 
     void StyledLineEdit::focusInEvent(QFocusEvent* event)
     {
-        adaptColorText();
         emit(onFocus()); // Required for focus dependent custom widgets, e.g. ConfigStringLineEditCtrl.
         QLineEdit::focusInEvent(event);
     }
 
     void StyledLineEdit::focusOutEvent(QFocusEvent* event)
     {
-        adaptColorText();
         emit(onFocusOut());
         QLineEdit::focusOutEvent(event);
     }
@@ -79,18 +76,6 @@ namespace AzQtComponents
         else
         {
             setFlavor(StyledLineEdit::Invalid);
-        }
-    }
-
-    void StyledLineEdit::adaptColorText(bool focus)
-    {
-        if (m_flavor == Invalid && focus)
-        {
-            setStyleSheet("color: rgb(226, 82, 67);");
-        }
-        else
-        {
-            setStyleSheet("color: black;");
         }
     }
 

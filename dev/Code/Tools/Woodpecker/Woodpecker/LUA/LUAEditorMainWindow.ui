@@ -213,14 +213,6 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="breakpointsDockWidget">
-   <property name="styleSheet">
-    <string notr="true">
-          QDockWidget::title
-          {
-          font: bold 12pt &quot;MS Sans Serif&quot;;
-          }
-        </string>
-   </property>
    <property name="windowTitle">
     <string>Breakpoints</string>
    </property>
@@ -528,7 +520,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QTabWidget" name="findTabWidget">
+      <widget class="AzQtComponents::TabWidget" name="findTabWidget">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -1331,6 +1323,12 @@
      <extends>QWidget</extends>
      <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
      <container>1</container>
+   </customwidget>
+   <customwidget>
+    <class>AzQtComponents::TabWidget</class>
+    <extends>QTabWidget</extends>
+    <header>AzQtComponents/Components/Widgets/TabWidget.h</header>
+    <container>1</container>
    </customwidget>
  </customwidgets>
  <resources>

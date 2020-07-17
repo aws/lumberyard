@@ -23,9 +23,8 @@ namespace AzToolsFramework
          /// Exposes ComponentMode interface and handles some useful common
          /// functionality all ComponentModes require.
         class EditorBaseComponentMode
-            : public ComponentMode
+            : public ComponentModeRequestBus::Handler
             , private ToolsApplicationNotificationBus::Handler
-            , private ComponentModeRequestBus::Handler
         {
         public:
             AZ_CLASS_ALLOCATOR_DECL
@@ -57,7 +56,8 @@ namespace AzToolsFramework
             AZ::Uuid GetComponentType() const final { return m_componentType; }
 
         private:
-            AZ_DISABLE_COPY_MOVE(EditorBaseComponentMode)
+            EditorBaseComponentMode(const EditorBaseComponentMode&) = delete;
+            EditorBaseComponentMode& operator=(const EditorBaseComponentMode&) = delete;
 
             /// EditorBaseComponentMode interface
             /// @see To be overridden by derived ComponentModes

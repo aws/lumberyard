@@ -58,8 +58,9 @@ namespace AzQtComponents
     const QString g_globalStyleSheetName = QStringLiteral("BaseStyleSheet.qss");
     const QString g_searchPathPrefix = QStringLiteral("AzQtComponentWidgets");
 
-    StyleManager* StyleManager::s_instance = nullptr;
 #endif // !defined(AZ_PLATFORM_LINUX)
+
+    StyleManager* StyleManager::s_instance = nullptr;
 
     static QString FindPath(QApplication* application, const QString& path)
     {
@@ -152,7 +153,7 @@ namespace AzQtComponents
 
         if (!s_instance)
         {
-            qFatal("StyleManager::styleSheetStyle called before instance was created");
+            AZ_Warning("StyleManager", false, "StyleManager::styleSheetStyle called before instance was created");
             return nullptr;
         }
 
@@ -178,6 +179,26 @@ namespace AzQtComponents
         AZ_Assert(false,"Not supported on Linux");
         return nullptr;
 #endif // !defined(AZ_PLATFORM_LINUX)
+    }
+
+    void StyleManager::repolishStyleSheet(QWidget* widget)
+    {
+#if !defined(AZ_PLATFORM_LINUX)
+        StyleManager::styleSheetStyle(widget)->repolish(widget);
+#else
+        AZ_Assert(false,"Not supported on Linux");
+#endif // !defined(AZ_PLATFORM_LINUX)
+    }
+
+    bool StyleManager::isUi10()
+    {
+        if (!s_instance)
+        {
+            AZ_Warning("StyleManager", false, "StyleManager::isUi10 called before instance was created");
+            return false;
+        }
+
+        return s_instance->m_useUI10;
     }
 
     StyleManager::StyleManager(QObject* parent)
@@ -374,8 +395,9 @@ namespace AzQtComponents
         QFontDatabase::addApplicationFont(openSansPathSpecifier.arg("OpenSans-SemiboldItalic.ttf"));
 
         QString amazonEmberPathSpecifier = QStringLiteral(":/AzQtFonts/Fonts/AmazonEmber/%1");
-        QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("amazon_ember_lt-webfont.ttf"));
-        QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("amazon_ember_rg-webfont.ttf"));
+        QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("AmazonEmber_Lt.ttf"));
+        QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("AmazonEmber_Medium.ttf"));
+        QFontDatabase::addApplicationFont(amazonEmberPathSpecifier.arg("AmazonEmber_Rg.ttf"));
 #else
         AZ_Assert(false,"Not supported on Linux");
 #endif // !defined(AZ_PLATFORM_LINUX)
@@ -509,6 +531,14 @@ namespace AzQtComponents
             i.key()->setStyleSheet(styleSheet);
             ++i;
         }
+
+        // QMessageBox uses "QMdiSubWindowTitleBar" class to query the titlebar font
+        // through QApplication::font() and (buggily) calculate required width of itself
+        // to fit the title. It bypassess stylesheets. See QMessageBoxPrivate::updateSize().
+        // When switching back to UI1.0 it's reinitialized to system defualt.
+        QFont titleBarFont("Amazon Ember");
+        titleBarFont.setPixelSize(18);
+        QApplication::setFont(titleBarFont, "QMdiSubWindowTitleBar");
 #else
         AZ_Assert(false,"Not supported on Linux");
 #endif // !defined(AZ_PLATFORM_LINUX)

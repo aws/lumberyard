@@ -16,6 +16,7 @@
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
 #include <Asset/RuntimeAssetSystemComponent.h>
+#include <Asset/Functions/RuntimeFunctionAssetHandler.h>
 
 namespace ScriptCanvas
 {
@@ -26,6 +27,7 @@ namespace ScriptCanvas
     void RuntimeAssetSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         ScriptCanvas::RuntimeData::Reflect(context);
+        ScriptCanvas::FunctionRuntimeData::Reflect(context);
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<RuntimeAssetSystemComponent, AZ::Component>()
@@ -56,7 +58,8 @@ namespace ScriptCanvas
 
     void RuntimeAssetSystemComponent::Activate()
     {
-        m_runtimeAssetRegistry.Register<ScriptCanvas::RuntimeAsset, ScriptCanvas::RuntimeAssetHandler>();
+        m_runtimeAssetRegistry.Register<ScriptCanvas::RuntimeAsset, ScriptCanvas::RuntimeAssetHandler, ScriptCanvas::RuntimeAssetDescription>();
+        m_runtimeAssetRegistry.Register<ScriptCanvas::RuntimeFunctionAsset, ScriptCanvas::RuntimeFunctionAssetHandler, ScriptCanvas::RuntimeFunctionAssetDescription>();
     }
 
     void RuntimeAssetSystemComponent::Deactivate()

@@ -62,8 +62,8 @@ PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
 
     // Add Preset buttons.
     {
-        AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
-        AZ::Vector4 controlValue(aznumeric_cast<float>(elements[0]->GetValue()), aznumeric_cast<float>(elements[1]->GetValue()), aznumeric_cast<float>(elements[2]->GetValue()), aznumeric_cast<float>(elements[3]->GetValue()));
+        AzQtComponents::VectorElement** elements = m_propertyVectorCtrl->getElements();
+        AZ::Vector4 controlValue(aznumeric_cast<float>(elements[0]->getValue()), aznumeric_cast<float>(elements[1]->getValue()), aznumeric_cast<float>(elements[2]->getValue()), aznumeric_cast<float>(elements[3]->getValue()));
 
         m_anchorPresetsWidget = new AnchorPresetsWidget(AnchorPresets::AnchorToPresetIndex(controlValue),
                 [this](int presetIndex)
@@ -88,7 +88,7 @@ PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
         m_propertyVectorCtrl->setLabel(2, "Right");
         m_propertyVectorCtrl->setLabel(3, "Bottom");
 
-        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, this, [this]()
+        QObject::connect(m_propertyVectorCtrl, &AzQtComponents::VectorInput::valueChanged, this, [this]()
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
             });
@@ -189,7 +189,7 @@ AnchorPresetsWidget* PropertyAnchorCtrl::GetAnchorPresetsWidget()
     return m_anchorPresetsWidget;
 }
 
-AzToolsFramework::PropertyVectorCtrl* PropertyAnchorCtrl::GetPropertyVectorCtrl()
+AzQtComponents::VectorInput* PropertyAnchorCtrl::GetPropertyVectorCtrl()
 {
     return m_propertyVectorCtrl;
 }
@@ -208,7 +208,7 @@ void PropertyHandlerAnchor::ConsumeAttribute(PropertyAnchorCtrl* GUI, AZ::u32 at
 
 void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnchorCtrl* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
 {
-    AzToolsFramework::VectorElement** elements = GUI->GetPropertyVectorCtrl()->getElements();
+    AzQtComponents::VectorElement** elements = GUI->GetPropertyVectorCtrl()->getElements();
 
     AZ::EntityId entityId = GetParentEntityId(node, index);
 
@@ -216,7 +216,7 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
     bool presetSelected = true;
     for (int idx = 0; idx < GUI->GetPropertyVectorCtrl()->getSize(); ++idx)
     {
-        if (elements[idx]->WasValueEditedByUser())
+        if (elements[idx]->wasValueEditedByUser())
         {
             presetSelected = false;
             break;
@@ -229,10 +229,10 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
     {
         // Update anchors and adjust pivot and offsets based on the selected preset
 
-        UiTransform2dInterface::Anchors newAnchors(aznumeric_cast<float>(elements[0]->GetValue() / 100.0f),
-            aznumeric_cast<float>(elements[1]->GetValue() / 100.0f),
-            aznumeric_cast<float>(elements[2]->GetValue() / 100.0f),
-            aznumeric_cast<float>(elements[3]->GetValue() / 100.0f));
+        UiTransform2dInterface::Anchors newAnchors(aznumeric_cast<float>(elements[0]->getValue() / 100.0f),
+            aznumeric_cast<float>(elements[1]->getValue() / 100.0f),
+            aznumeric_cast<float>(elements[2]->getValue() / 100.0f),
+            aznumeric_cast<float>(elements[3]->getValue() / 100.0f));
 
         // Old width is preserved if new anchor left equals right, old height is preserved if new anchor top equals bottom
         float width = -1.0f;
@@ -320,33 +320,33 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
         bool verticalFit = false;
         EBUS_EVENT_ID_RESULT(verticalFit, entityId, UiLayoutFitterBus, GetVerticalFit);
 
-        if (elements[0]->WasValueEditedByUser())
+        if (elements[0]->wasValueEditedByUser())
         {
-            newAnchors.m_left = aznumeric_cast<float>(elements[0]->GetValue() / 100.0f);
+            newAnchors.m_left = aznumeric_cast<float>(elements[0]->getValue() / 100.0f);
             if (horizontalFit)
             {
                 newAnchors.m_right = newAnchors.m_left;
             }
         }
-        if (elements[1]->WasValueEditedByUser())
+        if (elements[1]->wasValueEditedByUser())
         {
-            newAnchors.m_top = aznumeric_cast<float>(elements[1]->GetValue() / 100.0);
+            newAnchors.m_top = aznumeric_cast<float>(elements[1]->getValue() / 100.0);
             if (verticalFit)
             {
                 newAnchors.m_bottom = newAnchors.m_top;
             }
         }
-        if (elements[2]->WasValueEditedByUser())
+        if (elements[2]->wasValueEditedByUser())
         {
-            newAnchors.m_right = aznumeric_cast<float>(elements[2]->GetValue() / 100.0);
+            newAnchors.m_right = aznumeric_cast<float>(elements[2]->getValue() / 100.0);
             if (horizontalFit)
             {
                 newAnchors.m_left = newAnchors.m_right;
             }
         }
-        if (elements[3]->WasValueEditedByUser())
+        if (elements[3]->wasValueEditedByUser())
         {
-            newAnchors.m_bottom = aznumeric_cast<float>(elements[3]->GetValue() / 100.0);
+            newAnchors.m_bottom = aznumeric_cast<float>(elements[3]->getValue() / 100.0);
             if (verticalFit)
             {
                 newAnchors.m_top = newAnchors.m_bottom;
@@ -361,7 +361,7 @@ bool PropertyHandlerAnchor::ReadValuesIntoGUI(size_t index, PropertyAnchorCtrl* 
 {
     (int)index;
 
-    AzToolsFramework::PropertyVectorCtrl* ctrl = GUI->GetPropertyVectorCtrl();
+    AzQtComponents::VectorInput* ctrl = GUI->GetPropertyVectorCtrl();
 
     ctrl->blockSignals(true);
     {

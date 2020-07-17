@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AWSResourceManager.h>
+#include <AwsUtil.h>
 #include <IEditor.h>
 
 class StackEventsModel
@@ -119,7 +120,7 @@ private:
             }
 
             status = "Error";
-            statusTextColor = GetIEditor()->GetColorByName("TextErrorColor");
+            statusTextColor = AWSUtil::MakePrettyColor("Error");
         }
         else
         {
@@ -127,12 +128,12 @@ private:
             if (operation.contains("ERROR") || strcmp(outputType, "error") == 0)
             {
                 status = "Error";
-                statusTextColor = GetIEditor()->GetColorByName("TextErrorColor");
+                statusTextColor = AWSUtil::MakePrettyColor("Error");
             }
             else
             {
                 status = "OK";
-                statusTextColor = GetIEditor()->GetColorByName("TextPositiveColor");
+                statusTextColor = AWSUtil::MakePrettyColor("Positive");
             }
         }
 

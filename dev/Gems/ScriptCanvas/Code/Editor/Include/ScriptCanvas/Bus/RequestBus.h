@@ -34,16 +34,25 @@ namespace GraphCanvas
     class GraphCanvasTreeItem;
 }
 
+namespace ScriptCanvas
+{
+    class ScriptCanvasAssetBase;
+}
+
 namespace ScriptCanvasEditor
 {
     struct CategoryInformation;
     struct NodePaletteModelInformation;
 
-    class ScriptCanvasAsset;
 
     namespace Widget
     {
         struct GraphTabMetadata;
+    }
+
+    namespace TypeDefs
+    {
+        typedef AZStd::pair<AZ::EntityId, AZ::ComponentId> EntityComponentId;
     }
 
     class GeneralRequests
@@ -54,18 +63,21 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         //! Opens an existing graph and returns the tab index in which it was open in.
-        //! \param Asset structure used for holding ScriptCanvas Graph
+        //! \param File AssetId
         //! \return index of open tab if the asset was able to be open successfully or error message of why the open failed
-        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) = 0;
+        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(AZ::Data::AssetId scriptCanvasAssetId, int tabIndex = -1) = 0;
         virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAssetId(const AZ::Data::AssetId& scriptCanvasAsset) = 0;        
         
         virtual int CloseScriptCanvasAsset(const AZ::Data::AssetId&) = 0;
 
-        virtual bool CreateScriptCanvasAssetFor(const AZ::EntityId& requestingEntityId) = 0;
+        virtual bool CreateScriptCanvasAssetFor(const TypeDefs::EntityComponentId& requestingComponent) = 0;
 
         virtual bool IsScriptCanvasAssetOpen(const AZ::Data::AssetId& assetId) const = 0;
 
-        virtual void OnChangeActiveGraphTab(const Widget::GraphTabMetadata&) {}
+        virtual void OnChangeActiveGraphTab(AZ::Data::AssetId) {}
+
+        virtual void CreateNewFunctionAsset() = 0;
+        virtual void CreateNewRuntimeAsset() = 0;
 
         virtual ScriptCanvas::ScriptCanvasId GetActiveScriptCanvasId() const
         {
@@ -109,8 +121,8 @@ namespace ScriptCanvasEditor
 
         virtual void DisconnectEndpoints(const AZ::EntityId& /*sceneId*/, const AZStd::vector<GraphCanvas::Endpoint>& /*endpoints*/) {}
 
-        virtual void PostUndoPoint(ScriptCanvas::ScriptCanvasId /*sceneId*/) = 0;
-        virtual void SignalSceneDirty(const ScriptCanvas::ScriptCanvasId& sceneId) = 0;
+        virtual void PostUndoPoint(ScriptCanvas::ScriptCanvasId) = 0;
+        virtual void SignalSceneDirty(AZ::Data::AssetId) = 0;
 
         // Increment the value of the ignore undo point tracker
         virtual void PushPreventUndoStateUpdate() = 0;
@@ -177,6 +189,38 @@ namespace ScriptCanvasEditor
     };
 
     using VariablePaletteRequestBus = AZ::EBus<VariablePaletteRequests>;
+
+    class VariableAutomationRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual AZStd::vector< ScriptCanvas::Data::Type > GetPrimitiveTypes() const = 0;
+        virtual AZStd::vector< ScriptCanvas::Data::Type > GetBehaviorContextObjectTypes() const = 0;
+        virtual AZStd::vector< ScriptCanvas::Data::Type > GetMapTypes() const = 0;
+        virtual AZStd::vector< ScriptCanvas::Data::Type > GetArrayTypes() const = 0;
+
+        AZStd::vector< ScriptCanvas::Data::Type > GetVariableTypes() const
+        {
+            AZStd::vector< ScriptCanvas::Data::Type > dataTypes = GetPrimitiveTypes();
+
+            auto workingTypes = GetBehaviorContextObjectTypes();
+            dataTypes.insert(dataTypes.begin(), workingTypes.begin(), workingTypes.end());
+            workingTypes.clear();
+
+            workingTypes = GetMapTypes();
+            dataTypes.insert(dataTypes.begin(), workingTypes.begin(), workingTypes.end());
+            workingTypes.clear();
+
+            workingTypes = GetArrayTypes();
+            dataTypes.insert(dataTypes.begin(), workingTypes.begin(), workingTypes.end());
+            workingTypes.clear();
+
+            return dataTypes;
+        }
+    };
+
+    using VariableAutomationRequestBus = AZ::EBus<VariableAutomationRequests>;
 
     class AutomationRequests : public AZ::EBusTraits
     {

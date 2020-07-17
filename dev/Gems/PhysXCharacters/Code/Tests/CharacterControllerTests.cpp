@@ -12,152 +12,29 @@
 
 #include <PhysXCharacters_precompiled.h>
 
+#include "TestEnvironment.h"
+
 #include <API/CharacterController.h>
-#include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzCore/Component/ComponentApplication.h>
-#include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/Memory/MemoryComponent.h>
-#include <AzCore/UnitTest/UnitTest.h>
-#include <AzCore/Serialization/Utils.h>
-#include <AzTest/AzTest.h>
-#include <AzTest/GemTestEnvironment.h>
-#include <AzFramework/Application/Application.h>
-#include <AzFramework/Components/TransformComponent.h>
-#include <AzFramework/IO/LocalFileIO.h>
-#include <AzFramework/Physics/SystemBus.h>
-#include <AzFramework/Physics/World.h>
-#include <AzFramework/Physics/Utils.h>
-#include <Physics/PhysicsTests.h>
-#include <Physics/PhysicsTests.inl>
-#include <AzCore/UnitTest/TestTypes.h>
+#include <API/Utils.h>
+#include <Components/CharacterControllerComponent.h>
 #include <PhysXCharacters/SystemBus.h>
+#include <System/SystemComponent.h>
+
+#include <AzFramework/Components/TransformComponent.h>
 #include <PhysX/ComponentTypeIds.h>
 #include <PhysX/SystemComponentBus.h>
-#include <Source/Components/CharacterControllerComponent.h>
-#include <AzFramework/Physics/WorldEventhandler.h>
-#include <System/SystemComponent.h>
-#include <Components/RagdollComponent.h>
 
 namespace PhysXCharacters
 {
-    class PhysXCharactersTestEnvironment
-        : public AZ::Test::GemTestEnvironment
-        , protected Physics::DefaultWorldBus::Handler
-    {
-    protected:
-        void SetupEnvironment() override;
-        void TeardownEnvironment() override;
-        void AddGemsAndComponents() override;
-        void PostCreateApplication() override;
-
-        // DefaultWorldBus
-        AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
-        {
-            return m_defaultWorld;
-        }
-
-        // Flag to enable pvd in tests
-        static const bool s_enablePvd = true;
-
-        AZ::IO::LocalFileIO m_fileIo;
-        AZStd::shared_ptr<Physics::World> m_defaultWorld;
-    };
-
-    void PhysXCharactersTestEnvironment::SetupEnvironment()
-    {
-        AZ::IO::FileIOBase::SetInstance(&m_fileIo);
-
-        AZ::Test::GemTestEnvironment::SetupEnvironment();
-
-        if (s_enablePvd)
-        {
-            bool pvdConnectionSuccessful = false;
-            PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
-        }
-
-        m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
-
-        Physics::DefaultWorldBus::Handler::BusConnect();
-    }
-
-    void PhysXCharactersTestEnvironment::AddGemsAndComponents()
-    {
-        AddDynamicModulePaths({ "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0" });
-        AddComponentDescriptors({
-            SystemComponent::CreateDescriptor(),
-            RagdollComponent::CreateDescriptor(),
-            CharacterControllerComponent::CreateDescriptor(),
-            AzFramework::TransformComponent::CreateDescriptor()
-            });
-        AddRequiredComponents({ SystemComponent::TYPEINFO_Uuid() });
-    }
-
-    void PhysXCharactersTestEnvironment::PostCreateApplication()
-    {
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-        if (serializeContext)
-        {
-            Physics::ReflectionUtils::ReflectPhysicsApi(serializeContext);
-        }
-    }
-
-    void PhysXCharactersTestEnvironment::TeardownEnvironment()
-    {
-        Physics::DefaultWorldBus::Handler::BusDisconnect();
-        m_defaultWorld = nullptr;
-
-        // it's safe to call this even if we're not connected
-        PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::DisconnectFromPvd);
-
-        AZ::Test::GemTestEnvironment::TeardownEnvironment();
-    }
-
-    class PhysXCharactersTest
-        : public ::testing::Test
-        , public Physics::WorldEventHandler
-    {
-    protected:
-        void SetUp() override
-        {
-            GetDefaultWorld()->SetEventHandler(this);
-        }
-
-        void TearDown() override
-        {
-            GetDefaultWorld()->SetEventHandler(nullptr);
-        }
-
-        AZStd::shared_ptr<Physics::World> GetDefaultWorld()
-        {
-            AZStd::shared_ptr<Physics::World> world;
-            Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
-            return world;
-        }
-
-        // WorldEventHandler
-        void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override { m_triggerEnterEvents.push_back(triggerEvent); }
-        void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override { m_triggerExitEvents.push_back(triggerEvent); }
-        void OnCollisionBegin(const Physics::CollisionEvent& collisionEvent) override {}
-        void OnCollisionPersist(const Physics::CollisionEvent& collisionEvent) override {}
-        void OnCollisionEnd(const Physics::CollisionEvent& collisionEvent) override {}
-
-        AZStd::vector<Physics::TriggerEvent> m_triggerEnterEvents;
-        AZStd::vector<Physics::TriggerEvent> m_triggerExitEvents;
-    };
-
-    // transform for a floor centred at x = 0, y = 0, with top at level z = 0
-    static const AZ::Transform defaultFloorTransform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisZ(-0.5f));
-
     class ControllerTestBasis
     {
     public:
-        ControllerTestBasis(const AZ::Transform& floorTransform = defaultFloorTransform)
+        ControllerTestBasis(const Physics::ShapeType shapeType = Physics::ShapeType::Capsule, const AZ::Transform& floorTransform = DefaultFloorTransform)
         {
-            SetUp(floorTransform);
+            SetUp(shapeType, floorTransform);
         }
 
-        void SetUp(const AZ::Transform& floorTransform = defaultFloorTransform)
+        void SetUp(const Physics::ShapeType shapeType = Physics::ShapeType::Capsule, const AZ::Transform& floorTransform = DefaultFloorTransform)
         {
             Physics::DefaultWorldBus::BroadcastResult(m_world, &Physics::DefaultWorldRequests::GetDefaultWorld);
 
@@ -166,10 +43,19 @@ namespace PhysXCharacters
             CharacterControllerConfiguration characterConfig;
             characterConfig.m_maximumSlopeAngle = 25.0f;
             characterConfig.m_stepHeight = 0.2f;
-            Physics::CapsuleShapeConfiguration shapeConfig;
 
-            Physics::CharacterSystemRequestBus::BroadcastResult(m_controller,
-                &Physics::CharacterSystemRequests::CreateCharacter, characterConfig, shapeConfig, *m_world);
+            if (shapeType == Physics::ShapeType::Box)
+            {
+                Physics::BoxShapeConfiguration shapeConfig(AZ::Vector3(0.5f, 0.5f, 1.0f));
+                Physics::CharacterSystemRequestBus::BroadcastResult(m_controller,
+                    &Physics::CharacterSystemRequests::CreateCharacter, characterConfig, shapeConfig, *m_world);
+            }
+            else
+            {
+                Physics::CapsuleShapeConfiguration shapeConfig;
+                Physics::CharacterSystemRequestBus::BroadcastResult(m_controller,
+                    &Physics::CharacterSystemRequests::CreateCharacter, characterConfig, shapeConfig, *m_world);
+            }
 
             ASSERT_TRUE(m_controller != nullptr);
 
@@ -197,6 +83,8 @@ namespace PhysXCharacters
         AZStd::unique_ptr<Physics::Character> m_controller;
         float m_timeStep = 1.0f / 60.0f;
     };
+
+    Physics::ShapeType controllerShapeTypes[] = { Physics::ShapeType::Capsule, Physics::ShapeType::Box };
 
     TEST_F(PhysXCharactersTest, CharacterController_UnimpededController_MovesAtDesiredVelocity)
     {
@@ -271,7 +159,7 @@ namespace PhysXCharacters
         // origin, with radius + contact offset = 0.25 + 0.1 = 0.35
         AZ::Transform slopedFloorTransform = AZ::Transform::CreateRotationY(-AZ::Constants::Pi / 6.0f);
         slopedFloorTransform.SetTranslation(AZ::Vector3::CreateAxisZ(0.35f) + slopedFloorTransform * AZ::Vector3::CreateAxisZ(-0.85f));
-        ControllerTestBasis basis(slopedFloorTransform);
+        ControllerTestBasis basis(Physics::ShapeType::Capsule, slopedFloorTransform);
 
         // we should be able to travel at right angles to the slope
         AZ::Vector3 desiredVelocity = AZ::Vector3::CreateAxisY();
@@ -361,6 +249,71 @@ namespace PhysXCharacters
         tallStep = nullptr;
     }
 
+    using CharacterControllerFixture = ::testing::TestWithParam<Physics::ShapeType>;
+
+    TEST_P(CharacterControllerFixture, CharacterController_ResizedController_CannotFitUnderLowBox)
+    {
+        Physics::ShapeType shapeType = GetParam();
+        ControllerTestBasis basis(shapeType);
+
+        // the bottom of the box will be at height 1.0
+        auto box = Physics::AddStaticUnitBoxToWorld(basis.m_world.get(), AZ::Vector3(1.0f, 0.0f, 1.5f));
+
+        // resize the controller so that it is too tall to fit under the box
+        auto controller = static_cast<PhysXCharacters::CharacterController*>(basis.m_controller.get());
+        controller->Resize(1.3f);
+        EXPECT_NEAR(controller->GetHeight(), 1.3f, 1e-3f);
+
+        const AZ::Vector3 desiredVelocity = AZ::Vector3::CreateAxisX();
+        const AZ::Vector3 movementDelta = desiredVelocity * basis.m_timeStep;
+
+        basis.Update(movementDelta, 50);
+        // movement should be impeded by the box because the controller is too tall to go under it
+        EXPECT_TRUE(basis.m_controller->GetVelocity().IsClose(AZ::Vector3::CreateZero()));
+
+        // resize the controller to a bit less tall than the height of the bottom of the box
+        // leave some leeway under the box to account for the contact offset of the controller
+        controller->Resize(0.6f);
+        EXPECT_NEAR(controller->GetHeight(), 0.6f, 1e-3f);
+
+        basis.Update(movementDelta, 50);
+        // movement should now be unimpeded because the controller is short enough to go under the box
+        const AZ::Vector3 velocity = basis.m_controller->GetVelocity();
+        const float vx = velocity.GetX();
+        const float vy = velocity.GetY();
+        EXPECT_NEAR(vx, 1.0f, 1e-3f);
+        EXPECT_NEAR(vy, 0.0f, 1e-3f);
+
+        box = nullptr;
+    }
+
+    TEST_P(CharacterControllerFixture, CharacterController_ResizingToNegativeHeight_EmitsError)
+    {
+        Physics::ShapeType shapeType = GetParam();
+        ControllerTestBasis basis(shapeType);
+        auto controller = static_cast<PhysXCharacters::CharacterController*>(basis.m_controller.get());
+        Physics::ErrorHandler errorHandler("PhysX requires controller height to be positive");
+        controller->Resize(-0.2f);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 1);
+    }
+
+    INSTANTIATE_TEST_CASE_P(PhysXCharacters, CharacterControllerFixture, ::testing::ValuesIn(controllerShapeTypes));
+
+    TEST_F(PhysXCharactersTest, CharacterController_ResizingCapsuleControllerBelowTwiceRadius_EmitsError)
+    {
+        ControllerTestBasis basis;
+
+        auto controller = static_cast<PhysXCharacters::CharacterController*>(basis.m_controller.get());
+        // the controller will have been made with the default radius of 0.25, so any height under 0.5 should
+        // be impossible
+        Physics::ErrorHandler errorHandler("Capsule height must exceed twice its radius");
+        controller->Resize(0.45f);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 1);
+
+        // the controller should still have the default height of 1
+        EXPECT_NEAR(controller->GetHeight(), 1.0f, 1e-3f);
+    }
+
     TEST_F(PhysXCharactersTest, CharacterController_DroppingBox_CollidesWithController)
     {
         ControllerTestBasis basis;
@@ -442,29 +395,52 @@ namespace PhysXCharacters
         EXPECT_TRUE(m_triggerEnterEvents.size() == 1);
         EXPECT_TRUE(m_triggerExitEvents.size() == 1);
     }
-
-    TEST_F(PhysXCharactersTest, RagdollComponentSerialization_SharedPointerVersion1_NotRegisteredErrorDoesNotOccur)
+    TEST_F(PhysXCharactersTest, CharacterController_DisabledPhysics_DoesNotCauseError_FT)
     {
-        // A stream buffer corresponding to a ragdoll component that was serialized before the "PhysXRagdoll" element
-        // was changed from a shared pointer to a unique pointer.  Without a valid converter, deserializing this will
-        // cause an error.
-        const char* objectStreamBuffer =
-            R"DELIMITER(<ObjectStream version="1">
-            <Class name="RagdollComponent" field="m_template" version="1" type="{B89498F8-4718-42FE-A457-A377DD0D61A0}">
-                <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-                    <Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
-                </Class>
-                <Class name="AZStd::shared_ptr" field="PhysXRagdoll" type="{A3E470C6-D6E0-5A32-9E83-96C379D9E7FA}"/>
-            </Class>
-            </ObjectStream>)DELIMITER";
+        // given a character controller 
+        auto characterConfiguration = AZStd::make_unique<Physics::CharacterConfiguration>();
+        auto characterShapeConfiguration = AZStd::make_unique<Physics::CapsuleShapeConfiguration>();
+        characterShapeConfiguration->m_height = 5.0f;
+        characterShapeConfiguration->m_radius = 1.0f;
 
-        Physics::ErrorHandler errorHandler("not registered with the serializer");
-        AZ::Utils::LoadObjectFromBuffer<RagdollComponent>(objectStreamBuffer, strlen(objectStreamBuffer) + 1);
+        auto characterEntity = AZStd::make_unique<AZ::Entity>("CharacterEntity");
+        characterEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
+        characterEntity->CreateComponent<PhysXCharacters::CharacterControllerComponent>(AZStd::move(characterConfiguration), AZStd::move(characterShapeConfiguration));
+        characterEntity->Init();
+        characterEntity->Activate();
 
-        // Check that there were no errors during deserialization.
+        bool physicsEnabled = false;
+        Physics::WorldBodyRequestBus::EventResult(physicsEnabled, characterEntity->GetId(), &Physics::WorldBodyRequestBus::Events::IsPhysicsEnabled);
+        EXPECT_TRUE(physicsEnabled);
+
+        // when physics is disabled
+        Physics::WorldBodyRequestBus::Event(characterEntity->GetId(), &Physics::WorldBodyRequestBus::Events::DisablePhysics);
+        Physics::WorldBodyRequestBus::EventResult(physicsEnabled, characterEntity->GetId(), &Physics::WorldBodyRequestBus::Events::IsPhysicsEnabled);
+        EXPECT_FALSE(physicsEnabled);
+
+        // expect no error occurs when sending common events 
+        AZ::Vector3 result;
+        Physics::ErrorHandler errorHandler("Invalid character controller.");
+        Physics::CharacterRequestBus::EventResult(result, characterEntity->GetId(), &Physics::CharacterRequestBus::Events::TryRelativeMove, AZ::Vector3::CreateZero(), 1.f);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        Physics::CharacterRequestBus::EventResult(result, characterEntity->GetId(), &Physics::CharacterRequestBus::Events::GetBasePosition);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        Physics::CharacterRequestBus::EventResult(result, characterEntity->GetId(), &Physics::CharacterRequestBus::Events::GetCenterPosition);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        Physics::CharacterRequestBus::EventResult(result, characterEntity->GetId(), &Physics::CharacterRequestBus::Events::GetVelocity);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        CharacterControllerRequestBus::Event(characterEntity->GetId(), &CharacterControllerRequestBus::Events::Resize, 2.f);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        float height = -1.f;
+        CharacterControllerRequestBus::EventResult(height, characterEntity->GetId(), &CharacterControllerRequestBus::Events::GetHeight);
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+
+        AZ::TransformNotificationBus::Event(characterEntity->GetId(), &AZ::TransformNotificationBus::Events::OnTransformChanged, AZ::Transform::CreateIdentity(), AZ::Transform::CreateIdentity());
         EXPECT_EQ(errorHandler.GetErrorCount(), 0);
     }
-
-    AZ_UNIT_TEST_HOOK(new PhysXCharactersTestEnvironment);
 } // namespace PhysXCharacters
-

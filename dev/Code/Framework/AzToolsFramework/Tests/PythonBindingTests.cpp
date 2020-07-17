@@ -15,8 +15,8 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
-#include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
 namespace UnitTest

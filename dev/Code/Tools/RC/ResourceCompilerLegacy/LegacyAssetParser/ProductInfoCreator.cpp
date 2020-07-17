@@ -32,6 +32,7 @@ namespace AZ
 
             AssetBuilderSDK::JobProduct product(fileName, m_productAssetType);
             product.m_pathDependencies = legacyAssetParser->GetProductDependencies(fullPath);
+            product.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
 
             return product;
 

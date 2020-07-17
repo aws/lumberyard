@@ -1520,13 +1520,25 @@ namespace Vegetation
             return false;
         }
 
-        // Early exit if no active areas and no sectors are marked as dirty or updating.
+        bool deleteAllSectors = false;
+
+        // Early exit if no active areas, no sectors are marked as dirty or updating, and there
+        // are no sectors left in our rolling window.
         // Until an area becomes active again, there's no work that sectors should need to do.
         if (threadData->m_activeAreasInBubble.empty() &&
             threadData->m_dirtySectorContents.IsNoneDirty() &&
             threadData->m_dirtySectorSurfacePoints.IsNoneDirty())
         {
-            return !m_deleteWorkList.empty() || !m_updateWorkList.empty();
+            AZStd::lock_guard<decltype(vegTasks->m_sectorRollingWindowMutex)> lock(vegTasks->m_sectorRollingWindowMutex);
+            if (vegTasks->m_sectorRollingWindow.empty())
+            {
+                return !m_deleteWorkList.empty() || !m_updateWorkList.empty();
+            }
+            else
+            {
+                // No active areas left in our view bubble, so queue up the deletion of all remaining active sectors.
+                deleteAllSectors = true;
+            }
         }
 
         // Cache off the total number of sectors that *should* be active in the view rectangle.  We'll use this
@@ -1558,31 +1570,34 @@ namespace Vegetation
             // to update or remove.
 
             // First loop:  Determine non-existent sectors which need to be created
-            for (int y = currViewRect.m_y; y < currViewRect.m_y + currViewRect.m_height; ++y)
+            if (!deleteAllSectors)
             {
-                for (int x = currViewRect.m_x; x < currViewRect.m_x + currViewRect.m_width; ++x)
+                for (int y = currViewRect.m_y; y < currViewRect.m_y + currViewRect.m_height; ++y)
                 {
-                    SectorId sectorId(x, y);
-                    if (vegTasks->m_sectorRollingWindow.find(sectorId) == vegTasks->m_sectorRollingWindow.end())
+                    for (int x = currViewRect.m_x; x < currViewRect.m_x + currViewRect.m_width; ++x)
                     {
-                        // If the sector doesn't currently exist and it belongs in the view rect, request a creation.
-                        // (This will either create a new entry or overwrite an existing pending Create request)
-                        auto found = AZStd::find_if(m_updateWorkList.begin(), m_updateWorkList.end(), [sectorId](auto& entry) { return (entry.first == sectorId); });
-                        if (found != m_updateWorkList.end())
+                        SectorId sectorId(x, y);
+                        if (vegTasks->m_sectorRollingWindow.find(sectorId) == vegTasks->m_sectorRollingWindow.end())
                         {
-                            // If the update entry already exists, overwrite the state.  We don't need to check or
-                            // preserve the existing state because Create is the most comprehensive update we can do.
-                            found->second = UpdateMode::Create;
-                        }
-                        else
-                        {
-                            m_updateWorkList.emplace_back(sectorId, UpdateMode::Create);
-                        }
+                            // If the sector doesn't currently exist and it belongs in the view rect, request a creation.
+                            // (This will either create a new entry or overwrite an existing pending Create request)
+                            auto found = AZStd::find_if(m_updateWorkList.begin(), m_updateWorkList.end(), [sectorId](auto& entry) { return (entry.first == sectorId); });
+                            if (found != m_updateWorkList.end())
+                            {
+                                // If the update entry already exists, overwrite the state.  We don't need to check or
+                                // preserve the existing state because Create is the most comprehensive update we can do.
+                                found->second = UpdateMode::Create;
+                            }
+                            else
+                            {
+                                m_updateWorkList.emplace_back(sectorId, UpdateMode::Create);
+                            }
 
-                        // Since we've already removed entries that aren't in the view rect, and these loops are only
-                        // adding entries in the view rect, at this point our update work list size should never get
-                        // larger than the set of sectors in the view rect.
-                        AZ_Assert(m_updateWorkList.size() <= m_viewRectSectorCount, "Too many update requests added");
+                            // Since we've already removed entries that aren't in the view rect, and these loops are only
+                            // adding entries in the view rect, at this point our update work list size should never get
+                            // larger than the set of sectors in the view rect.
+                            AZ_Assert(m_updateWorkList.size() <= m_viewRectSectorCount, "Too many update requests added");
+                        }
                     }
                 }
             }
@@ -1592,9 +1607,9 @@ namespace Vegetation
             {
                 auto& sectorId = sector.first;
 
-                if (!currViewRect.IsInside(sectorId))
+                if (deleteAllSectors || !currViewRect.IsInside(sectorId))
                 {
-                    // Active sector is no longer within view, so delete it
+                    // Active sector is no longer within view or there are no active areas, so delete it
                     m_deleteWorkList.emplace_back(AZStd::move(sectorId));
                 }
                 else if (threadData->m_dirtySectorSurfacePoints.IsDirty(sectorId))

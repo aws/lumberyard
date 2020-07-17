@@ -35,7 +35,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="m_selectButton">
+    <widget class="QToolButton" name="m_selectButton">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
        <horstretch>0</horstretch>

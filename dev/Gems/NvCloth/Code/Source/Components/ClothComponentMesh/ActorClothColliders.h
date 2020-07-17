@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/EntityId.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Math/Transform.h>
 

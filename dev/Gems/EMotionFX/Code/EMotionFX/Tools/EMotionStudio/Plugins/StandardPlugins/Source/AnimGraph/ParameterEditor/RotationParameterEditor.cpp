@@ -169,7 +169,7 @@ namespace EMStudio
     {
         if (m_gizmoButton->isChecked())
         {
-            EMStudioManager::MakeTransparentButton(m_gizmoButton, "Images/Icons/Vector3Gizmo.png", "Show/Hide translation gizmo for visual manipulation");
+            EMStudioManager::MakeTransparentButton(m_gizmoButton, "Images/Icons/Vector3Gizmo.svg", "Show/Hide translation gizmo for visual manipulation");
         }
         else
         {

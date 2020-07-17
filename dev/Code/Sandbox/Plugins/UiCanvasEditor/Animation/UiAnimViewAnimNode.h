@@ -101,8 +101,7 @@ public:
     virtual EUiAnimViewNodeType GetNodeType() const override { return eUiAVNT_AnimNode; }
 
     // Create & remove sub anim nodes
-    virtual CUiAnimViewAnimNode* CreateSubNode(const QString& name, const EUiAnimNodeType animNodeType, CEntityObject* pOwner = nullptr);
-    virtual CUiAnimViewAnimNode* CreateSubNodeAz(const QString& name, const EUiAnimNodeType animNodeType, AZ::Entity* pEntity = nullptr, bool listen = false);
+    virtual CUiAnimViewAnimNode* CreateSubNode(const QString& name, const EUiAnimNodeType animNodeType, AZ::Entity* pEntity = nullptr, bool listen = false);
     virtual void RemoveSubNode(CUiAnimViewAnimNode* pSubNode);
 
     // Create & remove sub tracks

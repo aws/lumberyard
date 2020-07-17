@@ -17,11 +17,15 @@
 #include <EMotionFX/Source/MorphTarget.h>
 #include <EMotionFX/Source/MorphSetupInstance.h>
 #include <EMotionFX/Source/ActorInstance.h>
-#include <MysticQt/Source/IntSlider.h>
 #include "MorphTargetEditWindow.h"
 #include <QWidget>
 #include <QCheckBox>
 
+
+namespace AzQtComponents
+{
+    class SliderDoubleCombo;
+}
 
 namespace EMStudio
 {
@@ -41,8 +45,8 @@ namespace EMStudio
     public slots:
         void SetManualModeForAll(int value);
         void ManualModeClicked();
-        void SliderWeightMoved(float value);
-        void SliderWeightReleased(float value);
+        void SliderWeightMoved();
+        void SliderWeightReleased();
         void EditClicked();
         void ResetAll();
 
@@ -52,7 +56,7 @@ namespace EMStudio
             EMotionFX::MorphTarget*                     mMorphTarget;
             EMotionFX::MorphSetupInstance::MorphTarget* mMorphTargetInstance;
             QCheckBox*                                  mManualMode;
-            MysticQt::FloatSlider*                      mSliderWeight;
+            AzQtComponents::SliderDoubleCombo*          mSliderWeight;
             float                                       mOldWeight;
         };
 

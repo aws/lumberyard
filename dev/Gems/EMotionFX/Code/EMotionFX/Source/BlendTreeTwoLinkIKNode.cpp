@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -23,11 +23,94 @@
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/Vector.h>
 
-
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+
+    BlendTreeTwoLinkIKNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeTwoLinkIKNode::UniqueData::Update()
+    {
+        BlendTreeTwoLinkIKNode* twoLinkIKNode = azdynamic_cast<BlendTreeTwoLinkIKNode*>(mObject);
+        AZ_Assert(twoLinkIKNode, "Unique data linked to incorrect node type.");
+
+        const ActorInstance* actorInstance = mAnimGraphInstance->GetActorInstance();
+        const Actor* actor = actorInstance->GetActor();
+        const Skeleton* skeleton = actor->GetSkeleton();
+
+        // don't update the next time again
+        mNodeIndexA = InvalidIndex32;
+        mNodeIndexB = InvalidIndex32;
+        mNodeIndexC = InvalidIndex32;
+        mAlignNodeIndex = InvalidIndex32;
+        mBendDirNodeIndex = InvalidIndex32;
+        mEndEffectorNodeIndex = InvalidIndex32;
+        SetHasError(true);
+
+        // Find the end joint.
+        const AZStd::string& endJointName = twoLinkIKNode->GetEndJointName();
+        if (endJointName.empty())
+        {
+            return;
+        }
+        const Node* jointC = skeleton->FindNodeByName(endJointName);
+        if (!jointC)
+        {
+            return;
+        }
+        mNodeIndexC = jointC->GetNodeIndex();
+
+        // Get the second joint.
+        mNodeIndexB = jointC->GetParentIndex();
+        if (mNodeIndexB == InvalidIndex32)
+        {
+            return;
+        }
+
+        // Get the third joint.
+        mNodeIndexA = skeleton->GetNode(mNodeIndexB)->GetParentIndex();
+        if (mNodeIndexA == InvalidIndex32)
+        {
+            return;
+        }
+
+        // Get the end effector joint.
+        const AZStd::string& endEffectorJointName = twoLinkIKNode->GetEndEffectorJointName();
+        const Node* endEffectorJoint = skeleton->FindNodeByName(endEffectorJointName);
+        if (endEffectorJoint)
+        {
+            mEndEffectorNodeIndex = endEffectorJoint->GetNodeIndex();
+        }
+
+        // Find the bend direction joint.
+        const AZStd::string& bendDirJointName = twoLinkIKNode->GetBendDirJointName();
+        const Node* bendDirJoint = skeleton->FindNodeByName(bendDirJointName);
+        if (bendDirJoint)
+        {
+            mBendDirNodeIndex = bendDirJoint->GetNodeIndex();
+        }
+
+        // lookup the actor instance to get the alignment node from
+        const NodeAlignmentData& alignToJointData = twoLinkIKNode->GetAlignToJointData();
+        const ActorInstance* alignInstance = mAnimGraphInstance->FindActorInstanceFromParentDepth(alignToJointData.second);
+        if (alignInstance)
+        {
+            if (!alignToJointData.first.empty())
+            {
+                const Node* alignJoint = alignInstance->GetActor()->GetSkeleton()->FindNodeByName(alignToJointData.first.c_str());
+                if (alignJoint)
+                {
+                    mAlignNodeIndex = alignJoint->GetNodeIndex();
+                }
+            }
+        }
+
+        SetHasError(false);
+    }
 
     BlendTreeTwoLinkIKNode::BlendTreeTwoLinkIKNode()
         : AnimGraphNode()
@@ -50,31 +133,6 @@ namespace EMotionFX
 
     BlendTreeTwoLinkIKNode::~BlendTreeTwoLinkIKNode()
     {
-    }
-
-    void BlendTreeTwoLinkIKNode::Reinit()
-    {
-        if (!mAnimGraph)
-        {
-            return;
-        }
-
-        AnimGraphNode::Reinit();
-
-        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
-            if (!uniqueData)
-            {
-                continue;
-            }
-
-            uniqueData->mMustUpdate = true;
-            animGraphInstance->UpdateUniqueData();
-        }
     }
 
     bool BlendTreeTwoLinkIKNode::InitAfterLoading(AnimGraph* animGraph)
@@ -100,84 +158,6 @@ namespace EMotionFX
     AnimGraphObject::ECategory BlendTreeTwoLinkIKNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_CONTROLLERS;
-    }
-
-    // update the unique data
-    void BlendTreeTwoLinkIKNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        // update the unique data if needed
-        if (uniqueData->mMustUpdate)
-        {
-            ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            Actor* actor = actorInstance->GetActor();
-            Skeleton* skeleton = actor->GetSkeleton();
-
-            // don't update the next time again
-            uniqueData->mMustUpdate = false;
-            uniqueData->mNodeIndexA = MCORE_INVALIDINDEX32;
-            uniqueData->mNodeIndexB = MCORE_INVALIDINDEX32;
-            uniqueData->mNodeIndexC = MCORE_INVALIDINDEX32;
-            uniqueData->mAlignNodeIndex = MCORE_INVALIDINDEX32;
-            uniqueData->mBendDirNodeIndex = MCORE_INVALIDINDEX32;
-            uniqueData->mEndEffectorNodeIndex = MCORE_INVALIDINDEX32;
-            uniqueData->mIsValid = false;
-
-            // find the end node
-            if (m_endNodeName.empty())
-            {
-                return;
-            }
-            const Node* nodeC = skeleton->FindNodeByName(m_endNodeName.c_str());
-            if (!nodeC)
-            {
-                return;
-            }
-            uniqueData->mNodeIndexC = nodeC->GetNodeIndex();
-
-            // get the second node
-            uniqueData->mNodeIndexB = nodeC->GetParentIndex();
-            if (uniqueData->mNodeIndexB == MCORE_INVALIDINDEX32)
-            {
-                return;
-            }
-
-            // get the third node
-            uniqueData->mNodeIndexA = skeleton->GetNode(uniqueData->mNodeIndexB)->GetParentIndex();
-            if (uniqueData->mNodeIndexA == MCORE_INVALIDINDEX32)
-            {
-                return;
-            }
-
-            // get the end effector node
-            const Node* endEffectorNode = skeleton->FindNodeByName(m_endEffectorNodeName.c_str());
-            if (endEffectorNode)
-            {
-                uniqueData->mEndEffectorNodeIndex = endEffectorNode->GetNodeIndex();
-            }
-
-            // find the bend direction node
-            const Node* bendDirNode = skeleton->FindNodeByName(m_bendDirNodeName.c_str());
-            if (bendDirNode)
-            {
-                uniqueData->mBendDirNodeIndex = bendDirNode->GetNodeIndex();
-            }
-
-            // lookup the actor instance to get the alignment node from
-            const ActorInstance* alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(m_alignToNode.second);
-            if (alignInstance)
-            {
-                if (!m_alignToNode.first.empty())
-                {
-                    const Node* alignNode = alignInstance->GetActor()->GetSkeleton()->FindNodeByName(m_alignToNode.first.c_str());
-                    if (alignNode)
-                    {
-                        uniqueData->mAlignNodeIndex = alignNode->GetNodeIndex();
-                    }
-                }
-            }
-
-            uniqueData->mIsValid = true;
-        }
     }
 
     // solve the IK problem by calculating the 'knee/elbow' position
@@ -273,13 +253,12 @@ namespace EMotionFX
         //------------------------------------
         // get the node indices to work on
         //------------------------------------
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData); // update the unique data (lookup node indices when something changed)
-        if (uniqueData->mIsValid == false)
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
+        if (uniqueData->GetHasError())
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
             return;
         }
@@ -306,7 +285,7 @@ namespace EMotionFX
         // there is no error, as we have all we need to solve this
         if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            SetHasError(uniqueData, false);
         }
 
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
@@ -585,21 +564,6 @@ namespace EMotionFX
             drawData->DrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, mVisualizeColor);
             drawData->Unlock();
         }
-    }
-
-    // update the parameter contents, such as combobox values
-    void BlendTreeTwoLinkIKNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // find our unique data
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->mMustUpdate = true;
-        UpdateUniqueData(animGraphInstance, uniqueData);
     }
 
     AZ::Crc32 BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility() const

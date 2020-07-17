@@ -14,7 +14,7 @@
 
 #include <Integration/ActorComponentBus.h>
 
-#include <System/ActorClothColliders.h>
+#include <Components/ClothComponentMesh/ActorClothColliders.h>
 
 namespace NvCloth
 {

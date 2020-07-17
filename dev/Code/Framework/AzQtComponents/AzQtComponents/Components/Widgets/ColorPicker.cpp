@@ -474,9 +474,9 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
 
     m_eyedropperButton = new QToolButton(this);
     m_eyedropperButton->setFocusPolicy(Qt::NoFocus);
-    QIcon eyedropperIcon;
-    eyedropperIcon.addPixmap(QPixmap(":/ColorPickerDialog/ColorGrid/eyedropper-normal.png"), QIcon::Normal);
+    QIcon eyedropperIcon(QStringLiteral(":/ColorPickerDialog/ColorGrid/eyedropper-normal.svg"));
     m_eyedropperButton->setIcon(eyedropperIcon);
+    m_eyedropperButton->setAutoRaise(true);
     m_hsvPickerLayout->addWidget(m_eyedropperButton, 1, 0);
     m_eyedropperButton->setToolTip(tr("Left click on this and hold the button down. On left mouse button release, the color under the mouse cursor will be picked."));
     m_eyedropper = new Eyedropper(this, m_eyedropperButton);
@@ -495,9 +495,9 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
 
     m_toggleHueGridButton = new QToolButton(this);
     m_toggleHueGridButton->setFocusPolicy(Qt::NoFocus);
-    QIcon toggleHueGridIcon;
-    toggleHueGridIcon.addPixmap(QPixmap(":/ColorPickerDialog/ColorGrid/toggle-normal-on.png"), QIcon::Normal, QIcon::On);
+    QIcon toggleHueGridIcon(QStringLiteral(":/ColorPickerDialog/ColorGrid/toggle-normal-on.svg"));
     m_toggleHueGridButton->setIcon(toggleHueGridIcon);
+    m_toggleHueGridButton->setAutoRaise(true);
     m_toggleHueGridButton->setCheckable(true);
     m_toggleHueGridButton->setChecked(true);
     m_toggleHueGridButton->setToolTip("Click this to toggle the color grid between Saturation/Value mode and Hue/Saturation mode");
@@ -1122,11 +1122,22 @@ void ColorPicker::importPalette()
     {
         m_lastSaveDirectory = fileName;
     }
+
+    refreshCardMargins();
 }
 
 void ColorPicker::newPalette()
 {
     addPalette(QSharedPointer<Palette>::create(), {}, tr("Untitled"), defaultColorLibrarySettings());
+    refreshCardMargins();
+}
+
+void ColorPicker::refreshCardMargins()
+{
+    // refresh margins after a small delay
+    QTimer::singleShot(0, this, [this] {
+        m_paletteCardCollection->setCardContentMargins(QMargins(0, 0, 0, 0));
+    });
 }
 
 void ColorPicker::removePaletteCardRequested(QSharedPointer<PaletteCard> card)
@@ -1150,6 +1161,7 @@ void ColorPicker::addPalette(QSharedPointer<Palette> palette, const QString& fil
 {
     QSharedPointer<PaletteCard> card = m_paletteCardCollection->makeCard(palette, title);
     card->setExpanded(settings.expanded);
+
     PaletteAddedCommand* added = new PaletteAddedCommand(this, card, ColorLibrary{ fileName, palette });
     m_undoStack->push(added);
 
@@ -1539,6 +1551,12 @@ bool ColorPicker::eventFilter(QObject* o, QEvent* e)
     }
 
     return StyledDialog::eventFilter(o, e);
+}
+
+void ColorPicker::hideEvent(QHideEvent* event)
+{
+    AZ_UNUSED(event);
+    m_colorGrid->StopSelection();
 }
 
 } // namespace AzQtComponents

@@ -37,7 +37,7 @@ AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: con
                                                                     // 4800 'QTextEngine *const ': forcing value to bool 'true' or 'false' (performance warning)
 #include <QAbstractTextDocumentLayout>
 AZ_POP_DISABLE_WARNING
-#include <QTabWidget>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 #include "NewLogTabDialog.h"
 #include "LogControl.h"
@@ -55,7 +55,7 @@ namespace AzToolsFramework
 
         struct BaseLogPanel::Impl
         {
-            QTabWidget* pTabWidget;
+            AzQtComponents::TabWidget* pTabWidget;
             AZ::u32 storageID;
             AZStd::unordered_map<QObject*, TabSettings> settingsForTabs;
         };
@@ -67,7 +67,7 @@ namespace AzToolsFramework
             m_impl->storageID = 0;
             this->setLayout(aznew LogPanelLayout(NULL));
 
-            m_impl->pTabWidget = new QTabWidget(this);
+            m_impl->pTabWidget = new AzQtComponents::TabWidget(this);
             m_impl->pTabWidget->setObjectName(QString::fromUtf8("tabWidget"));
             m_impl->pTabWidget->setGeometry(QRect(9, 9, 16, 16));
             m_impl->pTabWidget->setTabsClosable(true);

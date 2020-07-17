@@ -21,25 +21,25 @@ namespace AzToolsFramework
         const AZ::Transform& worldFromLocal, const AZ::Vector3& worldSurfacePosition,
         const AZ::Vector3& localStartPosition, const bool snapping, const float gridSize, const int viewportId)
     {
-        AZ::Transform worldFromLocalNormalized = worldFromLocal;
-        const AZ::VectorFloat scale = worldFromLocalNormalized.ExtractScale().GetMaxElement();
-        const AZ::VectorFloat scaleRecip = Round3(scale.GetReciprocal());
-
-        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
-        const AZ::Vector3 localSurfacePosition = localFromWorldNormalized * worldSurfacePosition;
+        const AZ::Transform worldFromLocalUniform = AzToolsFramework::TransformUniformScale(worldFromLocal);
+        const AZ::Transform localFromWorldUniform = worldFromLocalUniform.GetInverseFull();
 
         const AZ::Vector3 localFinalSurfacePosition = snapping
             ? CalculateSnappedTerrainPosition(
-                worldSurfacePosition, worldFromLocalNormalized, viewportId, gridSize * scaleRecip)
-            : localFromWorldNormalized * worldSurfacePosition;
+                // note: gridSize is not scaled by scaleRecip here as localStartPosition is
+                // unscaled itself so the position returned by CalculateSnappedTerrainPosition
+                // must be in the same space (if localStartPosition were also scaled, gridSize
+                // would need to be multiplied by scaleRecip)
+                worldSurfacePosition, worldFromLocalUniform, viewportId, gridSize)
+            : localFromWorldUniform * worldSurfacePosition;
 
         // delta/offset between initial vertex position and terrain pick position
-        const AZ::Vector3 localSurfaceOffset = localFinalSurfacePosition * scaleRecip - localStartPosition;
+        const AZ::Vector3 localSurfaceOffset = localFinalSurfacePosition - localStartPosition;
 
         StartInternal startInternal;
         startInternal.m_snapOffset = localSurfaceOffset;
         startInternal.m_localPosition = localStartPosition + localSurfaceOffset;
-        startInternal.m_localHitPosition = localSurfacePosition * scaleRecip;
+        startInternal.m_localHitPosition = localFromWorldUniform * worldSurfacePosition;
         return startInternal;
     }
 
@@ -48,20 +48,20 @@ namespace AzToolsFramework
         const AZ::Vector3& worldSurfacePosition, const bool snapping, const float gridSize,
         const ViewportInteraction::KeyboardModifiers keyboardModifiers, const int viewportId)
     {
-        AZ::Transform worldFromLocalNormalized = worldFromLocal;
-        const AZ::VectorFloat scale = worldFromLocalNormalized.ExtractScale().GetMaxElement();
-        const AZ::VectorFloat scaleRecip = Round3(scale.GetReciprocal());
+        const AZ::Transform worldFromLocalUniform = AzToolsFramework::TransformUniformScale(worldFromLocal);
+        const AZ::Transform localFromWorldUniform = worldFromLocalUniform.GetInverseFull();
 
-        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+        const float scaleRecip = ScaleReciprocal(worldFromLocalUniform);
+
         const AZ::Vector3 localFinalSurfacePosition = snapping
             ? CalculateSnappedTerrainPosition(
-                worldSurfacePosition, worldFromLocalNormalized, viewportId, gridSize * scaleRecip)
-            : localFromWorldNormalized * worldSurfacePosition;
+                worldSurfacePosition, worldFromLocalUniform, viewportId, gridSize * scaleRecip)
+            : localFromWorldUniform * worldSurfacePosition;
 
         Action action;
         action.m_start.m_localPosition = startInternal.m_localPosition;
         action.m_start.m_snapOffset = startInternal.m_snapOffset;
-        action.m_current.m_localOffset = localFinalSurfacePosition * scaleRecip - startInternal.m_localPosition;
+        action.m_current.m_localOffset = localFinalSurfacePosition - startInternal.m_localPosition;
         // record what modifier keys are held during this action
         action.m_modifiers = keyboardModifiers;
         return action;

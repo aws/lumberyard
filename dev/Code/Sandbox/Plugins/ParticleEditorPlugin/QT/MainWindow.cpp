@@ -29,6 +29,7 @@
 #include <Clipboard.h>
 #include "../../../../CryEngine/CryCommon/ParticleParams.h"
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
@@ -86,8 +87,9 @@ static int s_y = 0;
 #define STYLESHEET_PATH_DARK "Editor/Styles/stylesheet_Dark.qss"
 #define DEFAULT_PARTICLE_EDITOR_LAYOUT_PATH "Editor/Default.editor_layout"
 
-CMainWindow::CMainWindow()
-    : m_libraryTreeViewDock(nullptr)
+CMainWindow::CMainWindow(QWidget* parent)
+    : QMainWindow(parent)
+    , m_libraryTreeViewDock(nullptr)
     , m_attributeViewDock(nullptr)
     , m_previewDock(nullptr)
     , m_libraryMenu(nullptr)
@@ -135,11 +137,13 @@ CMainWindow::CMainWindow()
     // restore happens after the QtViewPaneManager does it's restore
     QTimer::singleShot(0, this, [this]()
         {
-            // State loading is busted for undocked windows and layout loading is about to be replaced by UI 2.0, so just restore the default layout when opened for now.
-            ResetToDefaultEditorLayout();
+            if (AzQtComponents::StyleManager::isUi10())
+            {
+                // State loading is busted for undocked windows and layout loading is about to be replaced by UI 2.0, so just restore the default layout when opened for now.
+                ResetToDefaultEditorLayout();
 
-            UpdatePalette();
-
+                UpdatePalette();
+            }
             GetIEditor()->GetParticleUtils()->ToolTip_LoadConfigXML(QString("Editor\\Plugins\\ParticleEditorPlugin\\settings\\ToolTips.xml"));
 
             RegisterActions();

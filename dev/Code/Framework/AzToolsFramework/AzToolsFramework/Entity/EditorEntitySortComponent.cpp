@@ -184,7 +184,6 @@ namespace AzToolsFramework
             {
                 EntityOrderArray::iterator insertPosition = GetFirstSelectedEntityPosition();
                 retval = AddChildEntityInternal(entityId, false, insertPosition);
-                RebuildEntityOrderCache();
             }
 
             return retval;
@@ -196,7 +195,6 @@ namespace AzToolsFramework
             EntityOrderArray::iterator insertPosition = selectedEntityPos < m_childEntityOrderArray.end() ? selectedEntityPos : m_childEntityOrderArray.begin();
 
             bool retval = AddChildEntityInternal(entityId, false, insertPosition);
-            RebuildEntityOrderCache();
 
             return retval;
         }

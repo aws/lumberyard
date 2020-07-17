@@ -24,14 +24,28 @@ FilteredSearchWidgetPage::FilteredSearchWidgetPage(QWidget* parent)
     for (const auto fruit : fruitList)
     {
         ui->filteredSearchWidget->AddTypeFilter(category, fruit);
-        ui->enabledFilteredSearchWidget->AddTypeFilter(category, fruit, {}, -1, AzQtComponents::FilterCriteriaButton::ExtraButtonType::Visible);
+        AzQtComponents::SearchTypeFilter filter( category, fruit );
+        filter.extraIconFilename = ":/stylesheet/img/tag_visibility_on.svg";
+        ui->enabledFilteredSearchWidget->AddTypeFilter(filter);
+        ui->enabledHiddenFilteredSearchWidget->AddTypeFilter(filter);
         ui->shortFilteredSearchWidget->AddTypeFilter(category, fruit);
         ui->shortEnabledFilteredSearchWidget->AddTypeFilter(category, fruit);
+        ui->shortEnabledHiddenFilteredSearchWidget->AddTypeFilter(category, fruit);
     }
-    ui->enabledFilteredSearchWidget->SetFilterState(0, true);
-    ui->enabledFilteredSearchWidget->SetFilterState(1, true);
-    ui->shortEnabledFilteredSearchWidget->SetFilterState(0, true);
-    ui->shortEnabledFilteredSearchWidget->SetFilterState(1, true);
+    const auto enabledSearchWidgets = {
+        ui->enabledFilteredSearchWidget,
+        ui->enabledHiddenFilteredSearchWidget,
+        ui->shortEnabledFilteredSearchWidget,
+        ui->shortEnabledHiddenFilteredSearchWidget
+    };
+    for (auto searchWidget : enabledSearchWidgets)
+    {
+        searchWidget->SetFilterState(0, true);
+        searchWidget->SetFilterState(1, true);
+    }
+
+    ui->enabledHiddenFilteredSearchWidget->setEnabledFiltersVisible(false);
+    ui->shortEnabledHiddenFilteredSearchWidget->setEnabledFiltersVisible(false);
 
     ui->shortUnfilteredSearchWidget->setTextFilterFillsWidth(false);
     ui->shortFilteredSearchWidget->setTextFilterFillsWidth(false);

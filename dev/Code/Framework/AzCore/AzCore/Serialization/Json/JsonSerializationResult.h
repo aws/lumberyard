@@ -13,15 +13,13 @@
 #pragma once
 
 #include <AzCore/base.h>
+#include <AzCore/std/functional.h>
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
 namespace AZ
 {
-    struct JsonDeserializerSettings;
-    struct JsonSerializerSettings;
-    
     namespace JsonSerializationResult
     {
         // Note the order of the various components is important since the Json Serializer will return
@@ -36,7 +34,9 @@ namespace AZ
             Convert,            //!< Task to convert a value from one type to another.
             Clear,              //!< Task to clear a field/value.
             ReadField,          //!< Task to read a field from JSON to a value.
-            WriteValue          //!< Task to write a value to a JSON field.
+            WriteValue,         //!< Task to write a value to a JSON field.
+            Merge,              //!< Task to merge two JSON values/documents together.
+            CreatePatch         //!< Task to create a patch to transform one value/document to another.
         };
 
         //! Describes how the task was processed.
@@ -52,28 +52,30 @@ namespace AZ
         enum class Outcomes : uint16_t
         {
             Success = 1,        //!< Task completed successfully.
-            Skipped,            //!< Task skipped a field of value.
+            Skipped,            //!< Task skipped a field or value.
             PartialSkip,        //!< Task skipped one or more fields when processing an object/array.
             DefaultsUsed,       //!< Task completed, only defaults were used.
             PartialDefaults,    //!< Task completed, but some defaults were used.
             Unavailable,        //!< The task tried to use space that's not available.
             Unsupported,        //!< An unsupported action was requested.
             TypeMismatch,       //!< Source and target are unrelated so the operation is not possible.
+            TestFailed,         //!< A test against a value failed.
+            Missing,            //!< A required field or value was missing.
+            Invalid,            //!< A field or element has an invalid value.
             Unknown,            //!< The task encountered unknown or missing information.
             Catastrophic        //!< A general failure occurred.
         };
 
         class Result;
 
+        //! A lightweight result returned by all major functions in the Json Serialization.
+        //! This is essentially a 32 bit integer but with additional functionality to be
+        //! more descriptive than a standard integer result code.
         union ResultCode
         {
         public:
             explicit ResultCode(Tasks task);
             ResultCode(Tasks task, Outcomes result);
-            
-            static ResultCode Success(Tasks task);
-            static ResultCode Default(Tasks task);
-            static ResultCode PartialDefault(Tasks task);
             
             bool HasDoneWork() const;
 
@@ -115,19 +117,17 @@ namespace AZ
             uint32_t m_code;
         };
 
+        using JsonIssueCallback = AZStd::function<ResultCode(AZStd::string_view message, ResultCode result, AZStd::string_view path)>;
+
+        //! Result is a wrapper around ResultCode to encourage serializer to report results
+        //! at least once per load/store call. The most common use is to call context.Report
+        //! which returns a Result (which can also be used as a ResultCode).
         class Result
         {
         public:
-            Result(const JsonDeserializerSettings& settings, AZStd::string_view message,
-                ResultCode result, AZStd::string_view path);
-            Result(const JsonDeserializerSettings& settings, AZStd::string_view message,
-                Tasks task, Outcomes result, AZStd::string_view path);
-            
-            Result(const JsonSerializerSettings& settings, AZStd::string_view message,
-                ResultCode result, AZStd::string_view path);
-            Result(const JsonSerializerSettings& settings, AZStd::string_view message,
-                Tasks task, Outcomes result, AZStd::string_view path);
-            
+            Result(const JsonIssueCallback& callback, AZStd::string_view message, ResultCode result, AZStd::string_view path);
+            Result(const JsonIssueCallback& callback, AZStd::string_view message, Tasks task, Outcomes outcome, AZStd::string_view path);
+
             operator ResultCode() const;
             ResultCode GetResultCode() const;
 

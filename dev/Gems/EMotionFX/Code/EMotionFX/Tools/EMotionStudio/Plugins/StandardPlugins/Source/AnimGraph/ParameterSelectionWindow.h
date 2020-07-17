@@ -15,7 +15,6 @@
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <MysticQt/Source/ButtonGroup.h>
 #include "../StandardPluginsConfig.h"
 #include "ParameterWidget.h"
 #include <QDialog>

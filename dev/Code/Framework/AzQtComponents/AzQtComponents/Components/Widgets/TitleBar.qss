@@ -36,35 +36,37 @@ AzQtComponents--TitleBar #title
 
 AzQtComponents--TitleBar #buttons
 {
-    margin-right: 12px;
-}
-
-AzQtComponents--TitleBar[drawSimple="true"] #buttons
-{
-    margin-top: 4px;
-    margin-right: 8px;
-    margin-bottom: 2px;
+    margin-right: 0;
 }
 
 AzQtComponents--DockBarButton
 {
-    border: none;
-    background-color: transparent;
-    min-width: 16px;
-    max-width: 16px;
-    min-height: 16px;
-    max-height: 16px;
-    qproperty-flat: "true";
-    qproperty-iconSize: 12px 12px;
+    border: 0 none;
+    qproperty-iconSize: 16px 16px;
+    min-width: 48px;
+    max-width: 48px;
+    min-height: 32px;
+    max-height: 32px;
 }
 
 AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--DockBarButton
 {
-    min-width: 8px;
-    max-width: 8px;
-    min-height: 8px;
-    max-height: 8px;
-    qproperty-iconSize: 8px 8px;
+    qproperty-iconSize: 12px 12px;
+    border: 0 none;
+    min-width: 32px;
+    max-width: 32px;
+    min-height: 14px;
+    max-height: 14px;
+}
+
+AzQtComponents--TabBar AzQtComponents--DockBarButton
+{
+    qproperty-iconSize: 12px 12px;
+    border: 0 none;
+    min-width: 14px;
+    max-width: 14px;
+    min-height: 14px;
+    max-height: 14px;
 }
 
 AzQtComponents--DockBarButton.close
@@ -72,19 +74,9 @@ AzQtComponents--DockBarButton.close
     titlebar-close-icon: url(:/stylesheet/img/UI20/titlebar-close.svg);
 }
 
-AzQtComponents--DockBarButton.close:hover
-{
-    titlebar-close-icon: url(:/stylesheet/img/UI20/titlebar-close-hover.svg);
-}
-
 AzQtComponents--DockBarButton.maximize
 {
     titlebar-maximize-icon: url(:/stylesheet/img/UI20/titlebar-maximize.svg);
-}
-
-AzQtComponents--DockBarButton.maximize:hover
-{
-    titlebar-maximize-icon: url(:/stylesheet/img/UI20/titlebar-maximize-hover.svg);
 }
 
 AzQtComponents--DockBarButton.minimize
@@ -92,9 +84,9 @@ AzQtComponents--DockBarButton.minimize
     titlebar-minimize-icon: url(:/stylesheet/img/UI20/titlebar-minimize.svg);
 }
 
-AzQtComponents--DockBarButton.minimize:hover
+AzQtComponents--DockBarButton:disabled
 {
-    titlebar-minimize-icon: url(:/stylesheet/img/UI20/titlebar-minimize-hover.svg);
+    titlebar-close-icon: none;
 }
 
 AzQtComponents--TitleBar AzQtComponents--TabBar::tab:first,

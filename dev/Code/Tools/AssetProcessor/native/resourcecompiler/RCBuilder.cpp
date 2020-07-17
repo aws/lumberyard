@@ -444,6 +444,7 @@ namespace AssetProcessor
 
         AssetBuilderSDK::AssetBuilderDesc   builderDesc;
         builderDesc.m_name = builder.GetName().toUtf8().data();
+        builderDesc.m_version = 1;
         builderDesc.m_patterns = builderPatterns;
         builderDesc.m_builderType = AssetBuilderSDK::AssetBuilderDesc::AssetBuilderType::Internal;
 
@@ -1194,7 +1195,14 @@ namespace AssetProcessor
         const AssetBuilderSDK::JobCancelListener& jobCancelListener, 
         AssetBuilderSDK::ProcessJobResponse& response)
     {
-        response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(request.m_fullPath, productAssetType));
+        AssetBuilderSDK::JobProduct jobProduct(request.m_fullPath, productAssetType);
+
+        if(!outputProductDependencies)
+        {
+            jobProduct.m_dependenciesHandled = true; // Copy jobs are meant to be used for assets that have no dependencies and just need to be copied.
+        }
+        
+        response.m_outputProducts.push_back(jobProduct);
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
         if (jobCancelListener.IsCancelled())

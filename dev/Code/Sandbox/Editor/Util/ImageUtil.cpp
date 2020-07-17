@@ -285,6 +285,10 @@ bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQual
     {
         return CImageHDR().Load(fileName, image);
     }
+    else
+    {
+        return CImageUtil::Load(fileName, image);
+    }
 
     return false;
 }
@@ -313,10 +317,11 @@ bool CImageUtil::SaveImage(const QString& fileName, CImageEx& image)
     {
         return SavePGM(fileName, image);
     }
-    else if (azstricmp(ext, ".png") == 0)
+    else
     {
         return Save(fileName, image);
     }
+
     return false;
 }
 

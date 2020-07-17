@@ -61,6 +61,11 @@ namespace ScriptCanvasEditor
 
         m_progressDialog->show();
 
+        m_connection = QObject::connect(m_progressDialog, &QProgressDialog::canceled, [this]()
+        {
+                CancelOperation();
+        });
+
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
         for (QString directory : directories)
@@ -94,11 +99,25 @@ namespace ScriptCanvasEditor
         {
             delete dirIterator;
         }
+
+        QObject::disconnect(m_connection);
     }
     
     void BatchOperatorTool::SignalOperationComplete()
     {
-        TickIterator();
+        if (m_cancelled)
+        {
+            OnOperationCancelled();
+
+            m_directoryIterators.clear();
+            m_originalActiveTab = -1;
+
+            OnBatchComplete();
+        }
+        else
+        {
+            TickIterator();
+        }
     }
 
     MainWindow* BatchOperatorTool::GetMainWindow() const
@@ -110,10 +129,20 @@ namespace ScriptCanvasEditor
     {
         return m_progressDialog;
     }
+
+    void BatchOperatorTool::OnOperationCancelled()
+    {
+
+    }
+
+    void BatchOperatorTool::CancelOperation()
+    {        
+        m_cancelled = true;
+    }
     
     void BatchOperatorTool::IterateOverDirectory(QDir directory)
     {
-        QDirIterator* directoryIterator = new QDirIterator(directory.absolutePath(), QDir::NoDotAndDotDot, QDirIterator::NoIteratorFlags);
+        QDirIterator* directoryIterator = new QDirIterator(directory.absolutePath(), QDir::NoDotAndDotDot, QDirIterator::NoIteratorFlags);        
 
         m_directoryIterators.emplace_back(directoryIterator);            
     }
@@ -171,18 +200,26 @@ namespace ScriptCanvasEditor
             }
             else
             {
-                if (m_progressDialog)
-                {
-                    m_progressDialog->hide();
-                    delete m_progressDialog;
-                    m_progressDialog = nullptr;
-                }
-
-                m_mainWindow->m_tabBar->setCurrentIndex(m_originalActiveTab);
-
-                // Essentially a delete this. From this point on this element is garbage.
-                m_mainWindow->SignalBatchOperationComplete(this);
+                OnBatchComplete();
             }
         } while (tailRecurse);
+    }
+
+    void BatchOperatorTool::OnBatchComplete()
+    {
+        if (m_progressDialog)
+        {
+            m_progressDialog->hide();
+            delete m_progressDialog;
+            m_progressDialog = nullptr;
+        }
+
+        if (m_originalActiveTab >= 0)
+        {
+            m_mainWindow->m_tabBar->setCurrentIndex(m_originalActiveTab);
+        }
+
+        // Essentially a delete this. From this point on this element is garbage.
+        m_mainWindow->SignalBatchOperationComplete(this);
     }
 }

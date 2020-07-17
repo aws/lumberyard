@@ -43,7 +43,7 @@ namespace EMotionFX
 
         float           mTimeValue;         /**< The time value of the event, in seconds. */
         ActorInstance*  mActorInstance;     /**< The actor instance that triggered this event. */
-        MotionInstance* mMotionInstance;    /**< The motion instance which triggered this event, can be nullptr. */
+        const MotionInstance* mMotionInstance;    /**< The motion instance which triggered this event, can be nullptr. */
         AnimGraphNode*  mEmitter;           /**< The animgraph node which originally did emit this event. This parameter can be nullptr. */
         const MotionEvent*    mEvent;       /**< The event itself. */
         float           mGlobalWeight;      /**< The global weight of the event. */
@@ -58,7 +58,7 @@ namespace EMotionFX
         explicit EventInfo(
                 float timeValue = 0.0f,
                 ActorInstance* actorInstance = nullptr,
-                MotionInstance* motionInstance = nullptr,
+                const MotionInstance* motionInstance = nullptr,
                 MotionEvent* event = nullptr,
                 EventState eventState = START
         )

@@ -15,6 +15,7 @@
 
 namespace AWSUtil
 {
+    QColor MakePrettyColor(const QString& colorName);
     QString MakePrettyResourceStatusText(const QString& status);
     QString MakePrettyResourceStatusTooltip(const QString& status, const QString& statusReason);
     QColor MakePrettyResourceStatusColor(const QString& status);

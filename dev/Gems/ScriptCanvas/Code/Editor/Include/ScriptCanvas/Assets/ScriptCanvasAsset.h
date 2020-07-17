@@ -13,11 +13,17 @@
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
+#include <ScriptCanvas/Asset/AssetDescription.h>
+#include <ScriptCanvas/Assets/ScriptCanvasAssetBus.h>
+#include <ScriptCanvas/Assets/ScriptCanvasBaseAssetData.h>
+
+#include <ScriptCanvas/Asset/ScriptCanvasAssetBase.h>
 
 namespace AZ
 {
     class Entity;
 }
+
 namespace ScriptCanvas
 {
     class Graph;
@@ -25,56 +31,62 @@ namespace ScriptCanvas
 
 namespace ScriptCanvasEditor
 {
-    struct ScriptCanvasData
+    class Graph;
+    class ScriptCanvasAsset;
+
+    class ScriptCanvasAssetDescription : public ScriptCanvas::AssetDescription
     {
-        AZ_TYPE_INFO(ScriptCanvasData, "{1072E894-0C67-4091-8B64-F7DB324AD13C}");
-        AZ_CLASS_ALLOCATOR(ScriptCanvasData, AZ::SystemAllocator, 0);
-        ScriptCanvasData();
-        ~ScriptCanvasData();
-        ScriptCanvasData(ScriptCanvasData&& other);
-        ScriptCanvasData& operator=(ScriptCanvasData&& other);
+    public:
 
-        static void Reflect(AZ::ReflectContext* reflectContext);
+        AZ_TYPE_INFO(ScriptCanvasAssetDescription, "{3678E33E-521B-4CAC-9DC1-42566AC71249}");
 
-        AZ::Entity* GetScriptCanvasEntity() const { return m_scriptCanvasEntity.get(); }
-
-        AZStd::unique_ptr<AZ::Entity> m_scriptCanvasEntity;
-    private:
-        ScriptCanvasData(const ScriptCanvasData&) = delete;
+        ScriptCanvasAssetDescription()
+            : ScriptCanvas::AssetDescription(
+                azrtti_typeid<ScriptCanvasAsset>(),
+                "Script Canvas",
+                "Script Canvas Graph Asset",
+                "@devassets@/scriptcanvas",
+                ".scriptcanvas",
+                "Script Canvas",
+                "Untitled-%i",
+                "Script Canvas Files (*.scriptcanvas)",
+                "Script Canvas",
+                "Script Canvas",
+                "Editor/Icons/ScriptCanvas/Viewport/ScriptCanvas.png",
+                AZ::Color(0.321f, 0.302f, 0.164f, 1.0f),
+                true
+            )
+        {}
     };
 
     class ScriptCanvasAsset
-        : public AZ::Data::AssetData
+        : public ScriptCanvas::ScriptCanvasAssetBase
     {
-        // The Document Context is friended to allow it to set the AssetStatus state to Ready,
-        // as it is responsible for creating new Script Canvas assets in the SC editor
-        friend class DocumentContext; 
+
     public:
-        AZ_RTTI(ScriptCanvasAsset, "{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}", AZ::Data::AssetData);
+        AZ_RTTI(ScriptCanvasAsset, "{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}", ScriptCanvas::ScriptCanvasAssetBase);
         AZ_CLASS_ALLOCATOR(ScriptCanvasAsset, AZ::SystemAllocator, 0);
 
         ScriptCanvasAsset(const AZ::Data::AssetId& assetId = AZ::Data::AssetId(AZ::Uuid::CreateRandom()),
             AZ::Data::AssetData::AssetStatus status = AZ::Data::AssetData::AssetStatus::NotLoaded)
-            : AZ::Data::AssetData(assetId, status)
+            : ScriptCanvas::ScriptCanvasAssetBase(assetId, status)
+        {
+            m_data = aznew ScriptCanvas::ScriptCanvasData();
+        }
+        ~ScriptCanvasAsset() override
         {
         }
-        ~ScriptCanvasAsset() override = default;
-      
-        static const char* GetFileExtension() { return "scriptcanvas"; }
-        static const char* GetFileFilter() { return "*.scriptcanvas"; }
-        static const char* GetGroup() { return "ScriptCanvas"; }
+
+        ScriptCanvas::AssetDescription GetAssetDescription() const override
+        {
+            return ScriptCanvasAssetDescription();
+        }
        
-        AZ::Entity* GetScriptCanvasEntity() const;
-        void SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity);
-
         ScriptCanvas::Graph* GetScriptCanvasGraph() const;
+        using Description = ScriptCanvasAssetDescription;
 
-        ScriptCanvasData& GetScriptCanvasData();
-        const ScriptCanvasData& GetScriptCanvasData() const;
+        ScriptCanvas::ScriptCanvasData& GetScriptCanvasData();
+        const ScriptCanvas::ScriptCanvasData& GetScriptCanvasData() const;
 
-    protected:
-        ScriptCanvasData m_data;
     };
-
-    
-} // namespace ScriptCanvasEditor
+}

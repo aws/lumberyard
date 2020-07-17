@@ -14,7 +14,8 @@
 
 #include "EMStudioConfig.h"
 #include <QDialog>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <MCore/Source/StandardHeaders.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
@@ -38,9 +39,9 @@ namespace EMStudio
         void OnCancelButton();
 
     private:
-        float                       mScaleFactor;
-        QPushButton*                mOK;
-        QPushButton*                mCancel;
-        MysticQt::DoubleSpinBox*    mScaleSpinBox;
+        float                           mScaleFactor;
+        QPushButton*                    mOK;
+        QPushButton*                    mCancel;
+        AzQtComponents::DoubleSpinBox*  mScaleSpinBox;
     };
 } // namespace EMStudio

@@ -27,6 +27,54 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
     const size_t BlendTreeMaskNode::s_numMasks = 4;
 
+    BlendTreeMaskNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeMaskNode::UniqueData::Update()
+    {
+        BlendTreeMaskNode* maskNode = azdynamic_cast<BlendTreeMaskNode*>(mObject);
+        AZ_Assert(maskNode, "Unique data linked to incorrect node type.");
+
+        const Actor* actor = mAnimGraphInstance->GetActorInstance()->GetActor();
+        const size_t numMaskInstances = maskNode->GetNumUsedMasks();
+        m_maskInstances.resize(numMaskInstances);
+        AZ::u32 maskInstanceIndex = 0;
+
+        m_motionExtractionInputPortNr.reset();
+        const AZ::u32 motionExtractionJointIndex = mAnimGraphInstance->GetActorInstance()->GetActor()->GetMotionExtractionNodeIndex();
+
+        const AZStd::vector<Mask>& masks = maskNode->GetMasks();
+        const size_t numMasks = masks.size();
+        for (size_t i = 0; i < numMasks; ++i)
+        {
+            const Mask& mask = masks[i];
+            if (!mask.m_jointNames.empty())
+            {
+                const AZ::u32 inputPortNr = INPUTPORT_START + static_cast<AZ::u32>(i);
+
+                // Get the joint indices by joint names and cache them in the unique data
+                // so that we don't have to look them up at runtime.
+                UniqueData::MaskInstance& maskInstance = m_maskInstances[maskInstanceIndex];
+                AnimGraphPropertyUtils::ReinitJointIndices(actor, mask.m_jointNames, maskInstance.m_jointIndices);
+                maskInstance.m_inputPortNr = inputPortNr;
+
+                // Check if the motion extraction node is part of this mask and cache the mask index in that case.
+                for (AZ::u32 jointIndex : maskInstance.m_jointIndices)
+                {
+                    if (jointIndex == motionExtractionJointIndex)
+                    {
+                        m_motionExtractionInputPortNr = inputPortNr;
+                        break;
+                    }
+                }
+
+                maskInstanceIndex++;
+            }
+        }
+    }
+
     BlendTreeMaskNode::BlendTreeMaskNode()
         : AnimGraphNode()
     {
@@ -59,8 +107,6 @@ namespace EMotionFX
 
     void BlendTreeMaskNode::Reinit()
     {
-        AnimGraphNode::Reinit();
-
         AZ::u8 maskCounter = 0;
         for (Mask& mask : m_masks)
         {
@@ -69,19 +115,7 @@ namespace EMotionFX
             maskCounter++;
         }
 
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = reinterpret_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-            if (uniqueData)
-            {
-                uniqueData->mMustUpdate = true;
-            }
-        }
-
-        UpdateUniqueDatas();
+        AnimGraphNode::Reinit();
     }
 
     bool BlendTreeMaskNode::InitAfterLoading(AnimGraph* animGraph)
@@ -122,23 +156,9 @@ namespace EMotionFX
         }
     }
 
-    void BlendTreeMaskNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<BlendTreeMaskNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->mMustUpdate = true;
-        UpdateUniqueData(animGraphInstance, uniqueData);
-    }
-
     void BlendTreeMaskNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputAnimGraphPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
@@ -182,7 +202,7 @@ namespace EMotionFX
 
     void BlendTreeMaskNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphNode* basePoseNode = GetInputNode(INPUTPORT_BASEPOSE);
         if (basePoseNode)
@@ -208,7 +228,7 @@ namespace EMotionFX
     void BlendTreeMaskNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
@@ -218,7 +238,7 @@ namespace EMotionFX
         {
             basePoseNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
-            const AnimGraphNodeData* basePoseNodeUniqueData = basePoseNode->FindUniqueNodeData(animGraphInstance);
+            const AnimGraphNodeData* basePoseNodeUniqueData = basePoseNode->FindOrCreateUniqueNodeData(animGraphInstance);
             data->SetEventBuffer(basePoseNodeUniqueData->GetRefCountedData()->GetEventBuffer());
         }
 
@@ -238,7 +258,7 @@ namespace EMotionFX
             // If we want to output events for this input, add the incoming events to the output event buffer.
             if (GetOutputEvents(inputPortNr))
             {
-                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
+                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
 
                 AnimGraphEventBuffer& outputEventBuffer = data->GetEventBuffer();
                 outputEventBuffer.AddAllEventsFrom(inputEventBuffer);
@@ -252,7 +272,7 @@ namespace EMotionFX
             AnimGraphNode* inputNode = GetInputNode(uniqueData->m_motionExtractionInputPortNr.value());
             if (inputNode)
             {
-                AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                AnimGraphRefCountedData* sourceData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
                 data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
                 data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
                 motionExtractionApplied = true;
@@ -262,7 +282,7 @@ namespace EMotionFX
         // In case the motion extraction node is not part of any of the masks while the base pose is connected, use that as a fallback.
         if (!motionExtractionApplied && basePoseNode)
         {
-            AnimGraphRefCountedData* sourceData = basePoseNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* sourceData = basePoseNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
             data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
             data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
         }
@@ -279,51 +299,6 @@ namespace EMotionFX
             }
         }
         return result;
-    }
-
-    void BlendTreeMaskNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        if (uniqueData->mMustUpdate)
-        {
-            Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
-            const size_t numMaskInstances = GetNumUsedMasks();
-            uniqueData->m_maskInstances.resize(numMaskInstances);
-            AZ::u32 maskInstanceIndex = 0;
-
-            uniqueData->m_motionExtractionInputPortNr.reset();
-            const AZ::u32 motionExtractionJointIndex = animGraphInstance->GetActorInstance()->GetActor()->GetMotionExtractionNodeIndex();
-
-            const size_t numMasks = m_masks.size();
-            for (size_t i = 0; i < numMasks; ++i)
-            {
-                const Mask& mask = m_masks[i];
-                if (!mask.m_jointNames.empty())
-                {
-                    const AZ::u32 inputPortNr = INPUTPORT_START + static_cast<AZ::u32>(i);
-
-                    // Get the joint indices by joint names and cache them in the unique data
-                    // so that we don't have to look them up at runtime.
-                    UniqueData::MaskInstance& maskInstance = uniqueData->m_maskInstances[maskInstanceIndex];
-                    AnimGraphPropertyUtils::ReinitJointIndices(actor, mask.m_jointNames, maskInstance.m_jointIndices);
-                    maskInstance.m_inputPortNr = inputPortNr;
-
-                    // Check if the motion extraction node is part of this mask and cache the mask index in that case.
-                    for (AZ::u32 jointIndex : maskInstance.m_jointIndices)
-                    {
-                        if (jointIndex == motionExtractionJointIndex)
-                        {
-                            uniqueData->m_motionExtractionInputPortNr = inputPortNr;
-                            break;
-                        }
-                    }
-
-                    maskInstanceIndex++;
-                }
-            }
-
-            // Don't update the next time again.
-            uniqueData->mMustUpdate = false;
-        }
     }
 
     AZStd::string BlendTreeMaskNode::GetMaskJointName(size_t maskIndex, size_t jointIndex) const
@@ -383,7 +358,7 @@ namespace EMotionFX
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<Mask>("Pose Hello", "Pose mark attributes")
+                editContext->Class<Mask>("Pose Mask Node", "Pose mask attributes")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)

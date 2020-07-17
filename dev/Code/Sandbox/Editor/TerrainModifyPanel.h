@@ -81,14 +81,6 @@ protected:
     void OnUpdateNumbers();
     void OnBrushTypeCmd(const QString& brushType);
 
-    template<typename Widget, typename Value>
-    void SyncWidgetValue(Widget* widget, Value value)
-    {
-        QSignalBlocker blocker(widget);
-        widget->setValue(value);
-        OnUpdateNumbers();
-    }
-
     QScopedPointer<Ui::TerrainModifyPanel> m_ui;
 
     CTerrainModifyTool* m_tool;

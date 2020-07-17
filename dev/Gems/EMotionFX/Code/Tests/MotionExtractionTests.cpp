@@ -26,6 +26,7 @@
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/Skeleton.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
+#include <EMotionFX/Source/SkeletalSubMotion.h>
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/MotionEventTable.h>
 #include <EMotionFX/Source/MotionEventTrack.h>
@@ -35,6 +36,7 @@
 #include <Tests/JackGraphFixture.h>
 #include <Tests/TestAssetCode/TestMotionAssets.h>
 
+
 namespace EMotionFX
 {
     struct MotionExtractionTestsData
@@ -43,7 +45,7 @@ namespace EMotionFX
         std::vector<AZ::u32> numOfLoops;
     };
 
-    std::vector< MotionExtractionTestsData> motionExtractionTestData
+    std::vector<MotionExtractionTestsData> motionExtractionTestData
     {
         {
             {0.001f, 0.01f, 1.0f},
@@ -51,9 +53,8 @@ namespace EMotionFX
         }
     };
 
-    class MotionExtractionFixture
+    class MotionExtractionFixtureBase
         : public JackGraphFixture
-        , public ::testing::WithParamInterface<testing::tuple<bool, MotionExtractionTestsData>>
     {
     public:
         virtual void ConstructGraph() override
@@ -62,8 +63,6 @@ namespace EMotionFX
             m_jackSkeleton = m_actor->GetSkeleton();
             m_actorInstance->SetMotionExtractionEnabled(true);
             m_actor->AutoSetMotionExtractionNode();
-            m_reverse = testing::get<0>(GetParam());
-            m_param = testing::get<1>(GetParam());
 
             rootNode = m_jackSkeleton->FindNodeAndIndexByName("jack_root", m_jack_rootIndex);
             hipNode = m_jackSkeleton->FindNodeAndIndexByName("Bip01__pelvis", m_jack_hipIndex);
@@ -99,18 +98,52 @@ namespace EMotionFX
             m_motionSet->SetMotionEntryId(newMotionEntry, motionId);
         }
 
+        AZ::Vector3 ExtractLastFramePos()
+        {
+            Node* motionExtractionNode = m_actor->GetMotionExtractionNode();
+            if (!motionExtractionNode)
+            {
+                return AZ::Vector3::CreateZero();
+            }
+
+            SkeletalSubMotion* subMotion = m_motion->FindSubMotionByID(motionExtractionNode->GetID());
+            if (!subMotion)
+            {
+                return AZ::Vector3::CreateZero();
+            }
+
+            const auto positionTrack = subMotion->GetPosTrack();
+            return positionTrack ? positionTrack->GetLastKey()->GetValue() : AZ::Vector3::CreateZero();
+        }
+
     protected:
         AZ::u32 m_jack_rootIndex = MCORE_INVALIDINDEX32;
         AZ::u32 m_jack_hipIndex = MCORE_INVALIDINDEX32;
         AnimGraphMotionNode* m_motionNode = nullptr;
         BlendTree* m_blendTree = nullptr;
         SkeletalMotion* m_motion = nullptr;
-        bool m_reverse = false;
         Node* rootNode = nullptr;
         Node* hipNode = nullptr;
-        Pose * m_jackPose = nullptr;
+        Pose* m_jackPose = nullptr;
         Skeleton* m_jackSkeleton = nullptr;
+    };
+    
+
+    class MotionExtractionFixture
+        : public MotionExtractionFixtureBase
+        , public ::testing::WithParamInterface<testing::tuple<bool, MotionExtractionTestsData>>
+    {
+    public:
+        void ConstructGraph() override
+        {
+            MotionExtractionFixtureBase::ConstructGraph();
+            m_reverse = testing::get<0>(GetParam());
+            m_param = testing::get<1>(GetParam());
+        }
+
+    protected:
         MotionExtractionTestsData m_param;
+        bool m_reverse = false;
     };
 
     class SyncMotionExtractionFixture
@@ -169,6 +202,33 @@ namespace EMotionFX
     };
 
 
+    TEST_F(MotionExtractionFixtureBase, ScaleTest)
+    {
+        const float scale = 2.0f;
+        m_actorInstance->SetLocalSpaceScale(AZ::Vector3(scale, scale, scale));
+
+        ASSERT_TRUE(m_motionNode->GetIsMotionExtraction()) << "Motion node should use motion extraction effect.";
+        ASSERT_NE(m_actor->GetMotionExtractionNode(), nullptr) << "Actor's motion extraction node should not be nullptr.";
+
+        // Move the character forward in 30 steps.
+        // Make it so it exactly ends at the end of the motion.
+        // The amount we move should be scaled up with the actor instance scale.
+        const float expectedY = ExtractLastFramePos().GetY() * scale;
+        const float duration = m_motion->GetMaxTime();
+        const AZ::u32 numSteps = 30;
+        const float stepSize = duration / static_cast<float>(numSteps);
+        for (AZ::u32 i = 0; i < numSteps; ++i)
+        {
+            GetEMotionFX().Update(stepSize);
+        }
+
+        // Make sure we also really end where we expect.
+        // Motion extraction will introduce some small inaccuracies, so we can't use AZ::g_fltEps here, but need a slightly larger value in our AZ::IsClose().
+        const float yPos = m_actorInstance->GetWorldSpaceTransform().mPosition.GetY();
+        EXPECT_TRUE(AZ::IsClose(yPos, expectedY, 0.001f));
+    }
+
+
     TEST_P(MotionExtractionFixture, ReverseRotationMotionExtractionOutputsCorrectDelta)
     {
         // Test motion extraction with reverse effect on and off, rotation to 90 degrees left and right
@@ -179,7 +239,7 @@ namespace EMotionFX
         EXPECT_NE(m_actor->GetMotionExtractionNode(), nullptr) << "Actor's motion extraction node should not be nullptr.";
 
         // The expected delta used is the distance of the jack walk forward motion will move in 1 complete duration
-        const float expectedDelta = 1.627f;
+        const float expectedDelta = ExtractLastFramePos().GetY();
         for (AZ::u32 paramIndex = 0; paramIndex < m_param.durationMultipliers.size(); paramIndex++)
         {
             // Test motion extraction under different durations/time deltas

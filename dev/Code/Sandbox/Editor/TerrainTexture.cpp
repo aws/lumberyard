@@ -569,7 +569,7 @@ public:
         auto availableRect = option.rect.adjusted(s_contentMargin, s_contentMargin, 0, -s_contentMargin);
 
         //only word wrap if there is space for more than one line
-        int flags = Qt::AlignLeft | Qt::AlignTop;
+        int flags = option.displayAlignment;
         if (availableRect.height() > 2 * metrics.height())
         {
             flags |= Qt::TextWordWrap;

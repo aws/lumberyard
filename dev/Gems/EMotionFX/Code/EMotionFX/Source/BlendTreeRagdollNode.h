@@ -49,23 +49,23 @@ namespace EMotionFX
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override = default;
 
+            void Update() override;
+
         public:
-            AZStd::vector<AZ::u8>   m_simulatedJointStates; /** Flags indicating if the joint at the given index in the animation skeleton is added to the physics simulation by this node. Size is Skeleton::GetNumNodes(). */
-            bool                    m_isRagdollRootNodeSimulated;
-            bool                    m_mustUpdate;
+            AZStd::vector<AZ::u8> m_simulatedJointStates; /** Flags indicating if the joint at the given index in the animation skeleton is added to the physics simulation by this node. Size is Skeleton::GetNumNodes(). */
+            bool m_isRagdollRootNodeSimulated = false;
         };
 
         BlendTreeRagdollNode();
         ~BlendTreeRagdollNode() override = default;
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         AZ::Color GetVisualColor() const override                       { return AZ::Color(0.81f, 0.69f, 0.58f, 1.0f); }
         const char* GetPaletteName() const override                     { return "Activate Ragdoll Joints"; }
         AnimGraphObject::ECategory GetPaletteCategory() const override  { return AnimGraphObject::CATEGORY_PHYSICS; }
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
@@ -73,6 +73,7 @@ namespace EMotionFX
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
         bool GetHasOutputPose() const override                          { return true; }
 
+        void SetSimulatedJointNames(const AZStd::vector<AZStd::string>& simulatedJointNames) { m_simulatedJointNames = simulatedJointNames; }
         AZStd::vector<AZStd::string>& GetSimulatedJointNames()          { return m_simulatedJointNames; }
         bool IsActivated(AnimGraphInstance* animGraphInstance) const;
 

@@ -27,6 +27,7 @@
 
 #include <QTemporaryDir>
 #include <QMetaObject>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include "resourcecompiler/rccontroller.h"
 
@@ -116,7 +117,7 @@ struct PathDependencyTest
     };
 
     void CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& jobDetails, const char* sourceFilePath);
-    bool ProcessAsset(TestAsset& asset, const OutputAssetSet& outputAssets, const AssetBuilderSDK::ProductPathDependencySet& dependencies, const AZStd::string& folderPath = "subfolder1/");
+    bool ProcessAsset(TestAsset& asset, const OutputAssetSet& outputAssets, const AssetBuilderSDK::ProductPathDependencySet& dependencies = {}, const AZStd::string& folderPath = "subfolder1/", const AZStd::string& extension = ".txt");
 
     void RunWildcardTest(bool useCorrectDatabaseSeparator, AssetBuilderSDK::ProductPathDependencyType pathDependencyType, bool buildDependenciesFirst);
     AssetProcessor::AssetDatabaseConnection* m_sharedConnection{};

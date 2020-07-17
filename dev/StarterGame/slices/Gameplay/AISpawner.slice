@@ -1,0 +1,619 @@
+<ObjectStream version="3">
+	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+			<Class name="AZ::u64" field="id" value="10097867939642132" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		</Class>
+		<Class name="AZStd::string" field="Name" value="Slice" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+		<Class name="AZStd::vector" field="Components" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}">
+			<Class name="SliceComponent" field="element" version="3" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="4447574927954760792" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="AZStd::vector" field="Entities" type="{21786AF0-2606-5B9A-86EB-0892E2820E6C}">
+					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+							<Class name="AZ::u64" field="id" value="10097876529576724" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+						</Class>
+						<Class name="AZStd::string" field="Name" value="AI Spawner" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="AZStd::vector" field="Components" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}">
+							<Class name="EditorOnlyEntityComponent" field="element" type="{22A16F1D-6D49-422D-AAE9-91AE45B5D3E7}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="823590982916889647" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="IsEditorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="TransformComponent" field="element" version="9" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="12886886899801548906" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="EntityId" field="Parent Entity" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EditorTransform" field="Transform Data" version="2" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
+									<Class name="Vector3" field="Translate" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Rotate" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="bool" field="Locked" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								</Class>
+								<Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
+								<Class name="EntityId" field="Cached World Transform Parent" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="unsigned int" field="Parent Activation Transform Mode" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								<Class name="bool" field="IsStatic" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								<Class name="bool" field="Sync Enabled" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								<Class name="unsigned int" field="InterpolatePosition" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								<Class name="unsigned int" field="InterpolateRotation" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+							</Class>
+							<Class name="EditorBoxShapeComponent" field="element" version="3" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
+								<Class name="EditorBaseShapeComponent" field="BaseClass1" version="2" type="{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}">
+									<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+										<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+											<Class name="AZ::u64" field="Id" value="3752694789235007685" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										</Class>
+									</Class>
+									<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="GameView" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="DisplayFilled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="Color" field="ShapeColor" value="0.7490196 0.1568628 0.1568628 0.4000000" type="{7894072A-9050-4F0F-901B-34B1A0D29417}"/>
+								</Class>
+								<Class name="BoxShape" field="BoxShape" version="1" type="{36D1BA94-13CF-433F-B1FE-28BEBBFE20AA}">
+									<Class name="BoxShapeConfig" field="Configuration" version="2" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
+										<Class name="ShapeComponentConfig" field="BaseClass1" version="1" type="{32683353-0EF5-4FBC-ACA7-E220C58F60F5}">
+											<Class name="Color" field="DrawColor" value="0.7490196 0.1568628 0.1568628 0.4000000" type="{7894072A-9050-4F0F-901B-34B1A0D29417}"/>
+											<Class name="bool" field="IsFilled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+										</Class>
+										<Class name="Vector3" field="Dimensions" value="3.0000000 3.0000000 0.2000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									</Class>
+								</Class>
+								<Class name="ComponentModeDelegate" field="ComponentMode" type="{635B28F0-601A-43D2-A42A-02C4A88CD9C2}">
+									<Class name="bool" field="ComponentModeEnterButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									<Class name="bool" field="ComponentModeLeaveButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								</Class>
+							</Class>
+							<Class name="EditorInspectorComponent" field="element" version="2" type="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="13141647132307554782" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="ComponentOrderEntryArray" type="{B6EFED5B-19B4-5084-9D92-42DECCE83872}">
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="12886886899801548906" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="11221789177242240733" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="1" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="6565899629184947528" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="2" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="3749686161920942002" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="3" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="3752694789235007685" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="4" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="ComponentOrderEntry" field="element" version="1" type="{335C5861-5197-4DD5-A766-EF2B551B0D9D}">
+										<Class name="AZ::u64" field="ComponentId" value="12842978218520015613" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										<Class name="AZ::u64" field="SortIndex" value="5" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+							</Class>
+							<Class name="EditorCommentComponent" field="element" version="1" type="{5181117D-CD69-4C05-8804-C1FBE5F0C00F}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="11221789177242240733" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::string" field="Configuration" value='"Mission name" should match the mission name used by the mission scriptcanvas.  This name is used as a tag which the mission script monitors.  When all instances of the tag are removed, the mission is complete.' type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+							</Class>
+							<Class name="EditorTagComponent" field="element" version="1" type="{5272B56C-6CCC-4118-8539-D881F463ACD1}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" value="12842978218520015613" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="AZStd::vector" field="Tags" type="{99DAD0BC-740E-5E82-826B-8FC7968CC02C}"/>
+							</Class>
+							<Class name="EditorEntitySortComponent" field="element" version="2" type="{6EA1E03D-68B2-466D-97F7-83998C8C27F0}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="15637833803133056104" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
+							</Class>
+							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" value="8613863013634164572" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="EditorSpawnerComponent" field="element" version="1" type="{77CDE991-EC1A-B7C1-B112-7456ABAC81A1}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" value="3749686161920942002" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="Asset" field="Slice" value="id={8B69E909-2FDC-5241-9BF4-1E7AC50EC341}:2,type={78802ABF-9595-463A-8D2B-D022F906F9B1},hint={BURT/Slices/BURT_AI.slice}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								<Class name="bool" field="SpawnOnActivate" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								<Class name="bool" field="DestroyOnDeactivate" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="7938070459102192560" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="VisibilityFlag" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorScriptCanvasComponent" field="element" version="7" type="{C28E2D29-0746-451D-A639-7F113ECF5D72}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="6565899629184947528" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::string" field="m_name" value="AISpawner" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+								<Class name="ScriptCanvasAssetHolder" field="m_assetHolder" version="1" type="{3E80CEE3-2932-4DC1-AADF-398FDDC6DEFE}">
+									<Class name="Asset" field="m_asset" value="id={312BD44C-57FB-5212-A7B3-ACC0B0A2C34E}:0,type={FA10C3DA-0717-4B72-8944-CD67D13DFA2B},hint={scriptcanvas/gameplay/aispawner.scriptcanvas}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+								</Class>
+								<Class name="EditableVariableData" field="m_variableData" version="2" type="{D335AEC5-D118-443D-B85C-FEB17C0B26D6}">
+									<Class name="AZStd::list" field="m_variables" type="{FD89FC9A-3931-5B41-B7DF-69006B7F76FE}">
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="AZStd::string" field="m_data" value="Character" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="AI Tag" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{FCF19E5A-0678-4FD3-A8B7-B9F08D1E9F9E}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="AI Tag" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="AZStd::string" field="m_data" value="Character" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Tag" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="bool" field="m_data" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Infinite AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{8D50A75B-FEA7-4474-9C89-6E1CABC0918D}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Infinite AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="bool" field="m_data" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Infinite enemies" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="double" field="m_data" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Spawn rate in seconds" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{B8200670-DCE3-41D3-8B3B-22A5BB795081}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Spawn rate in seconds" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="double" field="m_data" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Number" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="double" field="m_data" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Max Spawned AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{6699CBE9-35B1-4AD4-9782-7CAB030F985A}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Max Spawned AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="double" field="m_data" value="3.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Number" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="double" field="m_data" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Max Living AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{B81E8D1A-E4CC-4FD0-BE32-FC002336AAE5}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Max Living AI" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="3" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="double" field="m_data" value="5.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Number" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="AZStd::string" field="m_data" value="InGame" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Valid game state" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{F2E44DEB-F3DB-4C10-BDFB-35984ECC86E1}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Valid game state" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="AZStd::string" field="m_data" value="InGame" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Valid game state" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="bool" field="m_data" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Debug" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{D33CA8DE-CCAE-4108-8081-576896F6006D}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Debug" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="bool" field="m_data" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="Boolean" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="AZStd::string" field="m_data" value="Default Mission" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Mission name" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{68642550-BAD6-47E8-9977-21A6D6BAA92E}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Mission name" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="5" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="AZStd::string" field="m_data" value="Mission1" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="String" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="EditableVariableConfiguration" field="element" version="2" type="{96D2F031-DEA0-44DF-82FB-2612AFB1DACF}">
+											<Class name="GraphVariable" field="GraphVariable" version="3" type="{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}">
+												<Class name="Datum" field="Datum" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+													<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+													<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+														<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+														<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+													</Class>
+													<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+														<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+															<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+														</Class>
+													</Class>
+													<Class name="AZStd::string" field="m_datumLabel" value="Combat trigger area" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="Crc32" field="InputControlVisibility" type="{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}">
+													<Class name="unsigned int" field="Value" value="850104567" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+												</Class>
+												<Class name="AZStd::string" field="ExposureCategory" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="int" field="SortPriority" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="ReplicaNetworkProperties" field="ReplicaNetProps" version="1" type="{4F055551-DD75-4877-93CE-E80C844FC155}">
+													<Class name="bool" field="m_isSynchronized" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												</Class>
+												<Class name="VariableId" field="VariableId" type="{CA57A57B-E510-4C09-B952-1F43742166AE}">
+													<Class name="AZ::Uuid" field="m_id" value="{91DA3EFD-D0DA-4F35-BA46-5EFF87525CC2}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="AZStd::string" field="VariableName" value="Combat trigger area" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="unsigned char" field="Scope" value="1" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+											</Class>
+											<Class name="Datum" field="m_defaultValue" version="6" type="{8B836FC0-98A8-4A81-8651-35C7CA125451}">
+												<Class name="bool" field="m_isUntypedStorage" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+												<Class name="Type" field="m_type" version="2" type="{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}">
+													<Class name="unsigned int" field="m_type" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+													<Class name="AZ::Uuid" field="m_azType" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+												</Class>
+												<Class name="int" field="m_originality" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+												<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+													<Class name="EntityId" field="m_data" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+														<Class name="AZ::u64" field="id" value="2901262558" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::string" field="m_datumLabel" value="EntityID" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+									</Class>
+								</Class>
+								<Class name="AZStd::unordered_map" field="m_variableEntityIdMap" type="{47B19271-1BD5-5FF9-931D-A90E2E72900D}"/>
+							</Class>
+							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="17215514526691200189" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="Locked" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorPendingCompositionComponent" field="element" type="{D40FCB35-153D-45B3-AF6D-7BA576D8AFBB}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="10104149793432266960" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="PendingComponents" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}"/>
+							</Class>
+							<Class name="EditorEntityIconComponent" field="element" type="{E15D42C2-912D-466F-9547-E7E948CE2D7D}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="3965328936444925760" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AssetId" field="EntityIconAssetId" version="1" type="{652ED536-3402-439B-AEBE-4A5DBC554085}">
+									<Class name="AZ::Uuid" field="guid" value="{00000000-0000-0000-0000-000000000000}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									<Class name="unsigned int" field="subId" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								</Class>
+							</Class>
+							<Class name="EditorDisabledCompositionComponent" field="element" type="{E77AE6AC-897D-4035-8353-637449B6DCFB}">
+								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" value="7193670165321464990" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="DisabledComponents" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}"/>
+							</Class>
+						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					</Class>
+				</Class>
+				<Class name="AZStd::list" field="Prefabs" type="{DAD45EB6-5853-5645-B762-3A37F8775E12}"/>
+				<Class name="bool" field="IsDynamic" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="AZ::Entity" field="MetadataEntity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+					<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+						<Class name="AZ::u64" field="id" value="10097872234609428" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="AZStd::string" field="Name" value="No Asset Association" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+					<Class name="AZStd::vector" field="Components" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}">
+						<Class name="SliceMetadataInfoComponent" field="element" version="2" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
+							<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+								<Class name="AZ::u64" field="Id" value="9108268914840304286" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+							</Class>
+							<Class name="AZStd::set" field="AssociatedIds" type="{78E024C3-0143-53FC-B393-0675227839AF}">
+								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="10097876529576724" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="EntityId" field="ParentId" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+								<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+							</Class>
+							<Class name="AZStd::unordered_set" field="ChildrenIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}"/>
+							<Class name="bool" field="PersistenceFlag" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						</Class>
+					</Class>
+					<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				</Class>
+				<Class name="DataFlagsPerEntity" field="DataFlagsForNewEntities" version="1" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
+					<Class name="AZStd::unordered_map" field="EntityToDataFlags" type="{CAB9E1F5-761E-54B8-916E-E7FB597E5EDE}"/>
+				</Class>
+			</Class>
+		</Class>
+		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+	</Class>
+</ObjectStream>
+

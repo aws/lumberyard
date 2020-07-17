@@ -73,7 +73,7 @@ namespace EMotionFX
     TEST_F(RandomMotionSelectionTests, RandomizeMotion)
     {
         const int iterationCount = 1000;
-        AnimGraphMotionNode::UniqueData* nodeUniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_motionNode->FindUniqueNodeData(m_animGraphInstance));
+        AnimGraphMotionNode::UniqueData* nodeUniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_motionNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         for (int i = 0; i < iterationCount; ++i)
         {
             m_motionNode->PickNewActiveMotion(m_animGraphInstance, nodeUniqueData);

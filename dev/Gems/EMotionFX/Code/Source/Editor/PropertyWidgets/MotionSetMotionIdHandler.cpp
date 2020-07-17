@@ -17,7 +17,7 @@
 #include <QMessageBox>
 #include <QLocale>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
-
+#include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 
 namespace EMotionFX
 {
@@ -54,7 +54,7 @@ namespace EMotionFX
         layoutX->setAlignment(Qt::AlignRight);
         layoutX->setSpacing(2);
         layoutX->setMargin(2);
-        m_randomWeightSpinbox = new MysticQt::DoubleSpinBox();
+        m_randomWeightSpinbox = new AzQtComponents::DoubleSpinBox();
         m_randomWeightSpinbox->setSingleStep(0.1);
         m_randomWeightSpinbox->setDecimals(1);
 
@@ -81,7 +81,7 @@ namespace EMotionFX
         m_removeButton->setToolTip("Remove motion");
         m_removeButton->setMinimumSize(iconSize, iconSize);
         m_removeButton->setMaximumSize(iconSize, iconSize);
-        m_removeButton->setIcon(QIcon(":/EMotionFX/Trash.png"));
+        m_removeButton->setIcon(QIcon(":/EMotionFX/Trash.svg"));
         layout->addWidget(m_removeButton, graphicLayoutRowIndex, column);
 
         if (!m_displayMotionSelectionWeight)
@@ -281,7 +281,7 @@ namespace EMotionFX
             topRowLayout->addWidget(m_addMotionsLabel);
 
             m_pickButton = new QPushButton(this);
-            EMStudio::EMStudioManager::MakeTransparentButton(m_pickButton, "/Images/Icons/Plus.png", "Add motions to blend space");
+            EMStudio::EMStudioManager::MakeTransparentButton(m_pickButton, "/Images/Icons/Plus.svg", "Add motions to blend space");
             connect(m_pickButton, &QPushButton::clicked, this, &MotionSetMotionIdPicker::OnPickClicked);
             topRowLayout->addWidget(m_pickButton);
             m_pickButton->setToolTip(QString("Add motions"));
@@ -290,14 +290,14 @@ namespace EMotionFX
 
             QWidget* motionsWidget = new QWidget(m_containerWidget);
 
-            motionsWidget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            motionsWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
             QGridLayout* motionsLayout = new QGridLayout();
-            motionsLayout->setMargin(0);
-            QLabel* labelColumn0 = new QLabel("");
+            motionsLayout->setHorizontalSpacing(0);
+            AzQtComponents::ElidingLabel* labelColumn0 = new AzQtComponents::ElidingLabel();
             motionsLayout->addWidget(labelColumn0, 0, 0);
-            QLabel* labelColumn1 = new QLabel("Probability weight");
+            AzQtComponents::ElidingLabel* labelColumn1 = new AzQtComponents::ElidingLabel("Probability weight");
             motionsLayout->addWidget(labelColumn1, 0, 1);
-            QLabel* labelColumn2 = new QLabel("Probability (100%)");
+            AzQtComponents::ElidingLabel* labelColumn2 = new AzQtComponents::ElidingLabel("Probability (100%)");
             motionsLayout->addWidget(labelColumn2, 0, 2);
             if (!m_displaySelectionWeights)
             {
@@ -330,7 +330,7 @@ namespace EMotionFX
             {
                 m_motionWidgetControllers.emplace_back(AZStd::make_unique<MotionSelectionIdWidgetController>(m_motionsLayout, static_cast<int>(layoutRowIndex++), this, m_displaySelectionWeights));
                 MotionSelectionIdWidgetController* motionWidget = m_motionWidgetControllers.back().get();
-                connect(motionWidget->m_randomWeightSpinbox, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this,
+                connect(motionWidget->m_randomWeightSpinbox, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
                     [this, motionWidget](double value)
                     {
                         OnRandomWeightChanged(motionWidget->GetId(), value);

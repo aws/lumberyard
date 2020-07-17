@@ -23,6 +23,7 @@
 #include <MCore/Source/ReflectionSerializer.h>
 
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzQtComponents/Components/Widgets/CardHeader.h>
 
 namespace EMStudio
 {
@@ -129,21 +130,7 @@ namespace EMStudio
         eventDataCardsLayout->addWidget(m_emptyLabel);
 
         m_topLevelEventDataCard = new AzQtComponents::Card();
-        m_topLevelEventDataCard->setStyleSheet(
-            "AzQtComponents--CardHeader #ContextMenu"
-            "{"
-            "    image: url(:/ColorPickerDialog/Palette/add-normal.png);"
-            "}"
-            ".primaryCardHeader"
-            "{"
-            "    background-color: transparent;"
-            "}"
-            "AzQtComponents--CardHeader #Title"
-            "{"
-            "    font-weight: normal;"
-            "}"
-        );
-
+        m_topLevelEventDataCard->header()->setContextMenuIcon(AzQtComponents::CardHeader::ContextMenuIcon::Plus);
         m_topLevelEventDataCard->setTitle("Event Data");
         m_topLevelEventDataCard->hideFrame();
         m_topLevelEventDataCard->setContentWidget(m_eventDataCardsContainer);
@@ -157,20 +144,6 @@ namespace EMStudio
     AzQtComponents::Card* EventDataEditor::AppendCard(AZ::SerializeContext* context, size_t cardIndex)
     {
          AzQtComponents::Card* card = new AzQtComponents::Card();
-         card->setStyleSheet(
-             "AzQtComponents--CardHeader #ContextMenu"
-             "{"
-             "    image: url(:/Cards/img/UI20/Cards/menu_ico.png);"
-             "}"
-             ".primaryCardHeader"
-             "{"
-             "    background-color: #222222;"
-             "}"
-             "AzQtComponents--CardHeader #Title"
-             "{"
-             "    font-weight: bold;"
-             "}"
-         );
          card->setContentWidget(new EMotionFX::ObjectEditor(context, m_propertyNotify.get()));
          card->connect(card, &AzQtComponents::Card::contextMenuRequested, this, [this, cardIndex](const QPoint& pos)
          {

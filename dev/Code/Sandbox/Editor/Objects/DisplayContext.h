@@ -172,7 +172,7 @@ struct SANDBOX_API DisplayContext
     // Draw cylinder.
     void DrawCylinder(const Vec3& p1, const Vec3& p2, float radius, float height);
 
-    void DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height);
+    void DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height, bool drawShaded = true);
 
     /// DrawWireCylinder
     /// \param center Center of cylinder.
@@ -186,7 +186,7 @@ struct SANDBOX_API DisplayContext
     /// \param axis Axis along which cylinder is tall.
     /// \param radius Radius of cylinder.
     /// \param height Total height of cylinder.
-    void DrawSolidCylinder(const Vec3& center, const Vec3& axis, float radius, float height);
+    void DrawSolidCylinder(const Vec3& center, const Vec3& axis, float radius, float height, bool drawShaded = true);
 
     /// DrawWireCapsule
     /// \param pos Center of capsule.

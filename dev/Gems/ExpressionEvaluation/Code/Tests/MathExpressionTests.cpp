@@ -171,7 +171,7 @@ namespace ExpressionEvaluation
 
         {
             resultStack.emplace(2.0);
-            resultStack.emplace(0.0);                
+            resultStack.emplace(0.0);
 
             EXPECT_EQ(resultStack.size(), 2);
 
@@ -215,6 +215,17 @@ namespace ExpressionEvaluation
 
             auto treeResult = resultStack.PopAndReturn();
             ConfirmResult<double>(treeResult, 2 % 4);
+        }
+
+        {
+            resultStack.emplace(2.0);
+            resultStack.emplace(0.0);
+
+            EXPECT_EQ(resultStack.size(), 2);
+
+            advandedMathInterface.EvaluateToken(operatorInformation, resultStack);
+
+            EXPECT_EQ(resultStack.size(), 0);
         }
     }
 
@@ -460,5 +471,19 @@ namespace ExpressionEvaluation
         AZ::Outcome<ExpressionTree, ParsingError> treeOutcome = ExpressionEvaluationRequests()->ParseRestrictedExpression(MathOnlyOperatorRestrictions(), "2+2 || 1+3");
         EXPECT_FALSE(treeOutcome.IsSuccess());
         EXPECT_EQ(treeOutcome.GetError().m_offsetIndex, 4);
+    }
+
+    TEST_F(ExpressionEngineTestFixture, ExpressionEngine_ParenParser_UnbalancedCloseFail)
+    {
+        AZ::Outcome<ExpressionTree, ParsingError> treeOutcome = ExpressionEvaluationRequests()->ParseRestrictedExpression(MathOnlyOperatorRestrictions(), "1+1)");
+        EXPECT_FALSE(treeOutcome.IsSuccess());
+        EXPECT_EQ(treeOutcome.GetError().m_offsetIndex, 3);
+    }
+
+    TEST_F(ExpressionEngineTestFixture, ExpressionEngine_ParenParser_UnbalancedOpenFail)
+    {
+        AZ::Outcome<ExpressionTree, ParsingError> treeOutcome = ExpressionEvaluationRequests()->ParseRestrictedExpression(MathOnlyOperatorRestrictions(), "(1+1");
+        EXPECT_FALSE(treeOutcome.IsSuccess());
+        EXPECT_EQ(treeOutcome.GetError().m_offsetIndex, 0);
     }
 }

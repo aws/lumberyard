@@ -182,6 +182,7 @@ int main(int argv, char **argc)
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argv, argc);
     AzQtComponents::LumberyardStylesheet stylesheet(&app);

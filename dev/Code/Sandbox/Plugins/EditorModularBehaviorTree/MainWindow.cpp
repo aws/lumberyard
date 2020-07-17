@@ -28,7 +28,8 @@
 
 #include "TreePanel.h"
 
-MainWindow::MainWindow()
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent)
 {
     setWindowFlags(Qt::Widget);
 
@@ -44,7 +45,7 @@ MainWindow::MainWindow()
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    m_treePanel = new TreePanel();
+    m_treePanel = new TreePanel(this);
     setCentralWidget(m_treePanel);
 }
 

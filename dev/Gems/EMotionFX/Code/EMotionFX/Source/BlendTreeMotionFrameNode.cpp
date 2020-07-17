@@ -171,7 +171,7 @@ namespace EMotionFX
         if (mDisabled)
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -192,7 +192,7 @@ namespace EMotionFX
             motionConnection->GetSourceNode()->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -212,7 +212,7 @@ namespace EMotionFX
         else
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -250,7 +250,7 @@ namespace EMotionFX
         }
 
         // output the right synctrack etc
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         if (uniqueData->m_rewindRequested)
         {
@@ -283,26 +283,11 @@ namespace EMotionFX
         }
     }
 
-
-    // when attributes have changed their value
-    void BlendTreeMotionFrameNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // find the unique data for this node, if it doesn't exist yet, create it
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-            uniqueData->mOldTime = 0.0f;
-            uniqueData->mNewTime = 0.0f;
-        }
-    }
-
     void BlendTreeMotionFrameNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
         AnimGraphNode::Rewind(animGraphInstance);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         if (uniqueData)
         {
             uniqueData->m_rewindRequested = true;

@@ -15,6 +15,7 @@
 #include "LayoutConfigDialog.h"
 
 #include <ui_LayoutConfigDialog.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 class LayoutConfigModel
     : public QAbstractListModel
@@ -55,10 +56,10 @@ QVariant LayoutConfigModel::data(const QModelIndex& index, int role) const
     switch (role)
     {
     case Qt::SizeHintRole:
-        return QSize(42, 36);
+        return QSize(38, 38);
 
     case Qt::DecorationRole:
-        return QPixmap(QStringLiteral(":/layouts-%1.png").arg(index.row()));
+        return QPixmap(QStringLiteral(":/layouts/layouts-%1.svg").arg(index.row()));
     }
 
     return {};
@@ -78,6 +79,8 @@ CLayoutConfigDialog::CLayoutConfigDialog(QWidget* pParent /*=NULL*/)
     setFixedSize(size());
 
     ui->m_layouts->setModel(m_model);
+
+    AzQtComponents::StyleManager::setStyleSheet(ui->m_layouts, "style:LayoutConfigDialog.qss");
 
     connect(ui->m_buttonBox, &QDialogButtonBox::accepted, this, &CLayoutConfigDialog::OnOK);
     connect(ui->m_buttonBox, &QDialogButtonBox::rejected, this, &CLayoutConfigDialog::reject);

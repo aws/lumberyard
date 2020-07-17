@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>809</width>
-    <height>747</height>
+    <width>750</width>
+    <height>738</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -48,7 +48,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>809</width>
+     <width>750</width>
      <height>21</height>
     </rect>
    </property>
@@ -57,6 +57,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_New_Script"/>
+    <addaction name="actionFunction"/>
     <addaction name="action_Open"/>
     <addaction name="action_Save"/>
     <addaction name="action_Save_As"/>
@@ -113,12 +114,11 @@
     <addaction name="separator"/>
     <addaction name="menuRemove_Unused"/>
    </widget>
-   <widget class="QMenu" name="menuView">
+   <widget class="QMenu" name="menuTools_2">
     <property name="title">
-     <string>Tools</string>
+     <string>&amp;Tools</string>
     </property>
     <addaction name="action_ViewNodePalette"/>
-    <addaction name="action_ViewOutline"/>
     <addaction name="action_ViewProperties"/>
     <addaction name="action_ViewDebugger"/>
     <addaction name="action_ViewCommandLine"/>
@@ -127,30 +127,29 @@
     <addaction name="action_ViewMiniMap"/>
     <addaction name="action_ViewVariableManager"/>
     <addaction name="action_GraphValidation"/>
-    <addaction name="action_ViewUnitTestManager"/>
     <addaction name="action_Debugging"/>
     <addaction name="separator"/>
+    <addaction name="action_ViewUnitTestManager"/>
     <addaction name="action_NodeStatistics"/>
     <addaction name="action_PresetsEditor"/>
     <addaction name="separator"/>
-    <addaction name="action_ViewRestoreDefaultLayout"/>
    </widget>
-   <widget class="QMenu" name="menuTools">
+   <widget class="QMenu" name="menuUtilities">
     <property name="title">
-     <string>Utilities</string>
+     <string>&amp;Utilities</string>
     </property>
     <addaction name="action_BatchConversion"/>
    </widget>
    <widget class="QMenu" name="menuSettings_2">
     <property name="title">
-     <string>Settings</string>
+     <string>&amp;Preferences</string>
     </property>
     <addaction name="action_GlobalPreferences"/>
     <addaction name="action_GraphPreferences"/>
    </widget>
    <widget class="QMenu" name="menuView_2">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
     <widget class="QMenu" name="menuGo_To">
      <property name="title">
@@ -165,18 +164,30 @@
     <addaction name="action_ShowEntireGraph"/>
     <addaction name="separator"/>
     <addaction name="menuGo_To"/>
+    <addaction name="separator"/>
+    <addaction name="action_ViewRestoreDefaultLayout"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView_2"/>
-   <addaction name="menuView"/>
-   <addaction name="menuTools"/>
+   <addaction name="menuTools_2"/>
+   <addaction name="menuUtilities"/>
    <addaction name="menuSettings_2"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="action_New_Script">
    <property name="text">
     <string>&amp;New Script</string>
+   </property>
+  </action>
+  <action name="action_New_Function">
+   <property name="text">
+    <string>&amp;Function</string>
+   </property>
+  </action>
+  <action name="action_New_Editor_Graph">
+   <property name="text">
+    <string>&amp;Editor Graph</string>
    </property>
   </action>
   <action name="action_Save">
@@ -211,6 +222,9 @@
    <property name="shortcut">
     <string>Ctrl+L</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
    <property name="visible">
     <bool>false</bool>
    </property>
@@ -232,6 +246,9 @@
    <property name="shortcut">
     <string>Ctrl+P</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
    <property name="visible">
     <bool>false</bool>
    </property>
@@ -244,10 +261,13 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Node Palette</string>
+    <string>Node Palette</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+L</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
    </property>
   </action>
   <action name="action_ViewOutline">
@@ -263,6 +283,9 @@
    <property name="shortcut">
     <string>Ctrl+Shift+O</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewDynamicEBusAssets">
    <property name="checkable">
@@ -277,6 +300,9 @@
    <property name="shortcut">
     <string>Ctrl+Shift+E</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewProperties">
    <property name="checkable">
@@ -286,10 +312,13 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Node Inspector</string>
+    <string>Node Inspector</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+I</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
    </property>
   </action>
   <action name="action_ViewDebugger">
@@ -311,6 +340,9 @@
    <property name="shortcut">
     <string>Ctrl+Shift+D</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
    <property name="visible">
     <bool>false</bool>
    </property>
@@ -322,7 +354,7 @@
   </action>
   <action name="action_Close">
    <property name="text">
-    <string>Close</string>
+    <string>Close Graph</string>
    </property>
   </action>
   <action name="action_Undo">
@@ -434,6 +466,9 @@
    <property name="shortcut">
     <string>Ctrl+Shift+B</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewMiniMap">
    <property name="checkable">
@@ -448,6 +483,9 @@
    <property name="shortcut">
     <string>Ctrl+Shift+M</string>
    </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="action_ViewVariableManager">
    <property name="checkable">
@@ -461,6 +499,9 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+V</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
    </property>
   </action>
   <action name="action_ViewLogWindow">
@@ -484,7 +525,7 @@
   </action>
   <action name="action_ViewUnitTestManager">
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="checked">
     <bool>false</bool>
@@ -494,6 +535,9 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+T</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
    </property>
   </action>
   <action name="action_Debugging">
@@ -575,6 +619,9 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+P</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
    </property>
   </action>
   <action name="action_SelectInputs">
@@ -707,7 +754,7 @@
   </action>
   <action name="action_ZoomSelection">
    <property name="text">
-    <string>Zoom To Selection</string>
+    <string>Show Selection</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+Up</string>
@@ -727,6 +774,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+K, Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionEditor_Graph">
+   <property name="text">
+    <string>Editor Graph</string>
+   </property>
+  </action>
+  <action name="actionFunction">
+   <property name="text">
+    <string>New Function</string>
    </property>
   </action>
   <addaction name="action_ViewNodePalette"/>

@@ -186,6 +186,8 @@
             "Manipulators/LinearManipulator.cpp",
             "Manipulators/LinearManipulator.h",
             "Manipulators/ManipulatorBus.h",
+            "Manipulators/ManipulatorDebug.cpp",
+            "Manipulators/ManipulatorDebug.h",
             "Manipulators/ManipulatorManager.cpp",
             "Manipulators/ManipulatorManager.h",
             "Manipulators/ManipulatorView.cpp",
@@ -339,6 +341,10 @@
         "ToolsMessaging": [
             "ToolsMessaging/EntityHighlightBus.h"
         ],
+        "UI/Docking": [
+            "UI/Docking/DockWidgetUtils.cpp",
+            "UI/Docking/DockWidgetUtils.h"
+        ],
         "UI/Layer": [
             "UI/Layer/AddToLayerMenu.cpp",
             "UI/Layer/AddToLayerMenu.h"
@@ -388,6 +394,7 @@
             "UI/PropertyEditor/ComponentEditor.cpp",
             "UI/PropertyEditor/ComponentEditorHeader.hxx",
             "UI/PropertyEditor/ComponentEditorHeader.cpp",
+            "UI/PropertyEditor/QtWidgetLimits.h",
             "UI/PropertyEditor/DHQComboBox.hxx",
             "UI/PropertyEditor/DHQComboBox.cpp",
             "UI/PropertyEditor/DHQSlider.hxx",
@@ -396,6 +403,8 @@
             "UI/PropertyEditor/DHQSpinbox.cpp",
             "UI/PropertyEditor/EntityIdQLabel.hxx",
             "UI/PropertyEditor/EntityIdQLabel.cpp",
+            "UI/PropertyEditor/EntityIdQLineEdit.h",
+            "UI/PropertyEditor/EntityIdQLineEdit.cpp",
             "UI/PropertyEditor/EntityPropertyEditor.hxx",
             "UI/PropertyEditor/EntityPropertyEditor.cpp",
             "UI/PropertyEditor/GenericComboBoxCtrl.h",
@@ -407,7 +416,7 @@
             "UI/PropertyEditor/PropertyAssetCtrl.cpp",
             "UI/PropertyEditor/PropertyAudioCtrl.h",
             "UI/PropertyEditor/PropertyAudioCtrl.cpp",
-            "UI/PropertyEditor/PropertyAudioCtrlTypes.h",            
+            "UI/PropertyEditor/PropertyAudioCtrlTypes.h",
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.hxx",
             "UI/PropertyEditor/PropertyBoolComboBoxCtrl.cpp",
             "UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.hxx",
@@ -432,6 +441,7 @@
             "UI/PropertyEditor/PropertyEnumComboBoxCtrl.hxx",
             "UI/PropertyEditor/PropertyEnumComboBoxCtrl.cpp",
             "UI/PropertyEditor/PropertyFloatSpinCtrl.hxx",
+            "UI/PropertyEditor/PropertyIntCtrlCommon.h",
             "UI/PropertyEditor/PropertyIntSliderCtrl.hxx",
             "UI/PropertyEditor/PropertyIntSliderCtrl.cpp",
             "UI/PropertyEditor/PropertyIntSpinCtrl.hxx",

@@ -1076,7 +1076,7 @@ struct PyDumpBindings
                 }
                 else
                 {
-                    output += AZStd::string::format("    %s %s\n", "/* unknown */", event_elem.first);
+                    output += AZStd::string::format("    %s %s\n", "/* unknown */", event_elem.first.c_str());
                 }
             }
 

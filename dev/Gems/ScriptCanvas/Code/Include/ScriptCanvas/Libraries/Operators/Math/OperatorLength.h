@@ -63,7 +63,7 @@ namespace ScriptCanvas
                 );
 
                 ScriptCanvas_Property(int,
-                    ScriptCanvas_Property::Name("Length", "The lengths of the specified object")
+                    ScriptCanvas_Property::Name("Length", "The magnitude or length of the provided vector or quaternion.")
                     ScriptCanvas_Property::Output
                 );
             };

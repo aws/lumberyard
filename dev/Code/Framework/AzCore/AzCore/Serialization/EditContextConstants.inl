@@ -66,6 +66,7 @@ namespace AZ
             const static AZ::Crc32 AddNotify = AZ_CRC("AddNotify", 0x16f00b95);
             const static AZ::Crc32 RemoveNotify = AZ_CRC("RemoveNotify", 0x16ec95f5);
             const static AZ::Crc32 ChangeNotify = AZ_CRC("ChangeNotify", 0xf793bc19);
+            const static AZ::Crc32 ClearNotify = AZ_CRC("ClearNotify", 0x88914c8c);
 
             /**
             * Specifies a function to accept or reject a value changed in the Lumberyard Editor.

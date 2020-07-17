@@ -1,0 +1,43 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "0c2c51b1d69d4700a3c078f9d52dd37f",
+    "Name": "StarterGame",
+    "DisplayName": "Starter Game",
+    "Version": "0.2.0",
+    "Summary": "Starter Game is an example of a game in Amazon Lumberyard",
+    "Tags": ["Game"],
+    "IconPath": "preview.png",
+    "IsGameGem": true,
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ],
+    "Dependencies":[
+        {
+            "Uuid" : "1a557ac19dc34f5697fe03f30be5b6e4",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "GameState"
+        },
+        {
+            "Uuid" : "76db0b1bcff84224a92cbceb373f4a85",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "GameStateSamples"
+        },
+        {
+            "Uuid" : "93ccb44a96b142f7942a3fb6b9ca36e1",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "LocalUser"
+        },
+        {
+            "Uuid": "89225422672547deaca9e7a22b883973",
+            "VersionConstraints": ["~>0.1"],
+            "_comment": "MessagePopup"
+        },
+        {
+            "Uuid": "d96ab03f53d14c9e83f9b4528c8576d7",
+            "VersionConstraints": ["~>0.1"],
+            "_comment": "SaveData"
+        }
+    ]
+}

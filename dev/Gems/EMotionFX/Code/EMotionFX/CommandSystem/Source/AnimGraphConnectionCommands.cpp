@@ -312,7 +312,7 @@ namespace CommandSystem
         // set the command result to the connection id
         outResult = m_connectionId.ToString().c_str();
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 
@@ -381,7 +381,7 @@ namespace CommandSystem
     // init the syntax of the command
     void CommandAnimGraphCreateConnection::InitSyntax()
     {
-        GetSyntax().ReserveParameters(13);
+        GetSyntax().ReserveParameters(14);
         GetSyntax().AddRequiredParameter("sourceNode", "The name of the source node, where the connection starts (output port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("targetNode", "The name of the target node to connect to (input port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddParameter("animGraphID", "The id of the anim graph to work on.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
@@ -397,6 +397,7 @@ namespace CommandSystem
         GetSyntax().AddParameter("transitionType", "The transition type ID. This is the type ID (UUID) of the AnimGraphStateTransition inherited node types.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("contents", "The serialized contents of the parameter (in reflected XML).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("updateParam", "The parameter of the connection, flag whether it needs to be updated.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
+        GetSyntax().AddParameter("updateUniqueData", "Setting this to true will trigger update on anim graph unique data.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -574,25 +575,16 @@ namespace CommandSystem
 
             // remove the transition
             stateMachine->RemoveTransition(transitionIndex.GetValue());
-
-            // get the number of actor instances and iterate through them
-            const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-            for (uint32 i = 0; i < numActorInstances; ++i)
-            {
-                // get the anim graph instance of the current actor instance and reset its unique data
-                EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetActorManager().GetActorInstance(i)->GetAnimGraphInstance();
-                if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-                {
-                    stateMachine->OnUpdateUniqueData(animGraphInstance);
-                }
-            }
         }
 
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
+        if(parameters.GetValueAsBool("updateUniqueData", true))
+        {
+            animGraph->RecursiveInvalidateUniqueDatas();
+        }
         return true;
     }
 
@@ -600,7 +592,7 @@ namespace CommandSystem
     // undo the command
     bool CommandAnimGraphRemoveConnection::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        MCORE_UNUSED(parameters);
+        const AZStd::string updateUniqueData = parameters.GetValue("updateUniqueData", this);
 
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
@@ -615,7 +607,7 @@ namespace CommandSystem
             return false;
         }
 
-        AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -id %s -transitionType \"%s\"",
+        AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -id %s -transitionType \"%s\" -updateUniqueData %s",
                 animGraph->GetID(),
                 mSourceNodeName.c_str(),
                 mTargetNodeName.c_str(),
@@ -624,7 +616,8 @@ namespace CommandSystem
                 mStartOffsetX, mStartOffsetY,
                 mEndOffsetX, mEndOffsetY,
                 m_connectionId.ToString().c_str(),
-                mTransitionType.ToString<AZStd::string>().c_str());
+                mTransitionType.ToString<AZStd::string>().c_str(),
+                updateUniqueData.c_str());
 
         // add the old attributes
         if (mOldContents.empty() == false)
@@ -662,13 +655,14 @@ namespace CommandSystem
     void CommandAnimGraphRemoveConnection::InitSyntax()
     {
         // required
-        GetSyntax().ReserveParameters(6);
+        GetSyntax().ReserveParameters(7);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph to work on.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("sourceNode", "The name of the source node, where the connection starts (output port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("targetNode", "The name of the target node where it connects to (input port).", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("sourcePort", "The source port number where the connection starts inside the source node.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("targetPort", "The target port number where the connection connects into, in the target node.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("id", "The id of the connection.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUniqueData", "Setting this to true will trigger update on anim graph unique data.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -861,7 +855,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(true);
 
         transition->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         outResult = m_transitionId.ToString().c_str();
         return true;
@@ -898,7 +892,7 @@ namespace CommandSystem
 
     void CommandAnimGraphAdjustTransition::InitSyntax()
     {
-        GetSyntax().ReserveParameters(12);
+        GetSyntax().ReserveParameters(13);
 
         MCore::CommandSyntax& syntax = GetSyntax();
         ParameterMixinTransitionId::InitSyntax(syntax);
@@ -912,6 +906,7 @@ namespace CommandSystem
         GetSyntax().AddParameter("endOffsetY", ".", MCore::CommandSyntax::PARAMTYPE_INT, "0");
         GetSyntax().AddParameter("isDisabled", "False in case the transition shall be active and working, true in case it should be disabled and act like it does not exist.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("attributesString", "The connection attributes as string.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUniqueData", "Setting this to true will trigger update on anim graph unique data.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
     bool CommandAnimGraphAdjustTransition::SetCommandParameters(const MCore::CommandLine& parameters)
@@ -928,14 +923,15 @@ namespace CommandSystem
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* node, const EMotionFX::BlendTreeConnection* connection)
+    void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* node, const EMotionFX::BlendTreeConnection* connection, bool updateUniqueData)
     {
-        const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %d -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d",
+        const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %d -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d -updateUniqueData %s",
             node->GetAnimGraph()->GetID(),
             node->GetName(),
             connection->GetTargetPort(),
             connection->GetSourceNode()->GetName(),
-            connection->GetSourcePort());
+            connection->GetSourcePort(),
+            updateUniqueData ? "true" : "false");
         commandGroup->AddCommandString(commandString);
     }
 

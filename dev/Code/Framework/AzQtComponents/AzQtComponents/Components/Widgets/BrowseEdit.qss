@@ -21,13 +21,25 @@ AzQtComponents--BrowseEdit QLineEdit
     height: 16px;
     border-width: 0px;
     border-style: solid;
-    border-color: #444444;
+    border-color: transparent;
     border-top-left-radius: 2px;
     border-bottom-left-radius: 2px;
     border-top-right-radius: 0px;
     border-bottom-right-radius: 0px;
+    /* 2px padding already applied */
+    padding-left: 2px;
+    /* 14px padding applied by default: 14 - 4 = 10 */
+    padding-right: -4px;
 }
 
+AzQtComponents--BrowseEdit.ValidDropTarget QLineEdit,
+AzQtComponents--BrowseEdit.ValidDropTarget QLineEdit:focus,
+AzQtComponents--BrowseEdit.ValidDropTarget QLineEdit:hover
+{
+    background-color: transparent;
+}
+
+AzQtComponents--BrowseEdit.InvalidDropTarget QLineEdit,
 AzQtComponents--BrowseEdit QLineEdit:focus
 {
     background-color: #FFFFFF;
@@ -41,10 +53,15 @@ AzQtComponents--BrowseEdit QLineEdit:disabled
 
 AzQtComponents--BrowseEdit #attached-button
 {
+    /* Set the flat property to true to enable QPushButton styling from QSS */
+    qproperty-flat: true;
+
     max-width: 16px;
     min-width: 16px;
     max-height: 16px;
     min-height: 16px;
+
+    qproperty-iconSize: 12px 12px;
 
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                       stop: 0 #666666, stop: 1 #555555);

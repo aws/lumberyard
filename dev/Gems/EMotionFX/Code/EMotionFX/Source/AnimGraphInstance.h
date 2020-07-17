@@ -49,9 +49,10 @@ namespace EMotionFX
     class EMFX_API AnimGraphInstance
         : public BaseObject
     {
+    public:
+        AZ_RTTI(AnimGraphInstance, "{2CC86AA2-AFC0-434B-A317-B102FD02E76D}")
         AZ_CLASS_ALLOCATOR_DECL
 
-    public:
         enum
         {
             OBJECTFLAGS_OUTPUT_READY                = 1 << 0,
@@ -135,8 +136,16 @@ namespace EMotionFX
         bool SwitchToState(const char* stateName);
         bool TransitionToState(const char* stateName);
 
-        void ResetUniqueData();
-        void UpdateUniqueData();
+        void ResetUniqueDatas();
+        void RecursiveInvalidateUniqueDatas();
+
+        /**
+         * Get the number of currently allocated unique datas.
+         * Due to deferred initialization, unique datas of the anim graph objects are allocated when needed at runtime.
+         * The number of allocated unique datas will equal GetNumUniqueObjectDatas() after all objects were activated.
+         * @return The number of currently allocated unique datas.
+         */
+        size_t CalcNumAllocatedUniqueDatas() const;
 
         void ApplyMotionExtraction();
 
@@ -156,15 +165,13 @@ namespace EMotionFX
         void RemoveInternalAttribute(size_t index, bool delFromMem = true);   // removes the internal attribute (does not update any indices of other attributes)
         uint32 AddInternalAttribute(MCore::Attribute* attribute);           // returns the index of the new added attribute
 
-        AnimGraphObjectData* FindUniqueObjectData(const AnimGraphObject* object) const   { return m_uniqueDatas[ object->GetObjectIndex() ]; }
-        AnimGraphNodeData* FindUniqueNodeData(const AnimGraphNode* node) const;
+        AnimGraphObjectData* FindOrCreateUniqueObjectData(const AnimGraphObject* object);
+        AnimGraphNodeData* FindOrCreateUniqueNodeData(const AnimGraphNode* node);
 
         void AddUniqueObjectData();
-        void RegisterUniqueObjectData(AnimGraphObjectData* data);
 
         AnimGraphObjectData* GetUniqueObjectData(size_t index)                            { return m_uniqueDatas[index]; }
         size_t GetNumUniqueObjectDatas() const                                            { return m_uniqueDatas.size(); }
-        void SetUniqueObjectData(size_t index, AnimGraphObjectData* data);
         void RemoveUniqueObjectData(size_t index, bool delFromMem);
         void RemoveUniqueObjectData(AnimGraphObjectData* uniqueData, bool delFromMem);
         void RemoveAllObjectData(bool delFromMem);

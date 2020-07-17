@@ -127,11 +127,13 @@ namespace ScriptCanvas
         //! Events signaled when a slot is added or removed from a node
         virtual void OnSlotAdded(const SlotId& /*slotId*/) {}
         virtual void OnSlotRemoved(const SlotId& /*slotId*/) {}
-        virtual void OnSlotRenamed(const SlotId& /*slotId*/, AZStd::string_view /*newName*/) {}
+        virtual void OnSlotRenamed(const SlotId& /*slotId*/, AZStd::string_view /*newName*/) {}        
 
         virtual void OnSlotDisplayTypeChanged(const SlotId& /*slotId*/, const ScriptCanvas::Data::Type& /*slotType*/) {}
 
         virtual void OnSlotActiveVariableChanged(const SlotId& /*slotId*/, const VariableId& oldVariableId, const VariableId& newVariableId) {}
+
+        virtual void OnSlotsReordered() {}
 
         virtual void OnNodeDisabled() {};
         virtual void OnNodeEnabled() {};

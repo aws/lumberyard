@@ -12,23 +12,14 @@
 
 #include <precompiled.h>
 
-#include <AzCore/Component/ComponentApplicationBus.h>
-#include <GraphCanvas/Components/SceneBus.h>
-#include <ScriptCanvas/Core/Graph.h>
-#include <ScriptCanvas/Variable/VariableBus.h>
-#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/Undo/ScriptCanvasUndoManager.h>
-#include <Editor/Undo/ScriptCanvasUndoCache.h>
-#include <Editor/Undo/ScriptCanvasGraphCommand.h>
-#include <ScriptCanvas/Bus/UndoBus.h>
-#include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
-#include <ScriptCanvas/Bus/RequestBus.h>
-#include <GraphCanvas/Editor/GraphModelBus.h>
-#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
+#include <AzCore/Serialization/ObjectStream.h>
 
 namespace ScriptCanvasEditor
 {
     static const int c_undoLimit = 100;
+
+    // ScopedUndoBatch
 
     ScopedUndoBatch::ScopedUndoBatch(AZStd::string_view label)
     {
@@ -39,6 +30,8 @@ namespace ScriptCanvasEditor
     {
         UndoRequestBus::Broadcast(&UndoRequests::EndUndoBatch);
     }
+
+    // SceneUndoState
 
     SceneUndoState::SceneUndoState(AzToolsFramework::UndoSystem::IUndoNotify* undoNotify)
         : m_undoStack(AZStd::make_unique<AzToolsFramework::UndoSystem::UndoStack>(c_undoLimit, undoNotify))
@@ -94,329 +87,54 @@ namespace ScriptCanvasEditor
         delete m_currentUndoBatch;
     }
 
-    UndoManager::UndoManager()
+    // UndoCache
+
+    void UndoCache::Clear()
     {
-        GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
-        UndoRequestBus::Handler::BusConnect();
+        m_dataMap.clear();
     }
 
-    UndoManager::~UndoManager()
+    void UndoCache::PurgeCache(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
-        UndoRequestBus::Handler::BusDisconnect();
-        GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
-
-        for (auto& mapPair : m_undoMapping)
-        {
-            delete mapPair.second;
-        }
+        m_dataMap.erase(scriptCanvasId);
     }
 
-    UndoCache* UndoManager::GetActiveSceneUndoCache()
+    void UndoCache::PopulateCache(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            return sceneUndoState->m_undoCache.get();
-        }
-
-        return nullptr;
+        UpdateCache(scriptCanvasId);
     }
 
-    UndoCache* UndoManager::GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasId)
+    void UndoCache::UpdateCache(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
-        AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
-
-        SceneUndoState* sceneUndoState = FindUndoState(graphCanvasGraphId);
-
-        if (sceneUndoState)
-        {
-            return sceneUndoState->m_undoCache.get();
-        }
-
-        return nullptr;
-    }
-
-    void UndoManager::BeginUndoBatch(AZStd::string_view label)
-    {
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            sceneUndoState->BeginUndoBatch(label);
-        }
-    }
-
-    void UndoManager::EndUndoBatch()
-    {
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            sceneUndoState->EndUndoBatch();
-        }
-    }
-
-    void UndoManager::Redo()
-    {
-        GRAPH_CANVAS_PROFILE_FUNCTION();
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            AZ_Warning("Script Canvas", !sceneUndoState->m_currentUndoBatch, "Script Canvas Editor has an open undo batch when performing a redo operation");
-
-            if (sceneUndoState->m_undoStack->CanRedo())
-            {
-                m_isInUndo = true;
-                sceneUndoState->m_undoStack->Redo();
-                m_isInUndo = false;
-            }
-        }
-    }
-
-    void UndoManager::Undo()
-    {
-        GRAPH_CANVAS_PROFILE_FUNCTION();
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            AZ_Warning("Script Canvas", !sceneUndoState->m_currentUndoBatch, "Script Canvas Editor has an open undo batch when performing an undo operation");
-
-            if (sceneUndoState->m_undoStack->CanUndo())
-            {
-                m_isInUndo = true;
-                sceneUndoState->m_undoStack->Undo();
-                m_isInUndo = false;
-            }
-        }
-    }
-
-    void UndoManager::Reset()
-    {
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            AZ_Warning("Script Canvas", !sceneUndoState->m_currentUndoBatch, "Script Canvas Editor has an open undo batch when reseting the undo stack");
-            sceneUndoState->m_undoStack->Reset();
-        }
-    }
-
-
-    void UndoManager::AddUndo(AzToolsFramework::UndoSystem::URSequencePoint* sequencePoint)
-    {
-        SceneUndoState* sceneUndoState = FindActiveUndoState();
-
-        if (sceneUndoState)
-        {
-            if (!sceneUndoState->m_currentUndoBatch)
-            {
-                sceneUndoState->m_undoStack->Post(sequencePoint);
-            }
-            else
-            {
-                sequencePoint->SetParent(sceneUndoState->m_currentUndoBatch);
-            }
-        }
-    }
-
-    void UndoManager::AddGraphItemChangeUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel)
-    {
-        auto command = aznew GraphItemChangeCommand(undoLabel);
-        command->Capture(scriptCanvasEntity, true);
-        command->Capture(scriptCanvasEntity, false);
-        AddUndo(command);
-    }
-
-    void UndoManager::AddGraphItemAdditionUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel)
-    {
-        auto command = aznew GraphItemAddCommand(undoLabel);
-        command->Capture(scriptCanvasEntity, false);
-        AddUndo(command);
-    }
-
-    void UndoManager::AddGraphItemRemovalUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel)
-    {
-        auto command = aznew GraphItemRemovalCommand(undoLabel);
-        command->Capture(scriptCanvasEntity, true);
-        AddUndo(command);
-    }
-
-    UndoData UndoManager::CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId)
-    {
-        AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
-
-        AZ::Entity* graphEntity = nullptr;
-        ScriptCanvas::GraphRequestBus::EventResult(graphEntity, scriptCanvasGraphId, &ScriptCanvas::GraphRequests::GetGraphEntity);
-
-        if (graphEntity)
-        {
-            GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, graphEntity->GetId());
-        }
-
-        GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, graphCanvasGraphId);
-
+        // Lookup the graph item and perform a snapshot of all it's serialization elements
         UndoData undoData;
+        UndoRequestBus::EventResult(undoData, scriptCanvasId, &UndoRequests::CreateUndoData);
 
-        ScriptCanvas::GraphData* graphData{};
-        ScriptCanvas::GraphRequestBus::EventResult(graphData, scriptCanvasGraphId, &ScriptCanvas::GraphRequests::GetGraphData);
+        AZ::SerializeContext* serializeContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-        const ScriptCanvas::VariableData* varData{};
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varData, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableDataConst);
-        
-        if (graphData && varData)
+        AZStd::vector<AZ::u8>& newData = m_dataMap[scriptCanvasId];
+        newData.clear();
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> byteStream(&newData);
+        AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *serializeContext, AZ::DataStream::ST_BINARY);
+        if (!objStream->WriteClass(&undoData))
         {
-            undoData.m_graphData = *graphData;
-            undoData.m_variableData = *varData;
-
-            EditorGraphRequestBus::EventResult(undoData.m_visualSaveData, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasSaveData);
-        }
-
-        return undoData;
-    }
-
-    void UndoManager::OnUndoStackChanged()
-    {
-        SceneUndoState* undoState = FindActiveUndoState();
-
-        m_canUndo = false;
-        m_canRedo = false;
-
-        if (undoState)
-        {
-            m_canUndo = undoState->m_undoStack->CanUndo();
-            m_canRedo = undoState->m_undoStack->CanRedo();
-        }
-
-        EBUS_EVENT(UndoNotificationBus, UndoNotifications::OnCanUndoChanged, m_canUndo);
-        EBUS_EVENT(UndoNotificationBus, UndoNotifications::OnCanRedoChanged, m_canRedo);
-    }
-
-    void UndoManager::OnActiveGraphChanged(const GraphCanvas::GraphId& graphCanvasGraphId)
-    {
-        m_activeGraphCanvasGraphId.SetInvalid();
-        m_activeGraphCanvasGraphId = graphCanvasGraphId;
-        
-        OnUndoStackChanged();
-    }
-
-    void UndoManager::OnGraphLoaded(const GraphCanvas::GraphId& graphCanvasGraphId)
-    {
-        ScriptCanvas::ScriptCanvasId scriptCanvasId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
-
-        if (!scriptCanvasId.IsValid())
-        {
+            AZ_Assert(false, "Unable to serialize Script Canvas scene and graph data for undo/redo");
             return;
         }
 
-        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
-
-        if (mapIter == m_undoMapping.end())
-        {
-            m_undoMapping[graphCanvasGraphId] = aznew SceneUndoState(this);
-        }
+        objStream->Finalize();
     }
 
-    void UndoManager::OnGraphUnloaded(const GraphCanvas::GraphId& graphCanvasGraphId)
+    const AZStd::vector<AZ::u8>& UndoCache::Retrieve(ScriptCanvas::ScriptCanvasId scriptCanvasId)
     {
-        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
+        auto it = m_dataMap.find(scriptCanvasId);
 
-        if (mapIter != m_undoMapping.end())
+        if (it == m_dataMap.end())
         {
-            delete mapIter->second;
-            m_undoMapping.erase(mapIter);
-            if (m_activeGraphCanvasGraphId == graphCanvasGraphId)
-            {
-                m_activeGraphCanvasGraphId.SetInvalid();
-            }
+            return m_emptyData;
         }
+
+        return it->second;
     }
-
-    void UndoManager::OnGraphRefreshed(const GraphCanvas::GraphId& oldGraphCanvasGraphId, const AZ::EntityId& newGraphCanvasGraphId)
-    {
-        if (!oldGraphCanvasGraphId.IsValid())
-        {
-            OnGraphLoaded(newGraphCanvasGraphId);
-            return;
-        }
-
-        // Switches the undo stack when the scene gets remapped(i.e. when it's saved as)
-        auto oldSceneIter = m_undoMapping.find(oldGraphCanvasGraphId);
-        auto newSceneIter = m_undoMapping.find(newGraphCanvasGraphId);
-
-        if (oldSceneIter != m_undoMapping.find(oldGraphCanvasGraphId)
-            && newSceneIter == m_undoMapping.end())
-        {
-            m_undoMapping[newGraphCanvasGraphId] = oldSceneIter->second;
-            m_undoMapping.erase(oldSceneIter);
-            if (m_activeGraphCanvasGraphId == oldGraphCanvasGraphId)
-            {
-                m_activeGraphCanvasGraphId = newGraphCanvasGraphId;
-            }
-        }
-    }
-
-    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasId)
-    {
-        AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
-
-        if (!graphCanvasGraphId.IsValid())
-        {
-            return {};
-        }
-
-        AZStd::unique_ptr<SceneUndoState> extractUndoState;
-        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
-        if (mapIter != m_undoMapping.end())
-        {
-            extractUndoState.reset(mapIter->second);
-            m_undoMapping.erase(mapIter);
-            if (m_activeGraphCanvasGraphId == graphCanvasGraphId)
-            {
-                m_activeGraphCanvasGraphId.SetInvalid();
-            }
-        }
-
-        return extractUndoState;
-    }
-
-    void UndoManager::InsertUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
-    {
-        AZ::EntityId graphCanvasGraphId;
-        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
-
-        if (!graphCanvasGraphId.IsValid() || !sceneUndoState)
-        {
-            return;
-        }
-
-        delete m_undoMapping[graphCanvasGraphId];
-        m_undoMapping[graphCanvasGraphId] = sceneUndoState.release();
-    }
-
-    SceneUndoState* UndoManager::FindActiveUndoState() const
-    {
-        return FindUndoState(m_activeGraphCanvasGraphId);
-    }
-
-    SceneUndoState* UndoManager::FindUndoState(const GraphCanvas::GraphId& graphCanvasGraphId) const
-    {
-        SceneUndoState* undoState = nullptr;
-
-        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
-
-        if (mapIter != m_undoMapping.end())
-        {
-            undoState = mapIter->second;
-        }
-
-        return undoState;
-    }
-
-} // namespace ScriptCanvasEditor
+}

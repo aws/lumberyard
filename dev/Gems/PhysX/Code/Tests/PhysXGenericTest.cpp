@@ -211,6 +211,31 @@ namespace Physics
         return entity;
     }
 
+    AZ::Entity* GenericPhysicsFixture::AddStaticSphereEntity(const AZ::Vector3& position, const float radius,
+        const CollisionLayer& layer)
+    {
+        auto entity = aznew AZ::Entity("TestSphereEntity");
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
+
+        entity->Deactivate();
+
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::SphereShapeConfiguration>(radius);
+        auto sphereColliderComponent = entity->CreateComponent<PhysX::SphereColliderComponent>();
+        sphereColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
+        entity->CreateComponent<PhysX::StaticRigidBodyComponent>();
+
+        entity->Activate();
+        return entity;
+    }
+
     AZ::Entity* GenericPhysicsFixture::AddStaticBoxEntity(const AZ::Vector3& position,
         const AZ::Vector3& dimensions, const CollisionLayer& layer)
     {
@@ -235,6 +260,32 @@ namespace Physics
         entity->Activate();
         return entity;
     }
+
+    AZ::Entity* GenericPhysicsFixture::AddStaticCapsuleEntity(const AZ::Vector3& position, const float height,
+        const float radius, const CollisionLayer& layer)
+    {
+        auto entity = aznew AZ::Entity("TestCapsuleEntity");
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
+
+        entity->Deactivate();
+
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::CapsuleShapeConfiguration>(height, radius);
+        auto capsuleColliderComponent = entity->CreateComponent<PhysX::CapsuleColliderComponent>();
+        capsuleColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
+        entity->CreateComponent<PhysX::StaticRigidBodyComponent>();
+
+        entity->Activate();
+        return entity;
+    }
+
 
     AZ::Entity* GenericPhysicsFixture::AddCapsuleEntity(const AZ::Vector3& position, const float height,
         const float radius, const CollisionLayer& layer)
@@ -261,5 +312,81 @@ namespace Physics
         entity->Activate();
         return entity;
     }
+
+    AZStd::unique_ptr<AZ::Entity> GenericPhysicsFixture::AddMultiShapeEntity(const MultiShapeConfig& config)
+    {
+        AZStd::unique_ptr<AZ::Entity> entity(aznew AZ::Entity("TestShapeEntity"));
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, config.m_position);
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetLocalRotation, config.m_rotation);
+
+        entity->Deactivate();
+
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = config.m_layer;
+
+        Physics::ShapeConfigurationList shapeconfigurationList;
+
+        struct Visitor
+        {
+            AZStd::shared_ptr<Physics::ColliderConfiguration>& colliderConfig;
+            Physics::ShapeConfigurationList& shapeconfigurationList;
+
+            void operator()(const MultiShapeConfig::ShapeList::ShapeData::Box& box) const
+            {
+                shapeconfigurationList.push_back
+                ({
+                    colliderConfig,
+                    AZStd::make_shared<Physics::BoxShapeConfiguration>(box.m_extent)
+                });
+            }
+            void operator()(const MultiShapeConfig::ShapeList::ShapeData::Sphere& sphere) const
+            {
+                shapeconfigurationList.push_back
+                ({
+                    colliderConfig,
+                    AZStd::make_shared<Physics::SphereShapeConfiguration>(sphere.m_radius)
+                });
+            }
+            void operator()(const MultiShapeConfig::ShapeList::ShapeData::Capsule& capsule) const
+            {
+                shapeconfigurationList.push_back
+                ({
+                    colliderConfig,
+                    AZStd::make_shared<Physics::CapsuleShapeConfiguration>(capsule.m_height, capsule.m_radius)
+                });
+            }
+            void operator()(const AZStd::monostate&) const
+            {
+                AZ_Assert(false, "Invalid shape type");
+            }
+        };
+        Visitor addShapeConfig = {colliderConfig, shapeconfigurationList};
+
+        for (const MultiShapeConfig::ShapeList::ShapeData& shapeConfig : config.m_shapes.m_shapesData)
+        {
+            AZStd::visit(addShapeConfig, shapeConfig.m_data);
+        }
+
+        auto colliderComponent = entity->CreateComponent<PhysX::BaseColliderComponent>();
+        colliderComponent->SetShapeConfigurationList(shapeconfigurationList);
+
+        RigidBodyConfiguration rigidBodyConfig;
+        entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
+
+        entity->Activate();
+
+        for (int i = 0; i < colliderComponent->GetShapes().size(); ++i)
+        {
+            colliderComponent->GetShapes()[i]->SetLocalPose(config.m_shapes.m_shapesData[i].m_offset, AZ::Quaternion::CreateIdentity());
+        }
+
+        return AZStd::unique_ptr<AZ::Entity>{ AZStd::move(entity) };
+    }
+
 } // namespace Physics
 

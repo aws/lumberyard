@@ -28,9 +28,11 @@
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
 BrowseButton::BrowseButton(PropertyType type, QWidget* parent /*= nullptr*/)
-    : QPushButton(parent)
+    : QToolButton(parent)
     , m_propertyType(type)
 {
+    setAutoRaise(true);
+    setIcon(QIcon(QStringLiteral(":/stylesheet/img/UI20/browse-edit.svg")));
     connect(this, &QAbstractButton::clicked, this, &BrowseButton::OnClicked);
 }
 
@@ -52,12 +54,6 @@ public:
     FileBrowseButton(PropertyType type, QWidget* pParent = nullptr)
         : BrowseButton(type, pParent)
     {
-        setFlat(true);
-        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        setFixedSize(QSize(16, 16));
-        setText("...");
-        setMouseTracking(true);
-        setContentsMargins(0, 0, 0, 0);
         setToolTip("Browse...");
     }
 
@@ -165,12 +161,7 @@ public:
     TextureEditButton(QWidget* pParent = nullptr)
         : BrowseButton(ePropertyTexture, pParent)
     {
-        setFlat(true);
-        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        setFixedSize(QSize(16, 16));
-        setIcon(QIcon(":/reflectedPropertyCtrl/img/texture_edit.png"));
-        setMouseTracking(true);
-        setContentsMargins(0, 0, 0, 0);
+        setIcon(QIcon(QStringLiteral(":/stylesheet/img/UI20/open-in-internal-app.svg")));
         setToolTip(tr("Launch default editor"));
     }
 

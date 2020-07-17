@@ -22,11 +22,13 @@ QMenu::item
     /* 24 - 18 = 6 */
     /* 6 / 2 = 3 */
     /* top, right, bottom, left */
-    padding: 3px auto 3px 20px;
+    padding: 2px auto 4px 20px;
+    height: 18px;
 }
 
 /* Hover */
-QMenu::item:selected
+QMenu::item:selected,
+QMenu::item .WidgetAction:hover
 {
     background-color: #444444;
 }
@@ -38,14 +40,23 @@ QMenu::right-arrow
     height: 16px;
 
     subcontrol-position: right center;
+}
+
+QMenu::right-arrow
+{
     right: 4px;
 }
 
-QMenu::indicator:non-exclusive:checked
+QMenu::icon
+{
+    right: 8px;
+}
+
+QMenu::indicator:checked
 {
     width: 16px;
     height: 16px;
-    margin-left: 4px;
+    margin-left: 2px;
     image: url(:/stylesheet/img/UI20/checkmark-menu.svg);
 }
 
@@ -58,6 +69,6 @@ QMenu::separator
 {
     height: 0px;
     border-bottom: 1px solid #454545;
-    margin-top: 6px;
-    margin-bottom: 6px;
+    margin-top: 2px;
+    margin-bottom: 3px;
 }

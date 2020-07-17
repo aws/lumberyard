@@ -39,6 +39,7 @@ namespace EMStudio
 
         friend class TimeViewPlugin;
         friend class TrackHeaderWidget;
+        friend class TimeViewToolBar;
 
     public:
         TrackDataWidget(TimeViewPlugin* plugin, QWidget* parent = nullptr);
@@ -50,6 +51,8 @@ namespace EMStudio
         void initializeGL() override;
         void resizeGL(int w, int h) override;
         void paintGL() override;
+
+        void RemoveTrack(AZ::u32 trackIndex);
         
     protected:
         //void paintEvent(QPaintEvent* event);
@@ -74,10 +77,11 @@ namespace EMStudio
     private slots:
         void OnRemoveElement()                          { RemoveMotionEvent(mContextMenuX, mContextMenuY); }
         void OnAddElement()                             { AddMotionEvent(mContextMenuX, mContextMenuY); }
-        void OnAddTrack()                               { CommandSystem::CommandAddEventTrack(); }
+        void OnAddTrack();
         void OnCreatePresetEvent();
         void RemoveSelectedMotionEventsInTrack();
         void RemoveAllMotionEventsInTrack();
+        void OnRemoveEventTrack();
 
         void OnCutTrack();
         void OnCopyTrack();

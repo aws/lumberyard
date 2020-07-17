@@ -86,7 +86,7 @@ namespace AzQtComponents
         int pixelMetric(PixelMetric metric, const QStyleOption* option, const QWidget* widget) const override;
 
 
-        QIcon generateIconPixmap(QIcon::Mode iconMode, const QIcon& icon) const;
+        QIcon generateIconPixmap(QIcon::Mode iconMode, const QIcon& icon, const QSize& size) const;
 
 
         QPixmap standardPixmap(StandardPixmap standardPixmap, const QStyleOption* opt = nullptr,

@@ -13,7 +13,6 @@
 #include "SelectionManipulator.h"
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
 namespace AzToolsFramework
 {
@@ -89,27 +88,36 @@ namespace AzToolsFramework
         const AzFramework::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        m_manipulatorView->Draw(
-            GetManipulatorManagerId(), managerState,
-            GetManipulatorId(), {
-                TransformUniformScale(m_worldFromLocal),
-                m_position, MouseOver()
-            },
-            debugDisplay, cameraState, mouseInteraction);
+        for (auto& view : m_manipulatorViews)
+        {
+            view->Draw(
+                GetManipulatorManagerId(), managerState,
+                GetManipulatorId(), {
+                    TransformUniformScale(m_worldFromLocal),
+                    m_position, MouseOver()
+                },
+                debugDisplay, cameraState, mouseInteraction);
+        }
     }
 
     void SelectionManipulator::SetBoundsDirtyImpl()
     {
-        m_manipulatorView->SetBoundDirty(GetManipulatorManagerId());
+        for (auto& view : m_manipulatorViews)
+        {
+            view->SetBoundDirty(GetManipulatorManagerId());
+        }
     }
 
     void SelectionManipulator::InvalidateImpl()
     {
-        m_manipulatorView->Invalidate(GetManipulatorManagerId());
+        for (auto& view : m_manipulatorViews)
+        {
+            view->Invalidate(GetManipulatorManagerId());
+        }
     }
 
     void SelectionManipulator::SetView(AZStd::unique_ptr<ManipulatorView>&& view)
     {
-        m_manipulatorView = AZStd::move(view);
+        m_manipulatorViews.emplace_back(AZStd::move(view));
     }
 }

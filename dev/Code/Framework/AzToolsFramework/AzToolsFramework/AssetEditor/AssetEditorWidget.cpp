@@ -36,6 +36,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/sort.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
@@ -146,13 +147,16 @@ namespace AzToolsFramework
 
         void AssetEditorWidgetUserSettings::AddRecentPath(const AZStd::string& recentPath)
         {
-            auto item = AZStd::find(m_recentPaths.begin(), m_recentPaths.end(), recentPath);
+            AZStd::string lowerCasePath = recentPath;
+            AZStd::to_lower(lowerCasePath.begin(), lowerCasePath.end());
+
+            auto item = AZStd::find(m_recentPaths.begin(), m_recentPaths.end(), lowerCasePath);
             if (item != m_recentPaths.end())
             {
                 m_recentPaths.erase(item);
             }
 
-            m_recentPaths.emplace(m_recentPaths.begin(), recentPath);
+            m_recentPaths.emplace(m_recentPaths.begin(), lowerCasePath);
 
             while (m_recentPaths.size() > 10)
             {
@@ -244,7 +248,7 @@ namespace AzToolsFramework
 
             m_userSettings = AZ::UserSettings::CreateFind<AssetEditorWidgetUserSettings>(k_assetEditorWidgetSettings, AZ::UserSettings::CT_LOCAL);
 
-            PopulateRecentMenu();
+            QObject::connect(m_recentFileMenu, &QMenu::aboutToShow, this, &AssetEditorWidget::PopulateRecentMenu);
         }
 
         AssetEditorWidget::~AssetEditorWidget()
@@ -749,6 +753,15 @@ namespace AzToolsFramework
                 AZ::Uuid::CreateNull(),
                 AZ::AzTypeInfo<AZ::Data::AssetData>::Uuid()
                 );
+
+            AZStd::sort(m_genericAssetTypes.begin(), m_genericAssetTypes.end(), [&](const AZ::Data::AssetType& lhsAssetType, const AZ::Data::AssetType& rhsAssetType)
+                {
+                    AZStd::string lhsAssetTypeName = "";
+                    AZ::AssetTypeInfoBus::EventResult(lhsAssetTypeName, lhsAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+                    AZStd::string rhsAssetTypeName = "";
+                    AZ::AssetTypeInfoBus::EventResult(rhsAssetTypeName, rhsAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+                    return lhsAssetTypeName < rhsAssetTypeName;
+                });
         }
 
         void AssetEditorWidget::CreateAssetImpl(AZ::Data::AssetType assetType)
@@ -883,8 +896,7 @@ namespace AzToolsFramework
 
         void AssetEditorWidget::AddRecentPath(const AZStd::string& recentPath)
         {
-            m_userSettings->AddRecentPath(recentPath);
-            PopulateRecentMenu();
+            m_userSettings->AddRecentPath(recentPath);            
         }
 
         void AssetEditorWidget::PopulateRecentMenu()

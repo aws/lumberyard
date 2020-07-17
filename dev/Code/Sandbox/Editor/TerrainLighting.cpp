@@ -23,6 +23,7 @@
 #include "QtUtilWin.h"
 #include "QtViewPaneManager.h"
 #include "ITimeOfDay.h"
+#include <AzQtComponents/Components/Widgets/Slider.h>
 
 #ifdef LY_TERRAIN_EDITOR
 #include "Terrain/TerrainTexGen.h"
@@ -205,28 +206,28 @@ CTerrainLighting::CTerrainLighting(QWidget* pParent)
     connect(ui->LIGHTING_TYPE_DYNAMIC_SUN, &QRadioButton::clicked, this, &CTerrainLighting::OnDynamicSun);
     connect(ui->LIGHTING_TYPE_PRECISE, &QRadioButton::clicked, this, &CTerrainLighting::OnPrecise);
 
-    connect(ui->LIGHTING_TIME_OF_DAY, &QSlider::valueChanged, this, &CTerrainLighting::OnLightingTimeOfDaySlider);
+    connect(ui->LIGHTING_TIME_OF_DAY, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnLightingTimeOfDaySlider);
     connect(ui->TIME_OF_DAY_EDIT, &QLineEdit::editingFinished, this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->SUN_DIRECTION, &QSlider::valueChanged, this, &CTerrainLighting::OnSunDirectionSlider);
+    connect(ui->SUN_DIRECTION, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnSunDirectionSlider);
     connect(ui->LIGHTING_SUNDIR_EDIT, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->SUN_MAP_LONGITUDE, &QSlider::valueChanged, this, &CTerrainLighting::OnSunMapLongitudeSlider);
+    connect(ui->SUN_MAP_LONGITUDE, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnSunMapLongitudeSlider);
     connect(ui->LIGHTING_POLE_EDIT, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->DAWN_SLIDER, &QSlider::valueChanged, this, &CTerrainLighting::OnDawnTimeSlider);
+    connect(ui->DAWN_SLIDER, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnDawnTimeSlider);
     connect(ui->DAWN_INFO, &QLineEdit::editingFinished, this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->DAWN_DUR_SLIDER, &QSlider::valueChanged, this, &CTerrainLighting::OnDawnDurationSlider);
+    connect(ui->DAWN_DUR_SLIDER, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnDawnDurationSlider);
     connect(ui->DAWN_DUR_INFO, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->DUSK_SLIDER, &QSlider::valueChanged, this, &CTerrainLighting::OnDuskTimeSlider);
+    connect(ui->DUSK_SLIDER, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnDuskTimeSlider);
     connect(ui->DUSK_INFO, &QLineEdit::editingFinished, this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->DUSK_DUR_SLIDER, &QSlider::valueChanged, this, &CTerrainLighting::OnDuskDurationSlider);
+    connect(ui->DUSK_DUR_SLIDER, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnDuskDurationSlider);
     connect(ui->DUSK_DUR_INFO, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &CTerrainLighting::UpdateScrollBarsFromEdits);
 
-    connect(ui->SKY_QUALITY, &QSlider::valueChanged, this, &CTerrainLighting::OnSkyQualitySlider);
+    connect(ui->SKY_QUALITY, &AzQtComponents::SliderInt::valueChanged, this, &CTerrainLighting::OnSkyQualitySlider);
     connect(ui->TERRAIN_OBJECT_OCCLUSION, &QCheckBox::stateChanged, this, &CTerrainLighting::OnApplyILSS);
 
     connect(ui->FORCE_SKY_UPDATE, &QCheckBox::stateChanged, this, &CTerrainLighting::OnForceSkyUpdate);

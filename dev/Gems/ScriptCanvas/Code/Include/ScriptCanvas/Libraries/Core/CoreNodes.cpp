@@ -76,6 +76,7 @@ namespace ScriptCanvas
             Nodes::Core::EBusEventEntry::Reflect(reflection);
             Nodes::Core::Internal::ScriptEventEntry::Reflect(reflection);
             Nodes::Core::Internal::ScriptEventBase::Reflect(reflection);
+            Nodes::Core::Internal::Nodeling::Reflect(reflection);
 
             ContainerTypeReflection::ReflectOnDemandTargets::Reflect(reflection);
 
@@ -99,6 +100,8 @@ namespace ScriptCanvas
             AddNodeToRegistry<Core, ReceiveScriptEvent>(nodeRegistry);
             AddNodeToRegistry<Core, SendScriptEvent>(nodeRegistry);
             AddNodeToRegistry<Core, Repeater>(nodeRegistry);
+            AddNodeToRegistry<Core, FunctionNode>(nodeRegistry);
+            AddNodeToRegistry<Core, ExecutionNodeling>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Core::GetComponentDescriptors()
@@ -117,7 +120,9 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Core::SetVariableNode::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ReceiveScriptEvent::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::SendScriptEvent::CreateDescriptor(),
-                ScriptCanvas::Nodes::Core::Repeater::CreateDescriptor()
+                ScriptCanvas::Nodes::Core::Repeater::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::FunctionNode::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::ExecutionNodeling::CreateDescriptor(),
             });
         }
     }

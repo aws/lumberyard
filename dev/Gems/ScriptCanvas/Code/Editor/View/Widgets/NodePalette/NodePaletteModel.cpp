@@ -20,6 +20,7 @@
 
 #include <Editor/View/Widgets/NodePalette/NodePaletteModel.h>
 
+#include <Editor/Assets/ScriptCanvasAssetHelpers.h>
 #include <Editor/Include/ScriptCanvas/Bus/RequestBus.h>
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/Nodes/NodeUtils.h>
@@ -1004,6 +1005,56 @@ namespace ScriptCanvasEditor
         return identifiers;
     }
 
+    AZStd::vector<ScriptCanvas::NodeTypeIdentifier> NodePaletteModel::RegisterFunctionInformation(ScriptCanvas::ScriptCanvasFunctionAsset* functionAsset)
+    {
+        const AZ::Data::AssetId& assetId = functionAsset->GetId();
+
+        FunctionNodeModelInformation* modelInformation = aznew FunctionNodeModelInformation();
+
+        modelInformation->m_functionAssetId = assetId;
+        modelInformation->m_titlePaletteOverride = "FunctionNodeTitlePalette";
+        modelInformation->m_nodeIdentifier = ScriptCanvas::NodeUtils::ConstructFunctionNodeIdentifier(assetId);
+
+        // Temporary until I drive data from the function asset itself
+        AZStd::string rootPath;
+        AZ::Data::AssetInfo assetInfo = AssetHelpers::GetAssetInfo(assetId, rootPath);
+        AZStd::string absolutePath;
+
+        AzFramework::StringFunc::Path::Join(rootPath.c_str(), assetInfo.m_relativePath.c_str(), absolutePath);
+
+        AZStd::string category = "Global Functions";
+        AZStd::string relativePath;
+
+        if (AzFramework::StringFunc::Path::GetFolderPath(assetInfo.m_relativePath.c_str(), relativePath))
+        {
+            AZStd::to_lower(relativePath.begin(), relativePath.end());
+
+            const AZStd::string root = "scriptcanvas/functions/";
+            if (relativePath.starts_with(root))
+            {
+                relativePath = relativePath.substr(root.size(), relativePath.size() - root.size());
+            }
+
+            category.append("/");
+            category.append(relativePath);
+        }
+
+        modelInformation->m_categoryPath = category;
+
+        AzFramework::StringFunc::Path::Normalize(absolutePath);
+        
+        AzFramework::StringFunc::Path::GetFileName(absolutePath.c_str(), modelInformation->m_displayName);
+        ////
+
+        m_registeredNodes.emplace(AZStd::make_pair(modelInformation->m_nodeIdentifier, modelInformation));
+        m_assetMapping.insert(AZStd::make_pair(assetId, modelInformation->m_nodeIdentifier));
+
+        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> nodeTypeIdentifiers;
+        nodeTypeIdentifiers.push_back(modelInformation->m_nodeIdentifier);
+
+        return nodeTypeIdentifiers;
+    }
+
     void NodePaletteModel::RegisterCategoryInformation(const AZStd::string& category, const CategoryInformation& categoryInformation)
     {
         auto categoryIter = m_categoryInformation.find(category);
@@ -1182,6 +1233,24 @@ namespace ScriptCanvasEditor
                         ScriptEvents::ScriptEventsAsset* data = busAsset.GetAs<ScriptEvents::ScriptEventsAsset>();
 
                         return RegisterScriptEvent(data);
+                    }
+                    else
+                    {
+                        AZ_TracePrintf("NodePaletteModel", "Could not refresh node palette properly, the asset failed to load correctly.");
+                    }
+                }
+                else if (productEntry->GetAssetType() == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
+                {
+                    const AZ::Data::AssetId& assetId = productEntry->GetAssetId();
+
+                    const bool loadBlocking = true;
+                    auto functionAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
+
+                    if (functionAsset.IsReady())
+                    {
+                        ScriptCanvas::ScriptCanvasFunctionAsset* data = functionAsset.GetAs<ScriptCanvas::ScriptCanvasFunctionAsset>();
+
+                        return RegisterFunctionInformation(data);
                     }
                     else
                     {

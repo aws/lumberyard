@@ -51,22 +51,21 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)     { mMustUpdate = true; }
-            ~UniqueData()   {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
+
+            void Update() override;
 
         public:
             AZStd::vector< AZStd::vector<AZ::u32> > mMasks;
-            bool                                    mMustUpdate;
         };
 
         BlendTreeMaskLegacyNode();
         ~BlendTreeMaskLegacyNode();
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetHasOutputPose() const override                      { return true; }
         bool GetSupportsVisualization() const override              { return true; }
         AZ::Color GetVisualColor() const override                   { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
@@ -81,6 +80,13 @@ namespace EMotionFX
         void SetMask1(const AZStd::vector<AZStd::string>& mask1);
         void SetMask2(const AZStd::vector<AZStd::string>& mask2);
         void SetMask3(const AZStd::vector<AZStd::string>& mask3);
+
+        static size_t GetNumMasks() { return m_numMasks; }
+        const AZStd::vector<AZStd::string>& GetMask0() const { return m_mask0; }
+        const AZStd::vector<AZStd::string>& GetMask1() const { return m_mask1; }
+        const AZStd::vector<AZStd::string>& GetMask2() const { return m_mask2; }
+        const AZStd::vector<AZStd::string>& GetMask3() const { return m_mask3; }
+
         void SetOutputEvents0(bool outputEvents0);
         void SetOutputEvents1(bool outputEvents1);
         void SetOutputEvents2(bool outputEvents2);
@@ -89,7 +95,6 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

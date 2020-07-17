@@ -82,7 +82,7 @@ namespace AzToolsFramework
     };
 
     // A collection of views (a manipulator may have 1 - * views)
-    using ManipulatorViews = AZStd::vector<AZStd::unique_ptr<ManipulatorView>>;
+    using ManipulatorViews = AZStd::vector<AZStd::shared_ptr<ManipulatorView>>;
 
     /// Display a quad representing part of a plane, rendered as 4 lines.
     class ManipulatorViewQuad
@@ -341,41 +341,41 @@ namespace AzToolsFramework
 
     // Helpers to create various manipulator views.
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuad(
+    AZStd::unique_ptr<ManipulatorViewQuad> CreateManipulatorViewQuad(
         const PlanarManipulator& planarManipulator, const AZ::Color& axis1Color,
         const AZ::Color& axis2Color, float size);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuadBillboard(
+    AZStd::unique_ptr<ManipulatorViewQuadBillboard> CreateManipulatorViewQuadBillboard(
         const AZ::Color& color, float size);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewLine(
+    AZStd::unique_ptr<ManipulatorViewLine> CreateManipulatorViewLine(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         float length, float width);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewLineSelect(
+    AZStd::unique_ptr<ManipulatorViewLineSelect> CreateManipulatorViewLineSelect(
         const LineSegmentSelectionManipulator& lineSegmentManipulator, const AZ::Color& color,
         float width);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCone(
+    AZStd::unique_ptr<ManipulatorViewCone> CreateManipulatorViewCone(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         const AZ::Vector3& offset, float length, float radius);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewBox(
+    AZStd::unique_ptr<ManipulatorViewBox> CreateManipulatorViewBox(
         const AZ::Transform& transform, const AZ::Color& color,
         const AZ::Vector3& offset, const AZ::Vector3& halfExtents);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCylinder(
+    AZStd::unique_ptr<ManipulatorViewCylinder> CreateManipulatorViewCylinder(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         float length, float radius);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSphere(
+    AZStd::unique_ptr<ManipulatorViewSphere> CreateManipulatorViewSphere(
         const AZ::Color& color, float radius, const DecideColorFn& decideColor, bool enableDepthTest = false);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCircle(
+    AZStd::unique_ptr<ManipulatorViewCircle> CreateManipulatorViewCircle(
         const AngularManipulator& angularManipulator, const AZ::Color& color,
         float radius, float width, ManipulatorViewCircle::DrawCircleFunc drawFunc);
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSplineSelect(
+    AZStd::unique_ptr<ManipulatorViewSplineSelect> CreateManipulatorViewSplineSelect(
         const SplineSelectionManipulator& splineManipulator, const AZ::Color& color,
         float width);
 

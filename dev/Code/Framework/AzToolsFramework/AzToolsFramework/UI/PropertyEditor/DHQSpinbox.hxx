@@ -10,94 +10,37 @@
 *
 */
 
-#pragma once
+#ifndef AZ_SPINBOX_HXX
+#define AZ_SPINBOX_HXX
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // disable warnings spawned by QT
-#include <QtWidgets/QSpinBox>
-AZ_POP_DISABLE_WARNING
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 namespace AzToolsFramework
 {
+    // LUMBERYARD_DEPRECATED(LY-108269)
     class DHQSpinbox
-        : public QSpinBox
+        : public AzQtComponents::SpinBox
     {
+        Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQSpinbox(QWidget* parent = nullptr);
-
-        QSize minimumSizeHint() const override;
-
-        bool event(QEvent* event) override;
-
-        bool HasSelectedText() const;
-        int LastValue() const;
-
-    protected:
-        QPoint m_lastMousePosition;
-        bool m_mouseCaptured = false;
-
-        // QSpinBox
-        bool eventFilter(QObject* object, QEvent* event) override;
-        void focusInEvent(QFocusEvent* event) override;
-        void wheelEvent(QWheelEvent* event) override;
-
-    private:
-        int m_lastValue;
+        explicit DHQSpinbox(QWidget* parent = 0);
     };
 
+    // LUMBERYARD_DEPRECATED(LY-108269)
     class DHQDoubleSpinbox
-        : public QDoubleSpinBox
+        : public AzQtComponents::DoubleSpinBox
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQDoubleSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQDoubleSpinbox(QWidget* parent = nullptr);
-
-        QSize minimumSizeHint() const override;
-
-        bool event(QEvent* event) override;
-
-        // QDoubleSpinBox
-        QString textFromValue(double value) const override;
-
-        bool HasSelectedText() const;
-        double LastValue() const;
-
-        void SetDisplayDecimals(int precision);
-
-    protected:
-        // QDoubleSpinBox
-        bool eventFilter(QObject* object, QEvent* event) override;
-        void focusInEvent(QFocusEvent* event) override;
-        void focusOutEvent(QFocusEvent* event) override;
-        void wheelEvent(QWheelEvent* event) override;
-
-        QPoint m_lastMousePosition;
-        bool m_mouseCaptured = false;
-
-    private Q_SLOTS:
-        void UpdateToolTip(double value);
-
-    private:
-        QString StringValue(double value, bool truncated = false) const;
-
-        QString m_lastSuffix;
-        double m_lastValue;
-        int m_displayDecimals;
+        explicit DHQDoubleSpinbox(QWidget* parent = 0);
     };
+}
 
-    inline int DHQSpinbox::LastValue() const
-    {
-        return m_lastValue;
-    }
-
-    inline double DHQDoubleSpinbox::LastValue() const
-    {
-        return m_lastValue;
-    }
-} // namespace AzToolsFramework
+#endif

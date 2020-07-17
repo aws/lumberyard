@@ -146,7 +146,7 @@ namespace GraphCanvas
             SlotRequestBus::EventResult(nodeId, m_owner.GetEntityId(), &SlotRequests::GetNode);
 
             AZ::Crc32 propertyId;
-            PropertySlotBus::EventResult(propertyId, m_owner.GetEntityId(), &PropertySlotRequests::GetPropertyId);
+            PropertySlotRequestBus::EventResult(propertyId, m_owner.GetEntityId(), &PropertySlotRequests::GetPropertyId);
 
             NodePropertyDisplay* nodePropertyDisplay = nullptr;
             GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreatePropertySlotPropertyDisplay, propertyId, nodeId, m_owner.GetEntityId());

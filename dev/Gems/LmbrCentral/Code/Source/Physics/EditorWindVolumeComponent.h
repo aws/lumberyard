@@ -55,6 +55,11 @@ namespace LmbrCentral
             incompatible.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
         }
 
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
+        }
+
     private:
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntityViewport(

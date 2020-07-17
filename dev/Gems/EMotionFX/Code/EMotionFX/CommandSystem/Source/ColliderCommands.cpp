@@ -106,9 +106,9 @@ namespace EMotionFX
         return CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);
     }
 
-    bool CommandColliderHelpers::RemoveCollider(AZ::u32 actorId, const AZStd::string& jointName, const PhysicsSetup::ColliderConfigType& configType, size_t colliderIndex, MCore::CommandGroup* commandGroup, bool executeInsideCommand)
+    bool CommandColliderHelpers::RemoveCollider(AZ::u32 actorId, const AZStd::string& jointName, const PhysicsSetup::ColliderConfigType& configType, size_t colliderIndex, MCore::CommandGroup* commandGroup, bool executeInsideCommand, bool firstLastCommand)
     {
-        const AZStd::string command = AZStd::string::format("%s -%s %d -%s \"%s\" -%s \"%s\" -%s %d",
+        const AZStd::string command = AZStd::string::format("%s -%s %d -%s \"%s\" -%s \"%s\" -%s %d -updateUI %s",
             CommandRemoveCollider::s_commandName,
             CommandRemoveCollider::s_actorIdParameterName,
             actorId,
@@ -117,7 +117,8 @@ namespace EMotionFX
             CommandRemoveCollider::s_jointNameParameterName,
             jointName.c_str(),
             CommandRemoveCollider::s_colliderIndexParameterName,
-            colliderIndex);
+            colliderIndex,
+            firstLastCommand ? "true" : "false");
 
         return CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);
     }
@@ -156,7 +157,8 @@ namespace EMotionFX
         for (size_t i = 0; i < shapeCount; ++i)
         {
             const size_t colliderIndex = shapeCount - 1 - i;
-            RemoveCollider(actorId, jointName, configType, colliderIndex, commandGroup);
+            const bool firstLastCommand = (colliderIndex == 0 || colliderIndex == shapeCount - 1) ? true : false;
+            RemoveCollider(actorId, jointName, configType, colliderIndex, commandGroup, false, firstLastCommand);
         }
 
         if (!commandGroup)
@@ -371,7 +373,7 @@ namespace EMotionFX
     void CommandAddCollider::InitSyntax()
     {
         MCore::CommandSyntax& syntax = GetSyntax();
-        syntax.ReserveParameters(6);
+        syntax.ReserveParameters(7);
         ParameterMixinActorId::InitSyntax(syntax);
         ParameterMixinJointName::InitSyntax(syntax);
 
@@ -379,6 +381,7 @@ namespace EMotionFX
         syntax.AddParameter(s_colliderTypeParameterName, "Collider type UUID in the registry format.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         syntax.AddParameter(s_contentsParameterName, "The serialized contents of the collider (in reflected XML).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         syntax.AddParameter(s_insertAtIndexParameterName, "The index at which collider will be added.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        syntax.AddParameter("updateUI", "Only the first and last commands of the command group should set this to true, which will trigger all events to be processed.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
     bool CommandAddCollider::SetCommandParameters(const MCore::CommandLine& parameters)
@@ -750,12 +753,13 @@ namespace EMotionFX
     void CommandRemoveCollider::InitSyntax()
     {
         MCore::CommandSyntax& syntax = GetSyntax();
-        syntax.ReserveParameters(4);
+        syntax.ReserveParameters(5);
         ParameterMixinActorId::InitSyntax(syntax);
         ParameterMixinJointName::InitSyntax(syntax);
 
         syntax.AddRequiredParameter(s_colliderConfigTypeParameterName, "The config to which the collider shall be added to. [HitDetection, Ragdoll, Cloth]", MCore::CommandSyntax::PARAMTYPE_STRING);
         syntax.AddRequiredParameter(s_colliderIndexParameterName, "Collider index to be removed.", MCore::CommandSyntax::PARAMTYPE_INT);
+        syntax.AddParameter("updateUI", "Only the first and last commands of the command group should set this to true, which will trigger all events to be processed.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
     bool CommandRemoveCollider::SetCommandParameters(const MCore::CommandLine& parameters)

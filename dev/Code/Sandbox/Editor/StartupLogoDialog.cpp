@@ -37,25 +37,19 @@ CStartupLogoDialog::CStartupLogoDialog(QString versionText, QString richTextCopy
  
     s_pLogoWindow = this;
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_startergame.png"));
     setFixedSize(m_backgroundImage.size());
 
-    QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
-    smallFont.setPointSizeF(7.5);
-    m_ui->m_TransparentConfidential->setFont(smallFont);
-
+    m_ui->m_TransparentConfidential->setObjectName("copyrightNotice");
     m_ui->m_TransparentConfidential->setTextFormat(Qt::RichText);
     m_ui->m_TransparentConfidential->setText(richTextCopyrightNotice);
 
-    QFont bigFont(QStringLiteral("MS Shell Dlg 2"));
-    bigFont.setPointSizeF(12);
-    m_ui->m_TransparentBeta->setFont(bigFont);
-
     setWindowTitle(tr("Starting Lumberyard Editor"));
 
-    setStyleSheet("CStartupLogoDialog > QLabel { background: transparent; color: 'white' }");
+    setStyleSheet( "CStartupLogoDialog > QLabel { background: transparent; color: 'white' }\
+                    CStartupLogoDialog > QLabel#copyrightNotice { color: #AAAAAA; font-size: 9px; } ");
 
-    m_ui->m_TransparentVersion->setText(versionText);
+    m_ui->m_TransparentVersion->setText(QString("BETA - ") + versionText);
 }
 
 CStartupLogoDialog::~CStartupLogoDialog()

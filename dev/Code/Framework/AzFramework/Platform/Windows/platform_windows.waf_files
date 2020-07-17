@@ -28,6 +28,10 @@
         [
             "../Common/WinAPI/AzFramework/Network/AssetProcessorConnection_WinAPI.cpp"
         ],
+        "StreamingInstall/Platform/Windows":
+        [
+            "../Common/Unimplemented/AzFramework/StreamingInstall/StreamingInstall_Unimplemented.cpp"
+        ],
         "TargetManagement/Platform/Windows":
         [
             "AzFramework/TargetManagement/TargetManagementComponent_Windows.cpp"

@@ -248,7 +248,7 @@ private:
 
         // status color
 
-        BaseType::item(0, BaseType::StackStatusColumn)->setData(GetIEditor()->GetColorByName("TextColor"), Qt::TextColorRole);
+        BaseType::item(0, BaseType::StackStatusColumn)->setData(AWSUtil::MakePrettyColor("Default"), Qt::TextColorRole);
 
         // id text
 

@@ -30,6 +30,7 @@
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 #include <GraphCanvas/Components/VisualBus.h>
@@ -40,10 +41,13 @@
 #include <Editor/View/Widgets/VariablePanel/ui_VariableDockWidget.h>
 
 #include <Data/Data.h>
+
+#include <Editor/Assets/ScriptCanvasAssetTrackerBus.h>
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/QtMetaTypes.h>
 #include <Editor/Settings.h>
 #include <Editor/Translation/TranslationHelper.h>
+#include <Editor/View/Widgets/DataTypePalette/DataTypePaletteModel.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/PropertyGridBus.h>
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
@@ -53,6 +57,7 @@
 #include <ScriptCanvas/Data/DataRegistry.h>
 #include <ScriptCanvas/Execution/RuntimeBus.h>
 #include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
 
 namespace ScriptCanvasEditor
 {
@@ -183,14 +188,10 @@ namespace ScriptCanvasEditor
         PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
     }
 
-    void VariablePropertiesComponent::OnVariableExposureChanged()
+    void VariablePropertiesComponent::OnVariableScopeChanged()
     {
         GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
-    }
-
-    void VariablePropertiesComponent::OnVariableExposureGroupChanged()
-    {
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+        PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
     }
 
     /////////////////////////////
@@ -297,7 +298,57 @@ namespace ScriptCanvasEditor
         addAction(copyAction);
         addAction(pasteAction);
         addAction(duplicateAction);
-        addAction(deleteAction);        
+        addAction(deleteAction);
+        addSeparator();
+
+        // Setup exposure options
+        ScriptCanvas::GraphScopedVariableId variableId;
+        variableId.m_scriptCanvasId = scriptCanvasId;
+        variableId.m_identifier = varId;
+        ScriptCanvas::GraphVariable* variable = nullptr;
+        ScriptCanvas::VariableRequestBus::EventResult(variable, variableId, &ScriptCanvas::VariableRequests::GetVariable);
+        AZ_Assert(variable, "The variable must exist at this point");
+
+        AZ::Data::AssetType assetType;
+        AssetTrackerRequestBus::BroadcastResult(assetType, &AssetTrackerRequests::GetAssetType, scriptCanvasId);
+        
+        // Exposing variables is only available for Function assets
+        QMenu* scopeSubMenu = new QMenu(QObject::tr("Scope"), this);
+
+        QActionGroup* actionGroup = new QActionGroup(scopeSubMenu);
+        actionGroup->setExclusive(true);
+
+        AZStd::vector<ScriptCanvas::VariableFlags::Scope> scopes = { ScriptCanvas::VariableFlags::Scope::Local, ScriptCanvas::VariableFlags::Scope::Input };
+
+        if (assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset >())
+        {
+            scopes.emplace_back(ScriptCanvas::VariableFlags::Scope::Output);
+            scopes.emplace_back(ScriptCanvas::VariableFlags::Scope::InOut);
+        }
+
+        for (auto scopeType : scopes)
+        {
+            QAction* exposureAction = new QAction(QObject::tr(ScriptCanvas::VariableFlags::GetScopeDisplayLabel(scopeType)), this);
+            exposureAction->setCheckable(true);
+            exposureAction->setChecked(variable->GetScope() == scopeType);
+            exposureAction->setActionGroup(actionGroup);
+            exposureAction->setToolTip(QObject::tr(ScriptCanvas::VariableFlags::GetScopeToolTip(scopeType)));
+
+            QObject::connect(exposureAction, &QAction::triggered, this, [variableId, scopeType](bool)
+            {
+                ScriptCanvas::GraphVariable* variable = nullptr;
+                ScriptCanvas::VariableRequestBus::EventResult(variable, variableId, &ScriptCanvas::VariableRequests::GetVariable);
+
+                if (variable)
+                {
+                    variable->SetScope(scopeType);
+                }
+            });
+
+            scopeSubMenu->addAction(exposureAction);
+        }
+
+        addMenu(scopeSubMenu);
     }
 
     ///////////////////////
@@ -311,7 +362,7 @@ namespace ScriptCanvasEditor
 
     AZStd::string VariableDockWidget::FindDefaultVariableName(const ScriptCanvas::ScriptCanvasId& scriptCanvasExecutionId)
     {
-        bool nameAvailable = false;
+        ScriptCanvas::VariableValidationOutcome nameAvailable = AZ::Failure(ScriptCanvas::GraphVariableValidationErrorCode::Unknown);
         AZStd::string varName;
 
         do
@@ -321,7 +372,7 @@ namespace ScriptCanvasEditor
 
             varName = ConstructDefaultVariableName(varCounter);
 
-            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, scriptCanvasExecutionId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, varName);
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, scriptCanvasExecutionId, &ScriptCanvas::GraphVariableManagerRequests::IsNameValid, varName);
         } while (!nameAvailable);
 
         return varName;
@@ -340,11 +391,9 @@ namespace ScriptCanvasEditor
         QObject::connect(ui->graphVariables, &GraphVariablesTableView::SelectionChanged, this, &VariableDockWidget::OnSelectionChanged);
         QObject::connect(ui->graphVariables, &QWidget::customContextMenuRequested, this, &VariableDockWidget::OnContextMenuRequested);
 
+        ui->searchFilter->setClearButtonEnabled(true);
         QObject::connect(ui->searchFilter, &QLineEdit::textChanged, this, &VariableDockWidget::OnQuickFilterChanged);
         QObject::connect(ui->searchFilter, &QLineEdit::returnPressed, this, &VariableDockWidget::OnReturnPressed);
-
-        QAction* clearAction = ui->searchFilter->addAction(QIcon(":/ScriptCanvasEditorResources/Resources/lineedit_clear.png"), QLineEdit::TrailingPosition);
-        QObject::connect(clearAction, &QAction::triggered, this, &VariableDockWidget::ClearFilter);
 
         // Tell the widget to auto create our context menu, for now
         setContextMenuPolicy(Qt::ActionsContextMenu);
@@ -368,11 +417,14 @@ namespace ScriptCanvasEditor
         GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
 
         ShowGraphVariables();
+
+        VariableAutomationRequestBus::Handler::BusConnect();
     }
 
     VariableDockWidget::~VariableDockWidget()
     {
         GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
+        VariableAutomationRequestBus::Handler::BusDisconnect();
     }
 
     void VariableDockWidget::PopulateVariablePalette(const AZStd::unordered_set< AZ::Uuid >& objectTypes)
@@ -396,6 +448,75 @@ namespace ScriptCanvasEditor
         ui->searchFilter->setEnabled(m_scriptCanvasId.IsValid());
 
         ShowGraphVariables();
+    }
+
+    AZStd::vector< ScriptCanvas::Data::Type > VariableDockWidget::GetPrimitiveTypes() const
+    {
+        AZStd::vector< ScriptCanvas::Data::Type > primitiveTypes;
+
+        auto variableTypes = ui->variablePalette->GetVariableTypePaletteModel()->GetVariableTypes();
+
+        for (auto variableType : variableTypes)
+        {
+            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::FromAZType(variableType);
+            if (ScriptCanvas::Data::IsValueType(dataType))
+            {
+                primitiveTypes.push_back(dataType);
+            }
+        }
+
+        return primitiveTypes;
+    }
+
+    AZStd::vector< ScriptCanvas::Data::Type > VariableDockWidget::GetBehaviorContextObjectTypes() const
+    {
+        AZStd::vector< ScriptCanvas::Data::Type > bcoTypes;
+
+        auto variableTypes = ui->variablePalette->GetVariableTypePaletteModel()->GetVariableTypes();
+
+        for (auto variableType : variableTypes)
+        {
+            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::FromAZType(variableType);
+            if (!ScriptCanvas::Data::IsValueType(dataType))
+            {
+                if (!ScriptCanvas::Data::IsContainerType(dataType))
+                {
+                    bcoTypes.emplace_back(dataType);
+                }
+            }
+        }
+        
+        return bcoTypes;
+    }
+
+    AZStd::vector< ScriptCanvas::Data::Type > VariableDockWidget::GetMapTypes() const
+    {
+        AZStd::vector< ScriptCanvas::Data::Type > variableDataTypes;
+
+        auto mapTypes = ui->variablePalette->GetMapTypes();
+
+        for (auto mapType : mapTypes)
+        {
+            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::FromAZType(mapType);
+            variableDataTypes.emplace_back(dataType);
+        }
+
+        return variableDataTypes;
+    }
+
+    AZStd::vector< ScriptCanvas::Data::Type > VariableDockWidget::GetArrayTypes() const
+    {
+        AZStd::vector< ScriptCanvas::Data::Type > variableDataTypes;
+
+        auto arrayTypes = ui->variablePalette->GetArrayTypes();
+
+        for (auto arrayType : arrayTypes)
+        {
+            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::FromAZType(arrayType);
+            variableDataTypes.emplace_back(dataType);
+        }
+
+        return variableDataTypes;
     }
 
     void VariableDockWidget::OnEscape()
@@ -494,8 +615,14 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void VariableDockWidget::OnQuickFilterChanged()
+    void VariableDockWidget::OnQuickFilterChanged(const QString& text)
     {
+        if(text.isEmpty())
+        {
+            //If field was cleared, update immediately
+            UpdateFilter();
+            return;
+        }
         m_filterTimer.stop();
         m_filterTimer.start();
     }
@@ -522,6 +649,8 @@ namespace ScriptCanvasEditor
 
     void VariableDockWidget::OnContextMenuRequested(const QPoint& pos)
     {
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(&AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
+
         QModelIndex index = ui->graphVariables->indexAt(pos);
 
         QActionGroup actionGroup(this);
@@ -571,7 +700,7 @@ namespace ScriptCanvasEditor
             menu.addAction(cleanupAction);
             menu.addSeparator();
             menu.addAction(sortByName);
-            menu.addAction(sortByType);            
+            menu.addAction(sortByType);
 
             actionResult = menu.exec(ui->graphVariables->mapToGlobal(pos));
         }

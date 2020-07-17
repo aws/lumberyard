@@ -146,9 +146,9 @@ namespace PhysX
         return AZ::Aabb::CreateNull();
     }
 
-    void RigidBodyStatic::RayCast(const Physics::RayCastRequest & request, Physics::RayCastResult & result) const
+    Physics::RayCastHit RigidBodyStatic::RayCast(const Physics::RayCastRequest& request)
     {
-        AZ_Warning("PhysX Rigid Body Static", false, "RayCast not implemented.");
+        return PhysX::Utils::RayCast::ClosestRayHitAgainstShapes(request, m_shapes, GetTransform());
     }
 
     AZ::EntityId RigidBodyStatic::GetEntityId() const

@@ -60,8 +60,8 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Input
                 );
 
-                ScriptCanvas_Property(bool,
-                    ScriptCanvas_Property::Name("Ignore Case", "Take into account the case of the string when searching.")
+                ScriptCanvas_PropertyWithDefaults(bool, true,
+                    ScriptCanvas_Property::Name("Case Sensitive", "Take into account the case of the string when searching.")
                     ScriptCanvas_Property::Input
                 );
 

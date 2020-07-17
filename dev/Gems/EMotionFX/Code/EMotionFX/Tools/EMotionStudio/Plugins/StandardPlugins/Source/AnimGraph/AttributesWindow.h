@@ -180,6 +180,5 @@ namespace EMStudio
 
         void UpdateConditions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate = false);
         void UpdateActions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate = false);
-        QIcon GetIconForObject(EMotionFX::AnimGraphObject* object);
     };
 } // namespace EMStudio

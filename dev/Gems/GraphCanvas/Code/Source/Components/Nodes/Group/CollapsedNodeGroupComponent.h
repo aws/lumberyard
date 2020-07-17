@@ -30,7 +30,7 @@
 
 namespace GraphCanvas
 {
-    // Node that represtents a Node Group that has been collapsed.
+    // Node that represents a Node Group that has been collapsed.
     //
     // Will handle generating remapping the connections that cross over the visual border.
     class CollapsedNodeGroupComponent

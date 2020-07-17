@@ -34,12 +34,14 @@ namespace AzToolsFramework {
     class ComponentEditorHeader;
 }
 
+AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING
 //ReflectedPropertyEditor-based implementation of the MFC CPropertyCtrl API
-class ReflectedPropertyControl
+class SANDBOX_API ReflectedPropertyControl
     : public QWidget
     , public AzToolsFramework::IPropertyEditorNotify
 {
-    Q_OBJECT
+AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
+        Q_OBJECT
 public:
     //! For alternative undo.
     typedef Functor1<IVariable*> UndoCallback;
@@ -314,7 +316,7 @@ public:
     void ExpandAllChildren(bool recursive);
 
     void ReloadItems();
-    
+
     void OnCopyAll();
     void OnPaste();
 

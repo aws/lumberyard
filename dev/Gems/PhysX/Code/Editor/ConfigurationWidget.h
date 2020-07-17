@@ -13,7 +13,11 @@
 
 #include <PhysX/ConfigurationBus.h>
 #include <Editor/ConfigurationWindowBus.h>
-#include <QTabWidget>
+
+namespace AzQtComponents
+{
+    class TabWidget;
+}
 
 namespace PhysX
 {
@@ -60,7 +64,7 @@ namespace PhysX
                 = AZ::Data::AssetLoadBehavior::NoLoad;
             PhysX::PhysXConfiguration m_physxConfiguration;
 
-            QTabWidget* m_tabs;
+            AzQtComponents::TabWidget* m_tabs;
             SettingsWidget* m_settings;
             CollisionFilteringWidget* m_collisionFiltering;
             PvdWidget* m_pvd;

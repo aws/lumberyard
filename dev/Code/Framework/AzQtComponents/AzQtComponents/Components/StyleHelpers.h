@@ -48,8 +48,14 @@ namespace AzQtComponents
         void repolishWhenPropertyChanges(T* widget, void (T::*signal)(Args...))
         {
 #if !defined(AZ_PLATFORM_LINUX)
-            
+
             QObject::connect(widget, signal, widget, [widget]() {
+                // Prevent asserts in Unit Tests
+                if (!StyleManager::isInstanced())
+                {
+                    return;
+                }
+
                 if (auto styleSheet = StyleManager::styleSheetStyle(widget))
                 {
                     // For the widget and each of its children, QStyleSheetStyle::repolish clears
@@ -59,7 +65,30 @@ namespace AzQtComponents
                     styleSheet->repolish(widget);
                 }
             });
+
 #endif // !defined(AZ_PLATFORM_LINUX)
         }
+
+        /* StyleHelpers::findParent<T> is an utility function to find recursively a parent object of
+         * type T. If none is found, the function will return a null pointer.
+         */
+        template <typename T>
+        static T* findParent(const QObject* obj)
+        {
+            if (!obj)
+            {
+                return nullptr;
+            }
+
+            QObject* parent = obj->parent();
+
+            if (auto p = qobject_cast<T*>(parent))
+            {
+                return p;
+            }
+
+            return findParent<T>(parent);
+        }
+
     } // namespace StyleHelpers
 } // namespace AzQtComponents

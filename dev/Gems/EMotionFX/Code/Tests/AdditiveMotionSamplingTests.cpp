@@ -132,9 +132,7 @@ namespace EMotionFX
         m_motion->CalcNodeTransform(m_motionInstance, &footTransform, m_actor.get(), skeleton->GetNode(m_footIndex), /*timeValue=*/0.0f, /*enableRetargeting=*/false);
 
         // Make sure we get an identity transform back as we try to sample a node that doesn't have a submotion in an additive motion.
-        Transform identityTransform;
-        identityTransform.Identity();
-        EXPECT_THAT(footTransform, IsClose(identityTransform));
+        EXPECT_THAT(footTransform, IsClose(Transform::CreateIdentity()));
 
         // Make it a non-additive motion, or at least act like it.
         m_motion->SetIsAdditive(false);
@@ -166,9 +164,7 @@ namespace EMotionFX
 
         // Sample the foot.
         Transform footTransform = pose.GetLocalSpaceTransform(m_footIndex);
-        Transform identityTransform;
-        identityTransform.Identity();
-        EXPECT_THAT(footTransform, IsClose(identityTransform));
+        EXPECT_THAT(footTransform, IsClose(Transform::CreateIdentity()));
 
         // Make it a non-additive motion, or at least act like it.
         m_motion->SetIsAdditive(false);

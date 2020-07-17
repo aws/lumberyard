@@ -10,158 +10,152 @@
 *
 */
 
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/Json/JsonSerializer.h>
-
-#include <AzCore/Serialization/Json/EnumSerializer.h>
+#include <AzCore/Serialization/Json/BaseJsonSerializer.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/Json/StackedString.h>
 #include <AzCore/std/any.h>
 #include <AzCore/std/utils.h>
-#include <AzCore/std/string/osstring.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZ
 {
-    JsonSerializationResult::ResultCode JsonSerializer::Store(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const Uuid& typeId, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::Store(rapidjson::Value& output, const void* object, const void* defaultObject,
+        const Uuid& typeId, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
+        if (!object)
+        {
+            return context.Report(Tasks::ReadField, Outcomes::Catastrophic,
+                "Target object for Json Serialization is pointing to nothing during storing.");
+        }
+
         // First check if there's a generic serializer registered for this. This makes it possible to use serializers that
         // are not (directly) registered with the Serialize Context.
-        auto serializer = settings.m_registrationContext->GetSerializerForType(typeId);
+        auto serializer = context.GetRegistrationContext()->GetSerializerForType(typeId);
         if (serializer)
         {
             // Start by setting the object to be an explicit default.
             output.SetObject();
-            return serializer->Store(output, allocator, object, defaultObject, typeId, path, settings);
+            return serializer->Store(output, object, defaultObject, typeId, context);
         }
 
-        const SerializeContext::ClassData* classData = settings.m_serializeContext->FindClassData(typeId);
+        const SerializeContext::ClassData* classData = context.GetSerializeContext()->FindClassData(typeId);
         if (!classData)
         {
-            return settings.m_reporting(
-                OSString::format("Failed to retrieve serialization information for %s.", typeId.ToString<OSString>().c_str()),
-                ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                AZStd::string::format("Failed to retrieve serialization information for %s.", typeId.ToString<AZStd::string>().c_str()));
         }
 
-        if (!defaultObject && !settings.m_keepDefaults)
+        if (!defaultObject && !context.ShouldKeepDefaults())
         {
             ResultCode result(Tasks::WriteValue);
-            AZStd::any defaultObjectInstance = settings.m_serializeContext->CreateAny(typeId);
+            AZStd::any defaultObjectInstance = context.GetSerializeContext()->CreateAny(typeId);
             if (defaultObjectInstance.empty())
             {
-                result = settings.m_reporting("No factory available to create a default object for comparison.",
-                    ResultCode(Tasks::CreateDefault, Outcomes::Unsupported), path);
+                result = context.Report(Tasks::CreateDefault, Outcomes::Unsupported,
+                    "No factory available to create a default object for comparison.");
             }
             void* defaultObjectPtr = AZStd::any_cast<void>(&defaultObjectInstance);
-            ResultCode conversionResult = StoreWithClassData(output, allocator, object, defaultObjectPtr, *classData, StoreTypeId::No, path, settings);
+            ResultCode conversionResult = StoreWithClassData(output, object, defaultObjectPtr, *classData, StoreTypeId::No, context);
             return ResultCode::Combine(result, conversionResult);
         }
         else
         {
-            return StoreWithClassData(output, allocator, object, defaultObject, *classData, StoreTypeId::No, path, settings);
+            return StoreWithClassData(output, object, defaultObject, *classData, StoreTypeId::No, context);
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreFromPointer(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const Uuid& typeId,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreFromPointer(rapidjson::Value& output, const void* object,
+        const void* defaultObject, const Uuid& typeId, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
-        const SerializeContext::ClassData* classData = settings.m_serializeContext->FindClassData(typeId);
+        const SerializeContext::ClassData* classData = context.GetSerializeContext()->FindClassData(typeId);
         if (!classData)
         {
-            return settings.m_reporting(
-                OSString::format("Failed to retrieve serialization information for %s.", typeId.ToString<OSString>().c_str()),
-                ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown, 
+                AZStd::string::format("Failed to retrieve serialization information for %s.", typeId.ToString<AZStd::string>().c_str()));
         }
         if (!classData->m_azRtti)
         {
-            return settings.m_reporting(
-                OSString::format("Failed to retrieve rtti information for %s.", classData->m_name),
-                ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                AZStd::string::format("Failed to retrieve rtti information for %s.", classData->m_name));
         }
         AZ_Assert(classData->m_azRtti->GetTypeId() == typeId, "Type id mismatch in '%s' during serialization to a json file. (%s vs %s)",
-            classData->m_name, classData->m_azRtti->GetTypeId().ToString<OSString>().c_str(), typeId.ToString<OSString>().c_str());
+            classData->m_name, classData->m_azRtti->GetTypeId().ToString<AZStd::string>().c_str(), typeId.ToString<AZStd::string>().c_str());
 
-        return StoreWithClassDataFromPointer(output, allocator, object, defaultObject, *classData, path, settings);
+        return StoreWithClassDataFromPointer(output, object, defaultObject, *classData, context);
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassData(rapidjson::Value& node, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const SerializeContext::ClassData& classData, StoreTypeId storeTypeId,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassData(rapidjson::Value& node, const void* object,
+        const void* defaultObject, const SerializeContext::ClassData& classData, StoreTypeId storeTypeId,
+        JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
         // Start by setting the object to be an explicit default.
         node.SetObject();
 
-        auto serializer = settings.m_registrationContext->GetSerializerForType(classData.m_typeId);
+        auto serializer = context.GetRegistrationContext()->GetSerializerForType(classData.m_typeId);
         if (serializer)
         {
             if (storeTypeId == StoreTypeId::Yes)
             {
-                return settings.m_reporting("Unable to store type information in a JSON Serializer primitive.",
-                    ResultCode(Tasks::WriteValue, Outcomes::Catastrophic), path);
+                return context.Report(Tasks::WriteValue, Outcomes::Catastrophic,
+                    "Unable to store type information in a JSON Serializer primitive.");
             }
 
-            return serializer->Store(node, allocator, object, defaultObject, classData.m_typeId, path, settings);
+            return serializer->Store(node, object, defaultObject, classData.m_typeId, context);
         }
 
         if (classData.m_azRtti && (classData.m_azRtti->GetTypeTraits() & AZ::TypeTraits::is_enum) == AZ::TypeTraits::is_enum)
         {
-            serializer = settings.m_registrationContext->GetSerializerForSerializerType(azrtti_typeid<AZ::JsonEnumSerializer>());
-            if (serializer)
+            if (storeTypeId == StoreTypeId::Yes)
             {
-                if (storeTypeId == StoreTypeId::Yes)
-                {
-                    return settings.m_reporting("Unable to store type information in a JSON Serializer enum.",
-                        ResultCode(Tasks::WriteValue, Outcomes::Catastrophic), path);
-                }
-                return serializer->Store(node, allocator, object, defaultObject, classData.m_typeId, path, settings);
+                return context.Report(Tasks::WriteValue, Outcomes::Catastrophic,
+                    "Unable to store type information in a JSON Serializer enum.");
             }
+            return StoreEnum(node, object, defaultObject, classData, context);
         }
 
         if (classData.m_azRtti && classData.m_azRtti->GetGenericTypeId() != classData.m_typeId)
         {
-            serializer = settings.m_registrationContext->GetSerializerForType(classData.m_azRtti->GetGenericTypeId());
+            serializer = context.GetRegistrationContext()->GetSerializerForType(classData.m_azRtti->GetGenericTypeId());
             if (serializer)
             {
                 if (storeTypeId == StoreTypeId::Yes)
                 {
-                    return settings.m_reporting("Unable to store type information in a JSON Serializer primitive.",
-                        ResultCode(Tasks::WriteValue, Outcomes::Catastrophic), path);
+                    return context.Report(Tasks::WriteValue, Outcomes::Catastrophic,
+                        "Unable to store type information in a JSON Serializer primitive.");
                 }
 
-                return serializer->Store(node, allocator, object, defaultObject, classData.m_typeId, path, settings);
+                return serializer->Store(node, object, defaultObject, classData.m_typeId, context);
             }
         }
         
         if (classData.m_container)
         {
-            if (storeTypeId == StoreTypeId::Yes)
-            {
-                return settings.m_reporting("Unable to store type information in a JSON Serializer container.",
-                    ResultCode(Tasks::WriteValue, Outcomes::Catastrophic), path);
-            }
-            return StoreContainer(node.SetArray(), allocator, object, classData, path, settings);
+            return context.Report(Tasks::ReadField, Outcomes::Unsupported,
+                "The Json Serializer uses custom serializers to store containers. If this message is encountered "
+                "then a serializer for the target containers is missing, isn't registered or doesn't exist.");
         }
         else
         {
             if (storeTypeId == StoreTypeId::Yes)
             {
                 node.AddMember(rapidjson::StringRef(JsonSerialization::TypeIdFieldIdentifier),
-                    StoreTypeName(allocator, classData, settings), allocator);
+                    StoreTypeName(classData, context), context.GetJsonAllocator());
             }
-            return StoreClass(node, allocator, object, defaultObject, classData, path, settings);
+            return StoreClass(node, object, defaultObject, classData, context);
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassDataFromPointer(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const SerializeContext::ClassData& classData,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassDataFromPointer(rapidjson::Value& output, const void* object,
+        const void* defaultObject, const SerializeContext::ClassData& classData, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
@@ -172,7 +166,7 @@ namespace AZ
 
         ResultCode result(Tasks::RetrieveInfo);
         ResolvePointerResult pointerResolution = ResolvePointer(result, storeTypeId, object, defaultObject, defaultPointerObject,
-            resolvedClassData, *classData.m_azRtti, path, settings);
+            resolvedClassData, *classData.m_azRtti, context);
         if (pointerResolution == ResolvePointerResult::FullyProcessed)
         {
             return result;
@@ -184,33 +178,30 @@ namespace AZ
         }
         else
         {
-            return StoreWithClassData(output, allocator, object, defaultObject, *resolvedClassData, storeTypeId, path, settings);
+            return StoreWithClassData(output, object, defaultObject, *resolvedClassData, storeTypeId, context);
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassElement(rapidjson::Value& parentNode, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const SerializeContext::ClassElement& classElement,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreWithClassElement(rapidjson::Value& parentNode, const void* object,
+        const void* defaultObject, const SerializeContext::ClassElement& classElement, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
-        ScopedStackedString elementPath(path, classElement.m_name);
+        ScopedContextPath elementPath(context, classElement.m_name);
 
         const SerializeContext::ClassData* elementClassData =
-            settings.m_serializeContext->FindClassData(classElement.m_typeId);
+            context.GetSerializeContext()->FindClassData(classElement.m_typeId);
         if (!elementClassData)
         {
-            return settings.m_reporting("Failed to retrieve serialization information.",
-                ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), elementPath);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown, "Failed to retrieve serialization information.");
         }
         if (!elementClassData->m_azRtti)
         {
-            return settings.m_reporting(
-                OSString::format("Failed to retrieve rtti information for %s.", elementClassData->m_name),
-                ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                AZStd::string::format("Failed to retrieve rtti information for %s.", elementClassData->m_name));
         }
         AZ_Assert(elementClassData->m_azRtti->GetTypeId() == elementClassData->m_typeId, "Type id mismatch in '%s' during serialization to a json file. (%s vs %s)",
-            elementClassData->m_name, elementClassData->m_azRtti->GetTypeId().ToString<OSString>().c_str(), elementClassData->m_typeId.ToString<OSString>().c_str());
+            elementClassData->m_name, elementClassData->m_azRtti->GetTypeId().ToString<AZStd::string>().c_str(), elementClassData->m_typeId.ToString<AZStd::string>().c_str());
 
         if (classElement.m_flags & SerializeContext::ClassElement::FLG_NO_DEFAULT_VALUE)
         {
@@ -221,41 +212,35 @@ namespace AZ
         {
             // Base class information can be reconstructed so doesn't need to be written to the final json. StoreClass
             // will simply pick up where this left off and write to the same element.
-            return StoreClass(parentNode, allocator, object, defaultObject, *elementClassData, elementPath, settings);
+            return StoreClass(parentNode, object, defaultObject, *elementClassData, context);
         }
         else
         {
             rapidjson::Value value;
             ResultCode result = classElement.m_flags & SerializeContext::ClassElement::FLG_POINTER ?
-                StoreWithClassDataFromPointer(value, allocator, object, defaultObject, *elementClassData, elementPath, settings):
-                StoreWithClassData(value, allocator, object, defaultObject, *elementClassData, StoreTypeId::No, elementPath, settings);
+                StoreWithClassDataFromPointer(value, object, defaultObject, *elementClassData, context):
+                StoreWithClassData(value, object, defaultObject, *elementClassData, StoreTypeId::No, context);
             if (result.GetProcessing() != Processing::Halted)
             {
                 if (parentNode.IsObject())
                 {
-                    if (settings.m_keepDefaults || result.GetOutcome() != Outcomes::DefaultsUsed)
+                    if (context.ShouldKeepDefaults() || result.GetOutcome() != Outcomes::DefaultsUsed)
                     {
-                        parentNode.AddMember(rapidjson::StringRef(classElement.m_name), AZStd::move(value), allocator);
+                        parentNode.AddMember(rapidjson::StringRef(classElement.m_name), AZStd::move(value), context.GetJsonAllocator());
                     }
-                }
-                else if (parentNode.IsArray())
-                {
-                    // Always add a value to the array, even if it's fully defaulted, to make sure the correct indexes are assigned.
-                    parentNode.PushBack(AZStd::move(value), allocator);
                 }
                 else
                 {
-                    result = settings.m_reporting("StoreWithClassElement can only write to objects or arrays. Unexpected type encountered.",
-                        ResultCode(Tasks::WriteValue, Outcomes::Catastrophic), elementPath);
+                    result = context.Report(Tasks::WriteValue, Outcomes::Catastrophic,
+                        "StoreWithClassElement can only write to objects. Unexpected type encountered.");
                 }
             }
             return result;
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreClass(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const void* defaultObject, const SerializeContext::ClassData& classData,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreClass(rapidjson::Value& output, const void* object, const void* defaultObject,
+        const SerializeContext::ClassData& classData, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
@@ -269,128 +254,218 @@ namespace AZ
                 const void* elementDefaultPtr = defaultObject ?
                     (reinterpret_cast<const uint8_t*>(defaultObject) + element.m_offset) : nullptr;
 
-                result.Combine(StoreWithClassElement(output, allocator,
-                    elementPtr, elementDefaultPtr, element, path, settings));
+                result.Combine(StoreWithClassElement(output, elementPtr, elementDefaultPtr, element, context));
             }
             return result;
         }
         else
         {
-            return settings.m_reporting("Class didn't contain any elements to store.",
-                ResultCode(Tasks::WriteValue, settings.m_keepDefaults ? Outcomes::Success : Outcomes::DefaultsUsed), path);
+            return context.Report(Tasks::WriteValue, context.ShouldKeepDefaults() ? Outcomes::Success : Outcomes::DefaultsUsed,
+                "Class didn't contain any elements to store.");
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerializer::StoreContainer(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
-        const void* object, const SerializeContext::ClassData& classData, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreEnum(rapidjson::Value& output, const void* object, const void* defaultObject,
+        const SerializeContext::ClassData& classData, JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
-        AZ_Assert(output.IsArray(), "Unable to write array to the json as the node isn't a json array.");
-        if (classData.m_container->GetAssociativeContainerInterface())
+        AZ::AttributeReader attributeReader(nullptr, AZ::FindAttribute(AZ::Serialize::Attributes::EnumUnderlyingType, classData.m_attributes));
+        AZ::TypeId underlyingTypeId = AZ::TypeId::CreateNull();
+        if (!attributeReader.Read<AZ::TypeId>(underlyingTypeId))
         {
-            return settings.m_reporting("Serializer does not currently support storing associative containers.",
-                ResultCode(Tasks::WriteValue, Outcomes::Unsupported), path);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                "Unable to find underlying type of enum in class data.");
         }
 
-        if (classData.m_container->Size(const_cast<void*>(object)) > 0)
+        const SerializeContext::ClassData* underlyingClassData = context.GetSerializeContext()->FindClassData(underlyingTypeId);
+        if (!underlyingClassData)
         {
-            ResultCode result(Tasks::WriteValue);
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                "Unable to retrieve information for underlying integral type of enum.");
+        }
 
-            uint32_t counter = 0;
-            auto elementCallback = [&output, &result, &allocator, &counter, &path, &settings]
-                (void* elementPtr, const Uuid& elementId, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
+        IRttiHelper* underlyingTypeRtti = underlyingClassData->m_azRtti;
+        if (!underlyingTypeRtti)
+        {
+            return context.Report(Tasks::Convert, Outcomes::Unknown, AZStd::string::format(
+                "Rtti for underlying type %s, of enum is not registered. Enum Value can not be stored", underlyingClassData->m_name));
+        }
+
+        const size_t underlyingTypeSize = underlyingTypeRtti->GetTypeSize();
+        const TypeTraits underlyingTypeTraits = underlyingTypeRtti->GetTypeTraits();
+        const bool isSigned = (underlyingTypeTraits & TypeTraits::is_signed) == TypeTraits::is_signed;
+        const bool isUnsigned = (underlyingTypeTraits & TypeTraits::is_unsigned) == TypeTraits::is_unsigned;
+        if (isSigned)
+        {
+            // Cast to either an int16_t, int32_t, int64_t depending on the size of the underlying type
+            // int8_t is not supported.
+            switch (underlyingTypeSize)
             {
-                ScopedStackedString containerPath(path, counter);
+            case 2:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const int16_t*>(object),
+                    reinterpret_cast<const int16_t*>(defaultObject), classData, context);
+            case 4:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const int32_t*>(object),
+                    reinterpret_cast<const int32_t*>(defaultObject), classData, context);
+            case 8:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const int64_t*>(object),
+                    reinterpret_cast<const int64_t*>(defaultObject), classData, context);
+            default:
+                return context.Report(Tasks::Convert, Outcomes::Unknown,
+                    AZStd::string::format("Signed Underlying type with size=%zu is not supported by Enum Serializer", underlyingTypeSize));
+            }
+        }
+        else if (isUnsigned)
+        {
+            // Cast to either an uint8_t, uint16_t, uint32_t, uint64_t depending on the size of the underlying type
+            switch (underlyingTypeSize)
+            {
+            case 1:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const uint8_t*>(object),
+                    reinterpret_cast<const uint8_t*>(defaultObject), classData, context);
+            case 2:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const uint16_t*>(object),
+                    reinterpret_cast<const uint16_t*>(defaultObject), classData, context);
+            case 4:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const uint32_t*>(object),
+                    reinterpret_cast<const uint32_t*>(defaultObject), classData, context);
+            case 8:
+                return StoreUnderlyingEnumType(output, reinterpret_cast<const uint64_t*>(object),
+                    reinterpret_cast<const uint64_t*>(defaultObject), classData, context);
+            default:
+                return context.Report(Tasks::Convert, Outcomes::Unknown,
+                    AZStd::string::format("Unsigned Underlying type with size=%zu is not supported by Enum Serializer", underlyingTypeSize));
+            }
+        }
 
-                // Note that the default for containers is to be considered as empty, even if the provided default has elements in the container.
-                // Create a default object per instance since a polymorphic object could be stored.
-                AZStd::any defaultObject;
-                void* defaultObjectPtr = nullptr;
-                if (!settings.m_keepDefaults && !(classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER))
+        return context.Report(Tasks::WriteValue, Outcomes::Catastrophic, AZStd::string::format(
+            "Unsupported underlying type %s for enum %s. Enum value can not be stored.", underlyingClassData->m_name, classData.m_name));
+    }
+
+    template<typename UnderlyingType>
+    JsonSerializationResult::Result JsonSerializer::StoreUnderlyingEnumType(rapidjson::Value& outputValue, const UnderlyingType* value,
+        const UnderlyingType* defaultValue, const SerializeContext::ClassData& classData, JsonSerializerContext& context)
+    {
+        /*
+             * The implementation strategy for storing an enumeration with Json is to first look for an exact value match for the enumeration
+             * using the values registered within the SerializeContext
+             * If that is found, the enum option is stored as a Json string
+             * If an exact value cannot be found, then for each value registered with the SerializeContext, the values are assumed to be bitflags.
+             * The values are checked using bitwise-and against the input.
+             * For each registered enum value that is found, its bit value is cleared from enum and processing continues.
+             * Afterwards the enum option is added as a string to a Json array
+             * Finally if there is any non-zero value that is left after processing each registered enum option,
+             * it gets added as an integral value to a Json array
+             */
+
+        using namespace JsonSerializationResult;
+
+        UnderlyingType enumInputValue{ *value };
+        
+        using EnumConstantBase = SerializeContextEnumInternal::EnumConstantBase;
+
+        using EnumConstantBasePtr = AZStd::unique_ptr<SerializeContextEnumInternal::EnumConstantBase>;
+        //! Comparison function which treats each enum value as unsigned for parsing purposes.
+        //! The set below is for parsing each enum value as a set of bit flags, where it is configured
+        //! to parse values with higher unsigned enum values first
+        struct EnumUnsignedCompare
+        {
+            bool operator()(const AZStd::reference_wrapper<EnumConstantBase>& lhs, const AZStd::reference_wrapper<EnumConstantBase>& rhs)
+            {
+                return static_cast<EnumConstantBase&>(lhs).GetEnumValueAsUInt() > static_cast<EnumConstantBase&>(rhs).GetEnumValueAsUInt();
+            }
+        };
+
+        AZStd::set<AZStd::reference_wrapper<EnumConstantBase>, EnumUnsignedCompare> enumConstantSet;
+        for (const AZ::AttributeSharedPair& enumAttributePair : classData.m_attributes)
+        {
+            if (enumAttributePair.first == AZ::Serialize::Attributes::EnumValueKey)
+            {
+                auto enumConstantAttribute = azrtti_cast<AZ::AttributeData<EnumConstantBasePtr>*>(enumAttributePair.second.get());
+                if (!enumConstantAttribute)
                 {
-                    defaultObject = settings.m_serializeContext->CreateAny(elementId);
-                    if (defaultObject.empty())
-                    {
-                        ResultCode errorCode = settings.m_reporting("No factory available to create a default array object for comparison.",
-                            ResultCode(Tasks::CreateDefault, Outcomes::Unsupported), containerPath);
-                        result.Combine(errorCode);
-                    }
-                    defaultObjectPtr = AZStd::any_cast<void>(&defaultObject);
+                    context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                        "EnumConstant element was unable to be read from attribute ID 'EnumValue'");
+                    continue;
                 }
 
-                ResultCode conversionResult(Tasks::WriteValue);
-                if (classElement)
+                const EnumConstantBasePtr& enumConstantPtr = enumConstantAttribute->Get(nullptr);
+                UnderlyingType enumConstantAsInt = static_cast<UnderlyingType>(AZStd::is_signed<UnderlyingType>::value ?
+                    enumConstantPtr->GetEnumValueAsInt() : enumConstantPtr->GetEnumValueAsUInt());
+
+                if (enumInputValue == enumConstantAsInt)
                 {
-                    conversionResult = StoreWithClassElement(output, allocator, elementPtr, defaultObjectPtr,
-                        *classElement, containerPath, settings);
-                }
-                else if (classData)
-                {
-                    rapidjson::Value elementValue;
-                    conversionResult = StoreWithClassData(elementValue, allocator, elementPtr, defaultObjectPtr, *classData, 
-                        StoreTypeId::No, containerPath, settings);
-                    if (conversionResult.GetProcessing() != Processing::Halted)
+                    if (context.ShouldKeepDefaults() || !defaultValue || enumInputValue != *defaultValue)
                     {
-                        // Always add a value to the array, even if it's fully defaulted, to make sure the correct indexes are assigned.
-                        output.PushBack(AZStd::move(elementValue), allocator);
+                        outputValue.SetString(enumConstantPtr->GetEnumValueName().data(),
+                            aznumeric_cast<rapidjson::SizeType>(enumConstantPtr->GetEnumValueName().size()), context.GetJsonAllocator());
+                        return context.Report(Tasks::WriteValue, Outcomes::Success, "Successfully stored Enum value as string");
                     }
                     else
                     {
-                        conversionResult = settings.m_reporting("Failed to convert and add entry to array. Any empty value will be added.",
-                            ResultCode(Tasks::WriteValue, Outcomes::Unsupported), containerPath);
-                        output.PushBack(rapidjson::Value(rapidjson::kObjectType), allocator);
+                        return context.Report(Tasks::WriteValue, Outcomes::DefaultsUsed, "Enum value defaulted as string");
                     }
                 }
-                else
-                {
-                    conversionResult = settings.m_reporting(
-                        "Unable to convert container entry because no class or element data was provided. Any empty value will be added.",
-                        ResultCode(Tasks::WriteValue, Outcomes::Unknown), containerPath);
-                    output.PushBack(rapidjson::Value(rapidjson::kObjectType), allocator);
-                }
-                result.Combine(conversionResult);
-                counter++;
-                return true;
-            };
-            classData.m_container->EnumElements(const_cast<void*>(object), elementCallback);
 
-            if (result.GetOutcome() == Outcomes::DefaultsUsed)
-            {
-                SetExplicitDefault(output);
-            }
-            else if (classData.m_container->IsSmartPointer())
-            {
-                // A smart pointer will only have one entry, which should be presented as a pointer instead of an
-                // array, so in this case simply replace the array with the pointer information.
-                if (output.Empty())
+                //! A registered enum with a value of 0 that doesn't match the exact enum value is not output as part of the json array
+                if (enumConstantAsInt == 0)
                 {
-                    output.SetNull();
+                    continue;
                 }
-                else
+
+                //! Add registered enum value where all of bits set within the input enum value
+                if ((enumConstantAsInt & enumInputValue) == enumConstantAsInt)
                 {
-                    output = AZStd::move(output[0]);
+                    enumConstantSet.emplace(*enumConstantPtr);
                 }
             }
-            
-            return result;
+        }
+
+        if (!context.ShouldKeepDefaults() && defaultValue && enumInputValue == *(defaultValue))
+        {
+            return context.Report(Tasks::WriteValue, Outcomes::DefaultsUsed,
+                enumConstantSet.empty() ? "Enum value defaulted as int" : "Enum value defaulted as array");
+
+        }
+
+        // Special case: If none of the enum values share bits with the current input value, write out the value as an integral
+        if (enumConstantSet.empty())
+        {
+            outputValue = enumInputValue;
+            return context.Report(Tasks::WriteValue, Outcomes::Success, "Successfully stored Enum value as int");
         }
         else
         {
-            if (!settings.m_keepDefaults)
+            // Mask of each enum constant bits from the input value and add that value to the JsonArray
+            outputValue.SetArray();
+            UnderlyingType enumInputBitset = enumInputValue;
+            for (const EnumConstantBase& enumConstant : enumConstantSet)
             {
-                SetExplicitDefault(output);
+                enumInputBitset = enumInputBitset & ~enumConstant.GetEnumValueAsUInt();
+                rapidjson::Value enumConstantNameValue(enumConstant.GetEnumValueName().data(),
+                    aznumeric_cast<rapidjson::SizeType>(enumConstant.GetEnumValueName().size()), context.GetJsonAllocator());
+                outputValue.PushBack(AZStd::move(enumConstantNameValue), context.GetJsonAllocator());
             }
-            return settings.m_reporting("Nothing written as target container is empty.",
-                ResultCode(Tasks::WriteValue, settings.m_keepDefaults ? Outcomes::Success : Outcomes::DefaultsUsed), path);
+
+            //! If after all the enum values whose bitflags were mask'ed out of the input enum
+            //! the input enum value is still non-zero, that means that the remaining value is represented 
+            //! is a raw integral of the left over flags
+            //! Therefore it gets written to the json array has an integral value
+            if (enumInputBitset != 0)
+            {
+                outputValue.PushBack(rapidjson::Value(enumInputBitset), context.GetJsonAllocator());
+            }
         }
+
+        return context.Report(Tasks::WriteValue, Outcomes::Success, "Enum value defaulted as array");
     }
 
     JsonSerializer::ResolvePointerResult JsonSerializer::ResolvePointer(
         JsonSerializationResult::ResultCode& status, StoreTypeId& storeTypeId,
         const void*& object, const void*& defaultObject, AZStd::any& defaultObjectStorage,
         const SerializeContext::ClassData*& elementClassData, const AZ::IRttiHelper& rtti,
-        StackedString& path, const JsonSerializerSettings& settings)
+        JsonSerializerContext& context)
     {
         using namespace JsonSerializationResult;
 
@@ -398,7 +473,7 @@ namespace AZ
         defaultObject = defaultObject ? *reinterpret_cast<const void* const*>(defaultObject) : nullptr;
         if (!object)
         {
-            status = ResultCode(status.GetTask(), (settings.m_keepDefaults || defaultObject)? Outcomes::Success : Outcomes::DefaultsUsed);
+            status = ResultCode(status.GetTask(), (context.ShouldKeepDefaults() || defaultObject) ? Outcomes::Success : Outcomes::DefaultsUsed);
             return ResolvePointerResult::WriteNull;
         }
 
@@ -410,32 +485,35 @@ namespace AZ
 
         if (actualClassId != rtti.GetTypeId())
         {
-            elementClassData = settings.m_serializeContext->FindClassData(actualClassId);
+            elementClassData = context.GetSerializeContext()->FindClassData(actualClassId);
             if (!elementClassData)
             {
-                status = settings.m_reporting(AZ::OSString::format(
-                    "Failed to retrieve serialization information for because type '%s' is unknown.", actualClassId.ToString<OSString>().c_str()),
-                    ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
+                status = context.Report(Tasks::RetrieveInfo, Outcomes::Unknown, AZStd::string::format(
+                    "Failed to retrieve serialization information for because type '%s' is unknown.", actualClassId.ToString<AZStd::string>().c_str()));
                 return ResolvePointerResult::FullyProcessed;
             }
 
-            storeTypeId = (actualClassId != actualDefaultClassId || settings.m_keepDefaults) ?
+            storeTypeId = (actualClassId != actualDefaultClassId || context.ShouldKeepDefaults()) ?
                 StoreTypeId::Yes : StoreTypeId::No;
+            object = rtti.Cast(object, actualClassId);
         }
         if (actualDefaultClassId != actualClassId)
         {
-            // Defaults is pointing to a different type than is stored, so those defaults can be used.
+            // Defaults is pointing to a different type than is stored, so those defaults can't be used as a reference.
             defaultObject = nullptr;
         }
 
-        if (!defaultObject && !settings.m_keepDefaults)
+        if (defaultObject)
         {
-            defaultObjectStorage = settings.m_serializeContext->CreateAny(actualClassId);
+            defaultObject = rtti.Cast(defaultObject, actualDefaultClassId);
+        }
+        else if (!context.ShouldKeepDefaults())
+        {
+            defaultObjectStorage = context.GetSerializeContext()->CreateAny(actualClassId);
             if (defaultObjectStorage.empty())
             {
-                status = settings.m_reporting(AZ::OSString::format(
-                    "No factory available to create a default pointer object for comparison for type %s.", actualClassId.ToString<OSString>().c_str()),
-                    ResultCode(Tasks::CreateDefault, Outcomes::Unsupported), path);
+                status = context.Report(Tasks::CreateDefault, Outcomes::Unsupported, AZStd::string::format(
+                    "No factory available to create a default pointer object for comparison for type %s.", actualClassId.ToString<AZStd::string>().c_str()));
                 return ResolvePointerResult::FullyProcessed;
             }
             defaultObject = AZStd::any_cast<void>(&defaultObjectStorage);
@@ -443,11 +521,10 @@ namespace AZ
         return ResolvePointerResult::ContinueProcessing;
     }
 
-    rapidjson::Value JsonSerializer::StoreTypeName(rapidjson::Document::AllocatorType& allocator,
-        const SerializeContext::ClassData& classData, const JsonSerializerSettings& settings)
+    rapidjson::Value JsonSerializer::StoreTypeName(const SerializeContext::ClassData& classData, JsonSerializerContext& context)
     {
         rapidjson::Value result;
-        AZStd::vector<Uuid> ids = settings.m_serializeContext->FindClassId(Crc32(classData.m_name));
+        AZStd::vector<Uuid> ids = context.GetSerializeContext()->FindClassId(Crc32(classData.m_name));
         if (ids.size() <= 1)
         {
             result = rapidjson::StringRef(classData.m_name);
@@ -457,16 +534,35 @@ namespace AZ
             // Only write the Uuid for the class if there are multiple classes sharing the same name.
             // In this case it wouldn't be enough to determine which class needs to be used. The 
             // class name is still added as a comment for be friendlier for users to read.
-            AZStd::string fullName = classData.m_typeId.ToString<OSString>();
+            AZStd::string fullName = classData.m_typeId.ToString<AZStd::string>();
             fullName += ' ';
             fullName += classData.m_name;
-            result.SetString(fullName.c_str(), aznumeric_caster(fullName.size()), allocator);
+            result.SetString(fullName.c_str(), aznumeric_caster(fullName.size()), context.GetJsonAllocator());
         }
         return result;
     }
 
-    void JsonSerializer::SetExplicitDefault(rapidjson::Value& value)
+    JsonSerializationResult::ResultCode JsonSerializer::StoreTypeName(rapidjson::Value& output,
+        const Uuid& typeId, JsonSerializerContext& context)
     {
-        value.SetObject();
+        using namespace JsonSerializationResult;
+
+        const SerializeContext::ClassData* data = context.GetSerializeContext()->FindClassData(typeId);
+        if (data)
+        {
+            output = JsonSerializer::StoreTypeName(*data, context);
+            return context.Report(Tasks::WriteValue, Outcomes::Success, "Type id successfully stored to json value.");
+        }
+        else
+        {
+            output = JsonSerializer::GetExplicitDefault();
+            return context.Report(Tasks::RetrieveInfo, Outcomes::Unknown,
+                AZStd::string::format("Unable to retrieve description for type %s.", typeId.ToString<AZStd::string>().c_str()));
+        }
+    }
+
+    rapidjson::Value JsonSerializer::GetExplicitDefault()
+    {
+        return rapidjson::Value(rapidjson::kObjectType);
     }
 } // namespace AZ

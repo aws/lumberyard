@@ -15,10 +15,12 @@
 #include "Serialization/ClassFactory.h"
 #include <IEditor.h>
 #include <QMenu>
-#include <QColorDialog>
 #include <QPainter>
 #include <QIcon>
 #include <QKeyEvent>
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 bool PropertyRowColorPicker::onActivate(const PropertyActivationEvent& e)
 {
@@ -28,18 +30,17 @@ bool PropertyRowColorPicker::onActivate(const PropertyActivationEvent& e)
     }
 
     // ColorF -> QColor.
-    QColor initialColor;
-    initialColor.setRedF(color_.r);
-    initialColor.setGreenF(color_.g);
-    initialColor.setBlueF(color_.b);
-    initialColor.setAlphaF(color_.a);
+    AZ::Color initialColor;
+    initialColor.SetR(color_.r);
+    initialColor.SetG(color_.g);
+    initialColor.SetB(color_.b);
+    initialColor.SetA(color_.a);
 
-    QColor colorFromDialog = QColorDialog::getColor(initialColor,
-            nullptr,
-            QString(),
-            QColorDialog::ShowAlphaChannel);
+    const AZ::Color colorFromDialog = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGBA,
+            initialColor,
+            QObject::tr("Select Color"));
 
-    if (!colorFromDialog.isValid())
+    if (initialColor == colorFromDialog)
     {
         // The user cancelled the dialog box.
         // Nothing more to do.
@@ -47,10 +48,10 @@ bool PropertyRowColorPicker::onActivate(const PropertyActivationEvent& e)
     }
 
     // QColor -> ColorF.
-    ColorF color(aznumeric_cast<float>(colorFromDialog.redF()),
-        aznumeric_cast<float>(colorFromDialog.greenF()),
-        aznumeric_cast<float>(colorFromDialog.blueF()),
-        aznumeric_cast<float>(colorFromDialog.alphaF()));
+    ColorF color(colorFromDialog.GetR(),
+        colorFromDialog.GetG(),
+        colorFromDialog.GetB(),
+        colorFromDialog.GetA());
 
     e.tree->model()->rowAboutToBeChanged(this);
     color_ = color;

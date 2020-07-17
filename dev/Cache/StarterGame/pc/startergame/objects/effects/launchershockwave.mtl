@@ -1,0 +1,11 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FX_LauncherShockwaveMAT" MtlFlags="524452" Shader="Particleimposter" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="1,1,1" Specular="0,0,0" Emittance="0,0,0,0" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/launchershockwave_01.dds"/>
+   </Textures>
+   <PublicParams SoftIntersectionFactor="0" AnimSpeed="0" BumpTilling="0" DiffuseRange="1" BumpAnimSpeed="0" AnimAmplitude="0" AnimOffset="0" BumpScale="0"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

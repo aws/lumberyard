@@ -92,6 +92,9 @@ namespace LegacyTerrain
         virtual void DestroyTerrainSystem() = 0;
 
         virtual void RefreshEngineMacroTexture() = 0;
+
+        //! Warning. This method is not efficient, you should cache the results.
+        virtual int GetTerrainSurfaceIdFromSurfaceTag(AZ::Crc32 tag) = 0;
     };
 
     using LegacyTerrainEditorDataRequestBus = AZ::EBus<LegacyTerrainEditorDataRequests>;

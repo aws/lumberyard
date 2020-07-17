@@ -75,15 +75,22 @@ namespace EMStudio
 
         editContext->Class<ActorInfo>("Actor info", "")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_name, "Name", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_unitType, "File unit type", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_nodeCount, "Nodes", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_nodeGroups, "Node groups", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_totalVertices, "Total vertices", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &ActorInfo::m_totalIndices, "Total indices", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
         ;
     }
 } // namespace EMStudio

@@ -20,6 +20,7 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/Bus/UiEditorCanvasBus.h>
 #include <Util/PathUtil.h>
@@ -104,7 +105,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     , m_sliceManager(new UiSliceManager(AzFramework::EntityContextId::CreateNull()))
     , m_hierarchy(new HierarchyWidget(this))
     , m_properties(new PropertiesWrapper(m_hierarchy, this))
-    , m_canvasTabBar(nullptr)
+    , m_canvasTabWidget(nullptr)
     , m_canvasTabSectionWidget(nullptr)
     , m_viewport(nullptr)
     , m_animationWidget(new CUiAnimViewDialog(this))
@@ -569,13 +570,13 @@ void EditorWindow::DestroyCanvas(const UiCanvasMetadata& canvasMetadata)
 
 bool EditorWindow::IsCanvasTabMetadataValidForTabIndex(int index)
 {
-    QVariant data = m_canvasTabBar->tabData(index);
+    QVariant data = m_canvasTabWidget->tabBar()->tabData(index);
     return data.isValid();
 }
 
 AZ::EntityId EditorWindow::GetCanvasEntityIdForTabIndex(int index)
 {
-    QVariant data = m_canvasTabBar->tabData(index);
+    QVariant data = m_canvasTabWidget->tabBar()->tabData(index);
     AZ_Assert(data.isValid(), "Canvas tab metadata is not valid");
     if (data.isValid())
     {
@@ -588,7 +589,7 @@ AZ::EntityId EditorWindow::GetCanvasEntityIdForTabIndex(int index)
 
 int EditorWindow::GetTabIndexForCanvasEntityId(AZ::EntityId canvasEntityId)
 {
-    for (int i = 0; i < m_canvasTabBar->count(); i++)
+    for (int i = 0; i < m_canvasTabWidget->count(); i++)
     {
         if (GetCanvasEntityIdForTabIndex(i) == canvasEntityId)
         {
@@ -636,8 +637,8 @@ void EditorWindow::HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvas
         tabText.append("*");
     }
     int tabIndex = GetTabIndexForCanvasEntityId(canvasMetadata.m_canvasEntityId);
-    m_canvasTabBar->setTabText(tabIndex, tabText.c_str());
-    m_canvasTabBar->setTabToolTip(tabIndex, canvasMetadata.m_canvasSourceAssetPathname.empty() ? canvasMetadata.m_canvasDisplayName.c_str() : canvasMetadata.m_canvasSourceAssetPathname.c_str());
+    m_canvasTabWidget->setTabText(tabIndex, tabText.c_str());
+    m_canvasTabWidget->setTabToolTip(tabIndex, canvasMetadata.m_canvasSourceAssetPathname.empty() ? canvasMetadata.m_canvasDisplayName.c_str() : canvasMetadata.m_canvasSourceAssetPathname.c_str());
 }
 
 void EditorWindow::CleanChanged(bool clean)
@@ -967,11 +968,11 @@ bool EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     // Add a canvas tab
     AZStd::string canvasDisplayName = GetCanvasDisplayNameFromAssetPath(sourceAssetPathName);
 
-    int newTabIndex = m_canvasTabBar->addTab(canvasDisplayName.c_str()); // this will call OnCurrentCanvasTabChanged if first tab, but nothing will happen because the metadata won't be set yet
+    int newTabIndex = m_canvasTabWidget->addTab(new QWidget(m_canvasTabWidget), canvasDisplayName.c_str()); // this will call OnCurrentCanvasTabChanged if first tab, but nothing will happen because the metadata won't be set yet
     UiCanvasTabMetadata tabMetadata;
     tabMetadata.m_canvasEntityId = canvasEntityId;
-    m_canvasTabBar->setTabData(newTabIndex, QVariant::fromValue(tabMetadata));
-    m_canvasTabBar->setTabToolTip(newTabIndex, sourceAssetPathName.empty() ? canvasDisplayName.c_str() : sourceAssetPathName.c_str());
+    m_canvasTabWidget->tabBar()->setTabData(newTabIndex, QVariant::fromValue(tabMetadata));
+    m_canvasTabWidget->setTabToolTip(newTabIndex, sourceAssetPathName.empty() ? canvasDisplayName.c_str() : sourceAssetPathName.c_str());
 
     UiCanvasMetadata* canvasMetadata = new UiCanvasMetadata;
     canvasMetadata->m_canvasEntityId = canvasEntityId;
@@ -1049,14 +1050,14 @@ void EditorWindow::UnloadCanvas(AZ::EntityId canvasEntityId)
         // Remove the tab associated with this canvas
         // OnCurrentCanvasTabChanged will be called, and the active canvas will be updated
         int tabIndex = GetTabIndexForCanvasEntityId(canvasEntityId);
-        m_canvasTabBar->removeTab(tabIndex);
+        m_canvasTabWidget->removeTab(tabIndex);
 
         // Ensure the active canvas is valid in case removeTab didn't cause it to change or the implementation changed
         if (!GetCanvasMetadata(m_activeCanvasEntityId))
         {
-            if (IsCanvasTabMetadataValidForTabIndex(m_canvasTabBar->currentIndex()))
+            if (IsCanvasTabMetadataValidForTabIndex(m_canvasTabWidget->currentIndex()))
             {
-                SetActiveCanvas(GetCanvasEntityIdForTabIndex(m_canvasTabBar->currentIndex()));
+                SetActiveCanvas(GetCanvasEntityIdForTabIndex(m_canvasTabWidget->currentIndex()));
             }
             else
             {
@@ -1222,7 +1223,7 @@ void EditorWindow::SetActiveCanvas(AZ::EntityId canvasEntityId)
     // will call us back, but we will early out because the new active canvas will be the same as the current active canvas.
     // If this function was called from the OnCurrentCanvasTabChanged event handler (triggered by a user clicking on a tab or a user closing a tab),
     // the new tab index will be the same as the current tab index so no more events will be triggered by calling setCurrentIndex here
-    m_canvasTabBar->setCurrentIndex(GetTabIndexForCanvasEntityId(m_activeCanvasEntityId));
+    m_canvasTabWidget->setCurrentIndex(GetTabIndexForCanvasEntityId(m_activeCanvasEntityId));
 
     // Get the new active canvas's metadata
     UiCanvasMetadata* canvasMetadata = m_activeCanvasEntityId.IsValid() ? GetCanvasMetadata(m_activeCanvasEntityId) : nullptr;
@@ -1478,13 +1479,13 @@ bool EditorWindow::CanUnloadCanvas(UiCanvasMetadata& canvasMetadata)
         }
         else
         {
-            name = tr("UI canvas %1").arg(canvasMetadata.m_canvasDisplayName.c_str());
+            name = tr("UI canvas \"%1\"").arg(canvasMetadata.m_canvasDisplayName.c_str());
         }
 
-        const auto defaultButton = QMessageBox::Cancel;
+        const auto defaultButton = QMessageBox::Save;
         int result = QMessageBox::question(this,
-            tr("Changes have been made"),
-            tr("Save changes to %1?").arg(name),
+            tr("Save UI Canvas Changes?"),
+            tr("Would you like to save changes to %1 before closing?").arg(name),
             (QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel),
             defaultButton);
 
@@ -1992,7 +1993,7 @@ void EditorWindow::OnCurrentCanvasTabChanged(int index)
     {
         // Set the tab back to that of the active canvas
         int activeCanvasIndex = GetTabIndexForCanvasEntityId(m_activeCanvasEntityId);
-        m_canvasTabBar->setCurrentIndex(activeCanvasIndex);
+        m_canvasTabWidget->setCurrentIndex(activeCanvasIndex);
 
         QMessageBox::information(this,
             tr("Running Slice Operations"),
@@ -2006,7 +2007,7 @@ void EditorWindow::OnCurrentCanvasTabChanged(int index)
 
 void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
 {
-    int tabIndex = m_canvasTabBar->tabAt(point);
+    int tabIndex = m_canvasTabWidget->tabBar()->tabAt(point);
 
     if (tabIndex >= 0)
     {
@@ -2047,7 +2048,7 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
         });
         menu.addAction(action);
 
-        menu.exec(m_canvasTabBar->mapToGlobal(point));
+        menu.exec(m_canvasTabWidget->mapToGlobal(point));
     }
     else
     {
@@ -2058,7 +2059,7 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
             menu.addSeparator();
             menu.addAction(CreateCloseAllCanvasesAction(true));
 
-            menu.exec(m_canvasTabBar->mapToGlobal(point));
+            menu.exec(m_canvasTabWidget->mapToGlobal(point));
         }
     }
 }
@@ -2521,38 +2522,25 @@ void EditorWindow::SetupTabbedViewportWidget(QWidget* parent)
     canvasTabSectionWidgetLayout->setContentsMargins(0, 0, 0, 0);
 
     // Create a canvas tab bar that's a child of the tab section widget
-    m_canvasTabBar = new QTabBar(m_canvasTabSectionWidget);
-    m_canvasTabBar->setMovable(true);
-    m_canvasTabBar->setTabsClosable(true);
-    m_canvasTabBar->setExpanding(false);
-    m_canvasTabBar->setDocumentMode(true);
-    m_canvasTabBar->setDrawBase(false);
-    m_canvasTabBar->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_canvasTabWidget = new AzQtComponents::TabWidget(m_canvasTabSectionWidget);
+    m_canvasTabWidget->tabBar()->setMovable(true);
+    m_canvasTabWidget->tabBar()->setTabsClosable(true);
+    m_canvasTabWidget->tabBar()->setExpanding(false);
+    m_canvasTabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // Add the canvas tab bar to the layout of the tab section widget
-    canvasTabSectionWidgetLayout->addWidget(m_canvasTabBar);
+    canvasTabSectionWidgetLayout->addWidget(m_canvasTabWidget);
     
-    // Create a "add canvas" button  that's a child of the tab section widget
-    const int addCanvasButtonPadding = 3;
-    QPushButton* addCanvasButton = new QPushButton(tr("+"), m_canvasTabSectionWidget);
-    // Get the height of the tab bar to determine the button size
-    m_canvasTabBar->addTab("Temp");
-    int tabBarHeight = m_canvasTabBar->sizeHint().height();
-    m_canvasTabBar->removeTab(0);
-    int addCanvasButtonSize = tabBarHeight - (addCanvasButtonPadding * 2);
-    addCanvasButton->setFixedSize(addCanvasButtonSize, addCanvasButtonSize);
-    addCanvasButton->setToolTip(tr("New Canvas (Ctrl+N)"));
-    QObject::connect(addCanvasButton, &QPushButton::clicked, this, [this] { NewCanvas();  });
-    QHBoxLayout* addCanvasButtonLayout = new QHBoxLayout();
-    addCanvasButtonLayout->setContentsMargins(0, addCanvasButtonPadding, addCanvasButtonPadding, addCanvasButtonPadding);
-    addCanvasButtonLayout->addWidget(addCanvasButton);
+    QAction* addCanvasAction = new QAction(QIcon(QStringLiteral(":/stylesheet/img/logging/add-filter.svg")), "", this);
+    QObject::connect(addCanvasAction, &QAction::triggered, this, [this] { NewCanvas(); });
+    m_canvasTabWidget->setActionToolBarVisible();
+    m_canvasTabWidget->addAction(addCanvasAction);
     
-    // Add the "add canvas" button to the layout of the tab section widget
-    canvasTabSectionWidgetLayout->addLayout(addCanvasButtonLayout);
+    connect(m_canvasTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &EditorWindow::OnCanvasTabCloseButtonPressed);
+    connect(m_canvasTabWidget->tabBar(), &QTabBar::currentChanged, this, &EditorWindow::OnCurrentCanvasTabChanged);
+    connect(m_canvasTabWidget->tabBar(), &QTabBar::customContextMenuRequested, this, &EditorWindow::OnCanvasTabContextMenuRequested);
 
-    connect(m_canvasTabBar, &QTabBar::tabCloseRequested, this, &EditorWindow::OnCanvasTabCloseButtonPressed);
-    connect(m_canvasTabBar, &QTabBar::currentChanged, this, &EditorWindow::OnCurrentCanvasTabChanged);
-    connect(m_canvasTabBar, &QTabBar::customContextMenuRequested, this, &EditorWindow::OnCanvasTabContextMenuRequested);
+    AzQtComponents::TabWidget::applySecondaryStyle(m_canvasTabWidget, false);
 
     QWidget* viewportWithRulers = m_viewport->CreateViewportWithRulersWidget(this);
 

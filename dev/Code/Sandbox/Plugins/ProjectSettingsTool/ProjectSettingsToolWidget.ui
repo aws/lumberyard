@@ -72,7 +72,7 @@
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_5">
                 <item>
-                 <widget class="QTabWidget" name="platformTabs">
+                 <widget class="AzQtComponents::TabWidget" name="platformTabs">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
@@ -178,6 +178,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AzQtComponents::TabWidget</class>
+   <extends>QTabWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/TabWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="ProjectSettingsTool.qrc"/>
  </resources>

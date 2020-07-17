@@ -18,14 +18,19 @@
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h>
 #include <ScriptEvents/ScriptEventDefinition.h>
 
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/FocusOnEffect.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h>
+
 namespace ScriptCanvas
 {
     class ScriptEventVersionMismatch
         : public ValidationEvent
+        , public HighlightEntityEffect
+        , public FocusOnEntityEffect
     {
     public:
         AZ_CLASS_ALLOCATOR(ScriptEventVersionMismatch, AZ::SystemAllocator, 0);
-        AZ_RTTI(ScriptEventVersionMismatch, "{4968A689-B45A-40B6-BB3C-B1D35557D692}", ValidationEvent);
+        AZ_RTTI(ScriptEventVersionMismatch, "{4968A689-B45A-40B6-BB3C-B1D35557D692}", ValidationEvent, HighlightEntityEffect, FocusOnEntityEffect);
         
         ScriptEventVersionMismatch(AZ::u32 nodeVersion, const ScriptEvents::ScriptEvent& definition, AZ::EntityId nodeId)
             : ValidationEvent(ValidationSeverity::Error)
@@ -65,6 +70,20 @@ namespace ScriptCanvas
         {
             return m_nodeId;
         }
+
+        // HighlightEntityEffect
+        AZ::EntityId GetHighlightTarget() const override
+        {
+            return m_nodeId;
+        }
+        ////
+
+        // FocusOnEntityEffect
+        AZ::EntityId GetFocusTarget() const override
+        {
+            return m_nodeId;
+        }
+        ////
         
     private:
     

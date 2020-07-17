@@ -132,12 +132,6 @@
        <height>0</height>
       </size>
      </property>
-     <property name="maximumSize">
-      <size>
-       <width>40</width>
-       <height>16777215</height>
-      </size>
-     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -160,12 +154,6 @@
        <height>0</height>
       </size>
      </property>
-     <property name="maximumSize">
-      <size>
-       <width>60</width>
-       <height>16777215</height>
-      </size>
-     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -184,7 +172,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>:/stylesheet/img/16x16/info.png</normaloff>:/stylesheet/img/16x16/info.png</iconset>
+       <normaloff>:/stylesheet/img/UI20/Info.svg</normaloff>:/stylesheet/img/UI20/Info.svg</iconset>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -198,7 +186,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>:/stylesheet/img/16x16/Helpers.png</normaloff>:/stylesheet/img/16x16/Helpers.png</iconset>
+       <normaloff>:/stylesheet/img/UI20/Helpers.svg</normaloff>:/stylesheet/img/UI20/Helpers.svg</iconset>
      </property>
      <property name="checkable">
       <bool>true</bool>

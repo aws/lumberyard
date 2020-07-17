@@ -870,9 +870,9 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
             ;
 
         behaviorContext->EBus<TickBus>("TickBus")
-            ->Handler<TickBusBehaviorHandler>()
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
             ->Attribute(AZ::Script::Attributes::Module, "components")
+            ->Handler<TickBusBehaviorHandler>()
             ;
 
         behaviorContext->EBus<TickRequestBus>("TickRequestBus")

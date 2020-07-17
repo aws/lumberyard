@@ -21,7 +21,7 @@
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/ActorInstance.h>
 
-#include <System/ActorClothSkinning.h>
+#include <Components/ClothComponentMesh/ActorClothSkinning.h>
 #include <Utils/MathConversion.h>
 
 namespace NvCloth

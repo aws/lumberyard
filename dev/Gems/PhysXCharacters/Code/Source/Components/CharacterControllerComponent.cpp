@@ -90,129 +90,69 @@ namespace PhysXCharacters
 
     void CharacterControllerComponent::Activate()
     {
-        AZStd::shared_ptr<Physics::World> defaultWorld;
-        Physics::DefaultWorldBus::BroadcastResult(defaultWorld, &Physics::DefaultWorldRequests::GetDefaultWorld);
-        if (!defaultWorld)
-        {
-            AZ_Error("PhysX Character Controller Component", false, "Failed to retrieve default world.");
-            return;
-        }
-
-        m_characterConfig->m_debugName = GetEntity()->GetName();
-        m_characterConfig->m_entityId = GetEntityId();
-
-        if (m_characterConfig->m_directControl)
-        {
-            Physics::CharacterSystemRequestBus::BroadcastResult(m_controller,
-                &Physics::CharacterSystemRequests::CreateCharacter, *m_characterConfig, *m_shapeConfig, *defaultWorld);
-            if (!m_controller)
-            {
-                AZ_Error("PhysX Character Controller Component", false, "Failed to create character controller.");
-                return;
-            }
-
-            AZ::Vector3 entityTranslation = AZ::Vector3::CreateZero();
-            AZ::TransformBus::EventResult(entityTranslation, GetEntityId(), &AZ::TransformBus::Events::GetWorldTranslation);
-            // It's usually more convenient to control the foot position rather than the centre of the capsule, so
-            // make the foot position coincide with the entity position.
-            m_controller->SetBasePosition(entityTranslation);
-            AttachColliders(*m_controller);
-            CharacterControllerRequestBus::Handler::BusConnect(GetEntityId());
-        }
-
-        else
-        {
-            // make a replica
-            m_controller = AZStd::make_unique<CharacterControllerCosmeticReplica>(*m_characterConfig,
-                *m_shapeConfig, *defaultWorld);
-            AttachColliders(*m_controller);
-        }
+        EnablePhysics();
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         Physics::CharacterRequestBus::Handler::BusConnect(GetEntityId());
         Physics::CollisionFilteringRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void CharacterControllerComponent::Deactivate()
     {
         Physics::CollisionFilteringRequestBus::Handler::BusDisconnect();
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         CharacterControllerRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         Physics::CharacterRequestBus::Handler::BusDisconnect();
         Physics::Utils::DeferDelete(AZStd::move(m_controller));
     }
 
-    // helper functions
     bool CharacterControllerComponent::ValidateDirectlyControlled()
     {
         if (!m_characterConfig->m_directControl)
         {
-            AZ_Warning("PhysX Character Controller Component", false, "Character controller is not directly controlled.");
             return false;
         }
 
-        if (!m_controller)
-        {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
-            return false;
-        }
-
-        return true;
+        return IsPhysicsEnabled();
     }
 
-    template<class T>
-    static T CheckValidAndReturn(const AZStd::unique_ptr<Physics::Character>& controller, T result)
-    {
-        if (!controller)
-        {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
-        }
-
-        return result;
-    }
-
-    // Physics::CharacterRequestBus
     AZ::Vector3 CharacterControllerComponent::GetBasePosition() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetBasePosition() : AZ::Vector3::CreateZero());
+        return IsPhysicsEnabled() ? m_controller->GetBasePosition() : AZ::Vector3::CreateZero();
     }
 
     void CharacterControllerComponent::SetBasePosition(const AZ::Vector3& position)
     {
-        if (!m_controller)
+        if (IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
-            return;
+            m_controller->SetBasePosition(position);
+            AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
         }
-
-        m_controller->SetBasePosition(position);
-        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
     }
 
     AZ::Vector3 CharacterControllerComponent::GetCenterPosition() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetCenterPosition() : AZ::Vector3::CreateZero());
+        return IsPhysicsEnabled() ? m_controller->GetCenterPosition() : AZ::Vector3::CreateZero();
     }
 
     float CharacterControllerComponent::GetStepHeight() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetStepHeight() : 0.0f);
+        return IsPhysicsEnabled() ? m_controller->GetStepHeight() : 0.0f;
     }
 
     void CharacterControllerComponent::SetStepHeight(float stepHeight)
     {
-        if (!m_controller)
+        if (IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
-            return;
+            m_controller->SetStepHeight(stepHeight);
         }
-
-        m_controller->SetStepHeight(stepHeight);
     }
 
     AZ::Vector3 CharacterControllerComponent::GetUpDirection() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetUpDirection() : AZ::Vector3::CreateZero());
+        return IsPhysicsEnabled() ? m_controller->GetUpDirection() : AZ::Vector3::CreateZero();
     }
 
     void CharacterControllerComponent::SetUpDirection(const AZ::Vector3& upDirection)
@@ -222,23 +162,20 @@ namespace PhysXCharacters
 
     float CharacterControllerComponent::GetSlopeLimitDegrees() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetSlopeLimitDegrees() : 0.0f);
+        return IsPhysicsEnabled() ? m_controller->GetSlopeLimitDegrees() : 0.0f;
     }
 
     void CharacterControllerComponent::SetSlopeLimitDegrees(float slopeLimitDegrees)
     {
-        if (!m_controller)
+        if (IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
-            return;
+            m_controller->SetSlopeLimitDegrees(slopeLimitDegrees);
         }
-
-        m_controller->SetSlopeLimitDegrees(slopeLimitDegrees);
     }
 
     AZ::Vector3 CharacterControllerComponent::GetVelocity() const
     {
-        return CheckValidAndReturn(m_controller, m_controller ? m_controller->GetVelocity() : AZ::Vector3::CreateZero());
+        return IsPhysicsEnabled() ? m_controller->GetVelocity() : AZ::Vector3::CreateZero();
     }
 
     AZ::Vector3 CharacterControllerComponent::TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime)
@@ -253,6 +190,66 @@ namespace PhysXCharacters
         return newPosition;
     }
 
+    void CharacterControllerComponent::EnablePhysics()
+    {
+        if (IsPhysicsEnabled())
+        {
+            return;
+        }
+
+        bool success = CreateController();
+        if (success)
+        {
+            Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsEnabled);
+        }
+    }
+
+    void CharacterControllerComponent::DisablePhysics()
+    {
+        if(IsPhysicsEnabled())
+        {
+            m_controller.reset();
+
+            // do not disconnect from the CharacterRequestBus or the IsPresent function used to determine
+            // if the CharacterControllerComponent is on this entity will not work
+
+            if (CharacterControllerRequestBus::Handler::BusIsConnected())
+            {
+                CharacterControllerRequestBus::Handler::BusDisconnect();
+            }
+
+            Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsDisabled);
+        }
+    }
+
+    bool CharacterControllerComponent::IsPhysicsEnabled() const
+    {
+        return m_controller && m_controller->GetWorld();
+    }
+
+    AZ::Aabb CharacterControllerComponent::GetAabb() const
+    {
+        if (m_controller)
+        {
+            return m_controller->GetAabb();
+        }
+        return AZ::Aabb::CreateNull();
+    }
+
+    Physics::WorldBody* CharacterControllerComponent::GetWorldBody()
+    {
+        return m_controller.get();
+    }
+
+    Physics::RayCastHit CharacterControllerComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_controller)
+        {
+            return m_controller->RayCast(request);
+        }
+        return Physics::RayCastHit();
+    }
+
     // CharacterControllerRequestBus
     void CharacterControllerComponent::Resize(float height)
     {
@@ -260,8 +257,6 @@ namespace PhysXCharacters
         {
             return characterController->Resize(height);
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
     }
 
     float CharacterControllerComponent::GetHeight()
@@ -270,8 +265,6 @@ namespace PhysXCharacters
         {
             return characterController->GetHeight();
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
         return 0.0f;
     }
 
@@ -281,8 +274,6 @@ namespace PhysXCharacters
         {
             return characterController->SetHeight(height);
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
     }
 
     float CharacterControllerComponent::GetRadius()
@@ -291,8 +282,6 @@ namespace PhysXCharacters
         {
             return characterController->GetRadius();
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
         return 0.0f;
     }
 
@@ -302,8 +291,6 @@ namespace PhysXCharacters
         {
             return characterController->SetRadius(radius);
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
     }
 
     float CharacterControllerComponent::GetHalfSideExtent()
@@ -312,8 +299,6 @@ namespace PhysXCharacters
         {
             return characterController->GetHalfSideExtent();
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
         return 0.0f;
     }
 
@@ -323,8 +308,6 @@ namespace PhysXCharacters
         {
             return characterController->SetHalfSideExtent(halfSideExtent);
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
     }
 
     float CharacterControllerComponent::GetHalfForwardExtent()
@@ -334,7 +317,6 @@ namespace PhysXCharacters
             return characterController->GetHalfForwardExtent();
         }
 
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
         return 0.0f;
     }
 
@@ -344,16 +326,13 @@ namespace PhysXCharacters
         {
             return characterController->SetHalfForwardExtent(halfForwardExtent);
         }
-
-        AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
     }
 
     // TransformNotificationBus
     void CharacterControllerComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return;
         }
 
@@ -374,9 +353,8 @@ namespace PhysXCharacters
     
     void CharacterControllerComponent::SetCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag)
     {
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return;
         }
 
@@ -395,9 +373,8 @@ namespace PhysXCharacters
     AZStd::string CharacterControllerComponent::GetCollisionLayerName()
     {
         AZStd::string layerName;
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return layerName;
         }
 
@@ -407,9 +384,8 @@ namespace PhysXCharacters
 
     void CharacterControllerComponent::SetCollisionGroup(const AZStd::string& groupName, AZ::Crc32 colliderTag)
     {
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return;
         }
 
@@ -428,9 +404,8 @@ namespace PhysXCharacters
     AZStd::string CharacterControllerComponent::GetCollisionGroupName()
     {
         AZStd::string groupName;
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return groupName;
         }
         
@@ -440,9 +415,8 @@ namespace PhysXCharacters
 
     void CharacterControllerComponent::ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled)
     {
-        if (!m_controller)
+        if (!IsPhysicsEnabled())
         {
-            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
             return;
         }
 
@@ -461,6 +435,49 @@ namespace PhysXCharacters
         }
     }
 
+    bool CharacterControllerComponent::CreateController()
+    {
+        AZStd::shared_ptr<Physics::World> defaultWorld;
+        Physics::DefaultWorldBus::BroadcastResult(defaultWorld, &Physics::DefaultWorldRequests::GetDefaultWorld);
+        if (!defaultWorld)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Failed to retrieve default world.");
+            return false;
+        }
+
+        m_characterConfig->m_debugName = GetEntity()->GetName();
+        m_characterConfig->m_entityId = GetEntityId();
+
+        if (m_characterConfig->m_directControl)
+        {
+            Physics::CharacterSystemRequestBus::BroadcastResult(m_controller,
+                &Physics::CharacterSystemRequests::CreateCharacter, *m_characterConfig, *m_shapeConfig, *defaultWorld);
+            if (!m_controller)
+            {
+                AZ_Error("PhysX Character Controller Component", false, "Failed to create character controller.");
+                return false;
+            }
+
+            AZ::Vector3 entityTranslation = AZ::Vector3::CreateZero();
+            AZ::TransformBus::EventResult(entityTranslation, GetEntityId(), &AZ::TransformBus::Events::GetWorldTranslation);
+            // It's usually more convenient to control the foot position rather than the centre of the capsule, so
+            // make the foot position coincide with the entity position.
+            m_controller->SetBasePosition(entityTranslation);
+            AttachColliders(*m_controller);
+            CharacterControllerRequestBus::Handler::BusConnect(GetEntityId());
+        }
+
+        else
+        {
+            // make a replica
+            m_controller = AZStd::make_unique<CharacterControllerCosmeticReplica>(*m_characterConfig,
+                *m_shapeConfig, *defaultWorld);
+            AttachColliders(*m_controller);
+        }
+
+        return true;
+    }
+
     void CharacterControllerComponent::AttachColliders(Physics::Character& character)
     {
         PhysX::ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [&character](PhysX::ColliderComponentRequests* handler)
@@ -472,4 +489,5 @@ namespace PhysXCharacters
             return true;
         });
     }
+
 } // namespace PhysXCharacters

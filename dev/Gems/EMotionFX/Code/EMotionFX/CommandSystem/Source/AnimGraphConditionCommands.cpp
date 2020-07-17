@@ -127,7 +127,7 @@ namespace CommandSystem
         m_oldContents.reset();
 
         newCondition->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -257,7 +257,7 @@ namespace CommandSystem
         m_oldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -370,7 +370,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(true);
 
         condition->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -390,7 +390,7 @@ namespace CommandSystem
         MCore::ReflectionSerializer::Deserialize(condition, m_oldContents.value());
 
         condition->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         // set the dirty flag back to the old value
         animGraph->SetDirtyFlag(m_oldDirtyFlag.value());

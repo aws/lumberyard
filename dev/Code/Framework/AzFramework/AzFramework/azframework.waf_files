@@ -187,6 +187,13 @@
             "Script/ScriptRemoteDebugging.cpp",
             "Script/ScriptRemoteDebugging.h"
         ],
+        "StreamingInstall":
+        [
+            "StreamingInstall/StreamingInstall.h",
+            "StreamingInstall/StreamingInstall.cpp",
+            "StreamingInstall/StreamingInstallRequests.h",
+            "StreamingInstall/StreamingInstallNotifications.h"
+        ],
         "Physics": [
             "Physics/AnimationConfiguration.cpp",
             "Physics/AnimationConfiguration.h",
@@ -212,6 +219,8 @@
             "Physics/Casts.cpp",
             "Physics/WorldBody.cpp",
             "Physics/WorldBody.h",
+            "Physics/WorldBodyBus.h",
+            "Physics/LegacyColliderComponentBus.h",
             "Physics/ColliderComponentBus.h",
             "Physics/ConstraintComponentBus.h",
             "Physics/PhysicsComponentBus.h",
@@ -238,7 +247,8 @@
             "Physics/ScriptCanvasPhysicsUtils.cpp"
         ],
         "Terrain": [
-            "Terrain/TerrainDataRequestBus.h"
+            "Terrain/TerrainDataRequestBus.h",
+            "Terrain/TerrainDataRequestBus.cpp"
         ],
         "Platform": [
             "Platform/PlatformDefaults.h",

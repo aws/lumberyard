@@ -212,7 +212,7 @@ namespace UnitTest
         : AZ::EBusTraits
     {
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-
+        virtual ~PythonTestSingleAddressNotifications() = default;
         virtual void OnPing(AZ::u64 count) = 0;
         virtual void OnPong(AZ::u64 count) = 0;
         virtual void MultipleInputs(AZ::u64 one, AZ::s8 two, AZStd::string_view three) = 0;
@@ -225,6 +225,8 @@ namespace UnitTest
     {
         AZ_EBUS_BEHAVIOR_BINDER(PythonTestNotificationHandler, "{97052D15-A4E8-461B-B065-91D16E31C4F7}", AZ::SystemAllocator, 
             OnPing, OnPong, MultipleInputs);
+
+        virtual ~PythonTestNotificationHandler() = default;
 
         void OnPing(AZ::u64 count) override
         {
@@ -308,7 +310,7 @@ namespace UnitTest
         , public AZ::BehaviorEBusHandler
     {
         AZ_EBUS_BEHAVIOR_BINDER(PythonTestByIdNotificationsHandler, "{5F091D4B-86C4-4D25-B982-2ECAFD8AFF0F}", AZ::SystemAllocator, OnResult);
-
+        virtual ~PythonTestByIdNotificationsHandler() = default;
         void OnResult(AZ::s64 result) override
         {
             Call(FN_OnResult, result);

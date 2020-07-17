@@ -266,7 +266,7 @@ namespace AzToolsFramework
             else
             {
                 return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%llu] in target slice.",
-                    entity->GetName().c_str(), entity->GetId()));
+                    entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId())));
             }
 
             return AZ::Success();
@@ -303,7 +303,7 @@ namespace AzToolsFramework
             else
             {
                 return AZ::Failure(AZStd::string::format("Unable to locate entity %s [%llu] in target slice.",
-                    entity->GetName().c_str(), entity->GetId()));
+                    entity->GetName().c_str(), static_cast<AZ::u64>(entity->GetId())));
             }
 
             return AZ::Success();
@@ -557,7 +557,7 @@ namespace AzToolsFramework
                     // Find the entity's ancestor in the target asset.
                     if (!sliceAsset->RemoveEntity(removeId))
                     {
-                        return AZ::Failure(AZStd::string::format("Unable to remove entity [%llu] from target slice.", removeId));
+                        return AZ::Failure(AZStd::string::format("Unable to remove entity [%llu] from target slice.", static_cast<AZ::u64>(removeId)));
                     }
                 }
 
@@ -585,7 +585,7 @@ namespace AzToolsFramework
                     if (!targetEntity)
                     {
                         return AZ::Failure(AZStd::string::format("Unable to locate entity with Id %llu in the target slice.",
-                            entityToPush.m_targetEntityId));
+                            static_cast<AZ::u64>(entityToPush.m_targetEntityId)));
                     }
 
                     InstanceDataHierarchy targetHierarchy;

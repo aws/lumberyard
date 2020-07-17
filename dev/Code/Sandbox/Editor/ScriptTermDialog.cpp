@@ -29,8 +29,8 @@
 
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 
-CScriptTermDialog::CScriptTermDialog()
-    : QWidget()
+CScriptTermDialog::CScriptTermDialog(QWidget* parent)
+    : QWidget(parent)
     , ui(new Ui::CScriptTermDialog)
 {
     ui->setupUi(this);
@@ -129,6 +129,7 @@ void CScriptTermDialog::AppendText(const char* pText)
 {
     AppendToConsole(QtUtil::ToQString(pText));
 }
+
 void CScriptTermDialog::OnTraceMessage(AZStd::string_view message)
 {
     AppendToConsole(QtUtil::ToQString(message.data()));
@@ -137,6 +138,11 @@ void CScriptTermDialog::OnTraceMessage(AZStd::string_view message)
 void CScriptTermDialog::OnErrorMessage(AZStd::string_view message)
 {
     AppendToConsole(QtUtil::ToQString(message.data()), QColor(255, 64, 64));
+}
+
+void CScriptTermDialog::OnExceptionMessage(AZStd::string_view message)
+{
+    AppendToConsole(QtUtil::ToQString(message.data()), QColor(128, 64, 64));
 }
 
 void CScriptTermDialog::AppendToConsole(const QString& string, const QColor& color)

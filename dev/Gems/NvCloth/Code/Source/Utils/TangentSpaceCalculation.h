@@ -14,36 +14,18 @@
 
 #include <Cry_Math.h> // Needed for Vec3
 
-#include <AzCore/std/containers/map.h>
+#include <System/DataTypes.h>
 
 namespace NvCloth
 {
-    using TriangleIndices = AZStd::array<AZ::u32, 3>;
-
-    //! Interface to request mesh data necessary to calculate tangent space
-    class TriangleInputProxy
-    {
-    public:
-        virtual ~TriangleInputProxy() = default;
-
-        virtual AZ::u32 GetTriangleCount() const = 0;
-        virtual AZ::u32 GetVertexCount() const = 0;
-        virtual TriangleIndices GetTriangleIndices(AZ::u32 index) const = 0;
-        virtual Vec3 GetPosition(AZ::u32 index) const = 0;
-        virtual Vec2 GetUV(AZ::u32 index) const = 0;
-    };
-
     //! Calculates the tangent space base for a given mesh
     class TangentSpaceCalculation
     {
     public:
-        enum class Error
-        {
-            NoErrors,
-            BrokenTextureCoordinates
-        };
-
-        Error CalculateTangentSpace(const TriangleInputProxy& input, AZStd::string& errorMessage);
+        void Calculate(
+            const AZStd::vector<SimParticleType>& vertices,
+            const AZStd::vector<SimIndexType>& indices,
+            const AZStd::vector<SimUVType>& uvs);
 
         size_t GetBaseCount() const;
 

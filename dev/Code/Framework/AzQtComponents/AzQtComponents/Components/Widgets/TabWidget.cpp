@@ -10,6 +10,9 @@
 *
 */
 
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/sort.h>
+
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Widgets/TabWidget.h>
@@ -33,7 +36,6 @@
 
 namespace AzQtComponents
 {
-
     static int g_borderWidth = 1;
     static int g_releaseTabMaxAnimationDuration = 250; // Copied from qtabbar_p.h
     // Will be initialized by TabWidget::loadConfig
@@ -41,6 +43,9 @@ namespace AzQtComponents
     static int g_closeButtonPadding = -1;
     static int g_closeButtonMinTabWidth = -1;
     static int g_toolTipTabWidthThreshold = -1;
+    static QString g_secondaryStyleClass = QStringLiteral("Secondary");
+    static QString g_borderedStyleClass = QStringLiteral("Bordered");
+    static QString g_emptyStyleClass = QStringLiteral("Empty");
 
     TabWidget::TabWidget(QWidget* parent)
         : QTabWidget(parent)
@@ -48,23 +53,41 @@ namespace AzQtComponents
         , m_actionToolBarContainer(new TabWidgetActionToolBarContainer(this))
     {
         auto tabBar = new TabBar(this);
-        setTabBar(tabBar);
+        setCustomTabBar(tabBar);
         // Forcing styled background to allow using background-color from QSS
         setAttribute(Qt::WA_StyledBackground, true);
 
         m_actionToolBarContainer->overflowButton()->setVisible(false);
-        m_actionToolBarContainer->overflowButton()->setMenu(m_overflowMenu);
         setCornerWidget(m_actionToolBarContainer, Qt::TopRightCorner);
 
+        connect(m_actionToolBarContainer->overflowButton(), &QToolButton::clicked, this, &TabWidget::showOverflowMenu);
         connect(m_overflowMenu, &QMenu::aboutToShow, this, &TabWidget::populateMenu);
         connect(this, &TabWidget::currentChanged, this, &TabWidget::resetOverflowMenu);
-        connect(tabBar, &TabBar::overflowingChanged, this, &TabWidget::setOverflowMenuVisible);
+
+        AzQtComponents::Style::addClass(this, g_emptyStyleClass);
     }
 
     TabWidget::TabWidget(TabWidgetActionToolBar* actionToolBar, QWidget* parent)
         : TabWidget(parent)
     {
         setActionToolBar(actionToolBar);
+    }
+
+    void TabWidget::applySecondaryStyle(TabWidget* tabWidget, bool bordered)
+    {
+        Style::addClass(tabWidget, g_secondaryStyleClass);
+        Style::addClass(tabWidget->tabBar(), g_secondaryStyleClass);
+
+        if (bordered)
+        {
+            Style::addClass(tabWidget, g_borderedStyleClass);
+            Style::addClass(tabWidget->tabBar(), g_borderedStyleClass);
+        }
+
+        if (tabWidget->actionToolBar())
+        {
+            Style::addClass(tabWidget->actionToolBar(), g_secondaryStyleClass);
+        }
     }
 
     TabWidget::Config TabWidget::loadConfig(QSettings& settings)
@@ -105,6 +128,12 @@ namespace AzQtComponents
         };
     }
 
+    void TabWidget::setCustomTabBar(TabBar* tabBar)
+    {
+        QTabWidget::setTabBar(tabBar);
+        connect(tabBar, &TabBar::overflowingChanged, this, &TabWidget::setOverflowMenuVisible);
+    }
+
     void TabWidget::setActionToolBar(TabWidgetActionToolBar* actionToolBar)
     {
         m_actionToolBarContainer->setActionToolBar(actionToolBar);
@@ -140,12 +169,24 @@ namespace AzQtComponents
     void TabWidget::tabInserted(int index)
     {
         Q_UNUSED(index);
+
+        if (count() > 0)
+        {
+            AzQtComponents::Style::removeClass(this, g_emptyStyleClass);
+        }
+
         resetOverflowMenu();
     }
 
     void TabWidget::tabRemoved(int index)
     {
         Q_UNUSED(index);
+
+        if (count() == 0)
+        {
+            AzQtComponents::Style::addClass(this, g_emptyStyleClass);
+        }
+
         resetOverflowMenu();
     }
 
@@ -186,6 +227,13 @@ namespace AzQtComponents
             connect(action, &QAction::triggered, this, std::bind(&TabWidget::setCurrentIndex, this, i));
             m_overflowMenu->addAction(action);
         }
+    }
+
+    void TabWidget::showOverflowMenu()
+    {
+        const auto overflowButton = m_actionToolBarContainer->overflowButton();
+        const auto position = overflowButton->mapToGlobal(overflowButton->geometry().bottomLeft());
+        m_overflowMenu->exec(position);
     }
 
     bool TabWidget::polish(Style* style, QWidget* widget, const TabWidget::Config& config)
@@ -257,6 +305,48 @@ namespace AzQtComponents
         }
         layout()->addWidget(m_actionToolBar);
         m_actionToolBar->show();
+
+        // Fix tab order right away for any buttons that may be already on the
+        // action toolbar, then again every time actions change on the toolbar
+        fixTabOrder();
+        connect(actionToolBar, &TabWidgetActionToolBar::actionsChanged, this, &TabWidgetActionToolBarContainer::fixTabOrder);
+    }
+
+    void TabWidgetActionToolBarContainer::fixTabOrder()
+    {
+        auto tabWidget = qobject_cast<TabWidget*>(parent());
+        if (!tabWidget)
+        {
+            return;
+        }
+
+        // Get all buttons from the action tool bar and sort them by order
+        // of occurence on the layout
+        QVector<QPair<int, QWidget*>> buttons;
+        for (QPushButton* p : m_actionToolBar->m_actionButtons)
+        {
+            int idx = m_actionToolBar->layout()->indexOf(p);
+            if (idx >= 0 && p) {
+                buttons.push_back({idx, p});
+            }
+        }
+
+        AZStd::sort(buttons.begin(), buttons.end(), [](const QPair<int, QWidget*>& p1, const QPair<int, QWidget*>& p2) {
+            return p1.first < p2.first;
+        });
+
+        // set tab order: tabbar -> actionbtn1 -> actionbtn2 ...
+        for (int i = 0; i < buttons.size(); i++)
+        {
+            if (i == 0)
+            {
+                setTabOrder(tabWidget->tabBar(), buttons[i].second);
+            }
+            else
+            {
+                setTabOrder(buttons[i-1].second, buttons[i].second);
+            }
+        }
     }
 
     void TabWidgetActionToolBarContainer::setActionToolBarVisible(bool visible)
@@ -288,6 +378,8 @@ namespace AzQtComponents
     {
         connect(this, &TabBar::currentChanged, this, &TabBar::resetOverflow);
         setMouseTracking(true);
+
+        AzQtComponents::Style::addClass(this, g_emptyStyleClass);
     }
 
     void TabBar::resetOverflow()
@@ -372,19 +464,51 @@ namespace AzQtComponents
         QTabBar::paintEvent(paintEvent);
     }
 
+    QSize TabBar::minimumSizeHint() const
+    {
+        QSize minSizeHint = QTabBar::minimumSizeHint();
+
+        // Set the minimum size hint for the tab bar to 0 to allow TabWidgets
+        // to ignore the tab bar when it is being resized.
+        // Without this fix, resizing behavior for the tab bar is not triggered.
+        minSizeHint.setWidth(0);
+
+        return minSizeHint;
+    }
+
     void TabBar::tabInserted(int /*index*/)
     {
+        if (count() > 0)
+        {
+            AzQtComponents::Style::removeClass(this, g_emptyStyleClass);
+        }
+
         resetOverflow();
     }
 
     void TabBar::tabRemoved(int /*index*/)
     {
+        if (count() == 0)
+        {
+            AzQtComponents::Style::addClass(this, g_emptyStyleClass);
+        }
+
         resetOverflow();
     }
 
     void TabBar::overflowIfNeeded()
     {
         if (m_overflowing != OverflowUnchecked)
+        {
+            return;
+        }
+
+        // Do the early-out for the TabWidget check before we calculate anything, otherwise for the case where
+        // a TabBar is used for the titlebar display of single dock widgets, it will end up executing this logic
+        // on every paintEvent since m_overflowing will always be OverflowUnchecked, which is very expensive since
+        // it includes two forced layout refreshes
+        auto tabWidget = qobject_cast<TabWidget*>(parent());
+        if (!tabWidget)
         {
             return;
         }
@@ -397,12 +521,6 @@ namespace AzQtComponents
         for (int i = 0; i < count(); i++)
         {
             tabsWidth += tabRect(i).width();
-        }
-
-        auto tabWidget = qobject_cast<TabWidget*>(parent());
-        if (!tabWidget)
-        {
-            return;
         }
 
         int availableWidth = tabWidget->width();
@@ -577,7 +695,8 @@ namespace AzQtComponents
         if (tabBar->m_overflowing != Overflowing || (tabOption->state & QStyle::State_Selected))
         {
             size.setWidth(size.width() + config.textRightPadding);
-            if (tabBar->tabsClosable()) {
+            if (!tabBar->tabsClosable())
+            {
                 size -= QSize(config.closeButtonSize + config.closeButtonRightPadding, 0);
             }
         }

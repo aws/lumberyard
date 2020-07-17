@@ -104,10 +104,10 @@ namespace ScriptCanvas
 
         if (m_supportedOperator.empty())
         {
-            return AZ::Failure(AZStd::string::format("%s is not on list of supported types for Math Operation.", ScriptCanvas::Data::GetName(dataType)));
+            return AZ::Failure(AZStd::string::format("%s is not on list of supported types for Math Operation.", ScriptCanvas::Data::GetName(dataType).c_str()));
         }
 
-        return AZ::Failure(AZStd::string::format("%s does not support the method: %s", ScriptCanvas::Data::GetName(dataType), m_supportedOperator.c_str()));
+        return AZ::Failure(AZStd::string::format("%s does not support the method: %s", ScriptCanvas::Data::GetName(dataType).c_str(), m_supportedOperator.c_str()));
     }
 
     void MathOperatorContract::Reflect(AZ::ReflectContext* reflection)

@@ -71,7 +71,7 @@ namespace EMotionFX
             AZ::EntityId                m_entityId;         ///< EntityId associated with the originating actor
             const char*                 m_parameter;        ///< Optional string parameter
             EMotionFX::ActorInstance*   m_actorInstance;    ///< Pointer to the actor instance on which the event is playing
-            EMotionFX::MotionInstance*  m_motionInstance;   ///< Pointer to the motion instance from which the event was fired
+            const EMotionFX::MotionInstance*  m_motionInstance;   ///< Pointer to the motion instance from which the event was fired
             float                       m_time;             ///< Time value of the event, in seconds
             AZ::u32                     m_eventType;        ///< Type Id of the event. m_eventTypeName stores the string representation.
             const char*                 m_eventTypeName;    ///< Event type in string form

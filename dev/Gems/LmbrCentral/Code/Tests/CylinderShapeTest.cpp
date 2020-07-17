@@ -54,6 +54,315 @@ namespace UnitTest
         }
     };
 
+    using CylinderParams = std::tuple<AZ::Transform, float, float>;
+    using BoundingBoxResult = std::tuple<Vector3, Vector3>;
+    using BoundingBoxParams = std::tuple<CylinderParams, BoundingBoxResult>;
+    using IsPointInsideParams = std::tuple<CylinderParams, Vector3, bool>;
+    using RayParams = std::tuple<Vector3, Vector3>;
+    using RayIntersectResult = std::tuple<bool, float, float>;
+    using RayIntersectParams = std::tuple<RayParams, CylinderParams, RayIntersectResult>;
+    using DistanceResultParams = std::tuple<float, float>;
+    using DistanceFromPointParams = std::tuple<CylinderParams, Vector3, DistanceResultParams>;
+
+    class CylinderShapeRayIntersectTest
+        : public CylinderShapeTest
+        , public testing::WithParamInterface<RayIntersectParams>
+    {
+    public:
+        static const std::vector<RayIntersectParams> ShouldPass;
+        static const std::vector<RayIntersectParams> ShouldFail;
+    };
+
+    class CylinderShapeAABBTest
+        : public CylinderShapeTest
+        , public testing::WithParamInterface<BoundingBoxParams>
+    {
+    public:
+        static const std::vector<BoundingBoxParams> ShouldPass;
+    };
+
+    class CylinderShapeTransformAndLocalBoundsTest
+        : public CylinderShapeTest
+        , public testing::WithParamInterface<BoundingBoxParams>
+    {
+    public:
+        static const std::vector<BoundingBoxParams> ShouldPass;
+    };
+
+    class CylinderShapeIsPointInsideTest
+        : public CylinderShapeTest
+        , public testing::WithParamInterface<IsPointInsideParams>
+    {
+    public:
+        static const std::vector<IsPointInsideParams> ShouldPass;
+        static const std::vector<IsPointInsideParams> ShouldFail;
+    }; 
+
+    class CylinderShapeDistanceFromPointTest
+        : public CylinderShapeTest
+        , public testing::WithParamInterface<DistanceFromPointParams>
+    {
+    public:
+        static const std::vector<DistanceFromPointParams> ShouldPass;
+    };
+
+    const std::vector<RayIntersectParams> CylinderShapeRayIntersectTest::ShouldPass = {
+        // Test case 0
+        {   // Ray: src, dir
+            { Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f) },
+             // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(
+             Vector3(0.0f, 0.0f, 5.0f)),
+              0.5f, 5.0f },
+            // Result: hit, distance, epsilon
+            { true, 4.5f, 1e-4f }   },
+        // Test case 1
+        {   // Ray: src, dir
+            { Vector3(-10.0f, -20.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
+                1.0f, 5.0f },
+            // Result: hit, distance, epsilon
+            { true, 7.5f, 1e-2f }   },
+        // Test case 2
+        {// Ray: src, dir
+            { Vector3(-10.0f, -10.0f, -10.0f), Vector3(0.0f, 0.0f, 1.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateFromQuaternionAndTranslation(
+                    Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
+                    1.0f, 5.0f },
+            // Result: hit, distance, epsilon
+            { true, 9.0f, 1e-2f }   },
+        // Test case 3
+        {
+            // Ray: src, dir
+            { Vector3(-9.0f, -14.0f, -1.0f), Vector3(-1.0f, 0.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(-14.0f, -14.0f, -1.0f)) *
+                    Transform::CreateRotationY(Constants::HalfPi) *
+                    Transform::CreateRotationZ(Constants::HalfPi) *
+                    Transform::CreateScale(Vector3(4.0f)),
+                    1.0f, 1.25f },
+            // Result: hit, distance, epsilon
+            { true, 2.5f, 1e-2f }
+        },
+        // Test case 4
+        {   // Ray: src, dir
+            { Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(
+              Vector3(0.0f, 0.0f, 5.0f)),
+              0.0f, 5.0f },
+            // Result: hit, distance, epsilon
+            { true, 0.0f, 1e-4f }   },
+        // Test case 5
+        {   // Ray: src, dir
+            { Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+              { Transform::CreateTranslation(
+              Vector3(0.0f, 0.0f, 5.0f)),
+              0.0f, 5.0f },
+            // Result: hit, distance, epsilon
+            { true, 0.0f, 1e-4f }  },
+        // Test case 6
+        {   // Ray: src, dir
+            { Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(
+              Vector3(0.0f, 0.0f, 5.0f)),
+              0.0f, 0.0f },
+            // Result: hit, distance, epsilon
+            { true, 0.0f, 1e-4f }   }
+    };
+
+    const std::vector<RayIntersectParams> CylinderShapeRayIntersectTest::ShouldFail = {
+        // Test case 0
+        {   // Ray: src, dir
+            { Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f) },
+            // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(
+              Vector3(0.0f, -10.0f, 0.0f)),
+            5.0f, 1.0f },
+            // Result: hit, distance, epsilon
+            { false, 0.0f, 0.0f }   }
+    }; 
+        
+    const std::vector<BoundingBoxParams> CylinderShapeAABBTest::ShouldPass = {
+        // Test case 0
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(
+              Vector3(0.0f, -10.0f, 0.0f)),
+            5.0f, 1.0f },
+            // AABB: min, max
+            { Vector3(-5.0f, -15.0f, -0.5f), Vector3(5.0f, -5.0f, 0.5f) }   },
+        // Test case 1
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 0.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi),
+            1.0f, 5.0f },
+            // AABB: min, max
+            { Vector3(-12.4748f, -12.4748f, -1.0f), Vector3(-7.52512f, -7.52512f, 1.0f) }   },
+        // Test case 2
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) *
+            Transform::CreateScale(Vector3(3.5f)),
+            1.0f, 5.0f },
+            // AABB: min, max
+            { Vector3(-13.5f, -13.5f, 1.25f), Vector3(-6.5f, -6.5f, 18.75f) }   },
+        // Test case 3
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            0.0f, 1.0f },
+            // AABB: min, max
+            { Vector3(0.0f, 0.0f, -0.5f), Vector3(0.0f, 0.0f,-0.5f) }    },
+        // Test case 4
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            1.0f, 0.0f },
+            // AABB: min, max
+            { Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 0.0f) }    },
+        // Test case 5
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            0.0f, 0.0f },
+            // AABB: min, max
+            { Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 0.0f) }    }
+    };
+
+    const std::vector<BoundingBoxParams> CylinderShapeTransformAndLocalBoundsTest::ShouldPass = {
+        // Test case 0
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateIdentity(),
+            5.0f, 1.0f },
+            // Local bounds: min, max
+            { Vector3(-5.0f, -5.0f, -0.5f), Vector3(5.0f, 5.0f, 0.5f) } },
+        // Test case 1
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) * Transform::CreateScale(Vector3(3.5f)),
+            5.0f, 5.0f },
+            // Local bounds: min, max
+            { Vector3(-5.0f, -5.0f, -2.5f), Vector3(5.0f, 5.0f, 2.5f) } },
+        // Test case 2
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateIdentity(),
+            0.0f, 5.0f },
+            // Local bounds: min, max
+            { Vector3(0.0f, 0.0f, -2.5f), Vector3(0.0f, 0.0f, 2.5f) }   },
+        // Test case 3
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateIdentity(),
+            5.0f, 0.0f },
+            // Local bounds: min, max
+            { Vector3(-5.0f, -5.0f, -0.0f), Vector3(5.0f, 5.0f, 0.0f) } },
+        // Test case 4
+        {   // Cylinder: transform, radius, height  
+            { Transform::CreateIdentity(),
+            0.0f, 0.0f },
+            // Local bounds: min, max
+            { Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 0.0f) }    },
+    };
+
+    const std::vector<IsPointInsideParams> CylinderShapeIsPointInsideTest::ShouldPass = {
+        // Test case 0
+        {   // Cylinder: transform, radius, height
+            {Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateScale(Vector3(2.5f, 1.0f, 1.0f)), // test max scale
+            0.5f, 2.0f},
+            // Point
+            Vector3(27.0f, 28.5f, 40.0f),
+            // Result
+            true    },
+        // Test case 1
+        {   // Cylinder: transform, radius, height
+            {Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(0.5f)),
+            0.5f, 2.0f},
+            // Point
+            Vector3(27.0f, 28.155f, 37.82f),
+            // Result
+            true    }
+    };
+
+    const std::vector<IsPointInsideParams> CylinderShapeIsPointInsideTest::ShouldFail = {
+        // Test case 0
+        {   // Cylinder: transform, radius, height
+            {Transform::CreateTranslation(Vector3(0, 0.0f, 0.0f)),
+            0.0f, 1.0f},
+            // Point
+            Vector3(0.0f, 0.0f, 0.0f),
+            // Result
+            false   },
+        // Test case 1
+        {   // Cylinder: transform, radius, height
+            {Transform::CreateTranslation(Vector3(0, 0.0f, 0.0f)),
+            1.0f, 0.0f},
+            // Point
+            Vector3(0.0f, 0.0f, 0.0f),
+            // Result
+            false   },
+        // Test case 2
+        {   // Cylinder: transform, radius, height
+            {Transform::CreateTranslation(Vector3(0, 0.0f, 0.0f)),
+            0.0f, 0.0f},
+            // Point
+            Vector3(0.0f, 0.0f, 0.0f),
+            // Result
+            false   }
+    }; 
+
+    const std::vector<DistanceFromPointParams> CylinderShapeDistanceFromPointTest::ShouldPass = {
+        // Test case 0
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(2.0f)),
+            0.5f, 4.0f },
+            // Point
+            Vector3(27.0f, 28.0f, 41.0f),
+            // Result: distance, epsilon
+            { 2.0f, 1e-2f } },
+        // Test case 1
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(2.0f)),
+            0.5f, 4.0f },
+            // Point
+            Vector3(22.757f, 32.243f, 38.0f),
+            // Result: distance, epsilon
+            { 2.0f, 1e-2f } },
+        // Test case 2
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            0.0f, 1.0f },
+            // Point
+            Vector3(0.0f, 5.0f, 0.0f),
+            // Result: distance, epsilon
+            { 5.0f, 1e-1f } },
+        // Test case 3
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            1.0f, 0.0f },
+            // Point
+            Vector3(0.0f, 5.0f, 0.0f),
+            // Result: distance, epsilon
+            { 5.0f, 1e-2f } },
+        // Test case 4
+        {   // Cylinder: transform, radius, height
+            { Transform::CreateTranslation(Vector3(0.0f, 0.0f, 0.0f)),
+            0.0f, 0.0f },
+            // Point
+            Vector3(0.0f, 5.0f, 0.0f),
+            // Result: distance, epsilon
+            { 5.0f, 1e-2f } }
+    };
+
     void CreateCylinder(const Transform& transform, float radius, float height, Entity& entity)
     {
         entity.CreateComponent<CylinderShapeComponent>();
@@ -114,240 +423,134 @@ namespace UnitTest
         EXPECT_TRUE(RandomPointsAreInCylinder(RandomDistributionType::UniformReal));
     }
 
-    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess1)
-    {
-        Entity entity;
-        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
-            Quaternion::CreateIdentity(), Vector3(0.0f, 0.0f, 5.0f)),
-            0.5f, 5.0f, entity);
+    TEST_P(CylinderShapeRayIntersectTest, GetRayIntersectCylinder)
+    {      
+        const auto& [ray, cylinder, result] = GetParam();
+        const auto& [src, dir] = ray;
+        const auto& [transform, radius, height] = cylinder;
+        const auto& [expectedHit, expectedDistance, epsilon] = result;
 
+        Entity entity;
+        CreateCylinder(transform, radius, height, entity);
+
+        Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(0.0f, 0.0f, 5.0f));
+        
         bool rayHit = false;
         VectorFloat distance;
         ShapeComponentRequestsBus::EventResult(
             rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
-            Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f), distance);
+            src, dir, distance);
+        
+        EXPECT_EQ(rayHit, expectedHit);
 
-        EXPECT_TRUE(rayHit);
-        EXPECT_NEAR(distance, 4.5f, 1e-4f);
+        if (expectedHit)
+        {
+            EXPECT_NEAR(distance, expectedDistance, epsilon);
+        }
     }
 
-    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess2)
+    INSTANTIATE_TEST_CASE_P(ValidIntersections,
+        CylinderShapeRayIntersectTest,
+        ::testing::ValuesIn(CylinderShapeRayIntersectTest::ShouldPass)
+    );
+
+    INSTANTIATE_TEST_CASE_P(InvalidIntersections,
+        CylinderShapeRayIntersectTest,
+        ::testing::ValuesIn(CylinderShapeRayIntersectTest::ShouldFail)
+    );
+    
+    TEST_P(CylinderShapeAABBTest, GetAabb)
     {
+        const auto& [cylinder, AABB] = GetParam();
+        const auto& [transform, radius, height] = cylinder;
+        const auto& [minExtent, maxExtent] = AABB;
+
         Entity entity;
-        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
-            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
-            1.0f, 5.0f, entity);
-
-        bool rayHit = false;
-        VectorFloat distance;
-        ShapeComponentRequestsBus::EventResult(
-            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
-            Vector3(-10.0f, -20.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f), distance);
-
-        EXPECT_TRUE(rayHit);
-        EXPECT_NEAR(distance, 7.5f, 1e-2f);
-    }
-
-    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess3)
-    {
-        Entity entity;
-        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
-            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
-            1.0f, 5.0f, entity);
-
-        bool rayHit = false;
-        VectorFloat distance;
-        ShapeComponentRequestsBus::EventResult(
-            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
-            Vector3(-10.0f, -10.0f, -10.0f), Vector3(0.0f, 0.0f, 1.0f), distance);
-
-        EXPECT_TRUE(rayHit);
-        EXPECT_NEAR(distance, 9.0f, 1e-2f);
-    }
-
-    // transform scaled
-    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess4)
-    {
-        Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(-14.0f, -14.0f, -1.0f)) *
-            Transform::CreateRotationY(Constants::HalfPi) *
-            Transform::CreateRotationZ(Constants::HalfPi) *
-            Transform::CreateScale(Vector3(4.0f)),
-            1.0f, 1.25f, entity);
-
-        bool rayHit = false;
-        VectorFloat distance;
-        ShapeComponentRequestsBus::EventResult(
-            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
-            Vector3(-9.0f, -14.0f, -1.0f), Vector3(-1.0f, 0.0f, 0.0f), distance);
-
-        EXPECT_TRUE(rayHit);
-        EXPECT_NEAR(distance, 2.5f, 1e-2f);
-    }
-
-    TEST_F(CylinderShapeTest, GetRayIntersectCylinderFailure)
-    {
-        Entity entity;
-        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
-            Quaternion::CreateIdentity(), Vector3(0.0f, -10.0f, 0.0f)),
-            5.0f, 1.0f, entity);
-
-        bool rayHit = false;
-        VectorFloat distance;
-        ShapeComponentRequestsBus::EventResult(
-            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
-            Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f), distance);
-
-        EXPECT_FALSE(rayHit);
-    }
-
-    TEST_F(CylinderShapeTest, GetAabb1)
-    {
-        Entity entity;
-        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
-            Quaternion::CreateIdentity(), Vector3(0.0f, -10.0f, 0.0f)),
-            5.0f, 1.0f, entity);
-
+        CreateCylinder(transform, radius, height, entity);
+    
         Aabb aabb;
         ShapeComponentRequestsBus::EventResult(
             aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
-
-        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -15.0f, -0.5f)));
-        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, -5.0f, 0.5f)));
+    
+        EXPECT_TRUE(aabb.GetMin().IsClose(minExtent));
+        EXPECT_TRUE(aabb.GetMax().IsClose(maxExtent));
     }
 
-    TEST_F(CylinderShapeTest, GetAabb2)
+    INSTANTIATE_TEST_CASE_P(AABB,
+        CylinderShapeAABBTest,
+        ::testing::ValuesIn(CylinderShapeAABBTest::ShouldPass)
+    );
+
+    TEST_P(CylinderShapeTransformAndLocalBoundsTest, GetTransformAndLocalBounds)
     {
+        const auto& [cylinder, boundingBox] = GetParam();
+        const auto& [transform, radius, height] = cylinder;
+        const auto& [minExtent, maxExtent] = boundingBox;
+
         Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 0.0f)) *
-            Transform::CreateRotationX(Constants::HalfPi) *
-            Transform::CreateRotationY(Constants::QuarterPi),
-            1.0f, 5.0f, entity);
-
-        Aabb aabb;
-        ShapeComponentRequestsBus::EventResult(
-            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
-
-        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-12.4748f, -12.4748f, -1.0f)));
-        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(-7.52512f, -7.52512f, 1.0f)));
-    }
-
-    // transformed scaled
-    TEST_F(CylinderShapeTest, GetAabb3)
-    {
-        Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) *
-            Transform::CreateScale(Vector3(3.5f)),
-            1.0f, 5.0f, entity);
-
-        Aabb aabb;
-        ShapeComponentRequestsBus::EventResult(
-            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
-
-        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-13.5f, -13.5f, 1.25f)));
-        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(-6.5f, -6.5f, 18.75f)));
-    }
-
-    TEST_F(CylinderShapeTest, GetTransformAndLocalBounds1)
-    {
-        Entity entity;
-        Transform transformIn = Transform::CreateIdentity();
-        CreateCylinder(transformIn, 5.0f, 1.0f, entity);
+        CreateCylinder(transform, radius, height, entity);
 
         Transform transformOut;
         Aabb aabb;
         ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
 
-        EXPECT_TRUE(transformOut.IsClose(transformIn));
-        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -0.5f)));
-        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 0.5f)));
+        EXPECT_TRUE(transformOut.IsClose(transform));
+        EXPECT_TRUE(aabb.GetMin().IsClose(minExtent));
+        EXPECT_TRUE(aabb.GetMax().IsClose(maxExtent));
     }
 
-    TEST_F(CylinderShapeTest, GetTransformAndLocalBounds2)
-    {
-        Entity entity;
-        Transform transformIn = Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) * Transform::CreateScale(Vector3(3.5f));
-        CreateCylinder(transformIn, 5.0f, 5.0f, entity);
-
-        Transform transformOut;
-        Aabb aabb;
-        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
-
-        EXPECT_TRUE(transformOut.IsClose(transformIn));
-        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -2.5f)));
-        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 2.5f)));
-    }
+    INSTANTIATE_TEST_CASE_P(TransformAndLocalBounds,
+        CylinderShapeTransformAndLocalBoundsTest,
+        ::testing::ValuesIn(CylinderShapeTransformAndLocalBoundsTest::ShouldPass)
+    );
 
     // point inside scaled
-    TEST_F(CylinderShapeTest, IsPointInsideSuccess1)
+    TEST_P(CylinderShapeIsPointInsideTest, IsPointInside)
     {
+        const auto& [cylinder, point, expectedInside] = GetParam();
+        const auto& [transform, radius, height] = cylinder;
+
         Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
-            Transform::CreateScale(Vector3(2.5f, 1.0f, 1.0f)), // test max scale
-            0.5f, 2.0f, entity);
+        CreateCylinder(transform, radius, height, entity);
 
         bool inside;
         ShapeComponentRequestsBus::EventResult(
-            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(27.0f, 28.5f, 40.0f));
+            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, point);
 
-        EXPECT_TRUE(inside);
+        EXPECT_EQ(inside, expectedInside);
     }
 
-    // point inside scaled
-    TEST_F(CylinderShapeTest, IsPointInsideSuccess2)
-    {
-        Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
-            Transform::CreateRotationX(Constants::HalfPi) *
-            Transform::CreateRotationY(Constants::QuarterPi) *
-            Transform::CreateScale(Vector3(0.5f)),
-            0.5f, 2.0f, entity);
+    INSTANTIATE_TEST_CASE_P(ValidIsPointInside,
+        CylinderShapeIsPointInsideTest,
+        ::testing::ValuesIn(CylinderShapeIsPointInsideTest::ShouldPass)
+    );
 
-        bool inside;
-        ShapeComponentRequestsBus::EventResult(
-            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(27.0f, 28.155f, 37.82f));
 
-        EXPECT_TRUE(inside);
-    }
+    INSTANTIATE_TEST_CASE_P(InvalidIsPointInside,
+        CylinderShapeIsPointInsideTest,
+        ::testing::ValuesIn(CylinderShapeIsPointInsideTest::ShouldFail)
+    );
 
     // distance scaled - along length
-    TEST_F(CylinderShapeTest, DistanceFromPoint1)
+    TEST_P(CylinderShapeDistanceFromPointTest, DistanceFromPoint)
     {
+        const auto& [cylinder, point, result] = GetParam();
+        const auto& [transform, radius, height] = cylinder;
+        const auto& [expectedDistance, epsilon] = result;
+
         Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
-            Transform::CreateRotationX(Constants::HalfPi) *
-            Transform::CreateRotationY(Constants::QuarterPi) *
-            Transform::CreateScale(Vector3(2.0f)),
-            0.5f, 4.0f, entity);
+        CreateCylinder(transform, radius, height, entity);
 
         float distance;
         ShapeComponentRequestsBus::EventResult(
-            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(27.0f, 28.0f, 41.0f));
+            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, point);
 
-        EXPECT_NEAR(distance, 2.0f, 1e-2f);
+        EXPECT_NEAR(distance, expectedDistance, epsilon);
     }
 
-    // distance scaled - from end
-    TEST_F(CylinderShapeTest, DistanceFromPoint2)
-    {
-        Entity entity;
-        CreateCylinder(
-            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
-            Transform::CreateRotationX(Constants::HalfPi) *
-            Transform::CreateRotationY(Constants::QuarterPi) *
-            Transform::CreateScale(Vector3(2.0f)),
-            0.5f, 4.0f, entity);
-
-        float distance;
-        ShapeComponentRequestsBus::EventResult(
-            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(22.757f, 32.243f, 38.0f));
-
-        EXPECT_NEAR(distance, 2.0f, 1e-2f);
-    }
+    INSTANTIATE_TEST_CASE_P(ValidIsDistanceFromPoint,
+        CylinderShapeDistanceFromPointTest,
+        ::testing::ValuesIn(CylinderShapeDistanceFromPointTest::ShouldPass)
+    );
 }

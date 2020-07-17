@@ -26,7 +26,7 @@ namespace AzQtComponents
     {
     public:
         explicit FancyDockingGhostWidget(QMainWindow* mainWindow = nullptr, QWidget* parent = nullptr);
-        ~FancyDockingGhostWidget();
+        ~FancyDockingGhostWidget() override;
 
         void setPixmap(const QPixmap& pixmap, const QRect& targetRect, QScreen* screen);
 
@@ -40,8 +40,8 @@ namespace AzQtComponents
         void DisableClippingToDockWidgets();
 
     protected:
-        void closeEvent(QCloseEvent* ev);
-        void paintEvent(QPaintEvent* ev);
+        void closeEvent(QCloseEvent* ev) override;
+        void paintEvent(QPaintEvent* ev) override;
 
     private:
         void setPixmapVisible(bool);

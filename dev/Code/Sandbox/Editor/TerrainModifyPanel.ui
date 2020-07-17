@@ -158,8 +158,14 @@
            <widget class="CBrushPreviewPictureBox" name="brushPreview">
             <property name="minimumSize">
              <size>
-              <width>60</width>
-              <height>60</height>
+              <width>120</width>
+              <height>120</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>4096</width>
+              <height>120</height>
              </size>
             </property>
             <property name="frameShape">
@@ -174,7 +180,7 @@
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2">
             <item>
              <widget class="QLabel" name="outsideRadiusLabel">
               <property name="text">
@@ -189,41 +195,25 @@
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="brushOutsideRadiusSpin">
+             <widget class="AzQtComponents::SliderDoubleCombo" name="brushOutsideRadiusSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
                 <height>0</height>
                </size>
               </property>
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
               <property name="minimum">
-               <double>0.010000000000000</double>
+               <double>0.01</double>
               </property>
               <property name="maximum">
-               <double>200.000000000000000</double>
+               <double>200.0</double>
+              </property>
+              <property name="numSteps">
+               20000
               </property>
              </widget>
             </item>
            </layout>
-          </item>
-          <item>
-           <widget class="QSlider" name="brushOutsideRadiusSlider">
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>20000</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
           </item>
           <item>
            <widget class="QCheckBox" name="syncRadiusCheck">
@@ -236,7 +226,7 @@
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,2">
             <item>
              <widget class="QLabel" name="insideRadiusLabel">
               <property name="text">
@@ -251,38 +241,28 @@
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="brushInsideRadiusSpin">
+             <widget class="AzQtComponents::SliderDoubleCombo" name="brushInsideRadiusSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
                 <height>0</height>
                </size>
               </property>
-              <property name="keyboardTracking">
-               <bool>false</bool>
+              <property name="minimum">
+               <double>0.0</double>
               </property>
               <property name="maximum">
-               <double>200.000000000000000</double>
+               <double>200.0</double>
+              </property>
+              <property name="numSteps">
+               20001
               </property>
              </widget>
             </item>
            </layout>
           </item>
           <item>
-           <widget class="QSlider" name="brushInsideRadiusSlider">
-            <property name="maximum">
-             <number>20000</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2">
             <item>
              <widget class="QLabel" name="hardnessLabel">
               <property name="text">
@@ -297,7 +277,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="brushHardnessSpin">
+             <widget class="AzQtComponents::SliderDoubleCombo" name="brushHardnessSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
@@ -305,36 +285,20 @@
                </size>
               </property>
               <property name="minimum">
-               <double>0.010000000000000</double>
+               <double>0.01</double>
               </property>
               <property name="maximum">
-               <double>1.000000000000000</double>
+               <double>1.0</double>
               </property>
-              <property name="singleStep">
-               <double>0.010000000000000</double>
+              <property name="numSteps">
+               100
               </property>
              </widget>
             </item>
            </layout>
           </item>
           <item>
-           <widget class="QSlider" name="brushHardnessSlider">
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,2">
             <item>
              <widget class="QLabel" name="heightLabel">
               <property name="text">
@@ -349,32 +313,25 @@
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="brushHeightSpin">
+             <widget class="AzQtComponents::SliderDoubleCombo" name="brushHeightSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
                 <height>0</height>
                </size>
               </property>
+              <property name="minimum">
+               <double>0.0</double>
+              </property>
               <property name="maximum">
-               <double>255.000000000000000</double>
+               <double>255.0</double>
+              </property>
+              <property name="numSteps">
+               256
               </property>
              </widget>
             </item>
            </layout>
-          </item>
-          <item>
-           <widget class="QSlider" name="brushHeightSlider">
-            <property name="maximum">
-             <number>255</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>
@@ -393,7 +350,7 @@
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2">
             <item>
              <widget class="QLabel" name="noiseScaleLabel">
               <property name="text">
@@ -408,7 +365,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="noiseScaleSpin">
+             <widget class="AzQtComponents::SliderCombo" name="noiseScaleSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
@@ -426,23 +383,7 @@
            </layout>
           </item>
           <item>
-           <widget class="QSlider" name="noiseScaleSlider">
-            <property name="minimum">
-             <number>-100</number>
-            </property>
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,2">
             <item>
              <widget class="QLabel" name="noiseFrequencyLabel">
               <property name="text">
@@ -457,7 +398,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="noiseFreqSpin">
+             <widget class="AzQtComponents::SliderCombo" name="noiseFreqSpin">
               <property name="minimumSize">
                <size>
                 <width>65</width>
@@ -470,19 +411,6 @@
              </widget>
             </item>
            </layout>
-          </item>
-          <item>
-           <widget class="QSlider" name="noiseFreqSlider">
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksBothSides</enum>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>
@@ -529,22 +457,26 @@
    <extends>QLabel</extends>
    <header>TerrainModifyPanel.h</header>
   </customwidget>
+  <customwidget>
+   <class>AzQtComponents::SliderCombo</class>
+   <extends>QWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/SliderCombo.h</header>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::SliderDoubleCombo</class>
+   <extends>QWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/SliderCombo.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>brushOutsideRadiusSpin</tabstop>
-  <tabstop>brushOutsideRadiusSlider</tabstop>
   <tabstop>syncRadiusCheck</tabstop>
   <tabstop>brushInsideRadiusSpin</tabstop>
-  <tabstop>brushInsideRadiusSlider</tabstop>
   <tabstop>brushHardnessSpin</tabstop>
-  <tabstop>brushHardnessSlider</tabstop>
   <tabstop>brushHeightSpin</tabstop>
-  <tabstop>brushHeightSlider</tabstop>
   <tabstop>enableNoiseCheck</tabstop>
   <tabstop>noiseScaleSpin</tabstop>
-  <tabstop>noiseScaleSlider</tabstop>
   <tabstop>noiseFreqSpin</tabstop>
-  <tabstop>noiseFreqSlider</tabstop>
   <tabstop>repositionObjectsCheck</tabstop>
   <tabstop>repositionVegetationCheck</tabstop>
  </tabstops>

@@ -11,11 +11,15 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QAction>
 #include <QTimer>
 #include <qlabel.h>
 #include <qitemselectionmodel.h>
 #include <qstyleditemdelegate.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -40,8 +44,9 @@ namespace Ui
 namespace GraphCanvas
 {
     class GraphCanvasMimeEvent;
-    class NodePaletteSortFilterProxyModel;
     class NodePaletteDockWidget;
+    class NodePaletteSortFilterProxyModel;
+    class NodePaletteTreeView;
     
     class NodePaletteTreeDelegate : public IconDecoratedNameDelegate
     {
@@ -78,6 +83,8 @@ namespace GraphCanvas
         friend class NodePaletteDockWidget;
 
     public:
+        AZ_CLASS_ALLOCATOR(NodePaletteWidget, AZ::SystemAllocator, 0);
+
         NodePaletteWidget(QWidget* parent);
         ~NodePaletteWidget();
 
@@ -109,14 +116,16 @@ namespace GraphCanvas
 
         // NodeTreeView
         const GraphCanvasTreeItem* GetTreeRoot() const;
-        QTreeView* GetTreeView() const;
+        NodePaletteTreeView* GetTreeView() const;
         ////
 
         // QWidget
         bool eventFilter(QObject* object, QEvent* event) override;
         ////
 
-    protected:        
+    protected:
+
+        GraphCanvasTreeItem* ModTreeRoot();
 
         // This method here is to help facilitate resetting the model. This will not be called during
         // the initial construction(because yay virtual functions).
@@ -130,16 +139,14 @@ namespace GraphCanvas
         void OnCreateSelection();
         void OnSelectionCleared();
         void OnTreeItemSelected(const GraphCanvasTreeItem* treeItem);
-        void OnTreeItemDoubleClicked(GraphCanvasTreeItem* treeItem);
 
     private:
 
         void RefreshFloatingHeader();
-        void OnFilterTextChanged();
+        void OnFilterTextChanged(const QString &text);
         void UpdateFilter();
         void ClearFilter();
 
-        void OnIndexDoubleClicked(const QModelIndex& index);
         void OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
 
         // Will try and spawn the item specified by the QCompleter

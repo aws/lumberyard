@@ -106,6 +106,7 @@ public:
     void ExecuteCommand(const QString& command);
     void SetDocument(CCryEditDoc* pDoc);
     CCryEditDoc* GetDocument() const;
+    bool IsLevelLoaded() const override;
     void SetModifiedFlag(bool modified = true);
     void SetModifiedModule(EModifiedModule  eModifiedModule, bool boSet = true);
     bool IsLevelExported() const;

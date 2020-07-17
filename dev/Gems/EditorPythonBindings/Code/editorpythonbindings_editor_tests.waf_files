@@ -3,6 +3,7 @@
       "Tests": [
         "Tests/EditorPythonBindingsTest.cpp",
         "Tests/PythonBindingLibTests.cpp",
+        "Tests/PythonAssetTypesTests.cpp",
         "Tests/PythonContainerAnyTests.cpp",
         "Tests/PythonDictionaryTests.cpp",
         "Tests/PythonGlobalsTests.cpp",

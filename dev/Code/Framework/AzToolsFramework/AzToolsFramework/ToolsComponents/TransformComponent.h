@@ -191,8 +191,6 @@ namespace AzToolsFramework
             // SliceEntityHierarchyRequestBus
             AZ::EntityId GetSliceEntityParentId() override;
             AZStd::vector<AZ::EntityId> GetSliceEntityChildren() override;
-
-            static AZ::u32 GetParentEntityCRC();
         private:
             // AZ::TransformNotificationBus - Connected to parent's ID
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;

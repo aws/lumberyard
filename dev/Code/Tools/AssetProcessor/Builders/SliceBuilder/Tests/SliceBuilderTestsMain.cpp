@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AssetBuilderSDK/SerializationDependencies.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
@@ -336,6 +337,21 @@ public:
         AllocatorsFixture::TearDown();
     }
 
+    void VerifyDependency(AZ::IO::GenericStream* charStream, AZ::Data::AssetId mockAssetId)
+    {
+        AZ::PlatformTagSet platformTags;
+        AZ::Data::Asset<SliceAsset> exportSliceAsset;
+
+        bool result = SliceBuilderWorker::GetDynamicSliceAsset(charStream, "MockAsset.slice", platformTags, exportSliceAsset);
+        ASSERT_TRUE(result);
+
+        AssetBuilderSDK::JobProduct jobProduct;
+        ASSERT_TRUE(SliceBuilderWorker::OutputSliceJob(exportSliceAsset, "test.slice", jobProduct));
+
+        ASSERT_EQ(jobProduct.m_dependencies.size(), 1);
+        ASSERT_EQ(jobProduct.m_dependencies[0].m_dependencyId, mockAssetId);
+    }
+
     void BuildSliceWithSimpleAssetReference(
         const char* simpleAssetPath,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
@@ -356,19 +372,17 @@ public:
 
         charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-        SliceBuilderWorker worker;
         AZ::PlatformTagSet platformTags;
         AZ::Data::Asset<SliceAsset> exportSliceAsset;
 
-        bool result = worker.GetDynamicSliceAssetAndDependencies(
-            &charStream,
-            "MockAsset.slice",
-            platformTags,
-            exportSliceAsset,
-            productDependencies,
-            productPathDependencies);
-
+        bool result = SliceBuilderWorker::GetDynamicSliceAsset(&charStream, "MockAsset.slice", platformTags, exportSliceAsset);
         ASSERT_TRUE(result);
+
+        AssetBuilderSDK::JobProduct jobProduct;
+        ASSERT_TRUE(SliceBuilderWorker::OutputSliceJob(exportSliceAsset, "test.slice", jobProduct));
+
+        productDependencies = AZStd::move(jobProduct.m_dependencies);
+        productPathDependencies = AZStd::move(jobProduct.m_pathDependencies);
     }
 
     SerializeContext* m_serializeContext;
@@ -399,17 +413,7 @@ TEST_F(DependencyTest, SimpleSliceTest)
 
     charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-    SliceBuilderWorker worker;
-    AZ::PlatformTagSet platformTags;
-    AZ::Data::Asset<SliceAsset> exportSliceAsset;
-    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
-    
-    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
-
-    ASSERT_TRUE(result);
-    ASSERT_EQ(productDependencies.size(), 1);
-    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
+    VerifyDependency(&charStream, mockAssetId);
 }
 
 TEST_F(DependencyTest, NestedSliceTest)
@@ -442,17 +446,7 @@ TEST_F(DependencyTest, NestedSliceTest)
 
     charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-    SliceBuilderWorker worker;
-    AZ::PlatformTagSet platformTags;
-    AZ::Data::Asset<SliceAsset> exportSliceAsset;
-    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
-
-    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
-
-    ASSERT_TRUE(result);
-    ASSERT_EQ(productDependencies.size(), 1);
-    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
+    VerifyDependency(&charStream, mockAssetId);
 }
 
 TEST_F(DependencyTest, DataPatchTest)
@@ -498,17 +492,7 @@ TEST_F(DependencyTest, DataPatchTest)
 
     charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-    SliceBuilderWorker worker;
-    AZ::PlatformTagSet platformTags;
-    AZ::Data::Asset<SliceAsset> exportSliceAsset;
-    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
-
-    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
-
-    ASSERT_TRUE(result);
-    ASSERT_EQ(productDependencies.size(), 1);
-    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
+    VerifyDependency(&charStream, mockAssetId);
 
     delete assetComponent;
 }
@@ -534,17 +518,7 @@ TEST_F(DependencyTest, DynamicAssetReferenceTest)
 
     charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-    SliceBuilderWorker worker;
-    AZ::PlatformTagSet platformTags;
-    AZ::Data::Asset<SliceAsset> exportSliceAsset;
-    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
-
-    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
-
-    ASSERT_TRUE(result);
-    ASSERT_EQ(productDependencies.size(), 1);
-    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
+    VerifyDependency(&charStream, mockAssetId);
 }
 
 TEST_F(DependencyTest, Slice_HasPopulatedSimpleAssetReference_HasCorrectProductDependency)
@@ -618,7 +592,7 @@ TEST_F(DependencyTest, SliceFingerprint_ChangesWhenComponentServicesChange)
 
     auto* assetComponent = aznew ServiceTestComponent;
     auto sliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
-    SliceComponent* sourcePrefab = (sliceAsset.Get()) ? sliceAsset.Get()->GetComponent() : nullptr;
+    SliceComponent* sourcePrefab = sliceAsset.Get() ? sliceAsset.Get()->GetComponent() : nullptr;
 
     TypeFingerprint fingerprintNoService, fingerprintWithService;
 

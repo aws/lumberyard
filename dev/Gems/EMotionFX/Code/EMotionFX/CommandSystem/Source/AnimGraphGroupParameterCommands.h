@@ -34,6 +34,7 @@ namespace CommandSystem
         AZStd::string                   mOldName;                   //! group parameter name before command execution.
         AZStd::vector<AZStd::string>    mOldGroupParameterNames;
         bool                            mOldDirtyFlag;
+        AZStd::string                   m_oldDescription;
     MCORE_DEFINECOMMAND_END
 
     // Add a group parameter.
@@ -52,7 +53,7 @@ namespace CommandSystem
     MCORE_DEFINECOMMAND_END
 
     // helper functions
-    COMMANDSYSTEM_API void RemoveGroupParameter(EMotionFX::AnimGraph* animGraph, const EMotionFX::GroupParameter* groupParameter, bool removeParameters, MCore::CommandGroup* commandGroup = nullptr);
+    COMMANDSYSTEM_API void RemoveGroupParameter(EMotionFX::AnimGraph* animGraph, const EMotionFX::GroupParameter* groupParameter, bool removeParameters, MCore::CommandGroup* commandGroup = nullptr, bool updateUI = true);
     COMMANDSYSTEM_API void ClearGroupParameters(EMotionFX::AnimGraph* animGraph, MCore::CommandGroup* commandGroup = nullptr);
     COMMANDSYSTEM_API void MoveGroupParameterCommand(EMotionFX::AnimGraph* animGraph, uint32 moveFrom, uint32 moveTo);
 } // namespace CommandSystem

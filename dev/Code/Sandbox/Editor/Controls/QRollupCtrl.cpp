@@ -89,6 +89,9 @@ QSize QRollupCtrlButton::minimumSizeHint() const
 void QRollupCtrlButton::paintEvent(QPaintEvent*)
 {
     QStylePainter p(this);
+    // draw the background manually, not to clash with UI 2.0 style shets
+    // the numbers here are taken from the stylesheet in the constructor
+    p.fillRect(QRect(5, 1, width() - 10, height() - 3), QColor(52, 52, 52));
 
     {
         QStyleOptionToolButton opt;

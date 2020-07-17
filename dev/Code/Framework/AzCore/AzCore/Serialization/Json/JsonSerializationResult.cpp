@@ -67,6 +67,12 @@ namespace AZ
                 case Tasks::WriteValue:
                     target.append("a write value operation ");
                     break;
+                case Tasks::Merge:
+                    target.append("a merge operation ");
+                    break;
+                case Tasks::CreatePatch:
+                    target.append("a create patch operation ");
+                    break;
                 default:
                     target.append("an unknown operation ");
                     break;
@@ -105,6 +111,15 @@ namespace AZ
                 case Outcomes::TypeMismatch:
                     target.append("because the source and target are unrelated types");
                     break;
+                case Outcomes::TestFailed:
+                    target.append("because a test against a value failed");
+                    break;
+                case Outcomes::Missing:
+                    target.append("because a required field or value was missing");
+                    break;
+                case Outcomes::Invalid:
+                    target.append("because a field or element has an invalid value");
+                    break;
                 case Outcomes::Unknown:
                     target.append("because information was missing");
                     break;
@@ -132,40 +147,28 @@ namespace AZ
             m_options.m_task = task;
             switch (outcome)
             {
-            case Outcomes::Success:          // fall through
-            case Outcomes::Skipped:          // fall through
+            case Outcomes::Success:         // fall through
+            case Outcomes::Skipped:         // fall through
             case Outcomes::PartialSkip:      // fall through
-            case Outcomes::DefaultsUsed:     // fall through
+            case Outcomes::DefaultsUsed:    // fall through
             case Outcomes::PartialDefaults:
                 m_options.m_processing = Processing::Completed;
                 break;
-            case Outcomes::Unavailable:      // fall through
+            case Outcomes::Unavailable:     // fall through
             case Outcomes::Unsupported:
                 m_options.m_processing = Processing::Altered;
                 break;
-            case Outcomes::TypeMismatch:     // fall through
-            case Outcomes::Unknown:          // fall through
-            case Outcomes::Catastrophic:     // fall through
+            case Outcomes::TypeMismatch:    // fall through
+            case Outcomes::TestFailed:      // fall through
+            case Outcomes::Missing:         // fall through
+            case Outcomes::Invalid:         // fall through
+            case Outcomes::Unknown:         // fall through
+            case Outcomes::Catastrophic:    // fall through
             default:
                 m_options.m_processing = Processing::Halted;
                 break;
             }
             m_options.m_outcome = outcome;
-        }
-
-        ResultCode ResultCode::Success(Tasks task)
-        {
-            return ResultCode(task, Outcomes::Success);
-        }
-        
-        ResultCode ResultCode::Default(Tasks task)
-        {
-            return ResultCode(task, Outcomes::DefaultsUsed);
-        }
-
-        ResultCode ResultCode::PartialDefault(Tasks task)
-        {
-            return ResultCode(task, Outcomes::PartialDefaults);
         }
 
         bool ResultCode::HasDoneWork() const
@@ -251,21 +254,13 @@ namespace AZ
         }
 
 
-        Result::Result(const JsonDeserializerSettings& settings, AZStd::string_view message,
-            ResultCode result, AZStd::string_view path)
-            : m_result(settings.m_reporting(message, result, path)) {}
+        Result::Result(const JsonIssueCallback& callback, AZStd::string_view message, ResultCode result, AZStd::string_view path)
+            : m_result(callback(message, result, path))
+        {}
 
-        Result::Result(const JsonDeserializerSettings& settings, AZStd::string_view message,
-            Tasks task, Outcomes outcome, AZStd::string_view path)
-            : m_result(settings.m_reporting(message, ResultCode(task, outcome), path)) {}
-
-        Result::Result(const JsonSerializerSettings& settings, AZStd::string_view message,
-            ResultCode result, AZStd::string_view path)
-            : m_result(settings.m_reporting(message, result, path)) {}
-
-        Result::Result(const JsonSerializerSettings& settings, AZStd::string_view message,
-            Tasks task, Outcomes outcome, AZStd::string_view path)
-            : m_result(settings.m_reporting(message, ResultCode(task, outcome), path)) {}
+        Result::Result(const JsonIssueCallback& callback, AZStd::string_view message, Tasks task, Outcomes outcome, AZStd::string_view path)
+            : m_result(callback(message, ResultCode(task, outcome), path))
+        {}
 
         Result::operator ResultCode() const
         { 

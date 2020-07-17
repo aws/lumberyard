@@ -34,9 +34,10 @@
 #include <QStyleOption>
 #include <QScopedValueRollback>
 #include <QStyle>
+#include <QLayout>
 
 #ifdef Q_OS_WIN
-# include <QtGui/private/qhighdpiscaling_p.h>
+# include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 # include <Windows.h>
 #endif
 
@@ -92,38 +93,21 @@ namespace AzQtComponents
 
             if (!window->isVisible())
             {
-                if (maximized)
+                if (maximized || fullScreen)
                 {
                     window->showMaximized();
-                }
-                else if (fullScreen)
-                {
-                    window->showFullScreen();
+
+                    // Need to separately resize based on the available geometry for
+                    // the screen because since floating windows are frameless, on
+                    // Windows 10 they end up taking up the entire screen when maximized
+                    // instead of respecting the available space (e.g. taskbar)
+                    window->setGeometry(QApplication::desktop()->availableGeometry(window));
                 }
                 else
                 {
                     window->show();
                 }
             }
-
-#ifdef Q_OS_WIN
-            // Do fixup for maximized/fullscreen windows to ensure they match the screen size
-            if (fullScreen || maximized)
-            {
-                auto screenGeometry = qApp->desktop()->screenGeometry(restoredScreenNumber);
-                // As best I can tell, we get the window geometry wrong for the maximize case in restore because of
-                // an issue with QDesktopWidget::screenGeometry(const QPoint &p) incorrectly resolving to the wrong screen
-                // We just go ahead and set the geometry ourself to bypass the issue.
-                // QWidget::restoreGeometry already does a sanity check on restoredScreenWidth, so we can bypass that.
-                SetWindowPos(reinterpret_cast<HWND>(window->winId()),
-                    HWND_TOP,
-                    screenGeometry.x(),
-                    screenGeometry.y(),
-                    screenGeometry.width(),
-                    screenGeometry.height(),
-                    0x00);
-            }
-#endif //Q_OS_WIN
 
             return true;
         }
@@ -171,6 +155,18 @@ namespace AzQtComponents
         }
 
         m_guestWidget = guest;
+
+        if (guest->isWindow())
+        {
+            if (auto layout = guest->layout())
+            {
+                // On windows, by default the layout will set the widget's minimum size to be the layout's
+                // minimum size. Since guest won't be a window any more, change the resize mode to SetMinimumSize
+                // so that minimum size of the contents is honored.
+                layout->setSizeConstraint(QLayout::SetMinimumSize);
+            }
+        }
+
         m_shouldCenterInParent = shouldCenterInParent(guest); // Don't move this variable after applyFlagsAndAttributes()
         guest->setParent(this);
         connect(guest, &QWidget::windowTitleChanged,
@@ -347,11 +343,6 @@ namespace AzQtComponents
             adjustWrapperGeometry();
             adjustTitleBarGeometry();
         }
-        else if (ev->type() == QEvent::Move)
-        {
-            //auto move = static_cast<QMoveEvent*>(ev);
-            //qDebug() << "eventfilter: Move event " << move->pos();
-        }
         else if (ev->type() == QEvent::ShowToParent || ev->type() == QEvent::Show)
         {
             applyFlagsAndAttributes();
@@ -372,6 +363,14 @@ namespace AzQtComponents
                     // So save and restore constraints after showing
                     m_guestWidget->setMinimumSize(guestMinSize);
                 }
+            }
+
+            // Titlebar may have a native window that could have received hide() (due to e.g. Alt+F4).
+            // Because of that it won't be shown automatically when its parent, wrapper, is shown.
+            // Make sure, that it's indeed shown.
+            if (m_titleBar)
+            {
+                m_titleBar->show();
             }
         }
         else if (ev->type() == QEvent::LayoutRequest)
@@ -412,8 +411,6 @@ namespace AzQtComponents
             return;
         }
 
-        //qDebug() << "WindowDecorationWrapper::childEvent" << this << w << "; flags=" << w->windowFlags()
-        //<< "; guest's parent=" << w->parentWidget();
 #if AZ_TRAIT_OS_PLATFORM_APPLE
         // On macOS, tool windows correspond to the Floating class of windows. This means that the
         // window lives on a level above normal windows making it impossible to put a normal window
@@ -651,6 +648,10 @@ namespace AzQtComponents
             return false;
         }
 
+        // We don't currently support fullscreen mode, so remove that window state when we are restoring
+        // in case it was set inadvertently
+        setWindowState(windowState() & ~Qt::WindowFullScreen);
+
         adjustWidgetGeometry();
         m_restoringGeometry = false;
 
@@ -786,25 +787,17 @@ namespace AzQtComponents
 
         if (flags & Qt::WindowMinimizeButtonHint)
         {
-            buttons.append(DockBarButton::DividerButton);
             buttons.append(DockBarButton::MinimizeButton);
         }
 
         if ((canResize() || isMaximized()) && (flags & Qt::WindowMaximizeButtonHint))
         {
-            buttons.append(DockBarButton::DividerButton);
             buttons.append(DockBarButton::MaximizeButton);
         }
 
-        if (!buttons.isEmpty()) // If close button is alone we don't use divider
-        {
-            buttons.append(DockBarButton::DividerButton);
-        }
-
-        // We could also honour WindowCloseButtonHint, but there's no good reason, for now.
+        // We could also honor WindowCloseButtonHint, but there's no good reason, for now.
 
         buttons.append(DockBarButton::CloseButton);
-
 
         m_titleBar->setButtons(buttons);
     }

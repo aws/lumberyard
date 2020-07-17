@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "6c51dff662f64b4dbe98f6d66ab19be3",
+    "Name": "UserInterface",
+    "DisplayName": "StarterGame User Interface",
+    "Version": "0.1.0",
+    "LinkType": "NoCode",
+    "Summary": "StarterGame User Interface assets and scripts",
+    "Tags": ["Asset","StarterGame", "UI", "HUD", "UserInterface"],
+    "IconPath": "preview.png"
+}

@@ -16,15 +16,25 @@
             "Source/Components/ClothComponent.cpp",
             "Source/Components/ClothComponent.h"
         ],
+        "Source/Components/ClothComponentMesh": [
+            "Source/Components/ClothComponentMesh/ClothComponentMesh.cpp",
+            "Source/Components/ClothComponentMesh/ClothComponentMesh.h",
+            "Source/Components/ClothComponentMesh/ActorClothColliders.cpp",
+            "Source/Components/ClothComponentMesh/ActorClothColliders.h",
+            "Source/Components/ClothComponentMesh/ActorClothSkinning.cpp",
+            "Source/Components/ClothComponentMesh/ActorClothSkinning.h",
+            "Source/Components/ClothComponentMesh/ClothDebugDisplay.cpp",
+            "Source/Components/ClothComponentMesh/ClothDebugDisplay.h"
+        ],
         "Source/System": [
             "Source/System/SystemComponent.cpp",
             "Source/System/SystemComponent.h",
-            "Source/System/ActorClothColliders.cpp",
-            "Source/System/ActorClothColliders.h",
-            "Source/System/ActorClothSkinning.cpp",
-            "Source/System/ActorClothSkinning.h",
-            "Source/System/ClothDebugDisplay.cpp",
-            "Source/System/ClothDebugDisplay.h"
+            "Source/System/Cloth.cpp",
+            "Source/System/Cloth.h",
+            "Source/System/ClothConfiguration.cpp",
+            "Source/System/ClothConfiguration.h",
+            "Source/System/DataTypes.h",
+            "Source/System/DataTypes.cpp"
         ],
         "Source/Utils": [
             "Source/Utils/Allocators.h",

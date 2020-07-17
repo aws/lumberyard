@@ -10,14 +10,13 @@
 *
 */
 
-#ifndef __EMSTUDIO_RENDERVIEWWIDGET_H
-#define __EMSTUDIO_RENDERVIEWWIDGET_H
+#pragma once
 
 #include "../EMStudioConfig.h"
 #include "RenderWidget.h"
 #include <QWidget>
 #include <QMenu>
-#include <QMenuBar>
+#include <QToolBar>
 #include <QSettings>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -33,8 +32,8 @@ namespace EMStudio
     class EMSTUDIO_API RenderViewWidget
         : public QWidget
     {
-        Q_OBJECT
-                       MCORE_MEMORYOBJECTCATEGORY(RenderViewWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
+        Q_OBJECT // AUTOMOC
+        MCORE_MEMORYOBJECTCATEGORY(RenderViewWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
 
     public:
         RenderViewWidget(RenderPlugin* parentPlugin, QWidget* parentWidget);
@@ -71,7 +70,7 @@ namespace EMStudio
             NUM_RENDER_OPTIONS              = 26
         };
 
-        MCORE_INLINE bool GetRenderFlag(ERenderFlag option)     { return mActions[(uint32)option]->isChecked(); }
+        MCORE_INLINE bool GetRenderFlag(ERenderFlag option)     { return mActions[(uint32)option] ? mActions[(uint32)option]->isChecked() : false; }
         void SetRenderFlag(ERenderFlag option, bool isEnabled);
         uint32 FindActionIndex(QAction* action);
         RenderWidget* GetRenderWidget() const                   { return mRenderWidget; }
@@ -87,14 +86,14 @@ namespace EMStudio
 
     public slots:
         void OnOptions();
-        void OnOrbitCamera()                                    { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_ORBIT); }
-        void OnFirstPersonCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FIRSTPERSON); }
-        void OnOrthoFrontCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FRONT); }
-        void OnOrthoBackCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BACK); }
-        void OnOrthoLeftCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_LEFT); }
-        void OnOrthoRightCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_RIGHT); }
-        void OnOrthoTopCamera()                                 { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_TOP); }
-        void OnOrthoBottomCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BOTTOM); }
+        void OnOrbitCamera()                                    { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_ORBIT); UpdateInterface(); }
+        void OnFirstPersonCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FIRSTPERSON); UpdateInterface(); }
+        void OnOrthoFrontCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FRONT); UpdateInterface(); }
+        void OnOrthoBackCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BACK); UpdateInterface(); }
+        void OnOrthoLeftCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_LEFT); UpdateInterface(); }
+        void OnOrthoRightCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_RIGHT); UpdateInterface(); }
+        void OnOrthoTopCamera()                                 { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_TOP); UpdateInterface(); }
+        void OnOrthoBottomCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BOTTOM); UpdateInterface(); }
         void OnResetCamera(float flightTime = 1.0f)
         {
             MCommon::Camera* camera = mRenderWidget->GetCamera();
@@ -107,24 +106,22 @@ namespace EMStudio
         void OnShowEntireScene();
         void OnFollowCharacter();
         void OnReset()                                          { Reset(); }
-        void UpdateToolBarButton(bool checked);
+
+        void UpdateInterface();
 
     private:
-        void CreateEntry(QMenu* menu, const char* menuEntryName, const char* toolbarIconFileName, int32 actionIndex, bool visible = true);
-        void CreateEntry(QMenu* menu, const char* menuEntryName, const QIcon& icon, bool addToToolbar, int32 actionIndex, bool visible = true);
+        void CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible=true);
+        QAction* AddToolBarAction(const char* entryName, const char* iconName);
         void Reset();
 
-        QMenuBar*                           mMenu;
+        QToolBar*                           mToolBar;
         QMenu*                              mCameraMenu;
-        QHBoxLayout*                        mToolbarLayout;
         RenderWidget*                       mRenderWidget;
         QAction*                            mActions[NUM_RENDER_OPTIONS];
         QAction*                            mFollowCharacterAction;
+        AZStd::vector<AZStd::pair<QAction*, RenderWidget::CameraMode>> m_cameraModeActions;
         QPushButton*                        mToolbarButtons[NUM_RENDER_OPTIONS];
         RenderPlugin*                       mPlugin;
         PreferencesWindow*                  mRenderOptionsWindow;
     };
 } // namespace EMStudio
-
-
-#endif

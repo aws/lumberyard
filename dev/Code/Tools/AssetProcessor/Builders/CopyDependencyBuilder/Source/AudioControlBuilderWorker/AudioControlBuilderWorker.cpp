@@ -338,7 +338,7 @@ namespace CopyDependencyBuilder
         // pattern finds all Audio Control xml files in the libs/gameaudio folder and any of its subfolders.
         audioControlBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("(.*libs\\/gameaudio\\/).*\\.xml", AssetBuilderSDK::AssetBuilderPattern::PatternType::Regex));
         audioControlBuilderDescriptor.m_busId = azrtti_typeid<AudioControlBuilderWorker>();
-        audioControlBuilderDescriptor.m_version = 1;
+        audioControlBuilderDescriptor.m_version = 2;
         audioControlBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&AudioControlBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         audioControlBuilderDescriptor.m_processJobFunction =

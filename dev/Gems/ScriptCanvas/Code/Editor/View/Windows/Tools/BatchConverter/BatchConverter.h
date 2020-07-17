@@ -16,6 +16,7 @@
 #include <QProgressDialog>
 
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Component/TickBus.h>
 
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <Editor/View/Windows/Tools/BatchOperatorTool.h>
@@ -25,12 +26,13 @@ namespace ScriptCanvasEditor
     class ScriptCanvasBatchConverter
         : public BatchOperatorTool
         , public GraphCanvas::AssetEditorNotificationBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ScriptCanvasBatchConverter, AZ::SystemAllocator, 0);
 
         ScriptCanvasBatchConverter(MainWindow* mainWindow, QStringList directories);
-        ~ScriptCanvasBatchConverter() = default;
+        ~ScriptCanvasBatchConverter();
 
         // GraphCanvas::AssetEditorNotifications
         void PostOnActiveGraphChanged() override;
@@ -41,6 +43,10 @@ namespace ScriptCanvasEditor
         OperationStatus OperateOnFile(const QString& fileName) override;
 
     private:
+
+        // AZ::SystemTickBus
+        void OnSystemTick();
+        ////
 
         bool m_processing;
 

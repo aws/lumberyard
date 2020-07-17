@@ -74,7 +74,7 @@ namespace AzToolsFramework
         return sizeHint;
     }
 
-    void GrowTextEdit::focusOutEvent(QFocusEvent* /* event*/)
+    void GrowTextEdit::focusOutEvent(QFocusEvent* event)
     {
         if (m_textChanged)
         {
@@ -82,6 +82,7 @@ namespace AzToolsFramework
         }
 
         m_textChanged = false;
+        QTextEdit::focusOutEvent(event);
     }
 }
 

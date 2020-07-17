@@ -62,7 +62,6 @@ namespace ExporterLib
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // helpers
-    //void FixSkeleton(Actor* actor, MCore::Array<MCore::Matrix>* outDeltaMatrices = nullptr);
     void CopyVector2(EMotionFX::FileFormat::FileVector2& to, const AZ::Vector2& from);
     void CopyVector(EMotionFX::FileFormat::FileVector3& to, const AZ::PackedVector3f& from);
     void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, AZ::Quaternion from);

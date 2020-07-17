@@ -103,7 +103,7 @@ namespace EMotionFX
     bool AnimGraphStateCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // in case a event got triggered constantly fire true until the condition gets reset
-        const UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        const UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         if (uniqueData->mTriggered)
         {
             return true;
@@ -132,7 +132,7 @@ namespace EMotionFX
                     AnimGraph* referencedAnimGraph = referenceNode->GetReferencedAnimGraph();
                     if (referencedAnimGraph)
                     {
-                        AnimGraphReferenceNode::UniqueData* referenceNodeUniqueData = static_cast<AnimGraphReferenceNode::UniqueData*>(referenceNode->FindUniqueNodeData(animGraphInstance));
+                        AnimGraphReferenceNode::UniqueData* referenceNodeUniqueData = static_cast<AnimGraphReferenceNode::UniqueData*>(referenceNode->FindOrCreateUniqueNodeData(animGraphInstance));
                         if (referenceNodeUniqueData && referenceNodeUniqueData->m_referencedAnimGraphInstance)
                         {
                             AnimGraphStateMachine* stateMachine = referencedAnimGraph->GetRootStateMachine();
@@ -173,23 +173,9 @@ namespace EMotionFX
     void AnimGraphStateCondition::Reset(AnimGraphInstance* animGraphInstance)
     {
         // find the unique data and reset it
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         uniqueData->mTriggered = false;
     }
-
-
-    // when attribute values change
-    void AnimGraphStateCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // add the unique data for the condition to the anim graph
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-    }
-
 
     // construct and output the information summary string for this object
     void AnimGraphStateCondition::GetSummary(AZStd::string* outResult) const

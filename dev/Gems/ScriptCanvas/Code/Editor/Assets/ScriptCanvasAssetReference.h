@@ -14,9 +14,13 @@
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Asset/AssetCommon.h>
 
+namespace ScriptCanvas
+{
+    class ScriptCanvasData;
+}
+
 namespace ScriptCanvasEditor
 {
-    struct ScriptCanvasData;
     class ScriptCanvasAsset;
 
     class ScriptCanvasAssetReference

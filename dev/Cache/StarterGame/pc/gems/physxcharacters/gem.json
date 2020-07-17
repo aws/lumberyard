@@ -1,0 +1,28 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        },
+        {
+            "Uuid": "4e08125824434932a0fe3717259caa47",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "PhysX"
+        }        
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "50f9ae1e09ac471bbd9d86ca8063ddf9",
+    "Name": "PhysXCharacters",
+    "DisplayName": "PhysX Characters [PREVIEW]",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides components for simulating characters in PhysX.",
+    "Tags": ["Physics", "Animation"],
+    "IconPath": "preview.png",
+    "EditorModule": true
+}

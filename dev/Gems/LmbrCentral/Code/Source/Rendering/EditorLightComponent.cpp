@@ -485,9 +485,6 @@ namespace LmbrCentral
                     DataElement(0, &LightConfiguration::m_probeArea, "Area dimensions", "Probe area")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
-                        Attribute(AZ::Edit::Attributes::StyleForX, "font: bold; color: rgb(184,51,51);")->
-                        Attribute(AZ::Edit::Attributes::StyleForY, "font: bold; color: rgb(48,208,120);")->
-                        Attribute(AZ::Edit::Attributes::StyleForZ, "font: bold; color: rgb(66,133,244);")->
 
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_isBoxProjected, "Box projected", "Check to enable box projection during runtime")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->

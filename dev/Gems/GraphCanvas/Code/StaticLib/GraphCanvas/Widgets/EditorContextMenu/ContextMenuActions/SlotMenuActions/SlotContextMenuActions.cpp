@@ -18,6 +18,7 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+#include <GraphCanvas/Components/Slots/Property/PropertySlotBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/Utils/GraphUtils.h>
 #include <GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h>
@@ -154,8 +155,7 @@ namespace GraphCanvas
         const GraphId& graphId = GetGraphId();
 
         if (GraphUtils::IsSlot(targetId))
-        {
-            bool isDataSlot = false;
+        {            
             SlotType slotType = SlotTypes::Invalid;
             SlotRequestBus::EventResult(slotType, targetId, &SlotRequests::GetSlotType);
 
@@ -180,6 +180,11 @@ namespace GraphCanvas
                     setText("Reset Value");
                 }
             }
+            else if (slotType == SlotTypes::PropertySlot)
+            {
+                enableAction = true;
+                setText("Reset Property");
+            }
             else
             {
                 setText("Reset Value");
@@ -197,16 +202,29 @@ namespace GraphCanvas
         Endpoint endpoint;
         SlotRequestBus::EventResult(endpoint, targetId, &SlotRequests::GetEndpoint);
 
-        DataSlotType slotType = DataSlotType::Unknown;
-        DataSlotRequestBus::EventResult(slotType, targetId, &DataSlotRequests::GetDataSlotType);
+        SlotType slotType = SlotTypes::Invalid;
+        SlotRequestBus::EventResult(slotType, targetId, &SlotRequests::GetSlotType);
 
-        if (slotType == DataSlotType::Value)
+        if (slotType == SlotTypes::DataSlot)
         {
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetSlotToDefaultValue, endpoint);
+            DataSlotType slotType = DataSlotType::Unknown;
+            DataSlotRequestBus::EventResult(slotType, targetId, &DataSlotRequests::GetDataSlotType);
+
+            if (slotType == DataSlotType::Value)
+            {
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetSlotToDefaultValue, endpoint);
+            }
+            else
+            {
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetReference, endpoint);
+            }
         }
-        else
+        else if (slotType == SlotTypes::PropertySlot)
         {
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetReference, endpoint);
+            AZ::Crc32 propertyId;
+            PropertySlotRequestBus::EventResult(propertyId, targetId, &PropertySlotRequests::GetPropertyId);
+
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::ResetProperty, endpoint.GetNodeId(), propertyId);
         }
 
         return SceneReaction::PostUndo;

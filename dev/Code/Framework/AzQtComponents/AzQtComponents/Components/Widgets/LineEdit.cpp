@@ -22,12 +22,14 @@
 #include <QToolTip>
 #include <QPainter>
 #include <QStyleOption>
-#include <QDebug>
 #include <QToolButton>
 #include <QTimer>
+#include <QCoreApplication>
 
 namespace AzQtComponents
 {
+    static char g_enableClearButtonWhenReadOnly[] = "EnableClearButtonWhenReadOnly";
+
     class LineEditWatcher : public QObject
     {
     public:
@@ -48,7 +50,55 @@ namespace AzQtComponents
                     }
                     break;
 
+                    case QEvent::MouseButtonPress:
+                    {
+                        if (m_config.autoSelectAllOnClickFocus)
+                        {
+                            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+                            if (me->button() == Qt::LeftButton && m_mouseFocusedLineEdit == le && !le->isReadOnly())
+                            {
+                                le->selectAll();
+                                m_mouseFocusedLineEdit = nullptr;
+                                m_mouseFocusedLineEditSingleClicked = le;
+                                return true;
+                            }
+                            m_mouseFocusedLineEdit = nullptr;
+                        }
+                        break;
+                    }
+
+                    case QEvent::MouseButtonDblClick:
+                    {
+                        if (m_config.autoSelectAllOnClickFocus)
+                        {
+                            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+                            if (me->button() == Qt::LeftButton && m_mouseFocusedLineEditSingleClicked == le)
+                            {
+                                // fake a single click event to place the mouse button
+                                QMouseEvent fake(QEvent::MouseButtonPress, me->localPos(), me->button(), me->buttons(), me->modifiers());
+                                QCoreApplication::sendEvent(le, &fake);
+                                m_mouseFocusedLineEditSingleClicked = nullptr;
+                                return true;
+                            }
+                            m_mouseFocusedLineEditSingleClicked = nullptr;
+                        }
+                        break;
+                    }
+
                     case QEvent::FocusIn:
+                    {
+                        if (m_config.autoSelectAllOnClickFocus)
+                        {
+                            QFocusEvent* fe = static_cast<QFocusEvent*>(event);
+                            if (fe->reason() == Qt::MouseFocusReason)
+                            {
+                                m_mouseFocusedLineEdit = le;
+                            }
+                        }
+                        updateClearButtonState(le);
+                    }
+                    break;
+
                     case QEvent::FocusOut:
                     {
                         updateClearButtonState(le);
@@ -99,6 +149,13 @@ namespace AzQtComponents
                         }
                         return true;
                     }
+
+                    case QEvent::Show:
+                    {
+                        positionSideWidgets(le);
+                        break;
+                    }
+
                 }
             }
 
@@ -109,9 +166,13 @@ namespace AzQtComponents
         friend class LineEdit;
         LineEdit::Config m_config;
 
+        QLineEdit* m_mouseFocusedLineEdit = nullptr;
+        QLineEdit* m_mouseFocusedLineEditSingleClicked = nullptr;
+
         bool isError(QLineEdit* le) const
         {
-            return !le->hasAcceptableInput();
+            const bool hasError = !le->hasAcceptableInput() || le->property(HasExternalError).toBool();
+            return hasError;
         }
 
         bool isClearButtonNeeded(QLineEdit* le) const
@@ -127,7 +188,9 @@ namespace AzQtComponents
             {
                 le->setProperty(HasError, error);
             }
-            if (auto errorToolButton = le->findChild<QToolButton*>(ErrorToolButton))
+
+            auto errorToolButton = le->findChild<QToolButton*>(ErrorToolButton);
+            if (errorToolButton && LineEdit::errorIconEnabled(le))
             {
                 errorToolButton->setVisible(error);
                 positionSideWidgets(le);
@@ -145,6 +208,12 @@ namespace AzQtComponents
             if (clearAction)
             {
                 clearAction->setVisible(clear);
+                if (clear && le->isReadOnly() && le->property(g_enableClearButtonWhenReadOnly).toBool())
+                {
+                    QToolButton* clearButton = LineEdit::getClearButton(le);
+                    assert(clearButton);
+                    clearButton->setEnabled(true);
+                }
                 positionSideWidgets(le);
             }
         }
@@ -166,43 +235,6 @@ namespace AzQtComponents
             }
         }
 
-        void storeClearButtonState(QLineEdit* lineEdit)
-        {
-            if (!lineEdit || hasClearButtonState(lineEdit))
-            {
-                return;
-            }
-
-            lineEdit->setProperty(StoredClearButtonState, lineEdit->isClearButtonEnabled());
-        }
-
-        void restoreClearButtonState(QLineEdit* lineEdit)
-        {
-            if (!lineEdit || !hasClearButtonState(lineEdit))
-            {
-                return;
-            }
-
-            // Delay property change until the next event loop iteration. This prevents
-            // widgets from being destroyed (and pointers invalidated) whilst the app is
-            // being repolished.
-            QTimer::singleShot(0, lineEdit, [lineEdit] {
-                const auto clearButtonState = lineEdit->property(StoredClearButtonState);
-                lineEdit->setClearButtonEnabled(clearButtonState.toBool());
-            });
-        }
-
-        bool hasClearButtonState(QLineEdit* lineEdit)
-        {
-            if (!lineEdit)
-            {
-                return false;
-            }
-
-            const auto clearButtonState = lineEdit->property(StoredClearButtonState);
-            return clearButtonState.isValid() && clearButtonState.canConvert<bool>();
-        }
-
         void storeHoverAttributeState(QLineEdit* lineEdit)
         {
             if (!lineEdit || hasHoverAttributeState(lineEdit))
@@ -215,7 +247,7 @@ namespace AzQtComponents
 
         void restoreHoverAttributeState(QLineEdit* lineEdit)
         {
-            if (!lineEdit || !hasClearButtonState(lineEdit))
+            if (!lineEdit || !hasHoverAttributeState(lineEdit))
             {
                 return;
             }
@@ -236,7 +268,7 @@ namespace AzQtComponents
                 return false;
             }
 
-            const auto hoverState = lineEdit->property(StoredClearButtonState);
+            const auto hoverState = lineEdit->property(StoredHoverAttributeState);
             return hoverState.isValid() && hoverState.canConvert<bool>();
         }
 
@@ -245,13 +277,15 @@ namespace AzQtComponents
             const auto contentsRect = lineEdit->rect();
             int delta = m_config.iconMargin;
 
-            auto clearToolButton = lineEdit->findChild<QToolButton*>(ClearToolButton);
-            auto errorToolButton = lineEdit->findChild<QToolButton*>(ErrorToolButton);
-            const QList<QToolButton*> buttons = {clearToolButton, errorToolButton};
+            QToolButton* clearToolButton = LineEdit::getClearButton(lineEdit); // May be nullptr
 
-            for (auto button : buttons)
+            auto errorToolButton = lineEdit->findChild<QToolButton*>(ErrorToolButton);
+            const QList<QToolButton*> rightButtons = {clearToolButton, errorToolButton};
+
+            // Position the buttons on the right hand side horizontally
+            for (auto button : rightButtons)
             {
-                if (button)
+                if (button && button->isVisible())
                 {
                     QRect geometry = button->geometry();
                     geometry.moveRight(contentsRect.right() - delta);
@@ -259,13 +293,22 @@ namespace AzQtComponents
                     delta += geometry.width() + m_config.iconSpacing;
                 }
             }
+
+            // Position all buttons vertically
+            const auto childToolButtons = lineEdit->findChildren<QToolButton*>();
+            for (auto button : childToolButtons)
+            {
+                QRect geometry = button->geometry();
+                geometry.moveTop((contentsRect.height() - geometry.height()) / 2);
+                button->setGeometry(geometry);
+            }
         }
     };
 
     QPointer<LineEditWatcher> LineEdit::s_lineEditWatcher = nullptr;
     unsigned int LineEdit::s_watcherReferenceCount = 0;
 
-    int LineEdit::Config::getLineWidth(const QStyleOption* option, bool hasError) const
+    int LineEdit::Config::getLineWidth(const QStyleOption* option, bool hasError, bool dropTarget) const
     {
         const QStyleOptionFrame* frameOption = qstyleoption_cast<const QStyleOptionFrame*>(option);
         if (!frameOption)
@@ -276,16 +319,16 @@ namespace AzQtComponents
         const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
         const bool isHovered = option->state.testFlag(QStyle::State_MouseOver) && option->state.testFlag(QStyle::State_Enabled);
 
-        return isFocused
-                ? focusedLineWidth
-                : (hasError
-                    ? errorLineWidth
+        return hasError
+                ? errorLineWidth
+                : (isFocused || dropTarget
+                    ? focusedLineWidth
                     : (isHovered
                         ? hoverLineWidth
                         : 0));
     }
 
-    QColor LineEdit::Config::getBorderColor(const QStyleOption* option, bool hasError) const
+    QColor LineEdit::Config::getBorderColor(const QStyleOption* option, bool hasError, bool dropTarget) const
     {
         const QStyleOptionFrame* frameOption = qstyleoption_cast<const QStyleOptionFrame*>(option);
         if (!frameOption)
@@ -296,10 +339,10 @@ namespace AzQtComponents
         const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
         const bool isHovered = option->state.testFlag(QStyle::State_MouseOver) && option->state.testFlag(QStyle::State_Enabled);
 
-        return isFocused
-                ? focusedBorderColor
-                : (hasError
-                    ? errorBorderColor
+        return hasError
+                ? errorBorderColor
+                : (isFocused || dropTarget
+                    ? focusedBorderColor
                     : (isHovered
                         ? hoverBorderColor
                         :(borderColor.isValid()
@@ -307,7 +350,7 @@ namespace AzQtComponents
                             : Qt::transparent)));
     }
 
-    QColor LineEdit::Config::getBackgroundColor(const QStyleOption* option, bool hasError, const QWidget* widget) const
+    QColor LineEdit::Config::getBackgroundColor(const QStyleOption* option, bool hasError, bool isDropTarget, const QWidget* widget) const
     {
         Q_UNUSED(hasError);
         const QStyleOptionFrame* frameOption = qstyleoption_cast<const QStyleOptionFrame*>(option);
@@ -317,7 +360,7 @@ namespace AzQtComponents
         }
 
         const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
-        return isFocused ? hoverBackgroundColor : option->palette.color(widget->backgroundRole());
+        return isFocused || isDropTarget ? hoverBackgroundColor : option->palette.color(widget->backgroundRole());
     }
 
     void LineEdit::applySearchStyle(QLineEdit* lineEdit)
@@ -371,6 +414,18 @@ namespace AzQtComponents
         searchToolButton->hide();
     }
 
+    void LineEdit::applyDropTargetStyle(QLineEdit* lineEdit, bool valid)
+    {
+        LineEdit::removeDropTargetStyle(lineEdit);
+        Style::addClass(lineEdit, valid ? ValidDropTarget : InvalidDropTarget);
+    }
+
+    void LineEdit::removeDropTargetStyle(QLineEdit* lineEdit)
+    {
+        Style::removeClass(lineEdit, ValidDropTarget);
+        Style::removeClass(lineEdit, InvalidDropTarget);
+    }
+
     LineEdit::Config LineEdit::loadConfig(QSettings& settings)
     {
         Config config = defaultConfig();
@@ -386,13 +441,15 @@ namespace AzQtComponents
         ConfigHelpers::read<QColor>(settings, QStringLiteral("ErrorBorderColor"), config.errorBorderColor);
         ConfigHelpers::read<int>(settings, QStringLiteral("ErrorLineWidth"), config.errorLineWidth);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("PlaceHolderTextColor"), config.placeHolderTextColor);
-        ConfigHelpers::read<bool>(settings, QStringLiteral("ClearButtonAutoEnabled"), config.clearButtonAutoEnabled);
         ConfigHelpers::read<QString>(settings, QStringLiteral("ClearImage"), config.clearImage);
         ConfigHelpers::read<QSize>(settings, QStringLiteral("ClearImageSize"), config.clearImageSize);
         ConfigHelpers::read<QString>(settings, QStringLiteral("ErrorImage"), config.errorImage);
         ConfigHelpers::read<QSize>(settings, QStringLiteral("ErrorImageSize"), config.errorImageSize);
         ConfigHelpers::read<int>(settings, QStringLiteral("IconSpacing"), config.iconSpacing);
         ConfigHelpers::read<int>(settings, QStringLiteral("IconMargin"), config.iconMargin);
+        ConfigHelpers::read<bool>(settings, QStringLiteral("AutoSelectAllOnClickFocus"), config.autoSelectAllOnClickFocus);
+        ConfigHelpers::read<int>(settings, QStringLiteral("DropFrameOffset"), config.dropFrameOffset);
+        ConfigHelpers::read<int>(settings, QStringLiteral("DropFrameRadius"), config.dropFrameRadius);
 
         return config;
     }
@@ -413,13 +470,15 @@ namespace AzQtComponents
         config.errorBorderColor = QColor("#E25243");
         config.errorLineWidth = 2;
         config.placeHolderTextColor = QColor("#888888");
-        config.clearButtonAutoEnabled = true;
         config.clearImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-close.svg");
         config.clearImageSize = {14, 14};
         config.errorImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-error.svg");
         config.errorImageSize = {14, 14};
         config.iconSpacing = 0; // Due to 2px padding in icons, use 0 here to give 4px spacing between images
         config.iconMargin = 2;
+        config.autoSelectAllOnClickFocus = true;
+        config.dropFrameOffset = 2;
+        config.dropFrameRadius = 1;
 
         return config;
     }
@@ -429,9 +488,53 @@ namespace AzQtComponents
         lineEdit->setProperty(ErrorMessage, error);
     }
 
-    void LineEdit::setSideButtonsEnabled(QLineEdit* lineEdit, bool enabled)
+    void LineEdit::setExternalError(QLineEdit* lineEdit, bool hasExternalError)
     {
-        lineEdit->setProperty(SideButtonsEnabled, enabled);
+        lineEdit->setProperty(HasExternalError, hasExternalError);
+        lineEdit->style()->unpolish(lineEdit);
+        lineEdit->style()->polish(lineEdit);
+    }
+
+    void LineEdit::setErrorIconEnabled(QLineEdit* lineEdit, bool enabled)
+    {
+        lineEdit->setProperty(ErrorIconEnabled, enabled);
+        lineEdit->style()->unpolish(lineEdit);
+        lineEdit->style()->polish(lineEdit);
+    }
+
+    bool LineEdit::errorIconEnabled(QLineEdit* lineEdit)
+    {
+        const auto enabled = lineEdit->property(ErrorIconEnabled);
+        return enabled.isValid() ? enabled.toBool() : true;
+    }
+
+    QToolButton* LineEdit::getClearButton(const QLineEdit* lineEdit)
+    {
+        auto clearToolButton = lineEdit->findChild<QToolButton*>(ClearToolButton);
+        if (!clearToolButton)
+        {
+            QAction* clearAction = lineEdit->findChild<QAction*>(ClearAction);
+            if (!clearAction)
+            {
+                return nullptr;
+            }
+            auto childToolButtons = lineEdit->findChildren<QToolButton*>();
+            for (auto toolButton : childToolButtons)
+            {
+                if (toolButton->defaultAction() == clearAction)
+                {
+                    clearToolButton = toolButton;
+                    clearToolButton->setObjectName(ClearToolButton);
+                    break;
+                }
+            }
+        }
+        return clearToolButton;
+    }
+
+    void LineEdit::setEnableClearButtonWhenReadOnly(QLineEdit* lineEdit, bool enabled)
+    {
+        lineEdit->setProperty(g_enableClearButtonWhenReadOnly, enabled);
     }
 
     void LineEdit::initializeWatcher()
@@ -459,7 +562,7 @@ namespace AzQtComponents
         }
     }
 
-    bool LineEdit::polish(Style* style, QWidget* widget, const LineEdit::Config& config)
+    bool LineEdit::polish(QProxyStyle* style, QWidget* widget, const LineEdit::Config& config)
     {
         Q_ASSERT(!s_lineEditWatcher.isNull());
 
@@ -479,13 +582,12 @@ namespace AzQtComponents
 
             s_lineEditWatcher->storeHoverAttributeState(lineEdit);
             lineEdit->setAttribute(Qt::WA_Hover, true);
-            s_lineEditWatcher->storeClearButtonState(lineEdit);
-            if (LineEdit::sideButtonsEnabled(lineEdit))
+
+            if (LineEdit::errorIconEnabled(lineEdit))
             {
-                LineEdit::applyClearButtonStyle(lineEdit, config);
                 LineEdit::applyErrorStyle(lineEdit, config);
-                s_lineEditWatcher->positionSideWidgets(lineEdit);
             }
+            s_lineEditWatcher->positionSideWidgets(lineEdit);
 
             lineEdit->setPalette(pal);
             lineEdit->installEventFilter(s_lineEditWatcher);
@@ -494,14 +596,18 @@ namespace AzQtComponents
             s_lineEditWatcher->updateErrorState(lineEdit);
             s_lineEditWatcher->updateClearButtonState(lineEdit);
 
-            style->repolishOnSettingsChange(lineEdit);
+            Style* newStyle = qobject_cast<Style*>(style);
+            if (newStyle)
+            {
+                newStyle->repolishOnSettingsChange(lineEdit);
+            }
             s_lineEditWatcher->m_config = config;
         }
 
         return lineEdit;
     }
 
-    bool LineEdit::unpolish(Style* style, QWidget* widget, const LineEdit::Config& config)
+    bool LineEdit::unpolish(QProxyStyle* style, QWidget* widget, const LineEdit::Config& config)
     {
         Q_UNUSED(style);
         Q_UNUSED(config);
@@ -518,8 +624,20 @@ namespace AzQtComponents
             QObject::disconnect(lineEdit, &QLineEdit::editingFinished, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
 
             lineEdit->removeEventFilter(s_lineEditWatcher);
-            s_lineEditWatcher->restoreClearButtonState(lineEdit);
             s_lineEditWatcher->restoreHoverAttributeState(lineEdit);
+
+            LineEdit::removeErrorStyle(lineEdit);
+
+            if(lineEdit->isClearButtonEnabled())
+            {
+                // We turn clear action visiblity on and off in UI2.0.
+                // Make sure that 1.0 gets it in native, visible state
+                auto clearAction = lineEdit->findChild<QAction*>(ClearAction);
+                if(clearAction)
+                {
+                    clearAction->setVisible(true);
+                }
+            }
         }
 
         return lineEdit;
@@ -528,7 +646,7 @@ namespace AzQtComponents
     bool LineEdit::drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const LineEdit::Config& config)
     {
         auto lineEdit = qobject_cast<const QLineEdit*>(widget);
-        if (!lineEdit)
+        if (!lineEdit || !Style::hasStyle(lineEdit))
         {
             return false;
         }
@@ -536,18 +654,29 @@ namespace AzQtComponents
         if (lineEdit->hasFrame())
         {
             const bool hasError = lineEdit->property(HasError).toBool();
-            const int lineWidth = config.getLineWidth(option, hasError);
-            const QColor backgroundColor = config.getBackgroundColor(option, hasError, lineEdit);
+            const bool validDropTarget = Style::hasClass(lineEdit, ValidDropTarget);
+            const bool invalidDropTarget = Style::hasClass(lineEdit, InvalidDropTarget);
+            const bool dropTarget = validDropTarget || invalidDropTarget;
+            const int lineWidth = config.getLineWidth(option, hasError, dropTarget);
+            const QColor backgroundColor = config.getBackgroundColor(option, hasError, dropTarget, lineEdit);
 
             if (lineWidth > 0)
             {
-                const QColor frameColor = config.getBorderColor(option, hasError);
-                const auto borderRect = style->borderLineEditRect(lineEdit->rect(), lineWidth, config.borderRadius);
+                const QColor frameColor = config.getBorderColor(option, hasError, dropTarget);
+                const auto borderRect = style->borderLineEditRect(option->rect, lineWidth, config.borderRadius);
                 Style::drawFrame(painter, borderRect, Qt::NoPen, frameColor);
             }
 
-            const auto frameRect = style->lineEditRect(lineEdit->rect(), config.borderRadius, config.borderRadius);
+            const auto frameRect = style->lineEditRect(option->rect, config.borderRadius, config.borderRadius);
             Style::drawFrame(painter, frameRect, Qt::NoPen, backgroundColor);
+
+            if (validDropTarget)
+            {
+                const int offset = config.dropFrameOffset;
+                const QRect dropFrameRect = option->rect.adjusted(offset, offset, -offset, -offset);
+                const QPainterPath dropFramePath = style->lineEditRect(dropFrameRect, lineWidth, config.dropFrameRadius);
+                Style::drawFrame(painter, dropFramePath, Qt::NoPen, config.focusedBorderColor);
+            }
         }
         else
         {
@@ -555,36 +684,6 @@ namespace AzQtComponents
         }
 
         return true;
-    }
-
-    void LineEdit::applyClearButtonStyle(QLineEdit* lineEdit, const Config& config)
-    {
-        if (!config.clearButtonAutoEnabled)
-        {
-            return;
-        }
-
-        lineEdit->setClearButtonEnabled(config.clearButtonAutoEnabled);
-
-        auto clearToolButton = lineEdit->findChild<QToolButton*>(ClearToolButton);
-        if (!clearToolButton)
-        {
-            QAction* clearAction = lineEdit->findChild<QAction*>(ClearAction);
-            if (!clearAction)
-            {
-                return;
-            }
-
-            auto childToolButtons = lineEdit->findChildren<QToolButton*>();
-            for (auto toolButton : childToolButtons)
-            {
-                if (toolButton->defaultAction() == clearAction)
-                {
-                    toolButton->setObjectName(ClearToolButton);
-                    break;
-                }
-            }
-        }
     }
 
     void LineEdit::applyErrorStyle(QLineEdit* lineEdit, const Config& config)
@@ -606,6 +705,20 @@ namespace AzQtComponents
                 }
             }
         }
+        else
+        {
+            // If we switch from UI 1.0, the action for error might be invisible
+            errorToolButton->defaultAction()->setVisible(true);
+        }
+    }
+
+    void LineEdit::removeErrorStyle(QLineEdit* lineEdit)
+    {
+        auto errorToolButton = lineEdit->findChild<QToolButton*>(ErrorToolButton);
+        if(errorToolButton)
+        {
+            errorToolButton->defaultAction()->setVisible(false);
+        }
     }
 
     QIcon LineEdit::clearButtonIcon(const QStyleOption* option, const QWidget* widget, const Config& config)
@@ -619,11 +732,47 @@ namespace AzQtComponents
         return icon;
     }
 
-    bool LineEdit::sideButtonsEnabled(QLineEdit* lineEdit)
+    QRect LineEdit::lineEditContentsRect(const Style* style, QStyle::SubElement element, const QStyleOption* option, const QWidget* widget, const Config& config)
     {
-        const auto enabled = lineEdit->property(SideButtonsEnabled);
-        return enabled.isValid() ? enabled.toBool() : true;
+        Q_UNUSED(config);
+
+        const QLineEdit* lineEdit = qobject_cast<const QLineEdit*>(widget);
+        if (element != QStyle::SE_LineEditContents || lineEdit == nullptr)
+        {
+            return QRect();
+        }
+
+        // first check what the base style would do
+        QRect r = style->baseStyle()->subElementRect(element, option, widget);
+
+        QToolButton* clearToolButton = LineEdit::getClearButton(lineEdit); // May be nullptr
+        auto errorToolButton = lineEdit->findChild<QToolButton*>(ErrorToolButton);
+        const QList<QToolButton*> rightButtons = {clearToolButton, errorToolButton};
+        int numButtons = 0;
+        int leftMostButtonPosition = r.right();
+        for (auto button : rightButtons)
+        {
+            if (button && button->isVisibleTo(button->parentWidget()))
+            {
+                ++numButtons;
+                leftMostButtonPosition = std::min(button->geometry().left(), leftMostButtonPosition);
+            }
+        }
+
+        // then move the right side to match the position of the left-most button
+        r.setRight(leftMostButtonPosition);
+
+        if (numButtons > 0)
+        {
+            // and finally add the right margins QLineEdit removes to make the buttons fit (it thinks)
+            const int iconSize = style->pixelMetric(QStyle::PM_SmallIconSize, 0, widget);
+            const int delta = iconSize / 4 + iconSize + 6;
+            r.setRight(r.right() + delta * numButtons);
+        }
+
+        return r;
     }
+
 } // namespace AzQtComponents
 
 #include <Components/Widgets/LineEdit.moc>

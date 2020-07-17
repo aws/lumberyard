@@ -44,8 +44,8 @@
             "native/tests/FileStateCache/FileStateCacheTests.cpp",
             "native/tests/MissingDependencyScannerTests.cpp",
             "native/tests/SourceFileRelocatorTests.cpp",
-            "native/tests/AssetProcessorMessagesTests.cpp"
-
+            "native/tests/AssetProcessorMessagesTests.cpp",
+            "native/tests/PathDependencyManagerTests.cpp"
         ],
         "unittests": [
             "native/unittests/AssetProcessingStateDataUnitTests.cpp",

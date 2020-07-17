@@ -17,7 +17,7 @@
 #include <QGraphicsView>
 #include <QMimeData>
 
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <Components/NodePropertyDisplays/VectorNodePropertyDisplay.h>
 
@@ -207,14 +207,6 @@ namespace GraphCanvas
             // when I set it. So instead we'll do it here.
             elementWidth += AZ::GetMin(maximumSize.width(), k_sizingConstraint) + spacing;
             elementHeight = AZStd::GetMax(elementHeight, AZ::GetMin(k_sizingConstraint, maximumSize.height()));
-
-            const Styling::StyleHelper& styleHelper = control->GetTextLabel()->GetStyleHelper();
-
-            if (m_propertyVectorCtrl)
-            {
-                // Get the font stylesheet from the StyleHelper and pass it along to the PropertyVector
-                m_propertyVectorCtrl->setLabelStyle(control->GetIndex(), styleHelper.GetFontStyleSheet().toUtf8().data());
-            }
         }
 
         m_displayWidget->setMinimumSize(elementWidth, elementHeight);
@@ -311,19 +303,19 @@ namespace GraphCanvas
             m_proxyWidget->setAcceptDrops(false);
 
             int elementCount = m_dataInterface->GetElementCount();
-            m_propertyVectorCtrl = aznew AzToolsFramework::PropertyVectorCtrl(nullptr, elementCount);
+            m_propertyVectorCtrl = new AzQtComponents::VectorInput(nullptr, elementCount);
             m_propertyVectorCtrl->setProperty("HasNoWindowDecorations", true);
 
             m_propertyVectorCtrl->setProperty("DisableFocusWindowFix", true);
 
-            AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
+            AzQtComponents::VectorElement** elements = m_propertyVectorCtrl->getElements();
 
             for (int i = 0; i < elementCount; ++i)
             {
-                AzToolsFramework::VectorElement* element = elements[i];
+                AzQtComponents::VectorElement* element = elements[i];
 
                 element->setProperty("DisableFocusWindowFix", true);
-                element->GetSpinBox()->setProperty("DisableFocusWindowFix", true);
+                element->getSpinBox()->setProperty("DisableFocusWindowFix", true);
 
                 m_propertyVectorCtrl->setLabel(i, m_dataInterface->GetLabel(i));
                 m_propertyVectorCtrl->setMinimum(m_dataInterface->GetMinimum(i));
@@ -332,11 +324,11 @@ namespace GraphCanvas
                 m_propertyVectorCtrl->setDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces(i));
                 m_propertyVectorCtrl->setSuffix(m_dataInterface->GetSuffix(i));
 
-                element->GetSpinBox()->installEventFilter(aznew VectorEventFilter(this));
+                element->getSpinBox()->installEventFilter(aznew VectorEventFilter(this));
             }
 
             m_propertyVectorCtrl->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueAtIndexChanged, [this](int elementIndex, double newValue) { SubmitValue(elementIndex, newValue); });
+            QObject::connect(m_propertyVectorCtrl, &AzQtComponents::VectorInput::valueAtIndexChanged, [this](int elementIndex, double newValue) { SubmitValue(elementIndex, newValue); });
 
             m_proxyWidget->setWidget(m_propertyVectorCtrl);
             UpdateDisplay();

@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/StartupLogoDialog">
-        <file>sandbox_dark.png</file>
+        <file>splashscreen_startergame.png</file>
+        <file>splashscreen_startergame@2x.png</file>
     </qresource>
 </RCC>

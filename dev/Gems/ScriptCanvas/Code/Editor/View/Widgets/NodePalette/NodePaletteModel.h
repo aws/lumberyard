@@ -26,7 +26,10 @@
 #include <ScriptEvents/ScriptEventsAsset.h>
 
 #include <Editor/View/Widgets/NodePalette/NodePaletteModelBus.h>
+
+#include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
 #include <ScriptCanvas/Core/Core.h>
+
 
 namespace ScriptCanvasEditor
 {
@@ -83,6 +86,7 @@ namespace ScriptCanvasEditor
 
         // Asset Based Registrations
         AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterScriptEvent(ScriptEvents::ScriptEventsAsset* scriptEventAsset);
+        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterFunctionInformation(ScriptCanvas::ScriptCanvasFunctionAsset* functionAsset);
 
         void RegisterCategoryInformation(const AZStd::string& category, const CategoryInformation& categoryInformation);
         const CategoryInformation* FindCategoryInformation(const AZStd::string& categoryStyle) const;
@@ -138,7 +142,7 @@ namespace ScriptCanvasEditor
         AZ_CLASS_ALLOCATOR(CustomNodeModelInformation, AZ::SystemAllocator, 0);
 
         AZStd::string m_classMethod;
-        AZStd::string m_metehodName;
+        AZStd::string m_metehodName;        
     };
 
     struct EBusHandlerNodeModelInformation
@@ -165,7 +169,7 @@ namespace ScriptCanvasEditor
 
         ScriptCanvas::EBusBusId m_busId;
         ScriptCanvas::EBusEventId m_eventId;
-    };
+    };    
 
     struct ScriptEventHandlerNodeModelInformation
         : public EBusHandlerNodeModelInformation
@@ -180,4 +184,16 @@ namespace ScriptCanvasEditor
         AZ_RTTI(ScriptEventSenderNodeModelInformation, "{99046345-080C-42A6-BE76-D09583055EED}", EBusSenderNodeModelInformation);
         AZ_CLASS_ALLOCATOR(ScriptEventSenderNodeModelInformation, AZ::SystemAllocator, 0);
     };
+
+    //! FunctionNodeModelInformation refers to function graph assets, not methods
+    struct FunctionNodeModelInformation
+        : public NodePaletteModelInformation
+    {
+        AZ_RTTI(FunctionNodeModelInformation, "{B84B4C2C-2F0B-4C0B-879A-956E83BD2874}", NodePaletteModelInformation);
+        AZ_CLASS_ALLOCATOR(FunctionNodeModelInformation, AZ::SystemAllocator, 0);
+
+        AZ::Color         m_functionColor;
+        AZ::Data::AssetId m_functionAssetId;
+    };
+
 }

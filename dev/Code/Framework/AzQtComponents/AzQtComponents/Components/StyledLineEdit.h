@@ -52,7 +52,6 @@ namespace AzQtComponents
 
     private:
         void validateEntry();
-        void adaptColorText(bool focus = false);
 
         Flavor m_flavor;
     };

@@ -147,8 +147,6 @@ public:
     // Check if it's a group node
     virtual bool IsGroupNode() const override { return true; }
 
-    // Track Events (TODO: Undo?)
-#if 0
     int GetTrackEventsCount() const { return m_pAnimSequence->GetTrackEventsCount(); }
     const char* GetTrackEvent(int index) { return m_pAnimSequence->GetTrackEvent(index); }
     bool AddTrackEvent(const char* szEvent) { return m_pAnimSequence->AddTrackEvent(szEvent); }
@@ -157,7 +155,6 @@ public:
     bool MoveUpTrackEvent(const char* szEvent) { return m_pAnimSequence->MoveUpTrackEvent(szEvent); }
     bool MoveDownTrackEvent(const char* szEvent) { return m_pAnimSequence->MoveDownTrackEvent(szEvent); }
     void ClearTrackEvents() { m_pAnimSequence->ClearTrackEvents(); }
-#endif
 
     // Deletes all selected nodes (re-parents childs if group node gets deleted)
     void DeleteSelectedNodes();

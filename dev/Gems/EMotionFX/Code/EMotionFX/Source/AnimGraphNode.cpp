@@ -805,28 +805,37 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphNode::RecursiveResetUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphNode::RecursiveResetUniqueDatas(AnimGraphInstance* animGraphInstance)
     {
         ResetUniqueData(animGraphInstance);
 
         for (AnimGraphNode* childNode : mChildNodes)
         {
-            childNode->RecursiveResetUniqueData(animGraphInstance);
+            childNode->RecursiveResetUniqueDatas(animGraphInstance);
         }
     }
 
-
-    void AnimGraphNode::RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphNode::InvalidateUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        // some attributes have changed
-        OnUpdateUniqueData(animGraphInstance);
+        AnimGraphObject::InvalidateUniqueData(animGraphInstance);
+
+        const size_t numActions = m_actionSetup.GetNumActions();
+        for (size_t a = 0; a < numActions; ++a)
+        {
+            AnimGraphTriggerAction* action = m_actionSetup.GetAction(a);
+            action->InvalidateUniqueData(animGraphInstance);
+        }
+    }
+
+    void AnimGraphNode::RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance)
+    {
+        InvalidateUniqueData(animGraphInstance);
 
         for (AnimGraphNode* childNode : mChildNodes)
         {
-            childNode->RecursiveOnUpdateUniqueData(animGraphInstance);
+            childNode->RecursiveInvalidateUniqueDatas(animGraphInstance);
         }
     }
-
 
     // get the input value for a given port
     const MCore::Attribute* AnimGraphNode::GetInputValue(AnimGraphInstance* animGraphInstance, uint32 inputPort) const
@@ -883,8 +892,8 @@ namespace EMotionFX
         if (syncMode == SYNCMODE_TRACKBASED)
         {
             // get the sync tracks
-            const AnimGraphSyncTrack* syncTrackA = masterNode->FindUniqueNodeData(animGraphInstance)->GetSyncTrack();
-            const AnimGraphSyncTrack* syncTrackB = FindUniqueNodeData(animGraphInstance)->GetSyncTrack();
+            const AnimGraphSyncTrack* syncTrackA = masterNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncTrack();
+            const AnimGraphSyncTrack* syncTrackB = FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncTrack();
 
             // if we have sync keys in both nodes, do the track based sync
             if (syncTrackA && syncTrackB && syncTrackA->GetNumEvents() > 0 && syncTrackB->GetNumEvents() > 0)
@@ -927,8 +936,8 @@ namespace EMotionFX
     // sync blend the play speed of two nodes
     void AnimGraphNode::SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed)
     {
-        AnimGraphNodeData* uniqueDataA = masterNode->FindUniqueNodeData(animGraphInstance);
-        AnimGraphNodeData* uniqueDataB = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataA = masterNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataB = FindOrCreateUniqueNodeData(animGraphInstance);
 
         float factorA;
         float factorB;
@@ -946,10 +955,10 @@ namespace EMotionFX
         uniqueDataB->SetPlaySpeed(interpolatedSpeed * factorB);
     }
 
-    void AnimGraphNode::CalcSyncFactors(const AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
+    void AnimGraphNode::CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
     {
-        const AnimGraphNodeData* masterUniqueData = masterNode->FindUniqueNodeData(animGraphInstance);
-        const AnimGraphNodeData* servantUniqueData = servantNode->FindUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* masterUniqueData = masterNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* servantUniqueData = servantNode->FindOrCreateUniqueNodeData(animGraphInstance);
 
         CalcSyncFactors(masterUniqueData->GetPlaySpeed(), masterUniqueData->GetSyncTrack(), masterUniqueData->GetSyncIndex(), masterUniqueData->GetDuration(),
             servantUniqueData->GetPlaySpeed(), servantUniqueData->GetSyncTrack(), servantUniqueData->GetSyncIndex(), servantUniqueData->GetDuration(),
@@ -1041,8 +1050,8 @@ namespace EMotionFX
         AnimGraphNode* nodeA = syncWithNode;
         AnimGraphNode* nodeB = this;
 
-        AnimGraphNodeData* uniqueDataA = nodeA->FindUniqueNodeData(animGraphInstance);
-        AnimGraphNodeData* uniqueDataB = nodeB->FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataA = nodeA->FindOrCreateUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataB = nodeB->FindOrCreateUniqueNodeData(animGraphInstance);
 
         // get the time of motion A
         const float currentTime = uniqueDataA->GetCurrentPlayTime();
@@ -1231,20 +1240,15 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphNode::SetHasError(AnimGraphInstance* animGraphInstance, bool hasError)
+    void AnimGraphNode::SetHasError(AnimGraphObjectData* uniqueData, bool hasError)
     {
-        // check if the anim graph instance is valid
-        //if (animGraphInstance == nullptr)
-        //return;
-
         // nothing to change, return directly, only update when something changed
-        if (GetHasErrorFlag(animGraphInstance) == hasError)
+        if (uniqueData->GetHasError() == hasError)
         {
             return;
         }
 
-        // update the flag
-        SetHasErrorFlag(animGraphInstance, hasError);
+        uniqueData->SetHasError(hasError);
 
         // sync the current node
         SyncVisualObject();
@@ -1252,25 +1256,30 @@ namespace EMotionFX
         // in case the parent node is valid check the error status of the parent by checking all children recursively and set that value
         if (mParentNode)
         {
-            mParentNode->SetHasError(animGraphInstance, mParentNode->HierarchicalHasError(animGraphInstance, true));
+            AnimGraphObjectData* parentUniqueData = mParentNode->FindOrCreateUniqueNodeData(uniqueData->GetAnimGraphInstance());
+            if (hasError)
+            {
+                mParentNode->SetHasError(parentUniqueData, true);
+            }
+            else if (!mParentNode->HierarchicalHasError(parentUniqueData, true))
+            {
+                // In case we are clearing this error, we need to check if this node siblings have errors to clear the parent.
+                mParentNode->SetHasError(parentUniqueData, false);
+            }
         }
     }
 
-
-    bool AnimGraphNode::HierarchicalHasError(AnimGraphInstance* animGraphInstance, bool onlyCheckChildNodes) const
+    bool AnimGraphNode::HierarchicalHasError(AnimGraphObjectData* uniqueData, bool onlyCheckChildNodes) const
     {
-        // check if the anim graph instance is valid
-        //if (animGraphInstance == nullptr)
-        //return true;
-
-        if (onlyCheckChildNodes == false && GetHasErrorFlag(animGraphInstance))
+        if (!onlyCheckChildNodes && uniqueData->GetHasError())
         {
             return true;
         }
 
         for (const AnimGraphNode* childNode : mChildNodes)
         {
-            if (childNode->GetHasErrorFlag(animGraphInstance))
+            AnimGraphObjectData* childUniqueData = childNode->FindOrCreateUniqueNodeData(uniqueData->GetAnimGraphInstance());
+            if (childUniqueData->GetHasError())
             {
                 return true;
             }
@@ -1614,7 +1623,7 @@ namespace EMotionFX
         //return;
 
         // get the unique data
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         HierarchicalSyncAllInputNodes(animGraphInstance, uniqueData);
 
         // top down update all incoming connections
@@ -1635,7 +1644,7 @@ namespace EMotionFX
     void AnimGraphNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // get the unique data
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
 
         // iterate over all incoming connections
         bool syncTrackFound = false;
@@ -1780,14 +1789,14 @@ namespace EMotionFX
         // request the anim graph reference counted data objects
         RequestRefDatas(animGraphInstance);
 
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         if (poseFound && connectionIndex != MCORE_INVALIDINDEX32)
         {
             const BlendTreeConnection* connection = mConnections[connectionIndex];
             AnimGraphNode* sourceNode = connection->GetSourceNode();
 
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
-            AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* sourceData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
 
             if (sourceData)
             {
@@ -1801,7 +1810,7 @@ namespace EMotionFX
         {
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             AnimGraphNode* sourceNode = mConnections[0]->GetSourceNode();
-            AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* sourceData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
             data->SetEventBuffer(sourceData->GetEventBuffer());
             data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
             data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
@@ -1835,7 +1844,7 @@ namespace EMotionFX
         AnimGraphRefCountedData* refDataA = nullptr;
         if (nodeA)
         {
-            refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            refDataA = nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
         }
 
         FilterEvents(animGraphInstance, eventMode, refDataA, nodeB, localWeight, refData);
@@ -1871,7 +1880,7 @@ namespace EMotionFX
         {
             if (nodeB)
             {
-                AnimGraphRefCountedData* refDataNodeB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                AnimGraphRefCountedData* refDataNodeB = nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
                 if (refDataNodeB)
                 {
                     refData->SetEventBuffer(refDataNodeB->GetEventBuffer());
@@ -1887,7 +1896,7 @@ namespace EMotionFX
         // both nodes
         case EVENTMODE_BOTHNODES:
         {
-            AnimGraphRefCountedData* refDataNodeB = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+            AnimGraphRefCountedData* refDataNodeB = nodeB ? nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
 
             const uint32 numEventsA = refDataNodeA ? refDataNodeA->GetEventBuffer().GetNumEvents() : 0;
             const uint32 numEventsB = refDataNodeB ? refDataNodeB->GetEventBuffer().GetNumEvents() : 0;
@@ -1932,7 +1941,7 @@ namespace EMotionFX
             {
                 if (nodeB)
                 {
-                    AnimGraphRefCountedData* refDataNodeB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                    AnimGraphRefCountedData* refDataNodeB = nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
                     if (refDataNodeB)
                     {
                         refData->SetEventBuffer(refDataNodeB->GetEventBuffer());
@@ -1955,7 +1964,7 @@ namespace EMotionFX
     // hierarchically sync input a given input node
     void AnimGraphNode::HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode)
     {
-        AnimGraphNodeData* inputUniqueData = inputNode->FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* inputUniqueData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance);
 
         if (animGraphInstance->GetIsSynced(inputNode->GetObjectIndex()))
         {
@@ -1981,32 +1990,6 @@ namespace EMotionFX
             HierarchicalSyncInputNode(animGraphInstance, inputNode, uniqueDataOfThisNode);
         }
     }
-
-
-    // on default create a base class object
-    void AnimGraphNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // try to find existing data
-        AnimGraphNodeData* data = animGraphInstance->FindUniqueNodeData(this);
-        if (data == nullptr) // doesn't exist
-        {
-            AnimGraphNodeData* newData = aznew AnimGraphNodeData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(newData);
-        }
-
-        OnUpdateTriggerActionsUniqueData(animGraphInstance);
-    }
-
-    void AnimGraphNode::OnUpdateTriggerActionsUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        const size_t numActions = m_actionSetup.GetNumActions();
-        for (size_t a = 0; a < numActions; ++a)
-        {
-            AnimGraphTriggerAction* action = m_actionSetup.GetAction(a);
-            action->OnUpdateUniqueData(animGraphInstance);
-        }
-    }
-
 
     // recursively collect active animgraph nodes
     void AnimGraphNode::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
@@ -2077,7 +2060,7 @@ namespace EMotionFX
     // decrease the reference count
     void AnimGraphNode::DecreaseRef(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         if (uniqueData->GetPoseRefCount() == 0)
         {
             return;
@@ -2089,7 +2072,6 @@ namespace EMotionFX
             return;
         }
 
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
         const uint32 threadIndex = animGraphInstance->GetActorInstance()->GetThreadIndex();
         AnimGraphPosePool& posePool = GetEMotionFX().GetThreadData(threadIndex)->GetPosePool();
         const size_t numOutputs = mOutputPorts.size();
@@ -2175,14 +2157,14 @@ namespace EMotionFX
         AnimGraphRefCountedDataPool& pool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
         AnimGraphRefCountedData* newData = pool.RequestNew();
 
-        FindUniqueNodeData(animGraphInstance)->SetRefCountedData(newData);
+        FindOrCreateUniqueNodeData(animGraphInstance)->SetRefCountedData(newData);
     }
 
 
     // decrease the reference count
     void AnimGraphNode::DecreaseRefDataRef(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         if (uniqueData->GetRefDataRefCount() == 0)
         {
             return;
@@ -2543,6 +2525,23 @@ namespace EMotionFX
         m_name = name;
     }
 
+    void AnimGraphNode::ResetPoseRefCount(AnimGraphInstance* animGraphInstance)
+    {
+        AnimGraphNodeData* uniqueData = reinterpret_cast<AnimGraphNodeData*>(animGraphInstance->GetUniqueObjectData(mObjectIndex));
+        if (uniqueData)
+        {
+            uniqueData->SetPoseRefCount(0);
+        }
+    }
+
+    void AnimGraphNode::ResetRefDataRefCount(AnimGraphInstance* animGraphInstance)
+    {
+        AnimGraphNodeData* uniqueData = reinterpret_cast<AnimGraphNodeData*>(animGraphInstance->GetUniqueObjectData(mObjectIndex));
+        if (uniqueData)
+        {
+            uniqueData->SetRefDataRefCount(0);
+        }
+    }
 
     void AnimGraphNode::GetAttributeStringForAffectedNodeIds(const AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::string& attributesString) const
     {

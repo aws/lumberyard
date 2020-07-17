@@ -429,6 +429,11 @@ def validate_build_command(bld):
     # Validate the game project version
     if VERSION_NUMBER_PATTERN.match(bld.options.version) is None:
         bld.fatal("[Error] Invalid game version number format ({})".format(bld.options.version))
+        
+    # Lastly, make sure that the build environment has the flag 'BUILD_ENABLED' set to true, otherwise there was an error configuring for the platform
+    if bld.cmd.startswith('build_') and not bld.env['BUILD_ENABLED']:
+        bld.fatal(f"[Error] The build command {bld.cmd} is invalid to the platform being disabled during configuration. Please check the error message when running 'lmbr_waf configure' for more details.")
+        
 
 
 @conf

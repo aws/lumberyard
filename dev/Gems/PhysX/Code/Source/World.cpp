@@ -272,8 +272,8 @@ namespace PhysX
         // Note: we specify eBLOCK here as we're only interested in the closest object. The touches field in the result will be invalid
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
-        const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, 
+        const physx::PxHitFlags hitFlags = Utils::RayCast::GetPxHitFlags(request.m_hitFlags);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup,
             GetBlockFilterCallback(request.m_filterCallback), physx::PxQueryHitType::eBLOCK);
         
         // Raycast
@@ -281,14 +281,14 @@ namespace PhysX
         bool status = false;
         {
             PHYSX_SCENE_READ_LOCK(*m_world);
-            status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+            status = m_world->raycast(orig, dir, request.m_distance, castResult, hitFlags, queryData, &queryFilterCallback);
         }
 
         // Convert to generic API
         Physics::RayCastHit hit;
         if (status)
         {
-            hit = GetHitFromPxHit(castResult.block);
+            hit = Utils::RayCast::GetHitFromPxHit(castResult.block);
         }
         return hit;
     }
@@ -302,7 +302,8 @@ namespace PhysX
         // Note: we specify eTOUCH here as we're interested in all hits that intersect the ray.
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
-        const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
+        const physx::PxHitFlags hitFlags = Utils::RayCast::GetPxHitFlags(request.m_hitFlags);
+
         PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
         //resize if needed
@@ -317,7 +318,7 @@ namespace PhysX
         bool status = false;
         {
             PHYSX_SCENE_READ_LOCK(*m_world);
-            status = m_world->raycast(orig, dir, request.m_distance, castResult, outputFlags, queryData, &queryFilterCallback);
+            status = m_world->raycast(orig, dir, request.m_distance, castResult, hitFlags, queryData, &queryFilterCallback);
         }
 
         // Convert to generic API
@@ -327,13 +328,13 @@ namespace PhysX
             PHYSX_SCENE_READ_LOCK(*m_world);
             if (castResult.hasBlock)
             {
-                hits.push_back(GetHitFromPxHit(castResult.block));
+                hits.push_back(Utils::RayCast::GetHitFromPxHit(castResult.block));
             }
 
             for (auto i = 0u; i < castResult.getNbTouches(); ++i)
             {
                 const auto& pxHit = castResult.getTouch(i);
-                hits.push_back(GetHitFromPxHit(pxHit));
+                hits.push_back(Utils::RayCast::GetHitFromPxHit(pxHit));
             }
         }
         return hits;
@@ -346,8 +347,8 @@ namespace PhysX
 
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
-        const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, 
+        const physx::PxHitFlags hitFlags = Utils::RayCast::GetPxHitFlags(request.m_hitFlags);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup,
             GetBlockFilterCallback(request.m_filterCallback), physx::PxQueryHitType::eBLOCK);
 
         physx::PxGeometryHolder pxGeometry;
@@ -364,11 +365,11 @@ namespace PhysX
             bool status = false;
             {
                 PHYSX_SCENE_READ_LOCK(*m_world);
-                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, hitFlags, queryData, &queryFilterCallback);
             }
             if (status)
             {
-                hit = GetHitFromPxHit(pxResult.block);
+                hit = Utils::RayCast::GetHitFromPxHit(pxResult.block);
             }
         }
         else
@@ -386,7 +387,7 @@ namespace PhysX
 
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
-        const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
+        const physx::PxHitFlags hitFlags = Utils::RayCast::GetPxHitFlags(request.m_hitFlags);
         PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
         physx::PxGeometryHolder pxGeometry;
@@ -412,19 +413,19 @@ namespace PhysX
             bool status = false;
             {
                 PHYSX_SCENE_READ_LOCK(*m_world);
-                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
+                status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, hitFlags, queryData, &queryFilterCallback);
             }
             if (status)
             {
                 if (pxResult.hasBlock)
                 {
-                    hits.push_back(GetHitFromPxHit(pxResult.block));
+                    hits.push_back(Utils::RayCast::GetHitFromPxHit(pxResult.block));
                 }
 
                 for (auto i = 0u; i < pxResult.getNbTouches(); ++i)
                 {
                     const auto& pxHit = pxResult.getTouch(i);
-                    hits.push_back(GetHitFromPxHit(pxHit));
+                    hits.push_back(Utils::RayCast::GetHitFromPxHit(pxHit));
                 }
             }
         }

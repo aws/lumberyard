@@ -32,10 +32,16 @@ namespace AssetProcessor
     class PathDependencyManager
     {
     public:
-        PathDependencyManager(AssetProcessorManager* assetProcessorManager, PlatformConfiguration* platformConfig);
+        // The two Ids needed for a ProductDependency entry, and platform. Used for saving ProductDependencies that are pending resolution
+        struct DependencyProductIdInfo
+        {
+            AZ::s64 m_productId{};
+            AZ::s64 m_productDependencyId{};
+            AZStd::string m_platform;
+        };
+        using DependencyProductMap = AZStd::unordered_map<AZStd::string, AZStd::vector<DependencyProductIdInfo>>;
 
-        /// Updates any unresolved wildcard dependencies that have been satisfied by the newly finished product
-        void ProductFinished(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry);
+        PathDependencyManager(AZStd::shared_ptr<AssetDatabaseConnection> stateData, PlatformConfiguration* platformConfig);
 
         /// This function is responsible for looking up existing, unresolved dependencies that the current asset satisfies.
         /// These can be dependencies on either the source asset or one of the product assets
@@ -48,85 +54,51 @@ namespace AssetProcessor
         /// Saves a product's unresolved dependencies to the database
         void SaveUnresolvedDependenciesToDatabase(AssetBuilderSDK::ProductPathDependencySet& unresolvedDependencies, const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry, const AZStd::string& platform);
 
-        ///  Removes unresolved product dependencies from the product dependencies map
-        void RemoveUnresolvedProductDependencies(const AZStd::vector<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry>& unresolvedProductDependencies);
+        using DependencyResolvedCallback = AZStd::function<void(const AZ::Data::AssetId&, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry&)>;
 
-        // The two Ids needed for a ProductDependency entry, and platform. Used for saving ProductDependencies that are pending resolution
-        struct DependencyProductIdInfo
-        {
-            AZ::s64 m_productId;
-            AZ::s64 m_productDependencyId;
-            AZStd::string m_platform;
-        };
-        using DependencyProductMap = AZStd::unordered_map<AZStd::string, AZStd::vector<DependencyProductIdInfo>>;
-        // Avoid calling this directly, this is public to allow unit tests to access it.
-        DependencyProductMap& GetDependencyProductMap(bool exactMatch, AssetBuilderSDK::ProductPathDependencyType dependencyType, bool excludedDependencies);
+        void SetDependencyResolvedCallback(const DependencyResolvedCallback& callback);
+
     private:
 
-        /// Loads unresolved dependencies from the database
-        void PopulateUnresolvedDependencies();
+        struct MapSet
+        {
+            DependencyProductMap m_sourcePathDependencyIds;
+            DependencyProductMap m_productPathDependencyIds;
+            DependencyProductMap m_wildcardSourcePathDependencyIds;
+            DependencyProductMap m_wildcardProductPathDependencyIds;
+        };
+
+        MapSet PopulateExclusionMaps() const;
+        void NotifyResolvedDependencies(const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencyContainer) const;
+        void SaveResolvedDependencies(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const MapSet& exclusionMaps, const AZStd::string& sourceNameWithScanFolder, const AZStd::vector<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry>& dependencyEntries, AZStd::string_view matchedPath, bool isSourceDependency, const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& matchedProducts, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencyContainer) const;
+        static DependencyProductMap& SelectMap(MapSet& mapSet, bool wildcard, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType type);
 
         /// Returns false if a path contains wildcards, true otherwise
-        bool IsExactDependency(AZStd::string_view path);
+        static bool IsExactDependency(AZStd::string_view path);
 
         /// Removes /platform/project/ from the start of a product path
-        AZStd::string StripPlatformAndProject(AZStd::string_view relativeProductPath);
+        static AZStd::string StripPlatformAndProject(AZStd::string_view relativeProductPath);
 
         /// Prefixes the scanFolderId to the relativePath
-        AZStd::string ToScanFolderPrefixedPath(int scanFolderId, const char* relativePath);
+        AZStd::string ToScanFolderPrefixedPath(int scanFolderId, const char* relativePath) const;
 
         /// Takes a path and breaks it into a database-prefixed relative path and scanFolder path
         /// This function can accept an absolute source path, an un-prefixed relative path, and a prefixed relative path
         /// The file returned will be the first one matched based on scanfolder priority
-        bool ProcessInputPathToDatabasePathAndScanFolder(const char* dependencyPathSearch, QString& databaseName, QString& scanFolder);
+        bool ProcessInputPathToDatabasePathAndScanFolder(const char* dependencyPathSearch, QString& databaseName, QString& scanFolder) const;
 
-        /// Gets any matched wildcard dependencies that have been satisfied by the newly finished product
-        /// sourceEntry - source database entry corresponds to the newly finished product
-        /// productEntry - product database entry corresponds to the newly finished product
-        /// matchedDependencies - unresolved wildcard dependencies that have been satisfied by the product
-        /// excludedDependencies - dependencies that should be ignored even if their file paths match any existing wildcard pattern
-        /// dependencyType - type of the dependencies we are handling
-        void GetMatchedWildcardDependencies(
-            const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry,
-            const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry,
-            AZStd::vector<DependencyProductIdInfo>& matchedDependencies,
-            AZStd::vector<DependencyProductIdInfo>& excludedDependencies,
-            AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType);
-        
-        /// Updates the database with the now-resolved product dependencies
-        /// dependencyPairs - the list of unresolved dependencies to update
-        /// sourceEntry - database entry for the source file that resolved these dependencies
-        /// products - database entry for the products the source file produced
-        void UpdateResolvedDependencies(AZStd::vector<DependencyProductIdInfo>& dependencyPairs,
-            const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry,
-            const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products,
-            bool removeSatisfiedDependencies = true);
+        /// Gets any matched dependency exclusions
+        /// @param sourceEntry source database entry corresponds to the newly finished product
+        /// @param productEntry product database entry corresponds to the newly finished product
+        /// @param excludedDependencies dependencies that should be ignored even if their file paths match any existing wildcard pattern
+        /// @param dependencyType type of the dependencies we are handling
+        /// @param exclusionMaps MapSet containing all the path dependency exclusions
+        void GetMatchedExclusions(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry,
+            AZStd::vector<AZStd::pair<DependencyProductIdInfo, bool>>& excludedDependencies, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType,
+            const MapSet& exclusionMaps) const;
 
-        /// Validate the unresolved dependency list and erases any potential dependencies which should be excluded
-        /// unresolvedDependencies - unresolved dependency list to be cleaned up
-        /// excludedDependencies - dependencies that should be removed from the unresolved dependency list if exist
-        /// conflicts - dependencies that are actually removed from the unresolved dependency list
-        void ValidateUnresolvedDependencies(
-            AZStd::vector<DependencyProductIdInfo>& unresolvedDependencies,
-            const AZStd::vector<DependencyProductIdInfo>& excludedDependencies,
-            AZStd::vector<DependencyProductIdInfo>& conflicts);
-
-        DependencyProductMap& GetDependencyProductMap(bool exactMatch, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry::DependencyType dependencyType, bool excludedDependencies);
-
-
-        DependencyProductMap m_unresolvedSourcePathDependencyIds;
-        DependencyProductMap m_unresolvedProductPathDependencyIds;
-        DependencyProductMap m_unresolvedWildcardSourcePathDependencyIds;
-        DependencyProductMap m_unresolvedWildcardProductPathDependencyIds;
-
-        DependencyProductMap m_excludedSourcePathDependencyIds;
-        DependencyProductMap m_excludedProductPathDependencyIds;
-        DependencyProductMap m_excludedWildcardSourcePathDependencyIds;
-        DependencyProductMap m_excludedWildcardProductPathDependencyIds;
-
-        AssetProcessorManager* m_assetProcessorManager;
         AZStd::shared_ptr<AssetDatabaseConnection> m_stateData;
         PlatformConfiguration* m_platformConfig{};
+        DependencyResolvedCallback m_dependencyResolvedCallback{};
     };
-
 } // namespace AssetProcessor

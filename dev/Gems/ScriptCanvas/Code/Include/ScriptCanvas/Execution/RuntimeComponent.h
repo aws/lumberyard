@@ -85,7 +85,7 @@ namespace ScriptCanvas
 
         ScriptCanvasId GetScriptCanvasId() const { return m_scriptCanvasId; };
 
-        void SetRuntimeAsset(const AZ::Data::Asset<RuntimeAsset>& runtimeAsset);
+        void SetRuntimeAsset(const AZ::Data::Asset<AZ::Data::AssetData>& runtimeAsset);
 
         const AZStd::vector<AZ::EntityId> GetNodesConst() const;
 
@@ -119,10 +119,12 @@ namespace ScriptCanvas
         GraphVariable* FindVariableById(const VariableId& variableId) override;
 
         Data::Type GetVariableType(const VariableId& variableId) const override;
-        AZStd::string_view GetVariableName(const VariableId& variableId) const override;        
+        AZStd::string_view GetVariableName(const VariableId& variableId) const override;
 
         bool IsGraphObserved() const override;
         void SetIsGraphObserved(bool isObserved) override;
+
+        AZ::Data::AssetType GetAssetType() const override;
         ////
 
         //// VariableNotificationBus::Handler
@@ -130,7 +132,8 @@ namespace ScriptCanvas
         ////
 
         void SetVariableOverrides(const VariableData& overrideData);
-        void ApplyVariableOverrides();
+        void InitializeVariableState();
+        void ResetState();
         void SetVariableEntityIdMap(const AZStd::unordered_map<AZ::u64, AZ::EntityId> variableEntityIdMap);
 
         //// VariableRequestBus::Handler
@@ -152,6 +155,12 @@ namespace ScriptCanvas
 
         bool IsInErrorState() const { return m_executionContext.IsInErrorState(); }
 
+        void CreateFromGraphData(const GraphData* graphData, const VariableData* variableData);
+        const ExecutionContext& GetExecutionContext() const { return m_executionContext; }
+
+        void ActivateGraph();
+        void DeactivateGraph();
+
     protected:
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
@@ -164,25 +173,31 @@ namespace ScriptCanvas
             provided.push_back(AZ_CRC("ScriptCanvasRuntimeService", 0x776e1e3a));
         }
                 
-        ActivationInfo CreateActivationInfo() const;        
+        ActivationInfo CreateActivationInfo() const;
         ActivationInfo CreateDeactivationInfo() const;
         VariableValues CreateVariableValues() const;
 
         //// Execution
-        void ActivateNodes();
-        void ActivateGraph();
-        void DeactivateGraph();
-        void CreateAssetInstance();
+        void SetupAssetInstance();
         ////
 
-    private:        
+        void SetAsset(AZ::Data::Asset<RuntimeAsset> runtimeAsset)
+        {
+            m_runtimeAsset = runtimeAsset;
+        }
+
+    private:
         ScriptCanvasId m_scriptCanvasId;
         RuntimeData m_runtimeData;
-        AZ::Data::Asset<RuntimeAsset> m_runtimeAsset;
+        AZ::Data::Asset<RuntimeAssetBase> m_runtimeAsset;
 
         //! Per instance variable data overrides for the runtime asset
         //! This is serialized when building this component from the EditorScriptCanvasComponent
         VariableData m_variableOverrides;
+
+        //! Per instance variable initialization state. For the function asset.
+        //! This is stored from the initial application.
+        VariableData m_internalVariables;
 
         ExecutionContext m_executionContext;
         
@@ -191,7 +206,8 @@ namespace ScriptCanvas
         VariableIdMap m_runtimeToAssetVariableMap;
 
         AZStd::unordered_set< Node* > m_entryNodes;
-        AZStd::unordered_map< AZ::EntityId, Node* > m_nodeLookupMap;
+        AZStd::unordered_set< Node* > m_entryPoints;
+        AZStd::unordered_map< AZ::EntityId, Node* > m_nodeLookupMap;        
 
         //! Script Canvas VariableId map populated by the EditorScriptCanvasComponent in build game Entity
         AZStd::unordered_map<AZ::u64, AZ::EntityId> m_variableEntityIdMap;
@@ -206,5 +222,22 @@ namespace ScriptCanvas
         GraphVariableNetBindingTablePtr m_graphVariableNetBindingTable = nullptr;
 
         bool m_isObserved = false;
+        bool m_createdAsset = false;
+
+
+        RuntimeData* GetRuntimeData()
+        {
+            RuntimeData* runtimeData = nullptr;
+            if (m_runtimeAsset.GetType() == azrtti_typeid<RuntimeFunctionAsset>())
+            {
+                runtimeData = &m_runtimeAsset.GetAs<RuntimeFunctionAsset>()->GetData();
+            }
+            else if (m_runtimeAsset.GetType() == azrtti_typeid<RuntimeAsset>())
+            {
+                runtimeData = &m_runtimeAsset.GetAs<RuntimeAsset>()->GetData();
+            }
+
+            return runtimeData;
+        }
     };
 }

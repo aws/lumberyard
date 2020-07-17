@@ -40,9 +40,18 @@ namespace AzQtComponents
             }
             else if (item->spacerItem())
             {
-                QWidget* spacerWidget = new QWidget;
-                spacerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-                toolbar->addWidget(spacerWidget);
+                // Old default behavior - insert expanding spacer widget where separators are.
+                if (item->sizeHint().width() > 1)
+                {
+                    QWidget* spacerWidget = new QWidget;
+                    spacerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+                    toolbar->addWidget(spacerWidget);
+                }
+                // If the spacer is sized 1 px, honor that and insert a regular separator.
+                else
+                {
+                    toolbar->addSeparator();
+                }
             }
             delete item;
         }

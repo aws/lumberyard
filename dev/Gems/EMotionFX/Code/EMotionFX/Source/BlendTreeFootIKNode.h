@@ -135,24 +135,25 @@ namespace EMotionFX
                 return 0;
             }
 
+            void Update() override;
+
         public:
             Leg         m_legs[2]; // Use LegId as index into this array.
             float       m_hipCorrectionTarget   = 0.0f;
             float       m_curHipCorrection      = 0.0f;
             float       m_timeDelta             = 0.0f;
             AZ::u32     m_hipJointIndex         = MCORE_INVALIDINDEX32;
-            bool        m_mustUpdate            = true;
-            bool        m_isValid               = false;
             AnimGraphEventBuffer m_eventBuffer;
         };
 
         BlendTreeFootIKNode();
         ~BlendTreeFootIKNode() override = default;
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
+        bool InitLegs(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
+
         bool GetSupportsVisualization() const override          { return true; }
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
@@ -181,6 +182,7 @@ namespace EMotionFX
         void SetFootLock(bool enabled)                          { m_footLock = enabled; }
         void SetForceUseRaycastBus(bool enabled)                { m_forceUseRaycastBus = enabled; }
 
+        const AZStd::string& GetHipJointName() const            { return m_hipJointName; }
         float GetFootHeigthOffset() const                       { return m_footHeightOffset; }
         float GetRaycastLength() const                          { return m_raycastLength; }
         float GetMaxHipAdjustment() const                       { return m_maxHipAdjustment; }
@@ -234,7 +236,6 @@ namespace EMotionFX
             IKSolveParameters() = default;
         };
 
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

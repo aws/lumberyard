@@ -306,6 +306,7 @@ namespace EMotionFX
         static Recorder* Create();
 
         void Reserve(uint32 numTransformKeys);
+        bool HasRecording() const;
         void Clear();
         void StartRecording(const RecordSettings& settings);
         void UpdatePlayMode(float timeDelta);
@@ -387,7 +388,7 @@ namespace EMotionFX
         void SampleAndApplyTransforms(float timeInSeconds, size_t actorInstanceIndex) const;
         void SampleAndApplyMainTransform(float timeInSeconds, size_t actorInstanceIndex) const;
         void SampleAndApplyAnimGraphStates(float timeInSeconds, const AnimGraphInstanceData& animGraphInstanceData) const;
-        bool SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData);
+        bool SaveUniqueData(AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData);
 
         // Resizes the AnimGraphInstanceData's buffer to be big enough to hold
         // /param numBytes bytes. Returns true if the buffer is big enough

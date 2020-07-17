@@ -15,17 +15,17 @@
 
 #include <Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h>
 
+#include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptEvents/ScriptEventsAsset.h>
-#include <ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h>
 
 namespace ScriptCanvasEditor
 {
     class ScriptEventSenderNodeDescriptorComponent
         : public NodeDescriptorComponent
         , public AZ::Data::AssetBus::Handler
-        , public VersionControlledNodeInterface
+        , public EditorNodeNotificationBus::Handler
     {
-    public:    
+    public:
         AZ_COMPONENT(ScriptEventSenderNodeDescriptorComponent, "{7EB63D67-4F32-40E5-8B15-4C3E28D886F9}", NodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
         
@@ -39,13 +39,13 @@ namespace ScriptCanvasEditor
         ////
         
         // AZ::Data::AssetBus::Handler
+        void OnAssetUnloaded(const AZ::Data::AssetId assetId, const AZ::Data::AssetType assetType) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         ////
 
-        // VersionControlledNodeInterface
-        bool IsOutOfDate() const override;
-
-        void UpdateNodeVersion() override;
+        // VersionControlledNodeRequestBus::Handler
+        void OnVersionConversionBegin() override;
+        void OnVersionConversionEnd() override;
         ////
 
     protected:
@@ -54,6 +54,7 @@ namespace ScriptCanvasEditor
     private:
 
         void UpdateTitles();
+        void SignalNeedsVersionConversion();
 
         AZ::EntityId m_scriptCanvasId;
     

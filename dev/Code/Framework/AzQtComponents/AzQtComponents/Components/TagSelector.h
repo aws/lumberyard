@@ -39,7 +39,7 @@ namespace AzQtComponents
 
     private:
         bool IsOverCloseButton(int localX, int localY);
-        void mouseMoveEvent(QMouseEvent* event);
+        void mouseMoveEvent(QMouseEvent* event) override;
 
         int m_lastMouseX;
         int m_lastMouseY;

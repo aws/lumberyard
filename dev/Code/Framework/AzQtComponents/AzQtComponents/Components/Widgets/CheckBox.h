@@ -14,6 +14,7 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <QProxyStyle>
 
+class QAbstractItemView;
 class QCheckBox;
 class QSettings;
 
@@ -46,6 +47,21 @@ namespace AzQtComponents
         *   AzQtComponents::Style::addClass(checkBox, "ToggleSwitch");
         */
         static void applyToggleSwitchStyle(QCheckBox* checkBox);
+
+        /*!
+        * Applies the Expander styling to a QCheckBox.
+        * Same as
+        *   AzQtComponents::Style::addClass(checkBox, "Expander");
+        */
+        static void applyExpanderStyle(QCheckBox* checkBox);
+
+        /*!
+        * Applies the VisibilityMode (eye-ball) styling to checkable
+        * items in an item view.
+        * Same as
+        *   AzQtComponents::Style::addClass(view, "VisibilityMode");
+        */
+        static void setVisibilityMode(QAbstractItemView* view, bool enabled);
 
         /*!
         * Loads the button config data from a settings object.

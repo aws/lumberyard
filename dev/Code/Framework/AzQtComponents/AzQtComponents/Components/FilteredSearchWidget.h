@@ -15,11 +15,8 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QScopedPointer>
-AZ_PUSH_DISABLE_WARNING(4251 4244 4800, "-Wunknown-warning-option") // 4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
-                                                               // 4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
 #include <QFrame>
 #include <QStyledItemDelegate>
-AZ_POP_DISABLE_WARNING
 #include <QMap>
 #include <QVariant>
 #include <QMenu>
@@ -39,12 +36,11 @@ class QStandardItemModel;
 class QStandardItem;
 class QSettings;
 class QLineEdit;
-class QPushButton;
+class QToolButton;
 class QLabel;
 class QHBoxLayout;
 class QIcon;
 class QBoxLayout;
-
 
 namespace AzQtComponents
 {
@@ -64,7 +60,8 @@ namespace AzQtComponents
             Unlocked,
             Visible,
         };
-        explicit FilterCriteriaButton(const QString& labelText, QWidget* parent = nullptr, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None);
+
+        explicit FilterCriteriaButton(const QString& labelText, QWidget* parent = nullptr, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None, const QString& extraIconFileName = QString());
 
     protected:
         QHBoxLayout* m_frameLayout;
@@ -79,15 +76,17 @@ namespace AzQtComponents
     {
         QString category;
         QString displayName;
+        QString extraIconFilename;
         QVariant metadata;
         int globalFilterValue;
         bool enabled = false;
         FilterCriteriaButton::ExtraButtonType typeExtraButton = FilterCriteriaButton::ExtraButtonType::None;
 
         SearchTypeFilter() {}
-        SearchTypeFilter(const QString& category, const QString& displayName, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None, const QVariant& metadata = {}, int globalFilterValue = -1)
+        SearchTypeFilter(const QString& category, const QString& displayName, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None, const QString& extraIconFilename = QString(), const QVariant& metadata = {}, int globalFilterValue = -1)
             : category(category)
             , displayName(displayName)
+            , extraIconFilename(extraIconFilename)
             , metadata(metadata)
             , globalFilterValue(globalFilterValue)
             , typeExtraButton(type)
@@ -140,7 +139,7 @@ namespace AzQtComponents
         Q_PROPERTY(int searchLayoutMargin READ searchLayoutMargin WRITE setSearchLayoutMargin)
 
     public:
-        SearchTypeSelector(QPushButton* parent = nullptr);
+        SearchTypeSelector(QWidget* parent = nullptr);
         QTreeView* GetTree();
         void Setup(const SearchTypeFilterList& searchTypes);
 
@@ -183,9 +182,9 @@ namespace AzQtComponents
         QStandardItemModel* m_model;
         const SearchTypeFilterList* m_unfilteredData;
         AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") // conditional expression is constant, needs to have dll-interface to be used by clients of class 'AzQtComponents::SearchTypeSelector'
-        QVector<int> m_filteredItemIndices;
+            QVector<int> m_filteredItemIndices;
         AZ_POP_DISABLE_WARNING
-        QString m_filterString;
+            QString m_filterString;
         bool m_settingUp = false;
         int m_fixedWidth = 256;
         QLineEdit* m_searchField = nullptr;
@@ -200,9 +199,9 @@ namespace AzQtComponents
         : public QFrame
     {
         Q_OBJECT
-        Q_PROPERTY(QString placeholderText READ placeholderText WRITE setPlaceholderText NOTIFY placeholderTextChanged)
-        Q_PROPERTY(QString textFilter READ textFilter WRITE SetTextFilter NOTIFY TextFilterChanged)
-        Q_PROPERTY(bool textFilterFillsWidth READ textFilterFillsWidth WRITE setTextFilterFillsWidth NOTIFY textFilterFillsWidthChanged)
+            Q_PROPERTY(QString placeholderText READ placeholderText WRITE setPlaceholderText NOTIFY placeholderTextChanged)
+            Q_PROPERTY(QString textFilter READ textFilter WRITE SetTextFilter NOTIFY TextFilterChanged)
+            Q_PROPERTY(bool textFilterFillsWidth READ textFilterFillsWidth WRITE setTextFilterFillsWidth NOTIFY textFilterFillsWidthChanged)
 
     public:
         struct Config
@@ -227,9 +226,9 @@ namespace AzQtComponents
         void AddTypeFilter(const SearchTypeFilter& typeFilter);
         void SetupOwnSelector(SearchTypeSelector* selector);
 
-        inline void AddTypeFilter(const QString& category, const QString& displayName,  const QVariant& metadata = {}, int globalFilterValue = -1, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None)
+        inline void AddTypeFilter(const QString& category, const QString& displayName, const QVariant& metadata = {}, int globalFilterValue = -1, FilterCriteriaButton::ExtraButtonType type = FilterCriteriaButton::ExtraButtonType::None, const QString& extraIconFileName = {})
         {
-            AddTypeFilter(SearchTypeFilter(category, displayName, type, metadata, globalFilterValue));
+            AddTypeFilter(SearchTypeFilter(category, displayName, type, extraIconFileName, metadata, globalFilterValue));
         }
 
         void SetTextFilterVisible(bool visible);
@@ -238,6 +237,7 @@ namespace AzQtComponents
 
         void AddWidgetToSearchWidget(QWidget* w);
         void SetFilteredParentVisible(bool visible);
+        void setEnabledFiltersVisible(bool visible);
 
         void SetFilterState(const QString& category, const QString& displayName, bool enabled);
         void SetFilterInputInterval(AZStd::chrono::milliseconds milliseconds);
@@ -278,13 +278,13 @@ namespace AzQtComponents
     protected:
         void emitTypeFilterChanged();
         QLineEdit* filterLineEdit() const;
-        QPushButton* filterTypePushButton() const;
+        QToolButton* filterTypePushButton() const;
         SearchTypeSelector* filterTypeSelector() const;
         const SearchTypeFilterList& typeFilters() const;
 
         virtual FilterCriteriaButton* createCriteriaButton(const SearchTypeFilter& filter, int filterIndex);
 
-        QPushButton* assetTypeSelectorButton() const;
+        QToolButton* assetTypeSelectorButton() const;
 
         virtual void SetupPaintDelegates();
     private slots:
@@ -297,15 +297,16 @@ namespace AzQtComponents
 
     protected:
         AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") // conditional expression is constant, needs to have dll-interface to be used by clients of class 'AzQtComponents::FilteredSearchWidget'
-        SearchTypeFilterList m_typeFilters;
+            SearchTypeFilterList m_typeFilters;
         AZ_POP_DISABLE_WARNING
-        FlowLayout* m_flowLayout;
+            FlowLayout* m_flowLayout;
         Ui::FilteredSearchWidget* m_ui;
         SearchTypeSelector* m_selector;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::FilteredSearchWidget'
-        QMap<int, FilterCriteriaButton*> m_typeButtons;
+            QMap<int, FilterCriteriaButton*> m_typeButtons;
         AZ_POP_DISABLE_WARNING
-        bool m_textFilterFillsWidth;
+            bool m_textFilterFillsWidth;
+        bool m_displayEnabledFilters;
 
     private:
         int FindFilterIndex(const QString& category, const QString& displayName) const;

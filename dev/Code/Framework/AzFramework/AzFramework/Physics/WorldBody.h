@@ -16,13 +16,14 @@
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Component/Entity.h>
+#include <AzFramework/Physics/Casts.h>
 
 namespace Physics
 {
     class WorldBody;
     class World;
     struct RayCastRequest;
-    struct RayCastResult;
+    struct RayCastHit;
 
     class WorldBodyConfiguration
     {
@@ -77,7 +78,7 @@ namespace Physics
         virtual AZ::Quaternion GetOrientation() const = 0;
 
         virtual AZ::Aabb GetAabb() const = 0;
-        virtual void RayCast(const RayCastRequest& request, RayCastResult& result) const = 0;
+        virtual Physics::RayCastHit RayCast(const RayCastRequest& request) = 0;
 
         virtual AZ::Crc32 GetNativeType() const = 0;
         virtual void* GetNativePointer() const = 0;

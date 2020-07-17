@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -27,10 +27,10 @@ namespace ScriptCanvas
                 AZStd::string sourceString = ContainsProperty::GetSource(this);
                 AZStd::string patternString = ContainsProperty::GetPattern(this);
 
-                bool ignoreCase = ContainsProperty::GetIgnoreCase(this);
+                bool caseSensitive = ContainsProperty::GetCaseSensitive(this);
                 bool searchFromEnd = ContainsProperty::GetSearchFromEnd(this);
 
-                auto index = AzFramework::StringFunc::Find(sourceString.c_str(), patternString.c_str(), 0, searchFromEnd, !ignoreCase);
+                auto index = AzFramework::StringFunc::Find(sourceString.c_str(), patternString.c_str(), 0, searchFromEnd, caseSensitive);
                 if (index != AZStd::string::npos)
                 {
                     const SlotId outputIndexSlotId = ContainsProperty::GetIndexSlotId(this);

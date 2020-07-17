@@ -42,14 +42,14 @@ namespace EMotionFX
         AnimGraphInstance* animGraphInstance = AnimGraphInstance::Create(this, actorInstance, motionSet);
         actorInstance->SetAnimGraphInstance(animGraphInstance);
         animGraphInstance->IncreaseReferenceCount();
-        animGraphInstance->UpdateUniqueData();
+        animGraphInstance->RecursiveInvalidateUniqueDatas();
         return animGraphInstance;
     }
 
     TwoMotionNodeAnimGraph::TwoMotionNodeAnimGraph()
     {
         /*
-        Inside blend tree:
+        Inside the root state machine:
             +-----------+
             |motionNodeA|
             +-----------+

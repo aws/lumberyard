@@ -25,6 +25,8 @@
 #include <QSortFilterProxyModel>
 #include <QTextLayout>
 #include <QTimer>
+#include <QTableView>
+#include <QListView>
 
 #include <QtGui/private/qtextengine_p.h>
 
@@ -40,6 +42,7 @@ namespace AzQtComponents
         ConfigHelpers::read<qreal>(settings, QStringLiteral("FocusBorderWidth"), config.focusBorderWidth);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("FocusBorderColor"), config.focusBorderColor);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("FocusFillColor"), config.focusFillColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("HeaderFillColor"), config.headerFillColor);
         settings.endGroup();
 
         return config;
@@ -53,6 +56,7 @@ namespace AzQtComponents
         config.focusBorderWidth = 1;
         config.focusBorderColor = QStringLiteral("#00a1c9");
         config.focusFillColor = QStringLiteral("#10ffffff");
+        config.headerFillColor = QStringLiteral("#2d2d2d");
 
         return config;
     }
@@ -170,9 +174,25 @@ namespace AzQtComponents
             painter->save();
             painter->setPen(Qt::NoPen);
             painter->setBrush(config.borderColor);
-            painter->drawRect(option->rect.left(), option->rect.top(), config.borderWidth, option->rect.height());
+            painter->drawRect(option->rect.left(), option->rect.top() + 1, config.borderWidth, option->rect.height() - 2);
             painter->restore();
         }
+
+        return true;
+    }
+
+    bool TableView::drawHeaderSection(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(widget);
+        Q_UNUSED(style);
+
+        const auto headerViewOption = qstyleoption_cast<const QStyleOptionHeader*>(option);
+        if (!headerViewOption)
+        {
+            return false;
+        }
+
+        painter->fillRect(headerViewOption->rect, config.headerFillColor);
 
         return true;
     }
@@ -181,9 +201,33 @@ namespace AzQtComponents
     {
         Q_UNUSED(style);
 
-        if (!qobject_cast<TableView*>(option->styleObject))
+        auto optionCopy = *option;
+
+        auto tableView = qobject_cast<TableView*>(optionCopy.styleObject);
+        auto qTableView = qobject_cast<QTableView*>(optionCopy.styleObject);
+        auto qListView = qobject_cast<QListView*>(optionCopy.styleObject);
+        auto qTreeView = qobject_cast<QTreeView*>(optionCopy.styleObject);
+        if (!tableView && !qTableView && !qListView && !qTreeView)
         {
             return false;
+        }
+
+        // Need to temporarily stretch the item rectangle to the whole row
+        // for QTableView and QListView, only within the scope of focus frame
+        // rectangle drawing.
+        if (qTableView || qListView)
+        {
+            int hHdr = 0;
+            int vHdr = 0;
+
+            if (qTableView)
+            {
+                hHdr = qTableView->horizontalHeader()->isVisible() ? qTableView->horizontalHeader()->height() : 0;
+                vHdr = qTableView->verticalHeader()->isVisible() ? qTableView->verticalHeader()->width() : 0;
+            }
+
+            optionCopy.rect.setX(vHdr);
+            optionCopy.rect.setWidth((qTableView ? qTableView->width() : qListView->width()) - vHdr);
         }
 
         const auto borderWidth = config.focusBorderWidth;
@@ -192,7 +236,7 @@ namespace AzQtComponents
         painter->translate(0.5 * borderWidth, 0.5 * borderWidth);
         painter->setPen(QPen(config.focusBorderColor, borderWidth));
         painter->setBrush(config.focusFillColor);
-        painter->drawRect(QRectF(option->rect).adjusted(0, 0, -borderWidth, -borderWidth));
+        painter->drawRect(QRectF(optionCopy.rect).adjusted(0, 0, -borderWidth, -borderWidth));
         painter->restore();
 
         return true;
@@ -214,6 +258,55 @@ namespace AzQtComponents
         }
 
         return delegate->itemViewItemRect(style, element, option, widget, config);
+    }
+
+    QSize TableView::sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& contentsSize, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(contentsSize);
+        Q_UNUSED(config);
+
+        auto header = qobject_cast<const QHeaderView*>(widget);
+        if (type == QStyle::CT_HeaderSection && header && header->orientation() == Qt::Horizontal)
+        {
+            QSize sz;
+            if (const QStyleOptionHeader *hdr = qstyleoption_cast<const QStyleOptionHeader *>(option))
+            {
+                bool nullIcon = hdr->icon.isNull();
+                int margin = style->pixelMetric(QStyle::PM_HeaderMargin, hdr, widget);
+                int iconSize = 0;
+                if (!nullIcon)
+                {
+                    iconSize = style->pixelMetric(QStyle::PM_SmallIconSize, hdr, widget);
+                }
+                QSize txt = hdr->fontMetrics.size(0, hdr->text);
+                sz.setHeight(margin + qMax(iconSize, txt.height()) + margin);
+                int width = iconSize + txt.width() + 16 + margin;
+                if (!nullIcon)
+                {
+                    width += margin;
+                }
+                if (!hdr->text.isNull())
+                {
+                    width += margin;
+                }
+                sz.setWidth(width);
+
+                if (hdr->sortIndicator != QStyleOptionHeader::None)
+                {
+                    if (hdr->orientation == Qt::Horizontal)
+                    {
+                        sz.rwidth() += sz.height() + margin;
+                    }
+                    else
+                    {
+                        sz.rheight() += sz.width() + margin;
+                    }
+                }
+            }
+            return sz;
+        }
+
+        return {};
     }
 
     bool TableView::polish(Style* style, QWidget* widget, const ScrollBar::Config& scrollBarConfig, const Config& config)

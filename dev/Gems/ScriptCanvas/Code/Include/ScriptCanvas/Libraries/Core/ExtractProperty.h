@@ -45,8 +45,14 @@ namespace ScriptCanvas
                 Data::Type GetSourceSlotDataType() const;
                 AZStd::vector<AZStd::pair<AZStd::string_view, SlotId>> GetPropertyFields() const;
 
+                // Node
+                bool IsOutOfDate() const override;
+                ////
+
             protected:
                 void OnInit() override;
+
+                UpdateResult OnUpdateNode() override;
 
                 void OnInputSignal(const SlotId&) override;
 
@@ -71,6 +77,12 @@ namespace ScriptCanvas
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
 
                 friend class ExtractPropertyEventHandler;
+
+            private:
+
+                void UpdatePropertyVersion();
+
+                void AddPropertySlots(const Data::Type& dataType, const AZStd::unordered_map<AZStd::string, SlotId>& versionedSlots);
             };
         }
     }

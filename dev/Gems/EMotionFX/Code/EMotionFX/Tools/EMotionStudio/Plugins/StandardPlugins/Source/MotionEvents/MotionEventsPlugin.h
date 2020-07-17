@@ -46,7 +46,7 @@ namespace EMStudio
         const char* GetCompileDate() const override     { return MCORE_DATE; }
         const char* GetName() const override            { return "Motion Events"; }
         uint32 GetClassID() const override              { return MotionEventsPlugin::CLASS_ID; }
-        const char* GetCreatorName() const override     { return "MysticGD"; }
+        const char* GetCreatorName() const override     { return "Amazon"; }
         float GetVersion() const override               { return 1.0f;  }
         bool GetIsClosable() const override             { return true;  }
         bool GetIsFloatable() const override            { return true;  }
@@ -74,10 +74,6 @@ namespace EMStudio
         void WindowReInit(bool visible);
         void OnEventPresetDropped(QPoint position);
         bool CheckIfIsPresetReadyToDrop();
-        void OnAddEventTrack()                                                                              { CommandSystem::CommandAddEventTrack(); }
-        void RemoveEventTrack(int eventTrackNr)                                                             { CommandSystem::CommandRemoveEventTrack(eventTrackNr); }
-        void SetEventTrackName(const QString& text, int trackNr)                                            { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).c_str()); }
-        void SetEventTrackEnabled(bool enabled, int trackNr)                                                { CommandSystem::CommandEnableEventTrack(trackNr, enabled); }
 
     private:
         MCORE_DEFINECOMMANDCALLBACK(CommandAdjustMotionCallback);

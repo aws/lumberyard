@@ -72,6 +72,7 @@ ReflectedPropertyControl::ReflectedPropertyControl(QWidget *parent /*= nullptr*/
     mainLayout->addWidget(m_editor, 1);
 
     SetShowFilterWidget(false);
+    setMinimumSize(330, 0);
 }
 
 void ReflectedPropertyControl::Setup(bool showScrollbars /*= true*/, int labelWidth /*= 150*/)

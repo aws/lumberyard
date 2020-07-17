@@ -60,7 +60,8 @@ namespace EMotionFX
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &MotionScaleRule::m_scaleFactor, "Scale factor", "Scale factor")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0001f)
-                            ->Attribute(AZ::Edit::Attributes::Max, 1000000.0f);
+                            ->Attribute(AZ::Edit::Attributes::Max, 10000.0f)
+                            ->Attribute(AZ::Edit::Attributes::Step, 0.1f);
                 }
             }
         } // Rule

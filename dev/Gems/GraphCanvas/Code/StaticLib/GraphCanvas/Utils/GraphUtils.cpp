@@ -24,6 +24,7 @@
 #include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/Nodes/Group/NodeGroupBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
@@ -31,6 +32,8 @@
 
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
+#include <GraphCanvas/GraphCanvasBus.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 #include <GraphCanvas/Utils/QtVectorMath.h>
 
 namespace GraphCanvas
@@ -252,9 +255,6 @@ namespace GraphCanvas
     NodeOrderingStruct::NodeOrderingStruct(const NodeId& nodeId, const AZ::Vector2& anchorPoint)
         : m_nodeId(nodeId)
     {
-        float widthPercent = AZ::GetClamp(anchorPoint.GetX(), 0.0f, 1.0f);
-        float heightPercent = AZ::GetClamp(anchorPoint.GetY(), 0.0f, 1.0f);
-
         QGraphicsItem* graphicsItem = nullptr;
         SceneMemberUIRequestBus::EventResult(graphicsItem, nodeId, &SceneMemberUIRequests::GetRootGraphicsItem);
 
@@ -262,9 +262,24 @@ namespace GraphCanvas
         {
             m_boundingBox = graphicsItem->sceneBoundingRect();
 
-            m_anchorPoint.setX(m_boundingBox.left() + m_boundingBox.width() * widthPercent);
-            m_anchorPoint.setY(m_boundingBox.top() + m_boundingBox.height() * heightPercent);
+            CalculateAnchorPoint(anchorPoint);
         }
+    }
+
+    NodeOrderingStruct::NodeOrderingStruct(const NodeId& nodeId, const AZ::Vector2& anchorPoint, const QRectF& boundingRect)
+        : m_nodeId(nodeId)
+        , m_boundingBox(boundingRect)
+    {
+        CalculateAnchorPoint(anchorPoint);
+    }
+
+    void NodeOrderingStruct::CalculateAnchorPoint(const AZ::Vector2& anchorPoint)
+    {
+        float widthPercent = AZ::GetClamp(anchorPoint.GetX(), 0.0f, 1.0f);
+        float heightPercent = AZ::GetClamp(anchorPoint.GetY(), 0.0f, 1.0f);
+
+        m_anchorPoint.setX(m_boundingBox.left() + m_boundingBox.width() * widthPercent);
+        m_anchorPoint.setY(m_boundingBox.top() + m_boundingBox.height() * heightPercent);
     }
 
     ///////////////////////////////////
@@ -943,6 +958,41 @@ namespace GraphCanvas
         return isSlotVisible && (slotGroup != SlotGroups::Invalid && isGroupVisible);
     }
 
+    bool GraphUtils::IsSlotHideable(const SlotId& slotId)
+    {
+        bool canHideSlot = false;
+
+        bool isExecutionSlot = IsSlotType(slotId, SlotTypes::ExecutionSlot);
+        bool isDataSlot = IsSlotType(slotId, SlotTypes::DataSlot);
+
+        if (IsSlotVisible(slotId)
+            && (isExecutionSlot || isDataSlot))
+        {
+            if (isDataSlot)
+            {
+                DataSlotType dataSlotType = DataSlotType::Unknown;
+
+                DataSlotRequestBus::EventResult(dataSlotType, slotId, &DataSlotRequests::GetDataSlotType);
+
+                if (dataSlotType == DataSlotType::Reference)
+                {
+                    return false;
+                }
+            }
+
+            bool isConnected = false;
+
+            SlotRequestBus::EventResult(isConnected, slotId, &SlotRequests::HasConnections);
+
+            if (!isConnected)
+            {
+                canHideSlot = true;
+            }
+        }
+
+        return canHideSlot;
+    }
+
     bool GraphUtils::IsSlotConnectionType(const SlotId& slotId, ConnectionType connectionType)
     {
         ConnectionType testType = ConnectionType::CT_Invalid;
@@ -983,6 +1033,59 @@ namespace GraphCanvas
     {
         return BookmarkRequestBus::FindFirstHandler(graphMemberId) != nullptr
             && !GraphUtils::IsNodeGroup(graphMemberId);
+    }
+
+    AZ::EntityId GraphUtils::CreateGroupForElements(const AZ::EntityId& graphId, const AZStd::vector<AZ::EntityId>& memberIds, AZ::Vector2 scenePoint)
+    {
+        AZ::Entity* nodeGroupEntity = nullptr;
+        GraphCanvasRequestBus::BroadcastResult(nodeGroupEntity, &GraphCanvasRequests::CreateNodeGroupAndActivate);
+
+        if (nodeGroupEntity)
+        {
+            SceneRequestBus::Event(graphId, &SceneRequests::AddNode, nodeGroupEntity->GetId(), scenePoint);
+
+            ResizeGroupToElements(nodeGroupEntity->GetId(), memberIds);
+
+            return nodeGroupEntity->GetId();
+        }
+
+        return AZ::EntityId();
+    }
+
+    void GraphUtils::ResizeGroupToElements(const AZ::EntityId& groupId, const AZStd::vector<AZ::EntityId>& memberIds)
+    {
+        if (memberIds.empty())
+        {
+            return;
+        }
+
+        AZ::EntityId graphId;
+        SceneMemberRequestBus::EventResult(graphId, groupId, &SceneMemberRequests::GetScene);
+
+        QGraphicsItem* rootItem = nullptr;
+        QRectF boundingArea;
+
+        for (const AZ::EntityId& selectedNode : memberIds)
+        {
+            SceneMemberUIRequestBus::EventResult(rootItem, selectedNode, &SceneMemberUIRequests::GetRootGraphicsItem);
+
+            if (rootItem)
+            {
+                if (boundingArea.isEmpty())
+                {
+                    boundingArea = rootItem->sceneBoundingRect();
+                }
+                else
+                {
+                    boundingArea = boundingArea.united(rootItem->sceneBoundingRect());
+                }
+            }
+        }
+
+        AZ::Vector2 gridStep = FindMinorStep(graphId);
+        boundingArea.adjust(-gridStep.GetX(), -gridStep.GetY(), gridStep.GetX(), gridStep.GetY());
+
+        NodeGroupRequestBus::Event(groupId, &NodeGroupRequests::SetGroupSize, boundingArea);
     }
 
     AZ::Vector2 GraphUtils::FindMinorStep(const AZ::EntityId& graphId)
@@ -1928,6 +2031,8 @@ namespace GraphCanvas
         AZStd::unordered_set< AZ::EntityId > validElements;
         AZStd::unordered_set< AZ::EntityId > ignoredElements;
 
+        AZ::Vector2 minorStep = AZ::Vector2(1, 1);
+
         for (const AZ::EntityId& memberId : memberIds)
         {
             // Don't need to align the wrapped nodes.
@@ -1956,6 +2061,23 @@ namespace GraphCanvas
 
             validElements.insert(memberId);
 
+            if (!graphId.IsValid())
+            {
+                SceneMemberRequestBus::EventResult(graphId, memberId, &SceneMemberRequests::GetScene);
+
+                minorStep = GraphUtils::FindMinorStep(graphId);
+
+                if (minorStep.GetX() < 1.0f)
+                {
+                    minorStep.SetX(1.0f);
+                }
+
+                if (minorStep.GetY() < 1.0f)
+                {
+                    minorStep.SetY(1.0f);
+                }
+            }
+
             if (calculateBoundingRect)
             {
                 QGraphicsItem* graphicsItem = nullptr;
@@ -1963,7 +2085,7 @@ namespace GraphCanvas
 
                 if (graphicsItem)
                 {
-                    overallBoundingRect |= graphicsItem->sceneBoundingRect();
+                    overallBoundingRect |= GraphUtils::AlignBoundingBoxToGrid(graphicsItem->sceneBoundingRect(), minorStep);
                 }
             }
         }
@@ -1973,15 +2095,33 @@ namespace GraphCanvas
             return;
         }
 
-        SceneMemberRequestBus::EventResult(graphId, (*validElements.begin()), &SceneMemberRequests::GetScene);
-
-        AZStd::set< NodeOrderingStruct, NodeOrderingStruct::Comparator > nodeOrdering(NodeOrderingStruct::Comparator(overallBoundingRect, alignConfig));        
+        AZStd::set< NodeOrderingStruct, NodeOrderingStruct::Comparator > nodeOrdering(NodeOrderingStruct::Comparator(overallBoundingRect, alignConfig));
 
         AZ::Vector2 anchorPoint = CalculateAlignmentAnchorPoint(alignConfig);
 
         for (const AZ::EntityId& memberId : validElements)
         {
-            nodeOrdering.emplace(memberId, anchorPoint);
+            if (GraphUtils::IsComment(memberId))
+            {
+                QGraphicsItem* graphicsItem = nullptr;
+                SceneMemberUIRequestBus::EventResult(graphicsItem, memberId, &SceneMemberUIRequests::GetRootGraphicsItem);
+
+                if (graphicsItem)
+                {
+                    QRectF boundingBox = graphicsItem->sceneBoundingRect();
+                    boundingBox = GraphUtils::AlignBoundingBoxToGrid(boundingBox, minorStep);
+
+                    nodeOrdering.emplace(memberId, anchorPoint, boundingBox);
+                }
+                else
+                {
+                    nodeOrdering.emplace(memberId, anchorPoint);
+                }
+            }
+            else
+            {
+                nodeOrdering.emplace(memberId, anchorPoint);
+            }
         }
 
         AZ::EntityId gridId;
@@ -2004,9 +2144,6 @@ namespace GraphCanvas
             // We want to align everything to the average position to try to minimize the amount of motion required to do the alignment
             for (const NodeOrderingStruct& nodeStruct : nodeOrdering)
             {
-                AZ::Vector2 position;
-                GeometryRequestBus::EventResult(position, nodeStruct.m_nodeId, &GeometryRequests::GetPosition);
-
                 // Calculate the movement we need to take to get it to the center line.
                 QPointF movementVector = alignmentPoint - nodeStruct.m_anchorPoint;
 
@@ -2022,9 +2159,9 @@ namespace GraphCanvas
                     groupAlignConfig.m_ignoreNodes.insert(nodeStruct.m_nodeId);
 
                     QRectF groupedBoundingBox;
-                    NodeGroupRequestBus::EventResult(groupedBoundingBox, nodeStruct.m_nodeId, &NodeGroupRequests::GetGroupBoundingBox);                    
+                    NodeGroupRequestBus::EventResult(groupedBoundingBox, nodeStruct.m_nodeId, &NodeGroupRequests::GetGroupBoundingBox);
 
-                    // Need to account for the fact the node group doesn't need to be perfectly aligned.                    
+                    // Need to account for the fact the node group doesn't need to be perfectly aligned.
                     float topOffset = aznumeric_cast<float>(static_cast<int>(groupedBoundingBox.height()) % static_cast<int>(gridStep.GetY()));
 
                     if (AZ::IsClose(topOffset, 0, gridStep.GetY() * 0.25f))
@@ -2931,6 +3068,11 @@ namespace GraphCanvas
             return false;
         }
 
+        if (!IsSlotHideable(endpoint.GetSlotId()))
+        {
+            return false;
+        }
+
         if (slotRequests->HasConnections())
         {
             return false;
@@ -2941,26 +3083,7 @@ namespace GraphCanvas
         if (hideConfig.m_slotTypeListing.AllowsType(slotType))
         {
             return false;
-        }
-
-        // Hard out on these types(more structural in nature and doesn't really make sense to hide)
-        if (slotType == SlotTypes::ExtenderSlot
-            || slotType == SlotTypes::PropertySlot)
-        {
-            return false;
-        }
-
-        if (slotType == SlotTypes::DataSlot)
-        {
-            DataSlotType dataSlotType = DataSlotType::Unknown;
-
-            DataSlotRequestBus::EventResult(dataSlotType, endpoint.GetSlotId(), &DataSlotRequests::GetDataSlotType);
-
-            if (dataSlotType == DataSlotType::Reference)
-            {
-                return false;
-            }
-        }
+        }        
 
         SlotGroup slotGroup = slotRequests->GetSlotGroup();
 
@@ -2977,6 +3100,104 @@ namespace GraphCanvas
         }
 
         return true;
+    }
+
+    void GraphUtils::AlignSlotForConnection(const GraphCanvas::Endpoint& moveableEndpoint, const GraphCanvas::Endpoint& fixedEndpoint)
+    {
+        NodeUIRequestBus::Event(moveableEndpoint.GetNodeId(), &NodeUIRequests::AdjustSize);
+
+        GraphCanvas::GraphId graphId;
+        SceneMemberRequestBus::EventResult(graphId, moveableEndpoint.GetNodeId(), &SceneMemberRequests::GetScene);
+
+        AZ::EntityId gridId;
+        SceneRequestBus::EventResult(gridId, graphId, &SceneRequests::GetGrid);
+
+        QPointF jutDirection;
+        GraphCanvas::SlotUIRequestBus::EventResult(jutDirection, fixedEndpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetJutDirection);
+
+        AZ::Vector2 minorStep(0, 0);
+        GraphCanvas::GridRequestBus::EventResult(minorStep, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
+
+        // TODO: Make this customizable
+        jutDirection.setX(jutDirection.x() * minorStep.GetX() * 2.0f);
+        jutDirection.setY(jutDirection.y() * minorStep.GetY() * 2.0f);
+
+        QPointF finalPosition;
+        GraphCanvas::SlotUIRequestBus::EventResult(finalPosition, fixedEndpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetConnectionPoint);
+
+        finalPosition += jutDirection;        
+
+        QPointF originalPosition;
+        GraphCanvas::SlotUIRequestBus::EventResult(originalPosition, moveableEndpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetConnectionPoint);        
+
+        AZ::Vector2 difference = ConversionUtils::QPointToVector(finalPosition - originalPosition);
+
+        AZ::Vector2 originalCorner;
+        GraphCanvas::GeometryRequestBus::EventResult(originalCorner, moveableEndpoint.GetNodeId(), &GraphCanvas::GeometryRequests::GetPosition);
+
+        AZ::Vector2 finalCorner = originalCorner + difference;
+
+        GraphCanvas::GeometryRequestBus::Event(moveableEndpoint.GetNodeId(), &GraphCanvas::GeometryRequests::SetPosition, finalCorner);
+    }
+
+    QPointF GraphUtils::CalculateAnchorPoint(const QPointF& position, const AZ::Vector2& anchorPoint, const QRectF& boundingBox)
+    {
+        QSizeF offset;
+        offset.setWidth(boundingBox.width() * anchorPoint.GetX());
+        offset.setHeight(boundingBox.height() * anchorPoint.GetY());
+
+        int xPoint = aznumeric_cast<int>(position.x() + offset.width());
+        int yPoint = aznumeric_cast<int>(position.y() + offset.height());
+
+        return QPointF(xPoint - offset.width(), yPoint - offset.height());
+    }
+
+    QPointF GraphUtils::CalculateGridSnapPosition(const QPointF& position, const AZ::Vector2& anchorPoint, const QRectF& boundingBox, const AZ::Vector2& gridStep, CalculationType calculationType)
+    {
+        float gridOffset = 0.5f;
+
+        if (calculationType == CalculationType::Ceiling)
+        {
+            gridOffset = 1.0f;
+        }
+        else if (calculationType == CalculationType::Floor)
+        {
+            gridOffset = 0.0f;
+        }
+
+        QSizeF offset;
+        offset.setWidth(boundingBox.width() * anchorPoint.GetX());
+        offset.setHeight(boundingBox.height() * anchorPoint.GetY());
+
+        int xPoint = aznumeric_cast<int>(position.x() + offset.width());
+        int yPoint = aznumeric_cast<int>(position.y() + offset.height());
+
+        int gridX = aznumeric_cast<int>(gridStep.GetX());
+        int gridY = aznumeric_cast<int>(gridStep.GetY());
+        
+        if (xPoint < 0)
+        {
+            xPoint = aznumeric_cast<int>(xPoint - (gridX * gridOffset));
+            xPoint += aznumeric_cast<int>(abs(xPoint)) % gridX;
+        }
+        else
+        {
+            xPoint = aznumeric_cast<int>(xPoint + (gridX * gridOffset));
+            xPoint -= aznumeric_cast<int>(xPoint) % gridX;
+        }
+
+        if (yPoint < 0)
+        {
+            yPoint = aznumeric_cast<int>(yPoint - (gridY * gridOffset));
+            yPoint += aznumeric_cast<int>(abs(yPoint)) % gridY;
+        }
+        else
+        {
+            yPoint = aznumeric_cast<int>(yPoint + (gridY * gridOffset));
+            yPoint -= aznumeric_cast<int>(yPoint) % gridY;
+        }
+
+        return QPointF(xPoint - offset.width(), yPoint - offset.height());
     }
 
     AZ::EntityId GraphUtils::CreateUnknownConnection(const GraphId& graphId, const Endpoint& firstEndpoint, const Endpoint& secondEndpoint)
@@ -3154,5 +3375,39 @@ namespace GraphCanvas
         }
 
         return moveableBoundingRect;
+    }
+
+    QRectF GraphUtils::AlignBoundingBoxToGrid(const QRectF& boundingBox, const AZ::Vector2& stepSize)
+    {
+        int widthStep = aznumeric_cast<int>(stepSize.GetX());
+        int heightStep = aznumeric_cast<int>(stepSize.GetY());
+        QRectF resultBox = boundingBox;
+
+        int width = aznumeric_cast<int>(boundingBox.width());
+
+        int deltaStep = (width % aznumeric_cast<int>(stepSize.GetX()));
+
+        if (deltaStep != 0)
+        {
+            width += (widthStep - deltaStep);
+        }
+
+        resultBox.setWidth(width);
+
+        int height = aznumeric_cast<int>(boundingBox.height());
+
+        deltaStep = (height % aznumeric_cast<int>(stepSize.GetY()));
+
+        if (deltaStep != 0)
+        {
+            height += (heightStep - deltaStep);
+        }
+
+        resultBox.setHeight(height);
+
+        QPointF newPosition = CalculateGridSnapPosition(boundingBox.topLeft(), AZ::Vector2(0, 0), resultBox, stepSize, CalculationType::Floor);
+        resultBox.moveTo(newPosition.x(), newPosition.y());
+
+        return resultBox;
     }
 }

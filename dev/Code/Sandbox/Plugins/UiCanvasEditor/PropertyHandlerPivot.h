@@ -36,12 +36,12 @@ public:
     void ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName);
 
     PivotPresetsWidget* GetPivotPresetsWidget();
-    AzToolsFramework::PropertyVectorCtrl* GetPropertyVectorCtrl();
+    AzQtComponents::VectorInput* GetPropertyVectorCtrl();
 
 private:
 
     AzToolsFramework::VectorPropertyHandlerCommon m_common;
-    AzToolsFramework::PropertyVectorCtrl* m_propertyVectorCtrl;
+    AzQtComponents::VectorInput* m_propertyVectorCtrl;
     PivotPresetsWidget* m_pivotPresetsWidget;
 };
 

@@ -58,8 +58,8 @@ void QComponentLevelEntityEditorInspectorWindow::OnMetadataEntityAdded(AZ::Entit
     AZ::EntityId rootSliceMetaDataEntity = GetRootMetaDataEntityId();
     if (rootSliceMetaDataEntity == entityId)
     {
-        AzToolsFramework::EntityIdList entities;
-        entities.push_back(rootSliceMetaDataEntity);
+        AzToolsFramework::EntityIdSet entities;
+        entities.insert(rootSliceMetaDataEntity);
         m_propertyEditor->SetOverrideEntityIds(entities);
     }
 }

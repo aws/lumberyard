@@ -239,7 +239,7 @@ void BatchApplicationManager::InitAssetProcessorManager()
     {
         using namespace AssetProcessor;
         const AZStd::string& levelString = commandLine->GetSwitchValue("warningLevel", 0);
-        WarningLevel warningLevel = WarningLevel::Default;
+        WarningLevel warningLevel;
 
         switch(AZStd::stoi(levelString))
         {
@@ -249,8 +249,29 @@ void BatchApplicationManager::InitAssetProcessorManager()
             case 2:
                 warningLevel = WarningLevel::FatalErrorsAndWarnings;
                 break;
+            default:
+                warningLevel = WarningLevel::Default;
         }
         AssetProcessor::JobDiagnosticRequestBus::Broadcast(&AssetProcessor::JobDiagnosticRequestBus::Events::SetWarningLevel, warningLevel);
+    }
+    constexpr char truncateFingerprintSwitch[] = "truncatefingerprint";
+    if(commandLine->HasSwitch(truncateFingerprintSwitch))
+    {
+        // Zip archive format uses 2 second precision truncated
+        const int ArchivePrecision = 2000;
+        int precision = ArchivePrecision;
+
+        if(commandLine->GetNumSwitchValues(truncateFingerprintSwitch) > 0)
+        {
+            precision = AZStd::stoi(commandLine->GetSwitchValue(truncateFingerprintSwitch, 0));
+
+            if(precision < 1)
+            {
+                precision = 1;
+            }
+        }
+
+        AssetUtilities::SetTruncateFingerprintTimestamp(precision);
     }
 }
 

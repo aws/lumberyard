@@ -115,7 +115,8 @@ namespace UnitTest
     {
         if (editor)
         {
-            editor->SetOverrideEntityIds(entities);
+            AzToolsFramework::EntityIdSet entitiesSet(entities.begin(), entities.end());
+            editor->SetOverrideEntityIds(entitiesSet);
         }
     }
 
@@ -230,8 +231,8 @@ namespace UnitTest
             m_levelEntity = CreateDefaultEditorEntity("LevelEntity");
 
             // Level Inspector expects to have one override entity ID, which would normally be the root slice entity.
-            AzToolsFramework::EntityIdList entities;
-            entities.push_back(m_levelEntity);
+            AzToolsFramework::EntityIdSet entities;
+            entities.insert(m_levelEntity);
             m_levelEditor->SetOverrideEntityIds(entities);
 
             m_editorActions.Connect();

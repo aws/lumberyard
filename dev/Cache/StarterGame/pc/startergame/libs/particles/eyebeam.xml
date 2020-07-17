@@ -1,0 +1,5 @@
+<ParticleLibrary Name="EyeBeam" SandboxVersion="0.0.0.0" ParticleVersion="33">
+ <Particles Name="ChargingBeam">
+  <Params EmitterShape="POINT" Count="700" Velocity="Y=1" EmitterSizeDiameter="5" SpawnPosXYZRandom="X=0.1" VelocitySpread="160" Continuous="true" ParticleLifeTime="0.175,Random=1" Curvature="0" Texture="eyebeams/particle.dds" Color="(x=0.955973,y=0.283149,z=0.283149)" DiffuseLighting="0" EmissiveLighting="1" SizeX="0.1" SizeY="0.1" SizeZ="0.1" Speed="10" Acceleration="y=25" MoveRelEmitter="Yes" CameraNonFacingFade="FadeCurve=(;t=1,v=1)"/>
+ </Particles>
+</ParticleLibrary>

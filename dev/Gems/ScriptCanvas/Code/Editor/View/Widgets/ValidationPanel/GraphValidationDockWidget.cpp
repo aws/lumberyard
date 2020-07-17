@@ -31,6 +31,8 @@
 #include <Editor/View/Widgets/VariablePanel/VariableDockWidget.h>
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationEvents.h>
 #include <ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationEvents.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/GreyOutEffect.h>
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Core/ConnectionBus.h>
@@ -511,9 +513,11 @@ namespace ScriptCanvasEditor
 
     void GraphValidationSortFilterProxyModel::SetFilter(const QString& filterString)
     {
-        if (m_filter != filterString)
+        QString escapedString = QRegExp::escape(filterString);
+
+        if (m_filter != escapedString)
         {
-            m_filter = filterString;
+            m_filter = escapedString;
             m_regex = QRegExp(m_filter, Qt::CaseInsensitive);
 
             invalidateFilter();
@@ -654,6 +658,11 @@ namespace ScriptCanvasEditor
             GraphCanvas::ToastNotificationBus::MultiHandler::BusDisconnect((*toastId));
         }
     }
+
+    bool GraphValidationDockWidget::HasValidationIssues() const
+    {
+        return m_model->rowCount() > 0;
+    }
     
     void GraphValidationDockWidget::OnRunValidator(bool displayAsNotification)
     {
@@ -668,8 +677,7 @@ namespace ScriptCanvasEditor
         {
             ui->statusTableView->selectAll();
         }
-        else if (m_model->GetValidationResults().HasErrors()
-                 || m_model->GetValidationResults().HasWarnings())
+        else if (HasValidationIssues() )
         {
             GraphCanvas::ViewId viewId;
             GraphCanvas::SceneRequestBus::EventResult(viewId, m_graphCanvasGraphId, &GraphCanvas::SceneRequests::GetViewId);            
@@ -755,21 +763,11 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasMemberId;
         QRectF focusArea;
 
-        if (validationEvent->GetIdCrc() == ScriptCanvas::DataValidationIds::ScopedDataConnectionCrc)
+        if (const ScriptCanvas::FocusOnEntityEffect* focusOnEntityEffect = azrtti_cast<const ScriptCanvas::FocusOnEntityEffect*>(validationEvent))
         {
-            const ScriptCanvas::ScopedDataConnectionEvent* connectionEvent = static_cast<const ScriptCanvas::ScopedDataConnectionEvent*>(validationEvent);
+            const AZ::EntityId& scriptCanvasId = focusOnEntityEffect->GetFocusTarget();
 
-            const AZ::EntityId& scriptCanvasConnectionId = connectionEvent->GetConnectionId();
-            
-            SceneMemberMappingRequestBus::EventResult(graphCanvasMemberId, scriptCanvasConnectionId, &SceneMemberMappingRequests::GetGraphCanvasEntityId);
-        }
-        else if (validationEvent->GetIdCrc() == ScriptCanvas::ExecutionValidationIds::UnusedNodeCrc)
-        {
-            const ScriptCanvas::UnusedNodeEvent* unusedEvent = static_cast<const ScriptCanvas::UnusedNodeEvent*>(validationEvent);
-
-            const AZ::EntityId& scriptCanvasNodeId = unusedEvent->GetNodeId();
-
-            SceneMemberMappingRequestBus::EventResult(graphCanvasMemberId, scriptCanvasNodeId, &SceneMemberMappingRequests::GetGraphCanvasEntityId);
+            SceneMemberMappingRequestBus::EventResult(graphCanvasMemberId, scriptCanvasId, &SceneMemberMappingRequests::GetGraphCanvasEntityId);
         }
 
         if (graphCanvasMemberId.IsValid())
@@ -1156,7 +1154,7 @@ namespace ScriptCanvasEditor
                 // Hook up to the actual target endpoints
                 GraphCanvas::CreateConnectionsBetweenConfig config;
                 config.m_connectionType = GraphCanvas::CreateConnectionsBetweenConfig::CreationType::SinglePass;
-                
+
                 GraphCanvas::GraphUtils::CreateConnectionsBetween(validTargetEndpoints, getVariableNodeIdPair.m_graphCanvasId, config);
             }
 
@@ -1195,25 +1193,23 @@ namespace ScriptCanvasEditor
 
         const ScriptCanvas::ValidationEvent* validationEvent = m_model->FindItemForRow(row);
 
-        if (validationEvent->GetIdCrc() == ScriptCanvas::DataValidationIds::ScopedDataConnectionCrc)
+        if (const ScriptCanvas::HighlightEntityEffect* highlightEntity = azrtti_cast<const ScriptCanvas::HighlightEntityEffect*>(validationEvent))
         {
             HighlightElementValidationEffect* highlightEffect = aznew HighlightElementValidationEffect();
 
-            const ScriptCanvas::ScopedDataConnectionEvent* connectionEvent = static_cast<const ScriptCanvas::ScopedDataConnectionEvent*>(validationEvent);
-            highlightEffect->AddTarget(connectionEvent->GetConnectionId());
+            highlightEffect->AddTarget(highlightEntity->GetHighlightTarget());
 
             highlightEffect->DisplayEffect(m_graphCanvasGraphId);
 
             m_validationEffects[row] = highlightEffect;
         }
-        else if (validationEvent->GetIdCrc() == ScriptCanvas::DataValidationIds::InvalidVariableTypeCrc)
+
+        if (const ScriptCanvas::HighlightVariableEffect* highlightvariable = azrtti_cast<const ScriptCanvas::HighlightVariableEffect*>(validationEvent))
         {
             HighlightElementValidationEffect* highlightEffect = aznew HighlightElementValidationEffect();
 
-            const ScriptCanvas::InvalidVariableTypeEvent* invalidTypeEvent = static_cast<const ScriptCanvas::InvalidVariableTypeEvent*>(validationEvent);
-            
             AZStd::vector<NodeIdPair> variableNodes;
-            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasId, &EditorGraphRequests::GetVariableNodes, invalidTypeEvent->GetVariableId());
+            EditorGraphRequestBus::EventResult(variableNodes, m_scriptCanvasId, &EditorGraphRequests::GetVariableNodes, highlightvariable->GetHighlightVariableId());
 
             for (auto& variable : variableNodes)
             {
@@ -1224,27 +1220,10 @@ namespace ScriptCanvasEditor
 
             m_validationEffects[row] = highlightEffect;
         }
-        else if (validationEvent->GetIdCrc() == ScriptCanvas::ExecutionValidationIds::UnusedNodeCrc)
+
+        if (const ScriptCanvas::GreyOutNodeEffect* greyOutEffect = azrtti_cast<const ScriptCanvas::GreyOutNodeEffect*>(validationEvent))
         {
-            HighlightElementValidationEffect* highlightEffect = aznew HighlightElementValidationEffect(Qt::yellow);
-
-            const ScriptCanvas::UnusedNodeEvent* unusedEvent = static_cast<const ScriptCanvas::UnusedNodeEvent*>(validationEvent);
-            highlightEffect->AddTarget(unusedEvent->GetNodeId());
-            highlightEffect->DisplayEffect(m_graphCanvasGraphId);
-
-            m_unusedNodeValidationEffect.AddUnusedNode(unusedEvent->GetNodeId());
-
-            m_validationEffects[row] = highlightEffect;
-        }
-        else if (validationEvent->GetIdCrc() == ScriptCanvas::DataValidationIds::ScriptEventVersionMismatchCrc)
-        {
-            HighlightElementValidationEffect* highlightEffect = aznew HighlightElementValidationEffect();
-
-            const ScriptCanvas::ScriptEventVersionMismatch* scriptEventMismatch = static_cast<const ScriptCanvas::ScriptEventVersionMismatch*>(validationEvent);
-            highlightEffect->AddTarget(scriptEventMismatch->GetNodeId());
-            highlightEffect->DisplayEffect(m_graphCanvasGraphId);
-
-            m_validationEffects[row] = highlightEffect;
+            m_unusedNodeValidationEffect.AddUnusedNode(greyOutEffect->GetGreyOutNodeId());
         }
 
         UpdateSelectedText();
@@ -1261,10 +1240,9 @@ namespace ScriptCanvasEditor
 
         const ScriptCanvas::ValidationEvent* validationEvent = m_model->FindItemForRow(row);
 
-        if (validationEvent->GetIdCrc() == ScriptCanvas::ExecutionValidationIds::UnusedNodeCrc)
+        if (const ScriptCanvas::GreyOutNodeEffect* greyOutEffect = azrtti_cast<const ScriptCanvas::GreyOutNodeEffect*>(validationEvent))
         {
-            const ScriptCanvas::UnusedNodeEvent* unusedEvent = static_cast<const ScriptCanvas::UnusedNodeEvent*>(validationEvent);
-            m_unusedNodeValidationEffect.RemoveUnusedNode(unusedEvent->GetNodeId());
+            m_unusedNodeValidationEffect.RemoveUnusedNode(greyOutEffect->GetGreyOutNodeId());
         }
 
         validationIter->second->CancelEffect();

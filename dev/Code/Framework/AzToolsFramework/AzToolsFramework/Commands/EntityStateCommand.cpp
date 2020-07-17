@@ -213,6 +213,15 @@ namespace AzToolsFramework
                 }
             }
 
+            // Signal that an Entity was created since ComponentApplicationBus::Events::DeleteEntity causes
+            // EditorEntityContextNotification::OnEditorEntityDeleted to be fired, we need to have parity
+            AzFramework::EntityContextId editorEntityContextId = AzFramework::EntityContextId::CreateNull();
+            EditorEntityContextRequestBus::BroadcastResult(editorEntityContextId, &EditorEntityContextRequestBus::Events::GetEditorEntityContextId);
+            if (editorEntityContextId == m_entityContextId)
+            {
+                EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityCreated, entity->GetId());
+            }
+
             EntityStateCommandNotificationBus::Event(m_entityID, &EntityStateCommandNotificationBus::Events::PostRestore, entity);
         }
 

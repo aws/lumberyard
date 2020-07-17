@@ -55,11 +55,6 @@ namespace AZ
     class Entity;
 }
 
-namespace UndoSystem
-{
-    class URSequencePoint;
-}
-
 namespace AzToolsFramework
 {
     class ComponentEditor;
@@ -69,6 +64,11 @@ namespace AzToolsFramework
     namespace AssetBrowser
     {
         class ProductAssetBrowserEntry;
+    }
+
+    namespace UndoSystem
+    {
+        class URSequencePoint;
     }
 
     using ProductCallback = AZStd::function<void(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*)>;
@@ -137,7 +137,7 @@ namespace AzToolsFramework
 
         void SetAllowRename(bool allowRename);
 
-        void SetOverrideEntityIds(const AzToolsFramework::EntityIdList& entities);
+        void SetOverrideEntityIds(const AzToolsFramework::EntityIdSet& entities);
 
         void SetSystemEntityEditor(bool isSystemEntityEditor);
 
@@ -148,6 +148,11 @@ namespace AzToolsFramework
         static bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components, const ComponentFilter& filter);
     Q_SIGNALS:
         void SelectedEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name);
+
+    protected:
+        virtual void CloseInspectorWindow();
+
+        virtual QString GetEntityDetailsLabelText() const;
 
     private:
         bool m_disabled = false;
@@ -524,12 +529,9 @@ namespace AzToolsFramework
 
         QIcon m_emptyIcon;
         QIcon m_clearIcon;
-        QIcon m_checkmarkIcon;
-        QIcon m_rectangleIcon;
-        QIcon m_spacerIcon;
 
         QStandardItem* m_comboItems[StatusItems];
-        EntityIdList m_overrideSelectedEntityIds;
+        EntityIdSet m_overrideSelectedEntityIds;
 
         void GetSelectedEntities(EntityIdList& selectedEntityIds);
 
@@ -558,8 +560,6 @@ namespace AzToolsFramework
 
         bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
 
-        void CloseInspectorWindow();
-
         AZ::Entity* GetSelectedEntityById(AZ::EntityId& entityId) const;
     };
 
@@ -575,6 +575,7 @@ public:
     StatusComboBox(QWidget* parent = nullptr);
 
     void setHeaderOverride(QString overrideString);
+    void setItalic(bool italic);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -582,6 +583,7 @@ protected:
     void wheelEvent(QWheelEvent* e) override;
 
     QString m_headerOverride = "";
+    bool m_italic = false;
 };
 
 #endif

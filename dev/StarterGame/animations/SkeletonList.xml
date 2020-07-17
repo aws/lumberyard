@@ -1,4 +1,0 @@
-<SkeletonList>
- <Skeleton name="jack_root" file="objects/characters/jack/jack_root.chr"/>
- <Skeleton name="am_rocks_slide_skel_01" file="objects/natural/rocks/am_rocks_slide_skel_01.chr"/>
-</SkeletonList>

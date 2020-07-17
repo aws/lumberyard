@@ -1,0 +1,19 @@
+<Material MtlFlags="557312" DccMaterialHash="1175693174" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AM_Ivy_Leaf_02" MtlFlags="524418" DccMaterialHash="4206988339" Shader="Vegetation" GenMask="200002400800000" StringGenMask="%LEAVES%NORMAL_MAP%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.79910284,0.79910284,0.79910284,1" Specular="0.025186861,0.025186861,0.025186861,1" Opacity="1" Shininess="2.007875" AlphaTest="0.36000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/ivy_02_diff.dds"/>
+    <Texture Map="Opacity" File="objects/foliage/textures/ivy_02_sss.dds"/>
+    <Texture Map="Bumpmap" File="objects/foliage/textures/ivy_02_ddna.dds"/>
+   </Textures>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" NormalViewDependency="0.5" TransmittanceColor="1,1,0.60000002" CapOpacityFalloff="1" BackDiffuseMultiplier="1" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="collision" MtlFlags="557184" DccMaterialHash="3451714818" Shader="Illum" GenMask="800080000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0,0.80000001,0.52442503" Specular="0,0,0,0.039215688" Opacity="0.52442503" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+
+ </SubMaterials>
+</Material>

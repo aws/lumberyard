@@ -65,7 +65,10 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::Max, 4)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_weightThreshold, "Weight threshold", "Weight value less than this will be ignored during import.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 1.0f);
+                        ->Attribute(AZ::Edit::Attributes::Max, 0.01f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 6)
+                        ->Attribute(AZ::Edit::Attributes::DisplayDecimals, 6);
                 }
             }
         } // Rule

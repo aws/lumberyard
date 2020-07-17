@@ -45,6 +45,8 @@ namespace EMotionFX
         : public AZ::EBusTraits
     {
     public:
+        virtual void OnFocusIn() {}
+        virtual void OnShow() {}
     };
 
     using AnimGraphEditorNotificationBus = AZ::EBus<AnimGraphEditorNotifications>;

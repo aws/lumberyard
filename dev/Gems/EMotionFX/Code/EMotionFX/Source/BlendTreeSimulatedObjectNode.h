@@ -64,20 +64,14 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-                , m_mustUpdate(true)
-                , m_isValid(false)
-                , m_timePassedInSeconds(0.0f)
-            {
-            }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override;
+
+            void Update() override;
 
         public:
             AZStd::vector<Simulation*> m_simulations;
-            float m_timePassedInSeconds;
-            bool m_mustUpdate;
-            bool m_isValid;
+            float m_timePassedInSeconds = 0.0f;
         };
 
         BlendTreeSimulatedObjectNode();
@@ -87,7 +81,7 @@ namespace EMotionFX
         bool InitAfterLoading(AnimGraph* animGraph) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetSupportsVisualization() const override { return true; }
         bool GetHasOutputPose() const override { return true; }
         bool GetSupportsDisable() const override { return true; }
@@ -108,7 +102,6 @@ namespace EMotionFX
 
         static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode);
 
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Output(AnimGraphInstance* animGraphInstance) override;
         void AdjustParticles(const SpringSolver::ParticleAdjustFunction& func);

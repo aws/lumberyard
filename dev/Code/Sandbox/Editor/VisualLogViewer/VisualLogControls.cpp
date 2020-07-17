@@ -14,7 +14,9 @@
 #include "StdAfx.h"
 #include "VisualLogControls.h"
 
-#include <QColorDialog>
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include <QFileDialog>
 #include <QMessageBox>
 
@@ -208,14 +210,19 @@ void CVisualLogDialog::OnBackgroundClicked()
 {
     QPalette p = m_ui->VLB_BACKGROUND->palette();
 
-    QColorDialog dlg;
-    dlg.setCurrentColor(p.color(QPalette::Button));
-    if (QDialog::Accepted != dlg.exec())
+    AzQtComponents::ColorPicker picker(AzQtComponents::ColorPicker::Configuration::RGB);
+    picker.setWindowTitle(tr("Select Color"));
+
+    const AZ::Color currentColor = AzQtComponents::fromQColor(p.color(QPalette::Button));
+    picker.setSelectedColor(currentColor);
+    picker.setCurrentColor(currentColor);
+
+    if (QDialog::Accepted != picker.exec())
     {
         return;
     }
 
-    const QColor& color = dlg.selectedColor();
+    const QColor color = AzQtComponents::toQColor(picker.selectedColor());
     p.setColor(QPalette::Button, color);
     m_ui->VLB_BACKGROUND->setPalette(p);
     m_pCD->clrBack = QColor(color.red(), color.green(), color.blue());

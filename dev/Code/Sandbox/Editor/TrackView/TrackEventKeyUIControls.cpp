@@ -26,7 +26,6 @@ public:
     CSmartVariableArray mv_table;
     CSmartVariableEnum<QString> mv_event;
     CSmartVariable<QString> mv_value;
-    CSmartVariable<bool> mv_editEvents;
 
     virtual void OnCreateVars()
     {
@@ -34,7 +33,6 @@ public:
         AddVariable(mv_table, mv_event, "Track Event");
         mv_event->SetFlags(mv_event->GetFlags() | IVariable::UI_UNSORTED);
         AddVariable(mv_table, mv_value, "Value");
-        AddVariable(mv_table, mv_editEvents, "Edit Track Events...");
     }
     bool SupportTrackType(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType) const
     {
@@ -56,7 +54,17 @@ public:
     }
 
 private:
-    void OnClickedEventEdit();
+    void OnEventEdit();
+    void BuildEventDropDown(QString& curEvent, const QString& addedEvent = "");
+
+    QString m_lastEvent;
+
+    static const char* GetAddEventString()
+    {
+        static const char* addEventString = "Add a new event...";
+
+        return addEventString;
+    }
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -75,37 +83,23 @@ bool CTrackEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selecte
         CAnimParamType paramType = keyHandle.GetTrack()->GetParameterType();
         if (paramType == AnimParamType::TrackEvent)
         {
-            mv_event.SetEnumList(NULL);
-
-            // Add <None> for empty, unset event
-            mv_event->AddEnumItem(QObject::tr("<None>"), "");
-
-            // Add track events
-            if (CAnimationContext* pContext = GetIEditor()->GetAnimation())
-            {
-                CTrackViewSequence* pSequence = pContext->GetSequence();
-
-                if (pSequence)
-                {
-                    const int iCount = pSequence->GetTrackEventsCount();
-                    for (int i = 0; i < iCount; ++i)
-                    {
-                        mv_event->AddEnumItem(pSequence->GetTrackEvent(i),
-                            pSequence->GetTrackEvent(i));
-                    }
-                }
-            }
-
             IEventKey eventKey;
             keyHandle.GetKey(&eventKey);
 
-            mv_event = eventKey.event.c_str();
+            // Provide builder with current event value to ensure
+            // dropdown is displayed properly and value is updated if not found
+            QString event = eventKey.event.c_str();
+            BuildEventDropDown(event);
+
+            mv_event = event;
             mv_value = eventKey.eventValue.c_str();
-            mv_editEvents = false;
 
             bAssigned = true;
         }
     }
+
+    m_lastEvent = mv_event;
+
     return bAssigned;
 }
 
@@ -119,10 +113,16 @@ void CTrackEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& 
         return;
     }
 
-    if (mv_editEvents == true)
+    if (mv_event == GetAddEventString())
     {
-        mv_editEvents = false;
-        OnClickedEventEdit();
+        mv_event = m_lastEvent;
+        OnEventEdit();
+        return;
+    }
+
+    if (mv_event == "___spacer___")
+    {
+        mv_event = m_lastEvent;
         return;
     }
 
@@ -154,33 +154,85 @@ void CTrackEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& 
             keyHandle.SetKey(&eventKey);
         }
     }
+
+    m_lastEvent = mv_event;
 }
 
-void CTrackEventKeyUIControls::OnClickedEventEdit()
+void CTrackEventKeyUIControls::OnEventEdit()
 {
-    if (CAnimationContext* pContext = GetIEditor()->GetAnimation())
+    // Create dialog
+    CTVEventsDialog dlg;
+    dlg.exec();
+
+    QString event = mv_event;
+    BuildEventDropDown(event, dlg.GetLastAddedEvent());
+
+    // The step below is necessary to make the event drop-down up-to-date.
+    mv_event.GetVar()->EnableNotifyWithoutValueChange(true);
+    mv_event = event;
+    mv_event.GetVar()->EnableNotifyWithoutValueChange(false);
+}
+
+void CTrackEventKeyUIControls::BuildEventDropDown(QString& curEvent, const QString& addedEvent)
+{
+    if (CAnimationContext* context = GetIEditor()->GetAnimation())
     {
-        CTrackViewSequence* pSequence = pContext->GetSequence();
+        CTrackViewSequence* sequence = context->GetSequence();
 
-        if (pSequence)
+        if (sequence)
         {
-            // Create dialog
-            CTVEventsDialog dlg;
-            dlg.exec();
-            QString event = mv_event;
+            bool curEventExists = false;
+            bool addedEventExists = false;
             mv_event.SetEnumList(NULL);
+            const int eventCount = sequence->GetTrackEventsCount();
 
-            const int iCount = pSequence->GetTrackEventsCount();
-            for (int i = 0; i < iCount; ++i)
+            // Need to check if event exists before adding all events
+            // This handles the case where the current event got deleted in the dialog but no new events were added
+            for (int i = 0; i < eventCount; ++i)
             {
-                mv_event->AddEnumItem(pSequence->GetTrackEvent(i),
-                    pSequence->GetTrackEvent(i));
+                const char* trackEvent = sequence->GetTrackEvent(i);
+
+                if (curEvent == trackEvent)
+                {
+                    curEventExists = true;
+                }
+                if (addedEvent == trackEvent)
+                {
+                    addedEventExists = true;
+                }
+                if (curEventExists && addedEventExists)
+                {
+                    break;
+                }
             }
 
-            // The step below is necessary to make the event drop-down up-to-date.
-            mv_event.GetVar()->EnableNotifyWithoutValueChange(true);
-            mv_event = event;
-            mv_event.GetVar()->EnableNotifyWithoutValueChange(false);
+            if (!curEventExists)
+            {
+                if (addedEventExists)
+                {
+                    // Set added event if key not set
+                    curEvent = addedEvent;
+                }
+                else
+                {
+                    mv_event->AddEnumItem(QObject::tr("<None>"), "");
+                    curEvent = "";
+                }
+            }
+
+            // Add Events
+            for (int i = 0; i < eventCount; ++i)
+            {
+                const char* trackEvent = sequence->GetTrackEvent(i);
+
+                mv_event->AddEnumItem(trackEvent, trackEvent);
+            }
+
+            // Used as a spacer to make Add a new event... standout
+            mv_event->AddEnumItem(QObject::tr(""), "___spacer___");
+
+            // Add a new event... to open event editor when selected
+            mv_event->AddEnumItem(QObject::tr(GetAddEventString()), GetAddEventString());
         }
     }
 }

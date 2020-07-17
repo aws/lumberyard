@@ -61,11 +61,11 @@ namespace CloudCanvas
         public:
             virtual void NewContentReady(const AZStd::string& outputFile) {}
             virtual void NewPakContentReady(const AZStd::string& pakFileName) {}
-            virtual void FileStatusFailed(const AZStd::string& outputFile) {}
-            virtual void DownloadSucceeded(const AZStd::string& fileName, const AZStd::string& keyName) {}
+            virtual void FileStatusFailed(const AZStd::string& outputFile, const AZStd::string& keyName) {}
+            virtual void DownloadSucceeded(const AZStd::string& fileName, const AZStd::string& keyName, bool updated) {}
 
             // Download was attempted and failed
-            virtual void DownloadFailed(const AZStd::string& outputFile) {}
+            virtual void DownloadFailed(const AZStd::string& outputFile, const AZStd::string& keyName) {}
 
             // Broadcast when we've detected a change in file status on the back end from the WebCommunicator (New file made public, public file made private)
             virtual void FileStatusChanged(const AZStd::string& fileName, const AZStd::string& fileStatus) {}
@@ -74,6 +74,8 @@ namespace CloudCanvas
 
             // Fired when when our tick bus checks and finds no remaining pak entries to mount in the UPDATING state
             virtual void RequestsCompleted() {}
+            // Called when we've received data.  This is just the delta, not the running total of the data received.
+            virtual void OnDataReceived(const AZStd::string& fileName, uint32_t receivedData, uint32_t totalSize) {}
         };
 
         class DynamicContentUpdateTraits

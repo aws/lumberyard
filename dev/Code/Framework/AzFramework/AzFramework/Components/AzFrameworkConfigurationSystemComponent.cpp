@@ -14,6 +14,8 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Debug/Trace.h>
 #include <AzFramework/Scene/Scene.h>
 #include <AzFramework/Scene/SceneSystemBus.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
@@ -35,6 +37,14 @@ namespace AzFramework
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Method("Terminate", &AZ::Debug::Trace::Terminate, nullptr, "Terminates the process with the specified exit code")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "framework")
+                ;
         }
     }
 

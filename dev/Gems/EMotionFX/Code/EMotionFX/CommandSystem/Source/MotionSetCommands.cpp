@@ -30,7 +30,6 @@
 #include <EMotionFX/Exporters/ExporterLib/Exporter/ExporterFileProcessor.h>
 #include <AzFramework/API/ApplicationAPI.h>
 
-
 namespace CommandSystem
 {
     AZ_CLASS_ALLOCATOR_IMPL(CommandSystemMotionSetCallback, EMotionFX::MotionAllocator, 0)
@@ -836,7 +835,7 @@ namespace CommandSystem
         bool updateMotionNodeStringIDs = parameters.GetValueAsBool("updateMotionNodeStringIDs", this);
 
         // Construct the undo command.
-        AZStd::string command = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -updateMotionNodeStringIDs %i", motionSetID, idString.c_str(), updateMotionNodeStringIDs);
+        AZStd::string command = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -updateMotionNodeStringIDs %i", motionSetID, idString.c_str(), updateMotionNodeStringIDs/* ? "true" : "false"*/);
 
         if (idStringChanged)
         {
@@ -859,7 +858,7 @@ namespace CommandSystem
         GetSyntax().AddRequiredParameter("idString",             "The identification string that is assigned to the motion.",                                           MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddParameter("motionFileName",               "The local filename of the motion. An example would be \"Walk.motion\" without any path information.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("newIDString",                  "The identification string that is assigned to the motion.",                                           MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("updateMotionNodeStringIDs",    ".",                                                                                                   MCore::CommandSyntax::PARAMTYPE_STRING, "false");
+        GetSyntax().AddParameter("updateMotionNodeStringIDs",    "Update references to the motion ids.",                                                                MCore::CommandSyntax::PARAMTYPE_STRING, "false");
     }
 
 

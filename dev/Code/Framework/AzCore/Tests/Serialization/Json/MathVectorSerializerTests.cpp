@@ -10,11 +10,15 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/MathVectorSerializer.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
+#include <AzCore/Serialization/Json/DoubleSerializer.h>
+#include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 #pragma push_macro("AZ_NUMERICCAST_ENABLED") // pushing macro for uber file protection
 #undef AZ_NUMERICCAST_ENABLED
@@ -22,6 +26,79 @@
 
 namespace JsonSerializationTests
 {
+    template<typename VectorType, size_t ComponentCount, typename Serializer>
+    class MathVectorSerializerTestDescription :
+        public JsonSerializerConformityTestDescriptor<VectorType>
+    {
+    public:
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<Serializer>();
+        }
+
+        AZStd::shared_ptr<VectorType> CreateDefaultInstance() override
+        {
+            auto vector = AZStd::make_shared<VectorType>();
+            for (size_t i = 0; i < ComponentCount; ++i)
+            {
+                vector->SetElement(aznumeric_caster(i), 0.0f);
+            }
+            return vector;
+        }
+
+        AZStd::shared_ptr<VectorType> CreateFullySetInstance() override
+        {
+            auto vector = AZStd::make_shared<VectorType>();
+            for (size_t i=0; i<ComponentCount; ++i)
+            {
+                vector->SetElement(aznumeric_caster(i), 1.0f + i);
+            }
+            return vector;
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance() override
+        {
+            if constexpr (ComponentCount == 2)
+            {
+                return "[1.0, 2.0]";
+            }
+            else if constexpr (ComponentCount == 3)
+            {
+                return "[1.0, 2.0, 3.0]";
+            }
+            else if constexpr (ComponentCount == 4)
+            {
+                return "[1.0, 2.0, 3.0, 4.0]";
+            }
+            else
+            {
+                static_assert(ComponentCount >= 2 && ComponentCount <= 4,
+                    "Only vector 2, 3 and 4 are supported by this test.");
+            }
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kArrayType);
+            features.EnableJsonType(rapidjson::kObjectType);
+            features.m_fixedSizeArray = true;
+            features.m_supportsPartialInitialization = false;
+            features.m_supportsInjection = false;
+        }
+
+        bool AreEqual(const VectorType& lhs, const VectorType& rhs) override
+        {
+            return lhs == rhs;
+        }
+    };
+
+    using MathVectorSerializerConformityTestTypes = ::testing::Types<
+        MathVectorSerializerTestDescription<AZ::Vector2, 2, AZ::JsonVector2Serializer>,
+        MathVectorSerializerTestDescription<AZ::Vector3, 3, AZ::JsonVector3Serializer>,
+        MathVectorSerializerTestDescription<AZ::Vector4, 4, AZ::JsonVector4Serializer>
+    >;
+    INSTANTIATE_TYPED_TEST_CASE_P(JsonMathVectorSerializer, JsonSerializerConformityTests, MathVectorSerializerConformityTestTypes);
+
     template<typename T>
     class JsonMathVectorSerializerTests
         : public BaseJsonSerializerFixture
@@ -73,55 +150,7 @@ namespace JsonSerializationTests
         Vector2Descriptor, Vector3Descriptor, Vector4Descriptor>;
     TYPED_TEST_CASE(JsonMathVectorSerializerTests, JsonMathVectorSerializerTypes);
 
-
-    // Load invalid types
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Load_InvalidTypes_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        const rapidjson::Type unsupportedTypes[] =
-        {
-            rapidjson::kNullType,
-            rapidjson::kFalseType,
-            rapidjson::kTrueType,
-            rapidjson::kStringType,
-            rapidjson::kNumberType
-        };
-
-        for (size_t i = 0; i < AZ_ARRAY_SIZE(unsupportedTypes); ++i)
-        {
-            rapidjson::Value value(unsupportedTypes[i]);
-            typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-            ResultCode result = this->m_serializer->Load(
-                &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), value, this->m_path, this->m_deserializationSettings);
-            EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        }
-    }
-
-
     // Load array tests
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Load_ValidArray_ReturnsSuccessAndLoadsVector)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value& arrayValue = this->m_jsonDocument->SetArray();
-        for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            arrayValue.PushBack(static_cast<float>(i + 1), this->m_jsonDocument->GetAllocator());
-        }
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
-        ASSERT_EQ(Outcomes::Success, result.GetOutcome());
-        
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            EXPECT_FLOAT_EQ(static_cast<float>(i + 1), output.GetElement(i));
-        }
-    }
 
     TYPED_TEST(JsonMathVectorSerializerTests, Load_OversizedArray_ReturnsPartialConvertAndLoadsVector)
     {
@@ -135,33 +164,12 @@ namespace JsonSerializationTests
 
         typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
         ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         ASSERT_EQ(Outcomes::Success, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
             EXPECT_FLOAT_EQ(static_cast<float>(i + 1), output.GetElement(i));
-        }
-    }
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Load_UndersizedArray_ReturnsUnsupportedAndLeavesVectorUntouched)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value& arrayValue = this->m_jsonDocument->SetArray();
-        for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount - 1; ++i)
-        {
-            arrayValue.PushBack(static_cast<float>(i + 1), this->m_jsonDocument->GetAllocator());
-        }
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            EXPECT_FLOAT_EQ(0.0f, output.GetElement(i));
         }
     }
 
@@ -184,7 +192,7 @@ namespace JsonSerializationTests
 
         typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
         ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
 
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
@@ -193,106 +201,105 @@ namespace JsonSerializationTests
         }
     }
 
+    TYPED_TEST(JsonMathVectorSerializerTests, Load_FloatSerializerMissingForArray_ReturnsCatastrophic)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        this->m_jsonRegistrationContext->EnableRemoveReflection();
+        this->m_jsonRegistrationContext->template Serializer<AZ::JsonFloatSerializer>()->template HandlesType<float>();
+        this->m_jsonRegistrationContext->DisableRemoveReflection();
+
+        rapidjson::Value& arrayValue = this->m_jsonDocument->SetArray();
+        for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount + 1; ++i)
+        {
+            arrayValue.PushBack(static_cast<float>(i + 1), this->m_jsonDocument->GetAllocator());
+        }
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output;
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Catastrophic, result.GetOutcome());
+
+        this->m_jsonRegistrationContext->template Serializer<AZ::JsonFloatSerializer>()->template HandlesType<float>();
+    }
 
     // Load object tests
     TYPED_TEST(JsonMathVectorSerializerTests, Load_ValidObjectUpperCase_ReturnsSuccessAndLoadsVector)
     {
         using namespace AZ::JsonSerializationResult;
-        const char* fieldNames[4] =
-        {
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[0],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[1],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[2],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[3]
-        };
 
         rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
         for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), static_cast<float>(i + 1),
+            objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[i]), 1.0f + i,
                 this->m_jsonDocument->GetAllocator());
         }
 
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output =
+            JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         ASSERT_EQ(Outcomes::Success, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            EXPECT_FLOAT_EQ(static_cast<float>(i + 1), output.GetElement(i));
+            EXPECT_FLOAT_EQ(1.0f + i, output.GetElement(i));
         }
     }
 
     TYPED_TEST(JsonMathVectorSerializerTests, Load_ValidObjectLowerCase_ReturnsSuccessAndLoadsVector)
     {
         using namespace AZ::JsonSerializationResult;
-        const char* fieldNames[4] =
-        {
-            JsonMathVectorSerializerTests<TypeParam>::lowerCaseFieldNames[0],
-            JsonMathVectorSerializerTests<TypeParam>::lowerCaseFieldNames[1],
-            JsonMathVectorSerializerTests<TypeParam>::lowerCaseFieldNames[2],
-            JsonMathVectorSerializerTests<TypeParam>::lowerCaseFieldNames[3]
-        };
-        
+
         rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
         for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), static_cast<float>(i + 1),
+            objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::lowerCaseFieldNames[i]), 1.0f + i,
                 this->m_jsonDocument->GetAllocator());
         }
 
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output =
+            JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         ASSERT_EQ(Outcomes::Success, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            EXPECT_FLOAT_EQ(static_cast<float>(i + 1), output.GetElement(i));
+            EXPECT_FLOAT_EQ(1.0f + i, output.GetElement(i));
         }
     }
 
     TYPED_TEST(JsonMathVectorSerializerTests, Load_ValidObjectWithExtraFields_ReturnsPartialConvertAndLoadsVector)
     {
         using namespace AZ::JsonSerializationResult;
-        const char* fieldNames[4] =
-        {
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[0],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[1],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[2],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[3]
-        };
 
         rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
         for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), static_cast<float>(i + 1),
+            objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[i]), 1.0f + i,
                 this->m_jsonDocument->GetAllocator());
         }
         this->InjectAdditionalFields(objectValue, rapidjson::kStringType, this->m_jsonDocument->GetAllocator());
 
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output =
+            JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         ASSERT_EQ(Outcomes::Success, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            EXPECT_FLOAT_EQ(static_cast<float>(i + 1), output.GetElement(i));
+            EXPECT_FLOAT_EQ(1.0f + i, output.GetElement(i));
         }
     }
 
-    TYPED_TEST(JsonMathVectorSerializerTests, Load_MissingFields_ReturnsPartialDefaultValueAndLeavesVectorUntouched)
+    TYPED_TEST(JsonMathVectorSerializerTests, Load_MissingFields_ReturnsPartialDefaultValueAndVectorHasWhatCouldBeLoaded)
     {
         using namespace AZ::JsonSerializationResult;
-        const char* fieldNames[4] =
-        {
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[0],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[1],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[2],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[3]
-        };
 
         rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
         for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
@@ -301,50 +308,46 @@ namespace JsonSerializationTests
             {
                 continue;
             }
-            objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), static_cast<float>(i + 1),
+            objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[i]), 1.0f + i,
                 this->m_jsonDocument->GetAllocator());
         }
 
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
-        ASSERT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output =
+            JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
+        ASSERT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            EXPECT_FLOAT_EQ(0.0f, output.GetElement(i));
+            float expectedValue = i == 1 ? 0.0f : (1.0f + i);
+            EXPECT_FLOAT_EQ(expectedValue, output.GetElement(i));
         }
     }
 
     TYPED_TEST(JsonMathVectorSerializerTests, Load_InvalidFields_ReturnsUnsupportedAndLeavesVectorUntouched)
     {
         using namespace AZ::JsonSerializationResult;
-        const char* fieldNames[4] =
-        {
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[0],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[1],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[2],
-            JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[3]
-        };
 
         rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
         for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
             if (i == 1)
             {
-                objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), rapidjson::StringRef("Invalid"),
-                    this->m_jsonDocument->GetAllocator());
+                objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[i]),
+                    rapidjson::StringRef("Invalid"), this->m_jsonDocument->GetAllocator());
             }
             else
             {
-                objectValue.AddMember(rapidjson::StringRef(fieldNames[i]), static_cast<float>(i + 1),
-                    this->m_jsonDocument->GetAllocator());
+                objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[i]),
+                    1.0f + i, this->m_jsonDocument->GetAllocator());
             }
         }
 
         typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
         ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, *this->m_jsonDeserializationContext);
         ASSERT_EQ(Outcomes::Unsupported, result.GetOutcome());
         
         for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
@@ -353,90 +356,27 @@ namespace JsonSerializationTests
         }
     }
 
-    TYPED_TEST(JsonMathVectorSerializerTests, Load_LoadEmtpyObject_ReturnsUnsupportedAndLeavesVectorUntouched)
+    TYPED_TEST(JsonMathVectorSerializerTests, Load_FloatSerializerMissingForObject_ReturnsCatastrophic)
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_jsonDocument->SetObject();
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output = JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType::CreateZero();
-        ResultCode result = this->m_serializer->Load(
-            &output, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
-        ASSERT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
+        this->m_jsonRegistrationContext->EnableRemoveReflection();
+        this->m_jsonRegistrationContext->template Serializer<AZ::JsonFloatSerializer>()->template HandlesType<float>();
+        this->m_jsonRegistrationContext->DisableRemoveReflection();
+
+        rapidjson::Value& objectValue = this->m_jsonDocument->SetObject();
+        for (size_t i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
         {
-            EXPECT_FLOAT_EQ(0.0f, output.GetElement(i));
+            objectValue.AddMember(rapidjson::StringRef(JsonMathVectorSerializerTests<TypeParam>::upperCaseFieldNames[0]), 1.0f + i,
+                this->m_jsonDocument->GetAllocator());
         }
-    }
+        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType output;
+        ResultCode result = this->m_serializer->Load(&output,
+            azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(),
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Catastrophic, result.GetOutcome());
 
-
-    // Test storing
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Store_ValidVector_ReturnsSuccessAndStoresVector)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType input;
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            input.SetElement(i, static_cast<float>(i + 1));
-        }
-
-        ResultCode result = this->m_serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(), &input,
-            nullptr, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), this->m_path, this->m_serializationSettings);
-        ASSERT_EQ(Outcomes::Success, result.GetOutcome());
-
-        ASSERT_TRUE(this->m_jsonDocument->IsArray());
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            EXPECT_TRUE((*this->m_jsonDocument)[i].IsDouble());
-            double value = (*this->m_jsonDocument)[i].GetDouble();
-            EXPECT_DOUBLE_EQ(static_cast<double>(i + 1), value);
-        }
-    }
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Store_DefaultVector_ReturnsDefaultValueAndNothingWritten)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType input;
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            input.SetElement(i, static_cast<float>(i + 1));
-        }
-
-        rapidjson::Value convertedValue = this->CreateExplicitDefault();
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &input,
-            &input, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        this->Expect_ExplicitDefault(convertedValue);
-    }
-
-    TYPED_TEST(JsonMathVectorSerializerTests, Store_PartialDefault_ReturnsSuccessAndStoresVector)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType input;
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            input.SetElement(i, static_cast<float>(i + 1));
-        }
-
-        typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType defaultInput = input;
-        defaultInput.SetElement(1, 0.0f);
-
-        this->m_jsonDocument->SetNull();
-        ResultCode result = this->m_serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(), &input,
-            &defaultInput, azrtti_typeid<typename JsonMathVectorSerializerTests<TypeParam>::Descriptor::VectorType>(), this->m_path, this->m_serializationSettings);
-        ASSERT_EQ(Outcomes::Success, result.GetOutcome());
-
-        ASSERT_TRUE(this->m_jsonDocument->IsArray());
-        for (int i = 0; i < JsonMathVectorSerializerTests<TypeParam>::Descriptor::ElementCount; ++i)
-        {
-            EXPECT_TRUE((*this->m_jsonDocument)[i].IsDouble());
-            double value = (*this->m_jsonDocument)[i].GetDouble();
-            EXPECT_DOUBLE_EQ(static_cast<double>(i + 1), value);
-        }
+        this->m_jsonRegistrationContext->template Serializer<AZ::JsonFloatSerializer>()->template HandlesType<float>();
     }
 } // namespace JsonSerializationTests
 

@@ -35,6 +35,8 @@
 #include <QRect>
 #include <QSettings>
 
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
+
 class CGrid;
 
 struct SGizmoSettings

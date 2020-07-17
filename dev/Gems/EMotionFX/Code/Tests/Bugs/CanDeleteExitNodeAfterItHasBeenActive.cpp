@@ -76,10 +76,10 @@ namespace EMotionFX
         CommandSystem::CommandManager manager;
 
         AZStd::vector<const AnimGraphNodeData*> nodeDatas{
-            m_animGraphInstance->FindUniqueNodeData(m_stateMachine),
-            m_animGraphInstance->FindUniqueNodeData(m_motionNode),
-            m_animGraphInstance->FindUniqueNodeData(m_entryNode),
-            m_animGraphInstance->FindUniqueNodeData(m_exitNode),
+            m_animGraphInstance->FindOrCreateUniqueNodeData(m_stateMachine),
+            m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode),
+            m_animGraphInstance->FindOrCreateUniqueNodeData(m_entryNode),
+            m_animGraphInstance->FindOrCreateUniqueNodeData(m_exitNode),
         };
 
         GetEMotionFX().Update(0.0f);
@@ -109,7 +109,7 @@ namespace EMotionFX
         );
         ExpectNodeRefCountsAreZero(nodeDatas, __LINE__);
 
-        nodeDatas.erase(AZStd::find(nodeDatas.begin(), nodeDatas.end(), m_animGraphInstance->FindUniqueNodeData(m_exitNode)));
+        nodeDatas.erase(AZStd::find(nodeDatas.begin(), nodeDatas.end(), m_animGraphInstance->FindOrCreateUniqueNodeData(m_exitNode)));
         MCore::CommandGroup group;
         CommandSystem::DeleteNodes(&group, m_animGraph.get(), {m_exitNode}, true);
         AZStd::string result;

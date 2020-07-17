@@ -19,6 +19,7 @@
 #include <QMutexLocker>
 #include <QDateTime>
 #include <QElapsedTimer>
+#include <QTimeZone>
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Casting/lossy_cast.h>
@@ -55,6 +56,7 @@
 #include <utilities/JobDiagnosticTracker.h>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
+#include <cinttypes>
 
 namespace AssetProcessor
 {
@@ -95,8 +97,10 @@ namespace AssetProcessor
             azstrcpy(m_absoluteDevGameFolderPath, AZ_MAX_PATH_LEN, absoluteDevGameFolderPath.toUtf8().constData());
         }
 
-        // Populate the unresolved Dependencies in case AP shut down while waiting for path->ID resolution
-        m_pathDependencyManager = AZStd::make_unique<PathDependencyManager>(this, m_platformConfig);
+        using namespace AZStd::placeholders;
+
+        m_pathDependencyManager = AZStd::make_unique<PathDependencyManager>(m_stateData, m_platformConfig);
+        m_pathDependencyManager->SetDependencyResolvedCallback(AZStd::bind(&AssetProcessorManager::EmitResolvedDependency, this, _1, _2));
 
         m_sourceFileRelocator = AZStd::make_unique<SourceFileRelocator>(m_stateData, m_platformConfig);
 
@@ -1253,6 +1257,18 @@ namespace AssetProcessor
                 else
                 {
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Removed lingering prior product %s\n", priorProduct.ToString().c_str());
+
+                    AZStd::vector<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry> unresolvedProductDependencies;
+                    auto queryFunc = [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& productDependencyData)
+                    {
+                        if (!productDependencyData.m_unresolvedPath.empty())
+                        {
+                            unresolvedProductDependencies.push_back(productDependencyData);
+                        }
+                        return true;
+                    };
+
+                    m_stateData->QueryProductDependencyByProductId(priorProduct.m_productID, queryFunc);
                 }
 
                 QString parentFolderName = QFileInfo(fullProductPath).absolutePath();
@@ -1285,31 +1301,10 @@ namespace AssetProcessor
                 AZStd::vector<AssetBuilderSDK::ProductDependency> resolvedDependencies;
                 m_pathDependencyManager->ResolveDependencies(pathDependencies, resolvedDependencies, job.m_platform, pair.first.m_productName);
 
-                AZStd::vector<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry> unresolvedProductDependencies;
-                auto queryFunc = [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& productDependencyData)
-                {
-                    if (!productDependencyData.m_unresolvedPath.empty())
-                    {
-                        unresolvedProductDependencies.push_back(productDependencyData);
-                    }
-                    return true;
-                };
-
                 AzToolsFramework::AssetDatabase::ProductDatabaseEntry productEntry;
                 if (pair.first.m_productID == AzToolsFramework::AssetDatabase::InvalidEntryId)
                 {
                     m_stateData->GetProductByJobIDSubId(pair.first.m_jobPK, pair.second->m_productSubID, productEntry);
-                }
-
-                if (productEntry.m_productID != AzToolsFramework::AssetDatabase::InvalidEntryId)
-                {
-                    m_stateData->QueryProductDependencyByProductId(productEntry.m_productID, queryFunc);
-
-                    // Removing all cached unresolved dependencies info for the current product file.
-                    // Please note that we are removing all the product dependencies data from the database by invoking the WriteProductTableInfo method below,
-                    // and after that caching the updated data once we have saved all the product dependencies info to the database again in the SaveUnresolvedDependenciesToDatabase method below.
-                    // This ensures that we do not cache any stale data in our product dependencies map.
-                    m_pathDependencyManager->RemoveUnresolvedProductDependencies(unresolvedProductDependencies);
                 }
 
                 WriteProductTableInfo(pair, newLegacySubIDs[productIdx], dependencySet, job.m_platform);
@@ -1336,8 +1331,6 @@ namespace AssetProcessor
 
                 // Save any unresolved dependencies
                 m_pathDependencyManager->SaveUnresolvedDependenciesToDatabase(pathDependencies, pair.first, job.m_platform);
-
-                m_pathDependencyManager->ProductFinished(source, pair.first);
 
                 // now we need notify everyone about the new products
                 AzToolsFramework::AssetDatabase::ProductDatabaseEntry& newProduct = pair.first;
@@ -1543,7 +1536,7 @@ namespace AssetProcessor
                     QString databaseName;
                     m_platformConfig->ConvertToRelativePath(originalName, scanFolder, databaseName);
 
-                    m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), metadataFileInfo.lastModified().toMSecsSinceEpoch());
+                    m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), AssetUtilities::AdjustTimestamp(metadataFileInfo.lastModified()));
                 }
                 else
                 {
@@ -2079,7 +2072,7 @@ namespace AssetProcessor
             QFileInfo fileInfo(absolutePath);
             QDateTime lastModifiedTime = fileInfo.lastModified();
 
-            m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceFile, scanFolder->ScanFolderID(), lastModifiedTime.toMSecsSinceEpoch());
+            m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceFile, scanFolder->ScanFolderID(), AssetUtilities::AdjustTimestamp(lastModifiedTime));
         }
     }
 
@@ -2897,6 +2890,49 @@ namespace AssetProcessor
         }
     }
 
+    bool AssetProcessorManager::CheckArchiveTimeZoneOffset(QDateTime fileTimeStamp, AZ::u64 adjustedFileTimeMs, AZ::u64 databaseTimeMs, int timezoneOffset, QString fileName)
+    {
+        // Archived files come with 2 second precision.  If this file has ms precision it's been altered locally and should not pass this check
+        const qint64 ArchivePrecision = 2000;
+        qint64 fileTimeStampMS = fileTimeStamp.toMSecsSinceEpoch();
+
+        if (fileTimeStampMS % ArchivePrecision)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "File %s has ms precision.  FileTime %" PRId64 "\n", fileName.toUtf8().constData(), fileTimeStampMS);
+            return false;
+        }
+
+        // Assuming the file does not appear to have been altered locally, is the difference in our calculated local time and the time in the DB exactly the difference between local time
+        // Of archiving and our time zone
+        auto currentTime = QDateTime::currentDateTime();
+        int curOffset = currentTime.offsetFromUtc();
+        static const bool unknownTimeZone = (QTimeZone::systemTimeZone().id() == QString("UTC").toUtf8());
+        int allowedOffset = curOffset - timezoneOffset;
+        if (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000)))
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Found expected offset from UTC: %s\n", fileName.toUtf8().constData());
+
+            return true;
+        }
+        else if (!fileTimeStamp.isDaylightTime() && (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000) - (1000 * 60 * 60))))
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Found non daylight offset from UTC: %s\n", fileName.toUtf8().constData());
+
+            return true;
+        }
+        else if (unknownTimeZone && (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000) - (1000 * 60 * 60))))
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "In unknown timezone - file matches with daylight adjustment applied: %s\n", fileName.toUtf8().constData());
+
+            return true;
+        }
+        else
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "File %s doesn't have archive timezone offset from UTC - has %" PRId64 " allowed %" PRId64 "\n", fileName.toUtf8().constData(), databaseTimeMs - adjustedFileTimeMs, allowedOffset * 1000);
+        }
+        return false;
+    }
+
     bool AssetProcessorManager::CanSkipProcessingFile(const AssetFileInfo &fileInfo)
     {
         // Check to see if the file has changed since the last time we saw it
@@ -2915,15 +2951,26 @@ namespace AssetProcessor
             return false;
         }
 
+        static int allowedTimeZoneOffset = AssetUtilities::AllowedTimeZoneOffset();
+
         AZ::u64 databaseModTime = fileItr->second;
 
         // Remove the file from the list, it's not needed anymore
         m_fileModTimes.erase(fileItr);
 
-        if (databaseModTime != aznumeric_cast<decltype(databaseModTime)>(fileInfo.m_modTime.toMSecsSinceEpoch()))
+        auto thisModTime = aznumeric_cast<decltype(databaseModTime)>(AssetUtilities::AdjustTimestamp(fileInfo.m_modTime));
+
+        if (databaseModTime != thisModTime)
         {
-            // File has changed since last time
-            return false;
+            if (allowedTimeZoneOffset && CheckArchiveTimeZoneOffset(fileInfo.m_modTime, thisModTime, databaseModTime, allowedTimeZoneOffset, fileInfo.m_filePath))
+            {
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "  Valid Archive Offset found for file %s\n", fileInfo.m_filePath.toUtf8().constData());
+            }
+            else
+            {
+                // File has changed since last time
+                return false;
+            }
         }
 
         auto sourceFileItr = m_sourceFilesInDatabase.find(fileInfo.m_filePath.toUtf8().data());
@@ -4327,7 +4374,7 @@ namespace AssetProcessor
         AZ_Error(AssetProcessor::ConsoleChannel, scanFolderPk > -1 && !databaseSourceName.isEmpty(), "FinishAnalysis: Invalid ScanFolderPk (%d) or databaseSourceName (%s) for file %s.  Cannot update file modtime in database.",
             scanFolderPk, databaseSourceName.toUtf8().constData(), fileToCheck.c_str());
 
-        m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceName.toUtf8().constData(), scanFolderPk, lastModifiedTime.toMSecsSinceEpoch());
+        m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceName.toUtf8().constData(), scanFolderPk, AssetUtilities::AdjustTimestamp(lastModifiedTime));
 
         m_remainingJobsForEachSourceFile.erase(foundTrackingInfo);
     }

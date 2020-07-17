@@ -65,6 +65,6 @@ namespace ImGui
             s_ImGuiQtViewPaneName,
             "Tools",
             options,
-            []() { return new ImGui::ImGuiMainWindow(); });
+            [](QWidget* parent = nullptr) { return new ImGui::ImGuiMainWindow(parent); });
     }
 }

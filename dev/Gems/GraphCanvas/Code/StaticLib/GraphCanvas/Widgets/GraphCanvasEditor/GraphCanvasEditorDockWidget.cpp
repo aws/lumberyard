@@ -9,10 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include <qevent.h>
 
 #include <AzCore/Component/Entity.h>
 
+#include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasEditorDockWidget.h>
 #include <StaticLib/GraphCanvas/Widgets/GraphCanvasEditor/ui_GraphCanvasEditorDockWidget.h>
 
@@ -24,27 +26,37 @@ namespace GraphCanvas
 
     static int counter = 0;
     
-    EditorDockWidget::EditorDockWidget(const EditorId& editorId, QWidget* parent)
-        : QDockWidget(parent)
+    EditorDockWidget::EditorDockWidget(const EditorId& editorId, const QString& title, QWidget* parent)
+        : AzQtComponents::StyledDockWidget(!title.isEmpty() ? title : QString("Window %1").arg(counter), parent)
         , m_editorId(editorId)
         , m_ui(new Ui::GraphCanvasEditorDockWidget())        
     {
+        setAttribute(Qt::WA_DeleteOnClose);
+
         m_ui->setupUi(this);
         m_ui->graphicsView->SetEditorId(editorId);
 
         setAllowedAreas(Qt::DockWidgetArea::TopDockWidgetArea);
-       
-        m_dockWidgetId = AZ::Entity::MakeId();
 
+        // Create a new GraphCanvas scene for our GraphCanvasGraphicsView and
+        // configure it with the proper EditorId.
+        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(m_sceneEntity, &GraphCanvas::GraphCanvasRequests::CreateSceneAndActivate);
+        m_graphId = m_sceneEntity->GetId();
+        GraphCanvas::SceneRequestBus::Event(m_graphId, &GraphCanvas::SceneRequests::SetEditorId, editorId);
+
+        // Set the scene for our GraphCanvasGraphicsView.
+        GraphCanvas::GraphCanvasGraphicsView* graphicsView = GetGraphicsView();
+        graphicsView->SetScene(m_graphId);
+
+        m_dockWidgetId = AZ::Entity::MakeId();
         EditorDockWidgetRequestBus::Handler::BusConnect(m_dockWidgetId);
 
-        setWindowTitle(QString("Window %1").arg(counter));
-        windowId = counter;
         ++counter;
     }
-    
+
     EditorDockWidget::~EditorDockWidget()
     {
+        delete m_sceneEntity;
     }
     
     DockWidgetId EditorDockWidget::GetDockWidgetId() const
@@ -69,15 +81,17 @@ namespace GraphCanvas
 
     GraphId EditorDockWidget::GetGraphId() const
     {
-        GraphId graphId;
-        ViewRequestBus::EventResult(graphId, GetViewId(), &ViewRequests::GetScene);
-
-        return graphId;
+        return m_graphId;
     }
 
     EditorDockWidget* EditorDockWidget::AsEditorDockWidget()
     {
         return this;
+    }
+
+    void EditorDockWidget::SetTitle(const AZStd::string& title)
+    {
+        setWindowTitle(title.c_str());
     }
 
     GraphCanvasGraphicsView* EditorDockWidget::GetGraphicsView() const
@@ -89,15 +103,15 @@ namespace GraphCanvas
     {
         emit OnEditorClosed(this);
 
-        QDockWidget::closeEvent(closeEvent);        
+        AzQtComponents::StyledDockWidget::closeEvent(closeEvent);
     }
 
     void EditorDockWidget::SignalActiveEditor()
     {
         if (!ActiveEditorDockWidgetRequestBus::Handler::BusIsConnected())
         {
-            ActiveEditorDockWidgetRequestBus::Event(GetEditorId(), &ActiveEditorDockWidgetRequests::ReleaseBus);
-            ActiveEditorDockWidgetRequestBus::Handler::BusConnect(GetEditorId());
+            ActiveEditorDockWidgetRequestBus::Event(m_editorId, &ActiveEditorDockWidgetRequests::ReleaseBus);
+            ActiveEditorDockWidgetRequestBus::Handler::BusConnect(m_editorId);
         }
     }
 

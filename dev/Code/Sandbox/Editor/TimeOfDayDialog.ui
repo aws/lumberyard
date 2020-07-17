@@ -453,22 +453,13 @@
              <property name="verticalSpacing">
               <number>0</number>
              </property>
-             <item row="0" column="0" colspan="3">
-              <widget class="QSlider" name="timelineSlider">
-               <property name="maximum">
-                <number>1439</number>
+             <item row="1" column="2">
+              <widget class="QLabel" name="label_18">
+               <property name="text">
+                <string>23:59</string>
                </property>
-               <property name="pageStep">
-                <number>60</number>
-               </property>
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="tickPosition">
-                <enum>QSlider::TicksBelow</enum>
-               </property>
-               <property name="tickInterval">
-                <number>720</number>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
                </property>
               </widget>
              </item>
@@ -492,13 +483,13 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_18">
-               <property name="text">
-                <string>23:59</string>
+             <item row="0" column="0" colspan="3">
+              <widget class="TimeOfDaySlider" name="timelineSlider" native="true">
+               <property name="focusPolicy">
+                <enum>Qt::WheelFocus</enum>
                </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+               <property name="maximum" stdset="0">
+                <number>1439</number>
                </property>
               </widget>
              </item>
@@ -758,7 +749,7 @@
             </widget>
            </item>
            <item row="3" column="1">
-            <widget class="AzQtComponents::StyledDoubleSpinBox" name="playSpeedDoubleSpinBox">
+            <widget class="AzQtComponents::DoubleSpinBox" name="playSpeedDoubleSpinBox">
              <property name="singleStep">
               <double>0.001000000000000</double>
              </property>
@@ -970,9 +961,15 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>AzQtComponents::StyledDoubleSpinBox</class>
+   <class>AzQtComponents::DoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>AzQtComponents/Components/StyledSpinBox.h</header>
+   <header>AzQtComponents/Components/Widgets/SpinBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>TimeOfDaySlider</class>
+   <extends>QWidget</extends>
+   <header>Controls/TimeOfDaySlider.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>

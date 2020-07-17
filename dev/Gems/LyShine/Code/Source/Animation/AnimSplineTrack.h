@@ -207,7 +207,7 @@ public:
     };
 
     //! Get track flags.
-    int GetFlags() { return m_flags; };
+    int GetFlags() { return m_flags; }
 
     //! Check if track is masked by mask
     virtual bool IsMasked(const uint32 mask) const { return false; }
@@ -381,7 +381,7 @@ private:
     float m_fMaxKeyValue;
 
     UiAnimParamData m_componentParamData;
-    
+
     static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) {};
 };
 

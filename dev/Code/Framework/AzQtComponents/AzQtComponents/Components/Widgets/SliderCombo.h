@@ -30,6 +30,8 @@ namespace AzQtComponents
         Q_PROPERTY(int minimum READ minimum WRITE setMinimum)
         Q_PROPERTY(int maximum READ maximum WRITE setMaximum)
         Q_PROPERTY(int value READ value WRITE setValue NOTIFY valueChanged)
+        Q_PROPERTY(int softMinimum READ softMinimum WRITE setSoftMinimum)
+        Q_PROPERTY(int softMaximum READ softMaximum WRITE setSoftMaximum)
     public:
         explicit SliderCombo(QWidget *parent = nullptr);
         ~SliderCombo();
@@ -45,15 +47,45 @@ namespace AzQtComponents
 
         void setRange(int min, int max);
 
+        void setSoftMinimum(int min);
+        Q_REQUIRED_RESULT int softMinimum() const;
+
+        void setSoftMaximum(int max);
+        Q_REQUIRED_RESULT int softMaximum() const;
+
+        Q_REQUIRED_RESULT bool hasSoftMinimum() const { return m_useSoftMinimum; }
+        Q_REQUIRED_RESULT bool hasSoftMaximum() const { return m_useSoftMaximum; }
+
+        void setSoftRange(int min, int max);
+
         SliderInt* slider() const;
         SpinBox* spinbox() const;
 
     Q_SIGNALS:
         void valueChanged();
+        void editingFinished();
+
+    protected:
+        void focusInEvent(QFocusEvent* event) override;
+
+    private Q_SLOTS:
+        void updateSpinBox();
+        void updateSlider();
 
     private:
+        void refreshUi();
+
         SliderInt* m_slider = nullptr;
         SpinBox* m_spinbox = nullptr;
+        int m_sliderMin = 0;
+        int m_sliderMax = 100;
+        bool m_useSoftMinimum = false;
+        bool m_useSoftMaximum = false;
+        int m_minimum = 0;
+        int m_maximum = 100;
+        int m_softMinimum = 0;
+        int m_softMaximum = 100;
+        int m_value = 0;
     };
 
     /**
@@ -68,6 +100,9 @@ namespace AzQtComponents
         Q_PROPERTY(int numSteps READ numSteps WRITE setNumSteps)
         Q_PROPERTY(int decimals READ decimals WRITE setDecimals)
         Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged)
+        Q_PROPERTY(double softMinimum READ softMinimum WRITE setSoftMinimum)
+        Q_PROPERTY(double softMaximum READ softMaximum WRITE setSoftMaximum)
+        Q_PROPERTY(double curveMidpoint READ curveMidpoint WRITE setCurveMidpoint)
 
     public:
         explicit SliderDoubleCombo(QWidget *parent = nullptr);
@@ -84,20 +119,53 @@ namespace AzQtComponents
 
         void setRange(double min, double max);
 
+        void setSoftMinimum(double min);
+        Q_REQUIRED_RESULT double softMinimum() const;
+
+        void setSoftMaximum(double max);
+        Q_REQUIRED_RESULT double softMaximum() const;
+
+        Q_REQUIRED_RESULT bool hasSoftMinimum() const { return m_useSoftMinimum; }
+        Q_REQUIRED_RESULT bool hasSoftMaximum() const { return m_useSoftMaximum; }
+
+        void setSoftRange(double min, double max);
+
         Q_REQUIRED_RESULT int numSteps() const;
         void setNumSteps(int steps);
 
         Q_REQUIRED_RESULT int decimals() const;
         void setDecimals(int decimals);
 
+        Q_REQUIRED_RESULT double curveMidpoint() const;
+        void setCurveMidpoint(double midpoint);
+
         SliderDouble* slider() const;
         DoubleSpinBox* spinbox() const;
 
     Q_SIGNALS:
         void valueChanged();
+        void editingFinished();
+
+    protected:
+        void focusInEvent(QFocusEvent* event) override;
+
+    private Q_SLOTS:
+        void updateSpinBox();
+        void updateSlider();
 
     private:
+        void refreshUi();
+
         SliderDouble* m_slider = nullptr;
         DoubleSpinBox* m_spinbox = nullptr;
+        double m_sliderMin = 0.0;
+        double m_sliderMax = 100.0;
+        bool m_useSoftMinimum = false;
+        bool m_useSoftMaximum = false;
+        double m_minimum = 0.0;
+        double m_maximum = 100.0;
+        double m_softMinimum = 0.0;
+        double m_softMaximum = 100.0;
+        double m_value = 0.0;
     };
 } // namespace AzQtComponents

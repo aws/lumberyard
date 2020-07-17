@@ -23,7 +23,7 @@
 #include <MCore/Source/FileSystem.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/LogManager.h>
-#include <MysticQt/Source/ButtonGroup.h>
+#include <QAction>
 #include <QContextMenuEvent>
 #include <QHeaderView>
 #include <QLabel>
@@ -31,7 +31,9 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableWidget>
+#include <QToolBar>
 
+#include <QMessageBox>
 
 namespace EMStudio
 {
@@ -262,6 +264,7 @@ namespace EMStudio
         mMotionSetsTree->setAlternatingRowColors(true);
         mMotionSetsTree->setExpandsOnDoubleClick(true);
         mMotionSetsTree->setAnimated(true);
+        mMotionSetsTree->setObjectName("EMFX.MotionSetManagementWindow.MotionSetsTree");
 
         connect(mMotionSetsTree, &QTreeWidget::itemSelectionChanged, this, &MotionSetManagementWindow::OnSelectionChanged);
 
@@ -273,49 +276,43 @@ namespace EMStudio
         // disable the move of section to have column order fixed
         mMotionSetsTree->header()->setSectionsMovable(false);
 
-        // add the buttons to add, remove and clear the motions
-        QHBoxLayout* buttonLayout = new QHBoxLayout();
-        buttonLayout->setSpacing(0);
-        buttonLayout->setAlignment(Qt::AlignLeft);
-        layout->addLayout(buttonLayout);
+        QToolBar* toolBar = new QToolBar(this);
+        toolBar->setObjectName("MotionSetManagementWindow.ToolBar");
 
-        mClearSetsButton    = new QPushButton();
-        mAddSetButton       = new QPushButton();
-        mRemoveSetsButton   = new QPushButton();
-        mOpenSetButton      = new QPushButton();
-        mSaveSetButton      = new QPushButton();
-        mSaveAsSetButton    = new QPushButton();
+        m_addAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"),
+            tr("Add new motion set"),
+            this, &MotionSetManagementWindow::OnCreateMotionSet);
+        m_addAction->setObjectName("MotionSetManagementWindow.ToolBar.AddNewMotionSet");
 
-        EMStudioManager::MakeTransparentButton(mAddSetButton,      "/Images/Icons/Plus.png",       "Add new motion set");
-        EMStudioManager::MakeTransparentButton(mRemoveSetsButton,  "/Images/Icons/Minus.png",      "Remove selected motion sets");
-        EMStudioManager::MakeTransparentButton(mClearSetsButton,   "/Images/Icons/Clear.png",      "Remove all motion sets");
-        EMStudioManager::MakeTransparentButton(mOpenSetButton,     "/Images/Icons/Open.png",       "Load motion set from a file");
-        EMStudioManager::MakeTransparentButton(mSaveSetButton,     "/Images/Menu/FileSave.png",    "Save selected root motion set");
-        EMStudioManager::MakeTransparentButton(mSaveAsSetButton,   "/Images/Menu/FileSaveAs.png",  "Save selected root motion set as a specified filename");
+        m_openAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Open.svg"),
+            tr("Load motion set from a file"),
+            this, &MotionSetManagementWindow::OnOpen);
 
-        buttonLayout->addWidget(mAddSetButton);
-        buttonLayout->addWidget(mRemoveSetsButton);
-        buttonLayout->addWidget(mClearSetsButton);
-        buttonLayout->addWidget(mOpenSetButton);
-        buttonLayout->addWidget(mSaveSetButton);
-        buttonLayout->addWidget(mSaveAsSetButton);
+        m_saveMenuAction = toolBar->addAction(
+            MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Save.svg"),
+            tr("Save selected root motion set"));
+        {
+            QToolButton* toolButton = qobject_cast<QToolButton*>(toolBar->widgetForAction(m_saveMenuAction));
+            AZ_Assert(toolButton, "The action widget must be a tool button.");
+            toolButton->setPopupMode(QToolButton::InstantPopup);
+
+            QMenu* contextMenu = new QMenu(toolBar);
+
+            m_saveAction = contextMenu->addAction("Save", this, &MotionSetManagementWindow::OnSave);
+            m_saveAsAction = contextMenu->addAction("Save as...", this, &MotionSetManagementWindow::OnSaveAs);
+
+            m_saveMenuAction->setMenu(contextMenu);
+        }
 
         QWidget* spacerWidget = new QWidget();
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        buttonLayout->addWidget(spacerWidget);
+        toolBar->addWidget(spacerWidget);
 
         m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &MotionSetManagementWindow::OnTextFilterChanged);
+        toolBar->addWidget(m_searchWidget);
         
-        buttonLayout->addWidget(m_searchWidget);
-
-        connect(mClearSetsButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnClearMotionSets);
-        connect(mRemoveSetsButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnRemoveSelectedMotionSets);
-        connect(mAddSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnCreateMotionSet);
-        connect(mOpenSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnOpen);
-        connect(mSaveSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnSave);
-        connect(mSaveAsSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnSaveAs);
-
+        layout->addWidget(toolBar);
         layout->addWidget(mMotionSetsTree);
 
         ReInit();
@@ -331,6 +328,7 @@ namespace EMStudio
         QTreeWidgetItem* item = new QTreeWidgetItem(parent);
         item->setText(0, motionSet->GetName());
         item->setData(0, Qt::UserRole, motionSet->GetID());
+        item->setIcon(0, QIcon(QStringLiteral(":/EMotionFX/MotionSet.svg")));
 
         // Store the motion set id in the tree widget itm.
         AZStd::string idString;
@@ -417,6 +415,7 @@ namespace EMStudio
             QTreeWidgetItem* item = new QTreeWidgetItem(mMotionSetsTree);
             item->setText(0, motionSet->GetName());
             item->setData(0, Qt::UserRole, motionSet->GetID());
+            item->setIcon(0, QIcon(QStringLiteral(":/EMotionFX/MotionSet.svg")));
             item->setExpanded(true);
 
             AZStd::to_string(tempString, motionSet->GetID());
@@ -498,7 +497,6 @@ namespace EMStudio
 
         // add motion set is always enabled
         QAction* addAction = menu.addAction("Add Motion Set");
-        addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
         connect(addAction, &QAction::triggered, this, &MotionSetManagementWindow::OnCreateMotionSet);
 
         // get the selected items
@@ -508,9 +506,11 @@ namespace EMStudio
         // add remove if at least one item selected
         if (numSelectedItems > 0)
         {
-            QAction* removeAction = menu.addAction("Remove Selected Motion Sets");
-            removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
+            QAction* removeAction = menu.addAction("Remove selected");
             connect(removeAction, &QAction::triggered, this, &MotionSetManagementWindow::OnRemoveSelectedMotionSets);
+
+            QAction* removeAllAction = menu.addAction("Remove all");
+            connect(removeAllAction, &QAction::triggered, this, &MotionSetManagementWindow::OnClearMotionSets);
         }
 
         // add rename if only one item selected
@@ -527,7 +527,6 @@ namespace EMStudio
 
             // add the save menu
             QAction* saveAction = menu.addAction("Save Selected Root Motion Set");
-            saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
             connect(saveAction, &QAction::triggered, this, &MotionSetManagementWindow::OnSave);
         }
 
@@ -562,14 +561,12 @@ namespace EMStudio
                 AZ_Error("EMotionFX", false, result.c_str());
             }
 
-            // select the new motion set
+            // Select the new motion set
             mMotionSetsTree->clearSelection();
-
-            // Result contains the motionSet Id
-            int32 motionSetId;
-            if (AzFramework::StringFunc::LooksLikeInt(uniqueMotionSetName.c_str(), &motionSetId))
+            const EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByName(uniqueMotionSetName.c_str());
+            if (motionSet)
             {
-                SelectItemsById(motionSetId);
+                SelectItemsById(motionSet->GetID());
             }
         }
         else
@@ -797,7 +794,6 @@ namespace EMStudio
         motionSetManagementRenameWindow.exec();
     }
 
-
     void MotionSetManagementWindow::OnClearMotionSets()
     {
         // show the save dirty files window before
@@ -887,7 +883,6 @@ namespace EMStudio
         }
     }
 
-
     void MotionSetManagementWindow::UpdateInterface()
     {
         const QList<QTreeWidgetItem*> selectedItems = mMotionSetsTree->selectedItems();
@@ -895,8 +890,7 @@ namespace EMStudio
 
         // remove and save buttons are valid if at least one item is selected
         const bool atLeastOneItemSelected = numSelectedItems > 0;
-        mRemoveSetsButton->setEnabled(atLeastOneItemSelected);
-        mSaveSetButton->setEnabled(atLeastOneItemSelected);
+        m_saveAction->setEnabled(atLeastOneItemSelected);
 
         // Filter to only keep the root motion sets from the selected items.
         AZStd::vector<EMotionFX::MotionSet*> selectedRootMotionSets;
@@ -917,13 +911,8 @@ namespace EMStudio
             }
         }
 
-        // save as button is only valid if one motion set or its children
-        const bool onlyOneMotionSetSelected = selectedRootMotionSets.size() == 1;
-        mSaveAsSetButton->setEnabled(onlyOneMotionSetSelected);
-
-        // clear button is valid if at least one item is in the tree
-        const bool atLeastOneItem = mMotionSetsTree->topLevelItemCount() > 0;
-        mClearSetsButton->setEnabled(atLeastOneItem);
+        const bool oneRootSetSelected = selectedRootMotionSets.size() == 1;
+        m_saveAsAction->setEnabled(oneRootSetSelected);
     }
 
 
@@ -1092,5 +1081,3 @@ namespace EMStudio
         QWidget::keyReleaseEvent(event);
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/MotionSetsWindow/MotionSetManagementWindow.moc>

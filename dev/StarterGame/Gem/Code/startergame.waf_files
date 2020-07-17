@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Root": [
+            "Include/**/*.cpp",
+            "Include/**/*.h",
+            "Source/**/*.cpp",
+            "Source/**/*.h"
+        ]
+    }
+}

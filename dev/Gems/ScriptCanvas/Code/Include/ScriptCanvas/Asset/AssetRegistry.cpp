@@ -27,12 +27,49 @@ namespace ScriptCanvas
         }
     }
 
-    AZ::Data::AssetHandler* AssetRegistry::GetAssetHandler(AZ::Data::AssetType type)
+    AZ::Data::AssetHandler* AssetRegistry::GetAssetHandler()
     {
-        if (m_assetHandlers.find(type) != m_assetHandlers.end())
+        const AssetRegistryRequestBus::BusIdType assetType = *AssetRegistryRequestBus::GetCurrentBusId();
+        return GetAssetHandler(assetType);
+    }
+
+    AssetDescription* AssetRegistry::GetAssetDescription(AZ::Data::AssetType assetType)
+    {
+        if (m_assetDescription.find(assetType) != m_assetDescription.end())
         {
-            return m_assetHandlers[type].get();
+            return &m_assetDescription[assetType];
         }
+
         return nullptr;
     }
+
+    AZStd::vector<AZStd::string> AssetRegistry::GetAssetHandlerFileFilters()
+    {
+        AZStd::vector<AZStd::string> filters;
+        for (auto filter : m_assetHandlerFileFilter)
+        {
+            filters.push_back(filter.second);
+        }
+        return filters;
+    }
+
+    AZ::Data::AssetHandler* AssetRegistry::GetAssetHandler(const AZ::Data::AssetType& assetType)
+    {
+        if (m_assetHandlers.find(assetType) != m_assetHandlers.end())
+        {
+            return m_assetHandlers[assetType].get();
+        }
+
+        return nullptr;
+    }
+
+    AssetRegistry::AssetRegistry()
+    {
+    }
+
+    AssetRegistry::~AssetRegistry()
+    {
+        AssetRegistryRequestBus::MultiHandler::BusDisconnect();
+    }
+
 }

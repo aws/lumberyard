@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "ActorPropertiesWindow.h"
 #include "SceneManagerPlugin.h"
 #include <QPushButton>
@@ -19,37 +18,19 @@
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QWindow>
-#include <MysticQt/Source/ButtonGroup.h>
 #include <MCore/Source/Compare.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include "MirrorSetupWindow.h"
 
-
 namespace EMStudio
 {
-    // constructor
     ActorPropertiesWindow::ActorPropertiesWindow(QWidget* parent, SceneManagerPlugin* plugin)
         : QWidget(parent)
     {
-        mExcludedNodesSelectionWindow       = nullptr;
-        mPlugin                             = plugin;
-        mActor                              = nullptr;
-        mActorInstance                      = nullptr;
-        mSelectionList                      = nullptr;
-        mMirrorSetupLink                    = nullptr;
-        mMirrorSetupWindow                  = nullptr;
-        mCollisionMeshesSetupLink           = nullptr;
+        mPlugin = plugin;
     }
-
-
-    // destructor
-    ActorPropertiesWindow::~ActorPropertiesWindow()
-    {
-        delete mSelectionList;
-    }
-
 
     // init after the parent dock window has been created
     void ActorPropertiesWindow::Init()
@@ -67,109 +48,79 @@ namespace EMStudio
 
         // actor name
         rowNr = 0;
-        layout->addWidget(new QLabel("Actor Name:"), rowNr, 0);
+        layout->addWidget(new QLabel("Actor name"), rowNr, 0);
         mNameEdit = new QLineEdit();
         connect(mNameEdit, &QLineEdit::editingFinished, this, &ActorPropertiesWindow::NameEditChanged);
         layout->addWidget(mNameEdit, rowNr, 1);
 
-        // add the motion extraction node selection
+        // Motion extraction joint.
         rowNr++;
         QHBoxLayout* extractNodeLayout = new QHBoxLayout();
         extractNodeLayout->setDirection(QBoxLayout::LeftToRight);
         extractNodeLayout->setMargin(0);
-        mMotionExtractionNode = new MysticQt::LinkWidget();
-        mMotionExtractionNode->setMinimumHeight(20);
-        mMotionExtractionNode->setMaximumHeight(20);
-        layout->addWidget(new QLabel("Motion Extraction Node:"), rowNr, 0);
-        mResetMotionExtractionNodeButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mResetMotionExtractionNodeButton, "/Images/Icons/Remove.png",   "Reset selection");
-        extractNodeLayout->addWidget(mMotionExtractionNode);
-        extractNodeLayout->addWidget(mResetMotionExtractionNodeButton);
 
-        // add the find best match button
-        mFindBestMatchButton = new QPushButton("Find Best Match");
-        mFindBestMatchButton->setMinimumHeight(20);
-        mFindBestMatchButton->setMaximumHeight(20);
-        mFindBestMatchButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        extractNodeLayout->addWidget(mFindBestMatchButton);
-        connect(mFindBestMatchButton, &QPushButton::clicked, this, &ActorPropertiesWindow::OnFindBestMatchingNode);
+        m_motionExtractionJointBrowseEdit = aznew ActorJointBrowseEdit(this);
+        m_motionExtractionJointBrowseEdit->setToolTip("The joint used to drive the character's movement and rotation.");
+        m_motionExtractionJointBrowseEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        layout->addWidget(new QLabel("Motion extraction joint"), rowNr, 0);
+        extractNodeLayout->addWidget(m_motionExtractionJointBrowseEdit);
+        connect(m_motionExtractionJointBrowseEdit, &ActorJointBrowseEdit::SelectionDone, this, &ActorPropertiesWindow::OnMotionExtractionJointSelected);
 
-        QWidget* dummyWidget = new QWidget();
-        dummyWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum);
-        extractNodeLayout->addWidget(dummyWidget);
+        // Find best match for motion extraction joint.
+        m_findBestMatchButton = new QPushButton("Find best match");
+        m_findBestMatchButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        extractNodeLayout->addWidget(m_findBestMatchButton);
+        connect(m_findBestMatchButton, &QPushButton::clicked, this, &ActorPropertiesWindow::OnFindBestMatchingNode);
 
         layout->addLayout(extractNodeLayout, rowNr, 1);
 
-        // motion extraction node
-        connect(mResetMotionExtractionNodeButton, &QPushButton::clicked, this, &ActorPropertiesWindow::ResetMotionExtractionNode);
-        connect(mMotionExtractionNode, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnSelectMotionExtractionNode);
-
-
-        // add the retarget root selection
+        // Retarget root joint.
         rowNr++;
-        QHBoxLayout* retargetRootNodeLayout = new QHBoxLayout();
-        retargetRootNodeLayout->setDirection(QBoxLayout::LeftToRight);
-        retargetRootNodeLayout->setMargin(0);
-        mRetargetRootNode = new MysticQt::LinkWidget();
-        mRetargetRootNode->setMinimumHeight(20);
-        mRetargetRootNode->setMaximumHeight(20);
-        layout->addWidget(new QLabel("Retarget Root Node:"), rowNr, 0);
-        mResetRetargetRootNodeButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mResetRetargetRootNodeButton, "/Images/Icons/Remove.png",   "Reset selection");
-        retargetRootNodeLayout->addWidget(mRetargetRootNode);
-        retargetRootNodeLayout->addWidget(mResetRetargetRootNodeButton);
-
-        dummyWidget = new QWidget();
-        dummyWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum);
-        retargetRootNodeLayout->addWidget(dummyWidget);
-
-        layout->addLayout(retargetRootNodeLayout, rowNr, 1);
-        connect(mResetRetargetRootNodeButton, &QPushButton::clicked, this, &ActorPropertiesWindow::ResetRetargetRootNode);
-        connect(mRetargetRootNode, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnSelectRetargetRootNode);
-
+        m_retargetRootJointBrowseEdit = aznew ActorJointBrowseEdit(this);
+        m_retargetRootJointBrowseEdit->setToolTip("The root joint that will use special handling when retargeting. Z must point up.");
+        m_retargetRootJointBrowseEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        connect(m_retargetRootJointBrowseEdit, &ActorJointBrowseEdit::SelectionDone, this, &ActorPropertiesWindow::OnRetargetRootJointSelected);
+        layout->addWidget(new QLabel("Retarget root joint"), rowNr, 0);
+        layout->addWidget(m_retargetRootJointBrowseEdit, rowNr, 1);
 
         // bounding box nodes
         rowNr++;
-        QHBoxLayout* excludedNodesLayout = new QHBoxLayout();
-        excludedNodesLayout->setDirection(QBoxLayout::LeftToRight);
-        excludedNodesLayout->setMargin(0);
-        mExcludedNodesLink = new MysticQt::LinkWidget();
-        layout->addWidget(new QLabel("Excluded From Bounds:"), rowNr, 0);
-        mResetExcludedNodesButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mResetExcludedNodesButton, "/Images/Icons/Remove.png",  "Reset selection");
-        excludedNodesLayout->addWidget(mExcludedNodesLink);
-        excludedNodesLayout->addWidget(mResetExcludedNodesButton);
+        m_excludeFromBoundsBrowseEdit = aznew ActorJointBrowseEdit(this);
+        m_excludeFromBoundsBrowseEdit->setToolTip("Joints that are excluded from bounding volume calculations.");
+        m_excludeFromBoundsBrowseEdit->SetSingleJointSelection(false);
+        m_excludeFromBoundsBrowseEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 
-        dummyWidget = new QWidget();
-        dummyWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum);
-        excludedNodesLayout->addWidget(dummyWidget);
+        connect(m_excludeFromBoundsBrowseEdit, &ActorJointBrowseEdit::SelectionDone, this, &ActorPropertiesWindow::OnExcludedJointsFromBoundsSelectionDone);
+        connect(m_excludeFromBoundsBrowseEdit, &ActorJointBrowseEdit::SelectionChanged, this, &ActorPropertiesWindow::OnExcludedJointsFromBoundsSelectionChanged);
+        connect(m_excludeFromBoundsBrowseEdit, &ActorJointBrowseEdit::SelectionRejected, this, &ActorPropertiesWindow::OnExcludedJointsFromBoundsSelectionChanged);
 
-        layout->addLayout(excludedNodesLayout, rowNr, 1);
-
-        connect(mResetExcludedNodesButton,                                                 &QPushButton::clicked,                                      this, &ActorPropertiesWindow::ResetExcludedNodes);
-        connect(mExcludedNodesLink,                                                        &MysticQt::LinkWidget::clicked,                                      this, static_cast<void (ActorPropertiesWindow::*)()>(&ActorPropertiesWindow::OnSelectExcludedNodes));
+        layout->addWidget(new QLabel("Excluded from bounds"), rowNr, 0);
+        layout->addWidget(m_excludeFromBoundsBrowseEdit, rowNr, 1);
 
         // collision meshes nodes
         rowNr++;
         mCollisionMeshesSetupWindow = new CollisionMeshesSetupWindow(this);
-        mCollisionMeshesSetupLink = new MysticQt::LinkWidget();
+        mCollisionMeshesSetupLink = new AzQtComponents::BrowseEdit();
+        mCollisionMeshesSetupLink->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        mCollisionMeshesSetupLink->setClearButtonEnabled(true);
+        mCollisionMeshesSetupLink->setLineEditReadOnly(true);
         mCollisionMeshesSetupLink->setMinimumHeight(20);
         mCollisionMeshesSetupLink->setMaximumHeight(20);
-        mCollisionMeshesSetupLink->setText("Click to setup");
-        layout->addWidget(new QLabel("Collision Mesh Setup:"), rowNr, 0);
+        mCollisionMeshesSetupLink->setPlaceholderText("Select meshes");
+        layout->addWidget(new QLabel("Collision mesh setup"), rowNr, 0);
         layout->addWidget(mCollisionMeshesSetupLink, rowNr, 1);
-        connect(mCollisionMeshesSetupLink, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnCollisionMeshesSetup);
+        connect(mCollisionMeshesSetupLink, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &ActorPropertiesWindow::OnCollisionMeshesSetup);
 
         // mirror setup
         rowNr++;
         mMirrorSetupWindow = new MirrorSetupWindow(mPlugin->GetDockWidget(), mPlugin);
-        mMirrorSetupLink = new MysticQt::LinkWidget();
-        mMirrorSetupLink->setMinimumHeight(20);
-        mMirrorSetupLink->setMaximumHeight(20);
-        mMirrorSetupLink->setText("Click to setup");
-        layout->addWidget(new QLabel("Mirror Setup:"), rowNr, 0);
+        mMirrorSetupLink = new AzQtComponents::BrowseEdit();
+        mMirrorSetupLink->setClearButtonEnabled(true);
+        mMirrorSetupLink->setLineEditReadOnly(true);
+        mMirrorSetupLink->setPlaceholderText("Click folder to setup");
+        layout->addWidget(new QLabel("Mirror setup"), rowNr, 0);
         layout->addWidget(mMirrorSetupLink, rowNr, 1);
-        connect(mMirrorSetupLink, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnMirrorSetup);
+        connect(mMirrorSetupLink, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &ActorPropertiesWindow::OnMirrorSetup);
 
         UpdateInterface();
     }
@@ -211,22 +162,16 @@ namespace EMStudio
         if (mActorInstance == nullptr || mActor == nullptr)
         {
             // reset data and disable interface elements
-            mMotionExtractionNode->setText(GetDefaultNodeSelectionLabelText());
-            mMotionExtractionNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            mMotionExtractionNode->setEnabled(false);
-            mResetMotionExtractionNodeButton->setVisible(false);
-            mFindBestMatchButton->setVisible(false);
+            m_motionExtractionJointBrowseEdit->setEnabled(false);
+            m_motionExtractionJointBrowseEdit->SetSelectedJoints({});
 
-            mRetargetRootNode->setText(GetDefaultNodeSelectionLabelText());
-            mRetargetRootNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            mRetargetRootNode->setEnabled(false);
-            mResetRetargetRootNodeButton->setVisible(false);
+            m_findBestMatchButton->setVisible(false);
+            m_retargetRootJointBrowseEdit->setEnabled(false);
+            m_retargetRootJointBrowseEdit->SetSelectedJoints({});
 
             // nodes excluded from bounding volume calculations
-            mExcludedNodesLink->setText(GetDefaultExcludeBoundNodesLabelText());
-            mExcludedNodesLink->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            mExcludedNodesLink->setEnabled(false);
-            mResetExcludedNodesButton->setVisible(false);
+            m_excludeFromBoundsBrowseEdit->setEnabled(false);
+            m_excludeFromBoundsBrowseEdit->SetSelectedJoints({});
 
             // actor name
             mNameEdit->setEnabled(false);
@@ -241,184 +186,61 @@ namespace EMStudio
         mCollisionMeshesSetupLink->setEnabled(true);
         mMirrorSetupLink->setEnabled(true);
 
-        // get the motion extraction node
+        // Motion extraction node
         EMotionFX::Node* extractionNode = mActor->GetMotionExtractionNode();
-        if (extractionNode == nullptr)
+        m_motionExtractionJointBrowseEdit->setEnabled(true);
+        if (extractionNode)
         {
-            mMotionExtractionNode->setEnabled(true);
-            mMotionExtractionNode->setText(GetDefaultNodeSelectionLabelText());
-            mResetMotionExtractionNodeButton->setVisible(false);
+            m_motionExtractionJointBrowseEdit->SetSelectedJoints({SelectionItem(mActorInstance->GetID(), extractionNode->GetName())});
         }
         else
         {
-            mMotionExtractionNode->setEnabled(true);
-            mMotionExtractionNode->setText(extractionNode->GetName());
-            mResetMotionExtractionNodeButton->setVisible(true);
+            m_motionExtractionJointBrowseEdit->SetSelectedJoints({});
         }
 
-        // find best matching motion extraction node button, show it only when it differs from the currently selected node
         EMotionFX::Node* bestMatchingNode = mActor->FindBestMotionExtractionNode();
-        if (bestMatchingNode && mActor->GetMotionExtractionNode() != bestMatchingNode)
-        {
-            mFindBestMatchButton->setVisible(true);
-        }
-        else
-        {
-            mFindBestMatchButton->setVisible(false);
-        }
+        m_findBestMatchButton->setVisible(bestMatchingNode && mActor->GetMotionExtractionNode() != bestMatchingNode);
 
-        mMotionExtractionNode->setToolTip("The node used to drive the character's movement and rotation");
-        mMotionExtractionNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-
-        // get the retarget root node
+        // Retarget root node
         EMotionFX::Node* retargetRootNode = mActor->GetRetargetRootNode();
-        if (!retargetRootNode)
+        m_retargetRootJointBrowseEdit->setEnabled(true);
+        if (retargetRootNode)
         {
-            mRetargetRootNode->setEnabled(true);
-            mRetargetRootNode->setText(GetDefaultNodeSelectionLabelText());
-            mResetRetargetRootNodeButton->setVisible(false);
+            m_retargetRootJointBrowseEdit->SetSelectedJoints({SelectionItem(mActorInstance->GetID(), retargetRootNode->GetName())});
         }
         else
         {
-            mRetargetRootNode->setEnabled(true);
-            mRetargetRootNode->setText(retargetRootNode->GetName());
-            mResetRetargetRootNodeButton->setVisible(true);
+            m_retargetRootJointBrowseEdit->SetSelectedJoints({});
         }
-
-        mRetargetRootNode->setToolTip("The root node that will use special handling when retargeting. Z must point up.");
-        mRetargetRootNode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
 
         // nodes excluded from bounding volume calculations
-        const uint32 calcNumExcludedNodes = CalcNumExcludedNodesFromBounds(mActor);
-        if (calcNumExcludedNodes == 0)
+        m_excludeFromBoundsBrowseEdit->setEnabled(true);
+
+        AZStd::vector<SelectionItem> jointsExcludedFromBounds;
+        if (mActorInstance)
         {
-            mExcludedNodesLink->setText(GetDefaultExcludeBoundNodesLabelText());
-            mResetExcludedNodesButton->setVisible(false);
+            const uint32 numNodes = mActor->GetNumNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
+            {
+                EMotionFX::Node* node = mActor->GetSkeleton()->GetNode(i);
+                if (!node->GetIncludeInBoundsCalc())
+                {
+                    jointsExcludedFromBounds.emplace_back(mActorInstance->GetID(), node->GetName());
+                }
+            }
         }
-        else
-        {
-            const QString textLink = QString("%1 nodes").arg(calcNumExcludedNodes);
-            mExcludedNodesLink->setText(textLink);
-            mResetExcludedNodesButton->setVisible(true);
-        }
-        mExcludedNodesLink->setToolTip("Nodes that are excluded from bounding volume calculations");
-        mExcludedNodesLink->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        mExcludedNodesLink->setEnabled(true);
+        m_excludeFromBoundsBrowseEdit->SetSelectedJoints(jointsExcludedFromBounds);
 
         // actor name
         mNameEdit->setEnabled(true);
         mNameEdit->setText(mActor->GetName());
     }
 
-
-    void ActorPropertiesWindow::ResetNode(const char* parameterNodeType)
-    {
-        if (mActorInstance == nullptr)
-        {
-            AZ_Warning("EMotionFX", false, "Cannot reset '%s'. Please select an actor instance first.", parameterNodeType);
-            return;
-        }
-
-        EMotionFX::Actor* actor = mActorInstance->GetActor();
-        const uint32 actorID = actor->GetID();
-
-        // execute the command
-        const AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -%s \"$NULL$\"", actorID, parameterNodeType);
-
-        AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommand(command, result))
-        {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
-    }
-
-
-    void ActorPropertiesWindow::ResetMotionExtractionNode()
-    {
-        ResetNode("motionExtractionNodeName");
-    }
-
-
-    void ActorPropertiesWindow::ResetRetargetRootNode()
-    {
-        ResetNode("retargetRootNodeName");
-    }
-
-
-    void ActorPropertiesWindow::OnSelectMotionExtractionNode()
-    {
-        if (mActorInstance == nullptr)
-        {
-            AZ_Warning("EMotionFX", false, "Cannot open node selection window. Please select an actor instance first.");
-            return;
-        }
-
-        // get the actor from the actor instance
-        mActor = mActorInstance->GetActor();
-
-        // get the current node used
-        EMotionFX::Node* node = nullptr;
-        node = mActor->GetMotionExtractionNode();
-
-        // show the node selection window
-        if (mSelectionList == nullptr)
-        {
-            mSelectionList = new CommandSystem::SelectionList();
-        }
-        mSelectionList->Clear();
-        if (node)
-        {
-            mSelectionList->AddNode(node);
-        }
-
-        NodeSelectionWindow motionExtractionNodeSelectionWindow(this, true);
-
-        connect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnMotionExtractionNodeSelected);
-
-        motionExtractionNodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
-        motionExtractionNodeSelectionWindow.exec();
-
-        disconnect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnMotionExtractionNodeSelected);
-    }
-
-
-    void ActorPropertiesWindow::OnSelectRetargetRootNode()
-    {
-        if (!mActorInstance)
-        {
-            AZ_Warning("EMotionFX", false, "Cannot open node selection window. Please select an actor instance first.");
-            return;
-        }
-
-        mActor = mActorInstance->GetActor();
-        EMotionFX::Node* node = nullptr;
-        node = mActor->GetMotionExtractionNode();
-
-        // show the node selection window
-        if (!mSelectionList)
-        {
-            mSelectionList = new CommandSystem::SelectionList();
-        }
-
-        mSelectionList->Clear();
-        if (node)
-        {
-            mSelectionList->AddNode(node);
-        }
-
-        NodeSelectionWindow nodeSelectionWindow(this, true);
-        connect(nodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnRetargetRootNodeSelected);
-        nodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
-        nodeSelectionWindow.exec();
-
-        disconnect(nodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnRetargetRootNodeSelected);
-    }
-
     void ActorPropertiesWindow::GetNodeName(const MCore::Array<SelectionItem>& selection, AZStd::string* outNodeName, uint32* outActorID)
     {
-        // check if selection is valid
+        outNodeName->clear();
+        *outActorID = MCORE_INVALIDINDEX32;
+
         if (selection.GetLength() != 1 || selection[0].GetNodeNameString().empty())
         {
             AZ_Warning("EMotionFX", false, "Cannot adjust motion extraction node. No valid node selected.");
@@ -438,22 +260,51 @@ namespace EMStudio
         *outNodeName    = nodeName;
     }
 
-
-    void ActorPropertiesWindow::OnMotionExtractionNodeSelected(MCore::Array<SelectionItem> selection)
+    void ActorPropertiesWindow::GetNodeName(const AZStd::vector<SelectionItem>& joints, AZStd::string* outNodeName, uint32* outActorID)
     {
-        // get the selected node name
+        outNodeName->clear();
+        *outActorID = MCORE_INVALIDINDEX32;
+
+        if (joints.size() != 1 || joints[0].GetNodeNameString().empty())
+        {
+            AZ_Warning("EMotionFX", false, "Cannot get node name. No valid node selected.");
+            return;
+        }
+
+        const uint32 actorInstanceID = joints[0].mActorInstanceID;
+        const char* nodeName = joints[0].GetNodeName();
+        EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
+        if (!actorInstance)
+        {
+            return;
+        }
+
+        EMotionFX::Actor* actor = actorInstance->GetActor();
+        *outActorID = actor->GetID();
+        *outNodeName = nodeName;
+    }
+
+    void ActorPropertiesWindow::OnMotionExtractionJointSelected(const AZStd::vector<SelectionItem>& selectedJoints)
+    {
         uint32 actorID;
         AZStd::string nodeName;
-        GetNodeName(selection, &nodeName, &actorID);
 
-        // create the command group
+        if (selectedJoints.empty())
+        {
+            EMotionFX::ActorInstance* actorInstance = m_motionExtractionJointBrowseEdit->GetActorInstance();
+            actorID = actorInstance->GetActor()->GetID();
+            nodeName = "$NULL$";
+        }
+        else
+        {
+            GetNodeName(selectedJoints, &nodeName, &actorID);
+        }
+
         MCore::CommandGroup commandGroup("Adjust motion extraction node");
 
-        // adjust the actor
         AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -motionExtractionNodeName \"%s\"", actorID, nodeName.c_str());
         commandGroup.AddCommandString(command);
 
-        // execute the command group
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
@@ -461,13 +312,21 @@ namespace EMStudio
         }
     }
 
-
-    void ActorPropertiesWindow::OnRetargetRootNodeSelected(MCore::Array<SelectionItem> selection)
+    void ActorPropertiesWindow::OnRetargetRootJointSelected(const AZStd::vector<SelectionItem>& selectedJoints)
     {
-        // get the selected node name
         uint32 actorID;
         AZStd::string nodeName;
-        GetNodeName(selection, &nodeName, &actorID);
+
+        if (selectedJoints.empty())
+        {
+            EMotionFX::ActorInstance* actorInstance = m_retargetRootJointBrowseEdit->GetActorInstance();
+            actorID = actorInstance->GetActor()->GetID();
+            nodeName = "$NULL$";
+        }
+        else
+        {
+            GetNodeName(selectedJoints, &nodeName, &actorID);
+        }
 
         MCore::CommandGroup commandGroup("Adjust retarget root node");
         AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -retargetRootNodeName \"%s\"", actorID, nodeName.c_str());
@@ -512,55 +371,6 @@ namespace EMStudio
         }
     }
 
-
-    EMotionFX::Node* ActorPropertiesWindow::GetNode(NodeHierarchyWidget* hierarchyWidget)
-    {
-        AZStd::vector<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
-        if (selectedItems.size() != 1)
-        {
-            return nullptr;
-        }
-
-        const uint32                actorInstanceID = selectedItems[0].mActorInstanceID;
-        const char*                 nodeName        = selectedItems[0].GetNodeName();
-        EMotionFX::ActorInstance*   actorInstance   = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
-        if (actorInstance == nullptr)
-        {
-            return nullptr;
-        }
-
-        EMotionFX::Actor* actor = actorInstance->GetActor();
-        return actor->GetSkeleton()->FindNodeByName(nodeName);
-    }
-
-
-    // check if we have any node that is excluded from the bounding volume calculation
-    uint32 ActorPropertiesWindow::CalcNumExcludedNodesFromBounds(EMotionFX::Actor* actor)
-    {
-        // check if the actor is valid
-        if (actor == nullptr)
-        {
-            return 0;
-        }
-
-        uint32 result = 0;
-
-        // get the number of nodes and iterate through them
-        const uint32 numNodes = actor->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // check if the current node is excluded from the bounds calculations
-            if (actor->GetSkeleton()->GetNode(i)->GetIncludeInBoundsCalc() == false)
-            {
-                result++;
-            }
-        }
-
-        // return the number of nodes that are excluded in the bounding volume calculations
-        return result;
-    }
-
-
     // actor name changed
     void ActorPropertiesWindow::NameEditChanged()
     {
@@ -579,80 +389,11 @@ namespace EMStudio
         }
     }
 
-
-    // show the node selection window
-    void ActorPropertiesWindow::OnSelectExcludedNodes()
-    {
-        // check if the actor is valid
-        if (mActorInstance == nullptr)
-        {
-            return;
-        }
-
-        // get the number of nodes and iterate through them
-        const uint32 numNodes = mActor->GetNumNodes();
-        mOldExcludedNodeSelection.Clear();
-        mOldExcludedNodeSelection.Reserve(numNodes);
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            EMotionFX::Node* node = mActor->GetSkeleton()->GetNode(i);
-
-            if (node->GetIncludeInBoundsCalc() == false)
-            {
-                mOldExcludedNodeSelection.Add(node->GetID());
-            }
-        }
-
-        // fill in a selection list with the excluded nodes so that the node selection window can preselect the current ones
-        PrepareExcludedNodeSelectionList(mActor, &mExcludedNodeSelectionList);
-
-        // show the node selection window
-        NodeSelectionWindow excludedNodesSelectionWindow(this, false);
-        mExcludedNodesSelectionWindow = &excludedNodesSelectionWindow;
-
-        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, static_cast<void (ActorPropertiesWindow::*)(MCore::Array<SelectionItem>)>(&ActorPropertiesWindow::OnSelectExcludedNodes));
-        connect(&excludedNodesSelectionWindow, &NodeSelectionWindow::rejected, this, &ActorPropertiesWindow::OnCancelExcludedNodes);
-        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &ActorPropertiesWindow::OnExcludeNodeSelectionChanged);
-
-        excludedNodesSelectionWindow.Update(mActorInstance->GetID(), &mExcludedNodeSelectionList);
-        excludedNodesSelectionWindow.exec();
-
-        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, static_cast<void (ActorPropertiesWindow::*)(MCore::Array<SelectionItem>)>(&ActorPropertiesWindow::OnSelectExcludedNodes));
-        disconnect(&excludedNodesSelectionWindow, &NodeSelectionWindow::rejected, this, &ActorPropertiesWindow::OnCancelExcludedNodes);
-        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &ActorPropertiesWindow::OnExcludeNodeSelectionChanged);
-        mExcludedNodesSelectionWindow = nullptr;
-    }
-
-
-    // walk over the actor nodes and check which of them we want to exclude from the bounding volume calculations
-    void ActorPropertiesWindow::PrepareExcludedNodeSelectionList(EMotionFX::Actor* actor, CommandSystem::SelectionList* outSelectionList)
-    {
-        // reset the resulting selection list
-        outSelectionList->Clear();
-
-        // check if the actor is valid
-        if (actor == nullptr)
-        {
-            return;
-        }
-
-        // get the number of nodes and iterate through them
-        const uint32 numNodes = actor->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
-            if (node->GetIncludeInBoundsCalc() == false)
-            {
-                outSelectionList->AddNode(node);
-            }
-        }
-    }
-
-
     // select the nodes that should be excluded from the bounding volume calculations
-    void ActorPropertiesWindow::OnSelectExcludedNodes(MCore::Array<SelectionItem> selection)
+    void ActorPropertiesWindow::OnExcludedJointsFromBoundsSelectionDone(const AZStd::vector<SelectionItem>& selectedJoints)
     {
-        if (mActor == nullptr)
+        EMotionFX::ActorInstance* actorInstance = m_excludeFromBoundsBrowseEdit->GetActorInstance();
+        if (!actorInstance)
         {
             return;
         }
@@ -660,132 +401,63 @@ namespace EMStudio
         AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -nodesExcludedFromBounds \"", mActor->GetID());
 
         // prepare the nodes excluded from bounds string
-        uint32 addedItems = 0;
-        const uint32 numSelectedItems = selection.GetLength();
-        for (uint32 i = 0; i < numSelectedItems; ++i)
+        size_t addedItems = 0;
+        for (const SelectionItem& selectedJoint : selectedJoints)
         {
-            // find the node based on the selection item and skip in case it can't be found
-            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByName(selection[i].GetNodeName());
-            if (node == nullptr)
+            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByName(selectedJoint.GetNodeName());
+            if (node)
             {
-                continue;
-            }
+                if (addedItems > 0)
+                {
+                    command += ';';
+                }
 
-            if (addedItems > 0)
-            {
-                command += ';';
+                command += node->GetName();
+                addedItems++;
             }
-
-            command += node->GetName();
-            addedItems++;
         }
 
-        // construct the command
         command += "\" -nodeAction \"select\"";
 
-        // reset the changes we did so that the undo data can be stored correctly
-        SetToOldExcludeNodeSelection();
+        // Reset the changes we did so that the undo data can be stored correctly.
+        OnExcludedJointsFromBoundsSelectionChanged(m_excludeFromBoundsBrowseEdit->GetPreviouslySelectedJoints());
 
-        // execute the command
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommand(command, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
     }
-
-
+    
     // called when the selection got changed while the window is still opened
-    void ActorPropertiesWindow::OnExcludeNodeSelectionChanged()
+    void ActorPropertiesWindow::OnExcludedJointsFromBoundsSelectionChanged(const AZStd::vector<SelectionItem>& selectedJoints)
     {
-        // check if the actor is valid
-        if (mActor == nullptr)
+        EMotionFX::ActorInstance* actorInstance = m_excludeFromBoundsBrowseEdit->GetActorInstance();
+        if (!actorInstance)
         {
             return;
         }
 
-        // get some infos from the selection window
-        NodeHierarchyWidget* hierarchyWidget = mExcludedNodesSelectionWindow->GetNodeHierarchyWidget();
-        hierarchyWidget->UpdateSelection();
-        AZStd::vector<SelectionItem>& selectedItems = hierarchyWidget->GetSelectedItems();
+        EMotionFX::Actor* actor = actorInstance->GetActor();
+        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const uint32 numJoints = mActor->GetNumNodes();
 
-        // get the number of nodes in the actor and the current lod level
-        const uint32 numNodes = mActor->GetNumNodes();
-
-        // disable all nodes first
-        for (uint32 i = 0; i < numNodes; ++i)
+        // Include all joints first.
+        for (uint32 i = 0; i < numJoints; ++i)
         {
-            mActor->GetSkeleton()->GetNode(i)->SetIncludeInBoundsCalc(true);
+            skeleton->GetNode(i)->SetIncludeInBoundsCalc(true);
         }
 
-        // iterate through the selected items and enable these nodes
-        for (const SelectionItem& selectedItem : selectedItems)
+        // Exclude the selected joints.
+        for (const SelectionItem& selectedJoint : selectedJoints)
         {
-            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByName(selectedItem.GetNodeName());
+            EMotionFX::Node* node = skeleton->FindNodeByName(selectedJoint.GetNodeName());
             if (node)
             {
                 node->SetIncludeInBoundsCalc(false);
             }
         }
     }
-
-
-    // set the actor exclude nodes back to what it was before opening the node selection window
-    void ActorPropertiesWindow::SetToOldExcludeNodeSelection()
-    {
-        // check if the actor is valid
-        if (mActor == nullptr)
-        {
-            return;
-        }
-
-        // get the number of nodes in the actor and the current lod level
-        const uint32 numNodes = mActor->GetNumNodes();
-
-        // disable all nodes first
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            mActor->GetSkeleton()->GetNode(i)->SetIncludeInBoundsCalc(true);
-        }
-
-        // iterate through the selected items and enable these nodes
-        const uint32 numExcludedNodes = mOldExcludedNodeSelection.GetLength();
-        for (uint32 i = 0; i < numExcludedNodes; ++i)
-        {
-            EMotionFX::Node* node = mActor->GetSkeleton()->FindNodeByID(mOldExcludedNodeSelection[i]);
-            if (node)
-            {
-                node->SetIncludeInBoundsCalc(false);
-            }
-        }
-    }
-
-
-    // selecting excluded nodes canceled
-    void ActorPropertiesWindow::OnCancelExcludedNodes()
-    {
-        // set it back to what it was before opening the node selection window
-        SetToOldExcludeNodeSelection();
-    }
-
-
-    // reset the nodes that should be excluded from the bounding volume calculations
-    void ActorPropertiesWindow::ResetExcludedNodes()
-    {
-        if (mActor == nullptr)
-        {
-            return;
-        }
-
-        const AZStd::string command = AZStd::string::format("AdjustActor -actorID %i -nodesExcludedFromBounds \"\" -nodeAction \"select\"", mActor->GetID());
-
-        AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommand(command, result))
-        {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
-    }
-
 
     // open the mirror setup
     void ActorPropertiesWindow::OnMirrorSetup()
@@ -796,12 +468,9 @@ namespace EMStudio
         }
     }
 
-
     void ActorPropertiesWindow::OnCollisionMeshesSetup()
     {
         mCollisionMeshesSetupWindow->Update(mActorInstance->GetID());
         mCollisionMeshesSetupWindow->exec();
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/SceneManager/ActorPropertiesWindow.moc>

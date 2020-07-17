@@ -205,8 +205,8 @@ namespace EMotionFX
             
             // Update will set uniqueData->mMustUpdate to false for efficiency purposes
             // Unique data only updates once unless reset mMustUpdate to true again
-            BlendTreeTwoLinkIKNode::UniqueData* uniqueData = static_cast<BlendTreeTwoLinkIKNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_twoLinkIKNode));
-            uniqueData->mMustUpdate = true;
+            BlendTreeTwoLinkIKNode::UniqueData* uniqueData = static_cast<BlendTreeTwoLinkIKNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_twoLinkIKNode));
+            uniqueData->Invalidate();
             AZ::u32 alignToNodeIndex;
             m_jackSkeleton->FindNodeAndIndexByName(nodeName, alignToNodeIndex);
             

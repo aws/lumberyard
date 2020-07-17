@@ -16,7 +16,7 @@
 
 namespace NvCloth
 {
-    class ClothComponent;
+    class ClothComponentMesh;
 
     class ClothDebugDisplay
         : private AzFramework::EntityDebugDisplayEventBus::Handler
@@ -24,7 +24,7 @@ namespace NvCloth
     public:
         AZ_TYPE_INFO(ClothDebugDisplay, "{306A2A30-8BB1-4D0F-9776-324CA1D90ABE}");
 
-        ClothDebugDisplay(ClothComponent* clothComponent);
+        ClothDebugDisplay(ClothComponentMesh* clothComponentMesh);
         ~ClothDebugDisplay();
 
         bool IsDebugDrawEnabled() const;
@@ -42,6 +42,6 @@ namespace NvCloth
         void DrawSphereCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, const AZ::Transform& transform);
         void DrawCapsuleCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, float height, const AZ::Transform& transform);
 
-        ClothComponent* m_clothComponent = nullptr;
+        ClothComponentMesh* m_clothComponentMesh = nullptr;
     };
 } // namespace NvCloth

@@ -48,9 +48,14 @@ namespace EMotionFX
                     for (uint32 i = 0; i < numNodes; ++i)
                     {
                         const AnimGraphNode* node = this->m_animGraph->GetNode(i);
+
+                        // Check the ref counts only for unique datas that got allocated. Lazy-init of the unique datas does not allocate unique datas for unused or unvisted nodes.
                         AnimGraphNodeData* nodeData = static_cast<AnimGraphNodeData*>(this->m_animGraphInstance->GetUniqueObjectData(node->GetObjectIndex()));
-                        EXPECT_EQ(0, nodeData->GetRefDataRefCount()) << "Expected the data ref count to be 0 post update.";
-                        EXPECT_EQ(0, nodeData->GetPoseRefCount()) << "Expected the pose ref count to be 0 post update.";
+                        if (nodeData)
+                        {
+                            EXPECT_EQ(0, nodeData->GetRefDataRefCount()) << "Expected the data ref count to be 0 post update.";
+                            EXPECT_EQ(0, nodeData->GetPoseRefCount()) << "Expected the pose ref count to be 0 post update.";
+                        }
                     }
 
                     this->m_animGraphInstance->ReleaseRefDatas();

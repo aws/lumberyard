@@ -10,9 +10,14 @@
 *
 */
 
+#include <MCore/Source/LogManager.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/MotionManager.h>
+#include <Editor/AnimGraphEditorBus.h>
 #include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendTreeVisualNode.h>
@@ -20,7 +25,9 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraph.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraphWidget.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/StateGraphNode.h>
-#include <MCore/Source/LogManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionSetsWindow/MotionSetsWindowPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
 #include <QMouseEvent>
 #include <QPainter>
@@ -290,8 +297,7 @@ namespace EMStudio
             }
 
             static AZStd::string perfTempString;
-            float theoreticalFPS = 1000.0f / renderTime;
-            perfTempString = AZStd::string::format("%i FPS - %.0fms (%i FPS)", lastFPS, renderTime, (int)theoreticalFPS);
+            perfTempString = AZStd::string::format("%i FPS (%.1f ms)", lastFPS, renderTime);
 
             GraphNode::RenderText(painter, perfTempString.c_str(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignRight, QRect(width - 55, height - 20, 50, 20));
         }
@@ -710,14 +716,17 @@ namespace EMStudio
                 return;
             }
 
-            // collapse the node if possible (not possible in a state machine)
+            // Get time view plugin.
+            EMStudioPlugin* timeViewBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(TimeViewPlugin::CLASS_ID);
+            TimeViewPlugin* timeViewPlugin = static_cast<TimeViewPlugin*>(timeViewBasePlugin);
+
             if (node)
             {
-                // cast the node
+                // Cast the node.
                 BlendTreeVisualNode* blendNode = static_cast<BlendTreeVisualNode*>(node);
                 EMotionFX::AnimGraphNode* animGraphNode = blendNode->GetEMFXNode();
 
-                // check if the node is not part of a state machine, this is the only case where the collapsible node is possible
+                // Collapse the node if possible (not possible in a state machine).
                 if (azrtti_typeid(animGraphNode->GetParentNode()) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
                     if (node->GetIsInsideArrowRect(globalPos))
@@ -729,8 +738,64 @@ namespace EMStudio
                         return;
                     }
                 }
-            }
 
+                // Update time view if time view window is opened and animgraph node supports preview motion.
+                if (timeViewPlugin)
+                {
+                    if (animGraphNode->GetSupportsPreviewMotion())
+                    {
+                        MCore::CommandGroup commandGroup("Preview Motion Time View");
+                        AZStd::string commandString, result;
+                        EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(animGraphNode);
+
+                        if (motionNode->GetNumMotions() == 1)
+                        {
+                            GetCommandManager()->GetCurrentSelection().ClearMotionSelection();
+                            const char* motionId = motionNode->GetMotionId(0);
+                            EMotionFX::MotionSet::MotionEntry* motionEntry = MotionSetsWindowPlugin::FindBestMatchMotionEntryById(motionId);
+                            const EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
+
+                            if (motionEntry && motionEntry->GetMotion())
+                            {
+                                EMotionFX::Motion* motion = motionEntry->GetMotion();
+                                uint32 motionIndex = motionManager.FindMotionIndexByName(motion->GetName());
+                                commandString = AZStd::string::format("Select -motionIndex %d", motionIndex);
+                                commandGroup.AddCommandString(commandString);
+                            }
+                        }
+
+                        if (commandGroup.GetNumCommands() > 0)
+                        {
+                            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+                            {
+                                AZ_Error("EMotionFX", false, result.c_str());
+                            }
+
+                            // Update motion list window to select motion.
+                            EMStudioPlugin* motionBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
+                            MotionWindowPlugin* motionWindowPlugin = static_cast<MotionWindowPlugin*>(motionBasePlugin);
+                            if (motionWindowPlugin)
+                            {
+                                motionWindowPlugin->ReInit();
+                            }
+
+                            // Update time view plugin with new motion related data.
+                            timeViewPlugin->SetMode(TimeViewMode::Motion);
+                        }
+                    }
+                    else
+                    {
+                        // If not clicked on another animgraph node, clear time view window.
+                        timeViewPlugin->SetMode(TimeViewMode::AnimGraph);
+                    }
+                }
+            }
+            else if (timeViewPlugin)
+            {
+                // If clicked away from nodes, set time view window to animgraph mode.
+                timeViewPlugin->SetMode(TimeViewMode::AnimGraph);
+            }
+            
             if (!mActiveGraph->IsInReferencedGraph())
             {
                 // check if we are clicking on an input port
@@ -1512,6 +1577,8 @@ namespace EMStudio
         MCORE_UNUSED(event);
         grabKeyboard();
         //update();
+
+        EMotionFX::AnimGraphEditorNotificationBus::Broadcast(&EMotionFX::AnimGraphEditorNotificationBus::Events::OnFocusIn);
     }
 
 

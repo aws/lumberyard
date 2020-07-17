@@ -14,16 +14,23 @@
 #include "AssetTreeModel.h"
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzCore/std/containers/unordered_map.h>
-
+#include <native/utilities/ApplicationManagerAPI.h>
 #include <QDir>
 
 namespace AssetProcessor
 {
-    class SourceAssetTreeModel : public AssetTreeModel, AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler
+    class SourceAssetTreeModel : public AssetTreeModel,
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler,
+        AssetProcessor::ApplicationManagerNotifications::Bus::Handler
     {
     public:
         SourceAssetTreeModel(QObject *parent = nullptr);
         ~SourceAssetTreeModel();
+
+        void DoCleanup();
+
+        /// ApplicationManagerNotifications::Bus::Handler
+        void ApplicationShutdownRequested() override;
 
         // AssetDatabaseNotificationBus::Handler
         void OnSourceFileChanged(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry) override;

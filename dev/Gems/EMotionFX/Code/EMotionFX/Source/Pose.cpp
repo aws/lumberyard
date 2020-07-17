@@ -561,169 +561,76 @@ namespace EMotionFX
         MCORE_ASSERT(instance->GetNumMotionLinks() == mLocalSpaceTransforms.GetLength());
 
         // get some motion instance properties which we use to decide the optimized blending routine
-        const bool additive     = (instance->GetBlendMode() == BLENDMODE_ADDITIVE); // additively blend?
-        const bool hasBlendMask = instance->GetHasBlendMask();
-        ActorInstance*  actorInstance   = instance->GetActorInstance();
-        //  Actor*          actor           = actorInstance->GetActor();
+        const bool additive = (instance->GetBlendMode() == BLENDMODE_ADDITIVE);
+        ActorInstance* actorInstance = instance->GetActorInstance();
 
-        // blend all transforms
-        if (hasBlendMask == false) // optimized version without blendmask
+        // check if we want an additive blend or not
+        if (!additive)
         {
-            // check if we want an additive blend or not
-            if (additive == false)
+            // if the dest pose has full influence, simply copy over that pose instead of performing blending
+            if (weight >= 1.0f)
             {
-                // if the dest pose has full influence, simply copy over that pose instead of performing blending
-                if (weight >= 1.0f)
-                {
-                    outPose->InitFromPose(destPose);
-                }
-                else
-                {
-                    if (weight > 0.0f)
-                    {
-                        Transform transform;
-                        uint32 nodeNr;
-                        const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-                        for (uint32 i = 0; i < numNodes; ++i)
-                        {
-                            nodeNr = actorInstance->GetEnabledNode(i);
-                            transform = GetLocalSpaceTransform(nodeNr);
-                            transform.Blend(destPose->GetLocalSpaceTransform(nodeNr), weight);
-                            outPose->SetLocalSpaceTransform(nodeNr, transform, false);
-                        }
-                        outPose->InvalidateAllModelSpaceTransforms();
-                    }
-                    else // if the weight is 0, so the source
-                    {
-                        if (outPose != this)
-                        {
-                            outPose->InitFromPose(this); // TODO: make it use the motionInstance->GetActorInstance()?
-                        }
-                    }
-                }
-
-                // blend the morph weights
-                const uint32 numMorphs = mMorphWeights.GetLength();
-                MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
-                MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
-                for (uint32 i = 0; i < numMorphs; ++i)
-                {
-                    mMorphWeights[i] = MCore::LinearInterpolate<float>(mMorphWeights[i], destPose->mMorphWeights[i], weight);
-                }
+                outPose->InitFromPose(destPose);
             }
             else
             {
-                TransformData* transformData = instance->GetActorInstance()->GetTransformData();
-                const Pose* bindPose = transformData->GetBindPose();
-                uint32 nodeNr;
-                Transform result;
-                const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-                for (uint32 i = 0; i < numNodes; ++i)
+                if (weight > 0.0f)
                 {
-                    nodeNr = actorInstance->GetEnabledNode(i);
-                    const Transform& base = bindPose->GetLocalSpaceTransform(nodeNr);
-                    BlendTransformAdditiveUsingBindPose(base, GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
-                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
+                    Transform transform;
+                    uint32 nodeNr;
+                    const uint32 numNodes = actorInstance->GetNumEnabledNodes();
+                    for (uint32 i = 0; i < numNodes; ++i)
+                    {
+                        nodeNr = actorInstance->GetEnabledNode(i);
+                        transform = GetLocalSpaceTransform(nodeNr);
+                        transform.Blend(destPose->GetLocalSpaceTransform(nodeNr), weight);
+                        outPose->SetLocalSpaceTransform(nodeNr, transform, false);
+                    }
+                    outPose->InvalidateAllModelSpaceTransforms();
                 }
-                outPose->InvalidateAllModelSpaceTransforms();
+                else // if the weight is 0, so the source
+                {
+                    if (outPose != this)
+                    {
+                        outPose->InitFromPose(this); // TODO: make it use the motionInstance->GetActorInstance()?
+                    }
+                }
+            }
 
-                // blend the morph weights
-                const uint32 numMorphs = mMorphWeights.GetLength();
-                MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
-                MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
-                for (uint32 i = 0; i < numMorphs; ++i)
-                {
-                    mMorphWeights[i] += destPose->mMorphWeights[i] * weight;
-                }
+            // blend the morph weights
+            const uint32 numMorphs = mMorphWeights.GetLength();
+            MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
+            MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
+            for (uint32 i = 0; i < numMorphs; ++i)
+            {
+                mMorphWeights[i] = MCore::LinearInterpolate<float>(mMorphWeights[i], destPose->mMorphWeights[i], weight);
             }
         }
-        else // take the blendmask into account
+        else
         {
-            if (additive == false)
+            TransformData* transformData = instance->GetActorInstance()->GetTransformData();
+            const Pose* bindPose = transformData->GetBindPose();
+            uint32 nodeNr;
+            Transform result;
+            const uint32 numNodes = actorInstance->GetNumEnabledNodes();
+            for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform result;
-                uint32 nodeNr;
-                const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-                for (uint32 i = 0; i < numNodes; ++i)
-                {
-                    nodeNr = actorInstance->GetEnabledNode(i);
-
-                    // try to find the motion link
-                    // if we cannot find it, this node/transform is not influenced by the motion, so we skip it
-                    float nodeBlendWeight;
-                    const MotionLink* motionLink = instance->GetMotionLink(nodeNr);
-                    if (motionLink->GetIsActive() == false)
-                    {
-                        nodeBlendWeight = 1.0f;
-                    }
-                    else
-                    {
-                        nodeBlendWeight = instance->GetNodeWeight(nodeNr);
-                    }
-
-                    // take the node's blend weight into account
-                    const float finalWeight = nodeBlendWeight * weight;
-
-                    // blend the source into dest with the given weight and output it inside the output pose
-                    BlendTransformWithWeightCheck(GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
-                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
-                }
-
-                outPose->InvalidateAllModelSpaceTransforms();
-
-                // blend the morph weights
-                const uint32 numMorphs = mMorphWeights.GetLength();
-                MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
-                MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
-                for (uint32 i = 0; i < numMorphs; ++i)
-                {
-                    mMorphWeights[i] = MCore::LinearInterpolate<float>(mMorphWeights[i], destPose->mMorphWeights[i], weight);
-                }
+                nodeNr = actorInstance->GetEnabledNode(i);
+                const Transform& base = bindPose->GetLocalSpaceTransform(nodeNr);
+                BlendTransformAdditiveUsingBindPose(base, GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
+                outPose->SetLocalSpaceTransform(nodeNr, result, false);
             }
-            else
+            outPose->InvalidateAllModelSpaceTransforms();
+
+            // blend the morph weights
+            const uint32 numMorphs = mMorphWeights.GetLength();
+            MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
+            MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
+            for (uint32 i = 0; i < numMorphs; ++i)
             {
-                TransformData* transformData = instance->GetActorInstance()->GetTransformData();
-                const Pose* bindPose = transformData->GetBindPose();
-                Transform result;
-
-                uint32 nodeNr;
-                const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-                for (uint32 i = 0; i < numNodes; ++i)
-                {
-                    nodeNr = actorInstance->GetEnabledNode(i);
-
-                    // try to find the motion link
-                    // if we cannot find it, this node/transform is not influenced by the motion, so we skip it
-                    float nodeBlendWeight;
-                    const MotionLink* motionLink = instance->GetMotionLink(nodeNr);
-                    if (motionLink->GetIsActive() == false)
-                    {
-                        nodeBlendWeight = 1.0f;
-                    }
-                    else
-                    {
-                        nodeBlendWeight = instance->GetNodeWeight(nodeNr);
-                    }
-
-                    // take the node's blend weight into account
-                    const float finalWeight = nodeBlendWeight * weight;
-
-                    // blend the source into dest with the given weight and output it inside the output pose
-                    BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
-                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
-                }
-                outPose->InvalidateAllModelSpaceTransforms();
-
-                // blend the morph weights
-                const uint32 numMorphs = mMorphWeights.GetLength();
-                MCORE_ASSERT(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets() == numMorphs);
-                MCORE_ASSERT(numMorphs == destPose->GetNumMorphWeights());
-                for (uint32 i = 0; i < numMorphs; ++i)
-                {
-                    mMorphWeights[i] += destPose->mMorphWeights[i] * weight;
-                }
-            } // if additive
-        } // if has blend mask
+                mMorphWeights[i] += destPose->mMorphWeights[i] * weight;
+            }
+        }
     }
 
 
@@ -750,7 +657,7 @@ namespace EMotionFX
         Transform result;
 
         // blend all transforms
-        if (additive == false)
+        if (!additive)
         {
             uint32 nodeNr;
             const uint32 numNodes = actorInstance->GetNumEnabledNodes();
@@ -766,11 +673,8 @@ namespace EMotionFX
                     continue;
                 }
 
-                // take the node's blend weight into account
-                const float finalWeight = instance->GetNodeWeight(nodeNr) * weight;
-
                 // blend the source into dest with the given weight and output it inside the output pose
-                BlendTransformWithWeightCheck(GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                BlendTransformWithWeightCheck(GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
                 outPose->SetLocalSpaceTransform(nodeNr, result, false);
             }
 
@@ -802,11 +706,8 @@ namespace EMotionFX
                     continue;
                 }
 
-                // take the node's blend weight into account
-                const float finalWeight = instance->GetNodeWeight(nodeNr) * weight;
-
                 // blend the source into dest with the given weight and output it inside the output pose
-                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
                 outPose->SetLocalSpaceTransform(nodeNr, result, false);
             }
             outPose->InvalidateAllModelSpaceTransforms();
@@ -1580,9 +1481,7 @@ namespace EMotionFX
     {
         if (!mActorInstance)
         {
-            Transform identityTransform;
-            identityTransform.Identity();
-            return identityTransform;
+            return Transform::CreateIdentity();
         }
 
         Actor* actor = mActorInstance->GetActor();

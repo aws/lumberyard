@@ -82,7 +82,7 @@ namespace AzQtComponents
         QString currentPath() const;
 
         QToolButton* createButton(NavigationButton type);
-
+        QWidget* createBackForwardToolBar();
         QWidget* createSeparator();
 
         /*!
@@ -142,9 +142,12 @@ namespace AzQtComponents
         void getButtonStates(BreadCrumbButtonStates buttonStates);
         void emitButtonSignals(BreadCrumbButtonStates previousButtonStates);
 
+        void showTruncatedPathsMenu();
+
         static QString buildPathFromList(const QStringList& fullPath, int pos);
 
         QLabel* m_label = nullptr;
+        QToolButton* m_menuButton = nullptr;
 
         QString m_currentPath;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::BreadCrumbs::m_backPaths': class 'QStack<QString>' needs to have dll-interface to be used by clients of class 'AzQtComponents::BreadCrumbs'

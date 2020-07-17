@@ -92,7 +92,6 @@ namespace GradientSignal
         LmbrCentral::DependencyNotificationBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         GradientPreviewContextRequestBus::Handler::BusConnect(GetEntityId());
-        EditorGradientSamplerRequestBus::Handler::BusConnect(GetEntityId());
 
         SetSamplerOwnerEntity(m_configuration, GetEntityId());
 
@@ -120,7 +119,6 @@ namespace GradientSignal
         // If the preview shouldn't be active, use an invalid entityId
         m_gradientEntityId = AZ::EntityId();
 
-        EditorGradientSamplerRequestBus::Handler::BusDisconnect();
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         GradientPreviewContextRequestBus::Handler::BusDisconnect();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
@@ -139,7 +137,7 @@ namespace GradientSignal
     AZ::u32 EditorGradientComponentBase<TComponent, TConfiguration>::ConfigurationChanged()
     {
         // Cancel any pending preview refreshes before locking, to help ensure the preview itself isn't holding the lock
-        CancelPreviewRendering();
+        auto entityIds = CancelPreviewRendering();
 
          // block anyone from accessing the buses while the editor deactivates and re-activates the contained component.
         auto& surfaceDataSystemRequestBusContext = SurfaceData::SurfaceDataSystemRequestBus::GetOrCreateContext(false);
@@ -151,28 +149,16 @@ namespace GradientSignal
                             gradientRequestBusContextContext.m_contextMutex);
         auto refreshResult = BaseClassType::ConfigurationChanged();
 
-        UpdatePreviewSettings();
+        // Refresh any of the previews that we cancelled that were still in progress so they can be completed
+        for (auto entityId : entityIds)
+        {
+            GradientSignal::GradientPreviewRequestBus::Event(entityId, &GradientSignal::GradientPreviewRequestBus::Events::Refresh);
+        }
+
+        // This OnCompositionChanged notification will refresh our own preview so we don't need to call UpdatePreviewSettings explicitly
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
 
         return refreshResult;
-    }
-
-    template <typename TComponent, typename TConfiguration>
-    AzToolsFramework::EntityIdList EditorGradientComponentBase<TComponent, TConfiguration>::GetInboundGradientIds()
-    {
-        return GetSamplerGradientEntities(m_configuration);
-    }
-
-    template <typename TComponent, typename TConfiguration>
-    void EditorGradientComponentBase<TComponent, TConfiguration>::SetInboundGradientIds(AzToolsFramework::EntityIdList gradientIds)
-    {
-        SetSamplerGradientEntities(m_configuration, gradientIds);
-
-        ConfigurationChanged();
-
-        AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
-            &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
-            AzToolsFramework::Refresh_AttributesAndValues);
     }
 
     template <typename TComponent, typename TConfiguration>
@@ -259,13 +245,27 @@ namespace GradientSignal
     template <typename TComponent, typename TConfiguration>
     void EditorGradientComponentBase<TComponent, TConfiguration>::UpdatePreviewSettings() const
     {
-        GradientSignal::GradientPreviewRequestBus::Broadcast(&GradientSignal::GradientPreviewRequestBus::Events::Refresh);
+        // Trigger an update just for our specific preview (this means there was a preview-specific change, not an actual configuration change)
+        GradientSignal::GradientPreviewRequestBus::Event(m_gradientEntityId, &GradientSignal::GradientPreviewRequestBus::Events::Refresh);
     }
 
     template <typename TComponent, typename TConfiguration>
-    void EditorGradientComponentBase<TComponent, TConfiguration>::CancelPreviewRendering() const
+    AzToolsFramework::EntityIdList EditorGradientComponentBase<TComponent, TConfiguration>::CancelPreviewRendering() const
     {
-        GradientSignal::GradientPreviewRequestBus::Broadcast(&GradientSignal::GradientPreviewRequestBus::Events::CancelRefresh);
+        AzToolsFramework::EntityIdList entityIds;
+        AZ::EBusAggregateResults<AZ::EntityId> cancelledPreviews;
+        GradientSignal::GradientPreviewRequestBus::BroadcastResult(cancelledPreviews, &GradientSignal::GradientPreviewRequestBus::Events::CancelRefresh);
+
+        // Gather up the EntityIds for any previews that were in progress when we cancelled them
+        for (auto entityId : cancelledPreviews.values)
+        {
+            if (entityId.IsValid())
+            {
+                entityIds.push_back(entityId);
+            }
+        }
+
+        return entityIds;
     }
 
     template <typename TComponent, typename TConfiguration>

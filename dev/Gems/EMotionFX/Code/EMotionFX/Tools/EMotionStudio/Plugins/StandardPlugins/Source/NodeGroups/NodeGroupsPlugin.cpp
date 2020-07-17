@@ -82,7 +82,7 @@ namespace EMStudio
         mDialogStack = new MysticQt::DialogStack();
         mDock->setMinimumWidth(300);
         mDock->setMinimumHeight(100);
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
 
         // create the management and node group widgets
         mNodeGroupWidget            = new NodeGroupWidget();
@@ -111,7 +111,7 @@ namespace EMStudio
         ReInit();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &NodeGroupsPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &NodeGroupsPlugin::WindowReInit);
 
         return true;
     }
@@ -149,7 +149,7 @@ namespace EMStudio
         }
 
         // set the dialog stack as main widget
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
 
         // update the interface
         UpdateInterface();

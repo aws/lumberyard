@@ -57,12 +57,11 @@ namespace ScriptCanvasEditor
 
     void SettingsDialog::ConfigurePropertyEditor(AzToolsFramework::ReflectedPropertyEditor* editor)
     {
-        editor->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+        editor->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
         editor->SetHideRootProperties(false);
         editor->SetDynamicEditDataProvider(nullptr);
         editor->ExpandAll();
         editor->InvalidateAll();
-        editor->setFixedHeight(editor->GetContentHeight());
     }
 
     SettingsDialog::~SettingsDialog()

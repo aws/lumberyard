@@ -44,8 +44,8 @@ namespace PhysX
         }
     }
 
-    ForceRegionComponent::ForceRegionComponent(const ForceRegion& forceRegion, bool debug)
-        : m_forceRegion(forceRegion)
+    ForceRegionComponent::ForceRegionComponent(ForceRegion&& forceRegion, bool debug)
+        : m_forceRegion(std::move(forceRegion))
         , m_debugForces(debug)
     {
     }

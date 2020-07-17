@@ -24,7 +24,10 @@ def build(bld):
     USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework', 'ExpressionEvaluationAPI']
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
-    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
+    COMMON_DEFINES = ['SCRIPTCANVAS', 
+                      'SCRIPTCANVAS_ERRORS_ENABLED', 
+                      'ENABLE_EXTENDED_MATH_SUPPORT=0',
+                      'SCRIPTCANVAS_DISABLE_OPTIMIZATIONS=1']
 ########################################################################################
     EXECUTION_NOTIFICATION_DEFINES = [
 			'SC_EXECUTION_TRACE_ENABLED' # this is REQUIRED for debugging/execution logging
@@ -49,6 +52,7 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
             'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
             'Include/ScriptCanvas/Libraries/Core/ForEach.h',
+            'Include/ScriptCanvas/Libraries/Core/FunctionNode.h',
             'Include/ScriptCanvas/Libraries/Core/Repeater.h',
             'Include/ScriptCanvas/Libraries/Core/GetVariable.h',
             'Include/ScriptCanvas/Libraries/Core/SetVariable.h',
@@ -56,6 +60,7 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Core/SendScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/Start.h',
+            'Include/ScriptCanvas/Libraries/Core/ExecutionNode.h',
 
             # Entity
             'Include/ScriptCanvas/Libraries/Entity/Rotate.h',
@@ -246,7 +251,7 @@ def build(bld):
             vs_filter       = 'Gems/ScriptCanvas',
 
             file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_editor_asset.waf_files', 'scriptcanvasgem_editor_builder.waf_files'],
-            test_all_file_list = ['scriptcanvasgem_tests.waf_files', 'scriptcanvasgem_editor_tests.waf_files'],
+            test_all_file_list = ['scriptcanvasgem_tests.waf_files'],
             includes        = [ 'Include',
                                 'Include/ScriptCanvas',
                                 'Editor/Include',

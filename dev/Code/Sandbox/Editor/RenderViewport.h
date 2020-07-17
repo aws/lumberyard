@@ -176,6 +176,7 @@ public:
     AzFramework::CameraState GetCameraState() override;
     bool GridSnappingEnabled() override;
     float GridSize() override;
+    bool ShowGrid() override;
     bool AngleSnappingEnabled() override;
     float AngleStep() override;
     QPoint ViewportWorldToScreen(const AZ::Vector3& worldPosition) override;

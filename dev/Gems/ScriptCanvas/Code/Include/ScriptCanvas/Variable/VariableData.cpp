@@ -133,7 +133,7 @@ namespace ScriptCanvas
             return AZ::Success(insertIt.first->first);
         }
 
-        return AZ::Failure(AZStd::string::format("Variable with id %s already exist in variable map. The Variable name is %s", insertIt.first->first, insertIt.first->second.GetVariableName().data()));
+        return AZ::Failure(AZStd::string::format("Variable with id %s already exist in variable map. The Variable name is %s", insertIt.first->first.ToString().c_str(), insertIt.first->second.GetVariableName().data()));
     }
 
     GraphVariable* VariableData::FindVariable(AZStd::string_view variableName)

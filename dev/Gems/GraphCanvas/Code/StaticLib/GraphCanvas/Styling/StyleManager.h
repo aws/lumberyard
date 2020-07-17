@@ -132,6 +132,9 @@ namespace GraphCanvas
         void CachePixmap(const AZ::Crc32& keyName, QPixmap* pixmap) override;
 
         int FindLayerZValue(AZStd::string_view layer) override;
+
+        int GetSteppedWidth(int width) override;
+        int GetSteppedHeight(int height) override;
         ////
 
     protected:
@@ -177,6 +180,9 @@ namespace GraphCanvas
 
         AZStd::unordered_map< AZ::Crc32, TintableIcon* > m_patternIcons;
         AZStd::unordered_map< AZ::Crc32, QPixmap* > m_patternCache;
+
+        QList<QVariant> m_widthStepHelper;
+        QList<QVariant> m_heightStepHelper;
 
         friend class Styling::Parser;
     };

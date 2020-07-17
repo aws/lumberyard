@@ -11,7 +11,9 @@
 */
 #pragma once
 
-#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScopedDataConnectionEvent.h>
-#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/UnknownEndpointEvent.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DynamicDataTypeEvent.h>
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/InvalidVariableTypeEvent.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScopedDataConnectionEvent.h>
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScriptEventVersionMismatch.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/SlotReferenceEvent.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/UnknownEndpointEvent.h>

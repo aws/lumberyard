@@ -13,7 +13,7 @@
 #include "TrackViewDoubleSpinBox.h"
 
 CTrackViewDoubleSpinBox::CTrackViewDoubleSpinBox(QWidget* parent) 
-    : QDoubleSpinBox(parent)
+    : AzQtComponents::DoubleSpinBox(parent)
 {
 }
 
@@ -23,7 +23,7 @@ CTrackViewDoubleSpinBox::~CTrackViewDoubleSpinBox()
 
 void CTrackViewDoubleSpinBox::stepBy(int steps)
 {
-    QDoubleSpinBox::stepBy(steps);
+    AzQtComponents::DoubleSpinBox::stepBy(steps);
     Q_EMIT stepByFinished();
 }
 

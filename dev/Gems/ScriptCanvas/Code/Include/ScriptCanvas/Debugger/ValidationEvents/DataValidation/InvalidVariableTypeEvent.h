@@ -16,15 +16,17 @@
 #include <ScriptCanvas/Debugger/ValidationEvents/ValidationEvent.h>
 
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h>
 
 namespace ScriptCanvas
 {
     class InvalidVariableTypeEvent
         : public ValidationEvent
+        , public HighlightVariableEffect
     {
     public:
         AZ_CLASS_ALLOCATOR(InvalidVariableTypeEvent, AZ::SystemAllocator, 0);
-        AZ_RTTI(InvalidVariableTypeEvent, "{85670BDB-ED14-44BC-A7F1-FFF0D749EF72}", ValidationEvent);
+        AZ_RTTI(InvalidVariableTypeEvent, "{85670BDB-ED14-44BC-A7F1-FFF0D749EF72}", ValidationEvent, HighlightVariableEffect);
         
         InvalidVariableTypeEvent(const VariableId& variableId)
             : ValidationEvent(ValidationSeverity::Error)
@@ -42,21 +44,28 @@ namespace ScriptCanvas
         {
             return DataValidationIds::InvalidVariableTypeId;
         }
+
+        const VariableId& GetVariableId() const
+        {
+            return m_variableId;
+        }
         
         AZ::Crc32 GetIdCrc() const
         {
             return DataValidationIds::InvalidVariableTypeCrc;
-        }
-        
-        const VariableId& GetVariableId() const
-        {
-            return m_variableId;
         }
 
         AZStd::string_view GetTooltip() const
         {
             return "Invalid type for variable, auto fixing will remove all invalid variable nodes.";
         }
+
+        // HighlightVariableEffect
+        VariableId GetHighlightVariableId() const override
+        {
+            return m_variableId;
+        }
+        ////
         
     private:
     

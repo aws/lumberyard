@@ -88,7 +88,7 @@ namespace Input
         InputEventBindings m_inputEventBindings;
         AZStd::vector<AZStd::string> m_inputContexts;
         AZ::Data::Asset<InputEventBindingsAsset> m_inputEventBindingsAsset;
-        AZ::u32 m_localPlayerIndex = std::numeric_limits<AZ::u32>::max();
+        AZ::s32 m_localPlayerIndex = -1;
 
         AzFramework::LocalUserId m_localUserId = AzFramework::LocalUserIdAny;
         bool m_isContextActive = false;

@@ -35,6 +35,13 @@ namespace ScriptCanvasEditor
     {
         GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
     }
+
+    ScriptCanvasBatchConverter::~ScriptCanvasBatchConverter()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+
+        GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect(ScriptCanvasEditor::AssetEditorId);
+    }
     
     void ScriptCanvasBatchConverter::PostOnActiveGraphChanged()
     {
@@ -42,13 +49,9 @@ namespace ScriptCanvasEditor
         {
             m_processing = false;
 
-            GetMainWindow()->SaveAsset(m_assetId, [this](bool isSuccessful)
+            GetMainWindow()->SaveAsset(m_assetId, [this](bool isSuccessful, AZ::Data::Asset<ScriptCanvasAsset>, AZ::Data::AssetId)
             {
-                AZ::Data::AssetId assetId = m_assetId;
-                m_assetId.SetInvalid();
-
-                GetMainWindow()->CloseScriptCanvasAsset(assetId);
-                SignalOperationComplete();
+                this->AZ::SystemTickBus::Handler::BusConnect();
             });
         }
     }
@@ -58,27 +61,51 @@ namespace ScriptCanvasEditor
         OperationStatus status = OperationStatus::Incomplete;
         
         QByteArray utf8FileName = fileName.toUtf8();
-        const bool loadBlocking = true;
-        AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset;
-        DocumentContextRequestBus::BroadcastResult(scriptCanvasAsset, &DocumentContextRequests::LoadScriptCanvasAsset, utf8FileName.data(), loadBlocking);
-        if (scriptCanvasAsset.IsReady())
+
+        auto onAssetReady = [this, fileName](ScriptCanvasMemoryAsset& memoryAsset)
         {
-            if (GetMainWindow()->m_tabBar->FindTab(scriptCanvasAsset.GetId()) < 0)
+            if (GetMainWindow()->m_tabBar->FindTab(memoryAsset.GetFileAssetId()) < 0)
             {
-                m_assetId = scriptCanvasAsset.GetId();
+                m_assetId = memoryAsset.GetFileAssetId();
+
                 m_processing = true;
 
                 GetProgressDialog()->setLabelText(QString("Converting %1...\n").arg(fileName));
                 QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
-                GetMainWindow()->OpenScriptCanvasAsset(scriptCanvasAsset);
+                GetMainWindow()->OpenScriptCanvasAsset(memoryAsset.GetFileAssetId());
             }
             else
             {
-                status = OperationStatus::Complete;
+                SignalOperationComplete();
             }
+        };
+
+        AZStd::string watchFolder;
+        AZ::Data::AssetInfo assetInfo;
+        bool sourceInfoFound{};
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, fileName.toUtf8().data(), assetInfo, watchFolder);
+        
+        if (sourceInfoFound)
+        {
+            AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::Load, assetInfo.m_assetId, azrtti_typeid<ScriptCanvasAsset>(), onAssetReady);
+        }
+        else
+        {
+            status = OperationStatus::Complete;
         }
 
         return status;
+    }
+
+    void ScriptCanvasBatchConverter::OnSystemTick()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+
+        AZ::Data::AssetId assetId = m_assetId;
+        m_assetId.SetInvalid();
+
+        GetMainWindow()->CloseScriptCanvasAsset(assetId);
+        SignalOperationComplete();
     }
 }

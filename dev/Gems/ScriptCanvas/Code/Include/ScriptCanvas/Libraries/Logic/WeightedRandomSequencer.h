@@ -46,6 +46,8 @@ namespace ScriptCanvas
                 // Node
                 void OnInit() override;
                 void ConfigureVisualExtensions() override;
+
+                bool OnValidateNode(ValidationResults& validationResults);
                 
                 void OnInputSignal(const SlotId& slot);
 

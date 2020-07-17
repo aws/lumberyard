@@ -27,7 +27,8 @@ namespace EMStudio
         AZ_CLASS_ALLOCATOR_DECL
 
         InputDialogValidatable(QWidget* parent, const QString& labelText, const QRegExp regExp = LineEditValidatable::s_defaultRegExp);
-        ~InputDialogValidatable() = default;
+        // When destructing clear the Validator which sets the LineEdit Validator to stop lambda validates being called
+        ~InputDialogValidatable() { SetValidatorFunc(nullptr); }
 
         void SetText(const QString& text);
         QString GetText() const;

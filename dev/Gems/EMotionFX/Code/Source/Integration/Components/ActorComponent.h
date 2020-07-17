@@ -72,6 +72,8 @@ namespace EMotionFX
                 bool                            m_renderBounds;             ///< Toggles rendering of the character bounds used for visibility testing.
                 SkinningMethod                  m_skinningMethod;           ///< The skinning method for this actor
                 AZ::u32                         m_lodLevel;
+                bool                            m_forceUpdateJointsOOV;     // Force updating the joints when it is out of camera view. By default, joints level update
+                                                                            // (beside the root joint) on actor are disabled when the actor is out of view. 
 
                 static void Reflect(AZ::ReflectContext* context);
             };

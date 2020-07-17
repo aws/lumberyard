@@ -3,35 +3,15 @@
     {
         "EmotionFXTools/MysticQt":
         [
-            "Source/ButtonGroup.cpp",
-            "Source/ButtonGroup.h",
-            "Source/ColorLabel.cpp",
-            "Source/ColorLabel.h",
-            "Source/ComboBox.cpp",
-            "Source/ComboBox.h",
             "Source/DialogStack.cpp",
             "Source/DialogStack.h",
-            "Source/DockHeader.cpp",
-            "Source/DockHeader.h",
-            "Source/DockWidget.cpp",
-            "Source/DockWidget.h",
-            "Source/DoubleSpinbox.cpp",
-            "Source/DoubleSpinbox.h",
-            "Source/IntSlider.cpp",
-            "Source/IntSlider.h",
-            "Source/IntSpinbox.cpp",
-            "Source/IntSpinbox.h",
             "Source/KeyboardShortcutManager.cpp",
             "Source/KeyboardShortcutManager.h",
-            "Source/LinkWidget.cpp",
-            "Source/LinkWidget.h",
             "Source/MysticQtConfig.h",
             "Source/MysticQtManager.cpp",
             "Source/MysticQtManager.h",
             "Source/RecentFiles.cpp",
-            "Source/RecentFiles.h",
-            "Source/Slider.cpp",
-            "Source/Slider.h"
+            "Source/RecentFiles.h"
         ]
     }
 }

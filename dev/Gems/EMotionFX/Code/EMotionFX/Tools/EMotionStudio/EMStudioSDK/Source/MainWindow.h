@@ -22,7 +22,7 @@
 #include <MysticQt/Source/RecentFiles.h>
 #include <Editor/ActorEditorBus.h>
 
-#include <QMainWindow>
+#include <AzQtComponents/Components/DockMainWindow.h>
 
 // forward declarations
 QT_FORWARD_DECLARE_CLASS(QPushButton)
@@ -30,6 +30,10 @@ QT_FORWARD_DECLARE_CLASS(QMenu)
 QT_FORWARD_DECLARE_CLASS(QTimer)
 QT_FORWARD_DECLARE_CLASS(QDropEvent)
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
+QT_FORWARD_DECLARE_CLASS(QComboBox)
+QT_FORWARD_DECLARE_CLASS(QMessageBox)
+QT_FORWARD_DECLARE_CLASS(QAbstractButton)
+
 struct SelectionItem;
 
 namespace AZ
@@ -53,8 +57,12 @@ namespace MCore
 
 namespace MysticQt
 {
-    class ComboBox;
     class KeyboardShortcutManager;
+}
+
+namespace AzQtComponents
+{
+    class FancyDocking;
 }
 
 namespace EMStudio
@@ -71,7 +79,7 @@ namespace EMStudio
 
     // the main window
     class EMSTUDIO_API MainWindow
-        : public QMainWindow
+        : public AzQtComponents::DockMainWindow
         , private PluginOptionsNotificationsBus::Router
         , public EMotionFX::ActorEditorRequestBus::Handler
     {
@@ -118,7 +126,7 @@ namespace EMStudio
 
         void OnWorkspaceSaved(const char* filename);
 
-        MCORE_INLINE MysticQt::ComboBox* GetApplicationModeComboBox()           { return mApplicationMode; }
+        MCORE_INLINE QComboBox* GetApplicationModeComboBox()                    { return mApplicationMode; }
         DirtyFileManager*   GetDirtyFileManager() const                         { return mDirtyFileManager; }
         FileManager*        GetFileManager() const                              { return mFileManager; }
         PreferencesWindow*  GetPreferencesWindow() const                        { return mPreferencesWindow; }
@@ -133,12 +141,17 @@ namespace EMStudio
         static const char* GetEMotionFXPaneName();
         MysticQt::KeyboardShortcutManager* GetShortcutManager() const           { return mShortcutManager; }
 
+        AzQtComponents::FancyDocking* GetFancyDockingManager() const            { return m_fancyDockingManager; }
+
+        QMessageBox* GetRemoveLayoutDialog();
     public slots:
         void OnAutosaveTimeOut();
         void LoadLayoutAfterShow();
         void RaiseFloatingWidgets();
         void LoadCharacterFiles();
 
+        void OnSaveLayoutDialogAccept();
+        void OnSaveLayoutDialogReject();
     protected:
         void moveEvent(QMoveEvent* event) override;
         void resizeEvent(QResizeEvent* event) override;
@@ -175,7 +188,7 @@ namespace EMStudio
 #endif
 
         // application mode
-        MysticQt::ComboBox*     mApplicationMode;
+        QComboBox*              mApplicationMode;
 
         PreferencesWindow*      mPreferencesWindow;
 
@@ -209,7 +222,13 @@ namespace EMStudio
 
         void OnOptionChanged(const AZStd::string& optionChanged) override;
 
-        UndoMenuCallback*                       m_undoMenuCallback;
+        UndoMenuCallback*                       m_undoMenuCallback = nullptr;
+
+        AzQtComponents::FancyDocking*           m_fancyDockingManager = nullptr;
+
+        QMessageBox*                            m_reallyRemoveLayoutDialog = nullptr;
+        QString                                 m_removeLayoutNameText;
+        QString                                 m_layoutFileBeingRemoved;
 
         // declare the callbacks
         MCORE_DEFINECOMMANDCALLBACK(CommandImportActorCallback);
@@ -245,6 +264,11 @@ namespace EMStudio
 
         class MainWindowCommandManagerCallback : public MCore::CommandManagerCallback
         {
+        public:
+            MainWindowCommandManagerCallback();
+
+            bool NeedToClearRecorder(MCore::Command* command, const MCore::CommandLine& commandLine) const;
+
             //////////////////////////////////////////////////////////////////////////////////////
             /// CommandManagerCallback implementation
             void OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override;
@@ -255,6 +279,9 @@ namespace EMStudio
             void OnAddCommandToHistory(uint32 /*historyIndex*/, MCore::CommandGroup* /*group*/, MCore::Command* /*command*/, const MCore::CommandLine& /*commandLine*/) override { }
             void OnRemoveCommand(uint32 /*historyIndex*/) override { }
             void OnSetCurrentCommand(uint32 /*index*/) override { }
+
+        private:
+            AZStd::vector<AZStd::string> m_skipClearRecorderCommands;
         };
 
         MainWindowCommandManagerCallback m_mainWindowCommandManagerCallback;
@@ -283,6 +310,7 @@ namespace EMStudio
         void OnSaveAll();
         void ApplicationModeChanged(const QString& text);
         void OnUpdateRenderPlugins();
+        void OnRemoveLayoutButtonClicked(QAbstractButton* button);
 
      signals:
         void HardwareChangeDetected();

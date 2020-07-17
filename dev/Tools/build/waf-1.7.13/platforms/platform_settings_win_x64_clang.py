@@ -145,6 +145,8 @@ def load_win_x64_clang_common_settings(conf):
 
     conf.load_cryengine_common_settings()
 
+    conf.register_win_x64_external_optional_cuda(PLATFORM)
+
 
 # Required load_<PLATFORM>_configuration_settings(ctx, platform_configuration)
 @conf

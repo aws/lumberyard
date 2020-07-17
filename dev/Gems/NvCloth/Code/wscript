@@ -15,10 +15,21 @@ from waflib import Configure
 def build(bld):
     import lumberyard_sdks
 
+    nvcloth_lib = ''
+    nvcloth_uselib = []
+    nvcloth_win_lib = []
+
+    if bld.check_platform_uselib_compatibility('CUDA') and bld.check_platform_uselib_compatibility('NVCLOTH_CUDA_LIB'):
+        nvcloth_lib = 'NVCLOTH_CUDA_LIB'
+        nvcloth_uselib.extend([nvcloth_lib,'CUDA'])
+        nvcloth_win_lib.extend(['delayimp'])
+    else:
+        nvcloth_lib = 'NVCLOTH_LIB'
+        nvcloth_uselib.extend([nvcloth_lib])
+
     nvcloth_file_list = []
     nvcloth_file_list_editor = []
     nvcloth_pch = "Source/NvCloth_precompiled.cpp"
-    nvcloth_lib = 'NVCLOTH_LIB'
     if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
         nvcloth_file_list.extend(['nvcloth.waf_files',
                                   'nvcloth_unsupported.waf_files'])
@@ -43,7 +54,8 @@ def build(bld):
         
         # Dependencies
         use                     = ['EMotionFXStaticLib'],
-        uselib                  = [nvcloth_lib],
+        uselib                  = nvcloth_uselib,
+        win_lib                 = nvcloth_win_lib,
         
         # Editor Module
         editor = dict(
@@ -55,6 +67,7 @@ def build(bld):
             
             # Dependencies
             use                 = ['SceneCore', 'EMotionFXStaticLib'],
-            uselib              = [nvcloth_lib]
+            uselib              = nvcloth_uselib,
+            win_lib             = nvcloth_win_lib
         )
     )

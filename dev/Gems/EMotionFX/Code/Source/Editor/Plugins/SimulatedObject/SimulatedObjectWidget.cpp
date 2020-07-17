@@ -30,7 +30,6 @@
 #include <Editor/SimulatedObjectHelpers.h>
 #include <Editor/SkeletonModel.h>
 #include <MCore/Source/AzCoreConversions.h>
-#include <MysticQt/Source/DockHeader.h>
 #include <QLabel>
 #include <QPushButton>
 #include <QTreeView>
@@ -70,6 +69,7 @@ namespace EMotionFX
 
         m_simulatedObjectModel = AZStd::make_unique<SimulatedObjectModel>();
         m_treeView = new ReselectingTreeView();
+        m_treeView->setObjectName("EMFX.SimulatedObjectWidget.TreeView");
         m_treeView->setModel(m_simulatedObjectModel.get());
         m_treeView->setSelectionModel(m_simulatedObjectModel->GetSelectionModel());
         m_treeView->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
@@ -133,16 +133,13 @@ namespace EMotionFX
         mainLayout->addStretch();
         mainLayout->addWidget(m_addSimulatedObjectButton);
 
-        mDock->SetContents(m_mainWidget);
+        mDock->setWidget(m_mainWidget);
 
-        m_simulatedObjectInspectorDock = new MysticQt::DockWidget(mDock, "Simulated Object Inspector");
-        MysticQt::DockHeader* dockHeader = new MysticQt::DockHeader(m_simulatedObjectInspectorDock);
-        m_simulatedObjectInspectorDock->setTitleBarWidget(dockHeader);
+        m_simulatedObjectInspectorDock = new AzQtComponents::StyledDockWidget("Simulated Object Inspector", mDock);
         m_simulatedObjectInspectorDock->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
         m_simulatedObjectInspectorDock->setObjectName("SimulatedObjectWidget::m_simulatedObjectInspectorDock");
         m_simulatedJointWidget = new SimulatedJointWidget(this);
-        m_simulatedObjectInspectorDock->SetContents(m_simulatedJointWidget);
-        dockHeader->UpdateIcons();
+        m_simulatedObjectInspectorDock->setWidget(m_simulatedJointWidget);
 
         QMainWindow* mainWindow = EMStudio::GetMainWindow();
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, m_simulatedObjectInspectorDock);
@@ -219,35 +216,37 @@ namespace EMotionFX
             return;
         }
 
-        QMenu contextMenu(m_mainWidget);
+        QMenu* contextMenu = new QMenu(m_mainWidget);
+        contextMenu->setObjectName("EMFX.SimulatedObjectWidget.ContextMenu");
 
         const bool isJoint = currentIndex.data(SimulatedObjectModel::ROLE_JOINT_BOOL).toBool();
         if (isJoint)
         {
             if (selectedIndices.count() == 1)
             {
-                QAction* removeJoint = contextMenu.addAction("Remove joint");
+                QAction* removeJoint = contextMenu->addAction("Remove joint");
                 connect(removeJoint, &QAction::triggered, [this, currentIndex]() { OnRemoveSimulatedJoint(currentIndex, false); });
 
-                QAction* removeJointAndChildren = contextMenu.addAction("Remove joint and children");
+                QAction* removeJointAndChildren = contextMenu->addAction("Remove joint and children");
                 connect(removeJointAndChildren, &QAction::triggered, [this, currentIndex]() { OnRemoveSimulatedJoint(currentIndex, true); });
             }
             else
             {
-                QAction* removeJoints = contextMenu.addAction("Remove joints");
+                QAction* removeJoints = contextMenu->addAction("Remove joints");
                 connect(removeJoints, &QAction::triggered, [this, selectedIndices]() { OnRemoveSimulatedJoints(selectedIndices); });
             }
         }
         else
         {
-            QAction* removeObject = contextMenu.addAction("Remove object");
+            QAction* removeObject = contextMenu->addAction("Remove object");
             connect(removeObject, &QAction::triggered, [this, currentIndex]() { OnRemoveSimulatedObject(currentIndex); });
         }
 
-        if (!contextMenu.isEmpty())
+        if (!contextMenu->isEmpty())
         {
-            contextMenu.exec(m_treeView->mapToGlobal(position));
+            contextMenu->popup(m_treeView->mapToGlobal(position));
         }
+        connect(contextMenu, &QMenu::triggered, contextMenu, &QMenu::deleteLater);
     }
 
     void SimulatedObjectWidget::OnRemoveSimulatedObject(const QModelIndex& objectIndex)
